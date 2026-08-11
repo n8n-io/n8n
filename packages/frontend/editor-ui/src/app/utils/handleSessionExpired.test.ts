@@ -1,9 +1,10 @@
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createPinia, setActivePinia } from 'pinia';
-import type { Router } from 'vue-router';
+import type { Router, RouteLocationNormalizedLoaded } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import {
 	handleSessionExpired,
 	restoreNotificationSuppression,
@@ -14,8 +15,12 @@ vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 
-function createRouterMock(push = vi.fn(), fullPath = '/'): Router {
-	return { push, currentRoute: { value: { fullPath } } } as unknown as Router;
+function createRouterMock(
+	push = vi.fn(),
+	currentRoute: Partial<RouteLocationNormalizedLoaded> = { fullPath: '/' },
+	resolve = vi.fn(),
+): Router {
+	return { push, resolve, currentRoute: { value: currentRoute } } as unknown as Router;
 }
 
 describe('handleSessionExpired', () => {
@@ -63,7 +68,7 @@ describe('handleSessionExpired', () => {
 			logout,
 		} as unknown as ReturnType<typeof useUsersStore>);
 		const push = vi.fn();
-		const router = createRouterMock(push, '/workflow/1');
+		const router = createRouterMock(push, { fullPath: '/workflow/1' });
 
 		await handleSessionExpired(router, ownBackendURL);
 
@@ -71,6 +76,69 @@ describe('handleSessionExpired', () => {
 		expect(push).toHaveBeenCalledWith({
 			name: VIEWS.SIGNIN,
 			query: { redirect: encodeURIComponent('/workflow/1'), sessionExpired: 'true' },
+		});
+	});
+
+	it('drops the open node id from the redirect path when there are unsaved changes', async () => {
+		const logout = vi.fn().mockResolvedValue({ redirectUrl: null });
+		vi.mocked(useUsersStore).mockReturnValue({
+			currentUser: { id: '123' },
+			logout,
+		} as unknown as ReturnType<typeof useUsersStore>);
+		useUIStore().markStateDirty();
+
+		const push = vi.fn();
+		const resolve = vi.fn().mockReturnValue({ fullPath: '/workflow/1' });
+		const router = createRouterMock(
+			push,
+			{
+				fullPath: '/workflow/1/abc123',
+				name: VIEWS.WORKFLOW,
+				params: { workflowId: '1', nodeId: 'abc123' },
+				query: {},
+			},
+			resolve,
+		);
+
+		await handleSessionExpired(router, ownBackendURL);
+
+		expect(resolve).toHaveBeenCalledWith({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId: '1', nodeId: undefined },
+			query: {},
+		});
+		expect(push).toHaveBeenCalledWith({
+			name: VIEWS.SIGNIN,
+			query: { redirect: encodeURIComponent('/workflow/1'), sessionExpired: 'true' },
+		});
+	});
+
+	it('keeps the open node id in the redirect path when there are no unsaved changes', async () => {
+		const logout = vi.fn().mockResolvedValue({ redirectUrl: null });
+		vi.mocked(useUsersStore).mockReturnValue({
+			currentUser: { id: '123' },
+			logout,
+		} as unknown as ReturnType<typeof useUsersStore>);
+
+		const push = vi.fn();
+		const resolve = vi.fn();
+		const router = createRouterMock(
+			push,
+			{
+				fullPath: '/workflow/1/abc123',
+				name: VIEWS.WORKFLOW,
+				params: { workflowId: '1', nodeId: 'abc123' },
+				query: {},
+			},
+			resolve,
+		);
+
+		await handleSessionExpired(router, ownBackendURL);
+
+		expect(resolve).not.toHaveBeenCalled();
+		expect(push).toHaveBeenCalledWith({
+			name: VIEWS.SIGNIN,
+			query: { redirect: encodeURIComponent('/workflow/1/abc123'), sessionExpired: 'true' },
 		});
 	});
 

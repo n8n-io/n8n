@@ -40,7 +40,8 @@ export async function handleSessionExpired(router: Router, baseURL: string): Pro
 	}
 	sessionExpiryStore.markHandled();
 
-	useUIStore().closeAllModals();
+	const uiStore = useUIStore();
+	uiStore.closeAllModals();
 
 	// Set before any `await` so the triggering request's own toast is suppressed too.
 	const notificationsStore = useNotificationsStore();
@@ -50,7 +51,20 @@ export async function handleSessionExpired(router: Router, baseURL: string): Pro
 	});
 	notificationsStore.setNotificationsSuppressed(true);
 
-	const redirectPath = getSanitizedCurrentPath(router.currentRoute.value);
+	const currentRoute = router.currentRoute.value;
+
+	// Unsaved changes won't survive the redirect (the unsaved-changes prompt is skipped below via
+	// sessionExpiryStore.handled), so drop any open node id rather than restore a URL pointing at
+	// a node a fresh fetch of the workflow won't find.
+	const redirectRoute = uiStore.stateIsDirty
+		? router.resolve({
+				name: currentRoute.name,
+				params: { ...currentRoute.params, nodeId: undefined },
+				query: currentRoute.query,
+			})
+		: currentRoute;
+
+	const redirectPath = getSanitizedCurrentPath(redirectRoute);
 
 	try {
 		await usersStore.logout();
