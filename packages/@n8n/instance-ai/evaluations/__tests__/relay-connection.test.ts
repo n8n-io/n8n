@@ -171,10 +171,24 @@ describe('fixtureInterceptionArgs', () => {
 		expect(rules).toContain('EXCLUDE [::1]');
 	});
 
-	it('keeps the loopback excludes even when a relay rule is present', () => {
+	it('keeps the other loopback excludes even when a relay rule is present', () => {
 		// The relay MAP is PORT-scoped, so other loopback ports would still fall
-		// through to the wildcard without these.
+		// through to the wildcard without these. Neither spelling collides with a
+		// `MAP localhost:<port>` rule — exclusions match on hostname.
 		const rules = rulesOf(fixtureInterceptionArgs(FIXTURE_RULES, 'MAP localhost:5680 n8n:5678'));
 		expect(rules).toContain('EXCLUDE 127.0.0.1');
+		expect(rules).toContain('EXCLUDE [::1]');
+	});
+
+	it('drops the localhost exclude when a relay rule needs that hostname', () => {
+		// Chromium checks EXCLUDEs before MAPs and returns on the first match, so
+		// `EXCLUDE localhost` vetoes `MAP localhost:<port> …` no matter where it
+		// sits in the string (verified against Chromium 1223: the MAP applies
+		// alone, and stops applying in either order once the exclude is added).
+		// Emitting both left the extension resolving localhost inside its own
+		// container instead of reaching n8n.
+		const rules = rulesOf(fixtureInterceptionArgs(FIXTURE_RULES, 'MAP localhost:5680 n8n:5678'));
+		expect(rules).not.toContain('EXCLUDE localhost');
+		expect(rules).toContain('MAP localhost:5680 n8n:5678');
 	});
 });

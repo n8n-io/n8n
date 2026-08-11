@@ -608,6 +608,28 @@ describe('local-mode secret scrubbing', () => {
 		expect(handed?.searchableRunText).toContain(KEY);
 	});
 
+	it('scrubs every known key shape when the prefix could not be identified', async () => {
+		// `secretPrefix` is resolved from the credential the agent SAVED. An agent
+		// that echoes the key and then fails before saving leaves it undefined, so
+		// a scrub gated on it skipped exactly the run that leaked.
+		const build = okBuild({
+			threadId: 'thread-unidentified',
+			transcript: [{ userMessage: 'x', steps: [{ kind: 'agent-text', text: `saved ${KEY}` }] }],
+			credentialSetup: {
+				secretWasIssued: false,
+				local: true,
+				secretPrefix: undefined,
+				scrubPrefixes: [PREFIX, 'sk-proj-'],
+				credentialIdsBefore: [],
+			},
+		} as Partial<BuildResult>);
+		const deps = makeDeps([makeLane(1, vi.fn().mockResolvedValue(build))]);
+
+		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+		expect(JSON.stringify(deps.transcriptByThreadId.get('thread-unidentified'))).not.toContain(KEY);
+	});
+
 	it('redacts the builder trace, which the HTML report dumps raw', async () => {
 		// workflow-report writes `buildTrace.toolCalls` verbatim into the report,
 		// and scenario-execution writes it into the verifier snapshot. A key the

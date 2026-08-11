@@ -166,10 +166,18 @@ const LOOPBACK_EXCLUDES = ['localhost', '127.0.0.1', '[::1]'];
  * flags the earlier one's rules are silently dropped (probe-verified — its host
  * came back ERR_NAME_NOT_RESOLVED).
  *
- * ORDER MATTERS, first match wins:
+ * ORDER MATTERS AMONG MAPS, first match wins:
  *   1. the relay rule, so the relay is not swallowed by the wildcard
  *   2. the fixture's own host maps, then its `MAP *` catch-all
- *   3. loopback EXCLUDEs, which the port-scoped relay rule has already passed
+ *   3. loopback EXCLUDEs
+ *
+ * EXCLUDEs do NOT obey that order. Chromium keeps them in a separate list and
+ * checks it before any MAP, returning on the first hit — so `EXCLUDE localhost`
+ * vetoes `MAP localhost:<port> …` wherever it appears. The relay rule maps that
+ * exact hostname, so the two cannot both be emitted: when a relay rule is
+ * present the `localhost` exclude is dropped and the other spellings, which
+ * match a different hostname, stay. Verified against Chromium 1223 — the MAP
+ * applies alone and stops applying in either order once the exclude is added.
  *
  * Returns nothing at all for a local run: no interception, and in particular no
  * `--ignore-certificate-errors`, which exists only for the fixture's
@@ -182,11 +190,12 @@ export function fixtureInterceptionArgs(
 	relayRule: string | undefined,
 ): string[] {
 	if (!hostResolverRules) return relayRule ? [`--host-resolver-rules=${relayRule}`] : [];
-	const rules = [
-		relayRule,
-		hostResolverRules,
-		...LOOPBACK_EXCLUDES.map((host) => `EXCLUDE ${host}`),
-	].filter(Boolean);
+	const excludes = relayRule
+		? LOOPBACK_EXCLUDES.filter((host) => !relayRule.includes(`MAP ${host}:`))
+		: LOOPBACK_EXCLUDES;
+	const rules = [relayRule, hostResolverRules, ...excludes.map((host) => `EXCLUDE ${host}`)].filter(
+		Boolean,
+	);
 	return [`--host-resolver-rules=${rules.join(',')}`, '--ignore-certificate-errors'];
 }
 
@@ -227,86 +236,95 @@ export async function startBrowserRuntime(
 	// Mint the relay link BEFORE launching: the connect page auto-connects on
 	// load, so the relay has to be waiting for it.
 	const link = await client.createBrowserLink();
-	// The server builds connectUrl without autoConnect; append it so the
-	// extension clicks Connect itself and the run stays human-out-of-the-loop.
-	const withAutoConnect = `${link.connectUrl}${link.connectUrl.includes('?') ? '&' : '?'}autoConnect=1`;
-	const relayPlan = planRelayConnection(withAutoConnect, client.baseUrl);
-	const connectUrl = relayPlan.connectUrl;
-	if (relayPlan.hostResolverRule) {
-		logger.verbose(`  Relay redirected to n8n: ${relayPlan.hostResolverRule}`);
-	}
-
-	const executablePath = findChromiumForEval();
-	const userDataDir = await mkdtemp(join(tmpdir(), 'n8n-eval-browser-'));
-	logger.verbose(`  Browser runtime: ${executablePath}`);
-
-	const args = [
-		`--disable-extensions-except=${EXTENSION_DIST}`,
-		`--load-extension=${EXTENSION_DIST}`,
-	];
-	// Chrome stores profiles as subdirectories of the user-data-dir; the
-	// discovery helper points at the profile itself, so we pass the parent as
-	// --user-data-dir and name the child here.
-	// Container runs (the lang-tracer dispatcher image). Chrome's setuid sandbox
-	// needs a setuid helper or unprivileged user namespaces, and Docker's default
-	// seccomp profile blocks the latter — Chromium then refuses to start at all.
-	// Opt-in rather than auto-detected: dropping the sandbox is a real weakening,
-	// and it is only defensible here because the only content this browser ever
-	// loads is our own fixture. `/dev/shm` is 64 MB in a default container, which
-	// crashes renderers, so the two travel together.
-	if (process.env.N8N_EVAL_BROWSER_NO_SANDBOX === '1') {
-		args.push('--no-sandbox', '--disable-dev-shm-usage');
-	}
-	args.push(...fixtureInterceptionArgs(hostResolverRules, relayPlan.hostResolverRule));
-
-	const context = await chromium.launchPersistentContext(userDataDir, {
-		executablePath,
-		headless: !headed,
-		args,
-	});
-
-	const cleanup = async () => {
-		await context.close().catch(() => {});
-		await rm(userDataDir, { recursive: true, force: true });
-		// The relay session is INSTANCE-WIDE. A failed startup that leaves it
-		// connected strands it: the next case's `createBrowserLink` hands out a
-		// link the extension will not honour, and that run times out waiting.
-		await client.disconnectBrowserSession().catch(() => {});
-	};
-
+	// From here on EVERY throw has to release the session first. It is
+	// INSTANCE-WIDE: leaving it connected strands the next case, whose own
+	// `createBrowserLink` hands out a link the extension will not honour, and
+	// that run times out with no clue as to why. Chromium discovery, the temp
+	// profile and the launch itself all sit between here and the runtime that
+	// takes ownership, so the release is armed now and disarmed only once that
+	// runtime is returned.
+	let relayOwned = false;
 	try {
-		const page = await context.newPage();
-		await page.goto(connectUrl, { timeout: connectTimeoutMs });
-
-		const deadline = Date.now() + connectTimeoutMs;
-		let connected = false;
-		while (Date.now() < deadline) {
-			if ((await client.getBrowserStatus()).connected) {
-				connected = true;
-				break;
-			}
-			await new Promise((resolve) => setTimeout(resolve, 500));
+		// The server builds connectUrl without autoConnect; append it so the
+		// extension clicks Connect itself and the run stays human-out-of-the-loop.
+		const withAutoConnect = `${link.connectUrl}${link.connectUrl.includes('?') ? '&' : '?'}autoConnect=1`;
+		const relayPlan = planRelayConnection(withAutoConnect, client.baseUrl);
+		const connectUrl = relayPlan.connectUrl;
+		if (relayPlan.hostResolverRule) {
+			logger.verbose(`  Relay redirected to n8n: ${relayPlan.hostResolverRule}`);
 		}
-		if (!connected) {
-			throw new Error(
-				`Extension did not connect to the n8n relay within ${String(connectTimeoutMs)}ms. ` +
-					'Check that Browser Use is enabled on the instance and the relay URL is loopback ' +
-					'(the extension only honors autoConnect for localhost relays).',
-			);
-		}
-		logger.info('  Browser runtime connected to the n8n relay');
 
-		return {
-			context,
-			connected,
-			close: async () => {
-				await client.disconnectBrowserSession().catch(() => {});
-				await cleanup();
-			},
+		const executablePath = findChromiumForEval();
+		const userDataDir = await mkdtemp(join(tmpdir(), 'n8n-eval-browser-'));
+		logger.verbose(`  Browser runtime: ${executablePath}`);
+
+		const args = [
+			`--disable-extensions-except=${EXTENSION_DIST}`,
+			`--load-extension=${EXTENSION_DIST}`,
+		];
+		// Chrome stores profiles as subdirectories of the user-data-dir; the
+		// discovery helper points at the profile itself, so we pass the parent as
+		// --user-data-dir and name the child here.
+		// Container runs (the lang-tracer dispatcher image). Chrome's setuid sandbox
+		// needs a setuid helper or unprivileged user namespaces, and Docker's default
+		// seccomp profile blocks the latter — Chromium then refuses to start at all.
+		// Opt-in rather than auto-detected: dropping the sandbox is a real weakening,
+		// and it is only defensible here because the only content this browser ever
+		// loads is our own fixture. `/dev/shm` is 64 MB in a default container, which
+		// crashes renderers, so the two travel together.
+		if (process.env.N8N_EVAL_BROWSER_NO_SANDBOX === '1') {
+			args.push('--no-sandbox', '--disable-dev-shm-usage');
+		}
+		args.push(...fixtureInterceptionArgs(hostResolverRules, relayPlan.hostResolverRule));
+
+		const context = await chromium.launchPersistentContext(userDataDir, {
+			executablePath,
+			headless: !headed,
+			args,
+		});
+
+		const cleanup = async () => {
+			await context.close().catch(() => {});
+			await rm(userDataDir, { recursive: true, force: true });
+			await client.disconnectBrowserSession().catch(() => {});
 		};
-	} catch (error: unknown) {
-		await cleanup();
-		throw error;
+
+		try {
+			const page = await context.newPage();
+			await page.goto(connectUrl, { timeout: connectTimeoutMs });
+
+			const deadline = Date.now() + connectTimeoutMs;
+			let connected = false;
+			while (Date.now() < deadline) {
+				if ((await client.getBrowserStatus()).connected) {
+					connected = true;
+					break;
+				}
+				await new Promise((resolve) => setTimeout(resolve, 500));
+			}
+			if (!connected) {
+				throw new Error(
+					`Extension did not connect to the n8n relay within ${String(connectTimeoutMs)}ms. ` +
+						'Check that Browser Use is enabled on the instance and the relay URL is loopback ' +
+						'(the extension only honors autoConnect for localhost relays).',
+				);
+			}
+			logger.info('  Browser runtime connected to the n8n relay');
+
+			// The returned runtime owns the session from here — its `close` is what
+			// releases it, so the guard below must not.
+			relayOwned = true;
+			return {
+				context,
+				connected,
+				close: cleanup,
+			};
+		} catch (error: unknown) {
+			await cleanup();
+			throw error;
+		}
+	} finally {
+		if (!relayOwned) await client.disconnectBrowserSession().catch(() => {});
 	}
 }
 
@@ -389,85 +407,91 @@ export async function attachToRunningBrowser(
 	const connectTimeoutMs = options.connectTimeoutMs ?? 60_000;
 
 	const link = await client.createBrowserLink();
-	const withAutoConnect = `${link.connectUrl}${link.connectUrl.includes('?') ? '&' : '?'}autoConnect=1`;
-	// Same URL planning as the launch path — it already rewrites the relay's
-	// PORT (the container case) and only asks for a DNS rule when n8n is on a
-	// different HOST. That rule is the one thing we cannot supply here, since
-	// flags only exist for a browser we start ourselves.
-	const relayPlan = planRelayConnection(withAutoConnect, client.baseUrl);
-	// Assert the loopback invariant on the URL we are about to open, rather than
-	// inferring it from "planRelayConnection asked for no DNS rule". That
-	// function returns the URL untouched whenever the relay already matches the
-	// base URL, so a non-loopback --base-url produced no rule and slipped
-	// through — pointing the developer's own browser at a remote relay. Fails
-	// closed: an absent or unparseable relay param is a refusal, not a pass.
-	// A requested DNS rule means n8n is NOT on loopback. The launch path fixes
-	// that with `--host-resolver-rules`; we cannot, because this browser is not
-	// ours to give flags to — so the connect page would resolve `localhost` on
-	// the developer's machine, where nothing is listening.
-	if (relayPlan.hostResolverRule) {
-		await client.disconnectBrowserSession().catch(() => {});
-		throw new Error(
-			'Local mode needs an n8n reachable on loopback from your own browser, but ' +
-				`--base-url is ${client.baseUrl}, which needs a DNS rule only a launched ` +
-				'browser can be given. Point --base-url at localhost (a published port is fine).',
-		);
-	}
-	const relayHost = relayHostname(relayPlan.connectUrl);
-	if (relayHost === undefined || !LOOPBACK_HOSTS.has(relayHost)) {
-		await client.disconnectBrowserSession().catch(() => {});
-		throw new Error(
-			'Local mode needs an n8n reachable on loopback, but the relay resolved to ' +
-				`${relayHost ?? 'an unreadable URL'} (--base-url is ${client.baseUrl}). ` +
-				'Your own browser cannot be given host-resolver rules, and the browser-use ' +
-				'extension only auto-connects to localhost relays.',
-		);
-	}
+	// Same ownership rule as the launch path: the session is instance-wide, so
+	// every exit between here and the returned runtime has to release it.
+	let relayOwned = false;
+	try {
+		const withAutoConnect = `${link.connectUrl}${link.connectUrl.includes('?') ? '&' : '?'}autoConnect=1`;
+		// Same URL planning as the launch path — it already rewrites the relay's
+		// PORT (the container case) and only asks for a DNS rule when n8n is on a
+		// different HOST. That rule is the one thing we cannot supply here, since
+		// flags only exist for a browser we start ourselves.
+		const relayPlan = planRelayConnection(withAutoConnect, client.baseUrl);
+		// Assert the loopback invariant on the URL we are about to open, rather than
+		// inferring it from "planRelayConnection asked for no DNS rule". That
+		// function returns the URL untouched whenever the relay already matches the
+		// base URL, so a non-loopback --base-url produced no rule and slipped
+		// through — pointing the developer's own browser at a remote relay. Fails
+		// closed: an absent or unparseable relay param is a refusal, not a pass.
+		// A requested DNS rule means n8n is NOT on loopback. The launch path fixes
+		// that with `--host-resolver-rules`; we cannot, because this browser is not
+		// ours to give flags to — so the connect page would resolve `localhost` on
+		// the developer's machine, where nothing is listening.
+		if (relayPlan.hostResolverRule) {
+			throw new Error(
+				'Local mode needs an n8n reachable on loopback from your own browser, but ' +
+					`--base-url is ${client.baseUrl}, which needs a DNS rule only a launched ` +
+					'browser can be given. Point --base-url at localhost (a published port is fine).',
+			);
+		}
+		const relayHost = relayHostname(relayPlan.connectUrl);
+		if (relayHost === undefined || !LOOPBACK_HOSTS.has(relayHost)) {
+			throw new Error(
+				'Local mode needs an n8n reachable on loopback, but the relay resolved to ' +
+					`${relayHost ?? 'an unreadable URL'} (--base-url is ${client.baseUrl}). ` +
+					'Your own browser cannot be given host-resolver rules, and the browser-use ' +
+					'extension only auto-connects to localhost relays.',
+			);
+		}
 
-	const executablePath = findLocalBrowser();
-	logger.info(`  Local mode: handing the relay link to ${basename(executablePath)}`);
-	// Origin + path only. The relay pairing token rides in the query string, and
-	// these logs are uploaded as CI artifacts.
-	logger.verbose(`  Connect URL: ${redactedConnectUrl(relayPlan.connectUrl)}`);
-	// Deliberately NOT awaited. This hands the URL to an already-running browser,
-	// whose process only exits when the BROWSER does — awaiting it hung the run
-	// forever in exactly the case the "starts one if none is running" fallback is
-	// for. Failures surface through `launchError` below instead.
-	let launchError: Error | undefined;
-	const child = execFile(executablePath, [relayPlan.connectUrl]);
-	child.on('error', (error: Error) => {
-		launchError = error;
-	});
-	child.on('exit', (code) => {
-		// Exit 0 is normal — many browsers forward the URL and return. A non-zero
-		// exit means the URL was never delivered, so say so instead of waiting out
-		// the full connect timeout with no explanation.
-		if (code !== null && code !== 0) {
-			launchError = new Error(`${basename(executablePath)} exited with code ${String(code)}`);
-		}
-	});
+		const executablePath = findLocalBrowser();
+		logger.info(`  Local mode: handing the relay link to ${basename(executablePath)}`);
+		// Origin + path only. The relay pairing token rides in the query string, and
+		// these logs are uploaded as CI artifacts.
+		logger.verbose(`  Connect URL: ${redactedConnectUrl(relayPlan.connectUrl)}`);
+		// Deliberately NOT awaited. This hands the URL to an already-running browser,
+		// whose process only exits when the BROWSER does — awaiting it hung the run
+		// forever in exactly the case the "starts one if none is running" fallback is
+		// for. Failures surface through `launchError` below instead.
+		let launchError: Error | undefined;
+		const child = execFile(executablePath, [relayPlan.connectUrl]);
+		child.on('error', (error: Error) => {
+			launchError = error;
+		});
+		child.on('exit', (code) => {
+			// Exit 0 is normal — many browsers forward the URL and return. A non-zero
+			// exit means the URL was never delivered, so say so instead of waiting out
+			// the full connect timeout with no explanation.
+			if (code !== null && code !== 0) {
+				launchError = new Error(`${basename(executablePath)} exited with code ${String(code)}`);
+			}
+		});
 
-	const deadline = Date.now() + connectTimeoutMs;
-	while (Date.now() < deadline) {
-		if (launchError) {
-			throw new Error(`Could not hand the relay link to your browser: ${launchError.message}`);
+		const deadline = Date.now() + connectTimeoutMs;
+		while (Date.now() < deadline) {
+			if (launchError) {
+				throw new Error(`Could not hand the relay link to your browser: ${launchError.message}`);
+			}
+			if ((await client.getBrowserStatus()).connected) {
+				logger.info('  Your browser is connected to the n8n relay');
+				// The caller owns the session from here; `close` releases it.
+				relayOwned = true;
+				return {
+					connected: true,
+					// Their browser, their tabs — we only drop the relay session.
+					close: async () => {
+						await client.disconnectBrowserSession().catch(() => {});
+					},
+				};
+			}
+			await new Promise((resolve) => setTimeout(resolve, 500));
 		}
-		if ((await client.getBrowserStatus()).connected) {
-			logger.info('  Your browser is connected to the n8n relay');
-			return {
-				connected: true,
-				// Their browser, their tabs — we only drop the relay session.
-				close: async () => {
-					await client.disconnectBrowserSession().catch(() => {});
-				},
-			};
-		}
-		await new Promise((resolve) => setTimeout(resolve, 500));
+		throw new Error(
+			`Your browser did not connect to the n8n relay within ${String(connectTimeoutMs)}ms. ` +
+				'Check that the browser-use extension is installed and enabled in the browser ' +
+				'that just opened, and that Browser Use is enabled on the n8n instance.',
+		);
+	} finally {
+		if (!relayOwned) await client.disconnectBrowserSession().catch(() => {});
 	}
-	await client.disconnectBrowserSession().catch(() => {});
-	throw new Error(
-		`Your browser did not connect to the n8n relay within ${String(connectTimeoutMs)}ms. ` +
-			'Check that the browser-use extension is installed and enabled in the browser ' +
-			'that just opened, and that Browser Use is enabled on the n8n instance.',
-	);
 }

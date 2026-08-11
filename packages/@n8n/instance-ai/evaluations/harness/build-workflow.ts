@@ -39,6 +39,7 @@ import {
 	type CredentialSetupLane,
 	type LaneSelection,
 } from './credential-setup-lane';
+import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import type { CaseSeed } from './schema';
@@ -297,7 +298,15 @@ export function leakHaystackFor(facts: CredentialSetupRunFacts): string | undefi
  */
 export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
 	const facts = build.credentialSetup;
-	if (!facts?.local || !facts.secretPrefix || leakHaystacks.has(facts)) return build;
+	if (!facts?.local || leakHaystacks.has(facts)) return build;
+	// Falls back to the identified prefix so a hand-built facts object (tests,
+	// older callers) still scrubs rather than silently doing nothing.
+	const prefixes = facts.scrubPrefixes?.length
+		? facts.scrubPrefixes
+		: facts.secretPrefix
+			? [facts.secretPrefix]
+			: [];
+	if (prefixes.length === 0) return build;
 	// `buildTrace` is in here for both reasons: the HTML report dumps its
 	// `toolCalls` verbatim and scenario-execution writes it to the verifier
 	// snapshot, so a key typed into a browser tool call reaches disk; and the
@@ -310,9 +319,11 @@ export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
 			buildTrace: build.buildTrace ?? null,
 		}),
 	);
-	build.transcript = redactTranscriptSecrets(build.transcript, facts.secretPrefix);
-	build.events = redactTranscriptSecrets(build.events, facts.secretPrefix);
-	build.buildTrace = redactTranscriptSecrets(build.buildTrace, facts.secretPrefix);
+	for (const prefix of prefixes) {
+		build.transcript = redactTranscriptSecrets(build.transcript, prefix);
+		build.events = redactTranscriptSecrets(build.events, prefix);
+		build.buildTrace = redactTranscriptSecrets(build.buildTrace, prefix);
+	}
 	return build;
 }
 
@@ -326,8 +337,13 @@ export interface CredentialSetupRunFacts {
 	mintedSecret?: string;
 	/** True when this ran against the REAL provider site. */
 	local?: boolean;
-	/** Provider key prefix for the shape-based leak scan in local mode. */
+	/** Provider key prefix for the shape-based leak scan in local mode. Resolved
+	 *  from the credential the agent saved, so it can be absent on a failed run —
+	 *  which is why the SCRUB keys on `scrubPrefixes`, not on this. */
 	secretPrefix?: string;
+	/** Every key shape to strip from a local run's artifacts, known before the
+	 *  build. Empty for hermetic runs, whose minted secret is not real. */
+	scrubPrefixes?: string[];
 	/** Whether the fixture's create-key action was actually invoked. */
 	secretWasIssued: boolean;
 	/** Credential ids that existed BEFORE the build — the diff base, so a
@@ -478,6 +494,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			// Local runs have no fixture, but the registry still knows this
 			// provider's key shape — enough for a shape-based leak scan.
 			secretPrefix: await resolveSecretPrefix(client, lane, credentialIdsBefore),
+			scrubPrefixes: await resolveScrubPrefixes(lane),
 			credentialIdsBefore,
 			verifyBaseUrl: lane.verifyBaseUrl,
 			valueProbe: await probeCredentialValue({
@@ -1072,6 +1089,25 @@ function truncate(text: string, maxLength: number): string {
  * what `findFixtureForCredentialType` is for. Undefined => the leak check
  * reports itself unverifiable rather than guessing.
  */
+/**
+ * Every key shape to strip from a local run's artifacts.
+ *
+ * Deliberately NOT `[secretPrefix]`: that one is resolved from the credential
+ * the agent managed to save, so an agent that echoed the key and then failed
+ * before saving leaves it undefined — and a scrub keyed on it would skip
+ * exactly the run that leaked. The registry's shapes are known up front, so
+ * local mode scrubs all of them and the identification only affects which
+ * prefix the leak VERDICT can name.
+ */
+async function resolveScrubPrefixes(lane: CredentialSetupLane): Promise<string[]> {
+	if (!lane.local) return [];
+	try {
+		return [...new Set((await loadProviderFixtures()).map((f) => f.manifest.secretPrefix))];
+	} catch {
+		return [];
+	}
+}
+
 async function resolveSecretPrefix(
 	client: N8nClient,
 	lane: CredentialSetupLane,
