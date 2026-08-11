@@ -503,7 +503,6 @@ defineExpose({
 }
 .group {
 	display: flex;
-	gap: var(--spacing--xs);
 }
 .hiddenInput {
 	display: none;
