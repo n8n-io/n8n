@@ -2,23 +2,28 @@
 import { ref } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
-import type { AgentJsonConfig, AgentResource } from '../types';
+import type { AgentContinueLoadedEvent, AgentJsonConfig, AgentResource } from '../types';
 import AgentChatPanel from './AgentChatPanel.vue';
 
-defineProps<{
-	initialized: boolean;
-	projectId: string;
-	agentId: string;
-	agent: AgentResource | null;
-	localConfig: AgentJsonConfig | null;
-	connectedTriggers: string[];
-	effectiveSessionId?: string;
-	initialPrompt?: string;
-	canSendToAssistant?: boolean;
-}>();
+withDefaults(
+	defineProps<{
+		initialized: boolean;
+		projectId: string;
+		agentId: string;
+		agent: AgentResource | null;
+		localConfig: AgentJsonConfig | null;
+		connectedTriggers: string[];
+		effectiveSessionId?: string;
+		initialPrompt?: string;
+		canSendToAssistant?: boolean;
+		beforeSend?: () => Promise<void> | void;
+		layout?: 'page' | 'dock';
+	}>(),
+	{ layout: 'page' },
+);
 
 const emit = defineEmits<{
-	'continue-loaded': [count: number];
+	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
 	'send-to-assistant': [executionId?: string];
 }>();
@@ -27,8 +32,12 @@ const inputDraft = ref('');
 </script>
 
 <template>
-	<main :class="$style.previewPage" data-testid="agent-preview-chat-page">
-		<div :class="$style.chatFrame">
+	<component
+		:is="layout === 'dock' ? 'div' : 'main'"
+		:class="[$style.previewPage, { [$style.dockLayout]: layout === 'dock' }]"
+		data-testid="agent-preview-chat-page"
+	>
+		<div :class="[$style.chatFrame, { [$style.dockChatFrame]: layout === 'dock' }]">
 			<AgentChatPanel
 				v-if="initialized && effectiveSessionId"
 				:key="`preview-${effectiveSessionId}`"
@@ -41,12 +50,13 @@ const inputDraft = ref('');
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
 				:can-send-to-assistant="canSendToAssistant"
+				:before-send="beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>
 		</div>
-	</main>
+	</component>
 </template>
 
 <style lang="scss" module>
@@ -64,5 +74,13 @@ const inputDraft = ref('');
 	max-width: 45rem;
 	min-height: 0;
 	display: flex;
+}
+
+.dockLayout {
+	background-color: transparent;
+}
+
+.dockChatFrame {
+	max-width: none;
 }
 </style>

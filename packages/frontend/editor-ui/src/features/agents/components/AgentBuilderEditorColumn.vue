@@ -209,6 +209,7 @@ const i18n = useI18n();
 						:project-id="projectId"
 						:agent-id="agentId"
 						:open-session-in-new-tab="artifactMode"
+						:manage-store-lifecycle="false"
 						data-testid="agent-executions-panel"
 					/>
 				</AgentBuilderTabPanel>

@@ -27,14 +27,23 @@ import {
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
+type TraceTarget = { agentId: string; threadId: string };
+
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
 		projectId?: string;
 		agentId?: string;
 		openSessionInNewTab?: boolean;
+		manageStoreLifecycle?: boolean;
 	}>(),
-	{ embedded: false, projectId: undefined, agentId: undefined, openSessionInNewTab: false },
+	{
+		embedded: false,
+		projectId: undefined,
+		agentId: undefined,
+		openSessionInNewTab: false,
+		manageStoreLifecycle: true,
+	},
 );
 
 const i18n = useI18n();
@@ -44,6 +53,8 @@ const router = useRouter();
 const toast = useToast();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
+let disposed = false;
+let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
@@ -59,18 +70,26 @@ function onVisibilityChange() {
 }
 
 onMounted(async () => {
+	if (!props.manageStoreLifecycle) return;
+	managesStoreLifecycle = true;
+	document.addEventListener('visibilitychange', onVisibilityChange);
+
 	if (projectId.value && agentId.value) {
 		try {
 			await sessionsStore.fetchThreads(projectId.value, agentId.value);
+			if (disposed) return;
 			sessionsStore.startAutoRefresh();
 		} catch (error) {
+			if (disposed) return;
 			toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 		}
 	}
-	document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
 onBeforeUnmount(() => {
+	disposed = true;
+	if (!managesStoreLifecycle) return;
+
 	document.removeEventListener('visibilitychange', onVisibilityChange);
 	sessionsStore.stopAutoRefresh();
 });
@@ -165,28 +184,28 @@ function openConversation(threadId: string) {
 	void router.push(target);
 }
 
-function onViewTrace(threadId: string) {
-	const target = {
+function onViewTrace(target: TraceTarget) {
+	const routeTarget = {
 		name: AGENT_SESSION_DETAIL_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value, threadId },
+		params: {
+			projectId: projectId.value,
+			agentId: target.agentId,
+			threadId: target.threadId,
+		},
 	};
 	if (props.openSessionInNewTab) {
-		window.open(router.resolve(target).href, '_blank');
+		window.open(router.resolve(routeTarget).href, '_blank');
 		return;
 	}
-	void router.push(target);
+	void router.push(routeTarget);
 }
 
 async function onAction(actionId: string, thread: AgentExecutionThread) {
 	if (actionId === 'goToParentRun') {
 		if (!thread.parentAgentId || !thread.parentThreadId) return;
-		void router.push({
-			name: AGENT_SESSION_DETAIL_VIEW,
-			params: {
-				projectId: projectId.value,
-				agentId: thread.parentAgentId,
-				threadId: thread.parentThreadId,
-			},
+		onViewTrace({
+			agentId: thread.parentAgentId,
+			threadId: thread.parentThreadId,
 		});
 		return;
 	}
@@ -238,9 +257,16 @@ async function loadMore() {
 						@click="openConversation(thread.id)"
 					>
 						<td :class="$style.titleCell">
-							<span :class="$style.sessionTitle" data-test-id="agent-session-title">
-								{{ threadTitleOf(thread) }}
-							</span>
+							<button
+								type="button"
+								:class="$style.sessionOpen"
+								data-test-id="agent-session-open"
+								@click.stop="openConversation(thread.id)"
+							>
+								<span :class="$style.sessionTitle" data-test-id="agent-session-title">
+									{{ threadTitleOf(thread) }}
+								</span>
+							</button>
 						</td>
 						<td :class="$style.originCell" data-test-id="agent-session-origin">
 							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
@@ -266,9 +292,8 @@ async function loadMore() {
 										size="xsmall"
 										variant="ghost"
 										:aria-label="i18n.baseText('agentSessions.viewTrace')"
-										:title="i18n.baseText('agentSessions.viewTrace')"
 										data-test-id="agent-session-view-trace"
-										@click="onViewTrace(thread.id)"
+										@click="onViewTrace({ agentId, threadId: thread.id })"
 									/>
 								</N8nTooltip>
 								<N8nActionDropdown
@@ -319,6 +344,8 @@ async function loadMore() {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
 .wrapper {
 	display: flex;
 	flex-direction: column;
@@ -357,6 +384,21 @@ async function loadMore() {
 	font-weight: var(--font-weight--medium);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.sessionOpen {
+	@include focus.focus-visible-ring-offset;
+
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	color: inherit;
+	background: transparent;
+	font: inherit;
+	text-align: left;
+	appearance: none;
+	cursor: pointer;
 }
 
 .originCell,

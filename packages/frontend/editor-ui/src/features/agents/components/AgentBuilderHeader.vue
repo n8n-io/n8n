@@ -38,6 +38,7 @@ const props = defineProps<{
 	beforeRevertToPublished?: () => Promise<void> | void;
 	isVersionHistoryOpen?: boolean;
 	artifactMode?: boolean;
+	isPreviewOpen?: boolean;
 	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
@@ -47,6 +48,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'header-action': [item: string];
 	'open-preview': [];
+	'close-preview': [];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
@@ -84,11 +86,11 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
-const isPreviewDisabled = computed(() => props.agent?.isRunnable !== true);
+const isPreviewDisabled = computed(() => !props.isPreviewOpen && props.agent?.isRunnable !== true);
 // Standalone keeps href for Cmd/Ctrl-click new-tab. Artifact mode is embedded
 // in Instance AI — plain button so a left-click cannot fall through to a link.
 const previewHref = computed(() =>
-	props.artifactMode || isPreviewDisabled.value
+	props.artifactMode || props.isPreviewOpen || isPreviewDisabled.value
 		? undefined
 		: router.resolve(previewRoute.value).href,
 );
@@ -128,6 +130,11 @@ function onBreadcrumbSelect(item: PathItem) {
 }
 
 function onPreviewClick(event: MouseEvent) {
+	if (props.isPreviewOpen) {
+		event.preventDefault();
+		emit('close-preview');
+		return;
+	}
 	if (isPreviewDisabled.value) {
 		event.preventDefault();
 		return;
@@ -212,13 +219,17 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				<N8nButton
 					variant="ghost"
 					size="medium"
-					icon="play"
+					:icon="props.isPreviewOpen ? 'x' : 'play'"
 					:href="previewHref"
 					:disabled="isPreviewDisabled"
 					data-testid="agent-header-preview-btn"
 					@click="onPreviewClick"
 				>
-					{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
+					{{
+						props.isPreviewOpen
+							? i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
+							: i18n.baseText('agents.builder.preview.button' as BaseTextKey)
+					}}
 				</N8nButton>
 			</N8nTooltip>
 			<AgentPublishButton
