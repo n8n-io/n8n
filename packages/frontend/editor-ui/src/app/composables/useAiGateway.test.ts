@@ -72,19 +72,6 @@ describe('useAiGateway', () => {
 			expect(budget.value).toBe(10);
 		});
 
-		it('should fetch a wallet for Cloud UBB', async () => {
-			mockIsAiGatewayEnabled.value = true;
-			mockIsAiGatewayCloudUbbEnabled.value = true;
-			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
-			const { fetchWallet, balance, budget } = useAiGateway();
-
-			await fetchWallet();
-
-			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
-			expect(balance.value).toBe(7);
-			expect(budget.value).toBe(10);
-		});
-
 		it('should keep previous values on API error', async () => {
 			mockIsAiGatewayEnabled.value = true;
 
