@@ -163,8 +163,8 @@ catalogs:
       specifier: ^0.6.0
       version: 0.6.0
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.25.0
-      version: 1.25.0
+      specifier: 1.26.0
+      version: 1.26.0
     '@openrouter/ai-sdk-provider':
       specifier: ^3.0.0
       version: 3.0.0
@@ -1263,7 +1263,7 @@ importers:
         version: link:../workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.25.0
+        version: 1.26.0
       axios:
         specifier: 1.18.0
         version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
@@ -1363,7 +1363,7 @@ importers:
         version: link:../permissions
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.25.0
+        version: 1.26.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -2161,6 +2161,9 @@ importers:
       express:
         specifier: 'catalog:'
         version: 5.1.0
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../../testing/containers
       testcontainers:
         specifier: 'catalog:'
         version: 11.13.0
@@ -2290,6 +2293,9 @@ importers:
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../../testing/containers
       supertest:
         specifier: ^7.1.1
         version: 7.1.1
@@ -3113,9 +3119,15 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@testcontainers/postgresql':
+        specifier: 'catalog:'
+        version: 11.13.0
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
+      testcontainers:
+        specifier: 'catalog:'
+        version: 11.13.0
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4209,7 +4221,7 @@ importers:
         version: link:../@n8n/workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.25.0
+        version: 1.26.0
       '@n8n_io/license-sdk':
         specifier: 3.0.0
         version: 3.0.0
@@ -10163,8 +10175,8 @@ packages:
       sqlite3:
         optional: true
 
-  '@n8n_io/ai-assistant-sdk@1.25.0':
-    resolution: {integrity: sha512-7V4dwVuHIkLdwd7Cx0k1miwr3KttC4rLQ+zVLftBMmSDx6n+0/W4a8BGhwrVHNx6uQwA1UGEWz+wSfO+gtBA4Q==}
+  '@n8n_io/ai-assistant-sdk@1.26.0':
+    resolution: {integrity: sha512-iVW3dfhg48WipFhiVUjOIqo0MvFv1wrGamvbTUZusMF13NjycicLZSE1Bd4V6nLsLtSqcOfZ1m8LXFrmZyxOOw==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@3.0.0':
@@ -27678,7 +27690,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n_io/ai-assistant-sdk@1.25.0': {}
+  '@n8n_io/ai-assistant-sdk@1.26.0': {}
 
   '@n8n_io/license-sdk@3.0.0':
     dependencies:

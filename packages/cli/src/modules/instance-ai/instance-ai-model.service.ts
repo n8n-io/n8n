@@ -1,4 +1,4 @@
-import { UNLIMITED_CREDITS, buildProxyHeaders } from '@n8n/api-types';
+import { UNLIMITED_CREDITS, buildProxyHeaders, type InstanceAiCredits } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -144,7 +144,7 @@ export class InstanceAiModelService {
 	}
 
 	/** Get current Instance AI credit usage from the AI service proxy. */
-	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
+	async getCredits(user: User): Promise<InstanceAiCredits> {
 		if (!this.aiService.isProxyEnabled()) {
 			return { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 };
 		}
