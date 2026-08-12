@@ -80,7 +80,6 @@ import {
 	N8nButton,
 	N8nCheckbox,
 	N8nIcon,
-	N8nInput,
 	N8nNotice,
 	N8nText,
 } from '@n8n/design-system';
@@ -1034,12 +1033,6 @@ function handleSelectAction(params: INodeParameters) {
 					 that turns it off disappears with it. -->
 				<div v-if="progressiveDisclosure" :class="$style.disclosure">
 					<template v-if="showAllSettings || alwaysShowAllSettings">
-						<N8nInput
-							:model-value="settingsFilter"
-							:placeholder="i18n.baseText('nodePanel.filterSettings')"
-							clearable
-							@update:model-value="emit('settingsFilterChanged', String($event))"
-						/>
 						<N8nButton
 							v-if="!alwaysShowAllSettings"
 							variant="subtle"

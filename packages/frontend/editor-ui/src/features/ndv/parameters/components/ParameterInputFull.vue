@@ -609,6 +609,12 @@ function removeOverride(clearField = false) {
 		min-width: 0;
 	}
 
+	// Inputs and selects fill the column, but fixed-width controls (switches) would
+	// otherwise sit at its left edge and break the right-hand rail of controls.
+	> :nth-child(2) {
+		text-align: right;
+	}
+
 	// The options row (fixed/expression switch, kebab) would otherwise sit between
 	// the label and the control and eat the row. Float it just above the control
 	// instead, so the input keeps its full column width.
