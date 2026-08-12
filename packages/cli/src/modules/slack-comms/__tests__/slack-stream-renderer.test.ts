@@ -861,6 +861,85 @@ describe('SlackStreamRenderer', () => {
 			});
 			expect(transport.append).toHaveBeenCalledTimes(1);
 		});
+
+		it('renders the row as pending, never error, with no error banner text', async () => {
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			emit(confirmationRequestEvent());
+
+			await vi.waitFor(() => {
+				expect(transport.append).toHaveBeenCalledTimes(1);
+			});
+			const chunks = transport.append.mock.calls[0][0];
+			expect(taskUpdateChunks(chunks)[0].status).toBe('pending');
+			expect(markdownChunks(chunks)).toEqual([]);
+		});
+
+		it('completes the confirmation row once activity resumes', async () => {
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			emit(confirmationRequestEvent());
+			await vi.waitFor(() => {
+				expect(transport.append).toHaveBeenCalledTimes(1);
+			});
+			transport.append.mockClear();
+
+			emit(toolCallEvent('call-1', 'workflows', { action: 'list' }));
+
+			await vi.waitFor(() => {
+				expect(transport.append).toHaveBeenCalledTimes(2);
+			});
+			expect(taskUpdateChunks(transport.append.mock.calls[0][0])).toEqual([
+				{
+					type: 'task_update',
+					id: 'confirmation-request',
+					title: 'Waiting for your go-ahead',
+					status: 'complete',
+				},
+			]);
+			expect(taskUpdateChunks(transport.append.mock.calls[1][0])).toEqual([
+				{ type: 'task_update', id: 'call-1', title: 'Listing workflows', status: 'in_progress' },
+			]);
+		});
+
+		it('suppresses the run-finish error apology while suspended, and keeps the row pending until real activity resumes', async () => {
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			emit(confirmationRequestEvent());
+			await vi.waitFor(() => {
+				expect(transport.append).toHaveBeenCalledTimes(1);
+			});
+			transport.append.mockClear();
+
+			emit(runFinishEvent('error'));
+			await vi.waitFor(() => {
+				expect(transport.close).toHaveBeenCalledTimes(1);
+			});
+			const markdown = transport.append.mock.calls.flatMap((call) => markdownChunks(call[0]));
+			expect(markdown).toEqual([]);
+
+			// The confirmation row must still be pending: the run-finish above
+			// was the pause artifact, not the user's answer. Real activity
+			// (a tasks-update) is what finally resolves it.
+			transport.append.mockClear();
+			emit(
+				tasksUpdateEvent([{ id: 't1', description: 'Continue building', status: 'in_progress' }]),
+			);
+			await vi.waitFor(() => {
+				expect(transport.append).toHaveBeenCalledTimes(2);
+			});
+			expect(taskUpdateChunks(transport.append.mock.calls[0][0])).toEqual([
+				{
+					type: 'task_update',
+					id: 'confirmation-request',
+					title: 'Waiting for your go-ahead',
+					status: 'complete',
+				},
+			]);
+		});
 	});
 
 	describe('run-finish', () => {
@@ -1076,6 +1155,39 @@ describe('SlackStreamRenderer', () => {
 
 			emit(toolCallEvent('call-1', 'workflows', { action: 'list' }));
 			emit(toolResultEvent('call-1'));
+			await vi.advanceTimersByTimeAsync(0);
+			transport.append.mockClear();
+
+			await vi.advanceTimersByTimeAsync(25000);
+
+			expect(transport.append).not.toHaveBeenCalled();
+		});
+
+		it('sets the still-working detail once and stays silent on the following tick (idempotent, no concatenation)', async () => {
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			emit(toolCallEvent('call-1', 'workflows', { action: 'list' }));
+			await vi.advanceTimersByTimeAsync(0);
+			transport.append.mockClear();
+
+			await vi.advanceTimersByTimeAsync(25000);
+			expect(transport.append).toHaveBeenCalledTimes(1);
+			expect(taskUpdateChunks(transport.append.mock.calls[0][0])[0].details).toBe(
+				'Still working, this step is a big one',
+			);
+
+			transport.append.mockClear();
+			await vi.advanceTimersByTimeAsync(25000);
+			expect(transport.append).not.toHaveBeenCalled();
+		});
+
+		it('does not fire while suspended awaiting a confirmation', async () => {
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			emit(toolCallEvent('call-1', 'workflows', { action: 'list' }));
+			emit(confirmationRequestEvent());
 			await vi.advanceTimersByTimeAsync(0);
 			transport.append.mockClear();
 

@@ -183,6 +183,15 @@ class StreamSession {
 	 */
 	private lastSentKind: 'none' | 'prose' | 'block' | 'discrete' = 'none';
 
+	/**
+	 * True from a `confirmation-request` until the next event of any other
+	 * type — the run is paused waiting on the user, not actually finished or
+	 * broken. Gates the heartbeat (nothing to nag about while paused) and the
+	 * run-finish error apology (a `run-finish` landing while suspended is the
+	 * pause signal, not a failure).
+	 */
+	private suspended = false;
+
 	private closed = false;
 
 	private hasPlan = false;
@@ -219,6 +228,15 @@ class StreamSession {
 		this.resetHeartbeat();
 
 		const event = stored.event;
+		// 'run-finish' is excluded too: while suspended, a run-finish is the
+		// abort-for-confirmation artifact, not evidence the user responded —
+		// onRunFinish below still needs to see `this.suspended` as true to
+		// suppress its own apology. Only real follow-up activity (a new
+		// run-start, tool call, tasks-update, text-delta...) counts as resumed.
+		if (event.type !== 'confirmation-request' && event.type !== 'run-finish' && this.suspended) {
+			this.suspended = false;
+			this.resumeConfirmationRow();
+		}
 		switch (event.type) {
 			case 'tasks-update':
 				this.onTasksUpdate(event);
@@ -391,6 +409,11 @@ class StreamSession {
 			});
 		}
 
+		this.suspended = true;
+		this.tasks.set(CONFIRMATION_TASK_ID, {
+			title: CONFIRMATION_TASK_TITLE,
+			status: 'pending',
+		});
 		this.lastSentKind = 'block';
 		this.enqueue(
 			async () =>
@@ -405,12 +428,39 @@ class StreamSession {
 		);
 	}
 
+	/**
+	 * Called once, on the first event after a suspension ends. Flips the
+	 * pending confirmation row to complete instead of leaving it stuck —
+	 * there is no dedicated "confirmation resolved" event, so resuming
+	 * activity of any kind is the only signal available.
+	 */
+	private resumeConfirmationRow(): void {
+		const existing = this.tasks.get(CONFIRMATION_TASK_ID);
+		if (!existing || existing.status !== 'pending') return;
+		this.tasks.set(CONFIRMATION_TASK_ID, { ...existing, status: 'complete' });
+		this.lastSentKind = 'block';
+		this.enqueue(
+			async () =>
+				await this.send([
+					{
+						type: 'task_update',
+						id: CONFIRMATION_TASK_ID,
+						title: existing.title,
+						status: 'complete',
+					},
+				]),
+		);
+	}
+
 	private onRunFinish(event: RunFinishEvent): void {
 		// Force: this run's stream is about to close, so an unterminated
 		// trailing table line has no more newline coming — send it as-is
 		// rather than losing it.
 		this.enqueue(async () => await this.flushTextIfAny(true));
-		if (event.payload.status === 'error') {
+		// A run-finish landing while suspended is the pause-for-confirmation
+		// signal, not a real failure — the apology would contradict the
+		// pending row sitting right above it.
+		if (event.payload.status === 'error' && !this.suspended) {
 			this.enqueue(
 				async () => await this.send([this.markdownChunk(RUN_ERROR_MESSAGE, 'discrete')]),
 			);
@@ -572,24 +622,39 @@ class StreamSession {
 		}, HEARTBEAT_IDLE_MS);
 	}
 
+	/**
+	 * Idempotent: a task still `in_progress` after 25s gets the heartbeat
+	 * detail set ONCE, not appended again on every subsequent tick — Slack
+	 * concatenates repeated `details` text for the same task id with no
+	 * separator, so re-sending the identical string every 25s renders as the
+	 * same sentence pasted back-to-back a dozen times.
+	 */
 	private fireHeartbeat(): void {
-		if (this.closed || !this.transportOpen) return;
+		if (this.closed || !this.transportOpen || this.suspended) return;
 		const taskId = this.lastActiveTaskId;
 		const title = this.lastActiveTitle;
 		if (taskId !== undefined && title !== undefined) {
-			this.lastSentKind = 'block';
-			this.enqueue(
-				async () =>
-					await this.send([
-						{
-							type: 'task_update',
-							id: taskId,
-							title,
-							status: 'in_progress',
-							details: HEARTBEAT_DETAIL,
-						},
-					]),
-			);
+			const existing = this.tasks.get(taskId);
+			if (existing?.detail !== HEARTBEAT_DETAIL) {
+				this.tasks.set(taskId, {
+					title,
+					status: 'in_progress',
+					detail: HEARTBEAT_DETAIL,
+				});
+				this.lastSentKind = 'block';
+				this.enqueue(
+					async () =>
+						await this.send([
+							{
+								type: 'task_update',
+								id: taskId,
+								title,
+								status: 'in_progress',
+								details: HEARTBEAT_DETAIL,
+							},
+						]),
+				);
+			}
 		}
 		this.resetHeartbeat();
 	}
