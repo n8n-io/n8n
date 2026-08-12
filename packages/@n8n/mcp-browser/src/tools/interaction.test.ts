@@ -536,4 +536,68 @@ describe('createInteractionTools', () => {
 			});
 		});
 	});
+
+	// -----------------------------------------------------------------------
+	// snapshot input param (shared via createConnectedTool)
+	// -----------------------------------------------------------------------
+
+	describe('snapshot input param', () => {
+		const validInputs: Record<string, Record<string, unknown>> = {
+			browser_click: { element: { ref: 'e1' } },
+			browser_type: { element: { ref: 'e1' }, text: 'hi' },
+			browser_select: { element: { ref: 'e1' }, values: ['a'] },
+			browser_drag: { from: { ref: 'e1' }, to: { ref: 'e2' } },
+			browser_hover: { element: { ref: 'e1' } },
+			browser_press: { keys: 'Enter' },
+			browser_scroll: { mode: 'direction', direction: 'down' },
+			browser_upload: { files: ['/tmp/a.txt'] },
+			browser_dialog: { action: 'accept' },
+		};
+
+		it.each(Object.keys(validInputs))('%s accepts snapshot values and rejects invalid', (name) => {
+			const schema = findTool(tools, name).inputSchema;
+			expect(() => schema.parse({ ...validInputs[name], snapshot: 'interactive' })).not.toThrow();
+			expect(() =>
+				schema.parse({ ...validInputs[name], snapshot: 'non-interactive' }),
+			).not.toThrow();
+			expect(() => schema.parse({ ...validInputs[name], snapshot: 'full' })).toThrow();
+		});
+
+		it('returns an interactive snapshot when snapshot is "interactive"', async () => {
+			mockConnection.adapter.snapshot.mockResolvedValue({ tree: '- button "OK"', refCount: 1 });
+
+			const result = await findTool(tools, 'browser_click').execute(
+				{ element: { ref: 'e1' }, snapshot: 'interactive' },
+				TOOL_CONTEXT,
+			);
+			const data = structuredOf(result);
+
+			expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, true);
+			expect(data.snapshot).toBe('- button "OK"');
+		});
+
+		it('returns a plain snapshot when snapshot is "non-interactive"', async () => {
+			mockConnection.adapter.snapshot.mockResolvedValue({ tree: '- text "Done"', refCount: 0 });
+
+			const result = await findTool(tools, 'browser_click').execute(
+				{ element: { ref: 'e1' }, snapshot: 'non-interactive' },
+				TOOL_CONTEXT,
+			);
+			const data = structuredOf(result);
+
+			expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, false);
+			expect(data.snapshot).toBe('- text "Done"');
+		});
+
+		it('does not snapshot when the param is omitted', async () => {
+			const result = await findTool(tools, 'browser_click').execute(
+				{ element: { ref: 'e1' } },
+				TOOL_CONTEXT,
+			);
+			const data = structuredOf(result);
+
+			expect(mockConnection.adapter.snapshot).not.toHaveBeenCalled();
+			expect(data.snapshot).toBeUndefined();
+		});
+	});
 });
