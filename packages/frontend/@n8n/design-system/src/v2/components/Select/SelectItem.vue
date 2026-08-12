@@ -5,7 +5,6 @@ import { computed, useCssModule } from 'vue';
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { SelectOptionBase } from './Select.types';
-import { encodeSelectValue } from './Select.utils';
 
 defineOptions({ inheritAttrs: false });
 
@@ -16,10 +15,6 @@ type SelectItemComponentProps = SelectOptionBase & {
 
 const props = defineProps<SelectItemComponentProps>();
 const $style = useCssModule();
-
-function resolveValue() {
-	return encodeSelectValue(props.value);
-}
 
 const leadingProps = computed(() => ({
 	class: $style.itemLeading,
@@ -36,7 +31,7 @@ const trailingProps = computed(() => ({
 	<SelectItem
 		data-test-id="select-item"
 		:disabled="props.disabled"
-		:value="resolveValue()"
+		:value="props.value"
 		:class="props.class"
 		@select="props.onSelect?.($event)"
 	>

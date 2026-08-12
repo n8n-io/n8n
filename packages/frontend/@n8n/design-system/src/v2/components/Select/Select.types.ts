@@ -2,7 +2,7 @@ import type { SelectRootEmits, SelectRootProps } from 'reka-ui';
 
 import type { IconName } from '../../../components/N8nIcon/icons';
 
-export type SelectValue = string | number | boolean;
+export type SelectValue = string | number;
 
 export type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	type?: 'item';

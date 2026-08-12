@@ -4,12 +4,12 @@ import {
 	SelectValue as RSelectValue,
 	SelectContent,
 	SelectGroup,
-	SelectLabel,
+	SelectLabel as RSelectLabel,
 	SelectPortal,
 	SelectRoot,
 	SelectScrollDownButton,
 	SelectScrollUpButton,
-	SelectSeparator,
+	SelectSeparator as RSelectSeparator,
 	SelectTrigger,
 	SelectViewport,
 	useForwardProps,
@@ -34,7 +34,6 @@ import type {
 	SelectValue,
 	SelectVariants,
 } from './Select.types';
-import { decodeSelectModelValue, decodeSelectValue, encodeSelectModelValue } from './Select.utils';
 import N8nSelectItem from './SelectItem.vue';
 
 defineOptions({ inheritAttrs: false });
@@ -207,14 +206,14 @@ const sizes: Record<SelectSizes, string> = {
 };
 const size = computed(() => sizes[props.size]);
 
-const variantClasses: Record<SelectVariants, string> = {
-	default: $style.variantDefault,
+const variantClasses: Record<SelectVariants, string | undefined> = {
+	default: undefined,
 	ghost: $style.variantGhost,
 	flush: $style.variantFlush,
 };
 
 function isSelectValue(value: unknown): value is SelectValue {
-	return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+	return typeof value === 'string' || typeof value === 'number';
 }
 
 function isOptionItem(item: SelectItem): item is SelectOptionBase {
@@ -228,7 +227,6 @@ function stringifyPrimitive(value: unknown): string | undefined {
 			return value;
 		case 'number':
 		case 'bigint':
-		case 'boolean':
 			return String(value);
 		default:
 			return undefined;
@@ -295,6 +293,7 @@ function itemSearchText(item: SelectOptionBase): string {
 	return (item.textValue ?? item.label).toLowerCase();
 }
 
+/** Keep preceding label/separator rows when at least one option in that group matches. */
 function filterGroupedItems(items: SelectItem[], query: string): SelectItem[] {
 	const normalizedQuery = query.toLowerCase().trim();
 	if (!normalizedQuery) {
@@ -402,19 +401,18 @@ function onClear(event: Event) {
 }
 
 function handleModelValueUpdate(value: AcceptableValue | AcceptableValue[]) {
-	const decoded = decodeSelectModelValue(value);
-	if (!isModelValue(decoded)) {
+	if (!isModelValue(value)) {
 		return;
 	}
 
-	emit('update:modelValue', decoded);
+	emit('update:modelValue', value);
 }
 
-function slotModelValue(
-	value: AcceptableValue | AcceptableValue[] | null | undefined,
-): SelectModelValue<M> | undefined {
-	const decoded = decodeSelectModelValue(value);
-	return isModelValue(decoded) ? decoded : undefined;
+function slotModelValue(value: AcceptableValue | AcceptableValue[] | null | undefined) {
+	if (value === null || value === undefined) {
+		return undefined;
+	}
+	return isModelValue(value) ? value : undefined;
 }
 
 /**
@@ -431,26 +429,24 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	if (Array.isArray(value)) {
 		const labels = value
 			.map((entry: unknown) => {
-				const comparable: unknown = decodeSelectValue(entry) ?? entry;
 				const found = items.find(
-					(item): item is SelectOptionBase => isOptionItem(item) && item.value === comparable,
+					(item): item is SelectOptionBase => isOptionItem(item) && item.value === entry,
 				);
-				return found?.label ?? stringifyPrimitive(comparable);
+				return found?.label ?? stringifyPrimitive(entry);
 			})
 			.filter((label): label is string => Boolean(label));
 
 		return labels.length > 0 ? labels.join(', ') : undefined;
 	}
 
-	const comparable: unknown = decodeSelectValue(value) ?? value;
 	const found = items.find(
-		(item): item is SelectOptionBase => isOptionItem(item) && item.value === comparable,
+		(item): item is SelectOptionBase => isOptionItem(item) && item.value === value,
 	);
 	if (found !== undefined) {
 		return found.label;
 	}
 
-	return stringifyPrimitive(comparable);
+	return stringifyPrimitive(value);
 }
 </script>
 
@@ -458,8 +454,8 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	<SelectRoot
 		v-slot="{ open: isMenuOpen, modelValue: selectedValue }"
 		v-bind="rootBind()"
-		:default-value="encodeSelectModelValue(defaultValue)"
-		:model-value="encodeSelectModelValue(modelValue)"
+		:default-value="defaultValue"
+		:model-value="modelValue"
 		@update:model-value="handleModelValueUpdate"
 		@update:open="handleOpenUpdate"
 	>
@@ -546,13 +542,13 @@ function resolveDisplayValue(value: unknown): string | undefined {
 						</div>
 						<SelectGroup v-else>
 							<template v-for="(item, index) in visibleItems" :key="`group-${index}`">
-								<SelectLabel v-if="item.type === 'label'" :class="$style.selectLabel">
+								<RSelectLabel v-if="item.type === 'label'" :class="$style.selectLabel">
 									<slot name="label" :item="item">
 										{{ item.label }}
 									</slot>
-								</SelectLabel>
+								</RSelectLabel>
 
-								<SelectSeparator
+								<RSelectSeparator
 									v-else-if="item.type === 'separator'"
 									:class="$style.selectSeparator"
 									role="separator"
@@ -602,12 +598,10 @@ function resolveDisplayValue(value: unknown): string | undefined {
 @use '../../../css/mixins/input' as input-mixin;
 
 .selectTrigger {
-	@include input-mixin.size-variables('small');
 	@include input-mixin.theme-variables(var(--border-color));
 
 	display: inline-flex;
 	align-items: center;
-	justify-content: flex-start;
 	gap: var(--spacing--4xs);
 	width: 100%;
 	min-height: var(--input--height);
@@ -646,9 +640,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 		cursor: not-allowed;
 		opacity: 0.6;
 	}
-}
-
-.variantDefault {
 }
 
 .variantGhost {
@@ -823,19 +814,17 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	align-items: center;
 	min-height: var(--spacing--xl);
 	padding: var(--spacing--2xs);
-	position: relative;
 	user-select: none;
 	color: var(--text-color);
 	gap: var(--spacing--4xs);
 	outline: none;
 
-	&:not([data-disabled])[data-highlighted] {
-		background-color: var(--background--hover);
+	&:not([data-disabled]) {
 		cursor: pointer;
 	}
 
-	&:not([data-disabled]) {
-		cursor: pointer;
+	&:not([data-disabled])[data-highlighted] {
+		background-color: var(--background--hover);
 	}
 
 	&[data-disabled] {

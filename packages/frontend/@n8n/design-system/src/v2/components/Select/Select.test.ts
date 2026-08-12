@@ -13,9 +13,9 @@ const sizeCases: Array<[SelectSizes | undefined, string]> = [
 	['xlarge', 'xlarge'],
 ];
 
-const variantCases: Array<[SelectVariants | undefined, string]> = [
-	[undefined, 'variantDefault'],
-	['default', 'variantDefault'],
+const variantCases: Array<[SelectVariants | undefined, string | undefined]> = [
+	[undefined, undefined],
+	['default', undefined],
 	['ghost', 'variantGhost'],
 	['flush', 'variantFlush'],
 ];
@@ -104,7 +104,11 @@ describe('v2/components/Select', () => {
 				},
 			});
 			const trigger = wrapper.getByTestId('select-trigger');
-			expect(trigger.className).toContain(expected);
+			if (expected) {
+				expect(trigger.className).toContain(expected);
+			} else {
+				expect(trigger.className).not.toMatch(/variant(Ghost|Flush)/);
+			}
 		});
 	});
 
@@ -264,35 +268,6 @@ describe('v2/components/Select', () => {
 			const trigger = wrapper.getByTestId('select-trigger');
 			await waitFor(() => {
 				expect(trigger).toHaveTextContent('Option 3');
-			});
-		});
-
-		it('should support boolean option values', async () => {
-			const items: SelectItem[] = [
-				{ value: true, label: 'Enabled' },
-				{ value: false, label: 'Disabled' },
-			];
-
-			const wrapper = render(Select, {
-				props: {
-					items,
-					defaultOpen: true,
-					modelValue: false,
-				},
-			});
-
-			const trigger = wrapper.getByTestId('select-trigger');
-			await waitFor(() => {
-				expect(trigger).toHaveTextContent('Disabled');
-			});
-
-			const { popover } = await getPopoverContainer(trigger);
-			const option = within(popover).getByText('Enabled');
-			await userEvent.click(option);
-
-			await waitFor(() => {
-				expect(wrapper.emitted('update:modelValue')).toHaveLength(1);
-				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([true]);
 			});
 		});
 

@@ -17,7 +17,7 @@ Built-in search (`searchable`) filters the dropdown by item label (or `textValue
 Selectable items must be objects with required `value` and `label`. Structural rows use a discriminant `type`:
 
 ```Typescript
-type SelectValue = string | number | boolean;
+type SelectValue = string | number;
 
 type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	type?: 'item';
