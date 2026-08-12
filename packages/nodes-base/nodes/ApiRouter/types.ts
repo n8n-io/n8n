@@ -10,14 +10,18 @@ export type ApiRouterResponseMode =
 	| 'responseNode'
 	| 'streaming';
 
-export type ApiRouterEndpoint = {
+export type ApiRouterEndpointOptions = {
 	name?: string;
-	method: IHttpRequestMethods;
-	path: string;
 	authentication?: 'inherit' | 'none';
 	responseMode?: 'inherit' | ApiRouterResponseMode;
 	/** JSON Schema for the request body, as authored or produced by an OpenAPI import. */
 	requestSchema?: string;
+};
+
+export type ApiRouterEndpoint = {
+	method: IHttpRequestMethods;
+	path: string;
+	options?: ApiRouterEndpointOptions;
 };
 
 export type ApiRouterOptions = {

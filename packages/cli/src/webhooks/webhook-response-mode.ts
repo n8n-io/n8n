@@ -17,13 +17,29 @@ export function firedOutputIndex(workflowData?: INodeExecutionData[][]): number 
 }
 
 /**
- * Whether a Respond to Webhook node sits anywhere downstream of one output of
- * the trigger.
+ * Whether the node answers the request itself: the Respond to Webhook node, or
+ * any node type declaring `respondsToWebhook` (e.g. UI Builder, which serves its
+ * own page).
+ */
+function isResponder(workflow: Workflow, node: INode): boolean {
+	if (node.type === RESPOND_TO_WEBHOOK_NODE_TYPE) return true;
+
+	try {
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		return nodeType?.description?.respondsToWebhook === true;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Whether a node that answers the request sits anywhere downstream of one output
+ * of the trigger.
  *
  * Deliberately permissive: it asks "reachable", not "guaranteed to run", which
  * is undecidable — any node emitting zero items starves its branch. Being wrong
  * in this direction costs one fallback to the last node's data, whereas the
- * opposite silently discards a Respond node's status code and headers.
+ * opposite silently discards a responder's status code and headers.
  */
 export function hasReachableResponder(
 	workflow: Workflow,
@@ -46,7 +62,7 @@ export function hasReachableResponder(
 		if (seen.has(node)) continue;
 		seen.add(node);
 
-		if (node.type === RESPOND_TO_WEBHOOK_NODE_TYPE) return true;
+		if (isResponder(workflow, node)) return true;
 
 		// A sub-execution gets its own lifecycle hooks, so a Respond node inside one
 		// never answers this request.

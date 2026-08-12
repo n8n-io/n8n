@@ -13,7 +13,7 @@ export const configuredOutputs = (parameters: ApiRouterParameters) => {
 
 	const outputs = endpoints.map((endpoint, index) => ({
 		type: 'main',
-		displayName: endpoint.name?.trim() || `${endpoint.method} ${endpoint.path}` || `${index}`,
+		displayName: `${endpoint.method ?? 'GET'} ${endpoint.path ?? ''}`.trim() || `${index}`,
 	}));
 
 	if (parameters.options?.fallbackOutput) {
@@ -32,14 +32,16 @@ export const configuredRoutes = (parameters: ApiRouterParameters): RouteSpec[] =
 	const base = trim(parameters.basePath || parameters.__webhookId || '');
 	const join = (suffix: string) => [base, trim(suffix)].filter((part) => part.length > 0).join('/');
 
-	const routes: RouteSpec[] = (parameters.endpoints?.endpoint ?? []).map((endpoint, index) => ({
-		name: `ep:${index}`,
-		path: join(endpoint.path ?? ''),
-		httpMethod: endpoint.method ?? 'GET',
-		...(endpoint.responseMode === undefined || endpoint.responseMode === 'inherit'
-			? {}
-			: { responseMode: endpoint.responseMode }),
-	}));
+	const routes: RouteSpec[] = (parameters.endpoints?.endpoint ?? []).map((endpoint, index) => {
+		const responseMode = endpoint.options?.responseMode;
+
+		return {
+			name: `ep:${index}`,
+			path: join(endpoint.path ?? ''),
+			httpMethod: endpoint.method ?? 'GET',
+			...(responseMode === undefined || responseMode === 'inherit' ? {} : { responseMode }),
+		};
+	});
 
 	const options = parameters.options ?? {};
 
@@ -122,6 +124,65 @@ export const basePathProperty: INodeProperties = {
 		'URL namespace shared by every endpoint. It must be unique across this n8n instance. Leave empty to serve the endpoints under a random, collision-free path instead.',
 };
 
+const endpointOptions: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	type: 'collection',
+	placeholder: 'Add option',
+	default: {},
+	options: [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{
+					name: 'Inherit',
+					value: 'inherit',
+					description: "Use the node's Authentication setting",
+				},
+				{ name: 'None', value: 'none', description: 'Leave this endpoint public' },
+			],
+			default: 'inherit',
+			noDataExpression: true,
+			description:
+				'Whether this endpoint uses the authentication configured on the node. Endpoints cannot use different authentication schemes from each other.',
+		},
+		{
+			displayName: 'Name',
+			name: 'name',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g. Get order',
+			description:
+				'Names this endpoint in error messages, in the route data of each request and as the OpenAPI operation ID. Defaults to the method and path.',
+		},
+		{
+			displayName: 'Request Schema',
+			name: 'requestSchema',
+			type: 'json',
+			default: '',
+			description:
+				'JSON Schema the request body must satisfy. Only enforced while the "Validate Requests" option is on. Populated automatically by an OpenAPI import.',
+		},
+		{
+			displayName: 'Respond',
+			name: 'responseMode',
+			type: 'options',
+			options: [
+				{
+					name: 'Inherit',
+					value: 'inherit',
+					description: "Use the node's Respond setting",
+				},
+				...responseModeOptions,
+			],
+			default: 'inherit',
+			description: 'When and how to respond to requests on this endpoint',
+		},
+	],
+};
+
 export const endpointsProperty: INodeProperties = {
 	displayName: 'Endpoints',
 	name: 'endpoints',
@@ -130,6 +191,9 @@ export const endpointsProperty: INodeProperties = {
 	typeOptions: {
 		multipleValues: true,
 		sortable: true,
+		fixedCollection: {
+			itemTitle: '={{ $collection.item.value.method }} {{ $collection.item.value.path }}',
+		},
 	},
 	default: { endpoint: [{ method: 'GET', path: '/' }] },
 	description: 'The HTTP endpoints this router serves. Each one gets its own output.',
@@ -155,54 +219,7 @@ export const endpointsProperty: INodeProperties = {
 					description:
 						"Path relative to the base path. A segment starting with ':' captures the value at that position, e.g. '/orders/:orderId'.",
 				},
-				{
-					displayName: 'Name',
-					name: 'name',
-					type: 'string',
-					default: '',
-					placeholder: 'e.g. Get order',
-					description: 'Label for this endpoint output. Defaults to the method and path.',
-				},
-				{
-					displayName: 'Authentication',
-					name: 'authentication',
-					type: 'options',
-					options: [
-						{
-							name: 'Inherit',
-							value: 'inherit',
-							description: "Use the node's Authentication setting",
-						},
-						{ name: 'None', value: 'none', description: 'Leave this endpoint public' },
-					],
-					default: 'inherit',
-					noDataExpression: true,
-					description:
-						'Whether this endpoint uses the authentication configured on the node. Endpoints cannot use different authentication schemes from each other.',
-				},
-				{
-					displayName: 'Respond',
-					name: 'responseMode',
-					type: 'options',
-					options: [
-						{
-							name: 'Inherit',
-							value: 'inherit',
-							description: "Use the node's Respond setting",
-						},
-						...responseModeOptions,
-					],
-					default: 'inherit',
-					description: 'When and how to respond to requests on this endpoint',
-				},
-				{
-					displayName: 'Request Schema',
-					name: 'requestSchema',
-					type: 'json',
-					default: '',
-					description:
-						'JSON Schema the request body must satisfy. Only enforced while the "Validate Requests" option is on. Populated automatically by an OpenAPI import.',
-				},
+				endpointOptions,
 			],
 		},
 	],

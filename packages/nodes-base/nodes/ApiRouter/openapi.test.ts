@@ -58,10 +58,22 @@ describe('importSpec', () => {
 		const { endpoints } = importSpec(spec);
 
 		expect(endpoints).toEqual([
-			expect.objectContaining({ method: 'GET', path: '/orders', name: 'listOrders' }),
-			expect.objectContaining({ method: 'POST', path: '/orders', name: 'Create an order' }),
-			expect.objectContaining({ method: 'GET', path: '/orders/:orderId', name: 'getOrder' }),
-			expect.objectContaining({ method: 'DELETE', path: '/orders/:orderId', name: undefined }),
+			expect.objectContaining({
+				method: 'GET',
+				path: '/orders',
+				options: expect.objectContaining({ name: 'listOrders' }),
+			}),
+			expect.objectContaining({
+				method: 'POST',
+				path: '/orders',
+				options: expect.objectContaining({ name: 'Create an order' }),
+			}),
+			expect.objectContaining({
+				method: 'GET',
+				path: '/orders/:orderId',
+				options: expect.objectContaining({ name: 'getOrder' }),
+			}),
+			expect.objectContaining({ method: 'DELETE', path: '/orders/:orderId', options: {} }),
 		]);
 	});
 
@@ -69,17 +81,11 @@ describe('importSpec', () => {
 		const { endpoints } = importSpec(spec);
 		const post = endpoints.find((e) => e.method === 'POST');
 
-		expect(jsonParse(post!.requestSchema!)).toEqual({
+		expect(jsonParse(post!.options!.requestSchema!)).toEqual({
 			type: 'object',
 			required: ['sku'],
 			properties: { sku: { type: 'string' } },
 		});
-	});
-
-	it('defaults endpoints to inheriting node settings', () => {
-		const { endpoints } = importSpec(spec);
-
-		expect(endpoints[0]).toMatchObject({ authentication: 'inherit', responseMode: 'inherit' });
 	});
 
 	it('accepts a JSON string', () => {
@@ -106,7 +112,7 @@ describe('importSpec', () => {
 			paths: { '/a': { post: { requestBody: { $ref: '#/components/requestBodies/A' } } } },
 		});
 
-		expect(endpoints[0].requestSchema).toBeUndefined();
+		expect(endpoints[0].options?.requestSchema).toBeUndefined();
 		expect(warnings).toContainEqual(expect.stringContaining('references are not resolved'));
 	});
 
@@ -135,13 +141,13 @@ describe('importSpec', () => {
 
 describe('exportSpec', () => {
 	const endpoints: ApiRouterEndpoint[] = [
-		{ method: 'GET', path: '/orders', name: 'listOrders' },
+		{ method: 'GET', path: '/orders', options: { name: 'listOrders' } },
 		{
 			method: 'POST',
 			path: '/orders',
-			requestSchema: JSON.stringify({ type: 'object' }),
+			options: { requestSchema: JSON.stringify({ type: 'object' }) },
 		},
-		{ method: 'GET', path: '/orders/:orderId', name: 'getOrder' },
+		{ method: 'GET', path: '/orders/:orderId', options: { name: 'getOrder' } },
 	];
 
 	it('groups operations by templated path', () => {
@@ -184,7 +190,7 @@ describe('exportSpec', () => {
 
 	it('omits a request body for an unparseable schema', () => {
 		const document = exportSpec({
-			endpoints: [{ method: 'POST', path: '/a', requestSchema: '{ broken' }],
+			endpoints: [{ method: 'POST', path: '/a', options: { requestSchema: '{ broken' } }],
 		});
 
 		expect(document.paths['/a'].post.requestBody).toBeUndefined();

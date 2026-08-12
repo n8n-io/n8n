@@ -2674,6 +2674,13 @@ export interface INodeTypeBaseDescription {
 	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
 	builderHint?: IBuilderHint;
 
+	/**
+	 * Whether this node answers the HTTP request itself, the way a Respond to
+	 * Webhook node does. A trigger resolving an `auto` response mode treats a
+	 * reachable one as the responder for that branch.
+	 */
+	respondsToWebhook?: true;
+
 	/** Path to schema directory relative to nodes-base/dist/nodes/ (e.g., "Google/Drive") */
 	schemaPath?: string;
 }

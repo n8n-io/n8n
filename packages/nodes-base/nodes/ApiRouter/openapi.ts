@@ -80,13 +80,15 @@ export function importSpec(spec: unknown): {
 			const { schema, warning } = requestSchemaOf(operation, method, path);
 			if (warning !== undefined) warnings.push(warning);
 
+			const name = operationName(operation);
+
 			endpoints.push({
-				name: operationName(operation),
 				method: method as IHttpRequestMethods,
 				path,
-				authentication: 'inherit',
-				responseMode: 'inherit',
-				...(schema === undefined ? {} : { requestSchema: JSON.stringify(schema, null, 2) }),
+				options: {
+					...(name === undefined ? {} : { name }),
+					...(schema === undefined ? {} : { requestSchema: JSON.stringify(schema, null, 2) }),
+				},
 			});
 		}
 	}
@@ -197,10 +199,10 @@ function buildOperation(endpoint: ApiRouterEndpoint): OpenApiOperation {
 			schema: { type: 'string' } as JsonSchema,
 		}));
 
-	const schema = parseSchema(endpoint.requestSchema);
+	const schema = parseSchema(endpoint.options?.requestSchema);
 
 	return {
-		operationId: endpoint.name?.trim() || undefined,
+		operationId: endpoint.options?.name?.trim() || undefined,
 		summary: endpointLabel(endpoint),
 		...(parameters.length === 0 ? {} : { parameters }),
 		...(schema === undefined

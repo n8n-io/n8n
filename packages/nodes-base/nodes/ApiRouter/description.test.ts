@@ -39,17 +39,21 @@ const shop: ApiRouterParameters = {
 	endpoints: {
 		endpoint: [
 			{ method: 'GET', path: '/orders' },
-			{ method: 'POST', path: '/orders', name: 'Create order', responseMode: 'responseNode' },
-			{ method: 'GET', path: '/orders/:id', responseMode: 'inherit' },
+			{
+				method: 'POST',
+				path: '/orders',
+				options: { name: 'Create order', responseMode: 'responseNode' },
+			},
+			{ method: 'GET', path: '/orders/:id', options: { responseMode: 'inherit' } },
 		],
 	},
 };
 
 describe('configuredOutputs', () => {
-	it('labels one output per endpoint', () => {
+	it('labels one output per endpoint with its method and path', () => {
 		expect(configuredOutputs(shop)).toEqual([
 			{ type: 'main', displayName: 'GET /orders' },
-			{ type: 'main', displayName: 'Create order' },
+			{ type: 'main', displayName: 'POST /orders' },
 			{ type: 'main', displayName: 'GET /orders/:id' },
 		]);
 	});

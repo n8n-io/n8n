@@ -211,6 +211,7 @@ import IconLucideQuote from '~icons/lucide/quote';
 import IconLucideRedo2 from '~icons/lucide/redo-2';
 import IconLucideRefreshCw from '~icons/lucide/refresh-cw';
 import IconLucideRemoveFormatting from '~icons/lucide/remove-formatting';
+import IconLucideRoute from '~icons/lucide/route';
 import IconLucideRss from '~icons/lucide/rss';
 import IconLucideSatelliteDish from '~icons/lucide/satellite-dish';
 import IconLucideSave from '~icons/lucide/save';
@@ -710,6 +711,7 @@ export const updatedIconSet = {
 	'redo-2': IconLucideRedo2,
 	'refresh-cw': IconLucideRefreshCw,
 	'remove-formatting': IconLucideRemoveFormatting,
+	route: IconLucideRoute,
 	rss: IconLucideRss,
 	robot: IconLucideBot,
 	'satellite-dish': IconLucideSatelliteDish,

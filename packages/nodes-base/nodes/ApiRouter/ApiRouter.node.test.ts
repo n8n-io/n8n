@@ -8,7 +8,7 @@ import type { ApiRouterEndpoint, ApiRouterOptions } from './types';
 
 const endpoints: ApiRouterEndpoint[] = [
 	{ method: 'GET', path: '/orders' },
-	{ method: 'POST', path: '/orders', name: 'Create order' },
+	{ method: 'POST', path: '/orders', options: { name: 'Create order' } },
 	{ method: 'GET', path: '/orders/:id' },
 ];
 
@@ -181,7 +181,7 @@ describe('access control', () => {
 		const { node, context } = setup({
 			webhookName: 'ep:0',
 			authentication: 'headerAuth',
-			endpoints: [{ method: 'GET', path: '/orders', authentication: 'none' }],
+			endpoints: [{ method: 'GET', path: '/orders', options: { authentication: 'none' } }],
 		});
 
 		expect((await node.webhook(context)).workflowData).toBeDefined();
@@ -192,7 +192,7 @@ describe('access control', () => {
 describe('request validation', () => {
 	const schema = JSON.stringify({ type: 'object', required: ['sku'] });
 	const validated: ApiRouterEndpoint[] = [
-		{ method: 'POST', path: '/orders', requestSchema: schema },
+		{ method: 'POST', path: '/orders', options: { requestSchema: schema } },
 	];
 
 	it('answers 400 with the violations', async () => {
@@ -284,7 +284,7 @@ describe('streaming', () => {
 	it('writes chunked headers itself', async () => {
 		const { node, context, res } = setup({
 			webhookName: 'ep:0',
-			endpoints: [{ method: 'GET', path: '/orders', responseMode: 'streaming' }],
+			endpoints: [{ method: 'GET', path: '/orders', options: { responseMode: 'streaming' } }],
 		});
 
 		const result = await node.webhook(context);

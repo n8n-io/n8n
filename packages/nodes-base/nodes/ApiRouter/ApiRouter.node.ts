@@ -47,8 +47,8 @@ export class ApiRouter extends Node {
 
 	description: INodeTypeDescription = {
 		displayName: 'API Router',
-		icon: 'node:webhook',
-		iconColor: 'magenta',
+		icon: 'fa:route',
+		iconColor: 'azure',
 		name: 'apiRouter',
 		group: ['trigger'],
 		version: 1,
@@ -148,14 +148,14 @@ export class ApiRouter extends Node {
 
 		const endpoint = endpoints[resolved.route.index];
 
-		if (endpoint.authentication !== 'none') {
+		if (endpoint.options?.authentication !== 'none') {
 			const authError = await this.authenticate(context);
 			if (authError !== undefined) return authError;
 		}
 
-		if (options.validateRequests === true && endpoint.requestSchema) {
+		if (options.validateRequests === true && endpoint.options?.requestSchema) {
 			const { validateRequestBody } = await import('./validation.js');
-			const outcome = await validateRequestBody(endpoint.requestSchema, req.body);
+			const outcome = await validateRequestBody(endpoint.options.requestSchema, req.body);
 
 			if (!outcome.valid) {
 				if (options.validationErrorsToFallback === true && fallbackIndex !== undefined) {
@@ -298,8 +298,9 @@ function resolveResponseMode(
 	context: IWebhookFunctions,
 	endpoint: ApiRouterEndpoint | undefined,
 ): string {
-	if (endpoint?.responseMode !== undefined && endpoint.responseMode !== 'inherit') {
-		return endpoint.responseMode;
+	const responseMode = endpoint?.options?.responseMode;
+	if (responseMode !== undefined && responseMode !== 'inherit') {
+		return responseMode;
 	}
 	return context.getNodeParameter('responseMode', 'auto') as string;
 }

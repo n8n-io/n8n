@@ -9,18 +9,15 @@
 					"endpoint": [
 						{
 							"method": "GET",
-							"path": "/",
-							"name": "App"
+							"path": "/"
 						},
 						{
 							"method": "POST",
-							"path": "/loadOrders",
-							"name": "Load orders"
+							"path": "/loadOrders"
 						},
 						{
 							"method": "POST",
-							"path": "/saveOrder",
-							"name": "Save order"
+							"path": "/saveOrder"
 						}
 					]
 				},
@@ -46,27 +43,6 @@
 		},
 		{
 			"parameters": {
-				"respondWith": "text",
-				"responseBody": "={{ $json.html }}",
-				"options": {
-					"responseHeaders": {
-						"entries": [
-							{
-								"name": "content-type",
-								"value": "text/html; charset=utf-8"
-							}
-						]
-					}
-				}
-			},
-			"id": "6a1f0a10-0000-4000-8000-000000000003",
-			"name": "Respond to Webhook",
-			"type": "n8n-nodes-base.respondToWebhook",
-			"typeVersion": 1.1,
-			"position": [520, 0]
-		},
-		{
-			"parameters": {
 				"jsCode": "// The app posts its whole state; the reply is an envelope whose `state` is a\n// partial that gets deep-merged.\nconst store = $getWorkflowStaticData('global');\nstore.orders = store.orders ?? [\n  { name: 'Widget', qty: 3 },\n  { name: 'Sprocket', qty: 1 },\n];\n\nreturn [{ json: { ok: true, state: { orders: store.orders, form: { name: '' } } } }];"
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000012",
@@ -77,17 +53,6 @@
 		},
 		{
 			"parameters": {
-				"respondWith": "firstIncomingItem",
-				"options": {}
-			},
-			"id": "6a1f0a10-0000-4000-8000-000000000013",
-			"name": "Respond load",
-			"type": "n8n-nodes-base.respondToWebhook",
-			"typeVersion": 1.1,
-			"position": [520, 240]
-		},
-		{
-			"parameters": {
 				"jsCode": "// The API Router does not pass the posted body straight through: its output is\n// { route, params, query, body, headers }, so the app's whole state is at\n// $json.body and the typed name is at body.form.name.\nconst store = $getWorkflowStaticData('global');\nstore.orders = store.orders ?? [\n  { name: 'Widget', qty: 3 },\n  { name: 'Sprocket', qty: 1 },\n];\n\nconst state = $json.body ?? {};\nconst name = (state.form?.name ?? '').trim();\n\n// The failure path. `ok: false` raises a toast from the error message, and the\n// state partial still comes back, so rejecting an action and correcting the\n// client's view are not exclusive.\nif (!name) {\n  return [{ json: {\n    ok: false,\n    error: { code: 'VALIDATION_ERROR', message: 'Enter an order name' },\n    state: { orders: store.orders },\n  } }];\n}\n\nstore.orders.push({ name, qty: 1 });\n\n// Clearing form.name is what makes the input empty again after a save. No\n// toast: the button's own action chain says \"Order added\" after this returns,\n// which is the client's job now that an action can do more than one thing.\nreturn [{ json: {\n  ok: true,\n  state: { orders: store.orders, form: { name: '' } },\n} }];"
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000015",
@@ -95,17 +60,6 @@
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
 			"position": [260, 480]
-		},
-		{
-			"parameters": {
-				"respondWith": "firstIncomingItem",
-				"options": {}
-			},
-			"id": "6a1f0a10-0000-4000-8000-000000000016",
-			"name": "Respond save",
-			"type": "n8n-nodes-base.respondToWebhook",
-			"typeVersion": 1.1,
-			"position": [520, 480]
 		}
 	],
 	"connections": {
@@ -128,39 +82,6 @@
 				[
 					{
 						"node": "Save",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"UI Builder": {
-			"main": [
-				[
-					{
-						"node": "Respond to Webhook",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Load": {
-			"main": [
-				[
-					{
-						"node": "Respond load",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Save": {
-			"main": [
-				[
-					{
-						"node": "Respond save",
 						"type": "main",
 						"index": 0
 					}

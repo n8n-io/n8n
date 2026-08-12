@@ -53,7 +53,7 @@ export function routeShape(segments: RouteSegment[]): string {
 }
 
 export function endpointLabel(endpoint: ApiRouterEndpoint): string {
-	return endpoint.name?.trim() || `${endpoint.method} ${endpoint.path}`;
+	return endpoint.options?.name?.trim() || `${endpoint.method} ${endpoint.path}`;
 }
 
 export function buildRouteTable(endpoints: ApiRouterEndpoint[]): CompiledRoute[] {

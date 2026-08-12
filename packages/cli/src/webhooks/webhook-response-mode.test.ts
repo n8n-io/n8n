@@ -1,4 +1,4 @@
-import type { IConnections, INode, INodeExecutionData, INodeTypes } from 'n8n-workflow';
+import type { IConnections, INode, INodeExecutionData, INodeType, INodeTypes } from 'n8n-workflow';
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	NodeConnectionTypes,
@@ -37,13 +37,26 @@ const connect = (edges: Array<[string, string, number?]>): IConnections => {
 	return connections;
 };
 
+const SELF_RESPONDING_TYPE = 'n8n-nodes-base.uiBuilder';
+
+const nodeTypes = mock<INodeTypes>();
+nodeTypes.getByNameAndVersion.mockImplementation(
+	(type: string) =>
+		({
+			description: {
+				properties: [],
+				respondsToWebhook: type === SELF_RESPONDING_TYPE || undefined,
+			},
+		}) as unknown as INodeType,
+);
+
 const buildWorkflow = (nodes: INode[], edges: Array<[string, string, number?]>) =>
 	new Workflow({
 		id: 'wf',
 		nodes,
 		connections: connect(edges),
 		active: true,
-		nodeTypes: mock<INodeTypes>(),
+		nodeTypes,
 	});
 
 const respond = (name: string, disabled = false) =>
@@ -177,6 +190,14 @@ describe('hasReachableResponder', () => {
 				['A', 'Merge'],
 				['Merge', 'Respond'],
 			],
+		);
+		expect(hasReachableResponder(workflow, TRIGGER, 0)).toBe(true);
+	});
+
+	test('counts a node type that responds itself', () => {
+		const workflow = buildWorkflow(
+			[node(TRIGGER), node('Page', SELF_RESPONDING_TYPE)],
+			[[TRIGGER, 'Page', 0]],
 		);
 		expect(hasReachableResponder(workflow, TRIGGER, 0)).toBe(true);
 	});
