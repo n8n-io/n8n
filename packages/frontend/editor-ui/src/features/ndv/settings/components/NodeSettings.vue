@@ -317,6 +317,19 @@ function parameterMatchesFilter(parameter: INodeProperties) {
 		.some((text) => text.toLocaleLowerCase().includes(normalizedSettingsFilter.value));
 }
 
+// A node's main body, never an "advanced option": the mapping table of Edit Fields,
+// a resource mapper, a condition builder. Keyed off the declared type so this needs
+// no per-node curation and covers community nodes for free.
+const PRIMARY_PARAMETER_TYPES = new Set(['assignmentCollection', 'resourceMapper', 'filter']);
+
+// If a node declares nothing required and nothing primary, disclosure would open on an
+// empty pane. Reveal the leading parameters so the panel always has something in it.
+const EMPTY_DISCLOSURE_FALLBACK_COUNT = 3;
+
+function isPrimaryParameter(parameter: INodeProperties) {
+	return PRIMARY_PARAMETER_TYPES.has(parameter.type);
+}
+
 function isParameterChanged(parameter: INodeProperties, path = 'parameters') {
 	const value = get(nodeValues.value, path ? `${path}.${parameter.name}` : parameter.name);
 	if (value === undefined) return false;
@@ -330,21 +343,32 @@ function isParameterInitiallyVisible(parameter: INodeProperties, path = 'paramet
 		parameter.name === 'operation' ||
 		parameter.required === true ||
 		parameter.type === 'notice' ||
+		isPrimaryParameter(parameter) ||
 		node.value?.issues?.parameters?.[parameter.name] !== undefined ||
 		isParameterChanged(parameter, path)
 	);
 }
 
-const visibleParameters = computed(() =>
-	parametersByTab.value.params.filter(
+const visibleParameters = computed(() => {
+	const all = parametersByTab.value.params;
+	const visible = all.filter(
 		(parameter) =>
 			initiallyVisibleParameterNames.value.has(parameter.name) ||
 			parameter.name === 'resource' ||
 			parameter.name === 'operation' ||
 			parameter.required === true ||
+			isPrimaryParameter(parameter) ||
 			node.value?.issues?.parameters?.[parameter.name] !== undefined,
-	),
-);
+	);
+
+	if (visible.length > 0) return visible;
+
+	// Nothing qualified — show the leading fields rather than an empty pane.
+	// Notices alone would still read as empty, so they don't count towards the floor.
+	return all
+		.filter((parameter) => parameter.type !== 'notice')
+		.slice(0, EMPTY_DISCLOSURE_FALLBACK_COUNT);
+});
 const disclosedParameters = computed(() =>
 	parametersByTab.value.params.filter(
 		(parameter) => !visibleParameters.value.some((visible) => visible.name === parameter.name),
