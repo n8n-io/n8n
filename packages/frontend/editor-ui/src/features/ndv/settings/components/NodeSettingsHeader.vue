@@ -60,13 +60,10 @@ const emit = defineEmits<{
 
 	display: flex;
 	align-items: center;
-	min-height: 40px;
-
+	height: var(--ndv--header--height);
+	flex-shrink: 0;
 	border-bottom: var(--border);
-}
-
-.execute {
-	margin-right: var(--spacing--sm);
+	padding-right: var(--spacing--2xs);
 }
 
 .tabs {
