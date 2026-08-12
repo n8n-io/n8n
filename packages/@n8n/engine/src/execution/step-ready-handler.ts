@@ -1,6 +1,6 @@
 import { UnexpectedError, UnimplementedError } from '../common';
 import type { ExternalDependencies, IStepExecutor } from '../dependencies';
-import type { GraphNode } from '../graph';
+import type { GraphEdge, GraphNode } from '../graph';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import type { StepSlots } from './execution.types';
@@ -129,48 +129,34 @@ export class StepReadyHandler {
 		}
 	}
 
-	/** Inputs for `node`, taken from its predecessor's output. */
+	/** Inputs for `node`, each slot taken from its predecessor's output. */
 	private async gatherInputs(execution: ExecutionRecord, step: StepRecord): Promise<StepSlots> {
-		const incoming = execution.graph.edges.filter((edge) => edge.to === step.nodeId);
-		if (incoming.length === 0) {
+		// These are all the edges that feed into the node this step runs.
+		const incomingEdges = execution.graph.edges.filter((edge) => edge.to === step.nodeId);
+		if (incomingEdges.length === 0) {
 			// Steps are planned only for a completed step's successors, so a step
 			// without a predecessor means the graph and the step rows disagree.
 			throw new UnexpectedError(
 				`step ${step.id} runs node ${step.nodeId}, which has no predecessor in the execution graph`,
 			);
 		}
-		// TODO(CAT-2874): support multiple inputs. We should have rejected this
-		// graph at validation time.
-		if (incoming.length > 1) {
-			throw new UnexpectedError(
-				`step ${step.id} runs node ${step.nodeId}, which has ${incoming.length} incoming edges; validated graphs have at most one edge per input slot`,
-			);
-		}
-		const [edge] = incoming;
-		// TODO(CAT-2874): route by slot indices. We should have rejected this
-		// graph at validation time.
-		if (edge.outputIndex !== 0 || edge.inputIndex !== 0) {
-			throw new UnexpectedError(
-				`step ${step.id} runs node ${step.nodeId} through edge slots ${edge.outputIndex} → ${edge.inputIndex}; validated graphs only use slot 0`,
-			);
+
+		validateIncomingEdges(incomingEdges, step);
+
+		const incomingOutputsByNodeId = await this.loadIncomingOutputs(execution.id, incomingEdges);
+
+		// Array of length equal to the highest input slot plus one.
+		// The entries are `null` placeholders filled by the loop immediately below.
+		const inputs: StepSlots = Array.from(
+			{ length: Math.max(...incomingEdges.map((edge) => edge.inputIndex)) + 1 },
+			() => null,
+		);
+
+		for (const edge of incomingEdges) {
+			populateInputFromPredecessor(edge, step, incomingOutputsByNodeId, inputs);
 		}
 
-		const outputsByNodeId = await this.stepStore.loadStepOutputs(execution.id, [edge.from]);
-		const predecessorOutputs = outputsByNodeId[edge.from];
-		if (!predecessorOutputs) {
-			// A step is planned only once every predecessor completed, so running on
-			// a fabricated empty input would mask a planner/store inconsistency.
-			throw new UnexpectedError(
-				`step ${step.id} reads node ${edge.from}, whose step has not completed`,
-			);
-		}
-		if (predecessorOutputs.length > 1) {
-			throw new UnexpectedError(
-				`step ${step.id} reads node ${edge.from}, whose step recorded more than one output slot; the write-time guard admits only slot 0`,
-			);
-		}
-
-		return [predecessorOutputs[0] ?? null];
+		return inputs;
 	}
 
 	/**
@@ -190,6 +176,60 @@ export class StepReadyHandler {
 
 		throw new UnimplementedError(`step ${step.id}: no executor for step type ${node.type}`);
 	}
+
+	/**
+	 * Loads the outputs of all the source steps of `incomingEdges`, keyed by the source node ID.
+	 * The source steps must have completed.
+	 * @param executionId to gather the predecessor outputs
+	 * @param incomingEdges to know which predecessor nodes to gather outputs from
+	 * @returns
+	 */
+	private async loadIncomingOutputs(
+		executionId: string,
+		incomingEdges: GraphEdge[],
+	): Promise<Record<string, StepSlots | null>> {
+		const predecessorNodeIds = [...new Set(incomingEdges.map((edge) => edge.from))];
+		return await this.stepStore.loadStepOutputs(executionId, predecessorNodeIds);
+	}
+}
+
+// Validate that the incoming edge meets our constraints. filledSlots tracks the filled
+// input slots so we can detect multiple edges into the same slot.
+function validateIncomingEdges(incomingEdges: GraphEdge[], step: StepRecord): void {
+	const filledSlots: Set<number> = new Set();
+	for (const edge of incomingEdges) {
+		// TODO(CAT-2874): route from non-zero output slots. We should have
+		// rejected this graph at validation time.
+		if (edge.outputIndex !== 0) {
+			throw new UnexpectedError(
+				`step ${step.id} runs node ${step.nodeId}, fed from output slot ${edge.outputIndex} of node ${edge.from}; validated graphs only use output slot 0`,
+			);
+		}
+		if (filledSlots.has(edge.inputIndex)) {
+			// We should have rejected this graph at validation time.
+			throw new UnexpectedError(
+				`step ${step.id} runs node ${step.nodeId}, which has more than one edge into input slot ${edge.inputIndex}; validated graphs have at most one edge per input slot`,
+			);
+		}
+		filledSlots.add(edge.inputIndex);
+	}
+}
+
+function populateInputFromPredecessor(
+	edge: GraphEdge,
+	step: StepRecord,
+	incomingOutputsByNodeId: Record<string, StepSlots | null>,
+	inputs: StepSlots,
+): void {
+	const predecessorOutputs = incomingOutputsByNodeId[edge.from];
+	if (!predecessorOutputs) {
+		// A step is planned only once every predecessor completed, so running on
+		// a fabricated empty input would mask a planner/store inconsistency.
+		throw new UnexpectedError(
+			`step ${step.id} reads node ${edge.from}, whose step has not completed`,
+		);
+	}
+	inputs[edge.inputIndex] = predecessorOutputs[edge.outputIndex] ?? null;
 }
 
 function toStepError(error: unknown): StepError {

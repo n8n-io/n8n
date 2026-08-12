@@ -305,7 +305,7 @@ const credentialOwnerName = computed(() => {
 });
 
 const featureRequestUrl = computed(() => {
-	if (!nodeType.value) {
+	if (!nodeType.value || settingsStore.isCanvasOnly) {
 		return '';
 	}
 	return `${BASE_NODE_SURVEY_URL}${nodeType.value.name}`;
@@ -845,7 +845,11 @@ function handleSelectAction(params: INodeParameters) {
 					<span>({{ nodeVersionTag }})</span>
 				</div>
 			</div>
-			<div v-if="featureRequestUrl && !isEmbeddedInCanvas" :class="$style.featureRequest">
+			<div
+				v-if="featureRequestUrl && !isEmbeddedInCanvas"
+				data-test-id="node-feature-request"
+				:class="$style.featureRequest"
+			>
 				<a target="_blank" @click="onFeatureRequestClick">
 					<N8nIcon icon="lightbulb" />
 					{{ i18n.baseText('ndv.featureRequest') }}

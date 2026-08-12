@@ -14,26 +14,17 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
-import { extractServiceHost, N8N_CONNECT_DISPLAY_NAME } from './workflows/credential-utils';
+import {
+	extractServiceHost,
+	GENERIC_AUTH_CREDENTIAL_TYPES,
+	N8N_CONNECT_DISPLAY_NAME,
+} from './workflows/credential-utils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
 export { CREDENTIALS_TOOL_ID };
 
 const DEFAULT_LIMIT = 50;
-
-/** Generic auth types that should be excluded from search results — the AI should prefer dedicated types. */
-const GENERIC_AUTH_TYPES = new Set([
-	'httpHeaderAuth',
-	'httpBearerAuth',
-	'httpQueryAuth',
-	'httpBasicAuth',
-	'httpCustomAuth',
-	'httpTemplatedCustomAuth',
-	'httpDigestAuth',
-	'oAuth1Api',
-	'oAuth2Api',
-]);
 
 // ── Shared fields (single source of truth for fields used across actions) ───
 
@@ -288,7 +279,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished. A `success` result with a `credentials` map means setup is complete (an existing credential may have been auto-selected with no user action): confirm the credentials are ready and do not tell the user a card is open or that they must authorize.',
+			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished. A `success` result with a `credentials` map means setup is complete (a sole service-scoped credential may have been auto-selected with no user action; generic auth types always need an explicit Continue): confirm the credentials are ready and do not tell the user a card is open or that they must authorize.',
 		),
 	credentials: z
 		.array(
@@ -439,7 +430,7 @@ const suspendSchema = z.object({
 const resumeSchema = z.object({
 	approved: z.boolean(),
 	credentials: z.record(z.string()).optional(),
-	autoSetup: z.object({ credentialType: z.string() }).optional(),
+	autoSetup: z.object({ credentialType: z.string(), attemptId: z.string().optional() }).optional(),
 });
 
 interface CredentialToolContext {
@@ -579,7 +570,7 @@ async function handleSearchTypes(
 	const allResults = await context.credentialService.searchCredentialTypes(input.query);
 
 	// Filter out generic auth types — the AI should use dedicated types
-	const results = allResults.filter((r) => !GENERIC_AUTH_TYPES.has(r.type));
+	const results = allResults.filter((r) => !GENERIC_AUTH_CREDENTIAL_TYPES.has(r.type));
 
 	if (results.length === 0) {
 		return {
@@ -689,7 +680,8 @@ async function handleSetup(
 
 	// State 4: User requested automatic browser-assisted setup
 	if (resumeData.autoSetup) {
-		const { credentialType } = resumeData.autoSetup;
+		const { credentialType, attemptId } = resumeData.autoSetup;
+		context.browserCredentialSetup?.markPending(credentialType, attemptId);
 		const docsUrl =
 			(await context.credentialService.getDocumentationUrl?.(credentialType)) ?? undefined;
 		const requiredFields =

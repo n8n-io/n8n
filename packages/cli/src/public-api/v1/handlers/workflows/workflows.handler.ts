@@ -53,7 +53,6 @@ type WorkflowHandlers = {
 	createWorkflow: PublicAPIEndpoint<WorkflowRequest.Create>;
 	transferWorkflow: PublicAPIEndpoint<WorkflowRequest.Transfer>;
 	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
-	getWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
 	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
 	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
@@ -168,42 +167,6 @@ const workflowHandlers: WorkflowHandlers = {
 				// or workflow does not exist
 				throw new NotFoundError('Not Found');
 			}
-
-			return res.json(workflow);
-		},
-	],
-	getWorkflow: [
-		publicApiScope('workflow:read'),
-		projectScope('workflow:read', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const { excludePinnedData = false } = req.query;
-
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:read'],
-				{
-					includeTags: areWorkflowTagsEnabled(),
-					includeActiveVersion: true,
-				},
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow they do not own
-				// and was not shared to them
-				// Or does not exist.
-				throw new NotFoundError('Not Found');
-			}
-
-			if (excludePinnedData) {
-				delete workflow.pinData;
-			}
-
-			Container.get(EventService).emit('user-retrieved-workflow', {
-				userId: req.user.id,
-				publicApi: true,
-			});
 
 			return res.json(workflow);
 		},
