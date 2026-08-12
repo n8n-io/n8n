@@ -113,7 +113,7 @@ describe('SlackInteractivityHandler', () => {
 
 	it('does nothing when Slack is not configured', async () => {
 		installProvider.getInstall.mockReturnValue(null);
-		await handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approve, value: 'req1' }));
+		await handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approveOnce, value: 'req1' }));
 		expect(identity.resolve).not.toHaveBeenCalled();
 	});
 
@@ -124,7 +124,7 @@ describe('SlackInteractivityHandler', () => {
 
 	it('refuses silently plus an ephemeral note when the clicker is unmatched', async () => {
 		identity.resolve.mockResolvedValue(null);
-		await handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approve, value: 'req1' }));
+		await handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approveOnce, value: 'req1' }));
 
 		expect(webClient.postEphemeral).toHaveBeenCalledWith(
 			'x',
@@ -144,16 +144,35 @@ describe('SlackInteractivityHandler', () => {
 	});
 
 	describe('approval', () => {
-		it('turns the request on and marks the card', async () => {
-			await handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approve, value: 'req1' }));
+		it('approves once and marks the card', async () => {
+			await handler.handle(
+				interactivity({ actionId: SLACK_ACTION_IDS.approveOnce, value: 'req1' }),
+			);
 
 			expect(instanceAi.resolveConfirmation).toHaveBeenCalledWith('u1', 'req1', {
 				kind: 'approval',
 				approved: true,
+				scope: 'once',
 			});
 			expect(webClient.updateMessage).toHaveBeenCalledWith(
 				'x',
-				expect.objectContaining({ channel: 'C1', ts: '1.1', text: 'Turned on by <@U1>.' }),
+				expect.objectContaining({ channel: 'C1', ts: '1.1', text: 'Approved by <@U1>.' }),
+			);
+		});
+
+		it('always-allows for the session and marks the card', async () => {
+			await handler.handle(
+				interactivity({ actionId: SLACK_ACTION_IDS.approveSession, value: 'req1' }),
+			);
+
+			expect(instanceAi.resolveConfirmation).toHaveBeenCalledWith('u1', 'req1', {
+				kind: 'approval',
+				approved: true,
+				scope: 'session',
+			});
+			expect(webClient.updateMessage).toHaveBeenCalledWith(
+				'x',
+				expect.objectContaining({ text: 'Approved by <@U1> for this session.' }),
 			);
 		});
 
@@ -172,7 +191,23 @@ describe('SlackInteractivityHandler', () => {
 
 		it('rewrites the card inert when the confirmation is stale (null)', async () => {
 			instanceAi.resolveConfirmation.mockResolvedValue(null);
-			await handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approve, value: 'req1' }));
+			await handler.handle(
+				interactivity({ actionId: SLACK_ACTION_IDS.approveOnce, value: 'req1' }),
+			);
+
+			expect(webClient.updateMessage).toHaveBeenCalledWith(
+				'x',
+				expect.objectContaining({
+					text: 'This request expired. Ask again if you still want it.',
+				}),
+			);
+		});
+
+		it('rewrites the card inert the same way when the always-allow confirmation is stale (null)', async () => {
+			instanceAi.resolveConfirmation.mockResolvedValue(null);
+			await handler.handle(
+				interactivity({ actionId: SLACK_ACTION_IDS.approveSession, value: 'req1' }),
+			);
 
 			expect(webClient.updateMessage).toHaveBeenCalledWith(
 				'x',
@@ -188,7 +223,7 @@ describe('SlackInteractivityHandler', () => {
 			);
 
 			await expect(
-				handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approve, value: 'req1' })),
+				handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approveOnce, value: 'req1' })),
 			).resolves.toBeUndefined();
 
 			expect(webClient.updateMessage).toHaveBeenCalledWith(
@@ -202,12 +237,14 @@ describe('SlackInteractivityHandler', () => {
 		it('does not swallow an unexpected error', async () => {
 			instanceAi.resolveConfirmation.mockRejectedValue(new Error('boom'));
 			await expect(
-				handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approve, value: 'req1' })),
+				handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approveOnce, value: 'req1' })),
 			).rejects.toThrow('boom');
 		});
 
 		it('does nothing when the action carries no request id', async () => {
-			await handler.handle(interactivity({ actionId: SLACK_ACTION_IDS.approve, value: undefined }));
+			await handler.handle(
+				interactivity({ actionId: SLACK_ACTION_IDS.approveOnce, value: undefined }),
+			);
 			expect(instanceAi.resolveConfirmation).not.toHaveBeenCalled();
 		});
 	});

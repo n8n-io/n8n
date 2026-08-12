@@ -145,36 +145,49 @@ describe('confirmationBlocks', () => {
 		expect(JSON.stringify(blocks)).toContain("isn't supported from Slack yet");
 	});
 
-	it('renders Turn it on / Not now buttons for a plain approval', () => {
+	it('renders Allow once / Always allow / Deny buttons for a plain approval, each carrying the requestId', () => {
 		const event = basePayload({ inputType: 'approval' });
 		const blocks = confirmationBlocks(event, CTX);
-		expect(actionIds(blocks)).toEqual([SLACK_ACTION_IDS.approve, SLACK_ACTION_IDS.reject]);
+		expect(actionIds(blocks)).toEqual([
+			SLACK_ACTION_IDS.approveOnce,
+			SLACK_ACTION_IDS.approveSession,
+			SLACK_ACTION_IDS.reject,
+		]);
+		const actionsBlock = findBlock(blocks, (b) => b.type === 'actions');
+		const elements = actionsBlock?.elements as Array<Record<string, unknown>>;
+		expect(elements.every((el) => el.value === 'req-1')).toBe(true);
+		expect(JSON.stringify(blocks)).toContain('for this session');
 	});
 
 	it('adds a Review in n8n link when workflowId is present on an approval', () => {
 		const event = basePayload({ inputType: 'approval', workflowId: 'wf-9' });
 		const blocks = confirmationBlocks(event, CTX);
 		expect(actionIds(blocks)).toEqual([
-			SLACK_ACTION_IDS.approve,
+			SLACK_ACTION_IDS.approveOnce,
+			SLACK_ACTION_IDS.approveSession,
 			SLACK_ACTION_IDS.reject,
 			SLACK_ACTION_IDS.link,
 		]);
 	});
 
-	it('applies danger style and a confirm dialog to a destructive approval', () => {
+	it('applies danger style and a confirm dialog to the Allow once button on a destructive approval', () => {
 		const event = basePayload({ inputType: 'approval', severity: 'destructive' });
 		const blocks = confirmationBlocks(event, CTX);
 		const actionsBlock = findBlock(blocks, (b) => b.type === 'actions');
 		const elements = actionsBlock?.elements as Array<Record<string, unknown>>;
-		const approveButton = elements.find((el) => el.action_id === SLACK_ACTION_IDS.approve);
-		expect(approveButton?.style).toBe('danger');
-		expect(approveButton?.confirm).toBeDefined();
+		const allowOnceButton = elements.find((el) => el.action_id === SLACK_ACTION_IDS.approveOnce);
+		expect(allowOnceButton?.style).toBe('danger');
+		expect(allowOnceButton?.confirm).toBeDefined();
 	});
 
 	it('treats continue the same as approval', () => {
 		const event = basePayload({ inputType: 'continue' });
 		const blocks = confirmationBlocks(event, CTX);
-		expect(actionIds(blocks)).toEqual([SLACK_ACTION_IDS.approve, SLACK_ACTION_IDS.reject]);
+		expect(actionIds(blocks)).toEqual([
+			SLACK_ACTION_IDS.approveOnce,
+			SLACK_ACTION_IDS.approveSession,
+			SLACK_ACTION_IDS.reject,
+		]);
 	});
 
 	it('renders a plain instruction line for a text input', () => {

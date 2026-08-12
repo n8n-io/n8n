@@ -5,7 +5,8 @@ import type {
 } from '@n8n/api-types';
 
 export const SLACK_ACTION_IDS = {
-	approve: 'slack_approve',
+	approveOnce: 'slack_approve_once',
+	approveSession: 'slack_approve_session',
 	reject: 'slack_reject',
 	credentialSubmit: 'slack_credential_submit',
 	domainApprove: 'slack_domain_approve',
@@ -224,28 +225,34 @@ function approvalBlocks(
 	ctx: ConfirmationBlocksContext,
 ): unknown[] {
 	const isDestructive = event.severity === 'destructive';
-	const approveButton: Record<string, unknown> = {
+	const allowOnceButton: Record<string, unknown> = {
 		type: 'button',
-		action_id: SLACK_ACTION_IDS.approve,
-		text: { type: 'plain_text', text: 'Turn it on' },
+		action_id: SLACK_ACTION_IDS.approveOnce,
+		text: { type: 'plain_text', text: 'Allow once' },
 		style: isDestructive ? 'danger' : 'primary',
 		value: event.requestId,
 	};
 	if (isDestructive) {
-		approveButton.confirm = {
+		allowOnceButton.confirm = {
 			title: { type: 'plain_text', text: 'Are you sure?' },
 			text: { type: 'plain_text', text: 'This action cannot be undone.' },
-			confirm: { type: 'plain_text', text: 'Turn it on' },
+			confirm: { type: 'plain_text', text: 'Allow once' },
 			deny: { type: 'plain_text', text: 'Cancel' },
 		};
 	}
 
 	const elements: unknown[] = [
-		approveButton,
+		allowOnceButton,
+		{
+			type: 'button',
+			action_id: SLACK_ACTION_IDS.approveSession,
+			text: { type: 'plain_text', text: 'Always allow' },
+			value: event.requestId,
+		},
 		{
 			type: 'button',
 			action_id: SLACK_ACTION_IDS.reject,
-			text: { type: 'plain_text', text: 'Not now' },
+			text: { type: 'plain_text', text: 'Deny' },
 			value: event.requestId,
 		},
 	];
@@ -265,6 +272,10 @@ function approvalBlocks(
 			text: { type: 'mrkdwn', text: toMrkdwn(event.message || 'Approval needed.') },
 		},
 		{ type: 'actions', block_id: `approval:${event.requestId}`, elements },
+		{
+			type: 'context',
+			elements: [{ type: 'mrkdwn', text: 'Always allow applies for this session.' }],
+		},
 	];
 }
 

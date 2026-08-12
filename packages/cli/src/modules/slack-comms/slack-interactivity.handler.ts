@@ -172,14 +172,23 @@ export class SlackInteractivityHandler {
 		const { user, tz } = resolution;
 
 		switch (action.actionId) {
-			case SLACK_ACTION_IDS.approve:
+			case SLACK_ACTION_IDS.approveOnce:
 				return await this.resolveAndUpdate(
 					install,
 					user,
 					parsed,
 					action,
-					{ kind: 'approval', approved: true },
-					`Turned on by <@${parsed.slackUserId}>.`,
+					{ kind: 'approval', approved: true, scope: 'once' },
+					`Approved by <@${parsed.slackUserId}>.`,
+				);
+			case SLACK_ACTION_IDS.approveSession:
+				return await this.resolveAndUpdate(
+					install,
+					user,
+					parsed,
+					action,
+					{ kind: 'approval', approved: true, scope: 'session' },
+					`Approved by <@${parsed.slackUserId}> for this session.`,
 				);
 			case SLACK_ACTION_IDS.reject:
 				return await this.resolveAndUpdate(
