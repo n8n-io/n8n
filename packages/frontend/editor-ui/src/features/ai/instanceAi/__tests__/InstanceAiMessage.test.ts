@@ -295,4 +295,56 @@ describe('InstanceAiMessage', () => {
 
 		expect(queryByTestId('instance-ai-run-cancelled')).not.toBeInTheDocument();
 	});
+
+	describe('seeded context blocks', () => {
+		const seededMessage = [
+			'My "Daily sync" workflow just failed at the "HTTP Request" node.',
+			'',
+			'<context type="execution-error">',
+			'workflow: Daily sync (id: abc123)',
+			'execution: 4711 (status: error)',
+			'message: 401 Unauthorized',
+			'</context>',
+		].join('\n');
+
+		it('should render the message as clean text plus a context chip', () => {
+			const { getByTestId, getByText, queryByText } = renderComponent({
+				props: {
+					message: makeMessage({ role: 'user', content: seededMessage }),
+				},
+			});
+
+			expect(
+				getByText('My "Daily sync" workflow just failed at the "HTTP Request" node.'),
+			).toBeInTheDocument();
+			expect(queryByText(/<context/)).not.toBeInTheDocument();
+			expect(queryByText(/401 Unauthorized/)).not.toBeInTheDocument();
+
+			expect(getByTestId('instance-ai-message-context-chip')).toHaveTextContent('Execution error');
+		});
+
+		it('should label a credential-error chip', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						role: 'user',
+						content:
+							'Fix my Slack credential.\n\n<context type="credential-error">\nnode: Send message\n</context>',
+					}),
+				},
+			});
+
+			expect(getByTestId('instance-ai-message-context-chip')).toHaveTextContent('Credential error');
+		});
+
+		it('should NOT show a chip for an ordinary user message', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					message: makeMessage({ role: 'user', content: 'Build me a workflow' }),
+				},
+			});
+
+			expect(queryByTestId('instance-ai-message-context-chip')).not.toBeInTheDocument();
+		});
+	});
 });
