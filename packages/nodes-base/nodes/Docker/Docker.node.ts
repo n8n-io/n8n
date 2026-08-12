@@ -8,7 +8,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import type { ContainerFile } from './GenericFunctions';
-import { runContainer } from './GenericFunctions';
+import { isValidJobFilePath, runContainer } from './GenericFunctions';
 
 export class Docker implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,6 +31,14 @@ export class Docker implements INodeType {
 				message:
 					'No tag specified for the Docker image, so <code>latest</code> will be pulled, which can change between runs. Pin a tag (e.g. <code>alpine:3.22</code>) for reproducible results.',
 				displayCondition: '={{ $parameter["image"] && !$parameter["image"].includes(":") }}',
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
+			},
+			{
+				type: 'warning',
+				message:
+					'Entrypoint and Ignore Pull Cache are not supported by the sandbox yet and are ignored',
+				displayCondition: '={{ !!$parameter["entrypoint"] || !!$parameter["ignorePullCache"] }}',
 				whenToDisplay: 'beforeExecution',
 				location: 'outputPane',
 			},
@@ -139,9 +147,9 @@ export class Docker implements INodeType {
 								name: 'containerPath',
 								type: 'string',
 								default: '',
-								placeholder: 'e.g. /work/input.csv',
-								hint: 'Leave empty to place it at /files/&lt;file name&gt;',
-								description: 'Absolute path where the file is placed inside the container',
+								placeholder: 'e.g. input.csv',
+								hint: 'Relative path: the file appears at /n8n/&lt;path&gt; in the container. Leave empty to use the file name.',
+								description: 'Path of the file inside the container, relative to /n8n',
 							},
 						],
 					},
@@ -153,7 +161,7 @@ export class Docker implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. /bin/sh',
-				hint: "Only needed to replace the image's ENTRYPOINT. Most images work without it.",
+				hint: "Ignored for the moment: the sandbox always uses the image's own ENTRYPOINT",
 				description: "Overrides the image's ENTRYPOINT",
 			},
 			{
@@ -162,7 +170,7 @@ export class Docker implements INodeType {
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to always pull the image from the registry instead of reusing a cached copy. Slower, but guarantees the newest version of the tag.',
+					'Whether to always pull the image from the registry instead of reusing a cached copy. Ignored for the moment: the sandbox decides when to pull.',
 			},
 			{
 				displayName: 'Timeout',
@@ -170,11 +178,12 @@ export class Docker implements INodeType {
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
+					maxValue: 900,
 				},
 				default: 60,
 				placeholder: 'e.g. 60',
 				hint: 'The container is stopped once the timeout is reached and the run fails',
-				description: 'Maximum time in seconds to wait for the container to finish',
+				description: 'Maximum time in seconds to wait for the container to finish (up to 900)',
 			},
 		],
 	};
@@ -186,11 +195,9 @@ export class Docker implements INodeType {
 		if (executeOnce) {
 			items = [items[0]];
 		}
-
-		this.addExecutionHints({
-			type: 'warning',
-			message: 'The sandbox integration is stubbed: no container was actually executed',
-			location: 'outputPane',
+		this.logger.info('Docker node: execution started', {
+			itemCount: items.length,
+			executeOnce,
 		});
 
 		const returnItems: INodeExecutionData[] = [];
@@ -198,7 +205,6 @@ export class Docker implements INodeType {
 			try {
 				const image = (this.getNodeParameter('image', itemIndex) as string).trim();
 				const command = (this.getNodeParameter('command', itemIndex) as string).trim();
-				const entrypoint = (this.getNodeParameter('entrypoint', itemIndex) as string).trim();
 				const argv = this.getNodeParameter('argv', itemIndex, []) as string[];
 				const env = this.getNodeParameter('env.values', itemIndex, []) as Array<{
 					name: string;
@@ -218,57 +224,85 @@ export class Docker implements INodeType {
 					const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
 					const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, propertyName);
 					const fileName = binaryData.fileName ?? propertyName;
+					const path = containerPath.trim() || fileName;
+					if (!isValidJobFilePath(path)) {
+						this.logger.error('Docker node: invalid container path for input file', {
+							itemIndex,
+							path,
+						});
+						throw new NodeOperationError(this.getNode(), 'The container path is invalid', {
+							itemIndex,
+							description: `"${path}" must be relative (no leading /), contain only letters, digits, dots, dashes, underscores and slashes, and have no ".." segments`,
+						});
+					}
 					files.push({
-						path: containerPath.trim() || `/files/${fileName}`,
+						path,
 						fileName,
 						mimeType: binaryData.mimeType,
 						size: buffer.length,
-						contentBase64: buffer.toString('base64'),
+						content: buffer,
 					});
 				}
-				const ignorePullCache = this.getNodeParameter('ignorePullCache', itemIndex) as boolean;
 				const timeout = this.getNodeParameter('timeout', itemIndex) as number;
 
-				if (!Number.isFinite(timeout) || timeout <= 0) {
+				if (!Number.isFinite(timeout) || timeout <= 0 || timeout > 900) {
+					this.logger.error('Docker node: timeout out of range', { itemIndex, timeout });
 					throw new NodeOperationError(
 						this.getNode(),
-						'The timeout must be a positive number of seconds',
+						'The timeout must be between 1 and 900 seconds',
 						{ itemIndex },
 					);
 				}
 
 				if (image === '') {
+					this.logger.error('Docker node: no image provided', { itemIndex });
 					throw new NodeOperationError(this.getNode(), 'The Docker image is required', {
 						itemIndex,
 					});
 				}
+				this.logger.info('Docker node: running container for item', { itemIndex, image });
 
 				const result = await runContainer.call(this, {
 					image,
-					entrypoint: entrypoint === '' ? undefined : entrypoint,
 					command: command === '' ? undefined : command,
 					args: argv.filter((arg) => arg !== ''),
 					env: env
 						.map(({ name, value }) => ({ name: name.trim(), value }))
 						.filter(({ name }) => name !== ''),
 					files,
-					ignorePullCache,
 					timeoutSeconds: timeout,
 				});
 
 				if (result.timedOut) {
+					this.logger.error('Docker node: container run timed out', {
+						itemIndex,
+						jobId: result.jobId,
+						timeout,
+					});
 					throw new NodeOperationError(this.getNode(), 'The container run timed out', {
 						itemIndex,
 						description: `The container did not finish within ${timeout} seconds`,
 					});
 				}
 
-				if (result.exitCode !== 0) {
+				if (!result.success) {
+					this.logger.error('Docker node: container exited with an error', {
+						itemIndex,
+						jobId: result.jobId,
+						exitCode: result.exitCode,
+						killed: result.killed,
+					});
 					throw new NodeOperationError(this.getNode(), 'The container exited with an error', {
 						itemIndex,
-						description: result.stderr || `Exit code: ${result.exitCode}`,
+						description: result.stderr.slice(-2000) || `Exit code: ${result.exitCode}`,
 					});
 				}
+
+				this.logger.info('Docker node: item processed', {
+					itemIndex,
+					jobId: result.jobId,
+					executionTimeMs: result.executionTimeMs,
+				});
 
 				returnItems.push({
 					json: { ...result },
@@ -276,6 +310,10 @@ export class Docker implements INodeType {
 				});
 			} catch (error) {
 				if (this.continueOnFail()) {
+					this.logger.warn('Docker node: item failed, continuing with the next one', {
+						itemIndex,
+						error: ensureError(error).message,
+					});
 					returnItems.push({
 						json: { error: ensureError(error).message },
 						pairedItem: { item: itemIndex },
@@ -286,6 +324,7 @@ export class Docker implements INodeType {
 			}
 		}
 
+		this.logger.info('Docker node: execution finished', { itemCount: returnItems.length });
 		return [returnItems];
 	}
 }
