@@ -621,6 +621,10 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 		workflowDocumentStore?.value?.setNodeValue(updateInformation);
 	}
+
+	if (props.progressiveDisclosure) {
+		void nextTick(keepChangedParametersVisible);
+	}
 };
 
 const setHttpNodeParameters = (parameters: CurlToJSONResponse) => {
@@ -735,6 +739,23 @@ function captureInitiallyVisibleParameters() {
 			.filter((parameter) => isParameterInitiallyVisible(parameter))
 			.map((parameter) => parameter.name),
 	);
+}
+
+// A field the user just set must survive collapsing the fold ("nothing set is
+// ever invisible"). Only ever add to the visible set — recomputing it would make
+// fields jump around while typing, which is why it is a snapshot in the first place.
+function keepChangedParametersVisible() {
+	const newlyChanged = parametersByTab.value.params
+		.filter((parameter) => isParameterChanged(parameter))
+		.map((parameter) => parameter.name)
+		.filter((name) => !initiallyVisibleParameterNames.value.has(name));
+
+	if (newlyChanged.length === 0) return;
+
+	initiallyVisibleParameterNames.value = new Set([
+		...initiallyVisibleParameterNames.value,
+		...newlyChanged,
+	]);
 }
 
 const onStopExecution = () => {
