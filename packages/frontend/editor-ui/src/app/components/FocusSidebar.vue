@@ -83,6 +83,53 @@ const showEvaluationsPaywall = computed(
 		!isLicensed.value,
 );
 
+// Spike (anchored mode): place the panel beside the selected node rather than
+// pinned to the right edge, to see whether staying next to the node survives
+// tall nodes and canvas panning.
+const ANCHOR_GAP = 16;
+const ANCHOR_MARGIN = 8;
+
+const isAnchored = computed(
+	() => experimentalNdvStore.isNdvInFocusPanelEnabled && experimentalNdvStore.isPanelAnchored,
+);
+
+const anchorStyle = computed(() => {
+	if (!isAnchored.value) return undefined;
+
+	const selected = vueFlow.getSelectedNodes.value[0];
+	const { x, y, zoom } = vueFlow.viewport.value;
+	const host = wrapperRef.value?.parentElement;
+	if (!selected || !host) return undefined;
+
+	const hostRect = host.getBoundingClientRect();
+	const nodeLeft = selected.computedPosition.x * zoom + x;
+	const nodeTop = selected.computedPosition.y * zoom + y;
+	const nodeWidth = (selected.dimensions?.width ?? 0) * zoom;
+
+	// Prefer the right of the node; flip left when it would overflow the canvas.
+	const rightOf = nodeLeft + nodeWidth + ANCHOR_GAP;
+	const left =
+		rightOf + sidebarWidth.value + ANCHOR_MARGIN > hostRect.width
+			? Math.max(ANCHOR_MARGIN, nodeLeft - sidebarWidth.value - ANCHOR_GAP)
+			: rightOf;
+
+	// Cap the height so a filter-heavy node can't push the panel off-screen.
+	const maxHeight = Math.max(240, hostRect.height * 0.75);
+	const top = Math.min(
+		Math.max(ANCHOR_MARGIN, nodeTop),
+		Math.max(ANCHOR_MARGIN, hostRect.height - maxHeight - ANCHOR_MARGIN),
+	);
+
+	return {
+		top: `${top}px`,
+		left: `${left}px`,
+		bottom: 'auto',
+		right: 'auto',
+		height: 'auto',
+		maxHeight: `${maxHeight}px`,
+	};
+});
+
 const node = computed<INodeUi | undefined>(() => {
 	if (!experimentalNdvStore.isNdvInFocusPanelEnabled || resolvedParameter.value) {
 		return resolvedParameter.value?.node;
@@ -268,8 +315,12 @@ onBeforeUnmount(() => {
 		:class="[
 			$style.wrapper,
 			'ignore-key-press-canvas',
-			{ [$style.isNdvInFocusPanelEnabled]: experimentalNdvStore.isNdvInFocusPanelEnabled },
+			{
+				[$style.isNdvInFocusPanelEnabled]: experimentalNdvStore.isNdvInFocusPanelEnabled,
+				[$style.isAnchored]: isAnchored,
+			},
 		]"
+		:style="anchorStyle"
 		@keydown.stop
 	>
 		<N8nResizeWrapper
@@ -330,6 +381,14 @@ onBeforeUnmount(() => {
 		background: var(--background--surface);
 		box-shadow: var(--shadow--md);
 		overflow: visible;
+	}
+
+	// Spike: anchored to the selected node. Geometry comes from inline styles.
+	&.isAnchored {
+		inset: auto;
+		border: 1px solid var(--border-color);
+		border-radius: var(--radius--lg);
+		overflow: hidden;
 	}
 }
 

@@ -26,6 +26,8 @@ export type NodePanelState = {
 
 const NODE_PANEL_WIDTH_STORAGE_KEY = 'N8N_NODE_PANEL_WIDTH';
 const NODE_PANEL_ALWAYS_SHOW_SETTINGS_STORAGE_KEY = 'N8N_NODE_PANEL_ALWAYS_SHOW_SETTINGS';
+// Spike: anchor the panel next to the selected node instead of the right edge.
+const NODE_PANEL_ANCHORED_STORAGE_KEY = 'N8N_NODE_PANEL_ANCHORED';
 const DEFAULT_NODE_PANEL_WIDTH = 420;
 const MIN_NODE_PANEL_WIDTH = 420;
 const MAX_NODE_PANEL_WIDTH = 1000;
@@ -70,6 +72,12 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	});
 	const isMapperOpen = computed(() => mapperOpen.value || isMapperPinned.value);
 	const alwaysShowAllSettings = computed(() => alwaysShowSettingsStorage.value === 'true');
+	const anchoredStorage = useStorage(NODE_PANEL_ANCHORED_STORAGE_KEY);
+	const isPanelAnchored = computed(() => anchoredStorage.value === 'true');
+
+	function setPanelAnchored(value: boolean) {
+		anchoredStorage.value = String(value);
+	}
 
 	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
 		collapsedNodes.value = {
@@ -207,6 +215,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		isMapperOpen,
 		isMapperPinned: computed(() => isMapperPinned.value),
 		alwaysShowAllSettings,
+		isPanelAnchored,
 		nodePanelWidth,
 		isActive,
 		setNodeExpanded,
@@ -219,6 +228,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		setMapperPinned,
 		updateNodePanelWidth,
 		setAlwaysShowAllSettings,
+		setPanelAnchored,
 		getNodePanelState,
 		updateNodePanelState,
 	};
