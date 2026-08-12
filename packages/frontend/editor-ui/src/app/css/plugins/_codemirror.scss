@@ -118,6 +118,13 @@
 	}
 }
 
+// A tooltip with no content at all still picks up the padding rule below plus
+// CodeMirror's own background, so it paints as a small empty box in the corner
+// of the zero-sized container.
+#cm-tooltip-container .cm-tooltip:empty {
+	display: none;
+}
+
 #cm-tooltip-container .cm-tooltip.cm-completionInfo,
 #cm-tooltip-container .cm-tooltip.cm-cursorInfo,
 #cm-tooltip-container .cm-tooltip-hover {
