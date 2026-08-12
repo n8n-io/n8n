@@ -1,4 +1,4 @@
-import type { IConnections, INode } from 'n8n-workflow';
+import type { IConnections, INode, INodeExecutionData } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { Z } from '../../zod-class';
@@ -12,6 +12,16 @@ export interface SampleDataWorkflow {
 	name?: string;
 	nodes: INode[];
 	connections: IConnections;
+}
+
+export interface InstanceAiGenerateSampleDataResponse {
+	/** Items are already `{ json: ... }`-wrapped, i.e. ready to pin as-is. */
+	pinData: Record<string, INodeExecutionData[]>;
+	/**
+	 * `field-drift`: the data is usable but some field names may not match the
+	 * node's declared schema, so downstream expressions may not resolve.
+	 */
+	warning?: 'field-drift';
 }
 
 /**

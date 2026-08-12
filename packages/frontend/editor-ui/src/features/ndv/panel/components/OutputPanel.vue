@@ -8,6 +8,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunDataAi from '@/features/ndv/runData/components/ai/RunDataAi.vue';
 import { useNodeType } from '@/app/composables/useNodeType';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useGenerateSampleData } from '@/features/ndv/shared/composables/useGenerateSampleData';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -94,6 +95,16 @@ const { isSubNodeType } = useNodeType({
 const pinnedData = usePinnedData(activeNode, {
 	runIndex: props.runIndex,
 	displayMode: props.displayMode,
+});
+const {
+	canGenerate: canGenerateSampleData,
+	isGenerating: isGeneratingSampleData,
+	generate: generateSampleData,
+} = useGenerateSampleData({
+	node: activeNode,
+	isReadOnly: computed(() => props.isReadOnly === true),
+	displayMode: computed(() => props.displayMode),
+	runIndex: computed(() => props.runIndex),
 });
 
 // Data
@@ -255,6 +266,18 @@ const insertTestData = () => {
 		pane: 'output',
 		type: 'insert-test-data',
 	});
+};
+
+const onGenerateSampleData = async () => {
+	telemetry.track('User clicked ndv link', {
+		workflow_id: workflowId.value,
+		push_ref: props.pushRef,
+		node_type: node.value?.type,
+		pane: 'output',
+		type: 'generate-sample-data',
+	});
+
+	await generateSampleData();
 };
 
 const onLinkRun = () => {
@@ -450,6 +473,22 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<N8nText tag="a" size="medium" color="primary" @click="insertTestData">
 							{{ i18n.baseText('ndv.output.insertTestData') }}
 						</N8nText>
+						<template v-if="canGenerateSampleData">
+							{{ i18n.baseText('generic.or') }}
+							<N8nText
+								tag="a"
+								size="medium"
+								color="primary"
+								data-test-id="ndv-generate-sample-data-link"
+								@click="onGenerateSampleData"
+							>
+								{{
+									isGeneratingSampleData
+										? i18n.baseText('ndv.output.generateSampleData.generating')
+										: i18n.baseText('ndv.output.generateSampleData.action')
+								}}
+							</N8nText>
+						</template>
 					</template>
 				</template>
 			</NDVEmptyState>

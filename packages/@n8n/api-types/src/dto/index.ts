@@ -35,6 +35,7 @@ export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback
 export {
 	InstanceAiGenerateSampleDataRequestDto,
 	type SampleDataWorkflow,
+	type InstanceAiGenerateSampleDataResponse,
 } from './instance-ai/instance-ai-generate-sample-data-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';

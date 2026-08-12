@@ -39,7 +39,8 @@ export type PinDataSource =
 	| 'add-nodes'
 	| 'context-menu'
 	| 'keyboard-shortcut'
-	| 'banner-link';
+	| 'banner-link'
+	| 'ai-sample-data';
 
 export type UnpinDataSource =
 	| 'unpin-and-execute-modal'

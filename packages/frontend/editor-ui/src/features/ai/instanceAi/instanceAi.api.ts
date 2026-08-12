@@ -12,6 +12,8 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
+	InstanceAiGenerateSampleDataResponse,
+	SampleDataWorkflow,
 } from '@n8n/api-types';
 
 export interface InstanceAiThreadLaunchInput {
@@ -190,6 +192,29 @@ export async function getBrowserStatus(
  */
 export async function disconnectBrowserSession(context: IRestApiContext): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/instance-ai/browser/disconnect-session');
+}
+
+export interface GenerateSampleDataRequest {
+	workflow: SampleDataWorkflow;
+	/** Nodes to generate data for. Currently always exactly the active node. */
+	nodeNames: string[];
+	hint?: string;
+}
+
+/**
+ * POST /instance-ai/sample-data/generate -> { pinData, warning? }
+ * Asks the agent for realistic mock output items for the given nodes.
+ */
+export async function generateSampleData(
+	context: IRestApiContext,
+	payload: GenerateSampleDataRequest,
+): Promise<InstanceAiGenerateSampleDataResponse> {
+	return await makeRestApiRequest<InstanceAiGenerateSampleDataResponse>(
+		context,
+		'POST',
+		'/instance-ai/sample-data/generate',
+		payload,
+	);
 }
 
 /**

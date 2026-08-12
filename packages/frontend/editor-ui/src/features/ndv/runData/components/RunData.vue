@@ -54,6 +54,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeType } from '@/app/composables/useNodeType';
 import type { PinDataSource, UnpinDataSource } from '@/app/composables/usePinnedData';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useGenerateSampleData } from '@/features/ndv/shared/composables/useGenerateSampleData';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
@@ -312,6 +313,17 @@ const isReadOnly = computed(
 		isArchivedWorkflow.value ||
 		collaborationStore.shouldBeReadOnly,
 );
+
+const {
+	canGenerate: canGenerateSampleData,
+	isGenerating: isGeneratingSampleData,
+	generate: generateSampleData,
+} = useGenerateSampleData({
+	node,
+	isReadOnly,
+	displayMode: computed(() => props.displayMode),
+	runIndex: computed(() => props.runIndex),
+});
 
 const shouldShowSchemaView = computed(() => {
 	if (!isSchemaView.value) return false;
@@ -637,6 +649,14 @@ const showPinButton = computed(
 
 const pinButtonDisabled = computed(
 	() => hasNoData.value || hasBinaryData.value || isReadOnly.value,
+);
+
+const showGenerateSampleDataButton = computed(
+	() =>
+		!props.disableEdit &&
+		!isExecutionRedacted.value &&
+		canPinData.value &&
+		canGenerateSampleData.value,
 );
 
 const activeTaskMetadata = computed((): ITaskMetadata | null => {
@@ -1571,6 +1591,20 @@ defineExpose({ enterEditMode });
 					icon="pencil"
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
+				/>
+
+				<N8nIconButton
+					v-if="showGenerateSampleDataButton"
+					v-show="!editMode.enabled"
+					variant="subtle"
+					size="small"
+					:title="i18n.baseText('ndv.output.generateSampleData.tooltip')"
+					:circle="false"
+					:loading="isGeneratingSampleData"
+					:disabled="node?.disabled || isGeneratingSampleData"
+					icon="sparkles"
+					data-test-id="ndv-generate-sample-data"
+					@click="generateSampleData"
 				/>
 
 				<RunDataPinButton

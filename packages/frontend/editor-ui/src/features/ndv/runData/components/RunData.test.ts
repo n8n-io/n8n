@@ -36,16 +36,38 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 
-const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl, runWorkflow } = vi.hoisted(
-	() => ({
-		trackOpeningRelatedExecution: vi.fn(),
-		resolveRelatedExecutionUrl: vi.fn(),
-		runWorkflow: vi.fn(),
-	}),
-);
+const INSTANCE_AI_MODULE_SETTINGS = {
+	enabled: true,
+	localGatewayDisabled: false,
+	browserUseEnabled: false,
+	proxyEnabled: false,
+	cloudManaged: false,
+	sandboxEnabled: false,
+	workflowBuilderAvailable: true,
+	sandboxUnavailableReason: null,
+	runDebugEnabled: false,
+};
+
+const {
+	trackOpeningRelatedExecution,
+	resolveRelatedExecutionUrl,
+	runWorkflow,
+	generateSampleData,
+} = vi.hoisted(() => ({
+	trackOpeningRelatedExecution: vi.fn(),
+	resolveRelatedExecutionUrl: vi.fn(),
+	runWorkflow: vi.fn(),
+	generateSampleData: vi.fn(),
+}));
+
+vi.mock('@/features/ai/instanceAi/instanceAi.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/ai/instanceAi/instanceAi.api')>()),
+	generateSampleData,
+}));
 
 vi.mock('vue-router', () => {
 	return {
@@ -128,6 +150,41 @@ describe('RunData', () => {
 		});
 
 		expect(queryByTestId('ndv-pin-data')).not.toBeInTheDocument();
+	});
+
+	describe('generate sample data', () => {
+		it('renders the action when the instance-ai module is enabled', () => {
+			const { getByTestId } = render({ displayMode: 'table', instanceAiEnabled: true });
+
+			expect(getByTestId('ndv-generate-sample-data')).toBeInTheDocument();
+		});
+
+		it('hides the action when the instance-ai module is disabled', () => {
+			const { queryByTestId } = render({ displayMode: 'table', instanceAiEnabled: false });
+
+			expect(queryByTestId('ndv-generate-sample-data')).not.toBeInTheDocument();
+		});
+
+		it('hides the action in the input pane, where the node cannot be pinned', () => {
+			const { queryByTestId } = render({
+				displayMode: 'table',
+				paneType: 'input',
+				instanceAiEnabled: true,
+			});
+
+			expect(queryByTestId('ndv-generate-sample-data')).not.toBeInTheDocument();
+		});
+
+		it('requests sample data for the active node on click', async () => {
+			generateSampleData.mockResolvedValue({ pinData: { 'Test Node': [{ json: { id: 1 } }] } });
+
+			const { getByTestId } = render({ displayMode: 'table', instanceAiEnabled: true });
+
+			await userEvent.click(getByTestId('ndv-generate-sample-data'));
+
+			await waitFor(() => expect(generateSampleData).toHaveBeenCalledTimes(1));
+			expect(generateSampleData.mock.calls[0][1].nodeNames).toEqual(['Test Node']);
+		});
 	});
 
 	it('should render data correctly even when "item.json" has another "json" key', async () => {
@@ -1488,6 +1545,7 @@ describe('RunData', () => {
 		executionStatus,
 		nodeTypeHints,
 		withRunData = true,
+		instanceAiEnabled = false,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1502,6 +1560,7 @@ describe('RunData', () => {
 		executionStatus?: ExecutionStatus;
 		nodeTypeHints?: NodeHint[];
 		withRunData?: boolean;
+		instanceAiEnabled?: boolean;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1542,6 +1601,10 @@ describe('RunData', () => {
 		});
 
 		setActivePinia(pinia);
+
+		mockedStore(useSettingsStore).moduleSettings = instanceAiEnabled
+			? { 'instance-ai': { ...INSTANCE_AI_MODULE_SETTINGS } }
+			: {};
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
