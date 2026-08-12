@@ -389,6 +389,45 @@ describe('SlackRunner', () => {
 		});
 	});
 
+	describe('Slack formatting context', () => {
+		const CONTEXT_BLOCK =
+			'[Context: this conversation happens in Slack. Format replies for Slack: short paragraphs, ' +
+			'bullet lists with •, *single asterisks* for emphasis, and plain sentences. Never use markdown ' +
+			'tables, headings, or horizontal rules. Keep replies compact.]';
+
+		it('prepends the formatting context on a brand-new thread, before the user text', async () => {
+			memory.ensureThread.mockResolvedValue(ensureThreadResponse(true));
+			await runner.handle(mention());
+			const prompt = instanceAi.startRun.mock.calls[0]?.[2];
+			expect(prompt).toBe(`${CONTEXT_BLOCK}\n\nhi`);
+		});
+
+		it('does not prefix a follow-up message in an already-existing thread', async () => {
+			memory.ensureThread.mockResolvedValue(ensureThreadResponse(false));
+			registry.isSubscribed.mockReturnValue(true);
+			await runner.handle(threadReply());
+			const prompt = instanceAi.startRun.mock.calls[0]?.[2];
+			expect(prompt).not.toContain(CONTEXT_BLOCK);
+			expect(prompt).toBe('and also');
+		});
+
+		it('sits before the backfilled transcript, and appears only once', async () => {
+			memory.ensureThread.mockResolvedValue(ensureThreadResponse(true));
+			webClient.fetchThreadHistory.mockResolvedValue([
+				{ ts: '0.1', text: 'earlier', userId: 'U9' },
+			]);
+
+			await runner.handle(mention({ ts: '9.9', thread_ts: '1.1' }));
+
+			const prompt = instanceAi.startRun.mock.calls[0]?.[2] ?? '';
+			const contextIndex = prompt.indexOf(CONTEXT_BLOCK);
+			const transcriptIndex = prompt.indexOf('<slack_thread_history>');
+			expect(contextIndex).toBeGreaterThanOrEqual(0);
+			expect(transcriptIndex).toBeGreaterThan(contextIndex);
+			expect(prompt.split(CONTEXT_BLOCK)).toHaveLength(2);
+		});
+	});
+
 	it('strips <@U..>, <@!U..> and <@U..|name> mention forms from the prompt', async () => {
 		await runner.handle(mention({ text: '<@B1> hi <@!B1> and <@B1|Bot Name> too' }));
 		expect(instanceAi.startRun).toHaveBeenCalledWith(

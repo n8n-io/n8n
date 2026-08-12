@@ -147,6 +147,11 @@ function unmatchedAccountText(email: string | null): string {
 const GENERIC_FAILURE_TEXT =
 	'Something went wrong on my side. Nothing in your instance was changed.';
 
+const SLACK_FORMATTING_CONTEXT =
+	'[Context: this conversation happens in Slack. Format replies for Slack: short paragraphs, ' +
+	'bullet lists with •, *single asterisks* for emphasis, and plain sentences. Never use markdown ' +
+	'tables, headings, or horizontal rules. Keep replies compact.]';
+
 @Service()
 export class SlackRunner {
 	private readonly refusedSlackUserIds = new Set<string>();
@@ -262,6 +267,9 @@ export class SlackRunner {
 				event.threadTs,
 				prompt,
 			);
+		}
+		if (created) {
+			finalPrompt = `${SLACK_FORMATTING_CONTEXT}\n\n${finalPrompt}`;
 		}
 
 		if (this.instanceAi.hasActiveRun(threadId)) {
