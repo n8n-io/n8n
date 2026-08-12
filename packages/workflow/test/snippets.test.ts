@@ -114,53 +114,40 @@ describe('runSnippetTests', () => {
 
 	it('deep-compares code against the expected expression', () => {
 		const results = runSnippetTests(sources, [
-			{ name: 'doubles', code: '$snippets.double(2)', expected: '4' },
-			{ name: 'objects', code: '({ a: [1, 2] })', expected: '({ a: [1, 2] })' },
-			{ name: 'expressions on both sides', code: '$snippets.double(3)', expected: '$min(6, 10)' },
-			{ name: 'failing', code: '$snippets.double(2)', expected: '5' },
+			{ code: '$snippets.double(2)', expected: '4' },
+			{ code: '({ a: [1, 2] })', expected: '({ a: [1, 2] })' },
+			{ code: '$snippets.double(3)', expected: '$min(6, 10)' },
+			{ code: '$snippets.double(2)', expected: '5' },
 		]);
 
 		expect(results).toEqual([
-			{ name: 'doubles', passed: true, value: 4, expected: 4 },
-			{ name: 'objects', passed: true, value: { a: [1, 2] }, expected: { a: [1, 2] } },
-			{ name: 'expressions on both sides', passed: true, value: 6, expected: 6 },
-			{ name: 'failing', passed: false, value: 4, expected: 5 },
+			{ passed: true, value: 4, expected: 4 },
+			{ passed: true, value: { a: [1, 2] }, expected: { a: [1, 2] } },
+			{ passed: true, value: 6, expected: 6 },
+			{ passed: false, value: 4, expected: 5 },
 		]);
 	});
 
 	it('falls back to a truthy check without an expected expression', () => {
 		const results = runSnippetTests(sources, [
-			{ name: 'truthy', code: "typeof $snippets.TAX === 'number'" },
-			{ name: 'falsy', code: '$snippets.double(2) === 5' },
-			{ name: 'throws', code: '$snippets.missing()' },
-			{ name: 'invalid syntax', code: '(x =>' },
+			{ code: "typeof $snippets.TAX === 'number'" },
+			{ code: '$snippets.double(2) === 5' },
+			{ code: '$snippets.missing()' },
+			{ code: '(x =>' },
 		]);
 
 		expect(results).toEqual([
-			{ name: 'truthy', passed: true, value: true },
-			{ name: 'falsy', passed: false, value: false },
-			{ name: 'throws', passed: false, error: expect.stringContaining('') },
-			{ name: 'invalid syntax', passed: false, error: expect.stringContaining('') },
+			{ passed: true, value: true },
+			{ passed: false, value: false },
+			{ passed: false, error: expect.stringContaining('') },
+			{ passed: false, error: expect.stringContaining('') },
 		]);
 	});
 
 	it('reports an error when the expected expression throws', () => {
-		const [result] = runSnippetTests(sources, [
-			{ name: 'bad expected', code: '1', expected: '$snippets.missing()' },
-		]);
+		const [result] = runSnippetTests(sources, [{ code: '1', expected: '$snippets.missing()' }]);
 		expect(result.passed).toBe(false);
 		expect(result.error).toBeDefined();
-	});
-
-	it('uses the test expressions as name when none is given', () => {
-		const results = runSnippetTests(sources, [
-			{ code: '$snippets.double(2)', expected: '4' },
-			{ name: '  ', code: '$snippets.double(1) === 2' },
-		]);
-		expect(results.map((result) => result.name)).toEqual([
-			'$snippets.double(2) === 4',
-			'$snippets.double(1) === 2',
-		]);
 	});
 });
 

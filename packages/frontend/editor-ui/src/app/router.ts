@@ -604,6 +604,44 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/snippets',
+		component: RouterView,
+		meta: {
+			middleware: ['authenticated', 'rbac'],
+			middlewareOptions: {
+				rbac: {
+					scope: ['snippet:list'],
+				},
+			},
+		},
+		children: [
+			{
+				path: '',
+				name: VIEWS.SNIPPETS_SETTINGS,
+				component: SettingsSnippets,
+				meta: {
+					telemetry: { pageCategory: 'snippets' },
+				},
+			},
+			{
+				path: 'new',
+				name: VIEWS.SNIPPETS_NEW,
+				component: SnippetEditorView,
+				meta: {
+					telemetry: { pageCategory: 'snippets' },
+				},
+			},
+			{
+				path: ':snippetId',
+				name: VIEWS.SNIPPETS_EDIT,
+				component: SnippetEditorView,
+				meta: {
+					telemetry: { pageCategory: 'snippets' },
+				},
+			},
+		],
+	},
+	{
 		path: '/settings',
 		name: VIEWS.SETTINGS,
 		props: true,
@@ -1001,69 +1039,6 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'external-secrets',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'snippets',
-				name: VIEWS.SNIPPETS_SETTINGS,
-				component: SettingsSnippets,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: ['snippet:list'],
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'snippets',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'snippets/new',
-				name: VIEWS.SNIPPETS_NEW,
-				component: SnippetEditorView,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: ['snippet:list'],
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'snippets',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'snippets/:snippetId',
-				name: VIEWS.SNIPPETS_EDIT,
-				component: SnippetEditorView,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: ['snippet:list'],
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'snippets',
 							};
 						},
 					},

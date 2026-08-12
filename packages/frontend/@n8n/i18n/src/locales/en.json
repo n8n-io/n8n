@@ -720,7 +720,6 @@
 	"snippets.tests.add": "Add test",
 	"snippets.tests.run": "Run tests",
 	"snippets.tests.run.error": "Problem running tests",
-	"snippets.tests.name.placeholder": "Name (optional)",
 	"snippets.tests.code.placeholder": "$snippets.myBlock(2)",
 	"snippets.tests.runOne": "Run this test",
 	"snippets.tests.remove": "Remove test",

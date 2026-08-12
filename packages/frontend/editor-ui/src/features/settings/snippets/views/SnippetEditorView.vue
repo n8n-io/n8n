@@ -96,7 +96,7 @@ function addTest() {
 			? `${prefix}.${name.value}(${signature.args.map((arg) => arg.name).join(', ')})`
 			: `${prefix}.${name.value}`
 		: '';
-	tests.value = [...tests.value, { name: '', code: prefill, expected: '' }];
+	tests.value = [...tests.value, { code: prefill, expected: '' }];
 	testResults.value = null;
 }
 
@@ -148,7 +148,6 @@ async function save() {
 		const cleanTests = tests.value
 			.filter((test) => test.code.trim() !== '')
 			.map((test) => ({
-				name: test.name?.trim() || undefined,
 				code: test.code,
 				expected: test.expected?.trim() || undefined,
 			}));
@@ -204,10 +203,9 @@ onMounted(async () => {
 		projectId.value = snippet.project?.id ?? '';
 		code.value = snippet.code;
 		tests.value = (snippet.tests ?? []).map((test) => ({
-				name: test.name ?? '',
-				code: test.code,
-				expected: test.expected ?? '',
-			}));
+			code: test.code,
+			expected: test.expected ?? '',
+		}));
 	}
 	loaded.value = true;
 });
@@ -222,9 +220,7 @@ onMounted(async () => {
 				</N8nLink>
 				<N8nHeading size="2xlarge" tag="h1">
 					{{
-						isNew
-							? i18n.baseText('snippets.create.title')
-							: i18n.baseText('snippets.edit.title')
+						isNew ? i18n.baseText('snippets.create.title') : i18n.baseText('snippets.edit.title')
 					}}
 				</N8nHeading>
 			</div>
@@ -291,7 +287,7 @@ onMounted(async () => {
 		<div :class="$style.testsHeader">
 			<N8nHeading size="large" tag="h2">{{ i18n.baseText('snippets.tests.heading') }}</N8nHeading>
 			<div :class="$style.testsActions">
-				<N8nButton type="tertiary" data-test-id="snippet-add-test-button" @click="addTest">
+				<N8nButton variant="ghost" data-test-id="snippet-add-test-button" @click="addTest">
 					{{ i18n.baseText('snippets.tests.add') }}
 				</N8nButton>
 				<N8nButton
@@ -313,15 +309,10 @@ onMounted(async () => {
 				<div :class="$style.testRow">
 					<N8nIconButton
 						icon="trash-2"
-						type="secondary"
+						variant="ghost"
 						:title="i18n.baseText('snippets.tests.remove')"
 						:data-test-id="`snippet-test-remove-${index}`"
 						@click="removeTest(index)"
-					/>
-					<N8nInput
-						v-model="test.name"
-						:class="$style.testName"
-						:placeholder="i18n.baseText('snippets.tests.name.placeholder')"
 					/>
 					<N8nInput
 						v-model="test.code"
@@ -338,7 +329,7 @@ onMounted(async () => {
 					/>
 					<N8nIconButton
 						icon="play"
-						type="secondary"
+						variant="ghost"
 						:title="i18n.baseText('snippets.tests.runOne')"
 						:disabled="test.code.trim() === ''"
 						:data-test-id="`snippet-test-run-${index}`"
@@ -350,7 +341,10 @@ onMounted(async () => {
 					:class="[$style.testResult, resultByIndex(index)?.passed ? $style.passed : $style.failed]"
 					:data-test-id="`snippet-test-result-${index}`"
 				>
-					<N8nIcon :icon="resultByIndex(index)?.passed ? 'circle-check' : 'circle-x'" size="small" />
+					<N8nIcon
+						:icon="resultByIndex(index)?.passed ? 'circle-check' : 'circle-x'"
+						size="small"
+					/>
 					<N8nText size="small">{{ resultMessage(index) }}</N8nText>
 				</div>
 			</div>
@@ -363,7 +357,10 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	width: 100%;
 	max-width: 900px;
+	// Top-level route: the page owns its spacing (no settings-layout padding)
+	padding: var(--spacing--2xl);
 }
 
 .header {
@@ -434,10 +431,6 @@ onMounted(async () => {
 	display: flex;
 	gap: var(--spacing--2xs);
 	align-items: center;
-}
-
-.testName {
-	flex: 1;
 }
 
 .testCode {

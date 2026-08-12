@@ -7,7 +7,6 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
-
 import { SnippetsService } from '../snippets.service';
 
 let owner: User;
@@ -70,10 +69,7 @@ describe('POST /snippets', () => {
 	});
 
 	test('rejects invalid and reserved names', async () => {
-		await authOwnerAgent
-			.post('/snippets')
-			.send({ name: '1bad', code: '(n) => n' })
-			.expect(400);
+		await authOwnerAgent.post('/snippets').send({ name: '1bad', code: '(n) => n' }).expect(400);
 
 		await authOwnerAgent
 			.post('/snippets')
@@ -99,13 +95,13 @@ describe('POST /snippets', () => {
 				name: 'double',
 				code: '(n) => n * 2',
 				tests: [
-					{ name: 'doubles', code: '$snippets.double(2)', expected: '4' },
+					{ code: '$snippets.double(2)', expected: '4' },
 					{ code: '$snippets.double(3) === 6' },
 				],
 			})
 			.expect(200);
 		expect(response.body.data.tests).toEqual([
-			{ name: 'doubles', code: '$snippets.double(2)', expected: '4' },
+			{ code: '$snippets.double(2)', expected: '4' },
 			{ code: '$snippets.double(3) === 6' },
 		]);
 
@@ -114,7 +110,7 @@ describe('POST /snippets', () => {
 			.send({
 				name: 'other',
 				code: '1',
-				tests: [{ name: 'bad', code: 'const x = 1' }],
+				tests: [{ code: 'const x = 1' }],
 			})
 			.expect(400);
 

@@ -1,10 +1,6 @@
 import isEqual from 'lodash/isEqual';
 
-import {
-	bindSnippets,
-	SNIPPETS_PROXY_KEY,
-	evaluateSnippetExpression,
-} from './snippets';
+import { bindSnippets, SNIPPETS_PROXY_KEY, evaluateSnippetExpression } from './snippets';
 import { Expression } from '../expression';
 import { sanitizer, sanitizerName } from '../expression-sandboxing';
 import { extend, extendOptional } from '../extensions';
@@ -12,7 +8,6 @@ import { extendedFunctions } from '../extensions/extended-functions';
 import type { SnippetSources, SnippetTestCase, IDataObject } from '../interfaces';
 
 export interface SnippetTestResult {
-	name: string;
 	passed: boolean;
 	/** Compile or runtime error, when one was thrown */
 	error?: string;
@@ -41,23 +36,17 @@ export function runSnippetTests(
 	Object.assign(data, { [SNIPPETS_PROXY_KEY]: sources });
 	bindSnippets(data);
 
-	return tests.map(({ name, code, expected }) => {
+	return tests.map(({ code, expected }) => {
 		const expectedSource = expected?.trim() ? expected : undefined;
-		const displayName = name?.trim() ? name : expectedSource ? `${code} === ${expected}` : code;
 		try {
 			const value = evaluateSnippetExpression(code, data);
 			if (expectedSource === undefined) {
-				return { name: displayName, passed: Boolean(value), value };
+				return { passed: Boolean(value), value };
 			}
 			const expectedValue = evaluateSnippetExpression(expectedSource, data);
-			return {
-				name: displayName,
-				passed: isEqual(value, expectedValue),
-				value,
-				expected: expectedValue,
-			};
+			return { passed: isEqual(value, expectedValue), value, expected: expectedValue };
 		} catch (error) {
-			return { name: displayName, passed: false, error: (error as Error).message };
+			return { passed: false, error: (error as Error).message };
 		}
 	});
 }

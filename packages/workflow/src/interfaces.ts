@@ -3112,8 +3112,6 @@ export interface SnippetSources {
  * truthy.
  */
 export interface SnippetTestCase {
-	/** Optional; the test expressions are the display name when absent */
-	name?: string;
 	code: string;
 	expected?: string;
 }

@@ -86,9 +86,7 @@ onMounted(async () => {
 						<N8nText bold>{{ snippet.name }}</N8nText>
 					</td>
 					<td>
-						<N8nText>{{
-							snippet.project?.name ?? i18n.baseText('snippets.scope.global')
-						}}</N8nText>
+						<N8nText>{{ snippet.project?.name ?? i18n.baseText('snippets.scope.global') }}</N8nText>
 					</td>
 					<td>
 						<code>{{ usageSyntax(snippet) }}</code>
@@ -102,13 +100,13 @@ onMounted(async () => {
 					<td :class="$style.actions">
 						<N8nIconButton
 							icon="pen"
-							type="secondary"
+							variant="ghost"
 							:data-test-id="`snippet-edit-${snippet.name}`"
 							@click.stop="openEdit(snippet)"
 						/>
 						<N8nIconButton
 							icon="trash-2"
-							type="secondary"
+							variant="ghost"
 							:data-test-id="`snippet-delete-${snippet.name}`"
 							@click.stop="remove(snippet)"
 						/>
@@ -124,6 +122,10 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	width: 100%;
+	max-width: 1200px;
+	// Top-level route: the page owns its spacing (no settings-layout padding)
+	padding: var(--spacing--2xl);
 
 	> * {
 		margin-bottom: var(--spacing--2xs);

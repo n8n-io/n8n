@@ -22,6 +22,7 @@ import {
 	useSidebarLayout,
 } from '@/app/composables/useSidebarLayout';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
+import { useUserHelpers } from '@/app/composables/useUserHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
@@ -44,6 +45,7 @@ const resourceCenterStore = useResourceCenterStore();
 
 const i18n = useI18n();
 const router = useRouter();
+const { canUserAccessRouteByName } = useUserHelpers(router);
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
@@ -97,6 +99,14 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: 'Admin Panel',
 		icon: 'cloud',
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+	},
+	{
+		id: 'snippets',
+		icon: 'code',
+		label: i18n.baseText('settings.snippets.title'),
+		position: 'bottom',
+		available: canUserAccessRouteByName(VIEWS.SNIPPETS_SETTINGS),
+		route: { to: { name: VIEWS.SNIPPETS_SETTINGS } },
 	},
 	{
 		// Resource Center - replaces Templates when experiment is enabled

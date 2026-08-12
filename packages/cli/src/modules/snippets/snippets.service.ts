@@ -114,7 +114,7 @@ export class SnippetsService implements SnippetsProvider {
 	}: {
 		name?: string;
 		code?: string;
-		tests?: Array<{ name?: string; code: string; expected?: string }> | null;
+		tests?: Array<{ code: string; expected?: string }> | null;
 	}) {
 		if (name && !isSafeObjectProperty(name)) {
 			throw new SnippetValidationError(`"${name}" is a reserved name`);
@@ -129,14 +129,13 @@ export class SnippetsService implements SnippetsProvider {
 			}
 		}
 		for (const test of tests ?? []) {
-			const displayName = test.name?.trim() ? test.name : test.code;
 			for (const source of [test.code, test.expected]) {
 				if (!source?.trim()) continue;
 				try {
 					validateSnippetSource(source);
 				} catch (error) {
 					throw new SnippetValidationError(
-						`Test "${displayName}" must use single JavaScript expressions: ${(error as Error).message}`,
+						`Test "${test.code}" must use single JavaScript expressions: ${(error as Error).message}`,
 					);
 				}
 			}

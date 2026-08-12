@@ -28,17 +28,11 @@ export const snippetDescriptionSchema = z
 		`description cannot be longer than ${SNIPPET_DESCRIPTION_MAX_LENGTH} characters`,
 	);
 
-export const SNIPPET_TEST_NAME_MAX_LENGTH = 100;
 export const SNIPPET_TEST_CODE_MAX_LENGTH = 2000;
 export const SNIPPET_MAX_TESTS = 50;
 
 export const snippetTestSchema = z.object({
-	// Optional: the test expressions serve as the display name
-	name: z.string().max(SNIPPET_TEST_NAME_MAX_LENGTH).optional(),
-	code: z
-		.string()
-		.min(1, 'test code must not be empty')
-		.max(SNIPPET_TEST_CODE_MAX_LENGTH),
+	code: z.string().min(1, 'test code must not be empty').max(SNIPPET_TEST_CODE_MAX_LENGTH),
 	// Expression the code's result is deep-compared against; truthy check when absent
 	expected: z.string().max(SNIPPET_TEST_CODE_MAX_LENGTH).optional(),
 });
