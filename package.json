@@ -212,7 +212,8 @@
       "node-gyp>undici": "catalog:undici-v7",
       "@babel/traverse": "^7.23.2",
       "@vitest/browser@<4.1.10": "4.1.10",
-      "immutable": "5.1.8"
+      "immutable": "5.1.8",
+      "nanoid@<3.3.17": "catalog:"
     },
     "patchedDependencies": {
       "axios": "patches/axios.patch",
