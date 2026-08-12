@@ -17,6 +17,7 @@ import { DAYTONA_HOME } from '../workspace/sandbox/workspace-root';
 const DEFAULT_BRIDGE_PORT = 4000;
 const DEFAULT_PREVIEW_URL_TTL_SECONDS = 3600;
 const MAX_PREVIEW_URL_TTL_SECONDS = 24 * 60 * 60;
+const PNPM_FALLBACK_VERSION = '10.32.1';
 
 export interface DaytonaHarnessSandboxProviderOptions {
 	apiKey: string;
@@ -94,7 +95,30 @@ function closeStream(controller: ReadableStreamDefaultController<Uint8Array> | u
 }
 
 function isMissingDaytonaFile(error: unknown): boolean {
-	return error instanceof Error && error.name === 'DaytonaFileNotFoundError';
+	return (
+		error instanceof Error &&
+		(error.name === 'DaytonaFileNotFoundError' ||
+			('statusCode' in error && error.statusCode === 404))
+	);
+}
+
+function withPnpmFallback(command: string): string {
+	const match = /^pnpm(?=$|\s)([\s\S]*)$/.exec(command);
+	if (!match) return command;
+	const args = match[1] ?? '';
+
+	return [
+		'if command -v pnpm >/dev/null 2>&1; then',
+		`  pnpm${args}`,
+		'elif command -v corepack >/dev/null 2>&1; then',
+		`  corepack pnpm${args}`,
+		'elif command -v npm >/dev/null 2>&1; then',
+		`  npm exec --yes --package=pnpm@${PNPM_FALLBACK_VERSION} -- pnpm${args}`,
+		'else',
+		'  echo "Harness bootstrap requires Node.js with pnpm, corepack, or npm" >&2',
+		'  exit 127',
+		'fi',
+	].join('\n');
 }
 
 function toPortUrl(url: string, protocol: 'http' | 'https' | 'ws' | undefined): string {
@@ -308,12 +332,16 @@ export function createDaytonaHarnessSandboxProvider(
 			},
 			spawn,
 			run: async (processOptions) => {
-				const result = await sandbox.executeCommand('sh', ['-lc', processOptions.command], {
-					cwd: processOptions.workingDirectory,
-					env: processOptions.env,
-					abortSignal: processOptions.abortSignal,
-					timeout: options.timeout,
-				});
+				const result = await sandbox.executeCommand(
+					'sh',
+					['-lc', withPnpmFallback(processOptions.command)],
+					{
+						cwd: processOptions.workingDirectory,
+						env: processOptions.env,
+						abortSignal: processOptions.abortSignal,
+						timeout: options.timeout,
+					},
+				);
 				return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
 			},
 		};

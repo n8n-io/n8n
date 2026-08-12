@@ -70,8 +70,7 @@ const daytona = vi.hoisted(() => {
 			await Promise.resolve();
 			const value = files.get(path);
 			if (value) return value;
-			const error = new Error(`File not found: ${path}`);
-			error.name = 'DaytonaFileNotFoundError';
+			const error = Object.assign(new Error(`File not found: ${path}`), { statusCode: 404 });
 			throw error;
 		}
 
@@ -200,6 +199,9 @@ describe('DaytonaHarnessSandboxProvider', () => {
 		await expect(
 			session.readTextFile({ path: '/workspace/input.txt', startLine: 2, endLine: 3 }),
 		).resolves.toBe('two\nthree');
+		await expect(
+			session.readTextFile({ path: '/home/daytona/.harness-bootstrap/missing.ok' }),
+		).resolves.toBeNull();
 		await session.writeTextFile({ path: '/workspace/output.txt', content: 'saved' });
 		expect(daytona.files.get('/workspace/output.txt')?.toString()).toBe('saved');
 		await expect(session.run({ command: 'pnpm --version' })).resolves.toEqual({
@@ -209,7 +211,21 @@ describe('DaytonaHarnessSandboxProvider', () => {
 		});
 		expect(daytona.sandboxInstances[0]?.executeCommand).toHaveBeenCalledWith(
 			'sh',
-			['-lc', 'pnpm --version'],
+			[
+				'-lc',
+				[
+					'if command -v pnpm >/dev/null 2>&1; then',
+					'  pnpm --version',
+					'elif command -v corepack >/dev/null 2>&1; then',
+					'  corepack pnpm --version',
+					'elif command -v npm >/dev/null 2>&1; then',
+					'  npm exec --yes --package=pnpm@10.32.1 -- pnpm --version',
+					'else',
+					'  echo "Harness bootstrap requires Node.js with pnpm, corepack, or npm" >&2',
+					'  exit 127',
+					'fi',
+				].join('\n'),
+			],
 			expect.objectContaining({}),
 		);
 	});
