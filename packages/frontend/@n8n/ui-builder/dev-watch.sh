@@ -23,15 +23,34 @@
 #
 #   2. NDV editor pane (the panel inside the node's parameter UI). It's
 #      imported by editor-ui via a Vite alias straight to this package's src
-#      (packages/frontend/editor-ui/vite.config.mts), so it only gets real
-#      HMR under editor-ui's own Vite dev server — never under n8n-dev's
-#      served dist or staticCacheDir. This script starts that dev server
-#      separately, pointed at this worktree's actual n8n-dev API port instead
-#      of the port 5678 hardcoded into editor-ui's own `serve` script.
-#      Mirroring editor-ui's own dist/index.html + JS/CSS into staticCacheDir
-#      too (making NDV live-edit reachable via n8n-dev's port as well) would
-#      need a full editor-ui BUILD on every change, not just this dev server —
-#      too slow to be worth it here. NDV live-editing still requires :8080.
+#      (packages/frontend/editor-ui/vite.config.mts), so a real editor-ui
+#      BUILD (not just this package's own bundle) picks up ui-builder source
+#      edits. This script runs `vite build --watch` for editor-ui itself and,
+#      on every completed rebuild, mirrors the whole freshly-built dist/ into
+#      staticCacheDir -- the same frozen cache dir n8n-dev's own port serves
+#      from (see point 1). That mirror has to redo the placeholder
+#      substitution `generateStaticAssets()` normally does at boot
+#      (packages/cli/src/commands/start.ts): editor-ui's build emits
+#      %CONFIG_TAGS%, /{{BASE_PATH}}/ (plus its two URL-encoded forms) and
+#      {{REST_ENDPOINT}} unresolved in index.html and in every built .js/.css
+#      (vite's `base` bakes the BASE_PATH placeholder into every asset URL and
+#      into a JS constant). This script resolves those placeholders once, at
+#      startup, by reading the values `generateStaticAssets()` already
+#      resolved into staticCacheDir's *existing* index.html at boot, then
+#      reapplies them to each fresh build before mirroring. No second port:
+#      the NDV pane updates live through n8n-dev's own port, same as the
+#      runtime bundle above.
+#
+#      `vite build --watch` does NOT do a real incremental rebuild here: in
+#      this vite 8 (rolldown) + sass-embedded combination, every rebuild
+#      after the first crashes the process (`sass-embedded` spawn EBADF while
+#      re-transforming every .scss module at once -- an upstream watch-mode
+#      bug, not something fixable from this script). So this watcher runs
+#      `vite build --watch` under a restart loop: a crash just means the next
+#      edit gets a fresh COLD build instead of a true incremental one.
+#      Measured end-to-end (edit -> crash -> restart -> cold build -> mirror
+#      -> visible through n8n-dev's port): ~10-13s. Not fast, but it is a
+#      single port, no restart, no second dev server.
 #
 # Assumes `n8n-dev --watch` (or `demo/start.sh`, which starts it) is ALREADY
 # running for this worktree; this script only reads its port, it does not
@@ -46,7 +65,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 UI_BUILDER_DIR="$SCRIPT_DIR"
 EDITOR_UI_DIR="$REPO_ROOT/packages/frontend/editor-ui"
-EDITOR_UI_PORT="${EDITOR_UI_PORT:-8080}"
 
 command -v n8n-dev >/dev/null 2>&1 || {
 	echo "dev-watch: n8n-dev not found on PATH (see ~/Workspace/n8n-dev)" >&2
@@ -79,13 +97,6 @@ if ! curl -fsS -o /dev/null --max-time 3 "$API_URL/healthz"; then
 	exit 1
 fi
 
-# editor-ui's vite.config.mts bakes N8N_PORT (defaulting to 5678 if unset)
-# into the served index.html as window.BASE_PATH, which vue-router uses as
-# its base -- independently of VUE_APP_URL_BASE_API below. Without this, the
-# dev server on :$EDITOR_UI_PORT silently routes against localhost:5678
-# instead of this worktree's actual port, which looks like nothing works.
-N8N_PORT="${API_URL##*:}"
-
 echo "Detected n8n-dev instance: $API_URL"
 
 # Resolve this worktree's staticCacheDir the same way n8n-dev + n8n itself do:
@@ -116,7 +127,32 @@ if [[ ! -d "$STATIC_CACHE_DIR/static" ]]; then
 	exit 1
 fi
 
+if [[ ! -f "$STATIC_CACHE_DIR/index.html" ]]; then
+	echo "dev-watch: no index.html in staticCacheDir ($STATIC_CACHE_DIR)." >&2
+	echo "           generateStaticAssets() writes this at boot -- is the instance actually up?" >&2
+	exit 1
+fi
+
 echo "Detected staticCacheDir: $STATIC_CACHE_DIR"
+
+# generateStaticAssets() (packages/cli/src/commands/start.ts) already resolved
+# these placeholders into staticCacheDir's *current* index.html once, at this
+# instance's boot -- extract the resolved values back out so the editor-ui
+# build watcher below can reapply the same substitution to its own fresh
+# builds, without needing this script to reimplement GlobalConfig lookups.
+CACHED_INDEX="$STATIC_CACHE_DIR/index.html"
+CONFIG_TAGS_VALUE="$(sed -n '/favicon.ico/,/prefers-color-scheme.css/p' "$CACHED_INDEX" | sed '1d;$d')"
+REST_ENDPOINT_VALUE="$(printf '%s' "$CONFIG_TAGS_VALUE" | sed -n 's/.*rest-endpoint" content="\([^"]*\)".*/\1/p' | base64 -d)"
+BASE_PATH_VALUE="$(sed -n 's#.*<script src="\(.*\)static/base-path\.js".*#\1#p' "$CACHED_INDEX")"
+
+if [[ -z "$CONFIG_TAGS_VALUE" ]]; then
+	echo "dev-watch: couldn't extract the config-tags meta from $CACHED_INDEX -- did" >&2
+	echo "           editor-ui's index.html template change? See generateStaticAssets()" >&2
+	echo "           in packages/cli/src/commands/start.ts for what this needs to match." >&2
+	exit 1
+fi
+
+export CONFIG_TAGS_VALUE REST_ENDPOINT_VALUE BASE_PATH_VALUE
 
 declare -a job_pids=()
 
@@ -170,20 +206,73 @@ echo "Starting staticCacheDir mirror (ui-runtime.js/.css -> $STATIC_CACHE_DIR/st
 ) &
 job_pids+=("$!")
 
-echo "Starting editor-ui Vite dev server (NDV pane HMR) on :$EDITOR_UI_PORT..."
+echo "Starting editor-ui build watcher (NDV pane, mirrored into staticCacheDir)..."
 (
 	cd "$EDITOR_UI_DIR"
-	export VUE_APP_URL_BASE_API="${API_URL}/"
-	export N8N_PORT
-	pnpm exec vite --host 0.0.0.0 --port "$EDITOR_UI_PORT" --strictPort dev
+	# Same base config `pnpm build` uses (see package.json's "build" script),
+	# plus --watch. VUE_APP_PUBLIC_PATH must stay the literal "/{{BASE_PATH}}/"
+	# placeholder -- it becomes vite's `base`, which is what bakes that
+	# placeholder into every emitted asset URL and into the BASE_PATH JS
+	# constant for mirror_editor_ui_build() below to resolve afterwards.
+	export VUE_APP_PUBLIC_PATH="/{{BASE_PATH}}/"
+	export NODE_OPTIONS="--max-old-space-size=8192"
+
+	mirror_editor_ui_build() {
+		local tmp
+		tmp="$(mktemp -d)"
+		cp -a "$EDITOR_UI_DIR/dist/." "$tmp/"
+		# Apply the same placeholder substitution generateStaticAssets() does
+		# at boot (packages/cli/src/commands/start.ts): BASE_PATH (+ its two
+		# URL-encoded forms) across index.html and every built .js/.css, then
+		# the index.html-only tags. Values come from CONFIG_TAGS_VALUE /
+		# REST_ENDPOINT_VALUE / BASE_PATH_VALUE, exported above.
+		find "$tmp" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' \) -print0 |
+			xargs -0 perl -pi -e '
+				s#\Q/{{BASE_PATH}}/\E#$ENV{BASE_PATH_VALUE}#g;
+				s#\Q/%7B%7BBASE_PATH%7D%7D/\E#$ENV{BASE_PATH_VALUE}#g;
+				s#\Q/%257B%257BBASE_PATH%257D%257D/\E#$ENV{BASE_PATH_VALUE}#g;
+			'
+		perl -pi -e '
+			s#\Q%CONFIG_TAGS%\E#$ENV{CONFIG_TAGS_VALUE}#g;
+			s#\Q{{REST_ENDPOINT}}\E#$ENV{REST_ENDPOINT_VALUE}#g;
+		' "$tmp/index.html"
+		# --delete-after: new files land fully before anything stale is
+		# removed, so a request mid-sync sees either the old set intact or
+		# the new set intact -- never a page referencing an asset that's
+		# already gone.
+		rsync -a --delete-after "$tmp/" "$STATIC_CACHE_DIR/"
+		rm -rf "$tmp"
+	}
+
+	# `vite build --watch` for editor-ui does NOT give real incremental
+	# rebuilds in this vite 8 (rolldown) + sass-embedded setup: every rebuild
+	# after the first crashes the process (sass-embedded spawn EBADF while
+	# re-transforming every .scss module at once on a full watch rebuild --
+	# an upstream watch-mode bug). Wrap it in a restart loop instead: a crash
+	# just costs the next edit a fresh cold build rather than a fast
+	# incremental one. Measured end-to-end (edit -> crash -> restart -> cold
+	# build -> mirror -> visible through n8n-dev's port): ~10-13s.
+	# `|| true` on the pipeline: this subshell inherits the top-level `set -e`,
+	# and vite exits nonzero on the sass-embedded crash described above --
+	# without neutralizing that, `errexit` would kill this loop (and this
+	# whole backgrounded job) on the very first crash instead of restarting.
+	while true; do
+		pnpm exec vite build --watch 2>&1 | while IFS= read -r line; do
+			printf '%s\n' "$line"
+			case "$line" in
+			"built in"*) mirror_editor_ui_build ;;
+			esac
+		done || true
+		echo "editor-ui build watcher exited -- restarting in 1s..." >&2
+		sleep 1
+	done
 ) &
 job_pids+=("$!")
 
-# All three jobs above are backgrounded: a failed vite (e.g. --strictPort
-# losing a race, or a build error) exits that subshell almost immediately but
-# doesn't surface until the final `wait`, well after we've already claimed
-# success. Give them a moment, then check all are still alive before saying
-# so.
+# All three jobs above are backgrounded: a failed vite (e.g. a build error)
+# exits that subshell almost immediately but doesn't surface until the final
+# `wait`, well after we've already claimed success. Give them a moment, then
+# check all are still alive before saying so.
 sleep 2
 dead=0
 for pid in "${job_pids[@]}"; do
@@ -191,7 +280,6 @@ for pid in "${job_pids[@]}"; do
 done
 if [[ "$dead" -eq 1 ]]; then
 	echo "dev-watch: a watcher exited immediately -- see output above for the error" >&2
-	echo "           (common cause: port $EDITOR_UI_PORT already in use)." >&2
 	exit 1
 fi
 
@@ -199,13 +287,12 @@ cat <<EOF
 
 All watchers running.
 
-  NDV editor pane (live HMR):
-    http://localhost:$EDITOR_UI_PORT
-    Open a workflow with a UI Builder node through THIS url, not n8n-dev's own
-    port -- edits under src/ hot-reload here. Mirroring editor-ui's own build
-    into staticCacheDir would need a full editor-ui build per change (too slow
-    to be worth it), so NDV live-editing still requires :8080, not :18178-style
-    ports.
+  NDV editor pane:
+    $API_URL
+    Same URL as everything else -- no second port. Open a workflow with a UI
+    Builder node here; edits under src/ show up after the next editor-ui
+    rebuild (~10-13s: the watcher restarts on every rebuild, see the comment
+    at the top of this script), then a plain browser refresh.
 
   Runtime app page:
     $API_URL/webhook/orders-app
