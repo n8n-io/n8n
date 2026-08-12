@@ -15,6 +15,7 @@ export type DependencyType =
 	| 'credentialId'
 	| 'dataTableId'
 	| 'errorWorkflow'
+	| 'fileId'
 	| 'nodeType'
 	| 'webhookPath'
 	| 'workflowCall'

@@ -477,6 +477,56 @@ describe('WorkflowIndexService', () => {
 			);
 		});
 
+		it('should extract fileId from Files node types, skipping expressions', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.files',
+					parameters: { fileId: { mode: 'id', value: 'file-1' } },
+				}),
+				createNode({
+					id: 'node-2',
+					type: 'n8n-nodes-base.filesTool',
+					parameters: { fileId: { mode: 'name', value: 'pricing.csv' } },
+				}),
+				createNode({
+					id: 'node-3',
+					type: 'n8n-nodes-base.files',
+					parameters: { fileId: { mode: 'id', value: '={{ $json.fileId }}' } },
+				}),
+				createNode({
+					id: 'node-4',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: { fileId: { mode: 'id', value: 'not-a-files-node' } },
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			const fileDeps = call[1].dependencies.filter(
+				(d: { dependencyType: string }) => d.dependencyType === 'fileId',
+			);
+
+			expect(fileDeps).toHaveLength(2);
+			expect(fileDeps).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						dependencyType: 'fileId',
+						dependencyKey: 'file-1',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-1', mode: 'id' }),
+					}),
+					expect.objectContaining({
+						dependencyType: 'fileId',
+						dependencyKey: 'pricing.csv',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-2', mode: 'name' }),
+					}),
+				]),
+			);
+		});
+
 		it('should insert placeholder for workflow with no nodes', async () => {
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
