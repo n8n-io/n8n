@@ -16,7 +16,9 @@
  * the lifecycle owner enforces the wait timeout as the backstop.
  */
 import { Tool } from '@n8n/agents';
+import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -76,6 +78,9 @@ export interface OneOffTaskToolDeps {
 export const HARNESS_LLM_MISSING_REASON =
 	'one-off tasks require harness model access; none is configured';
 
+export const USER_DECLINED_CREDENTIALS_REASON =
+	'user declined credential access; nothing was decrypted and no sandbox was created';
+
 // ── Input schema ─────────────────────────────────────────────────────────────
 
 const credentialSelectionSchema = z.object({
@@ -120,6 +125,12 @@ const inputSchema = sanitizeInputSchema(
 			.object({
 				sandboxRef: z.string().describe('sandboxRef from the needs_credential outcome'),
 				sessionId: z.string().describe('sessionId from the needs_credential outcome'),
+				approvedCredentialIds: z
+					.array(z.string())
+					.default([])
+					.describe(
+						'approvedCredentialIds from the needs_credential outcome — the credentials the user already approved for this task. The tool asks the user to approve only credentials not in this list.',
+					),
 			})
 			.optional()
 			.describe(
@@ -129,6 +140,30 @@ const inputSchema = sanitizeInputSchema(
 );
 
 type Input = z.infer<typeof inputSchema>;
+
+// ── Credential approval gate (suspend/resume) ────────────────────────────────
+
+/**
+ * Per-task credential injection approval, enforced in the tool (design doc:
+ * "Explicit approval per credential is the consent mechanism — do not skip
+ * it, even when the need is obvious"). The suspend payload follows the same
+ * conventions as `credentials.tool.ts`, so it renders as the standard
+ * confirmation approval card on this tool call.
+ */
+const suspendSchema = z.object({
+	requestId: z.string(),
+	message: z.string(),
+	severity: instanceAiConfirmationSeveritySchema,
+});
+
+const resumeSchema = z.object({
+	approved: z.boolean(),
+});
+
+export interface OneOffTaskToolContext {
+	resumeData: z.infer<typeof resumeSchema> | undefined | null;
+	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
+}
 
 // ── Outcomes ─────────────────────────────────────────────────────────────────
 
@@ -146,6 +181,8 @@ export type OneOffTaskOutcome =
 			outcome: 'needs_credential';
 			sessionId: string;
 			sandboxRef: string;
+			/** Credentials already user-approved for this task; pass back on relaunch. */
+			approvedCredentialIds: string[];
 			progressSummary: string;
 			request: NeedsCredentialReport['request'];
 			guidance: string;
@@ -175,7 +212,7 @@ function scrubReport(report: unknown, secrets: ScrubSecret[]): HarnessReport | u
 
 function interpretReport(
 	report: HarnessReport | undefined,
-	ids: { sessionId: string; sandboxRef: string },
+	ids: { sessionId: string; sandboxRef: string; approvedCredentialIds: string[] },
 ): OneOffTaskOutcome {
 	if (report === undefined) {
 		return { outcome: 'interrupted', sessionId: ids.sessionId, summary: INTERRUPTED_SUMMARY };
@@ -197,14 +234,17 @@ function interpretReport(
 				outcome: 'needs_credential',
 				sessionId: ids.sessionId,
 				sandboxRef: ids.sandboxRef,
+				approvedCredentialIds: ids.approvedCredentialIds,
 				progressSummary: report.progressSummary,
 				request: report.request,
 				guidance:
 					'The task is paused; its sandbox stays active but will be destroyed if not relaunched ' +
-					`within ${CREDENTIAL_WAIT_TIMEOUT_MINUTES} minutes. Get the user's approval now via the ` +
-					'credentials tool (approve the named existing credential, or action="setup" for a new one), ' +
-					'then call run-one-off-task again with resume: { sandboxRef, sessionId } from this result, ' +
-					'the full credentials list including the newly approved one, and progressSummary as priorReport.',
+					`within ${CREDENTIAL_WAIT_TIMEOUT_MINUTES} minutes. For an existing credential, look up its ` +
+					'id via the credentials tool (action="list"); for a new one, run the setup flow ' +
+					'(action="setup") with the recipe from `request`. Then call run-one-off-task again with ' +
+					'resume: { sandboxRef, sessionId, approvedCredentialIds } from this result, the full ' +
+					'credentials list including the new credential (the tool itself asks the user to approve ' +
+					'injecting only the new one), and progressSummary as priorReport.',
 			};
 		case 'failed':
 			return {
@@ -240,6 +280,7 @@ export async function executeOneOffTask(
 	context: OrchestrationContext,
 	deps: OneOffTaskToolDeps,
 	input: Input,
+	ctx: OneOffTaskToolContext,
 ): Promise<OneOffTaskOutcome> {
 	const sessionId = input.resume?.sessionId ?? randomUUID();
 	const agentId = `agent-one-off-task-${sessionId.slice(0, 8)}`;
@@ -251,6 +292,39 @@ export async function executeOneOffTask(
 	const harnessLlmEnvVars = deps.harnessLlm?.envVars ?? {};
 	if (Object.keys(harnessLlmEnvVars).length === 0) {
 		return { outcome: 'failed', sessionId, reason: HARNESS_LLM_MISSING_REASON, actions: [] };
+	}
+
+	// Per-task credential injection approval, before anything is decrypted or
+	// provisioned. On relaunch only credentials not already approved in this
+	// task need a card — a re-approved-nothing relaunch must not burn the
+	// credential wait timeout on a pointless prompt.
+	const previouslyApproved = new Set(input.resume?.approvedCredentialIds ?? []);
+	const credentialsNeedingApproval = isRelaunch
+		? input.credentials.filter((credential) => !previouslyApproved.has(credential.credentialId))
+		: input.credentials;
+
+	if (credentialsNeedingApproval.length > 0) {
+		if (ctx.resumeData === undefined || ctx.resumeData === null) {
+			const credentialList = credentialsNeedingApproval
+				.map((credential) => `${credential.name} (${credential.type})`)
+				.join(', ');
+			return await ctx.suspend({
+				requestId: nanoid(),
+				message:
+					'This task will decrypt and inject these credentials into an ephemeral sandbox ' +
+					`to complete it: ${credentialList}. Values are injected only into the task process ` +
+					'and the sandbox is destroyed when the task ends.',
+				severity: 'warning' as const,
+			});
+		}
+		if (!ctx.resumeData.approved) {
+			return {
+				outcome: 'failed',
+				sessionId,
+				reason: USER_DECLINED_CREDENTIALS_REASON,
+				actions: [],
+			};
+		}
 	}
 
 	// Resolve credentials before provisioning: an access denial must not leak
@@ -341,6 +415,10 @@ export async function executeOneOffTask(
 		const outcome = interpretReport(scrubReport(result.report, resolved.scrubSecrets), {
 			sessionId,
 			sandboxRef,
+			// Everything injected in this run passed the approval gate (or was
+			// pre-approved on a relaunch) — the orchestrator round-trips these so
+			// the relaunch only asks about genuinely new credentials.
+			approvedCredentialIds: input.credentials.map((credential) => credential.credentialId),
 		});
 
 		if (outcome.outcome === 'needs_credential') {
@@ -408,14 +486,17 @@ export function createRunOneOffTaskTool(context: OrchestrationContext, deps: One
 			'Run a one-off task (run-once, no workflow needed) in an ephemeral sandbox: a coding harness ' +
 				'writes and executes SDK code against the injected credentials, verifies the result by ' +
 				'read-back, and returns a structured report. Load the one-off-task skill before first use. ' +
-				'Recurring or trigger-driven work belongs in a workflow instead. On a needs_credential ' +
-				'outcome, run the credential approval flow and call this tool again with the returned ' +
-				'resume: { sandboxRef, sessionId }.',
+				'Recurring or trigger-driven work belongs in a workflow instead. Pass the credentials the ' +
+				'task needs directly — this tool itself asks the user to approve injecting them. On a ' +
+				'needs_credential outcome, call this tool again with the returned resume: ' +
+				'{ sandboxRef, sessionId, approvedCredentialIds }.',
 		)
 		.input(inputSchema)
-		.handler(async (input) => {
+		.suspend(suspendSchema)
+		.resume(resumeSchema)
+		.handler(async (input, ctx) => {
 			const parsed = inputSchema.parse(input);
-			return await executeOneOffTask(context, deps, parsed);
+			return await executeOneOffTask(context, deps, parsed, ctx);
 		})
 		.build();
 }

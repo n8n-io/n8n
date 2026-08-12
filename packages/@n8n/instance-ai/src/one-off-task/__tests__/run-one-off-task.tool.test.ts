@@ -14,6 +14,7 @@ import type {
 import {
 	createRunOneOffTaskTool,
 	HARNESS_LLM_MISSING_REASON,
+	USER_DECLINED_CREDENTIALS_REASON,
 	type OneOffTaskOutcome,
 	type OneOffTaskSandboxProvider,
 	type OneOffTaskToolDeps,
@@ -125,13 +126,31 @@ function publishedEvents(context: OrchestrationContext): InstanceAiEvent[] {
 	);
 }
 
+/**
+ * Runs the tool with a suspend/resume context. The default models the
+ * post-approval invocation (`resumeData: { approved: true }`) so happy-path
+ * tests exercise the full run; gate tests pass `resumeData: undefined` (first
+ * call) or `{ approved: false }` (denial) explicitly.
+ */
 async function run(
 	context: OrchestrationContext,
 	deps: OneOffTaskToolDeps,
 	input: Record<string, unknown>,
+	ctx?: { resumeData?: { approved: boolean } | null; suspend?: Mock },
 ): Promise<OneOffTaskOutcome> {
+	const toolCtx = {
+		resumeData: ctx && 'resumeData' in ctx ? ctx.resumeData : { approved: true },
+		suspend: ctx?.suspend ?? vi.fn(),
+	};
 	const tool = createRunOneOffTaskTool(context, deps);
-	return await executeTool<OneOffTaskOutcome>(tool, input, {});
+	return await executeTool<OneOffTaskOutcome>(tool, input, toolCtx);
+}
+
+/** A suspend mock that behaves like the real machinery: it never returns. */
+function throwingSuspend(): Mock {
+	return vi.fn(() => {
+		throw new Error('SUSPENDED');
+	});
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -259,6 +278,10 @@ describe('run-one-off-task tool', () => {
 			expect(outcome.sessionId).toMatch(/^[0-9a-f-]{36}$/);
 			expect(outcome.request).toEqual({ kind: 'existing', credentialName: 'Slack Bot' });
 			expect(outcome.progressSummary).toBe(needsCredentialReport.progressSummary);
+			// The approved set round-trips so the relaunch gate only asks about
+			// genuinely new credentials.
+			expect(outcome.approvedCredentialIds).toEqual(['cred-google']);
+			expect(outcome.guidance).toContain('approvedCredentialIds');
 			// The wait-timeout expectation is armed in the guidance.
 			expect(outcome.guidance).toContain('within 10 minutes');
 			expect(outcome.guidance).toContain('resume');
@@ -274,7 +297,11 @@ describe('run-one-off-task tool', () => {
 				{ credentialId: 'cred-slack', name: 'Slack Bot', type: 'slackApi' },
 			],
 			priorReport: 'Fetched the source rows; need Slack to post the digest.',
-			resume: { sandboxRef: 'sb-fresh-1', sessionId: '11111111-2222-3333-4444-555555555555' },
+			resume: {
+				sandboxRef: 'sb-fresh-1',
+				sessionId: '11111111-2222-3333-4444-555555555555',
+				approvedCredentialIds: ['cred-google'],
+			},
 		};
 
 		it('reattaches to the sandbox, reuses the session id, and injects the additional credential', async () => {
@@ -423,6 +450,152 @@ describe('run-one-off-task tool', () => {
 			expect(outcome.reason).toContain('You no longer have access to this credential');
 			expect(deps.sandboxProvider.create).not.toHaveBeenCalled();
 			expect(sandbox.runHarness).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('credential approval gate', () => {
+		it('suspends before decrypting or provisioning on a fresh task with credentials', async () => {
+			const sandbox = createMockSandbox(
+				async () => await Promise.resolve({ report: completedReport, exitCode: 0 }),
+			);
+			const deps = createDeps(sandbox);
+			const context = createMockContext();
+			const suspend = throwingSuspend();
+
+			await expect(
+				run(context, deps, baseInput, { resumeData: undefined, suspend }),
+			).rejects.toThrow('SUSPENDED');
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			const payload = suspend.mock.calls[0][0] as {
+				requestId: string;
+				message: string;
+				severity: string;
+			};
+			expect(payload.requestId).toEqual(expect.any(String));
+			expect(payload.severity).toBe('warning');
+			expect(payload.message).toContain('decrypt and inject');
+			expect(payload.message).toContain('Google Sheets (googleSheetsOAuth2Api)');
+			// Nothing happened before the user answered.
+			expect(deps.credentialResolver.resolveForOneOffTask).not.toHaveBeenCalled();
+			expect(deps.sandboxProvider.create).not.toHaveBeenCalled();
+			expect(sandbox.runHarness).not.toHaveBeenCalled();
+		});
+
+		it('returns failed with nothing decrypted when the user declines', async () => {
+			const sandbox = createMockSandbox(
+				async () => await Promise.resolve({ report: completedReport, exitCode: 0 }),
+			);
+			const deps = createDeps(sandbox);
+			const context = createMockContext();
+
+			const outcome = await run(context, deps, baseInput, { resumeData: { approved: false } });
+
+			if (outcome.outcome !== 'failed') throw new Error('expected failed');
+			expect(outcome.reason).toBe(USER_DECLINED_CREDENTIALS_REASON);
+			expect(deps.credentialResolver.resolveForOneOffTask).not.toHaveBeenCalled();
+			expect(deps.sandboxProvider.create).not.toHaveBeenCalled();
+			expect(sandbox.runHarness).not.toHaveBeenCalled();
+		});
+
+		it('proceeds after approval', async () => {
+			const sandbox = createMockSandbox(
+				async () => await Promise.resolve({ report: completedReport, exitCode: 0 }),
+			);
+			const deps = createDeps(sandbox);
+			const context = createMockContext();
+			const suspend = throwingSuspend();
+
+			const outcome = await run(context, deps, baseInput, {
+				resumeData: { approved: true },
+				suspend,
+			});
+
+			expect(outcome.outcome).toBe('completed');
+			expect(suspend).not.toHaveBeenCalled();
+			expect(sandbox.runHarness).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not suspend for a zero-credential task', async () => {
+			const sandbox = createMockSandbox(
+				async () => await Promise.resolve({ report: completedReport, exitCode: 0 }),
+			);
+			const deps = createDeps(sandbox);
+			const context = createMockContext();
+			const suspend = throwingSuspend();
+
+			const outcome = await run(
+				context,
+				deps,
+				{ ...baseInput, credentials: [] },
+				{ resumeData: undefined, suspend },
+			);
+
+			expect(outcome.outcome).toBe('completed');
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('does not suspend on a relaunch whose credentials were all approved in this task', async () => {
+			const sandbox = createMockSandbox(
+				async () => await Promise.resolve({ report: completedReport, exitCode: 0 }),
+			);
+			const deps = createDeps(sandbox);
+			const context = createMockContext();
+			const suspend = throwingSuspend();
+
+			const outcome = await run(
+				context,
+				deps,
+				{
+					...baseInput,
+					resume: {
+						sandboxRef: 'sb-fresh-1',
+						sessionId: '11111111-2222-3333-4444-555555555555',
+						approvedCredentialIds: ['cred-google'],
+					},
+				},
+				{ resumeData: undefined, suspend },
+			);
+
+			expect(outcome.outcome).toBe('completed');
+			expect(suspend).not.toHaveBeenCalled();
+			expect(sandbox.runHarness).toHaveBeenCalledTimes(1);
+		});
+
+		it('suspends on relaunch listing only the credentials new to this task', async () => {
+			const sandbox = createMockSandbox(
+				async () => await Promise.resolve({ report: completedReport, exitCode: 0 }),
+			);
+			const deps = createDeps(sandbox);
+			const context = createMockContext();
+			const suspend = throwingSuspend();
+
+			await expect(
+				run(
+					context,
+					deps,
+					{
+						...baseInput,
+						credentials: [
+							...baseInput.credentials,
+							{ credentialId: 'cred-slack', name: 'Slack Bot', type: 'slackApi' },
+						],
+						resume: {
+							sandboxRef: 'sb-fresh-1',
+							sessionId: '11111111-2222-3333-4444-555555555555',
+							approvedCredentialIds: ['cred-google'],
+						},
+					},
+					{ resumeData: undefined, suspend },
+				),
+			).rejects.toThrow('SUSPENDED');
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			const payload = suspend.mock.calls[0][0] as { message: string };
+			expect(payload.message).toContain('Slack Bot (slackApi)');
+			expect(payload.message).not.toContain('Google Sheets');
+			expect(deps.credentialResolver.resolveForOneOffTask).not.toHaveBeenCalled();
+			expect(deps.sandboxProvider.reattach).not.toHaveBeenCalled();
 		});
 	});
 

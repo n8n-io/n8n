@@ -52,10 +52,12 @@ briefing for a competent engineer with no other context:
   Be concrete: "the sheet exists and contains the 4 requested columns", not
   "the operation succeeded". The harness is required to verify by reading the
   resource back, and its report carries the evidence.
-- **credentials** — only credentials the user explicitly approved for this
-  task, with their id, name, and type from the `credentials` tool. Approval
-  is per credential, per task — never inject something because it might be
-  useful.
+- **credentials** — the credentials the task needs, with their id, name, and
+  type from the `credentials` tool. You do not pre-approve them: the
+  `run-one-off-task` tool itself shows the user an approval card before
+  anything is decrypted, and a decline ends the task without a sandbox.
+  Still pass only what the task actually needs — approval is per credential,
+  per task, and a card listing unrelated credentials erodes trust.
 - **credentialCatalog** — names and types (never IDs or values) of other
   credentials the user could approve, so a mid-task request names a real
   credential instead of guessing.
@@ -64,24 +66,34 @@ briefing for a competent engineer with no other context:
 
 ## The credential loop
 
+Injection approval is enforced by the tool: when the `credentials` list
+contains anything the user has not yet approved for this task, the tool
+suspends with a standard approval card before decrypting anything. Approval →
+the task runs; decline → a `failed` outcome with nothing decrypted and no
+sandbox created. Do not run a separate approval step for existing credentials
+before calling the tool — that would double-prompt the user.
+
 When the tool returns `outcome: "needs_credential"`, the task is paused and
 its sandbox stays alive for a bounded wait (the outcome's guidance states the
 timeout). Act immediately:
 
-1. For `request.kind: "existing"` — ask the user to approve injecting that
-   credential (it is named from the catalog you passed).
+1. For `request.kind: "existing"` — look up the credential's id with the
+   `credentials` tool (action `"list"`); no separate approval step.
 2. For `request.kind: "new"` — run the existing credential setup flow
    (`credentials` tool, action `"setup"`) using the recipe fields from the
    request; the user pastes secrets into the masked card, never into chat.
 3. Call `run-one-off-task` again with:
-   - `resume: { sandboxRef, sessionId }` exactly as returned,
-   - the **full** `credentials` list including the newly approved credential,
+   - `resume: { sandboxRef, sessionId, approvedCredentialIds }` exactly as
+     returned,
+   - the **full** `credentials` list including the new credential,
    - the returned `progressSummary` as `priorReport`.
 
-The relaunch resumes the harness session with its full prior context; only
-the new environment variable changed. If the user declines or stalls past the
-wait timeout, the sandbox is destroyed and the task reports incomplete — tell
-the user they can restart it later.
+On relaunch the tool asks the user to approve only the credentials that are
+new for this task (the ones not in `approvedCredentialIds`); a relaunch that
+adds nothing shows no card. The relaunch resumes the harness session with its
+full prior context; only the new environment variable changed. If the user
+declines or stalls past the wait timeout, the sandbox is destroyed and the
+task reports incomplete — tell the user they can restart it later.
 
 ## Destructive writes need a shown plan
 
