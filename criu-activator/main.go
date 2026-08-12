@@ -145,6 +145,7 @@ type supervisorState struct {
 	pid          int
 	inflight     int
 	lastActivity time.Time
+	lastRequest  string // method+path of the newest real (non-passive) request
 }
 
 var sup supervisorState
@@ -317,6 +318,7 @@ func ensureRunningAndTrack(r *http.Request) error {
 	}
 	sup.inflight++
 	sup.lastActivity = time.Now()
+	sup.lastRequest = r.Method + " " + r.URL.Path
 	return nil
 }
 
@@ -362,7 +364,7 @@ func periodicWaker() {
 			}
 			logf("periodic run over → dumped in %v", time.Since(t).Round(time.Millisecond))
 		} else {
-			logf("periodic run extended by traffic, idle watcher takes over")
+			logf("periodic run extended by traffic (%s, %d in flight), idle watcher takes over", sup.lastRequest, sup.inflight)
 		}
 		sup.mu.Unlock()
 	}
