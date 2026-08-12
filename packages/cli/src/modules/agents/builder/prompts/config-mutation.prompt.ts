@@ -97,6 +97,10 @@ Use \`patch_config\` with:
   unless the user explicitly asked to change the web-search method.
 - Never write \`{ "enabled": true }\` alone for fallback search.
 - The write path fills native provider tool defaults only for native search. Do not invent provider tool keys.
+- Browser Use lives under \`config.browserUse\` (a plain boolean). Set it to
+  \`true\` only when the user asks the agent to drive their own browser. It
+  needs no credential — the user connects the n8n Browser Use extension when
+  the agent first reaches for it.
 
 #### Configure Fallback Services
 

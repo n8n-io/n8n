@@ -124,17 +124,24 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			data: {
 				tools: localConfig.value?.tools ?? [],
 				mcpServers: localConfig.value?.mcpServers ?? [],
+				browserUse: localConfig.value?.config?.browserUse === true,
 				projectId: projectId.value,
 				agentId: targetAgentId,
 				supportsToolApproval,
 				onConfirm: (payload: {
 					tools?: AgentJsonToolConfig[];
 					mcpServers?: AgentJsonMcpServerConfig[];
+					browserUse?: boolean;
 				}) => {
 					if (agentId.value !== targetAgentId) return;
 					scheduleConfigUpdate({
 						...(payload.tools && { tools: payload.tools }),
 						...(payload.mcpServers && { mcpServers: payload.mcpServers }),
+						// Spread the existing config so toggling Browser Use does not
+						// drop reasoning, prompt caching or web search alongside it.
+						...(payload.browserUse !== undefined && {
+							config: { ...localConfig.value?.config, browserUse: payload.browserUse },
+						}),
 					});
 				},
 			},

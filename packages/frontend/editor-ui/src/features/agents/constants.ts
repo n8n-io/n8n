@@ -7,6 +7,10 @@ export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
 export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
 export const PROJECT_AGENTS = 'ProjectAgents';
 export const AGENT_BUILDER_SETTINGS_VIEW = 'SettingsAgentBuilderView';
+export const AGENT_BROWSER_USE_CONNECT_VIEW = 'AgentBrowserUseConnectView';
+
+/** Marks the Browser Use row in the agent tools modal. */
+export const AGENT_BROWSER_USE_SERVICE_ID = 'browser-use';
 
 export const AGENTS_MODULE_NAME = 'agents';
 

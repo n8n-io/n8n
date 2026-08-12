@@ -682,6 +682,7 @@ export class AgentRuntimeReconstructionService {
 				instrumentation,
 			});
 			this.attachWriteTodosTool(agent, agentId);
+			await this.attachBrowserUseTools(agent, agentId, config);
 		}
 
 		// Inline agents get no checkpoint storage: `agent_checkpoints.agentId`
@@ -698,6 +699,31 @@ export class AgentRuntimeReconstructionService {
 			agent.fileStore(
 				this.agentChatAttachmentService.getFileStore({ agentId, projectId }, provider),
 			);
+		}
+	}
+
+	/**
+	 * Attach the Browser Use tools when the agent is configured for them and the
+	 * instance-ai module that owns the extension relay is available.
+	 */
+	private async attachBrowserUseTools(
+		agent: RuntimeAgent,
+		agentId: string,
+		config: AgentJsonConfig,
+	): Promise<void> {
+		if (config.config?.browserUse !== true) return;
+
+		const { isBrowserUseAvailable } = await import('./browser-use/browser-use-availability.js');
+		if (!(await isBrowserUseAvailable())) {
+			this.logger.debug('Browser Use is enabled for the agent but unavailable on this instance', {
+				agentId,
+			});
+			return;
+		}
+
+		const { createBrowserUseTools } = await import('./tools/browser-use-tools.js');
+		for (const tool of await createBrowserUseTools({ agentId })) {
+			agent.tool(tool);
 		}
 	}
 

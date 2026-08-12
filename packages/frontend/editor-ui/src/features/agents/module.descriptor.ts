@@ -18,6 +18,7 @@ import {
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
+	AGENT_BROWSER_USE_CONNECT_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
 
@@ -35,6 +36,8 @@ const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
 const SettingsAgentBuilderView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/SettingsAgentBuilderView.vue');
+const BrowserUseConnectView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/BrowserUseConnectView.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
@@ -150,6 +153,19 @@ export const AgentsModule: FrontendModuleDescription = {
 			component: NewAgentView,
 			meta: {
 				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
+			// Intentionally unauthenticated: an agent may send this link to someone
+			// on a channel who has no n8n account. The setup token in the query
+			// string is the capability, and the server validates it.
+			name: AGENT_BROWSER_USE_CONNECT_VIEW,
+			path: '/browser-use/connect',
+			component: BrowserUseConnectView,
+			meta: {
+				// Chromeless: the visitor may be logged out, and the app sidebar
+				// would only offer them links they cannot follow.
+				layout: 'auth',
 			},
 		},
 		{

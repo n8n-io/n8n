@@ -480,6 +480,12 @@ export const AgentJsonConfigBaseSchema = z.object({
 			reasoning: z.enum(AGENT_REASONING_LEVELS).optional(),
 			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
+			browserUse: z
+				.boolean()
+				.optional()
+				.describe(
+					"Let the agent drive the chatting user's browser through the n8n Browser Use extension.",
+				),
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
 			maxIterations: z
 				.number()

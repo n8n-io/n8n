@@ -24,13 +24,14 @@ import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
 	NodeConnectionItem,
+	ServiceConnectionItem,
 	ToolCategoryKey,
 	ToolConnectionItem,
 	ToolCredentialRef,
 	WorkflowConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 
-import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
+import { AGENT_BROWSER_USE_SERVICE_ID, AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	getExistingToolNames,
 	nodeTypeToNewToolRef,
@@ -51,7 +52,7 @@ import {
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 import { toToolIconSource } from '../utils/toolIconSource';
 
-const CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
+const CATEGORIES: ToolCategoryKey[] = ['all', 'built-in', 'mcp', 'n8n', 'app-action', 'workflows'];
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 );
@@ -67,12 +68,14 @@ const props = defineProps<{
 	data: {
 		tools: AgentJsonToolRef[];
 		mcpServers?: AgentJsonMcpServerConfig[];
+		browserUse?: boolean;
 		projectId?: string;
 		agentId?: string;
 		supportsToolApproval?: boolean;
 		onConfirm: (payload: {
 			tools?: AgentJsonToolRef[];
 			mcpServers?: AgentJsonMcpServerConfig[];
+			browserUse?: boolean;
 		}) => void;
 	};
 }>();
@@ -90,6 +93,19 @@ const usersStore = useUsersStore();
 
 const searchQuery = ref('');
 const installingToolName = ref<string | null>(null);
+
+/**
+ * Browser Use is a built-in capability rather than a tool ref: it needs no
+ * credential and no per-tool config, so it lives as a flag on the agent config
+ * and the runtime expands it into the browser tool set.
+ */
+const browserUseEnabled = ref(props.data.browserUse === true);
+watch(
+	() => props.data.browserUse,
+	(enabled) => {
+		browserUseEnabled.value = enabled === true;
+	},
+);
 
 interface WorkingToolEntry {
 	localId: string;
@@ -220,6 +236,7 @@ function commit() {
 	props.data.onConfirm({
 		tools: workingTools.value,
 		mcpServers: workingMcpServers.value,
+		browserUse: browserUseEnabled.value,
 	});
 }
 
@@ -588,8 +605,19 @@ const communitySearchToolTypes = computed<INodeTypeDescription[]>(() => {
 	return previews;
 });
 
+const browserUseItem = computed<ServiceConnectionItem>(() => ({
+	id: `service:${AGENT_BROWSER_USE_SERVICE_ID}`,
+	kind: 'service',
+	category: 'built-in',
+	serviceId: AGENT_BROWSER_USE_SERVICE_ID,
+	title: i18n.baseText('agents.browserUse.tool.title'),
+	description: i18n.baseText('agents.browserUse.tool.description'),
+	isConnected: browserUseEnabled.value,
+	iconSource: { type: 'icon', name: 'globe' },
+}));
+
 const items = computed<ToolConnectionItem[]>(() => {
-	const out: ToolConnectionItem[] = [];
+	const out: ToolConnectionItem[] = [browserUseItem.value];
 
 	for (const entry of workingMcpServerEntries.value) {
 		const item = connectedMcpItem(entry);
@@ -613,6 +641,20 @@ const items = computed<ToolConnectionItem[]>(() => {
 });
 
 function handleRowActivate(item: ToolConnectionItem) {
+	// Browser Use has nothing to configure — activating the row just flips the
+	// capability on or off.
+	if (item.kind === 'service' && item.serviceId === AGENT_BROWSER_USE_SERVICE_ID) {
+		browserUseEnabled.value = !browserUseEnabled.value;
+		commit();
+		toast.showMessage({
+			title: i18n.baseText(
+				browserUseEnabled.value ? 'agents.tools.added' : 'agents.browserUse.tool.removed',
+			),
+			type: 'success',
+		});
+		return;
+	}
+
 	if (item.isConnected) {
 		if (item.id.startsWith('mcp:')) {
 			const localId = item.id.slice('mcp:'.length);
