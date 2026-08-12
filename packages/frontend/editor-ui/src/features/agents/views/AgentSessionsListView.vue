@@ -35,14 +35,12 @@ const props = withDefaults(
 		embedded?: boolean;
 		projectId?: string;
 		agentId?: string;
-		openSessionInNewTab?: boolean;
 		manageStoreLifecycle?: boolean;
 	}>(),
 	{
 		embedded: false,
 		projectId: undefined,
 		agentId: undefined,
-		openSessionInNewTab: false,
 		manageStoreLifecycle: true,
 	},
 );
@@ -174,10 +172,6 @@ function openConversation(threadId: string) {
 			section: EXECUTIONS_SECTION_KEY,
 		},
 	};
-	if (props.openSessionInNewTab) {
-		window.open(router.resolve(target).href, '_blank');
-		return;
-	}
 	void router.push(target);
 }
 
@@ -190,10 +184,6 @@ function onViewTrace(target: TraceTarget) {
 			threadId: target.threadId,
 		},
 	};
-	if (props.openSessionInNewTab) {
-		window.open(router.resolve(routeTarget).href, '_blank');
-		return;
-	}
 	void router.push(routeTarget);
 }
 
@@ -247,11 +237,12 @@ async function loadMore() {
 			<N8nTableBase>
 				<tbody>
 					<tr
+						role="button"
 						v-for="thread in sessionsStore.threads"
 						:key="thread.id"
 						:class="$style.clickableRow"
 						data-test-id="agent-session-list-item"
-						@click="openConversation(thread.id)"
+						@click="onViewTrace({ agentId, threadId: thread.id })"
 					>
 						<td :class="$style.titleCell">
 							<button
@@ -284,13 +275,11 @@ async function loadMore() {
 							<div :class="$style.actionGroup">
 								<N8nTooltip :content="i18n.baseText('agentSessions.viewTrace')">
 									<N8nIconButton
-										icon="list-tree"
-										icon-size="medium"
-										size="xsmall"
+										icon="message-circle-plus"
 										variant="ghost"
-										:aria-label="i18n.baseText('agentSessions.viewTrace')"
-										data-test-id="agent-session-view-trace"
-										@click="onViewTrace({ agentId, threadId: thread.id })"
+										:aria-label="i18n.baseText('agents.builder.chat.newChat.label')"
+										data-test-id="agent-session-new-chat"
+										@click="openConversation(thread.id)"
 									/>
 								</N8nTooltip>
 								<N8nActionDropdown

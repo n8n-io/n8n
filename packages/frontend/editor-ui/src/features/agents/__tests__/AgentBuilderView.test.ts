@@ -565,7 +565,7 @@ const commonStubs = {
 	AgentSessionsListView: {
 		name: 'AgentSessionsListView',
 		template: '<div data-testid="stub-agent-sessions-list-view" />',
-		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab', 'manageStoreLifecycle'],
+		props: ['embedded', 'projectId', 'agentId', 'manageStoreLifecycle'],
 	},
 	N8nButton: {
 		template:
@@ -2153,7 +2153,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			embedded: true,
 			projectId: 'p2',
 			agentId: 'a2',
-			openSessionInNewTab: true,
 			manageStoreLifecycle: false,
 		});
 	});
