@@ -387,7 +387,7 @@ describe('AgentConfigService', () => {
 			};
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 
-			await service.updateConfig(agentId, projectId, configWithGoals);
+			await service.updateConfig(agentId, projectId, configWithGoals, user, byUser);
 
 			const savedSchema = (agentRepository.save.mock.calls.at(-1)?.[0] as Agent).schema;
 			expect(savedSchema?.slots).toEqual(configWithGoals.slots);
@@ -396,10 +396,16 @@ describe('AgentConfigService', () => {
 			// A later partial save that omits slots/goals must not wipe them.
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: savedSchema }));
 
-			await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				instructions: 'Updated',
-			});
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					instructions: 'Updated',
+				},
+				user,
+				byUser,
+			);
 
 			const preservedSchema = (agentRepository.save.mock.calls.at(-1)?.[0] as Agent).schema;
 			expect(preservedSchema?.slots).toEqual(configWithGoals.slots);

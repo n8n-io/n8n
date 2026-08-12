@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { computed, onBeforeUnmount, ref } from 'vue';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentGoalConfig, AgentSlotConfig, GoalStatus } from '@n8n/api-types';
 
 import type { GoalGraphLiveState, ToolExecState } from '../../composables/useAgentChatStream';
+import { wouldCreateCycle } from './goalGraphEdit';
 import {
 	computeGoalGraphLayout,
 	GOAL_SIZE,
@@ -14,10 +15,21 @@ import {
 	type Point,
 } from './goalGraphLayout';
 
-const props = defineProps<{
-	goals: AgentGoalConfig[];
-	slots: AgentSlotConfig[];
-	state: GoalGraphLiveState;
+const props = withDefaults(
+	defineProps<{
+		goals: AgentGoalConfig[];
+		slots: AgentSlotConfig[];
+		state: GoalGraphLiveState;
+		editable?: boolean;
+	}>(),
+	{ editable: false },
+);
+
+const emit = defineEmits<{
+	'edit-goal': [goalId: string];
+	'add-goal': [];
+	connect: [payload: { from: string; to: string }];
+	'remove-edge': [payload: { from: string; to: string }];
 }>();
 
 const i18n = useI18n();
@@ -89,7 +101,8 @@ interface EdgeView {
 	satisfied: boolean;
 }
 
-const mainEdges = computed<EdgeView[]>(() => {
+// Trigger → root edges are derived from the graph shape and never editable.
+const triggerEdges = computed<EdgeView[]>(() => {
 	const out: EdgeView[] = [];
 	for (const rootId of layout.value.roots) {
 		const to = layout.value.goals[rootId];
@@ -101,6 +114,25 @@ const mainEdges = computed<EdgeView[]>(() => {
 			});
 		}
 	}
+	return out;
+});
+
+interface GoalEdgeView extends EdgeView {
+	from: string;
+	to: string;
+	mid: Point;
+}
+
+// Exact midpoint (t = 0.5) of the cubic produced by edgePath.
+function edgeMidpoint(from: Point, to: Point): Point {
+	const fx = from.x + GOAL_SIZE / 2;
+	const tx = to.x - GOAL_SIZE / 2;
+	const mid = (fx + tx) / 2;
+	return { x: (fx + 6 * mid + tx) / 8, y: (from.y + to.y) / 2 };
+}
+
+const goalEdges = computed<GoalEdgeView[]>(() => {
+	const out: GoalEdgeView[] = [];
 	for (const goal of props.goals) {
 		const to = layout.value.goals[goal.id];
 		if (!to) continue;
@@ -111,11 +143,103 @@ const mainEdges = computed<EdgeView[]>(() => {
 				id: `${req}::${goal.id}`,
 				d: edgePath(from, to),
 				satisfied: statusOf(req) === 'achieved',
+				from: req,
+				to: goal.id,
+				mid: edgeMidpoint(from, to),
 			});
 		}
 	}
 	return out;
 });
+
+const hoveredEdgeId = ref<string | null>(null);
+
+function onRemoveEdge(edge: GoalEdgeView) {
+	hoveredEdgeId.value = null;
+	emit('remove-edge', { from: edge.from, to: edge.to });
+}
+
+// --- drag-to-connect ---
+
+const graphEl = ref<HTMLDivElement>();
+
+interface ConnectDrag {
+	fromId: string;
+	x: number;
+	y: number;
+	targetId: string | null;
+	valid: boolean;
+}
+
+const drag = ref<ConnectDrag | null>(null);
+// A click fires on the goal node right after a connect-drag's pointerup lands
+// on it; suppress that one so it doesn't open the property editor.
+let justDragged = false;
+
+function graphPoint(event: PointerEvent): Point {
+	const rect = graphEl.value?.getBoundingClientRect();
+	return rect ? { x: event.clientX - rect.left, y: event.clientY - rect.top } : { x: 0, y: 0 };
+}
+
+function startConnect(fromId: string, event: PointerEvent) {
+	if (!props.editable) return;
+	const { x, y } = graphPoint(event);
+	drag.value = { fromId, x, y, targetId: null, valid: false };
+	window.addEventListener('pointermove', onConnectMove);
+	window.addEventListener('pointerup', onConnectEnd);
+	window.addEventListener('keydown', onConnectKeydown);
+}
+
+function onConnectMove(event: PointerEvent) {
+	if (!drag.value) return;
+	const { x, y } = graphPoint(event);
+	const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-goal-id]');
+	const targetId = target?.getAttribute('data-goal-id') ?? null;
+	const valid =
+		targetId !== null &&
+		targetId !== drag.value.fromId &&
+		!(props.goals.find((g) => g.id === targetId)?.requires ?? []).includes(drag.value.fromId) &&
+		!wouldCreateCycle(props.goals, drag.value.fromId, targetId);
+	drag.value = { ...drag.value, x, y, targetId, valid };
+}
+
+function onConnectEnd() {
+	if (drag.value?.targetId && drag.value.valid) {
+		emit('connect', { from: drag.value.fromId, to: drag.value.targetId });
+	}
+	cancelConnect();
+}
+
+function onConnectKeydown(event: KeyboardEvent) {
+	if (event.key === 'Escape') cancelConnect();
+}
+
+function cancelConnect() {
+	drag.value = null;
+	justDragged = true;
+	setTimeout(() => {
+		justDragged = false;
+	}, 0);
+	window.removeEventListener('pointermove', onConnectMove);
+	window.removeEventListener('pointerup', onConnectEnd);
+	window.removeEventListener('keydown', onConnectKeydown);
+}
+
+onBeforeUnmount(cancelConnect);
+
+const dragPathD = computed(() => {
+	if (!drag.value) return null;
+	const from = layout.value.goals[drag.value.fromId];
+	if (!from) return null;
+	const fx = from.x + GOAL_SIZE / 2;
+	const mid = (fx + drag.value.x) / 2;
+	return `M ${fx},${from.y} C ${mid},${from.y} ${mid},${drag.value.y} ${drag.value.x},${drag.value.y}`;
+});
+
+function onGoalClick(goalId: string) {
+	if (!props.editable || justDragged) return;
+	emit('edit-goal', goalId);
+}
 
 // Dashed goal → tool links (the AI sub-node pattern) + diamond ports.
 const toolLinks = computed(() => {
@@ -164,9 +288,21 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 </script>
 
 <template>
-	<div :class="$style.root" data-testid="agent-goal-graph-canvas">
+	<div :class="[$style.root, drag && $style.dragging]" data-testid="agent-goal-graph-canvas">
+		<N8nButton
+			v-if="editable"
+			variant="subtle"
+			size="small"
+			:class="$style.addGoalBtn"
+			data-testid="goal-graph-add-goal"
+			@click="emit('add-goal')"
+		>
+			<template #icon><N8nIcon icon="plus" :size="16" /></template>
+			{{ i18n.baseText('agents.goalGraph.addGoal') }}
+		</N8nButton>
 		<div :class="$style.scroll">
 			<div
+				ref="graphEl"
 				:class="$style.graph"
 				:style="{ width: `${layout.width}px`, height: `${layout.height}px` }"
 			>
@@ -196,7 +332,7 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 						</marker>
 					</defs>
 					<path
-						v-for="edge in mainEdges"
+						v-for="edge in triggerEdges"
 						:key="edge.id"
 						:d="edge.d"
 						fill="none"
@@ -204,6 +340,43 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 						:stroke="edge.satisfied ? 'var(--color--success)' : 'var(--color--foreground--shade-1)'"
 						:marker-end="edge.satisfied ? 'url(#ggArrowOn)' : 'url(#ggArrowOff)'"
 					/>
+					<g
+						v-for="edge in goalEdges"
+						:key="edge.id"
+						:class="hoveredEdgeId === edge.id && $style.edgeHovered"
+					>
+						<path
+							:d="edge.d"
+							fill="none"
+							stroke-width="2"
+							:class="$style.edgeVisible"
+							:stroke="
+								edge.satisfied ? 'var(--color--success)' : 'var(--color--foreground--shade-1)'
+							"
+							:marker-end="edge.satisfied ? 'url(#ggArrowOn)' : 'url(#ggArrowOff)'"
+						/>
+						<template v-if="editable">
+							<path
+								:d="edge.d"
+								fill="none"
+								stroke="transparent"
+								stroke-width="16"
+								:class="$style.edgeHit"
+								data-testid="goal-graph-edge-hit"
+								@mouseenter="hoveredEdgeId = edge.id"
+								@mouseleave="hoveredEdgeId = null"
+								@click="onRemoveEdge(edge)"
+							/>
+							<g
+								v-if="hoveredEdgeId === edge.id"
+								:class="$style.edgeDelete"
+								:transform="`translate(${edge.mid.x}, ${edge.mid.y})`"
+							>
+								<circle r="9" />
+								<path d="M-3.5,-3.5 L3.5,3.5 M3.5,-3.5 L-3.5,3.5" />
+							</g>
+						</template>
+					</g>
 					<path
 						v-for="link in toolLinks"
 						:key="link.id"
@@ -225,6 +398,14 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 						fill="var(--node--color--background)"
 						stroke="var(--color--foreground--shade-1)"
 						stroke-width="1.5"
+					/>
+					<path
+						v-if="dragPathD"
+						:d="dragPathD"
+						fill="none"
+						stroke="var(--color--primary)"
+						stroke-width="2"
+						stroke-dasharray="6,6"
 					/>
 				</svg>
 
@@ -262,8 +443,17 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 				<!-- Goals -->
 				<template v-for="node in goalNodes" :key="node.id">
 					<div
-						:class="[$style.node, $style.goal, $style[node.status]]"
+						:class="[
+							$style.node,
+							$style.goal,
+							$style[node.status],
+							editable && $style.interactive,
+							drag?.targetId === node.id && (drag.valid ? $style.dropTarget : $style.dropInvalid),
+						]"
+						:data-goal-id="node.id"
+						data-testid="goal-graph-goal-node"
 						:style="{ left: `${node.x - GOAL_SIZE / 2}px`, top: `${node.y - GOAL_SIZE / 2}px` }"
+						@click="onGoalClick(node.id)"
 					>
 						<svg
 							viewBox="0 0 40 40"
@@ -285,6 +475,13 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 						<span v-else-if="node.status === 'locked'" :class="[$style.badge, $style.badgeLocked]"
 							>🔒</span
 						>
+						<span
+							v-if="editable"
+							:class="$style.port"
+							data-testid="goal-graph-port"
+							@pointerdown.stop.prevent="startConnect(node.id, $event)"
+							@click.stop
+						/>
 					</div>
 					<div
 						:class="$style.label"
@@ -308,7 +505,7 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 							tool.execState === 'running' && $style.running,
 							tool.execState === 'done' && $style.done,
 							tool.execState === 'error' && $style.errored,
-							!tool.available && !tool.execState && $style.toolDim,
+							runStarted && !tool.available && !tool.execState && $style.toolDim,
 						]"
 						:style="{ left: `${tool.x - TOOL_SIZE / 2}px`, top: `${tool.y - TOOL_SIZE / 2}px` }"
 					>
@@ -709,5 +906,90 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 	color: var(--color--text--tint-2);
 	background: transparent;
 	padding-left: 0;
+}
+
+/* --- editing affordances (rendered only when `editable`) --- */
+
+.addGoalBtn {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: var(--spacing--sm);
+	z-index: 1;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.interactive {
+	cursor: pointer;
+
+	&:hover {
+		border-color: var(--color--primary);
+	}
+}
+
+.port {
+	position: absolute;
+	right: -8px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: var(--node--color--background, #fff);
+	border: 2px solid var(--color--foreground--shade-1);
+	cursor: crosshair;
+
+	&:hover {
+		border-color: var(--color--primary);
+		background: var(--color--primary);
+	}
+}
+
+/* Defined after the status classes so they win the border-color tie. */
+.dropTarget {
+	border-color: var(--color--primary);
+	box-shadow: 0 0 0 4px rgba(255, 109, 90, 0.25);
+}
+
+.dropInvalid {
+	border-color: var(--color--danger);
+	cursor: not-allowed;
+}
+
+.dragging {
+	user-select: none;
+	cursor: crosshair;
+
+	/* Keep edge hit-areas from shadowing elementFromPoint near nodes. */
+	.edgeHit {
+		pointer-events: none;
+	}
+}
+
+.edgeVisible {
+	transition: stroke 0.15s;
+}
+
+/* The SVG root has pointer-events: none; hit paths opt back in. */
+.edgeHit {
+	pointer-events: stroke;
+	cursor: pointer;
+}
+
+.edgeHovered .edgeVisible {
+	stroke: var(--color--danger);
+}
+
+.edgeDelete {
+	pointer-events: none;
+
+	circle {
+		fill: var(--color--danger);
+	}
+
+	path {
+		stroke: #fff;
+		stroke-width: 2;
+		stroke-linecap: round;
+	}
 }
 </style>
