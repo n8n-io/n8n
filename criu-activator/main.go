@@ -1,25 +1,34 @@
-// criu-activator milestone 1: run n8n 1s → criu dump → wait 5s → restore → repeat.
-// Runs as PID 1 (root) in a privileged container with criu installed.
+// criu-activator milestone 2: scale-to-zero proxy for n8n.
+//
+// The activator (PID 1, root) owns :5678. n8n listens internally on :5680.
+// n8n starts, gets dumped once healthy, and stays dumped until a request
+// arrives; then it's restored, the request is proxied, and after idleTimeout
+// with no in-flight requests it's dumped again.
 package main
 
 import (
 	"fmt"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"runtime"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
 )
 
 const (
-	healthzURL = "http://127.0.0.1:5678/healthz"
+	listenAddr = ":5678"
+	n8nPort    = "5680"
+	n8nURL     = "http://127.0.0.1:" + n8nPort
 	imgDir     = "/tmp/n8n-img"
 	n8nLog     = "/tmp/n8n.log"
-	runFor     = 1 * time.Second
-	pauseFor   = 5 * time.Second
 )
+
+var idleTimeout = 10 * time.Second
 
 var criuFlags = []string{"--tcp-established", "--file-locks", "--ext-unix-sk"}
 
@@ -28,12 +37,21 @@ func main() {
 		childStage()
 		return
 	}
+	if v := os.Getenv("IDLE_TIMEOUT"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			fatal("bad IDLE_TIMEOUT %q: %v", v, err)
+		}
+		idleTimeout = d
+	}
 	supervisor()
 }
 
-// childStage: install seccomp filter denying io_uring_setup (privileged
+// --- child stage: seccomp-deny io_uring_setup, then exec n8n ------------
+
+// childStage installs a seccomp filter denying io_uring_setup (privileged
 // containers run seccomp-unconfined, so node would create io_uring rings
-// that criu cannot dump), then exec n8n in place.
+// that criu cannot dump), then execs n8n in place.
 func childStage() {
 	runtime.LockOSThread() // execve inherits the calling thread's seccomp filter
 	if err := installIoUringDeny(); err != nil {
@@ -89,35 +107,134 @@ func installIoUringDeny() error {
 	return nil
 }
 
+// --- supervisor ----------------------------------------------------------
+
+type state int
+
+const (
+	running state = iota
+	dumped
+)
+
+type supervisorState struct {
+	mu           sync.Mutex
+	state        state
+	pid          int
+	inflight     int
+	lastActivity time.Time
+}
+
+var sup supervisorState
+
 func supervisor() {
-	logf("starting n8n")
+	logf("starting n8n (idle timeout %v)", idleTimeout)
 	pid, err := startN8N()
 	if err != nil {
 		fatal("start n8n: %v", err)
 	}
-	logf("n8n pid=%d, waiting for healthz", pid)
+	sup.pid = pid
+	sup.state = running
+	sup.lastActivity = time.Now()
 	waitHealthy(120 * time.Second)
-	logf("n8n healthy")
+	logf("n8n healthy (pid %d), dumping until first request", pid)
 
-	for cycle := 1; ; cycle++ {
-		time.Sleep(runFor)
-
-		t := time.Now()
-		if err := dump(pid); err != nil {
-			fatal("cycle %d dump: %v\n--- dump.log tail ---\n%s", cycle, err, tail(imgDir+"/dump.log", 4000))
-		}
-		reapAll()
-		logf("cycle %d: dumped in %v (image %s)", cycle, time.Since(t).Round(time.Millisecond), duSh(imgDir))
-
-		time.Sleep(pauseFor)
-
-		t = time.Now()
-		if err := restore(); err != nil {
-			fatal("cycle %d restore: %v\n--- restore.log tail ---\n%s", cycle, err, tail(imgDir+"/restore.log", 4000))
-		}
-		waitHealthy(30 * time.Second)
-		logf("cycle %d: restored to healthy in %v", cycle, time.Since(t).Round(time.Millisecond))
+	sup.mu.Lock()
+	if err := dumpLocked(); err != nil {
+		sup.mu.Unlock()
+		fatal("initial dump: %v\n--- dump.log tail ---\n%s", err, tail(imgDir+"/dump.log", 4000))
 	}
+	sup.mu.Unlock()
+
+	go idleWatcher()
+
+	target, _ := url.Parse(n8nURL)
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.FlushInterval = -1 // stream SSE/push immediately
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		logf("proxy error for %s %s: %v", r.Method, r.URL.Path, err)
+		http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := ensureRunningAndTrack(); err != nil {
+			logf("wake failed for %s %s: %v\n--- restore.log tail ---\n%s", r.Method, r.URL.Path, err, tail(imgDir+"/restore.log", 4000))
+			http.Error(w, "restore failed: "+err.Error(), http.StatusServiceUnavailable)
+			return
+		}
+		defer requestDone()
+		proxy.ServeHTTP(w, r)
+	})
+
+	logf("proxy listening on %s", listenAddr)
+	if err := http.ListenAndServe(listenAddr, handler); err != nil {
+		fatal("listen: %v", err)
+	}
+}
+
+// ensureRunningAndTrack restores n8n if dumped and registers an in-flight
+// request. Concurrent requests during a restore queue on the mutex; the
+// first one pays the restore, the rest see state==running.
+func ensureRunningAndTrack() error {
+	sup.mu.Lock()
+	defer sup.mu.Unlock()
+	if sup.state == dumped {
+		t := time.Now()
+		if err := restoreLocked(); err != nil {
+			return err
+		}
+		logf("restored on demand in %v", time.Since(t).Round(time.Millisecond))
+	}
+	sup.inflight++
+	sup.lastActivity = time.Now()
+	return nil
+}
+
+func requestDone() {
+	sup.mu.Lock()
+	sup.inflight--
+	sup.lastActivity = time.Now()
+	sup.mu.Unlock()
+}
+
+func idleWatcher() {
+	for range time.Tick(time.Second) {
+		sup.mu.Lock()
+		if sup.state == running && sup.inflight == 0 && time.Since(sup.lastActivity) > idleTimeout {
+			t := time.Now()
+			if err := dumpLocked(); err != nil {
+				sup.mu.Unlock()
+				fatal("idle dump: %v\n--- dump.log tail ---\n%s", err, tail(imgDir+"/dump.log", 4000))
+			}
+			logf("idle %v → dumped in %v (image %s)", idleTimeout, time.Since(t).Round(time.Millisecond), duSh(imgDir))
+		}
+		sup.mu.Unlock()
+	}
+}
+
+// dumpLocked checkpoints the n8n tree and kills it. Caller holds sup.mu.
+func dumpLocked() error {
+	os.RemoveAll(imgDir)
+	if err := os.MkdirAll(imgDir, 0o755); err != nil {
+		return err
+	}
+	args := append([]string{"dump", "-t", fmt.Sprint(sup.pid), "-D", imgDir, "-o", "dump.log"}, criuFlags...)
+	if err := runCriu(args); err != nil {
+		return err
+	}
+	reapAll()
+	sup.state = dumped
+	return nil
+}
+
+// restoreLocked restores the n8n tree and waits for it to serve. Caller holds sup.mu.
+func restoreLocked() error {
+	args := append([]string{"restore", "-d", "-D", imgDir, "-o", "restore.log"}, criuFlags...)
+	if err := runCriu(args); err != nil {
+		return err
+	}
+	sup.state = running
+	waitHealthy(30 * time.Second)
+	return nil
 }
 
 func startN8N() (int, error) {
@@ -136,6 +253,8 @@ func startN8N() (int, error) {
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 	cmd.Env = append(os.Environ(),
+		"N8N_PORT="+n8nPort,
+		"N8N_LISTEN_ADDRESS=127.0.0.1",  // only the activator proxy is reachable from outside
 		"N8N_DIAGNOSTICS_ENABLED=false", // fewer outbound sockets at dump time
 		"N8N_VERSION_NOTIFICATIONS_ENABLED=false",
 	)
@@ -146,20 +265,6 @@ func startN8N() (int, error) {
 	pid := cmd.Process.Pid
 	go cmd.Wait() // reap the direct child when the first dump kills it
 	return pid, nil
-}
-
-func dump(pid int) error {
-	os.RemoveAll(imgDir)
-	if err := os.MkdirAll(imgDir, 0o755); err != nil {
-		return err
-	}
-	args := append([]string{"dump", "-t", fmt.Sprint(pid), "-D", imgDir, "-o", "dump.log"}, criuFlags...)
-	return runCriu(args)
-}
-
-func restore() error {
-	args := append([]string{"restore", "-d", "-D", imgDir, "-o", "restore.log"}, criuFlags...)
-	return runCriu(args)
 }
 
 func runCriu(args []string) error {
@@ -185,14 +290,14 @@ func waitHealthy(timeout time.Duration) {
 	client := &http.Client{Timeout: 500 * time.Millisecond}
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		resp, err := client.Get(healthzURL)
+		resp, err := client.Get(n8nURL + "/healthz")
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == 200 {
 				return
 			}
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 	fatal("healthz not ok within %v; n8n log tail:\n%s", timeout, tail(n8nLog, 2000))
 }
