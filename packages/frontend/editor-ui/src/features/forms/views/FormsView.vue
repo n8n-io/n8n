@@ -16,7 +16,6 @@ import { N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { FORMS_WORKFLOW_VIEW } from '../constants';
 import { useI18n } from '@n8n/i18n';
 
 const workflowsListStore = useWorkflowsListStore();
@@ -31,13 +30,13 @@ interface FormsFilters extends BaseFilters {
 }
 
 // Intercept WorkflowCard's built-in navigation to VIEWS.WORKFLOW so clicking a
-// card opens the form preview instead of the workflow editor. The guard is
-// installed while this view is mounted and removed on unmount.
+// card lands directly on the workflow's Form tab. The guard is installed while
+// this view is mounted and removed on unmount.
 let removeGuard: (() => void) | undefined;
 onMounted(() => {
 	removeGuard = router.beforeEach((to) => {
 		if (to.name === VIEWS.WORKFLOW && to.params.workflowId) {
-			return { name: FORMS_WORKFLOW_VIEW, params: { workflowId: to.params.workflowId } };
+			return { name: VIEWS.WORKFLOW_FORMS, params: { workflowId: to.params.workflowId } };
 		}
 		return true;
 	});

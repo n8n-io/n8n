@@ -1,14 +1,13 @@
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
-import { FORMS_VIEW, FORMS_WORKFLOW_VIEW } from './constants';
+import { FORMS_VIEW } from './constants';
 
 const FormsView = async () => await import('./views/FormsView.vue');
-const FormsWorkflowView = async () => await import('./views/FormsWorkflowView.vue');
 
 export const FormsModule: FrontendModuleDescription = {
 	id: 'forms',
 	name: 'Forms',
-	description: 'Browse and interact with form-based workflows.',
+	description: 'Browse form-trigger workflows.',
 	icon: 'form',
 	routes: [
 		{
@@ -26,17 +25,6 @@ export const FormsModule: FrontendModuleDescription = {
 					void insightsStore.weeklySummary.execute();
 				}
 				next();
-			},
-		},
-		{
-			name: FORMS_WORKFLOW_VIEW,
-			path: '/home/forms/:workflowId',
-			component: FormsWorkflowView,
-			meta: {
-				layout: 'workflow',
-				keepWorkflowAlive: true,
-				middleware: ['authenticated'],
-				formsOnlyView: true,
 			},
 		},
 	],

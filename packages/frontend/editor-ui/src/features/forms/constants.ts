@@ -1,5 +1,4 @@
 export const FORMS_VIEW = 'forms';
-export const FORMS_WORKFLOW_VIEW = 'forms-workflow';
 
 /** Outer wrapper width (px) of the FormStepCard. Must match the CSS and the canvas X-offset calculation. */
 export const FORM_STEP_WIDTH = 228;

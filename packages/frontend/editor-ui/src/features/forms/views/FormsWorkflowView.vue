@@ -11,13 +11,12 @@ import {
 } from '@/app/constants';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useFormsLayout } from '../composables/useFormsLayout';
-import { FORM_STEP_NON_FORM_NODE_SCALE, FORMS_WORKFLOW_VIEW } from '../constants';
-import { N8nButton, N8nLoading } from '@n8n/design-system';
+import { FORM_STEP_NON_FORM_NODE_SCALE } from '../constants';
+import { N8nLoading } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useUIStore } from '@/app/stores/ui.store';
 
-const route = useRoute();
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -42,8 +41,6 @@ onMounted(() => {
 	loading.value = false;
 });
 
-const showOpenWorkflowButton = computed(() => route.name === FORMS_WORKFLOW_VIEW);
-
 const nonFormNodeIds = computed(() =>
 	workflowDocumentStore.value.allNodes.filter((n) => !FORM_NODE_TYPES.has(n.type)).map((n) => n.id),
 );
@@ -55,13 +52,6 @@ const nonFormNodeCss = computed(() => {
 		.join(', ');
 	return `${selectors} { opacity: 0.5; transform: scale(${FORM_STEP_NON_FORM_NODE_SCALE}); transform-origin: center center; }`;
 });
-
-function openWorkflow() {
-	void router.push({
-		name: VIEWS.WORKFLOW,
-		params: { workflowId: workflowsStore.workflowId },
-	});
-}
 
 function onNodeActivated(nodeId: string, event?: MouseEvent) {
 	if (event?.type === 'dblclick') {
@@ -98,9 +88,6 @@ function onNodeActivated(nodeId: string, event?: MouseEvent) {
 						pattern-color="color-mix(in srgb, var(--canvas--dot--color) 8%, transparent)"
 					/>
 				</template>
-				<div v-if="showOpenWorkflowButton" :class="$style.canvasButtons">
-					<N8nButton variant="subtle" size="large" @click="openWorkflow"> Open workflow </N8nButton>
-				</div>
 			</WorkflowCanvas>
 		</div>
 	</div>
@@ -124,18 +111,5 @@ function onNodeActivated(nodeId: string, event?: MouseEvent) {
 
 .canvasVisible {
 	opacity: 1;
-}
-
-.canvasButtons {
-	position: absolute;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	gap: var(--spacing--xs);
-	left: 50%;
-	transform: translateX(-50%);
-	bottom: var(--spacing--sm);
-	width: auto;
-	pointer-events: all;
 }
 </style>
