@@ -632,7 +632,11 @@ onBeforeUnmount(() => {
 
 .mapper {
 	height: 100%;
-	overflow: auto;
+	// Schema rows carry long values; let them truncate rather than scroll the
+	// whole flyout sideways.
+	overflow-x: hidden;
+	overflow-y: auto;
+	min-width: 0;
 	padding: var(--spacing--2xs);
 	background: var(--background--surface);
 }

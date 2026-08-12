@@ -123,8 +123,10 @@
 // class and no content until a tooltip is actually shown. With several expression
 // editors on screen they stack up as small white boxes in the corner. The
 // container is zero-sized, so an empty direct child is never real content.
+// !important is load-bearing: CodeMirror sets the host's display inline, and
+// without it these reappear as 10x32 white boxes.
 #cm-tooltip-container > :empty {
-	display: none;
+	display: none !important;
 }
 
 #cm-tooltip-container .cm-tooltip.cm-completionInfo,
