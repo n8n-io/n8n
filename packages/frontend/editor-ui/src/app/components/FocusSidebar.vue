@@ -120,13 +120,14 @@ const anchorStyle = computed(() => {
 		Math.max(ANCHOR_MARGIN, hostRect.height - maxHeight - ANCHOR_MARGIN),
 	);
 
+	// Explicit height, not auto: the panel's inner container is `height: 100%`, which
+	// resolves to zero against an auto-height parent and collapses it to a hairline.
 	return {
 		top: `${top}px`,
 		left: `${left}px`,
 		bottom: 'auto',
 		right: 'auto',
-		height: 'auto',
-		maxHeight: `${maxHeight}px`,
+		height: `${maxHeight}px`,
 	};
 });
 
