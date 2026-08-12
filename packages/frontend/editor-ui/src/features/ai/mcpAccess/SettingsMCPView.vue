@@ -34,7 +34,7 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
-const UNKNOWN_COUNT_VALUE = '—';
+import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
 
 const i18n = useI18n();
 const toast = useToast();

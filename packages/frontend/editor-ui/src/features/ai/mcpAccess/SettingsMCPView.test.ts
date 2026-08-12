@@ -14,7 +14,7 @@ import type { WorkflowListItem } from '@/Interface';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 
-const UNKNOWN_COUNT_VALUE = '—';
+import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
 const { hasPermissionMock } = vi.hoisted(() => ({
