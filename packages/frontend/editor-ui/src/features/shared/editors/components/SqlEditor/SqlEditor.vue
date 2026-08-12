@@ -32,6 +32,8 @@ import {
 } from '@n8n/codemirror-lang-sql';
 import { onClickOutside } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+import type { Resolvable } from '@/app/types/expressions';
+import { applyExpressionSuggestion } from '@/features/shared/editors/utils/applyExpressionSuggestion';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import {
 	expressionCloseBrackets,
@@ -202,6 +204,12 @@ async function onDrop(value: string, event: MouseEvent) {
 	await dropInExpressionEditor(toRaw(editor.value), event, value);
 }
 
+function onApplySuggestion(segment: Resolvable) {
+	if (!editor.value) return;
+
+	applyExpressionSuggestion(toRaw(editor.value), segment);
+}
+
 defineExpose({
 	focus,
 });
@@ -229,6 +237,7 @@ defineExpose({
 			:is-read-only="isReadOnly"
 			:visible="isFocused"
 			:virtual-ref="container"
+			@apply-suggestion="onApplySuggestion"
 		/>
 	</div>
 </template>

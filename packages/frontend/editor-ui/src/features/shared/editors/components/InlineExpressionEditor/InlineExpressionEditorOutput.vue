@@ -3,15 +3,15 @@ import type { EditorState, SelectionRange } from '@codemirror/state';
 
 import { useI18n } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import type { Segment } from '@/app/types/expressions';
-import { onBeforeUnmount, useTemplateRef } from 'vue';
+import type { Resolvable, Segment } from '@/app/types/expressions';
+import { computed, onBeforeUnmount, useTemplateRef } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
 import { useStyles } from '@n8n/composables/useStyles';
 
-import { N8nPopover, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nPopover, N8nText } from '@n8n/design-system';
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
 	unresolvedExpression?: string;
@@ -22,12 +22,25 @@ interface InlineExpressionEditorOutputProps {
 	virtualRef?: HTMLElement;
 }
 
-withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
+const props = withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	editorState: undefined,
 	selection: undefined,
 	isReadOnly: false,
 	unresolvedExpression: undefined,
 });
+
+const emit = defineEmits<{
+	applySuggestion: [segment: Resolvable];
+}>();
+
+const diagnosisSegment = computed(() =>
+	props.segments.find((s): s is Resolvable => s.kind === 'resolvable' && s.diagnosis !== undefined),
+);
+const diagnosis = computed(() => diagnosisSegment.value?.diagnosis);
+
+function onFixClick() {
+	if (diagnosisSegment.value) emit('applySuggestion', diagnosisSegment.value);
+}
 
 const i18n = useI18n();
 const theme = outputTheme();
@@ -76,6 +89,27 @@ defineExpose({
 					>
 					</ExpressionOutput>
 				</N8nText>
+				<div v-if="diagnosis" :class="$style.diagnosis" data-test-id="expression-diagnosis">
+					<N8nText size="small" color="text-base">{{ diagnosis.message }}</N8nText>
+					<div v-if="diagnosis.suggestion" :class="$style.suggestionRow">
+						<N8nText size="small" color="text-base">
+							{{ i18n.baseText('expressionEditor.xray.didYouMean') }}
+							<code :class="$style.suggestion">{{
+								diagnosis.suggestionLabel ?? diagnosis.suggestion
+							}}</code
+							>?
+						</N8nText>
+						<N8nButton
+							v-if="!isReadOnly"
+							size="xsmall"
+							variant="outline"
+							data-test-id="expression-diagnosis-fix"
+							@click="onFixClick"
+						>
+							{{ i18n.baseText('expressionEditor.xray.fix') }}
+						</N8nButton>
+					</div>
+				</div>
 				<div v-if="!isReadOnly" :class="$style.footer">
 					<InlineExpressionTip
 						:editor-state="editorState"
@@ -121,6 +155,29 @@ defineExpose({
 
 	.footer {
 		border-top: var(--border);
+	}
+
+	.diagnosis {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing--4xs);
+		border-top: var(--border);
+		padding: var(--spacing--2xs);
+	}
+
+	.suggestionRow {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--spacing--2xs);
+	}
+
+	.suggestion {
+		font-size: var(--font-size--2xs);
+		color: var(--color--text--shade-1);
+		background: var(--color--background);
+		padding: 0 var(--spacing--4xs);
+		border-radius: var(--radius--3xs);
 	}
 
 	.header {
