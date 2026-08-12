@@ -10,6 +10,7 @@
 
 import { $, echo, fs, chalk } from 'zx';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
@@ -22,7 +23,8 @@ const excludeTestController =
 $.verbose = !isCI;
 process.env.FORCE_COLOR = isCI ? '0' : '1';
 
-const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+// fileURLToPath (not URL.pathname) so paths with spaces stay valid
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const isInScriptsDir = path.basename(scriptDir) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 
