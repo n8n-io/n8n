@@ -9,6 +9,7 @@ import type {
 	CanvasNodeEventBusEvents,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
+	CanvasVirtualization,
 	ConnectStartEvent,
 } from '@/features/workflows/canvas/canvas.types';
 import type { ExecutionOutputMapData } from '@/app/types/executionData';
@@ -25,7 +26,13 @@ import {
 } from '@/features/workflows/canvas/stores/canvasNodeGroups.constants';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import type { GraphEdge, GraphNode, ViewportTransform } from '@vue-flow/core';
+import type {
+	Dimensions,
+	GraphEdge,
+	GraphNode,
+	ViewportTransform,
+	XYPosition,
+} from '@vue-flow/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 
@@ -182,12 +189,20 @@ export function createCanvasNodeProps({
 	label = 'Test Node',
 	selected = false,
 	readOnly = false,
+	position = { x: 0, y: 0 },
+	dimensions = { width: 96, height: 96 },
+	dragging = false,
+	resizing = false,
 	data = {},
 }: {
 	id?: string;
 	label?: string;
 	selected?: boolean;
 	readOnly?: boolean;
+	position?: XYPosition;
+	dimensions?: Dimensions;
+	dragging?: boolean;
+	resizing?: boolean;
 	data?: Partial<CanvasNodeData>;
 } = {}) {
 	return {
@@ -195,6 +210,10 @@ export function createCanvasNodeProps({
 		label,
 		selected,
 		readOnly,
+		position,
+		dimensions,
+		dragging,
+		resizing,
 		data: createCanvasNodeData(data),
 	};
 }
@@ -204,11 +223,16 @@ export function createCanvasProvide({
 	isExecuting = false,
 	connectingHandle = undefined,
 	viewport = { x: 0, y: 0, zoom: 1 },
+	virtualization = {
+		active: computed(() => false),
+		frame: ref({ rect: { x: 0, y: 0, width: 0, height: 0 }, zoom: 1 }),
+	},
 }: {
 	initialized?: boolean;
 	isExecuting?: boolean;
 	connectingHandle?: ConnectStartEvent;
 	viewport?: ViewportTransform;
+	virtualization?: CanvasVirtualization;
 } = {}) {
 	return {
 		[String(CanvasKey)]: {
@@ -218,6 +242,7 @@ export function createCanvasProvide({
 			viewport: ref(viewport),
 			isExperimentalNdvActive: computed(() => false),
 			isPaneMoving: ref(false),
+			virtualization,
 		} satisfies CanvasInjectionData,
 	};
 }

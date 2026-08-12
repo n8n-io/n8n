@@ -241,6 +241,16 @@ export type CanvasConnectionCreateData = {
 	};
 };
 
+export interface ViewportCullingFrame {
+	rect: { x: number; y: number; width: number; height: number };
+	zoom: number;
+}
+
+export interface CanvasVirtualization {
+	active: ComputedRef<boolean>;
+	frame: Ref<ViewportCullingFrame>;
+}
+
 export interface CanvasInjectionData {
 	initialized: Ref<boolean>;
 	isExecuting: Ref<boolean | undefined>;
@@ -248,6 +258,7 @@ export interface CanvasInjectionData {
 	viewport: Ref<ViewportTransform>;
 	isExperimentalNdvActive: ComputedRef<boolean>;
 	isPaneMoving: Ref<boolean>;
+	virtualization: CanvasVirtualization;
 }
 
 export type CanvasNodeEventBusEvents = {
