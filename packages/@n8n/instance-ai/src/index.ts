@@ -601,6 +601,9 @@ export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermis
 export type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
+	InstanceAiFormService,
+	FormNodeSummary,
+	FormNodeAppearance,
 	InstanceAiExecutionService,
 	InstanceAiCredentialService,
 	InstanceAiNodeService,

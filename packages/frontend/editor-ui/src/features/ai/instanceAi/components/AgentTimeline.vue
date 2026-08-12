@@ -23,6 +23,7 @@ import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './P
 import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
+import InstanceAiFormPreview from './InstanceAiFormPreview.vue';
 
 const i18n = useI18n();
 const thread = useThread();
@@ -233,6 +234,27 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 }
 
 /** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
+/** Extract the rendered previews (one per form step) from a `forms` preview call. */
+function getFormPreviews(
+	tc: InstanceAiToolCallState,
+): Array<{ previewHtml: string; themeLabel?: string; nodeName?: string }> {
+	const result = (tc.result ?? {}) as Record<string, unknown>;
+	const previews = Array.isArray(result.previews) ? result.previews : [];
+	return previews.flatMap((p) => {
+		if (!p || typeof p !== 'object') return [];
+		const r = p as Record<string, unknown>;
+		if (typeof r.previewHtml !== 'string') return [];
+		return [
+			{
+				previewHtml: r.previewHtml,
+				...(typeof r.themeLabel === 'string' ? { themeLabel: r.themeLabel } : {}),
+				...(typeof r.nodeName === 'string' ? { nodeName: r.nodeName } : {}),
+			},
+		];
+	});
+}
+
+/** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
 function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefined {
 	if (!tasks?.tasks?.length) return undefined;
 	return tasks.tasks.map((t) => ({
@@ -283,6 +305,17 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 
 			<!-- Answered questions (read-only after resolution) -->
 			<AnsweredQuestions v-else-if="block.type === 'questions'" :tool-call="block.toolCall" />
+
+			<!-- Rendered form preview(s) (forms tool) — surfaced prominently, not buried.
+				 One card per form step. -->
+			<template v-else-if="block.type === 'form-preview'">
+				<InstanceAiFormPreview
+					v-for="(preview, i) in getFormPreviews(block.toolCall)"
+					:key="`${block.key}-${i}`"
+					v-bind="preview"
+					:class="$style.timelineItem"
+				/>
+			</template>
 
 			<!-- Child agent — flat section -->
 			<template v-else-if="block.type === 'child'">

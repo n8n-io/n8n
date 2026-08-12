@@ -365,6 +365,52 @@ export interface InstanceAiWorkflowService {
 	getLatestRunData?(workflowId: string): Promise<Record<string, ITaskData[]> | null>;
 }
 
+/** A form-capable node in a workflow (Form Trigger or Form node). */
+export interface FormNodeSummary {
+	nodeName: string;
+	nodeType: string;
+	isTrigger: boolean;
+	/** Matched preset id for the node's current appearance (via `resolveFormTheme`), or `'custom'`. */
+	preset: string;
+}
+
+/** Current appearance of a single form node, resolved for the LLM. */
+export interface FormNodeAppearance {
+	nodeName: string;
+	nodeType: string;
+	/** Parsed CSS-variable overrides from the node's `options.customCss`. */
+	overrides: Record<string, string>;
+	appendAttribution: boolean;
+	/** Matched preset id (via `resolveFormTheme`), or `'custom'`. */
+	preset: string;
+}
+
+/**
+ * Reads and mutates the appearance/theming of form-trigger workflows for the
+ * Instance AI `forms` tool. Shaped so field/structure editing can be added
+ * later without reworking the surface — appearance-only for v1.
+ */
+export interface InstanceAiFormService {
+	/** Resolve a single form node's current appearance. When `nodeName` is
+	 *  omitted, the Form Trigger (or first form node) is used. `null` when the
+	 *  workflow has no form node. */
+	getFormNode(workflowId: string, nodeName?: string): Promise<FormNodeAppearance | null>;
+	/** List every form-capable node in the workflow. */
+	listFormNodes(workflowId: string): Promise<FormNodeSummary[]>;
+	/** The workflow's display name — used to surface it as an artifact. `null` if not found. */
+	getWorkflowName(workflowId: string): Promise<string | null>;
+	/** Write assembled `customCss` + `appendAttribution` onto the target node(s). */
+	applyAppearance(
+		workflowId: string,
+		params: { nodeNames: string[]; customCss: string; appendAttribution: boolean },
+	): Promise<{ updatedNodeNames: string[] }>;
+	/** Render a form node's appearance to HTML (optionally with proposed CSS). */
+	renderPreview(
+		workflowId: string,
+		params: { nodeName?: string; customCss?: string; isCompletion?: boolean },
+	): Promise<string>;
+}
+
 export interface ExecutionSummary {
 	id: string;
 	workflowId: string;
@@ -1049,6 +1095,7 @@ export interface InstanceAiContext {
 	 */
 	modelId?: ModelConfig;
 	workflowService: InstanceAiWorkflowService;
+	formService: InstanceAiFormService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
 	nodeService: InstanceAiNodeService;

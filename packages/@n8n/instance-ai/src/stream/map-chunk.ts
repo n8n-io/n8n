@@ -7,6 +7,7 @@ import {
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
 	channelConfigSchema,
+	formAppearanceConfirmationSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -344,6 +345,10 @@ function mapSuspendedChunk(
 		gatewayConfirmationRequiredPayloadSchema,
 	);
 	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
+	const formAppearance = parseSchemaRecord(
+		suspendPayload.formAppearance,
+		formAppearanceConfirmationSchema,
+	);
 	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
 		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
 		: undefined;
@@ -385,6 +390,7 @@ function mapSuspendedChunk(
 			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
+			...(formAppearance ? { formAppearance } : {}),
 		},
 	};
 }

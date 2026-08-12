@@ -1,7 +1,18 @@
 import type { BaseTextKey } from '@n8n/i18n';
+import {
+	FORM_CSS_VARIABLE_CONTROLS,
+	FORM_CSS_VARIABLE_DEFAULTS,
+	FORM_CSS_VARIABLE_GROUPS,
+	type FormCssVarType,
+	type FormCssVarGroup,
+} from 'n8n-workflow';
 
-export type CssVarType = 'color' | 'px' | 'text' | 'opacity';
-export type CssVarGroup = 'page' | 'form' | 'input' | 'button';
+// The editable CSS-variable catalog lives in `n8n-workflow` (`form-theme.ts`) so
+// it can be shared with the backend / Instance AI. The frontend only adds the
+// i18n label keys on top, keeping the shared catalog dependency-free.
+
+export type CssVarType = FormCssVarType;
+export type CssVarGroup = FormCssVarGroup;
 
 export interface CssVarControl {
 	variable: string;
@@ -11,267 +22,60 @@ export interface CssVarControl {
 	default: string;
 }
 
-export const CSS_VARIABLE_GROUPS: Array<{ key: CssVarGroup; labelKey: BaseTextKey }> = [
-	{ key: 'page', labelKey: 'formStep.appearance.group.page' },
-	{ key: 'form', labelKey: 'formStep.appearance.group.form' },
-	{ key: 'input', labelKey: 'formStep.appearance.group.input' },
-	{ key: 'button', labelKey: 'formStep.appearance.group.button' },
-];
+/** Maps each shared CSS variable to its i18n label key. */
+const CONTROL_LABEL_KEYS: Record<string, BaseTextKey> = {
+	'--font-family': 'formStep.appearance.control.fontFamily',
+	'--color-background': 'formStep.appearance.control.colorBackground',
+	'--container-width': 'formStep.appearance.control.containerWidth',
+	'--padding-container-top': 'formStep.appearance.control.paddingContainerTop',
+	'--color-card-bg': 'formStep.appearance.control.colorCardBg',
+	'--color-card-border': 'formStep.appearance.control.colorCardBorder',
+	'--color-header': 'formStep.appearance.control.colorHeader',
+	'--color-header-subtext': 'formStep.appearance.control.colorHeaderSubtext',
+	'--font-size-header': 'formStep.appearance.control.fontSizeHeader',
+	'--font-size-subheader': 'formStep.appearance.control.fontSizeSubheader',
+	'--border-radius-card': 'formStep.appearance.control.borderRadiusCard',
+	'--padding-card': 'formStep.appearance.control.paddingCard',
+	'--margin-bottom-card': 'formStep.appearance.control.marginBottomCard',
+	'--color-input-bg': 'formStep.appearance.control.colorInputBg',
+	'--color-label': 'formStep.appearance.control.colorLabel',
+	'--color-input-border': 'formStep.appearance.control.colorInputBorder',
+	'--color-input-text': 'formStep.appearance.control.colorInputText',
+	'--color-focus-border': 'formStep.appearance.control.colorFocusBorder',
+	'--color-error': 'formStep.appearance.control.colorError',
+	'--color-required': 'formStep.appearance.control.colorRequired',
+	'--font-size-label': 'formStep.appearance.control.fontSizeLabel',
+	'--font-size-input': 'formStep.appearance.control.fontSizeInput',
+	'--border-radius-input': 'formStep.appearance.control.borderRadiusInput',
+	'--padding-form-input': 'formStep.appearance.control.paddingFormInput',
+	'--font-size-body': 'formStep.appearance.control.fontSizeBody',
+	'--font-size-paragraph': 'formStep.appearance.control.fontSizeParagraph',
+	'--font-size-error': 'formStep.appearance.control.fontSizeError',
+	'--opacity-placeholder': 'formStep.appearance.control.opacityPlaceholder',
+	'--color-submit-btn-bg': 'formStep.appearance.control.colorSubmitBtnBg',
+	'--color-submit-btn-text': 'formStep.appearance.control.colorSubmitBtnText',
+	'--color-link': 'formStep.appearance.control.colorLink',
+	'--submit-btn-height': 'formStep.appearance.control.submitBtnHeight',
+	'--font-size-submit-btn': 'formStep.appearance.control.fontSizeSubmitBtn',
+	'--font-size-link': 'formStep.appearance.control.fontSizeLink',
+};
 
-export const CSS_VARIABLE_CONTROLS: CssVarControl[] = [
-	// ── Page ─────────────────────────────────────────────────────────────────
-	{
-		variable: '--font-family',
-		labelKey: 'formStep.appearance.control.fontFamily',
-		type: 'text',
-		group: 'page',
-		default: "'Open Sans', sans-serif",
-	},
-	{
-		variable: '--color-background',
-		labelKey: 'formStep.appearance.control.colorBackground',
-		type: 'color',
-		group: 'page',
-		default: '#fbfcfe',
-	},
-	{
-		variable: '--container-width',
-		labelKey: 'formStep.appearance.control.containerWidth',
-		type: 'px',
-		group: 'page',
-		default: '448px',
-	},
-	{
-		variable: '--padding-container-top',
-		labelKey: 'formStep.appearance.control.paddingContainerTop',
-		type: 'px',
-		group: 'page',
-		default: '24px',
-	},
+const GROUP_LABEL_KEYS: Record<CssVarGroup, BaseTextKey> = {
+	page: 'formStep.appearance.group.page',
+	form: 'formStep.appearance.group.form',
+	input: 'formStep.appearance.group.input',
+	button: 'formStep.appearance.group.button',
+};
 
-	// ── Form card ─────────────────────────────────────────────────────────────
-	// Colors
-	{
-		variable: '--color-card-bg',
-		labelKey: 'formStep.appearance.control.colorCardBg',
-		type: 'color',
-		group: 'form',
-		default: '#ffffff',
-	},
-	{
-		variable: '--color-card-border',
-		labelKey: 'formStep.appearance.control.colorCardBorder',
-		type: 'color',
-		group: 'form',
-		default: '#dbdfe7',
-	},
-	{
-		variable: '--color-header',
-		labelKey: 'formStep.appearance.control.colorHeader',
-		type: 'color',
-		group: 'form',
-		default: '#525356',
-	},
-	{
-		variable: '--color-header-subtext',
-		labelKey: 'formStep.appearance.control.colorHeaderSubtext',
-		type: 'color',
-		group: 'form',
-		default: '#7e8186',
-	},
-	// Sizes / structure
-	{
-		variable: '--font-size-header',
-		labelKey: 'formStep.appearance.control.fontSizeHeader',
-		type: 'px',
-		group: 'form',
-		default: '20px',
-	},
-	{
-		variable: '--font-size-subheader',
-		labelKey: 'formStep.appearance.control.fontSizeSubheader',
-		type: 'px',
-		group: 'form',
-		default: '14px',
-	},
-	{
-		variable: '--border-radius-card',
-		labelKey: 'formStep.appearance.control.borderRadiusCard',
-		type: 'px',
-		group: 'form',
-		default: '8px',
-	},
-	{
-		variable: '--padding-card',
-		labelKey: 'formStep.appearance.control.paddingCard',
-		type: 'px',
-		group: 'form',
-		default: '24px',
-	},
-	{
-		variable: '--margin-bottom-card',
-		labelKey: 'formStep.appearance.control.marginBottomCard',
-		type: 'px',
-		group: 'form',
-		default: '16px',
-	},
+export const CSS_VARIABLE_GROUPS: Array<{ key: CssVarGroup; labelKey: BaseTextKey }> =
+	FORM_CSS_VARIABLE_GROUPS.map((g) => ({ key: g.key, labelKey: GROUP_LABEL_KEYS[g.key] }));
 
-	// ── Input fields ──────────────────────────────────────────────────────────
-	// Colors
-	{
-		variable: '--color-input-bg',
-		labelKey: 'formStep.appearance.control.colorInputBg',
-		type: 'color',
-		group: 'input',
-		default: '#ffffff',
-	},
-	{
-		variable: '--color-label',
-		labelKey: 'formStep.appearance.control.colorLabel',
-		type: 'color',
-		group: 'input',
-		default: '#555555',
-	},
-	{
-		variable: '--color-input-border',
-		labelKey: 'formStep.appearance.control.colorInputBorder',
-		type: 'color',
-		group: 'input',
-		default: '#dbdfe7',
-	},
-	{
-		variable: '--color-input-text',
-		labelKey: 'formStep.appearance.control.colorInputText',
-		type: 'color',
-		group: 'input',
-		default: '#71747a',
-	},
-	{
-		variable: '--color-focus-border',
-		labelKey: 'formStep.appearance.control.colorFocusBorder',
-		type: 'color',
-		group: 'input',
-		default: '#5a4cc2',
-	},
-	{
-		variable: '--color-error',
-		labelKey: 'formStep.appearance.control.colorError',
-		type: 'color',
-		group: 'input',
-		default: '#ea1f30',
-	},
-	{
-		variable: '--color-required',
-		labelKey: 'formStep.appearance.control.colorRequired',
-		type: 'color',
-		group: 'input',
-		default: '#ff6d5a',
-	},
-	// Sizes / values
-	{
-		variable: '--font-size-label',
-		labelKey: 'formStep.appearance.control.fontSizeLabel',
-		type: 'px',
-		group: 'input',
-		default: '14px',
-	},
-	{
-		variable: '--font-size-input',
-		labelKey: 'formStep.appearance.control.fontSizeInput',
-		type: 'px',
-		group: 'input',
-		default: '14px',
-	},
-	{
-		variable: '--border-radius-input',
-		labelKey: 'formStep.appearance.control.borderRadiusInput',
-		type: 'px',
-		group: 'input',
-		default: '6px',
-	},
-	{
-		variable: '--padding-form-input',
-		labelKey: 'formStep.appearance.control.paddingFormInput',
-		type: 'px',
-		group: 'input',
-		default: '12px',
-	},
-	{
-		variable: '--font-size-body',
-		labelKey: 'formStep.appearance.control.fontSizeBody',
-		type: 'px',
-		group: 'input',
-		default: '12px',
-	},
-	{
-		variable: '--font-size-paragraph',
-		labelKey: 'formStep.appearance.control.fontSizeParagraph',
-		type: 'px',
-		group: 'input',
-		default: '14px',
-	},
-	{
-		variable: '--font-size-error',
-		labelKey: 'formStep.appearance.control.fontSizeError',
-		type: 'px',
-		group: 'input',
-		default: '12px',
-	},
-	{
-		variable: '--opacity-placeholder',
-		labelKey: 'formStep.appearance.control.opacityPlaceholder',
-		type: 'opacity',
-		group: 'input',
-		default: '0.5',
-	},
+export const CSS_VARIABLE_CONTROLS: CssVarControl[] = FORM_CSS_VARIABLE_CONTROLS.map((c) => ({
+	variable: c.variable,
+	labelKey: CONTROL_LABEL_KEYS[c.variable],
+	type: c.type,
+	group: c.group,
+	default: c.default,
+}));
 
-	// ── Button & links ────────────────────────────────────────────────────────
-	// Colors
-	{
-		variable: '--color-submit-btn-bg',
-		labelKey: 'formStep.appearance.control.colorSubmitBtnBg',
-		type: 'color',
-		group: 'button',
-		default: '#ff6d5a',
-	},
-	{
-		variable: '--color-submit-btn-text',
-		labelKey: 'formStep.appearance.control.colorSubmitBtnText',
-		type: 'color',
-		group: 'button',
-		default: '#ffffff',
-	},
-	{
-		variable: '--color-link',
-		labelKey: 'formStep.appearance.control.colorLink',
-		type: 'color',
-		group: 'button',
-		default: '#7e8186',
-	},
-	// Sizes
-	{
-		variable: '--submit-btn-height',
-		labelKey: 'formStep.appearance.control.submitBtnHeight',
-		type: 'px',
-		group: 'button',
-		default: '48px',
-	},
-	{
-		variable: '--font-size-submit-btn',
-		labelKey: 'formStep.appearance.control.fontSizeSubmitBtn',
-		type: 'px',
-		group: 'button',
-		default: '14px',
-	},
-	{
-		variable: '--font-size-link',
-		labelKey: 'formStep.appearance.control.fontSizeLink',
-		type: 'px',
-		group: 'button',
-		default: '12px',
-	},
-];
-
-export const CSS_VARIABLE_DEFAULTS: Record<string, string> = Object.fromEntries(
-	CSS_VARIABLE_CONTROLS.map((c) => [c.variable, c.default]),
-);
+export const CSS_VARIABLE_DEFAULTS: Record<string, string> = FORM_CSS_VARIABLE_DEFAULTS;

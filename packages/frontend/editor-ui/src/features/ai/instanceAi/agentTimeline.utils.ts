@@ -34,6 +34,7 @@ export type TimelineBlock =
 	| { type: 'tasks'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'form-preview'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'child'; key: string; child: InstanceAiAgentNode };
 
 type ToolCallKind =
@@ -42,7 +43,20 @@ type ToolCallKind =
 	| 'plan-review'
 	| 'questions'
 	| 'questions-pending'
+	| 'form-preview'
 	| 'trace';
+
+/** A completed `forms` preview carries rendered HTML (one entry per form step)
+ *  we surface as its own prominent block instead of burying it in the collapsed
+ *  thinking trace. */
+function isFormPreview(tc: InstanceAiToolCallState): boolean {
+	if (tc.toolName !== 'forms') return false;
+	if ((tc.args as Record<string, unknown> | undefined)?.action !== 'preview') return false;
+	const result = tc.result;
+	if (!result || typeof result !== 'object') return false;
+	const previews = (result as Record<string, unknown>).previews;
+	return Array.isArray(previews) && previews.length > 0;
+}
 
 /**
  * How a tool call renders in the timeline. `trace` rows join thinking blocks;
@@ -55,6 +69,7 @@ type ToolCallKind =
  */
 function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (HIDDEN_TOOLS.has(tc.toolName)) return 'hidden';
+	if (isFormPreview(tc)) return 'form-preview';
 	if (tc.renderHint === 'tasks') return 'tasks';
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
 	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
@@ -191,6 +206,9 @@ export function buildTimelineBlocks(
 				return;
 			case 'questions':
 				pushStandalone({ type: 'questions', key: `questions-${idx}`, toolCall: tc });
+				return;
+			case 'form-preview':
+				pushStandalone({ type: 'form-preview', key: `form-preview-${idx}`, toolCall: tc });
 				return;
 			case 'trace':
 				pushTrace(entry, idx);

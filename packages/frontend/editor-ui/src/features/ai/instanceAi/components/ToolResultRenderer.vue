@@ -10,6 +10,7 @@ import ToolResultCode from './ToolResultCode.vue';
 import ToolResultImage from './ToolResultImage.vue';
 import ToolResultFile from './ToolResultFile.vue';
 import ToolResultText from './ToolResultText.vue';
+import InstanceAiFormPreview from './InstanceAiFormPreview.vue';
 
 const props = defineProps<{
 	result: unknown;
@@ -17,7 +18,13 @@ const props = defineProps<{
 	toolArgs?: Record<string, unknown>;
 }>();
 
-type ResultType = 'content' | 'code' | 'table' | 'json';
+type ResultType = 'content' | 'code' | 'table' | 'json' | 'form-preview';
+
+interface FormPreviewItem {
+	previewHtml: string;
+	themeLabel?: string;
+	nodeName?: string;
+}
 type McpContentItem = McpToolCallResult['content'][number];
 
 function isAction(family: string, action: string): boolean {
@@ -111,7 +118,24 @@ function extractMcpContent(result: unknown): McpToolCallResult['content'] | null
 	return null;
 }
 
+function extractFormPreview(result: unknown): FormPreviewItem[] | null {
+	if (!isAction('forms', 'preview') || !isRecord(result)) return null;
+	if (!Array.isArray(result.previews)) return null;
+	const items = result.previews.flatMap((p): FormPreviewItem[] => {
+		if (!isRecord(p) || typeof p.previewHtml !== 'string' || p.previewHtml.length === 0) return [];
+		return [
+			{
+				previewHtml: p.previewHtml,
+				...(typeof p.themeLabel === 'string' ? { themeLabel: p.themeLabel } : {}),
+				...(typeof p.nodeName === 'string' ? { nodeName: p.nodeName } : {}),
+			},
+		];
+	});
+	return items.length > 0 ? items : null;
+}
+
 function detectType(result: unknown): ResultType {
+	if (extractFormPreview(result) !== null) return 'form-preview';
 	if (extractMcpContent(result) !== null) return 'content';
 	if (isCodeTool()) return 'code';
 	if (isTableTool() && result && typeof result === 'object') return 'table';
@@ -159,6 +183,7 @@ const resultType = computed(() => detectType(props.result));
 const contentItems = computed(() => extractMcpContent(props.result));
 const codeContent = computed(() => extractCode(props.result));
 const tableRows = computed(() => extractTableRows(props.result));
+const formPreview = computed(() => extractFormPreview(props.result));
 </script>
 
 <template>
@@ -184,6 +209,15 @@ const tableRows = computed(() => extractTableRows(props.result));
 	</N8nAiActivityStepResultSection>
 	<N8nAiActivityStepResultSection v-else-if="resultType === 'table' && tableRows">
 		<ToolResultTable :rows="tableRows" />
+	</N8nAiActivityStepResultSection>
+	<N8nAiActivityStepResultSection v-else-if="resultType === 'form-preview' && formPreview">
+		<InstanceAiFormPreview
+			v-for="(preview, i) in formPreview"
+			:key="i"
+			:preview-html="preview.previewHtml"
+			:theme-label="preview.themeLabel"
+			:node-name="preview.nodeName"
+		/>
 	</N8nAiActivityStepResultSection>
 	<ToolResultJson v-else :value="props.result" />
 </template>

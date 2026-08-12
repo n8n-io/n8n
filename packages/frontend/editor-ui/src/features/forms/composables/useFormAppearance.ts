@@ -1,6 +1,12 @@
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { NodeHelpers } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	parseCssVariables,
+	assembleFormCss,
+	applyFormThemePreset,
+	resolveFormTheme,
+} from 'n8n-workflow';
 import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -11,26 +17,6 @@ import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import type { INodeUi } from '@/Interface';
 import { fetchFormPreview } from '../api';
-import { FORM_THEMES } from '../constants/themes';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function parseCssVariables(css: string): Record<string, string> {
-	const result: Record<string, string> = {};
-	for (const match of css.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+);/g)) {
-		result[`--${match[1]}`] = match[2].trim();
-	}
-	return result;
-}
-
-function assembleCss(overrides: Record<string, string>): string {
-	const entries = Object.entries(overrides);
-	if (entries.length === 0) return '';
-	const lines = entries.map(([k, v]) => `\t${k}: ${v};`).join('\n');
-	return `:root {\n${lines}\n}`;
-}
 
 // ---------------------------------------------------------------------------
 // Global scope state — shared across all form node modals
@@ -130,7 +116,7 @@ export function useFormAppearance(nodeId: string) {
 
 	initFromNode();
 
-	const assembledCss = computed(() => assembleCss(localOverrides.value));
+	const assembledCss = computed(() => assembleFormCss(localOverrides.value));
 
 	const savedCss = computed(() => {
 		const options = node.value?.parameters?.options as INodeParameters | undefined;
@@ -329,20 +315,11 @@ export function useFormAppearance(nodeId: string) {
 		}
 	}
 
-	const activeTheme = computed((): string => {
-		const overrides = localOverrides.value;
-		const overrideKeys = Object.keys(overrides);
-		for (const theme of FORM_THEMES) {
-			const themeKeys = Object.keys(theme.overrides);
-			if (themeKeys.length !== overrideKeys.length) continue;
-			if (themeKeys.every((k) => theme.overrides[k] === overrides[k])) return theme.id;
-		}
-		return 'custom';
-	});
+	const activeTheme = computed((): string => resolveFormTheme(localOverrides.value));
 
 	function applyTheme(themeId: string) {
-		const theme = FORM_THEMES.find((t) => t.id === themeId);
-		if (theme) localOverrides.value = { ...theme.overrides };
+		const overrides = applyFormThemePreset(themeId);
+		if (overrides) localOverrides.value = overrides;
 	}
 
 	return {

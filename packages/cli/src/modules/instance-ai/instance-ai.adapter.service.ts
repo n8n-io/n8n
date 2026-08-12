@@ -4,6 +4,9 @@ import path from 'node:path';
 import type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
+	InstanceAiFormService,
+	FormNodeSummary,
+	FormNodeAppearance,
 	InstanceAiExecutionService,
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
@@ -95,6 +98,7 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
 import {
 	type ICredentialsDecrypted,
+	type FormFieldsParameter,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
@@ -113,6 +117,7 @@ import {
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	FORM_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	ManualExecutionCancelledError,
@@ -123,6 +128,8 @@ import {
 	jsonParse,
 	createRunExecutionData,
 	calculateWorkflowChecksum,
+	parseCssVariables,
+	resolveFormTheme,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -151,6 +158,7 @@ import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
+import { FormPreviewService, type FormPreviewInput } from '@/services/form-preview.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -340,6 +348,7 @@ export class InstanceAiAdapterService {
 			projectId,
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
+			formService: this.createFormAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(
 				user,
@@ -584,6 +593,212 @@ export class InstanceAiAdapterService {
 		};
 
 		return { getPersonalProjectId, assertProjectScope, resolveProjectId, resolveBoundProjectId };
+	}
+
+	/**
+	 * Appearance/theming adapter for the Instance AI `forms` tool. Reads and
+	 * mutates form-node `options.customCss` (RBAC-scoped to `user`) and renders
+	 * previews via the shared `FormPreviewService` — the same render path the
+	 * `/form-preview` controller uses.
+	 */
+	private createFormAdapter(
+		user: User,
+		threadId?: string,
+		_boundProjectId?: string,
+	): InstanceAiFormService {
+		const { workflowFinderService, workflowService, workflowRepository, telemetry, nodeTypes } =
+			this;
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
+		const FORM_TYPES = new Set<string>([FORM_TRIGGER_NODE_TYPE, FORM_NODE_TYPE]);
+
+		// Defaults declared on the node type's `options` collection (e.g. the
+		// submit button's "Submit" label). The editor resolves these, so the
+		// preview must too — otherwise unset defaults render blank.
+		const optionDefaultsFor = (node: INode): Record<string, unknown> => {
+			try {
+				const desc = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+				const collection = desc.properties.find(
+					(p): p is INodeProperties => p.name === 'options' && p.type === 'collection',
+				);
+				const items = collection?.options as INodeProperties[] | undefined;
+				return Object.fromEntries(items?.map((p) => [p.name, p.default]) ?? []);
+			} catch {
+				return {};
+			}
+		};
+
+		const loadFormNodes = async (
+			workflowId: string,
+			scopes: Scope[],
+		): Promise<{ workflow: WorkflowEntity; formNodes: INode[] }> => {
+			const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, scopes);
+			if (!workflow) throw new WorkflowNotFoundError(workflowId);
+			return { workflow, formNodes: workflow.nodes.filter((n) => FORM_TYPES.has(n.type)) };
+		};
+
+		const nodeOptions = (node: INode): INodeParameters =>
+			(node.parameters?.options as INodeParameters | undefined) ?? {};
+
+		// Resolve the target node: explicit name, else the Form Trigger, else first form node.
+		const resolveTargetNode = (formNodes: INode[], nodeName?: string): INode | undefined =>
+			nodeName
+				? formNodes.find((n) => n.name === nodeName)
+				: (formNodes.find((n) => n.type === FORM_TRIGGER_NODE_TYPE) ?? formNodes[0]);
+
+		// Build the preview render input from a node's raw saved parameters,
+		// mirroring the editor's FormStepCard (options fall back to the trigger's).
+		const buildPreviewInput = (
+			node: INode,
+			triggerNode: INode | undefined,
+			customCssOverride?: string,
+		): FormPreviewInput => {
+			const params = (node.parameters ?? {}) as INodeParameters;
+			const options = nodeOptions(node);
+			const triggerParams = (triggerNode?.parameters ?? {}) as INodeParameters;
+			const triggerOptions = triggerNode ? nodeOptions(triggerNode) : {};
+			const defaults = optionDefaultsFor(node);
+			const triggerDefaults = triggerNode ? optionDefaultsFor(triggerNode) : {};
+			const customCss = customCssOverride ?? (options.customCss as string | undefined);
+			const appendAttribution =
+				(options.appendAttribution as boolean | undefined) ??
+				(triggerOptions.appendAttribution as boolean | undefined) ??
+				true;
+
+			if (params.operation === 'completion') {
+				return {
+					isCompletion: true,
+					formTitle: (params.completionTitle as string) || '',
+					formDescription: (params.completionMessage as string) ?? '',
+					respondWith: (params.respondWith as string) || 'text',
+					responseText: (params.responseText as string) || '',
+					redirectUrl: (params.redirectUrl as string) || '',
+					nodeVersion: node.typeVersion,
+					customCss,
+					appendAttribution,
+				};
+			}
+
+			const isTrigger = node.type === FORM_TRIGGER_NODE_TYPE;
+			const formFields =
+				(params.formFields as { values?: INodeParameters[] } | undefined)?.values ?? [];
+			return {
+				formTitle: isTrigger
+					? ((params.formTitle as string) ?? '')
+					: (options.formTitle as string) || (triggerParams.formTitle as string) || '',
+				formDescription: isTrigger
+					? ((params.formDescription as string) ?? '')
+					: (options.formDescription as string) || (triggerParams.formDescription as string) || '',
+				buttonLabel:
+					(options.buttonLabel as string) ||
+					(triggerOptions.buttonLabel as string) ||
+					(defaults.buttonLabel as string) ||
+					(triggerDefaults.buttonLabel as string) ||
+					undefined,
+				formFields: formFields as unknown as FormFieldsParameter,
+				nodeVersion: node.typeVersion,
+				customCss,
+				appendAttribution,
+			};
+		};
+
+		return {
+			async listFormNodes(workflowId: string): Promise<FormNodeSummary[]> {
+				const { formNodes } = await loadFormNodes(workflowId, ['workflow:read']);
+				return formNodes.map((n) => {
+					const css = (nodeOptions(n).customCss as string | undefined) ?? '';
+					return {
+						nodeName: n.name,
+						nodeType: n.type,
+						isTrigger: n.type === FORM_TRIGGER_NODE_TYPE,
+						preset: resolveFormTheme(css ? parseCssVariables(css) : {}),
+					};
+				});
+			},
+
+			async getWorkflowName(workflowId: string): Promise<string | null> {
+				try {
+					const { workflow } = await loadFormNodes(workflowId, ['workflow:read']);
+					return workflow.name ?? null;
+				} catch {
+					return null;
+				}
+			},
+
+			async getFormNode(workflowId: string, nodeName?: string): Promise<FormNodeAppearance | null> {
+				const { formNodes } = await loadFormNodes(workflowId, ['workflow:read']);
+				const node = resolveTargetNode(formNodes, nodeName);
+				if (!node) return null;
+
+				const options = nodeOptions(node);
+				const css = (options.customCss as string | undefined) ?? '';
+				const overrides = css ? parseCssVariables(css) : {};
+				const trigger = formNodes.find((n) => n.type === FORM_TRIGGER_NODE_TYPE);
+				const triggerOptions = trigger ? nodeOptions(trigger) : {};
+				const appendAttribution =
+					(options.appendAttribution as boolean | undefined) ??
+					(triggerOptions.appendAttribution as boolean | undefined) ??
+					true;
+
+				return {
+					nodeName: node.name,
+					nodeType: node.type,
+					overrides,
+					appendAttribution,
+					preset: resolveFormTheme(overrides),
+				};
+			},
+
+			async applyAppearance(
+				workflowId: string,
+				params: { nodeNames: string[]; customCss: string; appendAttribution: boolean },
+			): Promise<{ updatedNodeNames: string[] }> {
+				assertNotReadOnly();
+				const { workflow } = await loadFormNodes(workflowId, ['workflow:update']);
+				const targets = new Set(params.nodeNames);
+				const updatedNodeNames: string[] = [];
+
+				const nodes = workflow.nodes.map((n) => {
+					if (!targets.has(n.name) || !FORM_TYPES.has(n.type)) return n;
+					const opts = {
+						...((n.parameters?.options as Record<string, unknown> | undefined) ?? {}),
+					};
+					if (params.customCss) opts.customCss = params.customCss;
+					else delete opts.customCss;
+					// Mirror the editor: only persist appendAttribution when disabled (default true).
+					if (!params.appendAttribution) opts.appendAttribution = false;
+					else delete opts.appendAttribution;
+					updatedNodeNames.push(n.name);
+					return { ...n, parameters: { ...n.parameters, options: opts as INodeParameters } };
+				});
+
+				const updateData = workflowRepository.create({ nodes } as Partial<WorkflowEntity>);
+				await workflowService.update(user, updateData, workflowId, { source: 'n8n-ai' });
+
+				if (threadId) {
+					telemetry.track('Builder modified workflow', {
+						user_id: user.id,
+						thread_id: threadId,
+						workflow_id: workflowId,
+					});
+				}
+
+				return { updatedNodeNames };
+			},
+
+			async renderPreview(
+				workflowId: string,
+				params: { nodeName?: string; customCss?: string; isCompletion?: boolean },
+			): Promise<string> {
+				const { formNodes } = await loadFormNodes(workflowId, ['workflow:read']);
+				const node = resolveTargetNode(formNodes, params.nodeName);
+				if (!node) {
+					throw new UserError(`No form node found in workflow ${workflowId}`);
+				}
+				const trigger = formNodes.find((n) => n.type === FORM_TRIGGER_NODE_TYPE);
+				const input = buildPreviewInput(node, trigger, params.customCss);
+				return await Container.get(FormPreviewService).render(input);
+			},
+		};
 	}
 
 	private createWorkflowAdapter(

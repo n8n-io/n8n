@@ -6,6 +6,7 @@ import * as TelemetryHelpers from './telemetry-helpers';
 export * from './errors';
 export * from './constants';
 export * from './form-utils';
+export * from './form-theme';
 export * from './common';
 export * from './cron';
 export * from './data-table.types';
