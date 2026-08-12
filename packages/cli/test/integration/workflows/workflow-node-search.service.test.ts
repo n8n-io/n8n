@@ -234,6 +234,31 @@ describe('WorkflowNodeSearchService', () => {
 		});
 	});
 
+	describe('load shedding', () => {
+		// The per-user rate limit cannot bound load on a shared database: 20 users
+		// each staying within their own limit measured 66x list-query degradation
+		// before the process-wide cap existed (#30294).
+		it('sheds load once the concurrency cap and its queue are full', async () => {
+			await createWorkflow({ nodes: [makeNode({ name: 'Send Slack Alert' })] }, member);
+
+			// Fire more than (max concurrent + max queued) at once. The guard is
+			// evaluated synchronously before the limiter awaits, so this is deterministic.
+			const outcomes = await Promise.allSettled(
+				Array.from({ length: 10 }, async () => await service.search(member, 'slack')),
+			);
+
+			const rejected = outcomes.filter((outcome) => outcome.status === 'rejected');
+			const fulfilled = outcomes.filter((outcome) => outcome.status === 'fulfilled');
+			expect(rejected.length).toBeGreaterThan(0);
+			expect(fulfilled.length).toBeGreaterThan(0);
+			expect(rejected[0].reason).toMatchObject({ httpStatusCode: 429 });
+
+			// The cap must not wedge the service: later calls succeed normally.
+			const { results } = await service.search(member, 'slack');
+			expect(results).toHaveLength(1);
+		});
+	});
+
 	describe('LIKE metacharacters', () => {
 		it('treats % as a literal', async () => {
 			await createWorkflow({ nodes: [makeNode({ name: 'Discount 50% off' })] }, member);

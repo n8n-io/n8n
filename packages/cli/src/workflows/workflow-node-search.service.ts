@@ -10,7 +10,9 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { findNodeSearchMatch, STICKY_NODE_TYPE } from 'n8n-workflow';
+import pLimit from 'p-limit';
 
+import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
 import { RoleService } from '@/services/role.service';
 
 /**
@@ -30,6 +32,25 @@ const BATCH_SIZE = 100;
  */
 const MAX_SCANNED_WORKFLOWS = 2000;
 
+/**
+ * A query that matches nothing cannot short-circuit on the `updatedAt` index — it
+ * has to read every workflow's `nodes` blob to prove absence, and the keyset
+ * scan's worst case walks MAX_SCANNED_WORKFLOWS of hydrated false positives.
+ *
+ * The per-user rate limit on the endpoint cannot bound that, because the
+ * database is shared. Measured in #30294 on a 20k-workflow corpus: with 20
+ * users each staying inside their own limit, workflow-list queries degraded
+ * 66x on SQLite and 56x on Postgres; capped at one concurrent scan the same
+ * scenario measures ~1.3x.
+ *
+ * So run one scan at a time per process and shed load past a short queue
+ * rather than letting search monopolise the connection pool. In multi-main
+ * setups the ceiling is per instance, which is the intent: it bounds what a
+ * single process can demand of a shared database.
+ */
+const MAX_CONCURRENT_SEARCHES = 1;
+const MAX_QUEUED_SEARCHES = 4;
+
 /** Relevance order for matched fields — a node-name hit beats a buried parameter hit. */
 const MATCHED_FIELD_RANK: Record<NodeSearchMatchedField, number> = {
 	name: 0,
@@ -48,10 +69,15 @@ export class WorkflowNodeSearchService {
 		private readonly roleService: RoleService,
 	) {}
 
+	private readonly limiter = pLimit(MAX_CONCURRENT_SEARCHES);
+
 	/**
 	 * Full-text search over the nodes of every non-archived workflow the user can
-	 * read. Matches node names, types, notes and parameter values.
-	 * Optionally restrict to workflows owned by `projectId`.
+	 * read. Matches node names, types, notes, parameter values and credential
+	 * names. Optionally restrict to workflows owned by `projectId`.
+	 *
+	 * Throws `TooManyRequestsError` when the process-wide concurrency gate and
+	 * its queue are full — see MAX_CONCURRENT_SEARCHES.
 	 */
 	async search(
 		user: User,
@@ -61,6 +87,18 @@ export class WorkflowNodeSearchService {
 		const query = rawQuery.trim();
 		if (!query) return { results: [], hasMore: false };
 
+		if (this.limiter.pendingCount >= MAX_QUEUED_SEARCHES) {
+			throw new TooManyRequestsError('Workflow node search is busy, please retry.');
+		}
+
+		return await this.limiter(async () => await this.runSearch(user, query, options));
+	}
+
+	private async runSearch(
+		user: User,
+		query: string,
+		options: { projectId?: string },
+	): Promise<SearchWorkflowNodesResponse> {
 		const scopes = ['workflow:read' as const];
 		const [projectRoles, workflowRoles] = await Promise.all([
 			this.roleService.rolesWithScope('project', scopes),
