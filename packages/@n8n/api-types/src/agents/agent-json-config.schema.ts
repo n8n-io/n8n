@@ -1,6 +1,7 @@
 import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
+import { AGENT_HARNESS_ADAPTERS } from './agent-harness-models';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
@@ -16,20 +17,6 @@ import {
 } from './sub-agent.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
-
-export const AGENT_HARNESS_ADAPTERS = ['claude-code', 'codex'] as const;
-
-export const AGENT_HARNESS_MODEL_PROVIDERS = {
-	'claude-code': 'anthropic',
-	codex: 'openai',
-} as const satisfies Record<(typeof AGENT_HARNESS_ADAPTERS)[number], string>;
-
-export function isAgentHarnessModel(
-	adapter: (typeof AGENT_HARNESS_ADAPTERS)[number],
-	model: string,
-): boolean {
-	return model.startsWith(`${AGENT_HARNESS_MODEL_PROVIDERS[adapter]}/`);
-}
 
 export const AgentEngineConfigSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('n8n') }).strict(),
@@ -539,7 +526,6 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentEngineConfig = z.infer<typeof AgentEngineConfigSchema>;
-export type AgentHarnessAdapter = (typeof AGENT_HARNESS_ADAPTERS)[number];
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;

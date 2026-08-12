@@ -5,7 +5,7 @@ import { createHarnessRuntimeIdentity } from '../utils/harness-runtime-identity'
 function config(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	return {
 		name: 'Agent',
-		model: 'anthropic/claude-sonnet-4-6',
+		model: 'anthropic/claude-sonnet-5',
 		credential: 'credential-1',
 		instructions: 'Help the user',
 		engine: { type: 'harness', adapter: 'claude-code' },
@@ -41,7 +41,7 @@ describe('createHarnessRuntimeIdentity', () => {
 	it('changes when execution-affecting settings change', () => {
 		const base = config();
 
-		expect(identity(config({ model: 'anthropic/claude-opus-4-6' }))).not.toBe(identity(base));
+		expect(identity(config({ model: 'anthropic/claude-opus-5' }))).not.toBe(identity(base));
 		expect(identity(config({ instructions: 'Do something else' }))).not.toBe(identity(base));
 		expect(identity(config({ tools: [{ type: 'workflow', workflow: 'Run report' }] }))).not.toBe(
 			identity(base),

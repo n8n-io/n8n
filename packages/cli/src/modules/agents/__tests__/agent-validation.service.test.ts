@@ -1064,7 +1064,7 @@ describe('AgentValidationService — harness engines', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				...runnableConfig,
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5',
 				credential: 'anthropic-main',
 				engine: { type: 'harness', adapter: 'claude-code' },
 			}),
@@ -1079,7 +1079,7 @@ describe('AgentValidationService — harness engines', () => {
 		).resolves.toMatchObject({ status: 'valid', issues: [] });
 	});
 
-	it('accepts provider models and rejects models from the wrong provider', async () => {
+	it('accepts compatible models and rejects models outside the adapter catalog', async () => {
 		const { service, agentRepository } = makeService({ modules: ['harnesses'] });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
@@ -1097,7 +1097,7 @@ describe('AgentValidationService — harness engines', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				...runnableConfig,
-				model: 'anthropic/claude-sonnet-4-6',
+				model: 'openai/gpt-5-mini',
 				credential: AI_GATEWAY_MANAGED_TAG,
 				engine: { type: 'harness', adapter: 'codex' },
 			}),
@@ -1136,7 +1136,7 @@ describe('AgentValidationService — harness engines', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				...runnableConfig,
-				model: 'anthropic/claude-sonnet-4-6',
+				model: 'anthropic/claude-sonnet-5',
 				credential: AI_GATEWAY_MANAGED_TAG,
 				engine: { type: 'harness', adapter: 'claude-code' },
 				config: {

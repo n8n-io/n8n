@@ -18,6 +18,7 @@ import {
 	AGENT_HARNESS_ADAPTERS,
 	AGENT_HARNESS_MODEL_PROVIDERS,
 	AI_GATEWAY_MANAGED_TAG,
+	isAgentHarnessModel,
 	type AgentHarnessAdapter,
 } from '@n8n/api-types';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
@@ -487,7 +488,9 @@ const menu = computed(() => {
 
 	const harnessItems = AGENT_HARNESS_ADAPTERS.map<MenuItem>((adapter) => {
 		const provider: AgentModelProvider = AGENT_HARNESS_MODEL_PROVIDERS[adapter];
-		const models = modelsByProvider[provider]?.models ?? [];
+		const models = (modelsByProvider[provider]?.models ?? []).filter((model) =>
+			isAgentHarnessModel(adapter, `${provider}/${model.model}`),
+		);
 		return providerToMenuItem(provider, {
 			id: `harness:${adapter}`,
 			label: getHarnessDisplayName(adapter),

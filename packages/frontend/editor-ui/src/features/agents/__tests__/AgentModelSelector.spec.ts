@@ -166,16 +166,40 @@ const modelsByProvider: AgentModelsByProvider = {
 		models: [
 			{
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-5',
-				name: 'Claude Sonnet 4.5',
+				model: 'claude-sonnet-5',
+				name: 'Claude Sonnet 5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
 			},
 			{
 				provider: 'anthropic',
-				model: 'claude-3-haiku',
-				name: 'Claude 3 Haiku',
+				model: 'claude-fable-5',
+				name: 'Claude Fable 5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'anthropic',
+				model: 'claude-opus-5',
+				name: 'Claude Opus 5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'anthropic',
+				model: 'claude-haiku-4-5',
+				name: 'Claude Haiku 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				name: 'Claude Sonnet 4.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
@@ -194,8 +218,32 @@ const modelsByProvider: AgentModelsByProvider = {
 			},
 			{
 				provider: 'openai',
+				model: 'gpt-5.6-terra',
+				name: 'GPT-5.6 Terra',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'openai',
+				model: 'gpt-5.6-luna',
+				name: 'GPT-5.6 Luna',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'openai',
 				model: 'gpt-5.5',
 				name: 'GPT-5.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'openai',
+				model: 'gpt-5.2',
+				name: 'GPT-5.2',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
@@ -290,7 +338,7 @@ describe('AgentModelSelector', () => {
 		expect(aiGatewayState.fetchConfig).toHaveBeenCalled();
 	});
 
-	it('shows Claude Code and Codex with their provider model catalogs', async () => {
+	it('shows only adapter-compatible models from their provider catalogs', async () => {
 		credentialsByType.value.openAiApi = [
 			{ id: 'openai-cred', name: 'OpenAI credential', type: 'openAiApi' },
 		];
@@ -307,21 +355,29 @@ describe('AgentModelSelector', () => {
 		expect(claudeCode?.label).toBe('Claude Code (Preview)');
 		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('Anthropic credential');
 		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('n8n Connect');
-		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('Claude Sonnet 4.5');
-		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('Claude 3 Haiku');
+		const claudeCodeChildren = JSON.stringify(claudeCode?.children ?? []);
+		expect(claudeCodeChildren).toContain('Claude Sonnet 5');
+		expect(claudeCodeChildren).toContain('Claude Fable 5');
+		expect(claudeCodeChildren).toContain('Claude Opus 5');
+		expect(claudeCodeChildren).toContain('Claude Haiku 4.5');
+		expect(claudeCodeChildren).not.toContain('Claude Sonnet 4.5');
 		expect(codex?.label).toBe('Codex (Preview)');
-		expect(JSON.stringify(codex?.children ?? [])).toContain('OpenAI credential');
-		expect(JSON.stringify(codex?.children ?? [])).toContain('n8n Connect');
-		expect(JSON.stringify(codex?.children ?? [])).toContain('GPT-5.6 Sol');
-		expect(JSON.stringify(codex?.children ?? [])).toContain('GPT-5.5');
-		expect(JSON.stringify(codex?.children ?? [])).toContain('GPT-5 mini');
+		const codexChildren = JSON.stringify(codex?.children ?? []);
+		expect(codexChildren).toContain('OpenAI credential');
+		expect(codexChildren).toContain('n8n Connect');
+		expect(codexChildren).toContain('GPT-5.6 Sol');
+		expect(codexChildren).toContain('GPT-5.6 Terra');
+		expect(codexChildren).toContain('GPT-5.6 Luna');
+		expect(codexChildren).toContain('GPT-5.5');
+		expect(codexChildren).toContain('GPT-5.2');
+		expect(codexChildren).not.toContain('GPT-5 mini');
 	});
 
 	it.each([
 		{
 			adapter: 'claude-code' as const,
 			provider: 'anthropic' as const,
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5',
 			credential: 'anthropic-cred',
 			credentialType: 'anthropicApi',
 		},
@@ -385,7 +441,7 @@ describe('AgentModelSelector', () => {
 		);
 
 		expect(getDropdown(wrapper).props('selectedLabel')).toBe(
-			'Claude Code (Preview): Claude Sonnet 4.5',
+			'Claude Code (Preview): Claude Sonnet 5',
 		);
 	});
 
@@ -569,8 +625,8 @@ describe('AgentModelSelector', () => {
 
 		expect(dropdown.props('credentialsMissing')).toBe(false);
 		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
-		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
-		expect(getMenuItemByLabel(anthropicItem?.children ?? [], 'Claude Sonnet 4.5')?.checked).toBe(
+		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 5');
+		expect(getMenuItemByLabel(anthropicItem?.children ?? [], 'Claude Sonnet 5')?.checked).toBe(
 			true,
 		);
 	});

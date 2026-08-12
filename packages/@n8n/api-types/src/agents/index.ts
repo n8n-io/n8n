@@ -2,6 +2,7 @@ export * from './agent-chat-attachments.constants';
 export * from './agent-config-lifecycle';
 export * from './agent-config-validation.schema';
 export * from './agent-files.constants';
+export * from './agent-harness-models';
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
 export * from './agent-node-tool-operations';

@@ -16,6 +16,12 @@ function makeCatalog(): ProviderCatalog {
 			id: 'anthropic',
 			name: 'Anthropic',
 			models: {
+				'claude-sonnet-5': {
+					id: 'claude-sonnet-5',
+					name: 'Claude Sonnet 5',
+					reasoning: true,
+					toolCall: true,
+				},
 				'claude-sonnet-4-5': {
 					id: 'claude-sonnet-4-5',
 					name: 'Claude Sonnet 4.5',
@@ -100,6 +106,14 @@ vi.mock('../composables/useModelCatalog', () => ({
 		getModelsForPicker: () => ({
 			anthropic: {
 				models: [
+					{
+						provider: 'anthropic',
+						model: 'claude-sonnet-5',
+						name: 'Claude Sonnet 5',
+						description: null,
+						createdAt: null,
+						metadata: { functionCalling: true, available: true },
+					},
 					{
 						provider: 'anthropic',
 						model: 'claude-sonnet-4-5',
@@ -298,7 +312,7 @@ describe('AgentInfoPanel', () => {
 	it('selects a harness adapter and model together while clearing unsupported settings', async () => {
 		const wrapper = mountModelPanel({
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5',
 			credential: 'credential-1',
 			instructions: 'Help users.',
 			memory: { enabled: false, storage: 'n8n' },
@@ -312,14 +326,14 @@ describe('AgentInfoPanel', () => {
 
 		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5',
 			harnessAdapter: 'claude-code',
 		});
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toEqual({
 			engine: { type: 'harness', adapter: 'claude-code' },
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5',
 			credential: 'credential-1',
 			memory: undefined,
 			subAgents: undefined,
@@ -360,7 +374,7 @@ describe('AgentInfoPanel', () => {
 	it('passes harness availability and the selected adapter to the model selector', () => {
 		const wrapper = mountModelPanel({
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5',
 			credential: 'credential-1',
 			instructions: 'Help users.',
 			engine: { type: 'harness', adapter: 'claude-code' },
@@ -375,7 +389,7 @@ describe('AgentInfoPanel', () => {
 	it('switches back to the n8n runtime when selecting a provider model', async () => {
 		const wrapper = mountModelPanel({
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5',
 			credential: 'credential-1',
 			instructions: 'Help users.',
 			engine: { type: 'harness', adapter: 'claude-code' },
