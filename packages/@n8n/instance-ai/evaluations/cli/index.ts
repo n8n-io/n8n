@@ -24,6 +24,12 @@ import { runWithLangSmith } from '../run/langsmith-driver';
 import { ciRerunHint, createRowSink, runEvalAndPersist } from '../run/persist';
 import { emitRunReports } from '../run/reporters';
 
+/** Whether more than one browser BUILD can exist in this run — the relay is
+ *  instance-wide, and iterations expand into separate concurrent rows. */
+export function serialiseForBrowserLane(browserCaseCount: number, iterations: number): boolean {
+	return browserCaseCount > 1 || (browserCaseCount > 0 && iterations > 1);
+}
+
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
@@ -62,13 +68,13 @@ async function main(): Promise<void> {
 	// Every browser-lane case shares ONE resource: the instance's single relay.
 	// `createBrowserLink()` / `disconnectBrowserSession()` are instance-wide, so
 	// a second concurrent browser build displaces the first and either build's
-	// tools can end up driving the other's browser. Serialised on ANY browser
-	// case, not just two: iterations expand into separate concurrent rows, so one
-	// case at `--iterations 3` collides with itself.
+	// tools can end up driving the other's browser. A single case at one
+	// iteration cannot collide with itself, so the rest of the run keeps its
+	// parallelism.
 	const browserCases = testCasesWithFiles.filter(
 		({ testCase }) => testCase.credentialFixture !== undefined,
 	);
-	if (browserCases.length > 0 && args.concurrency !== 1) {
+	if (serialiseForBrowserLane(browserCases.length, args.iterations) && args.concurrency !== 1) {
 		args.concurrency = 1;
 		logger.info(
 			`  ${String(browserCases.length)} browser-lane case(s) selected: serialised, because the n8n relay is instance-wide.`,

@@ -295,21 +295,7 @@ export function leakHaystackFor(facts: CredentialSetupRunFacts): string | undefi
 export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
 	const facts = build.credentialSetup;
 	if (!facts?.local || leakHaystacks.has(facts)) return build;
-	// Falls back to the identified prefix so a hand-built facts object (tests,
-	// older callers) still scrubs rather than silently doing nothing.
-	const prefixes = facts.scrubPrefixes?.length
-		? facts.scrubPrefixes
-		: facts.secretPrefix
-			? [facts.secretPrefix]
-			: [];
-	// Throws rather than returning the build: an empty list reads downstream as
-	// "nothing to scrub", which is how a real key gets persisted.
-	if (prefixes.length === 0) {
-		throw new Error(
-			'Local run has no key shapes to scrub with (no scrubPrefixes and no secretPrefix). ' +
-				'Refusing to persist the build rather than risk shipping a real key.',
-		);
-	}
+	const prefixes = localScrubPrefixes(facts);
 	// Everything the artifacts can carry, including the built workflow: an agent
 	// that hardcodes the key into a node instead of a credential is the failure
 	// this eval exists to catch, and that lands in eval-results.json.
@@ -320,6 +306,7 @@ export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
 			events: build.events ?? [],
 			buildTrace: build.buildTrace ?? null,
 			workflowJsons: build.workflowJsons ?? [],
+			workflowChecks: build.workflowChecks ?? [],
 			error: build.error ?? null,
 		}),
 	);
@@ -328,17 +315,39 @@ export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
 		build.events = redactTranscriptSecrets(build.events, prefix);
 		build.buildTrace = redactTranscriptSecrets(build.buildTrace, prefix);
 		build.workflowJsons = redactTranscriptSecrets(build.workflowJsons, prefix);
+		// Computed inside buildWorkflow from the RAW workflow and transcript, so
+		// these arrive already carrying whatever the checks quoted.
+		build.workflowChecks = redactTranscriptSecrets(build.workflowChecks, prefix);
 		if (build.error) build.error = redactKeyShapedSecrets(build.error, prefix);
 	}
 	return build;
 }
 
+/** Key shapes to strip from a local run, or THROW. Shared so the two scrub entry
+ *  points cannot drift into one failing open — an empty list reads downstream as
+ *  "nothing to scrub", which is how a real key gets persisted. */
+function localScrubPrefixes(facts: CredentialSetupRunFacts): string[] {
+	const prefixes = facts.scrubPrefixes?.length
+		? facts.scrubPrefixes
+		: facts.secretPrefix
+			? [facts.secretPrefix]
+			: [];
+	if (prefixes.length === 0) {
+		throw new Error(
+			'Local run has no key shapes to scrub with (no scrubPrefixes and no secretPrefix). ' +
+				'Refusing to persist rather than risk shipping a real key.',
+		);
+	}
+	return prefixes;
+}
+
 /** Apply a local run's scrub to anything fetched AFTER the build was scrubbed —
- *  run debug is re-read from n8n and would otherwise reach the report raw. */
+ *  run debug is re-read from n8n and would otherwise reach the report raw.
+ *  Throws on an unscrubale local run, exactly like the build scrub. */
 export function redactLocalRunSecrets<T>(value: T, facts?: CredentialSetupRunFacts): T {
 	if (!facts?.local) return value;
 	let out = value;
-	for (const prefix of facts.scrubPrefixes ?? (facts.secretPrefix ? [facts.secretPrefix] : [])) {
+	for (const prefix of localScrubPrefixes(facts)) {
 		out = redactTranscriptSecrets(out, prefix);
 	}
 	return out;

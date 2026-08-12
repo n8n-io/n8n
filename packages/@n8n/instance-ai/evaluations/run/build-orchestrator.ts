@@ -378,9 +378,16 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// run-debug report would render a local run's real key verbatim.
 		runDebugByThreadId.set(
 			build.threadId,
-			captureThreadRunDebug(client, build.threadId, logger).then((debug) =>
-				redactLocalRunSecrets(debug, build.credentialSetup),
-			),
+			captureThreadRunDebug(client, build.threadId, logger)
+				.then((debug) => redactLocalRunSecrets(debug, build.credentialSetup))
+				// Drop the payload rather than ship it or kill the run: run debug is
+				// diagnostic, and an unscrubable local run must not reach the report.
+				.catch((error: unknown) => {
+					logger.warn(
+						`  Dropped run debug for thread ${build.threadId ?? '?'}: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return [];
+				}),
 		);
 	}
 
@@ -410,6 +417,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				events: build.events ?? [],
 				buildTrace: build.buildTrace ?? null,
 				workflowJsons: build.workflowJsons ?? [],
+				workflowChecks: build.workflowChecks ?? [],
 				error: build.error ?? null,
 			});
 		const testCase = testCaseByFileSlug.get(fileSlug);

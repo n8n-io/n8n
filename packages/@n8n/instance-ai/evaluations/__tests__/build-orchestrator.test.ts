@@ -711,6 +711,28 @@ describe('local-mode secret scrubbing', () => {
 		expect(leakHaystackFor(build.credentialSetup!)).toContain(KEY);
 	});
 
+	it('redacts workflow-check comments, which the report renders', () => {
+		// The main build path computes these INSIDE buildWorkflow, from the raw
+		// workflow and raw transcript, before the scrub ever runs — so an LLM
+		// check can quote the key into its comment and the report shows it.
+		const build = localBuild();
+		build.workflowChecks = [
+			{
+				name: 'fulfills_user_request',
+				description: 'd',
+				kind: 'llm',
+				dimension: 'correctness',
+				status: 'pass',
+				comment: `the agent saved ${KEY} as a credential`,
+			},
+		] as unknown as BuildResult['workflowChecks'];
+
+		scrubLocalSecretsFromBuild(build);
+
+		expect(JSON.stringify(build.workflowChecks)).not.toContain(KEY);
+		expect(leakHaystackFor(build.credentialSetup!)).toContain(KEY);
+	});
+
 	it('refuses to hand back an unscrubbed local build when no key shape is known', () => {
 		// The empty list is the dangerous state: downstream it is indistinguishable
 		// from "nothing to scrub", so returning the build silently persisted a real
@@ -748,6 +770,33 @@ describe('surfaces fetched after the scrub', () => {
 		});
 
 		expect(JSON.stringify(out)).not.toContain(KEY);
+	});
+
+	it('falls back to the identified prefix when scrubPrefixes is empty', () => {
+		// The build scrub takes this fallback; if the post-build one did not, the
+		// build shipped redacted and the run debug shipped raw.
+		const debug = [{ steps: [{ input: { messages: [`saved ${KEY}`] } }] }];
+
+		const out = redactLocalRunSecrets(debug, {
+			secretWasIssued: false,
+			local: true,
+			scrubPrefixes: [],
+			secretPrefix: PREFIX,
+			credentialIdsBefore: [],
+		});
+
+		expect(JSON.stringify(out)).not.toContain(KEY);
+	});
+
+	it('throws rather than returning a local payload it cannot scrub', () => {
+		expect(() =>
+			redactLocalRunSecrets([{ steps: [{ input: { messages: [`saved ${KEY}`] } }] }], {
+				secretWasIssued: false,
+				local: true,
+				scrubPrefixes: [],
+				credentialIdsBefore: [],
+			}),
+		).toThrow(/scrub/i);
 	});
 
 	it('leaves a hermetic run alone — its minted secret is synthetic', () => {
