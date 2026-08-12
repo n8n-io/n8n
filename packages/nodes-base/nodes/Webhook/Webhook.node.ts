@@ -1,6 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
-import { createWriteStream } from 'fs';
-import { stat } from 'fs/promises';
 import isbot from 'isbot';
 import type {
 	IWebhookFunctions,
@@ -10,10 +8,7 @@ import type {
 	IWebhookResponseData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, Node, n8nOAuth2Auth } from 'n8n-workflow';
-import { pipeline } from 'stream/promises';
-import { file as tmpFile } from 'tmp-promise';
-import { v4 as uuid } from 'uuid';
+import { BINARY_ENCODING, Node, n8nOAuth2Auth } from 'n8n-workflow';
 
 import {
 	authenticationProperty,
@@ -34,6 +29,7 @@ import { WebhookAuthorizationError } from './error';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
+	handleBinaryData,
 	handleFormData,
 	isIpAllowed,
 	setupOutputConnection,
@@ -293,7 +289,7 @@ export class Webhook extends Node {
 		});
 
 		if (options.binaryData) {
-			return await this.handleBinaryData(context, prepareOutput);
+			return await handleBinaryData(context, prepareOutput);
 		}
 
 		if (req.contentType === 'multipart/form-data') {
@@ -302,7 +298,7 @@ export class Webhook extends Node {
 
 		if (nodeVersion > 1 && !req.body && !options.rawBody) {
 			try {
-				return await this.handleBinaryData(context, prepareOutput);
+				return await handleBinaryData(context, prepareOutput);
 			} catch (error) {}
 		}
 
@@ -355,47 +351,5 @@ export class Webhook extends Node {
 
 	private async validateAuth(context: IWebhookFunctions) {
 		return await validateWebhookAuthentication(context, this.authPropertyName);
-	}
-
-	private async handleBinaryData(
-		context: IWebhookFunctions,
-		prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
-	): Promise<IWebhookResponseData> {
-		const req = context.getRequestObject();
-		const options = context.getNodeParameter('options', {}) as IDataObject;
-
-		// TODO: create empty binaryData placeholder, stream into that path, and then finalize the binaryData
-		const binaryFile = await tmpFile({ prefix: 'n8n-webhook-' });
-
-		try {
-			await pipeline(req, createWriteStream(binaryFile.path));
-
-			const returnItem: INodeExecutionData = {
-				json: {
-					headers: req.headers,
-					params: req.params,
-					query: req.query,
-					body: {},
-				},
-			};
-
-			const stats = await stat(binaryFile.path);
-			if (stats.size) {
-				const binaryPropertyName = (options.binaryPropertyName ?? 'data') as string;
-				const fileName = req.contentDisposition?.filename ?? uuid();
-				const binaryData = await context.nodeHelpers.copyBinaryFile(
-					binaryFile.path,
-					fileName,
-					req.contentType ?? 'application/octet-stream',
-				);
-				returnItem.binary = { [binaryPropertyName]: binaryData };
-			}
-
-			return { workflowData: prepareOutput(returnItem) };
-		} catch (error) {
-			throw new NodeOperationError(context.getNode(), error as Error);
-		} finally {
-			await binaryFile.cleanup();
-		}
 	}
 }

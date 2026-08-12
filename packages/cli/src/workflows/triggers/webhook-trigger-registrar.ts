@@ -14,6 +14,7 @@ import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { normalizeStoredWebhookPath, pickWebhookNamespace } from '@/webhooks/webhook-path';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -230,7 +231,10 @@ export class WebhookTriggerRegistrar {
 			method: webhookData.httpMethod,
 		});
 
-		this.normalizeWebhookPath(webhook, node.webhookId);
+		normalizeStoredWebhookPath(
+			webhook,
+			pickWebhookNamespace(webhookData.namespace, node.webhookId),
+		);
 
 		return webhook;
 	}
@@ -252,23 +256,6 @@ export class WebhookTriggerRegistrar {
 			this.logger.error(
 				`Could not remove webhook "${webhookData.node}" of workflow "${workflow.id}" because of error: "${error.message}"`,
 			);
-		}
-	}
-
-	private normalizeWebhookPath(webhook: WebhookEntity, nodeWebhookId?: string) {
-		webhook.webhookPath = webhook.webhookPath.trim();
-		if (webhook.webhookPath.startsWith('/')) {
-			webhook.webhookPath = webhook.webhookPath.slice(1);
-		}
-		if (webhook.webhookPath.endsWith('/')) {
-			webhook.webhookPath = webhook.webhookPath.slice(0, -1);
-		}
-		if (
-			(webhook.webhookPath.startsWith(':') || webhook.webhookPath.includes('/:')) &&
-			nodeWebhookId
-		) {
-			webhook.webhookId = nodeWebhookId;
-			webhook.pathLength = webhook.webhookPath.split('/').length;
 		}
 	}
 }

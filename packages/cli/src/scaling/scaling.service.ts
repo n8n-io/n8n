@@ -360,9 +360,10 @@ export class ScalingService {
 					break;
 				}
 				case 'job-finished':
-					if (msg.success) {
-						this.activeExecutions.resolveResponsePromise(msg.executionId, {});
-					} else {
+					// A success with nothing relayed means no Respond node answered. Leave the
+					// promise pending so the webhook layer can fall back to the last node's
+					// data; resolving empty here would beat it to the socket.
+					if (!msg.success) {
 						this.activeExecutions.resolveResponsePromise(msg.executionId, {
 							body: {
 								message: 'Workflow execution failed',

@@ -44,7 +44,7 @@ catalog:
   '@confluentinc/kafka-javascript': 1.9.1
   '@daytona/sdk': 0.187.0
   '@e965/xlsx': 0.20.3
-  '@iconify-json/lucide': ^1.2.112
+  '@iconify-json/lucide': ^1.2.114
   '@iconify-json/mdi': ^1.1.63
   '@iconify/json': ^2.2.488
   '@joplin/turndown-plugin-gfm': 1.0.64

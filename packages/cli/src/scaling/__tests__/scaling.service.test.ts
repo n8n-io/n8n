@@ -420,7 +420,7 @@ describe('ScalingService', () => {
 			});
 		});
 
-		it('should resolve responsePromise with empty response when job-finished has success=true', async () => {
+		it('should leave responsePromise pending when job-finished has success=true', async () => {
 			const activeExecutions = mock<ActiveExecutions>();
 			scalingService = new ScalingService(
 				mockLogger(),
@@ -450,7 +450,7 @@ describe('ScalingService', () => {
 
 			messageHandler('job-789', jobFinishedMessage);
 
-			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-123', {});
+			expect(activeExecutions.resolveResponsePromise).not.toHaveBeenCalled();
 		});
 
 		it('should resolve responsePromise with error response when job-finished has success=false', async () => {

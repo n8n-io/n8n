@@ -200,7 +200,14 @@ export class ActiveExecutions {
 
 	resolveResponsePromise(executionId: string, response: IExecuteResponsePromiseData): void {
 		const execution = this.activeExecutions[executionId];
-		execution?.responsePromise?.resolve(response);
+		if (!execution) return;
+		execution.didRespond = true;
+		execution.responsePromise?.resolve(response);
+	}
+
+	/** Whether a Respond to Webhook node has answered for this execution. */
+	hasResponded(executionId: string): boolean {
+		return this.activeExecutions[executionId]?.didRespond === true;
 	}
 
 	/** Used for sending a chunk to a streaming response */
@@ -264,17 +271,20 @@ export class ActiveExecutions {
 		this.logger.debug('Execution finalized', { executionId });
 	}
 
-	/** Resolve the response promise in an execution. */
+	/**
+	 * Releases a response promise that a Respond to Webhook node already answered,
+	 * completing the Form node's redirection chain (the next Form's `sendResponse`
+	 * redirects back to the current one; without this a manual reload is needed).
+	 *
+	 * Deliberately leaves the promise pending when nothing answered: an empty
+	 * resolution here would beat the webhook layer's fallback to the socket, and
+	 * the caller would get a blank body instead of the last node's data.
+	 */
 	resolveExecutionResponsePromise(executionId: string) {
-		// TODO: This should probably be refactored.
-		// The reason for adding this method is that the Form node works in 'responseNode' mode
-		// and expects the next Form to 'sendResponse' to redirect to the current Form node.
-		// Resolving responsePromise here is needed to complete the redirection chain; otherwise, a manual reload will be required.
-
 		if (!this.has(executionId)) return;
 		const execution = this.getExecutionOrFail(executionId);
 
-		if (execution.status !== 'waiting' && execution?.responsePromise) {
+		if (execution.status !== 'waiting' && execution.responsePromise && execution.didRespond) {
 			execution.responsePromise.resolve({});
 			this.logger.debug('Execution response promise cleaned', { executionId });
 		}

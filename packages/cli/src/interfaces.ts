@@ -151,6 +151,11 @@ export interface IExecutingWorkflowData {
 	/** HTTPResponse needed for streaming responses */
 	httpResponse?: Response;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
+	/**
+	 * Whether a Respond to Webhook node actually answered. Distinguishes a real
+	 * response from the end-of-execution cleanup, which must not stand in for one.
+	 */
+	didRespond?: boolean;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;
 }

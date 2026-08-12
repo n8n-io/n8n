@@ -2997,13 +2997,20 @@ export interface IWebhookData {
 	webhookDescription: IWebhookDescription;
 	workflowId: string;
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
+	/** For a `:param` path, its namespace — the first segment the resolver indexes on. */
 	webhookId?: string;
+	namespace?: string;
 	isTest?: boolean;
 	userId?: string;
 	staticData?: Workflow['staticData'];
 }
 
-export type WebhookType = 'default' | 'setup';
+/**
+ * `default` and `setup` are the historical names; nodes that register a webhook
+ * per configured route name them freely, and `getWebhookName()` is how the node
+ * learns which one fired.
+ */
+export type WebhookType = 'default' | 'setup' | (string & {});
 
 /**
  * Key under which an {@link IWebhookDescription} holds native (engine-free)
@@ -3027,6 +3034,21 @@ export type NativeParameterResolvers = Record<
 	}
 >;
 
+/**
+ * One registered route of a node that serves several. Resolved from
+ * {@link IWebhookDescription.routes}; the platform synthesizes a description per
+ * entry, so response options can differ per route.
+ */
+export type IWebhookRoute = {
+	name?: WebhookType;
+	/** Full path after the endpoint prefix, including the namespace segment. */
+	path: string;
+	httpMethod: IHttpRequestMethods | IHttpRequestMethods[];
+	responseMode?: WebhookResponseMode;
+	responseCode?: number;
+	responseData?: WebhookResponseData;
+};
+
 export interface IWebhookDescription {
 	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
 	[WEBHOOK_RESOLVERS]?: NativeParameterResolvers;
@@ -3034,6 +3056,17 @@ export interface IWebhookDescription {
 	isFullPath?: boolean;
 	name: WebhookType;
 	path: string;
+	/**
+	 * First path segment of a `:param` path, used as its routing namespace.
+	 * Defaults to the node's `webhookId`, which is what dynamic paths relied on
+	 * implicitly before this existed.
+	 */
+	namespace?: string;
+	/**
+	 * Expression resolving to {@link IWebhookRoute}[]. When it resolves to a
+	 * non-empty array, `path` and `httpMethod` on this description are ignored.
+	 */
+	routes?: string;
 	responseBinaryPropertyName?: string;
 	responseContentType?: string;
 	responsePropertyName?: string;
@@ -3136,6 +3169,10 @@ export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryB
  * hostedChat: Special response with executionId sent to the hosted chat trigger node
  *
  * streaming: Response added to runData to httpResponse and streamingEnabled set to true
+ *
+ * auto: Resolved per request into `responseNode` or `lastNode` depending on whether
+ * a Respond to Webhook node is reachable from the output the trigger emitted on.
+ * Never reaches the response machinery — `resolveAutoResponseMode` replaces it first.
  */
 export type WebhookResponseMode =
 	| 'onReceived'
@@ -3143,7 +3180,8 @@ export type WebhookResponseMode =
 	| 'responseNode'
 	| 'formPage'
 	| 'hostedChat'
-	| 'streaming';
+	| 'streaming'
+	| 'auto';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;

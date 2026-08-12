@@ -352,6 +352,67 @@ describe('ActiveExecutions', () => {
 		expect(responsePromise.resolve).toHaveBeenCalledWith(fakeResponse);
 	});
 
+	describe('resolveExecutionResponsePromise', () => {
+		test('Should release the promise once a Respond node has answered', async () => {
+			await activeExecutions.add(executionData, {
+				executionId: FAKE_EXECUTION_ID,
+				expectedStatus: 'new',
+			});
+			activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, responsePromise);
+			activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, { body: 'ok' });
+			vi.mocked(responsePromise.resolve).mockClear();
+
+			activeExecutions.resolveExecutionResponsePromise(FAKE_EXECUTION_ID);
+
+			expect(responsePromise.resolve).toHaveBeenCalledWith({});
+		});
+
+		test('Should leave the promise pending when nothing answered', async () => {
+			await activeExecutions.add(executionData, {
+				executionId: FAKE_EXECUTION_ID,
+				expectedStatus: 'new',
+			});
+			activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, responsePromise);
+
+			activeExecutions.resolveExecutionResponsePromise(FAKE_EXECUTION_ID);
+
+			expect(responsePromise.resolve).not.toHaveBeenCalled();
+		});
+
+		test('Should leave the promise pending for a waiting execution', async () => {
+			await activeExecutions.add(executionData, {
+				executionId: FAKE_EXECUTION_ID,
+				expectedStatus: 'new',
+			});
+			activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, responsePromise);
+			activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, { body: 'ok' });
+			activeExecutions.setStatus(FAKE_EXECUTION_ID, 'waiting');
+			vi.mocked(responsePromise.resolve).mockClear();
+
+			activeExecutions.resolveExecutionResponsePromise(FAKE_EXECUTION_ID);
+
+			expect(responsePromise.resolve).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('hasResponded', () => {
+		test('Should report whether a Respond node answered', async () => {
+			await activeExecutions.add(executionData, {
+				executionId: FAKE_EXECUTION_ID,
+				expectedStatus: 'new',
+			});
+			expect(activeExecutions.hasResponded(FAKE_EXECUTION_ID)).toBe(false);
+
+			activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, { body: 'ok' });
+
+			expect(activeExecutions.hasResponded(FAKE_EXECUTION_ID)).toBe(true);
+		});
+
+		test('Should be false for an unknown execution', () => {
+			expect(activeExecutions.hasResponded('nope')).toBe(false);
+		});
+	});
+
 	test('Should copy over startedAt and responsePromise when resuming a waiting execution', async () => {
 		const executionId = await activeExecutions.add(executionData);
 		activeExecutions.setStatus(executionId, 'waiting');
