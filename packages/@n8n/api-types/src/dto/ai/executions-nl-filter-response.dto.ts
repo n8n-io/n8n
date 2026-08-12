@@ -16,17 +16,18 @@ export const EXECUTIONS_NL_FILTER_VOTES = ['all', 'up', 'down'] as const;
 
 /**
  * A text-extraction result — every field is a raw value pulled out of the query, not yet
- * resolved against the user's actual data. In particular `workflowName` and `annotationTagNames`
+ * resolved against the user's actual data. In particular `workflowNames` and `annotationTagNames`
  * are names as written in the query (e.g. "Daily Report"), not IDs: the model has no access to
  * the user's workflow/tag lists, so it cannot map a name to an ID without risking a hallucinated
  * one. The frontend resolves each name to a real ID against its already-loaded workflow/tag
  * stores, and merges whatever resolves into the existing filter defaults rather than replacing
- * them wholesale.
+ * them wholesale. Note `ExecutionFilterType.workflowId` only supports a single workflow — if
+ * more than one name resolves, that's a frontend-side decision (e.g. use the first match).
  */
 export class ExecutionsNlFilterResponseDto extends Z.class({
 	status: z.enum(EXECUTIONS_NL_FILTER_STATUSES).optional(),
-	/** The workflow name/reference as it appears in the query, e.g. "Daily Report". Resolved to an ID by the frontend. */
-	workflowName: z.string().optional(),
+	/** Workflow names/references as they appear in the query, e.g. ["Daily Report", "Slack Alerts"]. Resolved to IDs by the frontend. */
+	workflowNames: z.array(z.string()).optional(),
 	/** ISO 8601 timestamp. */
 	startDate: z.string().optional(),
 	/** ISO 8601 timestamp. */

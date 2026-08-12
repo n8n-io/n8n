@@ -18,7 +18,8 @@ You have no access to the user's actual workflows, tags, or data — extract nam
 
 Rules:
 - Only set fields the query actually specifies. Omit anything you're not confident about.
-- "workflowName" is the workflow name/reference as it appears in the query, e.g. "Daily Report" from "Daily Report runs". Omit if no workflow is mentioned.
+- "workflowNames" is a list of workflow names/references as they appear in the query, e.g. ["Daily Report"] from "Daily Report runs", or ["Daily Report", "Slack Alerts"] from "Daily Report and Slack Alerts runs". Omit if no workflow is mentioned.
+- A workflow name can itself contain "&" or "and" (e.g. "Sales & Marketing", "Sales and Marketing Sync"). When the query has "&"/"and" between two capitalized phrases, use your best judgment on whether it separates two distinct workflow names or is part of one workflow's name — you won't always get this right, and that's fine.
 - "status" must be one of: all, error, canceled, new, running, success, waiting. Map "failed" and "crashed" to "error".
 - "startDate" and "endDate" are ISO 8601 timestamps, resolved relative to the given current time and timezone.
 - If the query gives a single point in time (e.g. "today", "this week"), set "startDate" to the start of that period and leave "endDate" unset unless the query also implies an end.
