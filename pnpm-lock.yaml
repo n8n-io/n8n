@@ -2573,6 +2573,18 @@ importers:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.76)
 
+  packages/@n8n/frontend-vite-config:
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+
   packages/@n8n/imap:
     dependencies:
       iconv-lite:
