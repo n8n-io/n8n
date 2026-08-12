@@ -21,10 +21,22 @@ const DEQUEUE_URL = process.env.N8N_DEQUEUE_URL;
 const TOKEN = process.env.AGENT_WORKER_TOKEN;
 const GITHUB_USER = process.env.GITHUB_USER;
 const ROOT = resolvePath(process.env.AGENT_WORKER_ROOT ?? '/workspaces');
-const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS ?? 3000);
+
+// Read a positive-number env var. Fall back to the default (and warn) on a bad
+// value, so a config mistake cannot change the poll rate or the turn limit.
+function posNum(name, fallback) {
+	const raw = process.env[name];
+	if (raw === undefined) return fallback;
+	const n = Number(raw);
+	if (Number.isFinite(n) && n > 0) return n;
+	console.error(`${name} is not a positive number ("${raw}"); using ${fallback}.`);
+	return fallback;
+}
+
+const POLL_INTERVAL_MS = posNum('POLL_INTERVAL_MS', 3000);
 // Keep this below the n8n Wait-node limit. Then the worker reports a slow turn
 // before n8n's Wait ends with a generic message.
-const TURN_TIMEOUT_MS = Number(process.env.TURN_TIMEOUT_MS ?? 25 * 60_000);
+const TURN_TIMEOUT_MS = posNum('TURN_TIMEOUT_MS', 25 * 60_000);
 
 for (const [k, v] of Object.entries({
 	N8N_DEQUEUE_URL: DEQUEUE_URL,
@@ -102,12 +114,22 @@ async function handle(turn) {
 			sessionId: turn.sessionId ?? '',
 		};
 	}
-	// Send the result to the turn's resume URL. This continues the waiting n8n execution.
-	try {
-		await post(turn.resumeUrl, result);
-	} catch (error) {
-		console.error(`turn ${turn.turnId}: result POST failed: ${error.message}`);
+	// Send the result to the turn's resume URL. This continues the waiting n8n
+	// execution. Retry on a failed status or a network error, so a transient
+	// failure does not drop the result and leave the turn to time out.
+	for (let attempt = 1; attempt <= 3; attempt++) {
+		try {
+			const res = await post(turn.resumeUrl, result);
+			if (res.ok) return;
+			console.error(`turn ${turn.turnId}: result POST got HTTP ${res.status} (attempt ${attempt})`);
+		} catch (error) {
+			console.error(
+				`turn ${turn.turnId}: result POST failed (attempt ${attempt}): ${error.message}`,
+			);
+		}
+		await sleep(2000 * attempt);
 	}
+	console.error(`turn ${turn.turnId}: result not delivered after 3 attempts`);
 }
 
 console.log(`agent-worker polling as ${GITHUB_USER} every ${POLL_INTERVAL_MS}ms`);

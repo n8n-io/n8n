@@ -14,6 +14,10 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 const build = process.argv.includes('--build');
 const port = process.env.N8N_PORT ?? '5678';
+// Probe the same health path the backend serves (defaults to /healthz).
+const healthPath = process.env.N8N_ENDPOINT_HEALTH
+	? `/${process.env.N8N_ENDPOINT_HEALTH.replace(/^\//, '')}`
+	: '/healthz';
 const LOG = '/tmp/n8n-dev-be.log';
 const BUILD_LOG = '/tmp/dev-up-build.log';
 
@@ -42,7 +46,7 @@ const deadline = Date.now() + 120_000;
 let healthy = false;
 while (Date.now() < deadline) {
 	try {
-		const res = await fetch(`http://127.0.0.1:${port}/healthz`, {
+		const res = await fetch(`http://127.0.0.1:${port}${healthPath}`, {
 			signal: AbortSignal.timeout(5000),
 		});
 		if (res.ok) {
@@ -56,7 +60,7 @@ while (Date.now() < deadline) {
 const name = process.env.CODESPACE_NAME;
 const url = name ? `https://${name}-${port}.app.github.dev` : `http://localhost:${port}`;
 if (!healthy) {
-	console.error(`\nBackend did not answer /healthz within 2 min — check ${LOG}`);
+	console.error(`\nBackend did not answer ${healthPath} within 2 min — check ${LOG}`);
 	process.exit(1);
 }
 
@@ -78,5 +82,5 @@ if (name)
 	console.log(
 		orgShared
 			? '(org-visible — any n8n member signed into GitHub can open it)'
-			: '(still private — run `gh codespace ports visibility 5678:org -c $CODESPACE_NAME` to share with the org)',
+			: `(still private — run \`gh codespace ports visibility ${port}:org -c $CODESPACE_NAME\` to share with the org)`,
 	);
