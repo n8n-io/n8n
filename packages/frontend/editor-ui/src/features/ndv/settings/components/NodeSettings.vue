@@ -114,6 +114,10 @@ const props = withDefaults(
 		alwaysShowAllSettings?: boolean;
 		initialScrollTop?: number;
 		flattenSingleValueCollections?: boolean;
+		// Let a host drive which tab is shown (node panel renders one tab per pane).
+		forcedTab?: NodeSettingsTab;
+		// Keep the "Execution" group out of Properties when the host surfaces it elsewhere.
+		hideExecutionSettings?: boolean;
 	}>(),
 	{
 		inputSize: 0,
@@ -130,6 +134,8 @@ const props = withDefaults(
 		alwaysShowAllSettings: false,
 		initialScrollTop: 0,
 		flattenSingleValueCollections: false,
+		forcedTab: undefined,
+		hideExecutionSettings: false,
 	},
 );
 
@@ -189,7 +195,15 @@ if (props.isEmbeddedInCanvas) {
 
 const nodeValid = ref(true);
 
-const openPanel = ref<NodeSettingsTab>('params');
+const openPanel = ref<NodeSettingsTab>(props.forcedTab ?? 'params');
+
+// The node panel renders one NodeSettings per tab, so the host owns the tab.
+watch(
+	() => props.forcedTab,
+	(tab) => {
+		if (tab) openPanel.value = tab;
+	},
+);
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
@@ -365,6 +379,7 @@ const displayedCommonSettings = computed(() =>
 const showExecutionSettings = computed(
 	() =>
 		props.progressiveDisclosure &&
+		!props.hideExecutionSettings &&
 		(displayedNodeTypeSettings.value.length > 0 || displayedCommonSettings.value.length > 0),
 );
 const shouldInitiallyExpandMoreSettings = computed(
@@ -926,7 +941,9 @@ function handleSelectAction(params: INodeParameters) {
 					v-if="showAgentNdvControls && agentNdvMode === 'inline'"
 					:is-read-only="isReadOnly"
 				/>
-				<div v-if="progressiveDisclosure && !alwaysShowAllSettings" :class="$style.disclosure">
+				<!-- Stays mounted when alwaysShowAllSettings is on, otherwise the checkbox
+					 that turns it off disappears with it. -->
+				<div v-if="progressiveDisclosure" :class="$style.disclosure">
 					<template v-if="showAllSettings || alwaysShowAllSettings">
 						<N8nInput
 							:model-value="settingsFilter"
