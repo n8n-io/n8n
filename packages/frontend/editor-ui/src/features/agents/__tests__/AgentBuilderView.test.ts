@@ -1849,12 +1849,20 @@ describe('AgentBuilderView — three-column shell', () => {
 			unchangedIds: [],
 		});
 
+		// The toggle handler no-ops until the agent resolves, so emitting after a
+		// single flushPromises() left this racing the scheduler: under a full suite
+		// run the emit could land before the agent was there and simply be dropped.
+		const editorColumn = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		await vi.waitFor(() => expect(editorColumn.props('agent')).toBeTruthy());
+
 		vi.useFakeTimers();
 		try {
-			wrapper
-				.findComponent({ name: 'AgentBuilderEditorColumn' })
-				.vm.$emit('toggle-mcp-access', true);
+			editorColumn.vm.$emit('toggle-mcp-access', true);
 			await nextTick();
+
+			// Fake timers are never advanced, so the debounce cannot fire on its own —
+			// whatever saves below is the flush, which is what this test is about.
+			expect(toggleAgentMcpAccess).not.toHaveBeenCalled();
 
 			await wrapper.setProps({ artifactAgentId: 'a2' });
 			await flushPromises();
