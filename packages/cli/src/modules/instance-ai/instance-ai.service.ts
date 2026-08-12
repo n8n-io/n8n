@@ -181,7 +181,11 @@ import {
 } from './planned-task-action-runner';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
-import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import {
+	InstanceAiSandboxService,
+	OneOffTaskCredentialEnvService,
+	type RuntimeSandboxEntry,
+} from './sandbox';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
@@ -749,6 +753,7 @@ export class InstanceAiService {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly oneOffTaskCredentialEnv: OneOffTaskCredentialEnvService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -2260,6 +2265,7 @@ export class InstanceAiService {
 
 		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
 		const mcpConnectionsEnabled = await this.adapterService.isMcpConnectionsEnabled(user);
+		const oneOffTasksEnabled = await this.adapterService.isOneOffTasksEnabled(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2386,7 +2392,10 @@ export class InstanceAiService {
 
 		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
 		// preserved) so every derived skill source inherits the exclusion.
-		const flagDisabledSkillIds = disabledInstanceAiSkillIds({ configEvalsEnabled });
+		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
+			configEvalsEnabled,
+			oneOffTasksEnabled,
+		});
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0
 				? filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), flagDisabledSkillIds)
@@ -2394,6 +2403,7 @@ export class InstanceAiService {
 		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
+		let oneOffTaskWorkspace: OrchestrationContext['oneOffTaskWorkspace'];
 
 		const sandboxStatus = this.settingsService.getSandboxStatus();
 		if (sandboxStatus.workflowBuilderAvailable) {
@@ -2451,6 +2461,23 @@ export class InstanceAiService {
 					workspace: runtimeSkillWorkspace,
 					logger: this.logger,
 				});
+
+				if (oneOffTasksEnabled) {
+					oneOffTaskWorkspace = async (taskId, credentialIds) => {
+						const entry = await getSandboxEntry();
+						if (!entry?.workspace.filesystem) return undefined;
+						const root = await getWorkspaceRoot(entry.workspace);
+						const taskRoot = `${root}/tasks/${taskId}`;
+						await entry.workspace.filesystem.mkdir(taskRoot, { recursive: true });
+						// Decrypted values flow only into the scoped workspace's command
+						// env — never into tool results or events.
+						const resolved = await this.oneOffTaskCredentialEnv.resolve(user, credentialIds);
+						return {
+							workspace: createScopedWorkspace(entry.workspace, taskRoot, resolved.env),
+							credentials: resolved.credentials,
+						};
+					};
+				}
 			}
 		}
 
@@ -2558,6 +2585,7 @@ export class InstanceAiService {
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
 			workspaceRoot,
+			oneOffTaskWorkspace,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,

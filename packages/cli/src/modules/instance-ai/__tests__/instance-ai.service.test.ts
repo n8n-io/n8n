@@ -948,6 +948,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getNodeDefinitionDirs: Mock;
 				isConfigEvalsEnabled: Mock;
 				isMcpConnectionsEnabled: Mock;
+				isOneOffTasksEnabled: Mock;
 			};
 			sourceControlPreferencesService: { getPreferences: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -996,6 +997,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getNodeDefinitionDirs: vi.fn(() => []),
 			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
 			isMcpConnectionsEnabled: vi.fn().mockResolvedValue(false),
+			isOneOffTasksEnabled: vi.fn().mockResolvedValue(false),
 		};
 		service.sourceControlPreferencesService = {
 			getPreferences: vi.fn(() => ({ branchReadOnly: false })),

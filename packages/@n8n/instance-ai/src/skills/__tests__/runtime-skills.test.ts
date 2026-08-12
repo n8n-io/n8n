@@ -3,7 +3,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
-import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
+import {
+	CONFIG_EVALS_SKILL_ID,
+	disabledInstanceAiSkillIds,
+	ONE_OFF_TASK_SKILL_ID,
+} from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
 const AGENTS_MODULE_SKILL_IDS = ['agent-builder', 'intent-recognition'] as const;
@@ -159,16 +163,35 @@ describe('Instance AI runtime skills', () => {
 
 	it('gates the config-evals skill by its folder id', () => {
 		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
-		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: false })).toContain(
-			CONFIG_EVALS_SKILL_ID,
-		);
-		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: true })).not.toContain(
-			CONFIG_EVALS_SKILL_ID,
-		);
+		expect(
+			disabledInstanceAiSkillIds({ configEvalsEnabled: false, oneOffTasksEnabled: true }),
+		).toContain(CONFIG_EVALS_SKILL_ID);
+		expect(
+			disabledInstanceAiSkillIds({ configEvalsEnabled: true, oneOffTasksEnabled: true }),
+		).not.toContain(CONFIG_EVALS_SKILL_ID);
 
 		const source = loadInstanceAiRuntimeSkillSource();
 		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
 		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
+	});
+
+	it('loads and gates the bundled one-off-task skill', () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const oneOffTask = source.registry.skills.find((skill) => skill.name === 'one-off-task');
+
+		expect(oneOffTask).toMatchObject({
+			name: 'one-off-task',
+			recommendedTools: ['run-one-off-task', 'credentials'],
+		});
+		expect(oneOffTask?.id).toBe(ONE_OFF_TASK_SKILL_ID);
+		expect(oneOffTask?.description).toContain('run-once');
+
+		expect(
+			disabledInstanceAiSkillIds({ configEvalsEnabled: true, oneOffTasksEnabled: false }),
+		).toContain(ONE_OFF_TASK_SKILL_ID);
+		expect(
+			disabledInstanceAiSkillIds({ configEvalsEnabled: true, oneOffTasksEnabled: true }),
+		).not.toContain(ONE_OFF_TASK_SKILL_ID);
 	});
 
 	it('excludes bundled Agents module skills unless the module is enabled', async () => {

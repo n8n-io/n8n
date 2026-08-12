@@ -23,6 +23,7 @@ import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
+import { FeatureFlagConfig } from './configs/feature-flags.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { HttpRequestConfig } from './configs/http-request.config';
@@ -316,4 +317,7 @@ export class GlobalConfig {
 
 	@Nested
 	instanceSettingsLoader: InstanceSettingsLoaderConfig;
+
+	@Nested
+	featureFlags: FeatureFlagConfig;
 }

@@ -633,6 +633,8 @@ export type {
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
 	OrchestrationContext,
+	OneOffTaskCredentialInfo,
+	OneOffTaskWorkspace,
 	SpawnBackgroundTaskOptions,
 	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,

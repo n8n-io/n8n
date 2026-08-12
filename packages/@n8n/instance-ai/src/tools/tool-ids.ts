@@ -39,6 +39,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
 	BUILD_AGENT: 'build-agent',
 	GET_SESSION: 'get-session',
+	RUN_ONE_OFF_TASK: 'run-one-off-task',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {

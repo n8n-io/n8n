@@ -121,6 +121,21 @@ describe('createScopedWorkspace', () => {
 		});
 	});
 
+	it('lets per-call env override a colliding scoped env key', async () => {
+		const executeCommand = vi.fn();
+		const sandbox = createSandbox(executeCommand);
+		const workspace = createScopedWorkspace(new Workspace({ sandbox }), root, {
+			SHARED_KEY: 'scoped',
+		});
+
+		await workspace.sandbox?.executeCommand?.('npm test', [], { env: { SHARED_KEY: 'caller' } });
+
+		expect(executeCommand).toHaveBeenCalledWith('npm test', [], {
+			cwd: root,
+			env: { SHARED_KEY: 'caller' },
+		});
+	});
+
 	it('rejects command working directories outside the builder root', async () => {
 		const executeCommand = vi.fn();
 		const sandbox = createSandbox(executeCommand);

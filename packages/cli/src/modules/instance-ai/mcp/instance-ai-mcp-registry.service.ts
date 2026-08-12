@@ -32,6 +32,7 @@ import type {
 	InstanceAiMcpRegistryConnection,
 	InstanceAiMcpToolFilter,
 } from '../entities/instance-ai-mcp-registry-connection.entity';
+import { readAccessToken, readOAuthTokenData } from '../oauth-token-data';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
 type Transport = 'sse' | 'streamableHttp';
@@ -49,20 +50,6 @@ interface OAuth2FetchContext {
 	accessToken: string;
 	projectId: string;
 	credentialData: ICredentialDataDecryptedObject;
-}
-
-function readString(data: Record<string, unknown>, key: string): string | undefined {
-	const value = data[key];
-	return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function readAccessToken(tokenData: Record<string, unknown>): string | undefined {
-	return readString(tokenData, 'accessToken') ?? readString(tokenData, 'access_token');
-}
-
-function readOAuthTokenData(data: ICredentialDataDecryptedObject): Record<string, unknown> | null {
-	const tokenData = data.oauthTokenData;
-	return isObjectLiteral(tokenData) ? tokenData : null;
 }
 
 function getPreferredRemote(remotes: McpRegistryRemote[]): {

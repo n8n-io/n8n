@@ -1,8 +1,8 @@
 # One-Off Task Sandboxes
 
-> **Status:** Hackathon design. Not implemented. This document describes the
-> concept, the decisions made, and the path from hackathon prototype to
-> production.
+> **Status:** Implemented as a hackathon slice behind the
+> `105_instance_ai_one_off_tasks` PostHog flag. Per-credential HITL approval
+> and the items under Future Hardening are follow-ups.
 
 ## The Concept
 
@@ -10,413 +10,231 @@ Instance AI can already do one-off tasks, but only through a workflow. A
 workflow is the wrong tool for a task that runs once — "create a Google Sheet
 with these columns" does not need a trigger, a canvas, or persistence.
 
-The idea: Instance AI delegates one-off tasks to an **ephemeral sandbox** that
-runs a **pre-bundled coding harness** ([pi](https://pi.dev)). The harness
-writes code against the provider's SDK, executes it, verifies the result, and
-returns a structured report. Then the sandbox is destroyed.
+The idea: Instance AI delegates one-off tasks to a **coding sub-agent** that
+writes code against the provider's SDK, executes it in a sandbox, verifies the
+result by reading it back, and returns a structured report.
 
 The core division of roles:
 
-- **Instance AI is the planner.** It writes the task contract: the goal, the
-  guardrails, and which credentials to use. It does not write code.
-- **The harness is the executor.** It runs the full coding loop — write, run,
-  fix, verify — inside the sandbox.
+- **Instance AI (orchestrator) is the planner.** It writes the task contract:
+  the goal, the guardrails, and which credentials to use. It does not write
+  code.
+- **The sub-agent is the executor.** It runs the full coding loop — write,
+  run, fix, verify.
+- **The sandbox is a dumb remote executor.** It runs commands and holds the
+  generated code. It holds no LLM key and no long-lived secrets.
 
 This boundary is the most important design decision. Keep it strict.
 
 ```mermaid
 graph LR
     User --> IA["Instance AI<br/>(planner)"]
-    IA -->|"task contract<br/>(one-shot prompt)"| Harness["pi harness<br/>(executor)"]
-    subgraph SB["Ephemeral sandbox"]
-        Harness --> Code["SDK code<br/>write → run → fix"]
-        Code --> Verify["Read-back<br/>verification"]
+    IA -->|"task contract<br/>(run-one-off-task)"| SA["Sub-agent<br/>(executor, host-side)"]
+    subgraph Host ["n8n process"]
+        SA
     end
-    Verify -->|"structured report"| IA
+    subgraph SB["Thread sandbox"]
+        Dir["tasks/&lt;taskId&gt;/<br/>SDK code · npm installs"]
+    end
+    SA -->|"workspace tools<br/>(env-injected exec)"| Dir
+    SA -->|"report-result<br/>(structured report)"| IA
     IA -->|"answer + artifact links"| User
-    SB -.->|"destroyed after task"| X(("✕"))
 
     style IA fill:#f3e8ff,stroke:#7c3aed
     style SB fill:#fef3c7,stroke:#d97706
 ```
 
-## Why the Sandbox Is Ephemeral
+## Where the Executor Runs (Alternatives Considered)
 
-The sandbox holds decrypted credentials. Therefore its lifetime equals the
-lifetime of the secrets. This is a hard guarantee, not a preference:
+Two architectures were evaluated:
 
-- Destroy the sandbox on success.
-- Destroy the sandbox on failure.
-- Destroy the sandbox on timeout, on abort, and on crash.
+1. **Harness-in-sandbox** (the original hackathon design): bundle a terminal
+   coding harness ([pi](https://pi.dev)) into the sandbox image and drive it
+   over a JSON event stream. Rejected because the executor's LLM loop inside
+   the sandbox creates most of the security surface: the provider LLM key (or
+   proxy billing token) must be injected into a box running LLM-written code;
+   raw tool output streams out before any in-sandbox redaction hook fires; a
+   mid-task credential request forces an exit-and-relaunch dance; and every
+   harness event needs a translation layer onto the streaming protocol.
+2. **Host-side sub-agent** (implemented): the executor loop is a `@n8n/agents`
+   sub-agent running in the n8n process — the same pattern as the eval-setup
+   agent. Its workspace tools execute in the sandbox; everything else is
+   native. No LLM key ever enters the sandbox; redaction, streaming, HITL
+   suspension, corrections, tracing, and credit metering are the existing
+   runtime mechanisms; the sandbox degrades to a remote shell plus disk.
 
-This differs from the existing thread-scoped sandbox (see
-[sandboxing.md](./sandboxing.md)), which persists across a conversation. A
-one-off task sandbox is created per task and never reused.
+The trade: per-tool-call round-trips to the sandbox exec API (LLM inference
+dominates loop wall-clock, so this is minor) and the executor consumes host
+context/tokens, bounded by `MAX_STEPS.ONE_OFF_TASK` and metered by the
+existing credit system.
 
 ## The Sandbox
 
-Provider: the **n8n sandbox service** (the default provider). Two findings
-shape the provisioning story:
+One-off tasks reuse the **thread-scoped sandbox** (see
+[sandboxing.md](./sandboxing.md)) — the same workspace the workflow builder
+uses, created lazily on first use and reused across runs in a conversation.
+Each task gets its own working directory, `tasks/<taskId>/`, and a
+path-scoped workspace that cannot escape it.
 
-1. **Pre-warmed snapshots are Daytona-only today.** The `SnapshotManager` is
-   built on the Daytona SDK, and `create-workspace.ts` skips the snapshot path
-   for the `n8n-sandbox` provider. The sandbox service API
-   (`@n8n/sandbox-client`) has no image or snapshot parameter — the service
-   runs one fixed runner image, chosen at service deployment.
-2. **This is a match, not a blocker.** All one-off task sandboxes use the same
-   image anyway. Per-sandbox image selection is not needed.
+### Lifecycle
 
-### Hackathon path: bootstrap at creation
+The original design called for a per-task ephemeral sandbox destroyed the
+moment the task ended, because the sandbox held decrypted credentials. With
+the host-side executor that coupling is gone, and the requirement changed:
+a run may hand off to the sub-agent, pause for HITL, set up a credential, and
+hand off again — the generated code must survive all of that.
 
-Create a sandbox, then run a bootstrap script through the exec and filesystem
-APIs:
+- **The sandbox lives as long as the thread is active** — across handoffs,
+  HITL pauses, and follow-up runs — with the existing idle TTL as the reaper
+  (`builderSandboxTtlMs`, default 15 minutes, extended while a run, a
+  suspension, or a background task is live).
+- **Credential exposure ends with the task.** Decrypted values live only in
+  the host-side command wrapper (see Credentials below); they are handed to
+  each exec call and die with it. Nothing persists them in the sandbox unless
+  the generated code writes them to disk — which the sub-agent's instructions
+  forbid and the write gate cannot fully prevent (see Future Hardening).
+- **During a HITL pause** the workspace files persist; no process is holding
+  injected env vars, because the executor loop (and its suspension state)
+  lives host-side.
+- **Follow-up tasks** ("actually, make it 5 columns") are new tasks with a new
+  `tasks/<taskId>/` directory, the previous report passed as context. The
+  previous task's code is still on disk if the sub-agent wants to reuse it.
 
-- `npm install -g --ignore-scripts @earendil-works/pi-coding-agent`
-- Write `SYSTEM.md`, `AGENTS.md`, and the guardrail extension files.
+Cancellation needs no special cleanup: aborting the background task kills the
+host-side loop, and with it the only holder of injected env values. There is
+no per-task sandbox to destroy.
 
-Zero changes outside this repo. Cost: tens of seconds of startup per task.
-Acceptable for a demo, not for production.
+### Provisioning
 
-### Production path: bake into the runner image
-
-Add pi, the config files, the extensions, and the most common SDKs
-(googleapis, Slack, …) to the sandbox service's runner image
-(n8n-io/n8n-sandbox-service). Every sandbox the service creates is then
-pre-warmed by definition. Sandbox start stays fast, which matters — the user
-waits in a chat.
+The task workspace needs only Node.js and npm — both already in the sandbox
+runner image. The sub-agent installs the SDKs it needs (`npm install
+googleapis`, …) into its task directory as its first step. Baking common SDKs
+into the runner image (n8n-io/n8n-sandbox-service) is a startup-latency
+optimization, not a requirement; note that it couples the image's release
+cadence to this feature's (the builder path pins SDK versions from the host
+for exactly this reason — see `workspace/sandbox-setup.ts`).
 
 ### Hard limits
 
-- Maximum sandbox lifetime (wall clock).
-- Token budget for the harness.
-- Maximum wait time on a human-in-the-loop request (see credential flow).
-- On any limit: abort the harness, destroy the sandbox, report the task as
-  incomplete. A stuck loop must not hold decrypted credentials.
+- `MAX_STEPS.ONE_OFF_TASK` bounds the executor loop.
+- The background-task concurrency limit and liveness timeout apply unchanged.
+- The sandbox idle TTL reclaims the workspace after the thread goes quiet.
 
-## The Harness
+## The Executor
 
-[pi](https://pi.dev) is a minimal terminal coding harness with the exact
-mechanisms this design needs.
+The `run-one-off-task` orchestration tool
+(`src/tools/orchestration/one-off-task-agent.tool.ts`) spawns the sub-agent
+as a background task — the same mechanics as `eval-setup-with-agent`:
 
-### Integration: JSON event-stream mode
+- **Sub-agent** via `createSubAgent` with static instructions
+  (`one-off-task-agent.prompt.ts`): one task, read credentials from env by
+  name, never print values, verify by read-back, finish with `report-result`.
+- **Workspace tools** from the attached scoped workspace, filtered to
+  read/write/str-replace/execute by the standard allowlist.
+- **Tool set**: `report-result` plus the `research` domain tool for SDK
+  documentation lookups. No workflow tools, no MCP, no delegation.
+- **Streaming** through `consumeStreamWithHitl`: events flow to the existing
+  agent-branch UI under the sub-agent's `agentId` with `parentId` set; user
+  corrections steer the running task; output redaction applies to every event
+  before publish.
 
-Pi's RPC mode (JSONL over stdin/stdout) **cannot run on the default sandbox
-provider**: the sandbox service exec API exposes a command, env, output
-callbacks, and an abort signal — no writable stdin
-(`n8n-sandbox-sandbox.ts`; [sandboxing.md](./sandboxing.md) marks
-interactive process handles as unsupported). Instance AI therefore drives
-pi in **JSON event-stream mode**: a one-shot invocation with the task as
-the prompt argument and structured events on stdout.
+### The result contract
 
-- Send the task: prompt argument of the one-shot invocation.
-- Receive streamed events through the exec `onStdout` callback.
-- Done signal: process exit plus the final report.
-- Kill switch: the exec `abortSignal` kills the pi process. Graceful abort
-  is not needed — the sandbox is destroyed either way.
+The sub-agent's last act must be calling **`report-result`** (a zod-schema
+tool): status (`completed` / `partial` / `failed`), summary, actions taken,
+verification evidence, artifact links. The task body reads the captured
+report after the stream settles — a model-formatted text summary is never
+trusted as the structured result. If the loop ends without a report, the task
+result says "external state unknown" plus the last output.
 
-What is lost against RPC mode: mid-run steering. A mid-task credential
-request becomes **exit-and-relaunch** — the harness exits with a
-"needs credential" report, and Instance AI relaunches the exec with the
-extra environment variable. RPC mode becomes an option again if the sandbox
-service grows an interactive execution API (see Future Hardening).
+**Verification means read-back.** After a write, the sub-agent reads the
+resource through the API and compares it with the goal. "The create call
+returned 200" is not verification. The artifact links in the report are the
+final, free verification layer — the user can click and see.
 
-### Instruction layers
-
-Static instructions are baked; only the task changes per run.
-
-| Layer | Mechanism | Content |
-| --- | --- | --- |
-| Role and rules | `~/.pi/agent/SYSTEM.md` (baked) | Identity: "You execute one one-off task. You read credentials from the environment by name. You verify by read-back. You produce a final report. You never print secret values." |
-| Conventions | `AGENTS.md` context file (baked) | Credential catalog format, how to request a new credential, report format. |
-| The task | One-shot prompt (per run) | The task contract from Instance AI. |
-
-### Guardrail extensions
-
-Pi extensions are TypeScript modules baked into the image
-(`.pi/extensions/`). They intercept every tool call before it executes and
-every tool result before the model sees it.
-
-| Extension hook / tool | Purpose | Strength |
-| --- | --- | --- |
-| `tool_call` hook | Block obvious env-dumping commands (`env`, `printenv`, `echo $SECRET_*`). | **Soft.** A tripwire, not a wall — code can always read `process.env`. Do not oversell it. |
-| `tool_result` hook | Redact secret values from every tool output before the LLM sees them (`[REDACTED:NAME]`). The injector writes the secret env var names to a manifest; the hook compares outputs against the actual values, which are already inside the sandbox. | **Defense-in-depth, not a guarantee.** Pi streams `tool_execution_update` deltas *while* a tool runs — before this hook fires — so partial raw output can leave the sandbox first. The authoritative scrub is host-side, in the event translation layer (see Instance AI Integration). Exact-value matching also misses encoded or transformed secrets; that residual risk is what the egress allowlist addresses. |
-| `list_credentials` tool | Returns credential names and types only. The model has no reason to poke at the environment — availability is a tool call, not a shell command. | Convenience + risk reduction. |
-| `report_result` tool | Fixed schema: actions taken, verification evidence, artifact links. The system prompt requires it as the harness's last act. | Enforces the result contract by schema, not by hoping the model formats text. |
-| `lookup_docs` tool | Calls the Context7 API directly for current SDK docs. Pi has no documented native MCP support; a direct HTTP tool is simpler than bridging an MCP client. | Capability. |
+The report is a **best-effort user summary, not an audit log**. A killed
+executor never calls `report-result`; after an unclean stop Instance AI
+reports the task as interrupted. A trusted, host-side audit log of API calls
+arrives with the credential proxy (Future Hardening).
 
 ## Credentials
 
-The security core of the design, stated explicitly:
+The security core of the design:
 
-> **The harness knows credential names and types. It never sees credential
-> values in its context.** Values exist only in the pi process environment.
-> The LLM transcript, the logs, and the report never contain a value.
+> **Credential values never enter the model transcript — by construction.**
+> The sub-agent is told env var *names*. Values are resolved host-side and
+> merged into each sandbox exec call by the scoped workspace's command
+> wrapper (`createScopedWorkspace(workspace, taskRoot, env)`). They never
+> appear in a tool call, a tool result, or an event.
 
-### Injection: per-exec environment
+This is stronger than the original harness-in-sandbox design, which depended
+on scrubbing values out of a stream they had already entered. Two residual
+paths remain and are named honestly: the generated code itself reads the
+values from `process.env` and could print them (the instructions forbid it;
+pattern-based output redaction is the in-stream backstop; exact-literal
+redaction does not exist today), and code could persist them to disk (the
+egress allowlist and credential proxy under Future Hardening are the real
+answers).
 
-The sandbox client's `ExecRequest` already supports
-`env: Record<string, string>`. Decrypted values are passed as environment
-variables **only to the exec call that starts the pi process**. They are
-never written to a file and never baked into the sandbox. No service change
-is needed.
+### Resolution: one narrowly-scoped CLI service
 
-### Decryption: one privileged adapter method
+`OneOffTaskCredentialEnvService` (`packages/cli/.../sandbox/`) resolves
+credential IDs to env vars. The general Instance AI credential surface stays
+metadata-only (`CredentialDetail` carries an explicit "never include
+decrypted credential data" note); this service is not reachable from any
+tool — its output flows only into the scoped workspace's env.
 
-The existing Instance AI boundary deliberately returns credential metadata
-only — `CredentialDetail` in `types.ts` carries an explicit "never include
-decrypted credential data" note, and the setup flow resumes with IDs. That
-convention stays for the general surface. Injection goes through **one new,
-narrowly-scoped adapter method** in `packages/cli` — where decryption and
-the OAuth machinery already live: *resolve credential X to injectable env
-values for a one-off task*. The method:
+Per credential:
 
-- **Rechecks user/project access at injection time**, not only at catalog
-  time.
-- **Static-key credentials:** maps fields to env vars directly. Multi-field
-  credentials become N env vars.
-- **OAuth credentials:** refreshes the token first, then injects **only the
-  fresh access token** — never the refresh token, never the client secret.
-  The sandbox's hard lifetime is far below the token TTL, so no refresh is
-  ever needed inside the sandbox; the expiry problem is solved by ordering,
-  not new infrastructure. The harness uses the token as a plain Bearer
-  token (the `AGENTS.md` conventions say so; SDKs accept raw access
-  tokens). If the task needs a scope the credential lacks, the API call
-  fails mid-task and the report says so — accepted.
+1. **User-scoped access recheck** at injection time:
+   `findCredentialForUser(id, user, ['credential:read'])`. This always
+   precedes the OAuth refresh (which authorizes by project, not user).
+2. **Static-key credentials**: string fields map to
+   `<TYPE_PREFIX>_<FIELD>` env vars (`airtableApi.apiKey` →
+   `AIRTABLE_API_KEY`).
+3. **OAuth credentials**: refresh the token first
+   (`refreshOAuth2CredentialById`, best-effort), then inject **only the fresh
+   access token** as `<TYPE_PREFIX>_ACCESS_TOKEN` — never the refresh token,
+   never the client secret. The task's bounded lifetime sits well below the
+   token TTL, so no refresh is needed mid-task; if a token does expire
+   mid-task, the API call fails and the report says so — accepted.
 
-Both credential shapes are supported from day one; the injection contract
-(env var names → values) does not care about the type. Google Sheets
-(OAuth) is the demo slice.
+### Consent
 
-### Two request paths
+The orchestrator's skill instructs it to agree the credential use with the
+user in conversation before passing IDs to the tool, and the resolver's
+access recheck is the hard authorization gate. **Per-credential HITL approval
+(a confirmation card before injection) is a deliberate follow-up**, not part
+of the slice: the tool-suspend mechanism and the `credentialSelection`
+confirmation kind already exist (`credentials.tool.ts` uses both), so the
+follow-up is contained in the tool.
 
-**Path 1 — existing credential.** The harness reads the catalog (names and
-types only) via `list_credentials`. When the task needs one, it sends a
-structured request to Instance AI. The user approves. Instance AI decrypts
-the credential and injects it. Explicit approval per credential is the
-consent mechanism — do not skip it, even when the need is obvious. It is
-the only gate for now.
-
-An approval is a **thread-scoped lease**: it covers that credential, in
-that thread, for a bounded window. A follow-up task inside the window gets
-a one-click, pre-filled confirmation instead of a full re-approval; when
-the lease expires (or the thread ends), full approval is required again.
-This keeps consent per-injection honest without adding friction to the
-common case.
-
-**Path 2 — new credential.** The harness requests a credential that does not
-exist. This reuses the **Templated Custom Auth** recipe flow
-(`src/tools/credentials.tool.ts`): the model builds a recipe from provider
-docs (placeholders, labels, masked inputs, `docsUrl`, `testUrl`), the user
-pastes only the secret values into the setup card, and the credential is
-tested via `testUrl` before injection. Three hard problems come solved with
-this reuse:
-
-1. The paste bypasses the model context (masked setup card, not a chat
-   message).
-2. The credential is verified before use — the harness does not burn tokens
-   discovering that a key is wrong.
-3. `docsUrl` guides the user to the exact page where they create the key.
-
-At paste time, ask the user: "Save this for later, or use it once?" The
-use-once option dies with the sandbox — a security feature the workflow path
-does not have, and a natural fit for one-off tasks.
-
-The placeholder names double as the environment contract: a recipe with
-`{{api_key}}` tells the harness "read `API_KEY` from the environment" without
-the harness ever knowing the value.
-
-Note: in the existing flow, n8n applies the auth template at request time. In
-the sandbox, the harness calls the SDK directly, so the template execution is
-mostly unused. What is reused is the request–card–paste–verify UX and the
-"values never enter model context" guarantee.
-
-### The wait state
-
-A mid-task credential request pauses the harness while already-injected
-credentials sit in the sandbox. Set a wait timeout: if the user does not
-respond in N minutes, destroy the sandbox and report the task as incomplete.
-The user can restart; secrets must not sit idle.
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant IA as Instance AI
-    participant SB as Sandbox (pi)
-
-    IA->>SB: create sandbox + bootstrap
-    IA->>SB: start pi (JSON event-stream), env = approved credentials
-    SB->>SB: write code, run, fix
-    SB->>IA: exit — needs credential (name/type or recipe)
-    IA->>U: approval or setup card (masked)
-    U->>IA: approve / paste values
-    Note over IA: testUrl probe (new credentials)
-    IA->>SB: relaunch pi exec, env += new credential
-    SB->>SB: complete task
-    SB->>SB: read-back verification
-    SB->>IA: report_result (actions, evidence, links)
-    IA->>SB: destroy sandbox
-    IA->>U: answer + artifact links
-```
-
-## Verification
-
-Mandatory, and defined concretely so the harness cannot claim success
-cheaply:
-
-- **Verification means read-back.** After a write, the harness reads the
-  resource through the API and compares the state with the goal. "The create
-  call returned 200" is not verification. "I read the sheet and it has the 4
-  columns you asked for" is.
-- **Evidence goes in the report.** What was checked and what was found, plus
-  the artifact link. The user can click the link and see for themselves —
-  the final verification layer, and it is free.
-- **Write operations get a gate.** For destructive actions, the harness makes
-  a short plan first and Instance AI shows it to the user before execution. A
-  failed retry can create the sheet twice; a wrong plan can delete data.
-
-## The Result Contract
-
-The harness must not return free text only. The `report_result` schema
-carries:
-
-- Actions taken (which API calls, against what).
-- Verification evidence (what was read back, what matched).
-- Artifacts (URLs to created resources).
-
-The report is a **best-effort user summary, not an audit log**. A killed or
-crashed harness never calls `report_result`, and a model-authored summary
-is not trusted evidence. After an unclean stop, Instance AI reports "task
-interrupted — external state unknown" plus whatever the streamed events
-showed. A middle step: the `tool_call` hook appends every executed command
-to a journal file that n8n reads after the fact — it survives harness
-death, though it is still sandbox-resident and model-adjacent. A trusted,
-host-side audit log arrives with the credential proxy (Future Hardening).
-
-Keep the final report after the sandbox dies: if the user asks "do that
-again next month," Instance AI starts a fresh one-off task with the old
-report as a hint — knowledge reuse without any workflow machinery.
+For credentials that do not exist yet, the orchestrator uses the existing
+credential setup flow (including the Templated Custom Auth recipe path — the
+masked setup card keeps pasted secrets out of the model context, `testUrl`
+verifies before use) and then passes the new credential's ID.
 
 ## Instance AI Integration
 
-The existing architecture has slots for every integration point. Nothing new
-is invented at the protocol level.
+The pattern is skill + tool, like the workflow builder:
 
-### Skill plus tool
+- **The `one-off-task` skill** (`skills/one-off-task/SKILL.md`) teaches the
+  orchestrator the routing rule (recurring → workflow, run-once → one-off
+  task, user override wins), how to write a good task contract, the
+  credential consent flow, and how to relay the report.
+- **The thin `run-one-off-task` tool** validates input, resolves the task
+  workspace, and spawns the background task. Contract quality lives in the
+  skill.
 
-The workflow builder already uses the pattern: a skill teaches the
-orchestrator when and how, an orchestration tool does the spawning.
+Gating is the standard capability-presence idiom: the adapter resolves the
+PostHog flag per user (fails closed); the service wires the
+`oneOffTaskWorkspace` capability onto the orchestration context only when the
+flag is on **and** the sandbox is enabled; the tool registers only when the
+capability is present; the skill is hidden by the same flag.
 
-- **A `one-off-task` skill** teaches the orchestrator to write a good task
-  contract: the goal, the constraints, which catalog credentials fit, and
-  what "verified" means for this task. It also carries the routing rule —
-  recurring work → workflow, run-once work → sandbox — with user override.
-- **A thin `run-one-off-task` orchestration tool** creates the sandbox,
-  bootstraps it, and starts pi as a background task. Per the engineering
-  rules, the tool validates input, calls the service, returns output — the
-  contract quality lives in the skill, not the tool.
-
-### Streaming: reuse the event schema
-
-The streaming protocol already supports multiple agent branches: every event
-carries an `agentId`, spawned background agents carry a `parentId`, and the
-frontend renders those branches (see
-[streaming-protocol.md](./streaming-protocol.md)). The integration is a
-translation layer: pi's JSON-stream events (read from the exec `onStdout`
-callback) map onto existing event types under the sandbox agent's ID.
-
-| pi event (JSON stream) | Instance AI event |
-| --- | --- |
-| `message_update` (text deltas) | `text-delta` |
-| `tool_execution_start` / `end` | tool events in the agent branch |
-| milestone progress | `status` ("Creating the sheet…") |
-| process exit + `report_result` | task completion → report card |
-
-Raw tool activity streams into the collapsible agent branch; occasional
-`status` lines keep the main view readable.
-
-**The translation layer is also the authoritative redaction point.** n8n
-injected the secret values, so it scrubs every streamed delta against them
-before anything is persisted or emitted — building on the existing
-pattern-based redaction (`N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS`). This
-closes the window the in-sandbox `tool_result` hook cannot: pi streams
-partial tool output before that hook fires. Encoded or transformed secrets
-can evade both layers; the egress allowlist (Future Hardening) is the
-answer to that.
-
-### Abort and cleanup: three layers
-
-Background tasks already have two cancel paths: the global stop
-(`cancelRun` → `cancelBackgroundTasks(threadId)`) and the
-`cancel-background-task` tool for "stop that" requests. The sandbox harness
-runs as a background task and inherits both. The one-off addition: for this
-sandbox type, **cancellation is a security event** — aborting the exec
-kills the pi process, and the sandbox must be destroyed.
-
-Destruction cannot rely on task-manager callbacks: the background task
-registry is in-memory, and `cancelTask` drops the callbacks without
-invoking `onSettled` (`background-task-manager.ts`). Cleanup therefore has
-three layers:
-
-1. **`try/finally` in the task function itself.** The abort signal reaches
-   the task body; the `finally` destroys the sandbox on every in-process
-   path — success, failure, cancel.
-2. **A persisted sandbox lifecycle record.** Written at creation, cleared
-   at destruction. A restarted n8n sweeps it and reaps orphans
-   (deterministic IDs or labels make the sweep cheap — the same trick the
-   thread-scoped workspace uses for reattachment).
-3. **Service-enforced sandbox TTL.** The backstop that works when n8n
-   itself dies and never comes back.
-
-### Confirmation and result UI
-
-- The destructive-write gate renders through the existing confirmation
-  mechanism (severity levels via `instanceAiConfirmationSeveritySchema`) —
-  not a new UI.
-- The `report_result` payload renders as a card: actions, verification
-  evidence, artifact links. This is the moment the user judges whether the
-  feature is trustworthy — not a text blob.
-- On a limit kill (timeout, token budget, credential wait expiry) the user
-  gets a **partial report** — what was done before the stop. The harness may
-  have half-created things; the user must know what exists.
-
-### Follow-up turns
-
-The report arrives, the sandbox dies, the user replies "actually, make it 5
-columns." That is a **new task**: new sandbox, previous report passed as
-context, credential access via the thread-scoped approval lease (one-click
-confirm inside the window, full approval after expiry). This keeps the security
-story clean (no idle sandbox holding credentials "just in case") and reuses
-the keep-the-report decision. The alternative — a short grace period — is
-what users may intuitively expect, so this stays an explicit product
-decision.
-
-### LLM access for the harness
-
-The harness runs its own LLM loop, so it needs model access. Decision:
-**reuse the same provider and model as Instance AI.** The harness does real
-coding work, so the same Opus-class model is justified, and one model config
-means no new settings surface. Per deployment shape:
-
-| Deployment | Instance AI model source | pi mechanism |
-| --- | --- | --- |
-| Self-hosted, built-in provider (`N8N_INSTANCE_AI_MODEL=anthropic/…`) | Direct provider key | Native pi provider; key injected per-exec like any credential. Hackathon path. |
-| Self-hosted, custom endpoint (`N8N_INSTANCE_AI_MODEL_URL`) | OpenAI-compatible URL + key | Custom-provider TypeScript module baked into the image, reading URL/key/model from env. |
-| Cloud / proxy-managed | n8n's managed proxy | Same custom-provider module pointed at the proxy. |
-
-The caveat: the injected key or proxy token is n8n's billing identity inside
-a sandbox running LLM-written code. For the hackathon, a separate
-rate-limited key is the minimum. The real fix is proxy-minted short-lived
-per-run tokens with a token budget — which also yields per-task cost
-accounting. See Future Hardening.
-
-### Production trio
-
-- **Feature flag** (PostHog) gating the skill and tool.
-- **Telemetry** through the `@n8n/telemetry` registry: task started,
-  credentials requested/approved, task completed/failed/timed out, tokens
-  spent.
-- **Evals**: a LangTracer suite for one-off tasks — a new behavior class the
-  workflow evals do not cover.
+Streaming, cancellation ("stop that", the stop button, global cancel),
+corrections, tracing, and credit metering are all inherited from the
+background-task machinery — nothing new at the protocol level.
 
 ## Evals and Test Tasks
 
@@ -430,11 +248,11 @@ script now and the eval suite later.
 | 1 | Resource creation | Google Sheet with columns; Notion database with properties; Slack channel with topic and members; GitHub repo with labels; Drive folder structure | Simple, satisfying, low-risk. The demo tasks. |
 | 2 | One-time data transfer | Airtable → Google Sheets; Notion pages → CSV; CSV of leads → HubSpot; Trello board → board | Probably the highest real demand. Users currently build a throwaway workflow and delete it — exactly the waste this feature removes. |
 | 3 | Backfills | "My workflow started in June — fetch the January–May Shopify orders into the same sheet" | Complements an existing workflow instead of replacing it. Strong pitch story. |
-| 4 | Bulk cleanup and edits | Dedupe CRM contacts; normalize phone numbers in a sheet; archive inactive Slack channels; rename 300 Drive files | The destructive family — the write gate and partial-report-on-failure earn their keep here. |
-| 5 | Reports and analysis | Summarize last month's Stripe payments by product; HubSpot deals per stage; stats over GitHub issues | Read-only, safest. The harness does real computation over data, which a workflow does awkwardly. |
+| 4 | Bulk cleanup and edits | Dedupe CRM contacts; normalize phone numbers in a sheet; archive inactive Slack channels; rename 300 Drive files | The destructive family — scope confirmation and partial-report-on-failure earn their keep here. |
+| 5 | Reports and analysis | Summarize last month's Stripe payments by product; HubSpot deals per stage; stats over GitHub issues | Read-only, safest. The sub-agent does real computation over data, which a workflow does awkwardly. |
 | 6 | Audits and lookups | Drive files shared outside the org; Notion pages mentioning a customer; dead URLs in a sheet of 200 | Read-only, tedious by hand, no sane workflow shape. |
 | 7 | External service configuration | Register a webhook; set up CRM pipeline stages; create a label taxonomy | Often a prerequisite for building a workflow — another complement. |
-| 8 | One-time outbound sends | Personalized email to 40 people; digest to Slack; calendar invites | **Out of hackathon scope.** Outward-facing, unrecallable, retry-duplicates are visible to humans. Add later behind the confirmation gate. |
+| 8 | One-time outbound sends | Personalized email to 40 people; digest to Slack; calendar invites | **Out of scope for now.** Outward-facing, unrecallable, retry-duplicates are visible to humans. Add later behind a confirmation gate. |
 
 ### Eval axes
 
@@ -464,7 +282,7 @@ recipe flow.
 The existing LangTracer suites already distinguish build cases from
 behavior/process cases; these map onto that machinery.
 
-### Manual testing this week
+### Manual testing
 
 One task each from families 1, 2, 5, and 6 — creation, transfer, report,
 audit. Together they cover both credential paths and stay non-destructive
@@ -474,47 +292,43 @@ while the guardrails are young.
 
 | Decision | Choice |
 | --- | --- |
-| Convert one-off tasks to workflows | **No.** One-off tasks are one-off. No tokens wasted on workflow generation. The kept report covers the "again later" case. |
-| Credential proxy at the sandbox boundary | **Not now.** Noted as future hardening. |
-| Egress allowlist per credential type | **Not now.** Credentials from n8n do not carry host metadata today. Noted as future hardening. Human approval per credential per task is the consent gate instead. |
-| Env vars vs proxy | Env vars, but per-exec — only the pi process sees them, never a file, never the sandbox image. |
-| MCP for Context7 | **No.** Pi has no native MCP support; a direct HTTP `lookup_docs` extension tool is simpler. |
-| LLM for the harness | **Same provider and model as Instance AI.** No new settings surface; per-run budget tokens are future hardening. |
-| Follow-up turns | **New task, new sandbox.** Previous report passed as context; credential access via the thread-scoped approval lease. No idle sandbox holding credentials. |
-| Harness drive mode | **JSON event-stream one-shot.** The sandbox exec API has no stdin, so pi RPC mode cannot run on the default provider. Exit-and-relaunch replaces mid-run steering; RPC returns if the service grows interactive execs. |
-| Credential decryption | **One privileged adapter method in `packages/cli`**, with access recheck at injection time. The general metadata-only boundary stays. |
-| OAuth support | **From day one.** Refresh-then-inject, access token only, sandbox lifetime below token TTL. Google Sheets (OAuth) is the demo slice. |
-| Credential approval | **Thread-scoped lease.** Per-injection consent with one-click confirm inside the window; full approval after expiry. |
-| Report status | **Best-effort user summary, not an audit log.** Unclean stop → "task interrupted — external state unknown." |
+| Where the executor runs | **Host-side `@n8n/agents` sub-agent** (eval-setup pattern). Harness-in-sandbox (pi) rejected: LLM key in the sandbox, redaction after the fact, exit-and-relaunch HITL, event translation layer. |
+| Sandbox lifecycle | **Thread-scoped sandbox + per-task directory.** Generated code survives handoffs, HITL, and follow-ups; idle TTL reaps. Credential *exposure* is per-exec, not per-sandbox. |
+| Convert one-off tasks to workflows | **No.** One-off tasks are one-off. The kept report covers the "again later" case. |
+| Credential injection | **Host-side env into the scoped workspace's command wrapper.** Values never in a file, never in the transcript — by construction. |
+| Credential decryption | **One narrowly-scoped CLI service** (`OneOffTaskCredentialEnvService`), user access recheck at injection time, unreachable from tools. The general metadata-only boundary stays. |
+| OAuth support | **From day one.** User check → refresh → inject access token only. Google Sheets (OAuth) is the demo slice. |
+| Credential approval | **Conversational consent + access recheck for the slice.** Per-credential HITL confirmation card is a contained follow-up (tool-suspend + `credentialSelection` kind already exist). |
+| LLM access for the executor | **n/a — the loop is host-side.** No key in the sandbox; budget = `MAX_STEPS` + existing credit metering. |
+| Report status | **Best-effort user summary, not an audit log.** Captured via the `report-result` tool, never parsed from free text. Unclean stop → "external state unknown". |
+| Follow-up turns | **New task, new task directory, previous report as context.** No idle credential exposure "just in case". |
+| Frontend | **None.** Existing agent-branch rendering + final text. A report card UI is a possible follow-up. |
 
 ## Future Hardening
 
 In rough priority order:
 
-1. **Egress allowlist.** The sandbox has secrets, runs LLM-written code, and
-   reads external data — which can carry a prompt injection instructing the
-   harness to exfiltrate a token. An allowlist of domains derived from the
-   credential types in use (Google Sheets task → Google API domains only) is
-   the strongest single mitigation. Requires host metadata on credential
-   types.
-2. **Credential proxy.** A small proxy at the sandbox boundary adds auth
-   headers outside the sandbox, so raw tokens never enter it at all.
-   Supersedes env injection entirely — and yields a trusted, host-side
-   audit log of every API call as a side effect.
-3. **Runner image bake.** Move from bootstrap-at-creation to pi baked into
-   the sandbox service runner image (the production provisioning path above).
-4. **Short-lived, scoped tokens.** Inject access tokens only (never refresh
-   tokens), scoped down where the provider supports it.
-5. **Per-run LLM budget tokens.** Replace the injected provider key with
-   proxy-minted, short-lived tokens carrying a per-task token budget. Caps
-   the damage of a prompt-injected harness and yields per-task cost
-   accounting.
-6. **Interactive execution API on the sandbox service.** Writable stdin (or
-   a process handle) enables pi RPC mode: mid-run steering and a credential
-   pause instead of exit-and-relaunch.
+1. **Per-credential HITL approval.** A confirmation card before injection,
+   reusing the `credentialSelection` kind; optionally a thread-scoped lease
+   so follow-up tasks get a one-click confirm.
+2. **Egress allowlist.** The sandbox runs LLM-written code that reads
+   external data — which can carry a prompt injection instructing it to
+   exfiltrate a token. A domain allowlist derived from the credential types
+   in use is the strongest single mitigation. Requires host metadata on
+   credential types.
+3. **Credential proxy.** A proxy at the sandbox boundary adds auth headers
+   outside the sandbox, so raw tokens never enter it at all — and yields a
+   trusted, host-side audit log of every API call as a side effect.
+4. **Literal-value output redaction.** Today's redaction is pattern-based;
+   scrubbing the exact injected values from streamed output closes the
+   "generated code prints the token" path for unencoded values.
+5. **Short-lived, scoped tokens.** Scope access tokens down where the
+   provider supports it.
+6. **Runner-image SDK bake.** Pre-install common SDKs in the sandbox runner
+   image to cut task startup latency (mind the release-cadence coupling).
 
 ## One-Sentence Version
 
-An ephemeral, credential-scoped sandbox runs a pre-bundled pi coding agent
-against a structured task contract from Instance AI, and returns a
-structured, read-back-verified report before it is destroyed.
+A host-side coding sub-agent executes a structured task contract from
+Instance AI against a per-task, credential-env-injected directory in the
+thread sandbox, and returns a read-back-verified structured report.

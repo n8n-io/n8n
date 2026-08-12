@@ -1623,6 +1623,20 @@ export interface WorkflowTaskService {
 
 // ── Orchestration context (plan tools) ──────────────────────────────────────
 
+/** Credential surfaced to the one-off task sub-agent: identity and env var
+ *  names only — never values. */
+export interface OneOffTaskCredentialInfo {
+	id: string;
+	name: string;
+	type: string;
+	envVarNames: string[];
+}
+
+export interface OneOffTaskWorkspace {
+	workspace: Workspace;
+	credentials: OneOffTaskCredentialInfo[];
+}
+
 export interface OrchestrationContext {
 	threadId: string;
 	runId: string;
@@ -1704,6 +1718,15 @@ export interface OrchestrationContext {
 	workspace?: Workspace;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
+	/** One-off-task capability: builds a per-task, env-injected scoped workspace
+	 *  over the thread sandbox. Wired by the host only when the one-off-tasks
+	 *  flag is on and the sandbox is enabled — presence = feature enabled.
+	 *  Decrypted credential values live only inside the returned workspace's
+	 *  command-execution wrapper, never in tool results or events. */
+	oneOffTaskWorkspace?: (
+		taskId: string,
+		credentialIds: string[],
+	) => Promise<OneOffTaskWorkspace | undefined>;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */

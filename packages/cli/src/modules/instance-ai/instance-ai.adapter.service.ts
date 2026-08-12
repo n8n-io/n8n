@@ -60,6 +60,8 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_ONE_OFF_TASKS_FLAG,
+	INSTANCE_AI_ONE_OFF_TASKS_ENABLED_VARIANT,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
@@ -426,6 +428,13 @@ export class InstanceAiAdapterService {
 	async isConfigEvalsEnabled(user: User): Promise<boolean> {
 		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
 		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
+	}
+
+	/** Per-user gate for one-off tasks. Fails closed: `getFeatureFlags` returns
+	 *  `{}` on a PostHog outage. */
+	async isOneOffTasksEnabled(user: User): Promise<boolean> {
+		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		return flags?.[INSTANCE_AI_ONE_OFF_TASKS_FLAG] === INSTANCE_AI_ONE_OFF_TASKS_ENABLED_VARIANT;
 	}
 
 	/** Gate for MCP registry discovery tool. All three must hold:

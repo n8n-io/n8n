@@ -61,6 +61,10 @@ vi.mock('../orchestration/eval-data-agent.tool', () => ({
 	createEvalDataAgentTool: vi.fn(() => ({ id: 'eval-data' })),
 }));
 
+vi.mock('../orchestration/one-off-task-agent.tool', () => ({
+	createOneOffTaskAgentTool: vi.fn(() => ({ id: 'run-one-off-task' })),
+}));
+
 vi.mock('../orchestration/plan.tool', () => ({
 	createPlanTool: vi.fn(() => ({ id: 'create-tasks' })),
 }));
@@ -254,6 +258,22 @@ describe('domain tool construction', () => {
 		);
 		expect(Object.fromEntries(withDelegate)).toMatchObject({
 			'build-agent': { id: 'build-agent' },
+		});
+	});
+
+	it('registers run-one-off-task only when the host wired the one-off-task workspace', () => {
+		const withoutCapability = createOrchestrationTools(
+			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
+		);
+		expect(withoutCapability.has('run-one-off-task')).toBe(false);
+
+		const withCapability = createOrchestrationTools(
+			makeContext({
+				oneOffTaskWorkspace: vi.fn(),
+			} as Partial<InstanceAiContext>) as never,
+		);
+		expect(Object.fromEntries(withCapability)).toMatchObject({
+			'run-one-off-task': { id: 'run-one-off-task' },
 		});
 	});
 

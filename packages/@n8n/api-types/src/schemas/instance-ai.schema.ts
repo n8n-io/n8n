@@ -1819,6 +1819,14 @@ export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
 /** Enables adding selected canvas nodes as chat context in the AI Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
+/** Enables Instance AI one-off tasks: delegating run-once work to a sandboxed
+ *  sub-agent instead of building a workflow. Gates the `run-one-off-task`
+ *  orchestration tool and the `one-off-task` skill. */
+export const INSTANCE_AI_ONE_OFF_TASKS_FLAG = '105_instance_ai_one_off_tasks';
+
+/** Enabled arm of `INSTANCE_AI_ONE_OFF_TASKS_FLAG`. */
+export const INSTANCE_AI_ONE_OFF_TASKS_ENABLED_VARIANT = 'variant';
+
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
  * server) during evaluation. Populated for every AI root the server intercepts;

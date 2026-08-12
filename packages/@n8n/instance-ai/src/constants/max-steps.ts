@@ -13,6 +13,8 @@ export const MAX_STEPS = {
 	BUILDER: 60,
 	/** Eval setup background agent — patches eval nodes into an existing workflow. */
 	EVAL_SETUP: 30,
+	/** One-off task background agent — writes and runs code in the sandbox for run-once work. */
+	ONE_OFF_TASK: 30,
 	/** Legacy limit retained for compatibility; research runs in the orchestrator. */
 	RESEARCH: 25,
 } as const;

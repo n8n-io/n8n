@@ -57,6 +57,10 @@ const loadEvalSetupAgentTool = lazyMod(
 	() =>
 		require('./orchestration/eval-setup-agent.tool') as typeof import('./orchestration/eval-setup-agent.tool'),
 );
+const loadOneOffTaskAgentTool = lazyMod(
+	() =>
+		require('./orchestration/one-off-task-agent.tool') as typeof import('./orchestration/one-off-task-agent.tool'),
+);
 const loadPlanTool = lazyMod(
 	() => require('./orchestration/plan.tool') as typeof import('./orchestration/plan.tool'),
 );
@@ -182,6 +186,15 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		],
 		[ORCHESTRATION_TOOL_IDS.EVAL_DATA, loadEvalDataAgentTool().createEvalDataAgentTool(context)],
 	];
+
+	// one-off tasks are flag-gated: the host only wires oneOffTaskWorkspace when
+	// the one-off-tasks flag is on and the sandbox is enabled, so presence = expose the tool.
+	if (context.oneOffTaskWorkspace) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.RUN_ONE_OFF_TASK,
+			loadOneOffTaskAgentTool().createOneOffTaskAgentTool(context),
+		]);
+	}
 
 	if (context.workflowTaskService) {
 		tools.push([
