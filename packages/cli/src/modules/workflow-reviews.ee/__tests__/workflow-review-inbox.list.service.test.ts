@@ -5,6 +5,7 @@ import type {
 	UserRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
+	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestReviewerRepository,
 } from '@n8n/db';
 import { WorkflowReviewRequestRepository, WorkflowReviewRequestWorkflowRepository } from '@n8n/db';
@@ -28,6 +29,7 @@ describe('WorkflowReviewInboxService', () => {
 		WorkflowReviewRequestWorkflowRepository,
 	);
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
+	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const userRepository = mock<UserRepository>();
 	const licenseState = mockInstance(LicenseState);
 
@@ -41,6 +43,7 @@ describe('WorkflowReviewInboxService', () => {
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		reviewerRepository.findByRequestIds.mockResolvedValue([]);
+		authorRepository.findByRequestIds.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
 
 		service = new WorkflowReviewInboxService(
@@ -51,6 +54,7 @@ describe('WorkflowReviewInboxService', () => {
 			workflowReviewRequestRepository,
 			workflowReviewRequestWorkflowRepository,
 			reviewerRepository,
+			authorRepository,
 			userRepository,
 			mock<WorkflowReviewEligibilityService>(),
 		);
@@ -106,6 +110,9 @@ describe('WorkflowReviewInboxService', () => {
 				'base64url',
 			);
 			expect(result.nextCursor).toBe(expectedCursor);
+			// Participants are only resolved for the page, never for the lookahead row.
+			expect(authorRepository.findByRequestIds).toHaveBeenCalledWith(['req-2']);
+			expect(reviewerRepository.findByRequestIds).toHaveBeenCalledWith(['req-2']);
 		});
 
 		it('decodes the incoming cursor into a keyset boundary', async () => {
@@ -132,6 +139,89 @@ describe('WorkflowReviewInboxService', () => {
 			await expect(service.listForInbox(user, { limit: 15, cursor })).rejects.toThrow(
 				'Invalid pagination cursor',
 			);
+		});
+	});
+	describe('participants on inbox items', () => {
+		const inboxRow = mock<WorkflowReviewRequest>({
+			id: 'req-1',
+			projectId: 'proj-1',
+			title: 'First',
+			decision: 'pending',
+			state: 'open',
+			createdById: 'requester-1',
+			createdAt: new Date('2024-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+		});
+
+		function mockUsers(...ids: string[]) {
+			userRepository.findManyByIds.mockResolvedValue(
+				ids.map((id) =>
+					mock<User>({ id, email: `${id}@example.com`, firstName: id, lastName: id }),
+				),
+			);
+		}
+
+		beforeEach(() => {
+			accessService.resolveAccessibleProjectIds.mockResolvedValue(['proj-1']);
+			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([inboxRow]);
+			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
+				new Map(),
+			);
+		});
+
+		it('returns the requester, every author, and the reviewers', async () => {
+			authorRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: 'req-1', userId: 'requester-1' }),
+				mock({ workflowReviewRequestId: 'req-1', userId: 'author-2' }),
+			]);
+			reviewerRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: 'req-1', userId: 'reviewer-1' }),
+			]);
+			mockUsers('requester-1', 'author-2', 'reviewer-1');
+
+			const [item] = (await service.listForInbox(user, { limit: 15 })).data;
+
+			expect(item?.requester).toMatchObject({ id: 'requester-1' });
+			// The requester stays in `authors`; deduplication is the frontend's job.
+			expect(item?.authors.map((author) => author.id)).toEqual(['requester-1', 'author-2']);
+			expect(item?.reviewers.map((reviewer) => reviewer.id)).toEqual(['reviewer-1']);
+		});
+
+		it('resolves a user holding several roles with a single deduplicated lookup', async () => {
+			authorRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: 'req-1', userId: 'requester-1' }),
+				mock({ workflowReviewRequestId: 'req-1', userId: 'reviewer-1' }),
+			]);
+			reviewerRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: 'req-1', userId: 'reviewer-1' }),
+			]);
+			mockUsers('requester-1', 'reviewer-1');
+
+			const [item] = (await service.listForInbox(user, { limit: 15 })).data;
+
+			expect(userRepository.findManyByIds).toHaveBeenCalledTimes(1);
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith(['requester-1', 'reviewer-1']);
+			expect(item?.authors.map((author) => author.id)).toEqual(['requester-1', 'reviewer-1']);
+		});
+
+		it('omits an author whose user no longer resolves, keeping the others', async () => {
+			authorRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: 'req-1', userId: 'requester-1' }),
+				mock({ workflowReviewRequestId: 'req-1', userId: 'deleted-author' }),
+			]);
+			mockUsers('requester-1');
+
+			const [item] = (await service.listForInbox(user, { limit: 15 })).data;
+
+			expect(item?.authors.map((author) => author.id)).toEqual(['requester-1']);
+		});
+
+		it('returns no authors when the review has no author rows', async () => {
+			mockUsers('requester-1');
+
+			const [item] = (await service.listForInbox(user, { limit: 15 })).data;
+
+			expect(item?.authors).toEqual([]);
 		});
 	});
 });

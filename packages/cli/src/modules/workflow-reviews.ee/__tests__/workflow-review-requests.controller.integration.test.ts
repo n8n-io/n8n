@@ -1,5 +1,6 @@
 process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 
+import type { WorkflowReviewInboxItem } from '@n8n/api-types';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -1019,6 +1020,23 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		const updated = await requestRepository.findById(request.id, {});
 		expect(updated).toMatchObject({ updatedById: member.id });
+
+		// Both read surfaces expose every author while keeping the original requester
+		// canonical. Author order is the frontend's concern, so only membership is asserted.
+		const inbox = await ownerAgent.get('/workflow-review-requests/inbox').expect(200);
+		const inboxItem = (inbox.body.data.data as WorkflowReviewInboxItem[]).find(
+			(item) => item.id === request.id,
+		)!;
+		expect(inboxItem.requester).toMatchObject({ id: owner.id });
+		expect(inboxItem.authors.map((author) => author.id).sort()).toEqual(
+			[member.id, owner.id].sort(),
+		);
+
+		const detail = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+		expect(detail.body.data.requester).toMatchObject({ id: owner.id });
+		expect(
+			(detail.body.data as WorkflowReviewInboxItem).authors.map((author) => author.id).sort(),
+		).toEqual([member.id, owner.id].sort());
 	});
 
 	test('returns 200 without writes when the version is unchanged', async () => {

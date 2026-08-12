@@ -78,6 +78,7 @@ function makeInboxItem(overrides: Partial<WorkflowReviewInboxItem> = {}): Workfl
 		workflowName: 'My workflow',
 		workflowVersionId: null,
 		requester: null,
+		authors: [],
 		reviewers: [],
 		decision: 'pending',
 		state: 'open',
