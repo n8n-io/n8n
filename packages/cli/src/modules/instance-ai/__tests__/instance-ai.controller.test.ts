@@ -84,6 +84,7 @@ import type { DurableLogMetrics } from '../event-bus/durable-log-metrics';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
+import type { InstanceAiSampleDataService } from '../instance-ai-sample-data.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -132,6 +133,7 @@ describe('InstanceAiController', () => {
 
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
+	const sampleDataService = mock<InstanceAiSampleDataService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -155,6 +157,7 @@ describe('InstanceAiController', () => {
 		projectService,
 		instanceAiErrorReporter,
 		publisher,
+		sampleDataService,
 		globalConfig,
 	);
 
@@ -672,6 +675,43 @@ describe('InstanceAiController', () => {
 	describe('executeWithLlmMock', () => {
 		it('should require instanceAi:eval scope', () => {
 			expect(scopeOf('executeWithLlmMock')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
+		});
+	});
+
+	describe('generateSampleData', () => {
+		const payload = {
+			workflow: { name: 'wf', nodes: [], connections: {} },
+			nodeNames: ['Slack Trigger'],
+		};
+		const result = { pinData: { 'Slack Trigger': [{ json: { text: 'hi' } }] } };
+
+		it('delegates to the sample data service and returns its result', async () => {
+			sampleDataService.generateForNodes.mockResolvedValue(result);
+
+			await expect(controller.generateSampleData(req, res, payload)).resolves.toEqual(result);
+			expect(sampleDataService.generateForNodes).toHaveBeenCalledWith(req.user, payload);
+		});
+
+		it('surfaces the drift warning to the caller', async () => {
+			const drifted = { ...result, warning: 'field-drift' as const };
+			sampleDataService.generateForNodes.mockResolvedValue(drifted);
+
+			await expect(controller.generateSampleData(req, res, payload)).resolves.toEqual(drifted);
+		});
+
+		it('refuses when Instance AI is disabled, without reaching the service', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+			await expect(controller.generateSampleData(req, res, payload)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(sampleDataService.generateForNodes).not.toHaveBeenCalled();
+		});
+
+		// A normal editor action, not an eval endpoint — an extra global scope here
+		// would lock it away from the members who actually build workflows.
+		it('needs no global scope', () => {
+			expect(scopeOf('generateSampleData')).toBeUndefined();
 		});
 	});
 
@@ -1928,6 +1968,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		mock<ProjectService>(),
 		mock<InstanceAiErrorReporterService>(),
 		mock<Publisher>(),
+		mock<InstanceAiSampleDataService>(),
 		globalConfig,
 	);
 

@@ -1,7 +1,18 @@
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { Z } from '../../zod-class';
+
+/**
+ * The slice of a workflow the generator needs. Node shapes stay loose (the
+ * editor's in-memory nodes vary and the generator only reads name/type/version/
+ * parameters), but both fields must be present.
+ */
+export interface SampleDataWorkflow {
+	name?: string;
+	nodes: INode[];
+	connections: IConnections;
+}
 
 /**
  * One prompt carries every requested node's schema block, so the cap keeps a
@@ -27,9 +38,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-const workflowSchema = z.custom<Partial<IWorkflowBase>>((value: unknown) => {
+const workflowSchema = z.custom<SampleDataWorkflow>((value: unknown) => {
 	if (!isRecord(value)) return false;
-	return Array.isArray(value.nodes) || isRecord(value.connections);
+	// Both required, unlike the builder's optional workflow context: the generator
+	// reads `nodes` unconditionally and builds a graph from `connections`, so a
+	// half-workflow is a 500 waiting to happen rather than a degraded result.
+	return Array.isArray(value.nodes) && isRecord(value.connections);
 });
 
 export class InstanceAiGenerateSampleDataRequestDto extends Z.class({

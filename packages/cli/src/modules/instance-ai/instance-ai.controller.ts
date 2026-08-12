@@ -1,6 +1,7 @@
 import {
 	InstanceAiConfirmRequestDto,
 	InstanceAiFeedbackRequestDto,
+	InstanceAiGenerateSampleDataRequestDto,
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
@@ -67,6 +68,7 @@ import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.ser
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
+import { InstanceAiSampleDataService } from './instance-ai-sample-data.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -145,6 +147,7 @@ export class InstanceAiController {
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
+		private readonly sampleDataService: InstanceAiSampleDataService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -1009,6 +1012,23 @@ export class InstanceAiController {
 			threadId,
 			runs: this.instanceAiService.listThreadDebugRuns(threadId),
 		};
+	}
+
+	/**
+	 * Generate realistic mock output for nodes in the editor, for the caller to pin.
+	 *
+	 * Deliberately no extra `@GlobalScope`: this is an ordinary editor action for
+	 * whoever is building the workflow, not an eval or admin endpoint.
+	 */
+	@Post('/sample-data/generate', { ipRateLimit: { limit: 20 } })
+	async generateSampleData(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiGenerateSampleDataRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+
+		return await this.sampleDataService.generateForNodes(req.user, payload);
 	}
 
 	// ── Evaluation endpoints ──────────────────────────────────────────────────

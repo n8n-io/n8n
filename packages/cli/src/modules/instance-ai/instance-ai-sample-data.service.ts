@@ -10,6 +10,7 @@
  * when the instance has no model at all.
  */
 
+import type { SampleDataWorkflow } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -31,9 +32,9 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { generatePinData, PinDataDriftError, type PinDataGenerateFn } from './pin-data-generator';
 
 export interface GenerateSampleDataRequest {
-	workflow: WorkflowJSON;
+	workflow: SampleDataWorkflow;
 	nodeNames: string[];
-	/** Freeform steer, treated as the authoritative test scenario by the prompt. */
+	/** Freeform steer for the generated data, e.g. "failed payment scenario". */
 	hint?: string;
 }
 
@@ -52,6 +53,18 @@ export interface GenerateSampleDataResult {
  * simply finds no thread and skips.
  */
 const SAMPLE_DATA_THREAD_PREFIX = 'sample-data';
+
+/**
+ * `INode` and the SDK's `NodeJSON` describe the same nodes from packages with no
+ * shared type, so the bridge is structural — the same one the eval execution path
+ * makes. Kept to this one function rather than spread across call sites. The
+ * generator reads only name, type, typeVersion and parameters; `name` is
+ * defaulted because `WorkflowJSON` requires it while an unsaved workflow may not
+ * have one yet.
+ */
+function toWorkflowJson(workflow: SampleDataWorkflow): WorkflowJSON {
+	return { ...workflow, name: workflow.name ?? 'Workflow' } as unknown as WorkflowJSON;
+}
 
 @Service()
 export class InstanceAiSampleDataService {
@@ -96,7 +109,7 @@ export class InstanceAiSampleDataService {
 
 		try {
 			const pinData = await generatePinData({
-				workflow,
+				workflow: toWorkflowJson(workflow),
 				nodeNames,
 				outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
 				generate,

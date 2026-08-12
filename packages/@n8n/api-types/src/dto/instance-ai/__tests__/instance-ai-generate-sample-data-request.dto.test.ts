@@ -71,6 +71,11 @@ describe('InstanceAiGenerateSampleDataRequestDto', () => {
 			['a number', 42],
 			['an array', []],
 			['an object with neither nodes nor connections', { name: 'x' }],
+			// The generator reads `nodes` unconditionally, so a half-workflow has to be
+			// rejected here rather than crashing downstream.
+			['missing nodes', { connections: {} }],
+			['missing connections', { nodes: [] }],
+			['nodes that are not an array', { nodes: 'nope', connections: {} }],
 		])('rejects a workflow that is %s', (_label, value) => {
 			const result = InstanceAiGenerateSampleDataRequestDto.safeParse({
 				workflow: value,
