@@ -192,6 +192,7 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	mcp: 'tools.connection.categories.mcp',
 	ai: 'tools.connection.categories.ai',
 	n8n: 'tools.connection.categories.n8n',
+	'n8n-connect': 'tools.connection.categories.n8nConnect',
 	'app-action': 'tools.connection.categories.appAction',
 	community: 'tools.connection.categories.community',
 	workflows: 'tools.connection.categories.workflows',
@@ -253,7 +254,7 @@ function handleOpenChange(value: boolean) {
 <template>
 	<N8nDialog
 		:open="open"
-		size="xlarge"
+		size="2xlarge"
 		:header="detailItem ? '' : i18n.baseText('tools.connection.title')"
 		:show-close-button="!detailItem"
 		:aria-label="i18n.baseText('tools.connection.title')"

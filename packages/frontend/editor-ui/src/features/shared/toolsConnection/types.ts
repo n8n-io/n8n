@@ -30,6 +30,8 @@ export interface BaseConnectionItem {
 	category?: ToolCategoryKey;
 	/** Reviewed and approved by n8n. Drives the shield badge, install state irrelevant. */
 	verified?: boolean;
+	/** Backed by n8n Connect (AI Gateway): credentials are managed, shows a "Free credits" pill. */
+	freeCredits?: boolean;
 	/** Not yet installed: swaps the Connect action for an Install one. */
 	communityPreview?: boolean;
 	installing?: boolean;
@@ -114,6 +116,7 @@ export type ToolCategoryKey =
 	| 'mcp'
 	| 'ai'
 	| 'n8n'
+	| 'n8n-connect'
 	| 'app-action'
 	| 'community'
 	| 'workflows'

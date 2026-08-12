@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
-import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nActionPill, N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
@@ -128,6 +128,13 @@ function handleConnect() {
 								data-test-id="tools-connection-row-verified-badge"
 							/>
 						</N8nTooltip>
+						<N8nActionPill
+							v-if="item.freeCredits"
+							size="small"
+							data-test-id="tools-connection-row-free-credits"
+						>
+							{{ i18n.baseText('generic.freeCredits') }}
+						</N8nActionPill>
 					</span>
 					<N8nText
 						v-if="item.description"
@@ -279,9 +286,10 @@ function handleConnect() {
 }
 
 .description {
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	// Wrap onto further lines rather than truncating; the virtual scroller
+	// measures each row's real height, so taller rows lay out correctly.
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
 .action {

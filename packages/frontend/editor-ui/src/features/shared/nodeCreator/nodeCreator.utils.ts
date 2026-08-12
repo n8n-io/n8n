@@ -164,7 +164,7 @@ export function matchesAliasForConnectBoost(query: string, aliases: string[]): b
 /**
  * Whether the node is eligible for n8n Connect (AI Gateway)
  */
-function isAiGatewayEligibleNode(nodeName: string): boolean {
+export function isAiGatewayEligibleNode(nodeName: string): boolean {
 	if (!useSettingsStore().isAiGatewayEnabled) return false;
 
 	const aiGatewayStore = useAiGatewayStore();

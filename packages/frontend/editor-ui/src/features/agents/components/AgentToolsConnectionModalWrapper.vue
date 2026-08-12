@@ -4,7 +4,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES } from '@n8n/api-types';
-import { NodeConnectionTypes, isCommunityPackageName } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	isCommunityPackageName,
+	resolveSupportedCredentialActivation,
+} from 'n8n-workflow';
 import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { getWorkflow } from '@/app/api/workflows';
@@ -12,11 +16,13 @@ import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { stripToolSuffix } from '@/app/stores/aiGateway.store';
+import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
+	isAiGatewayEligibleNode,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
@@ -51,7 +57,7 @@ import {
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 import { toToolIconSource } from '../utils/toolIconSource';
 
-const CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
+const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 );
@@ -81,6 +87,8 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const aiGatewayStore = useAiGatewayStore();
 const toast = useToast();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const { availableToolTypes, availableWorkflows, loadWorkflows, resolveToolNodeType } =
@@ -170,6 +178,10 @@ onMounted(() => {
 	void loadWorkflows(props.data.projectId);
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
+	// Config gates which tools are eligible for the n8n Connect section.
+	if (settingsStore.isAiGatewayEnabled) {
+		void aiGatewayStore.fetchConfig();
+	}
 });
 
 function hasRequiredCredentials(nodeType: INodeTypeDescription): boolean {
@@ -372,6 +384,30 @@ function addNodeTool(nodeType: INodeTypeDescription) {
 	}
 }
 
+/**
+ * Add a gateway-backed tool. Same flow as any other node tool — the config
+ * modal opens so the user can pick the operation — the only difference being
+ * the n8n Connect managed credential is pre-selected, so no credential setup.
+ */
+function addManagedNodeTool(nodeType: INodeTypeDescription) {
+	toolTelemetry.trackAddStarted('node');
+	const newRef = nodeTypeToNewToolRef(nodeType);
+
+	const activation = resolveSupportedCredentialActivation(
+		nodeType,
+		{ typeVersion: newRef.node.nodeTypeVersion, parameters: {} },
+		aiGatewayStore.isCredentialTypeSupported,
+	);
+	if (activation) {
+		newRef.node.nodeParameters = activation.parameters;
+		newRef.node.credentials = {
+			[activation.credentialType]: { id: null, name: '', __aiGatewayManaged: true },
+		};
+	}
+
+	openConfigForNewRef(newRef);
+}
+
 async function handleAddWorkflow(workflow: IWorkflowDb) {
 	toolTelemetry.trackAddStarted('workflow');
 
@@ -548,6 +584,20 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 	};
 }
 
+/**
+ * Same node, presented in the n8n Connect section: credentials are managed, so
+ * it carries the "Free credits" pill and adds without a Connect step. The node
+ * still appears under its native tab for users who want their own credential.
+ */
+function n8nConnectNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
+	return {
+		...availableNodeItem(nodeType),
+		id: `n8n-connect:${nodeType.name}`,
+		category: 'n8n-connect',
+		freeCredits: true,
+	};
+}
+
 function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 	return {
 		id: `workflow:${workflow.id}`,
@@ -588,9 +638,29 @@ const communitySearchToolTypes = computed<INodeTypeDescription[]>(() => {
 	return previews;
 });
 
+/** Gateway-backed subset of the available tools, surfaced in the n8n Connect section. */
+const n8nConnectItems = computed<NodeConnectionItem[]>(() =>
+	availableToolTypes.value
+		.filter((nodeType) => isAiGatewayEligibleNode(nodeType.name))
+		.map(n8nConnectNodeItem),
+);
+
+/**
+ * Keep "All" first (the default tab), and slot the n8n Connect tab right after
+ * it — only when the gateway actually offers something to show.
+ */
+const categories = computed<ToolCategoryKey[]>(() => {
+	if (n8nConnectItems.value.length === 0) return BASE_CATEGORIES;
+	const [all, ...rest] = BASE_CATEGORIES;
+	return [all, 'n8n-connect', ...rest];
+});
+
 const items = computed<ToolConnectionItem[]>(() => {
 	const out: ToolConnectionItem[] = [];
 
+	for (const item of n8nConnectItems.value) {
+		out.push(item);
+	}
 	for (const entry of workingMcpServerEntries.value) {
 		const item = connectedMcpItem(entry);
 		if (item) out.push(item);
@@ -639,6 +709,13 @@ function handleRowActivate(item: ToolConnectionItem) {
 		return;
 	}
 
+	if (item.kind === 'node' && item.id.startsWith('n8n-connect:')) {
+		const nodeTypeName = item.id.slice('n8n-connect:'.length);
+		const nodeType = availableToolTypes.value.find((nt) => nt.name === nodeTypeName);
+		if (nodeType) addManagedNodeTool(nodeType);
+		return;
+	}
+
 	if (item.kind === 'node' && item.id.startsWith('nodeType:')) {
 		const nodeTypeName = item.id.slice('nodeType:'.length);
 		const nodeType = [...availableToolTypes.value, ...communitySearchToolTypes.value].find(
@@ -653,7 +730,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 	<ToolsConnectionModal
 		v-model:open="isOpen"
 		:items="items"
-		:categories="CATEGORIES"
+		:categories="categories"
 		:detail-item="null"
 		@update:search-query="searchQuery = $event"
 		@connect="handleRowActivate"
