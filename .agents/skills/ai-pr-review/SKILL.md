@@ -39,14 +39,17 @@ Hard rules:
   on this PR. Do not re-report one verbatim unless it is still valid at the
   current head; when it is, keep its `rule`/`category`, set
   `carried_over: true`, and re-anchor it to the current diff.
-- Optionally, an **output path**. Default: `tmp/ai-review-<pr-number>.json`
-  (create `tmp/` if needed; it is gitignored).
+- Optionally, an **output path**. Default: `<repo root>/tmp/ai-review-<pr-number>.json`
+  (create `tmp/` if needed; it is gitignored). Resolve it to an absolute path
+  once at the start — shell working directories may reset between commands.
 
 ## Workflow
 
 1. Fetch the PR: `gh pr diff <n> --repo <owner>/<repo>`,
    `gh pr view <n> --repo <owner>/<repo> --json title,body,baseRefName,headRefOid,author,labels,files`,
-   and existing review comments via `gh api repos/<owner>/<repo>/pulls/<n>/comments`.
+   and existing review comments via `gh api repos/<owner>/<repo>/pulls/<n>/comments`
+   (used only to avoid duplicating points already raised, and to see what the
+   author already resolved — never as a source of finding ideas).
    Save the diff to a scratch file (e.g. `tmp/ai-review-<n>.diff`) — the
    validator in step 6 needs it.
 2. If the PR description references a Linear ticket and a Linear MCP tool is
@@ -58,8 +61,10 @@ Hard rules:
    do not judge the diff in isolation.
 4. Review the diff (see "What to review"). Read every file in this skill's
    `rules/` directory and apply each rule exactly as written, including its
-   "Do NOT flag" carve-outs. Review **only new or modified lines**; never flag
-   pre-existing code.
+   "Do NOT flag" carve-outs. When a rule points at another skill's docs (e.g.
+   `rules/design-system-tokens.md`), follow the pointer only when the diff
+   touches files that rule applies to. Review **only new or modified lines**;
+   never flag pre-existing code.
 5. Write the JSON review to the output path (contract below).
 6. Validate it:
    `node .github/scripts/ai-review/validate-review-output.mjs <output.json> <diff file>`.
@@ -107,6 +112,10 @@ changes and unrelated edits. A mismatch alone usually means
 - It is fine to return **zero findings**. Do not force findings.
 - **Consistency validation**: before flagging a pattern, check whether it is
   an established convention in the codebase. If it is, do not flag it.
+  Exception: in behavior-preserving migration/parity PRs, a genuine hardening
+  gap faithfully copied from the old code may still be worth one finding —
+  keep it `minor`, phrase it as a question, and say explicitly that it is not
+  a regression and could be a follow-up.
 - **Precision or silence**: every finding must either contain a concrete
   suggestion (a short snippet or a ```suggestion``` block the author can
   apply) or name the concrete direction. Never "this could be cleaner".
@@ -188,9 +197,14 @@ Field notes:
   finding, or `general-review` for findings from the priority checklist.
 - `side`/`line`: `RIGHT` with the new-file line number for added/context
   lines; `LEFT` with the old-file line number only when commenting on a
-  deleted line. `start_line` (same side) makes it a multi-line comment.
+  deleted line. `start_line` (same side) makes it a multi-line comment; it
+  must be strictly before `line`, and every line in the range (inclusive)
+  must be a commentable diff line, or the validator demotes the finding.
 - `body_markdown` tone: short, friendly, collaborative — like a human
   reviewer ("How about…", "I wonder if…"). No em-dashes, no filler praise.
+- `stats.skipped_files`: files present in the diff you deliberately did not
+  review (lockfiles, large generated artifacts); `[]` when every changed file
+  was reviewed.
 
 ## Line number rules
 
