@@ -19,6 +19,7 @@ packages/cli/src/scaling/queue/__tests__/ipc-job-queue.test.ts
   s_ee871748970946::t_12085d4415fed2 130-135
 packages/cli/src/scaling/transport-mode.service.ts
   s_ee871748970946::t_e9062b59d46db7 53,60-64
+  s_ee871748970946::t_3ce732fd036e9e 59
 packages/cli/src/scaling/__tests__/scaling.service.test.ts
   s_ee871748970946::t_b1e93bb7aa441b 198,201-203,205
   s_ee871748970946::t_56fb6113f6e5df 75-76,78
