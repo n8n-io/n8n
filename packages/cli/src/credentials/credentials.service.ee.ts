@@ -230,7 +230,7 @@ export class EnterpriseCredentialsService {
 		// Transferring an end-user credential into a project is equivalent to
 		// creating one there: same createEndUser gate, no personal projects.
 		if (credential.isResolvable) {
-			await this.credentialsService.ensureEndUserCredentialAllowedInProject(destinationProject.id);
+			this.credentialsService.ensureEndUserCredentialAllowedInProject(destinationProject);
 			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
 		}
 

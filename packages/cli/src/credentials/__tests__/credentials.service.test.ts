@@ -1096,32 +1096,24 @@ describe('CredentialsService', () => {
 	});
 
 	describe('ensureEndUserCredentialAllowedInProject', () => {
-		it('throws when the project is personal', async () => {
-			projectRepository.findOneBy.mockResolvedValue(
-				mock<Project>({ id: 'project-id', type: 'personal' }),
-			);
-
-			await expect(service.ensureEndUserCredentialAllowedInProject('project-id')).rejects.toThrow(
-				ForbiddenError,
-			);
+		it('throws when the project is personal', () => {
+			expect(() =>
+				service.ensureEndUserCredentialAllowedInProject(
+					mock<Project>({ id: 'project-id', type: 'personal' }),
+				),
+			).toThrow(ForbiddenError);
 		});
 
-		it('allows a team project', async () => {
-			projectRepository.findOneBy.mockResolvedValue(
-				mock<Project>({ id: 'project-id', type: 'team' }),
-			);
-
-			await expect(
-				service.ensureEndUserCredentialAllowedInProject('project-id'),
-			).resolves.toBeUndefined();
+		it('allows a team project', () => {
+			expect(() =>
+				service.ensureEndUserCredentialAllowedInProject(
+					mock<Project>({ id: 'project-id', type: 'team' }),
+				),
+			).not.toThrow();
 		});
 
-		it('does nothing when no project id is given', async () => {
-			await expect(
-				service.ensureEndUserCredentialAllowedInProject(undefined),
-			).resolves.toBeUndefined();
-
-			expect(projectRepository.findOneBy).not.toHaveBeenCalled();
+		it('does nothing when no project is given', () => {
+			expect(() => service.ensureEndUserCredentialAllowedInProject(undefined)).not.toThrow();
 		});
 	});
 

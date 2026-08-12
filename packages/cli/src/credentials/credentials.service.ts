@@ -1822,9 +1822,7 @@ export class CredentialsService {
 	 * to, or transferring one into a personal project is rejected for every
 	 * role. Deleting or switching back to fixed stays allowed for cleanup.
 	 */
-	async ensureEndUserCredentialAllowedInProject(projectId?: string) {
-		if (!projectId) return;
-		const project = await this.projectRepository.findOneBy({ id: projectId });
+	ensureEndUserCredentialAllowedInProject(project?: Pick<Project, 'type'> | null) {
 		if (project?.type === 'personal') {
 			throw new ForbiddenError('End-user credentials are not available in personal projects');
 		}
@@ -1860,7 +1858,8 @@ export class CredentialsService {
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
 
 		if (opts.isResolvable === true) {
-			await this.ensureEndUserCredentialAllowedInProject(targetProjectId);
+			const targetProject = await this.projectRepository.findOneBy({ id: targetProjectId });
+			this.ensureEndUserCredentialAllowedInProject(targetProject);
 			await this.ensureCanManageEndUserCredential(user, targetProjectId);
 		}
 

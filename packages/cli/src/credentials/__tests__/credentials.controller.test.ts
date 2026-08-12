@@ -118,7 +118,7 @@ describe('CredentialsController', () => {
 		// stubbed by default: the project-type check needs real project data that unit tests don't wire up
 		ensureEndUserCredentialAllowedInProjectSpy = vi
 			.spyOn(credentialsService, 'ensureEndUserCredentialAllowedInProject')
-			.mockResolvedValue(undefined);
+			.mockReturnValue(undefined);
 		// stubbed by default: backed by connectionStatusProxy, which unit tests don't wire up
 		vi.spyOn(credentialsService, 'populateConnectedByMe').mockResolvedValue(undefined);
 		findCredentialOwningProjectSpy = sharedCredentialsRepository.findCredentialOwningProject;

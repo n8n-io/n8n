@@ -177,6 +177,24 @@ export class ProjectService {
 			);
 		}
 
+		const ownedCredentials = await this.sharedCredentialsRepository.find({
+			where: { projectId: project.id, role: 'credential:owner' },
+			relations: { credentials: true },
+		});
+
+		// End-user credentials can't live in personal projects, so reject the whole
+		// migration before anything moves — deleteProject is a sequence of awaits,
+		// not a transaction.
+		if (targetProject?.type === 'personal') {
+			const endUserCredentials = ownedCredentials.filter((sc) => sc.credentials.isResolvable);
+			if (endUserCredentials.length > 0) {
+				const names = endUserCredentials.map((sc) => `"${sc.credentials.name}"`).join(', ');
+				throw new BadRequestError(
+					`Can't migrate end-user credentials (${names}) to a personal project. Switch them back to fixed credentials, move them to another team project, or delete this project without migrating.`,
+				);
+			}
+		}
+
 		// 1. delete or migrate workflows owned by this project
 		const ownedSharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { projectId: project.id, role: 'workflow:owner' },
@@ -194,11 +212,6 @@ export class ProjectService {
 		}
 
 		// 2. delete credentials owned by this project
-		const ownedCredentials = await this.sharedCredentialsRepository.find({
-			where: { projectId: project.id, role: 'credential:owner' },
-			relations: { credentials: true },
-		});
-
 		if (targetProject) {
 			await this.sharedCredentialsRepository.makeOwner(
 				ownedCredentials.map((sc) => sc.credentialsId),

@@ -36,6 +36,7 @@ import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.serv
 import { createFolder } from '@test-integration/db/folders';
 
 import {
+	createCredentials,
 	getCredentialById,
 	saveCredential,
 	shareCredentialWithProjects,
@@ -1490,6 +1491,52 @@ describe('DELETE /project/:projectId', () => {
 		expect(foldersInTargetProject.map((f) => f.name)).toEqual(
 			expect.arrayContaining(['folder1', 'folder1', 'folder2']),
 		);
+	});
+
+	test('does not migrate end-user credentials to a personal project', async () => {
+		//
+		// ARRANGE
+		//
+		const member = await createMember();
+		const projectToBeDeleted = await createTeamProject(undefined, member);
+		const personalProject = await getPersonalProject(member);
+
+		const endUserCredential = await createCredentials(
+			{ name: 'End-user credential', type: 'test', data: '', isResolvable: true },
+			projectToBeDeleted,
+		);
+		const ownedWorkflow = await createWorkflow({}, projectToBeDeleted);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.delete(`/projects/${projectToBeDeleted.id}`)
+			.query({ transferId: personalProject.id })
+			//
+			// ASSERT
+			//
+			.expect(400);
+
+		expect(response.body.message).toContain('"End-user credential"');
+
+		// the project is still there, with nothing migrated out of it
+		await expect(findProject(projectToBeDeleted.id)).resolves.toBeDefined();
+		await expect(
+			Container.get(SharedWorkflowRepository).findOneByOrFail({
+				workflowId: ownedWorkflow.id,
+				projectId: projectToBeDeleted.id,
+				role: 'workflow:owner',
+			}),
+		).resolves.toBeDefined();
+		await expect(
+			Container.get(SharedCredentialsRepository).findOneByOrFail({
+				credentialsId: endUserCredential.id,
+				projectId: projectToBeDeleted.id,
+				role: 'credential:owner',
+			}),
+		).resolves.toBeDefined();
 	});
 
 	// This test is testing behavior that is explicitly not enabled right now,

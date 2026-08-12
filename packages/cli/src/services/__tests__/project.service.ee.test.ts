@@ -17,6 +17,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
@@ -652,6 +653,87 @@ describe('ProjectService', () => {
 			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-2');
 			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
 			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-2');
+		});
+
+		describe('migrating end-user credentials', () => {
+			// all scopes deleteProject needs, so both project lookups short-circuit on global scope
+			const migratingUser = {
+				id: 'user-1',
+				role: {
+					scopes: [
+						{ slug: 'project:delete' },
+						{ slug: 'credential:create' },
+						{ slug: 'workflow:create' },
+						{ slug: 'dataTable:create' },
+					],
+				},
+			} as any;
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			const endUserCredential = mock<SharedCredentials>({
+				credentialsId: 'credential-1',
+				credentials: mock<SharedCredentials['credentials']>({
+					id: 'credential-1',
+					name: 'End-user credential',
+					isResolvable: true,
+				}),
+			});
+
+			beforeEach(() => {
+				Object.defineProperty(projectService, 'connectionStatusProxy', {
+					configurable: true,
+					get: async () => mock<ICredentialConnectionStatusProvider>(),
+				});
+				// reset first: `vi.clearAllMocks()` leaves any unconsumed `...Once` queues behind
+				manager.findOne.mockReset();
+				sharedWorkflowRepository.find.mockReset();
+				sharedCredentialsRepository.find.mockReset();
+				projectRelationRepository.findBy.mockReset();
+				projectRepository.remove.mockResolvedValue(project);
+				sharedWorkflowRepository.find.mockResolvedValue([]);
+				sharedCredentialsRepository.find.mockResolvedValue([endUserCredential]);
+				moduleRegistry.isActive.mockReturnValue(false);
+				projectRelationRepository.findBy.mockResolvedValue([]);
+			});
+
+			it('rejects a migration into a personal project before anything is migrated', async () => {
+				// ARRANGE — source team project, target personal project
+				manager.findOne
+					.mockResolvedValueOnce(project)
+					.mockResolvedValueOnce(mock<Project>({ id: 'personal-1', type: 'personal' }));
+
+				// ACT
+				const deletion = projectService.deleteProject(migratingUser, project.id, {
+					migrateToProject: 'personal-1',
+				});
+
+				// ASSERT — rejected, naming the offending credential
+				await expect(deletion).rejects.toThrow(BadRequestError);
+				await expect(deletion).rejects.toThrow('"End-user credential"');
+
+				// nothing moved, project still there
+				expect(sharedWorkflowRepository.makeOwner).not.toHaveBeenCalled();
+				expect(sharedCredentialsRepository.makeOwner).not.toHaveBeenCalled();
+				expect(projectRepository.remove).not.toHaveBeenCalled();
+			});
+
+			it('migrates end-user credentials into a team project', async () => {
+				// ARRANGE — source and target are both team projects
+				manager.findOne
+					.mockResolvedValueOnce(project)
+					.mockResolvedValueOnce(mock<Project>({ id: 'team-2', type: 'team' }));
+
+				// ACT
+				await projectService.deleteProject(migratingUser, project.id, {
+					migrateToProject: 'team-2',
+				});
+
+				// ASSERT
+				expect(sharedCredentialsRepository.makeOwner).toHaveBeenCalledWith(
+					['credential-1'],
+					'team-2',
+				);
+				expect(projectRepository.remove).toHaveBeenCalledWith(project);
+			});
 		});
 
 		it('destroys agent sandboxes even when knowledge file cleanup fails', async () => {
