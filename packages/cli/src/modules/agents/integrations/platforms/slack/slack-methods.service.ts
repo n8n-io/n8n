@@ -221,7 +221,7 @@ export class SlackMethodsService {
 	private async clearManagedAppSession(session: SlackAppSetupSession): Promise<void> {
 		if (session.managerCredentialId && session.teamId) {
 			await this.cacheService.delete(
-				`${SLACK_MANAGED_APP_CACHE_PREFIX}${session.projectId}:${session.agentId}:${session.managerCredentialId}:${session.teamId}`,
+				`${SLACK_MANAGED_APP_CACHE_PREFIX}${session.projectId}:${session.agentId}:${session.managerCredentialId}:${session.teamId}:${session.userId}`,
 			);
 		}
 	}

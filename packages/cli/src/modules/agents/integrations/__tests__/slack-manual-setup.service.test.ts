@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { ProjectService } from '@/services/project.service.ee';
 
 import { SlackManualSetupService } from '../platforms/slack/slack-manual-setup.service';
 import type { SlackMethodsService } from '../platforms/slack/slack-methods.service';
@@ -15,12 +16,21 @@ describe('SlackManualSetupService', () => {
 		const userRepository = mock<UserRepository>();
 		const cacheService = mock<CacheService>();
 		const cipher = mock<Cipher>();
+		const projectService = mock<ProjectService>();
+		projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 		return {
-			service: new SlackManualSetupService(methods, userRepository, cacheService, cipher),
+			service: new SlackManualSetupService(
+				methods,
+				userRepository,
+				cacheService,
+				cipher,
+				projectService,
+			),
 			methods,
 			userRepository,
 			cacheService,
 			cipher,
+			projectService,
 		};
 	}
 

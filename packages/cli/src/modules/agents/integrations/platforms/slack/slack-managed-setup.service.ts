@@ -362,7 +362,9 @@ export class SlackManagedSetupService {
 				app_id: session.appId,
 			});
 			if (cleanupResponse.ok === true) {
-				await this.cacheService.delete(this.managedAppCacheKey(options));
+				await this.cacheService.delete(
+					this.managedAppCacheKey({ ...options, userId: options.user.id }),
+				);
 			}
 		}
 		throw this.methods.slackError('install the Slack app', response);
@@ -479,6 +481,7 @@ export class SlackManagedSetupService {
 					agentId: options.agentId,
 					managerCredentialId,
 					workspaceId: data.teamId,
+					userId: options.user.id,
 				}),
 			);
 		}
@@ -706,7 +709,7 @@ export class SlackManagedSetupService {
 		manager: ManagerCredentialContext,
 		workspaceName: string,
 	): Promise<{ session: ManagedSlackAppSession; created: boolean }> {
-		const key = this.managedAppCacheKey(options);
+		const key = this.managedAppCacheKey({ ...options, userId: options.user.id });
 		const cached = await this.cacheService.get<unknown>(key);
 		if (typeof cached === 'string') {
 			const session = await this.decryptManagedAppSession(cached);
@@ -716,6 +719,8 @@ export class SlackManagedSetupService {
 					created: false,
 				};
 			}
+			// invalid session, delete it
+			await this.cacheService.delete(key);
 		}
 
 		const redirectUrl = this.methods.callbackUrl(options.projectId, options.agentId);
@@ -725,7 +730,7 @@ export class SlackManagedSetupService {
 		});
 		const response = await this.callManagerSlackApi(manager, 'apps.manifest.create', {
 			manifest: JSON.stringify(manifest),
-			team: options.workspaceId,
+			team_id: options.workspaceId,
 		});
 		if (response.ok !== true) throw this.methods.slackError('create the Slack app', response);
 
@@ -813,16 +818,31 @@ export class SlackManagedSetupService {
 			client_id: overwrite.clientId,
 			client_secret: overwrite.clientSecret,
 		});
-		const refreshedAuthedUser = childRecord(refreshResponse, 'authed_user');
-		const refreshedAccessToken = stringProperty(refreshedAuthedUser, 'access_token');
-		if (refreshResponse.ok !== true || !refreshedAuthedUser || !refreshedAccessToken) {
+		const refreshedAccessToken = stringProperty(refreshResponse, 'access_token');
+		if (refreshResponse.ok !== true || !refreshedAccessToken) {
 			return response;
 		}
 
+		const refreshedAuthedUser = {
+			...authedUser,
+			access_token: refreshedAccessToken,
+			...(typeof refreshResponse.id === 'string' ? { id: refreshResponse.id } : {}),
+			...(typeof refreshResponse.scope === 'string'
+				? { scope: refreshResponse.scope }
+				: {}),
+			...(typeof refreshResponse.refresh_token === 'string'
+				? { refresh_token: refreshResponse.refresh_token }
+				: {}),
+			...(typeof refreshResponse.token_type === 'string'
+				? { token_type: refreshResponse.token_type }
+				: {}),
+			...(typeof refreshResponse.expires_in === 'number'
+				? { expires_in: refreshResponse.expires_in }
+				: {}),
+		};
 		const oauthTokenData = {
 			...manager.oauthTokenData,
-			...refreshResponse,
-			authed_user: { ...authedUser, ...refreshedAuthedUser },
+			authed_user: refreshedAuthedUser,
 		};
 		const updatedData = { ...manager.rawData, oauthTokenData };
 		const encrypted = await this.credentialsService.createEncryptedData({
@@ -843,8 +863,9 @@ export class SlackManagedSetupService {
 		agentId: string;
 		managerCredentialId: string;
 		workspaceId: string;
+		userId: string;
 	}): string {
-		return `${SLACK_MANAGED_APP_CACHE_PREFIX}${options.projectId}:${options.agentId}:${options.managerCredentialId}:${options.workspaceId}`;
+		return `${SLACK_MANAGED_APP_CACHE_PREFIX}${options.projectId}:${options.agentId}:${options.managerCredentialId}:${options.workspaceId}:${options.userId}`;
 	}
 
 	private async setManagedAppIcon(

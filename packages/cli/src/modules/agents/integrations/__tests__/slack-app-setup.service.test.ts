@@ -9,6 +9,7 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { CacheService } from '@/services/cache/cache.service';
+import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import { AgentIntegrationManagementService } from '../../agent-integration-management.service';
@@ -97,6 +98,7 @@ describe('Slack setup services', () => {
 	let credentialsFinderService: Mocked<CredentialsFinderService>;
 	let credentialsOverwrites: Mocked<CredentialsOverwrites>;
 	let userRepository: Mocked<UserRepository>;
+	let projectService: Mocked<ProjectService>;
 	let agentRepository: Mocked<AgentRepository>;
 	let agentIntegrationPersistenceService: Mocked<
 		Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>
@@ -167,6 +169,8 @@ describe('Slack setup services', () => {
 		credentialsFinderService = mock<CredentialsFinderService>();
 		credentialsOverwrites = mock<CredentialsOverwrites>();
 		userRepository = mock<UserRepository>();
+		projectService = mock<ProjectService>();
+		projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 		agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 		agentIntegrationPersistenceService =
@@ -208,6 +212,7 @@ describe('Slack setup services', () => {
 			userRepository,
 			cacheService,
 			cipher,
+			projectService,
 		);
 		const managedService = new SlackManagedSetupService(
 			methods,
@@ -429,6 +434,10 @@ describe('Slack setup services', () => {
 			where: { id: 'user-1' },
 			relations: ['role'],
 		});
+		expect(projectService.getProjectWithScope).toHaveBeenCalledWith(user, 'project-1', [
+			'agent:update',
+			'credential:create',
+		]);
 		expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
 			{
 				name: 'Slack - Support Agent',
@@ -477,6 +486,23 @@ describe('Slack setup services', () => {
 				state: state ?? '',
 			}),
 		).rejects.toThrow('expired or is invalid');
+	});
+
+	it('revalidates project permissions before completing Slack setup', async () => {
+		const state = await beginInstall();
+		userRepository.findOne.mockResolvedValue(user);
+		projectService.getProjectWithScope.mockResolvedValue(null);
+
+		await expect(
+			service.completeInstall({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				code: 'slack-code',
+				state,
+			}),
+		).rejects.toThrow('You do not have permission to complete Slack app setup');
+
+		expect(requestMock).toHaveBeenCalledOnce();
 	});
 
 	it('does not broadcast when connecting a published Slack install fails', async () => {
@@ -805,10 +831,12 @@ describe('Slack setup services', () => {
 			.mockResolvedValueOnce(
 				slackResponse({
 					ok: true,
-					authed_user: {
-						access_token: 'xoxp-refreshed',
-						refresh_token: 'xoxe-refreshed',
-					},
+					id: 'U123',
+					access_token: 'xoxp-refreshed',
+					expires_in: 43200,
+					refresh_token: 'xoxe-refreshed',
+					scope: 'app_configurations:read app_configurations:write managed_apps:install',
+					token_type: 'user',
 				}),
 			)
 			.mockResolvedValueOnce(slackResponse({ ok: true }))
@@ -871,7 +899,13 @@ describe('Slack setup services', () => {
 			{ data: 'encrypted' },
 			expect.objectContaining({
 				oauthTokenData: expect.objectContaining({
-					authed_user: expect.objectContaining({ access_token: 'xoxp-refreshed' }),
+					authed_user: expect.objectContaining({
+						id: 'U123',
+						access_token: 'xoxp-refreshed',
+						expires_in: 43200,
+						refresh_token: 'xoxe-refreshed',
+						token_type: 'user',
+					}),
 				}),
 			}),
 		);
@@ -937,7 +971,7 @@ describe('Slack setup services', () => {
 		expect(fetchParams(requestMock, 2).get('app_id')).toBe('A123');
 		expect(fetchParams(requestMock, 2).get('token')).toBe('xoxp-manager');
 		expect(cacheService.delete).toHaveBeenCalledWith(
-			'agents:slack-managed-app:project-1:agent-1:manager:T123',
+			'agents:slack-managed-app:project-1:agent-1:manager:T123:user-1',
 		);
 	});
 
@@ -993,6 +1027,11 @@ describe('Slack setup services', () => {
 			expect(installUrl.searchParams.get('client_id')).toBe('response-client');
 			expect(installUrl.searchParams.get('state')).toBeTruthy();
 		}
+		expect(cacheService.set).toHaveBeenCalledWith(
+			'agents:slack-managed-app:project-1:agent-1:manager:T123:user-1',
+			expect.stringMatching(/^encrypted:/),
+			60 * 60 * 1000,
+		);
 		const fallbackResult = await service.installManagedApp({
 			projectId: 'project-1',
 			agentId: 'agent-1',
@@ -1486,7 +1525,7 @@ describe('Slack setup services', () => {
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(1);
 			expect(credentialsService.delete).toHaveBeenCalledWith(user, 'bot-credential');
 			expect(cacheService.delete).toHaveBeenCalledWith(
-				'agents:slack-managed-app:project-1:agent-1:manager:T123',
+				'agents:slack-managed-app:project-1:agent-1:manager:T123:user-1',
 			);
 		},
 	);

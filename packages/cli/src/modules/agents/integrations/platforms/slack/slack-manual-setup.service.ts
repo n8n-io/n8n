@@ -8,8 +8,10 @@ import { jsonParse } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from '@/services/cache/cache.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { SlackMethodsService } from './slack-methods.service';
 import { childRecord, type SlackAppSetupSession, slackSetupCacheKey } from './slack-setup.types';
@@ -55,6 +57,7 @@ export class SlackManualSetupService {
 		private readonly userRepository: UserRepository,
 		private readonly cacheService: CacheService,
 		private readonly cipher: Cipher,
+		private readonly projectService: ProjectService,
 	) {}
 
 	async createApp(options: CreateSlackAppOptions): Promise<CreateSlackAgentAppResponse> {
@@ -123,6 +126,13 @@ export class SlackManualSetupService {
 			relations: ['role'],
 		});
 		if (!user) throw new NotFoundError(`User "${session.userId}" not found`);
+		const project = await this.projectService.getProjectWithScope(user, session.projectId, [
+			'agent:update',
+			'credential:create',
+		]);
+		if (!project) {
+			throw new ForbiddenError('You do not have permission to complete Slack app setup');
+		}
 
 		const agent = await this.methods.getAgent(session.agentId, session.projectId);
 		const tokenResponse = await this.methods.callSlackApi(
