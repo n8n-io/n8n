@@ -7,6 +7,7 @@ import {
 	createConnectedTool,
 	elementTargetSchema,
 	pageIdField,
+	snapshotField,
 	withSnapshotEnvelope,
 } from './helpers';
 
@@ -41,6 +42,7 @@ const browserClickSchema = z
 			.optional()
 			.describe('Modifier keys to hold'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Click an element');
 
@@ -83,6 +85,7 @@ const browserTypeSchema = z
 		submit: z.boolean().optional().describe('Press Enter after typing'),
 		delay: z.number().optional().describe('Delay between keystrokes in ms'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Type text into an element');
 
@@ -124,6 +127,7 @@ const browserSelectSchema = z
 		element: elementTargetSchema.describe('Select element to interact with'),
 		values: z.array(z.string()).describe('Option values or labels to select'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Select option(s) in a <select> element');
 
@@ -155,6 +159,7 @@ const browserDragSchema = z
 		from: elementTargetSchema.describe('Source element to drag from'),
 		to: elementTargetSchema.describe('Target element to drag to'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Drag from one element to another');
 
@@ -185,6 +190,7 @@ const browserHoverSchema = z
 	.object({
 		element: elementTargetSchema.describe('Element to hover over'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Hover over an element');
 
@@ -215,6 +221,7 @@ const browserPressSchema = z
 	.object({
 		keys: z.string().describe('Key or key combination (e.g. "Enter", "Control+A")'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Press keyboard key(s)');
 
@@ -245,6 +252,7 @@ const scrollToElementSchema = z.object({
 	mode: z.literal('element').describe('Scroll an element into view'),
 	element: elementTargetSchema.describe('Element to scroll into view'),
 	pageId: pageIdField,
+	snapshot: snapshotField,
 });
 
 const scrollByDirectionSchema = z.object({
@@ -252,6 +260,7 @@ const scrollByDirectionSchema = z.object({
 	direction: z.enum(['up', 'down']).describe('Scroll direction'),
 	amount: z.number().optional().describe('Pixels to scroll (default: 500)'),
 	pageId: pageIdField,
+	snapshot: snapshotField,
 });
 
 const browserScrollSchema = z
@@ -297,6 +306,7 @@ const browserUploadSchema = z
 			.describe('File input element (not needed when a file chooser dialog is pending)'),
 		files: z.array(z.string()).describe('Absolute file paths to upload'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Set files on a file input element or fulfill a pending file chooser dialog');
 
@@ -329,6 +339,7 @@ const browserDialogSchema = z
 		action: z.enum(['accept', 'dismiss']).describe('How to handle the dialog'),
 		text: z.string().optional().describe('Text to enter (for prompt dialogs)'),
 		pageId: pageIdField,
+		snapshot: snapshotField,
 	})
 	.describe('Handle a JavaScript dialog');
 
