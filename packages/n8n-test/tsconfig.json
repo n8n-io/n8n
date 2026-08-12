@@ -5,6 +5,7 @@
 	],
 	"compilerOptions": {
 		"types": ["node", "vitest/globals"],
+		"resolveJsonModule": true,
 		"experimentalDecorators": true,
 		"emitDecoratorMetadata": true,
 		"paths": {
