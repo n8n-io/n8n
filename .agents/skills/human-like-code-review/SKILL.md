@@ -7,7 +7,8 @@ allowed-tools: Bash(gh:*), Bash(git:*), Read, Glob, Grep
 # Human-Like Code Review
 
 Review a GitHub pull request with a code-review mindset and produce a copy/paste-friendly
-markdown file of feedback. Context is the foundation: understand the problem, intended
+markdown file of feedback. (`ai-pr-review` is this skill's unattended sibling with a JSON
+output contract - if you change the review criteria here, check it too.) Context is the foundation: understand the problem, intended
 solution, and surrounding architecture before judging the diff. Findings are the primary
 focus: prioritize architecture, over-complexity, bugs, regressions, security edge cases,
 and missing tests. Do not make code changes unless the user explicitly asks for them.
