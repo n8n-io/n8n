@@ -75,14 +75,25 @@ The prebuild already installed dependencies and warmed the build, so a session
 rarely needs a cold `pnpm install` or a full `pnpm build` — both are slow (often
 10–20 min cold) and can outlast a turn's timeout.
 
-- To run the app and see changes, use hot-reload, not a build: `pnpm dev:be`
-  (backend on 5678) and `pnpm dev:fe:editor` (editor UI on 8080).
-- If you must build, `pnpm build` reuses the turbo cache and is fast when warm.
-  Only run `pnpm install` when dependencies actually changed.
-- Stale outputs after switching branches: `pnpm reset` (add `--full` if that
-  doesn't clear it).
-- Give a long build its own turn — don't chain install + full build behind
-  other work in a single turn.
+- **Bring the app up in one command: `pnpm dev:up`** — ensures deps, starts the
+  backend, waits for health, and prints the URL. Add `--build` only when a
+  frontend change must show (see below).
+- **View it** at `https://<codespace-name>-5678.app.github.dev` — the forwarded
+  port is *private*, so it opens for you in a browser signed into GitHub with no
+  tunnel. (Anonymous/server callers get a 302 — that's why the agent worker
+  polls outward instead.)
+- **There is no `pnpm dev`** (removed). Use `pnpm dev:be` (backend, on 5678) and
+  `pnpm dev:fe:editor` (editor UI HMR, on 8080).
+- **`dev:be` serves the editor from its `dist` build**, so *frontend* edits
+  don't hot-reload there — they need `pnpm dev:up --build` (or `pnpm build`) plus
+  the restart. For live frontend HMR use `pnpm dev:fe:editor`, which needs
+  `pnpm session tunnel 5678 8080` from your laptop (its API base is hardcoded to
+  `localhost:5678`, so the `-8080.app.github.dev` URL won't work directly).
+- Only run `pnpm install` when dependencies actually changed; `pnpm build`
+  reuses the turbo cache and is fast when warm.
+- Stale outputs after switching branches: `pnpm reset` (add `--full` if needed).
+- Give a long build its own turn — don't chain install + full build behind other
+  work in a single turn.
 
 ## Flaky tools (MCP)
 
