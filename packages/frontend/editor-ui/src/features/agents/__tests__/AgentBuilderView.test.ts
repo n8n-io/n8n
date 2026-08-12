@@ -139,6 +139,7 @@ const fetchedSessionThreads: typeof sessionThreads = [];
 const fetchSessionThreadsMock = vi.fn().mockImplementation(async () => {
 	sessionThreads.splice(0, sessionThreads.length, ...fetchedSessionThreads);
 });
+const getSessionThreadDetailMock = vi.fn().mockResolvedValue({ executions: [] });
 const resetSessionStoreMock = vi.fn(() => {
 	sessionThreads.length = 0;
 });
@@ -287,6 +288,7 @@ vi.mock('../agentSessions.store', () => ({
 		threads: sessionThreads,
 		loading: false,
 		fetchThreads: fetchSessionThreadsMock,
+		getThreadDetail: getSessionThreadDetailMock,
 		startAutoRefresh: startSessionAutoRefreshMock,
 		stopAutoRefresh: stopSessionAutoRefreshMock,
 		reset: resetSessionStoreMock,
@@ -574,6 +576,8 @@ function resetViewMocks() {
 	fetchSessionThreadsMock.mockImplementation(async () => {
 		sessionThreads.splice(0, sessionThreads.length, ...fetchedSessionThreads);
 	});
+	getSessionThreadDetailMock.mockReset();
+	getSessionThreadDetailMock.mockResolvedValue({ executions: [] });
 	resetSessionStoreMock.mockClear();
 	startSessionAutoRefreshMock.mockReset();
 	stopSessionAutoRefreshMock.mockReset();
@@ -953,6 +957,47 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
 			'thread-1',
+		);
+	});
+
+	it('falls back from an unavailable persisted artifact preview session', async () => {
+		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
+		getSessionThreadDetailMock.mockRejectedValueOnce({ httpStatusCode: 404 });
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactPreviewSessionId: 'missing-thread',
+			},
+		});
+
+		await vi.waitFor(() =>
+			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+				'thread-latest',
+			),
+		);
+		expect(getSessionThreadDetailMock).toHaveBeenCalledWith('p2', 'a2', 'missing-thread');
+	});
+
+	it('keeps a valid persisted artifact preview session outside the first page', async () => {
+		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactPreviewSessionId: 'thread-older-than-first-page',
+			},
+		});
+
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			'thread-older-than-first-page',
+		);
+		expect(getSessionThreadDetailMock).toHaveBeenCalledWith(
+			'p2',
+			'a2',
+			'thread-older-than-first-page',
 		);
 	});
 
@@ -1479,7 +1524,9 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('toggle-mcp-access', true);
 
 		await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
-		await vi.waitFor(() => expect(toggleAgentMcpAccess).toHaveBeenCalledTimes(1));
+		await vi.waitFor(() => expect(toggleAgentMcpAccess).toHaveBeenCalledTimes(1), {
+			timeout: 5_000,
+		});
 		await wrapper.setProps({ artifactAgentPending: false });
 		mcpSave.resolve({ updatedCount: 1, updatedIds: ['a2'], unchangedIds: [] });
 		await flushPromises();

@@ -100,7 +100,7 @@ function formatTimestamp(timestamp: number | undefined): string | undefined {
 function groupFailures(failures: AgentFixWithAssistantFailure[]): FailureGroup[] {
 	const byError = new Map<string, FailureGroup>();
 	for (const failure of failures) {
-		const error = sanitizeDiagnosticText(scrubSecretsInText(failure.error.trim()));
+		const error = scrubSecretsInText(sanitizeDiagnosticText(failure.error.trim()));
 		if (!error) continue;
 
 		const group = byError.get(error);

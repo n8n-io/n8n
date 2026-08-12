@@ -348,7 +348,7 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 		]);
 	});
 
-	it('preserves native tool error messages across SSE serialization', async () => {
+	it('normalizes native Error tool failures across SSE serialization', async () => {
 		// Regression coverage for AGENT-618: native Error properties must survive the wire format.
 		const events = await collectSerializedEvents([
 			{
@@ -385,13 +385,28 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 		]);
 	});
 
-	it('scrubs secrets from native tool errors before SSE serialization', async () => {
+	it('scrubs secrets from every failed tool output across SSE serialization', async () => {
+		const apiKey = `sk-${'a'.repeat(20)}`;
 		const events = await collectSerializedEvents([
 			{
 				type: 'tool-result',
-				toolCallId: 'tc-secret',
+				toolCallId: 'tc-error',
 				toolName: 'write_records',
 				output: new Error('Request failed with password=hunter2'),
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-string',
+				toolName: 'write_records',
+				output: 'Request failed with password=hunter2',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-object',
+				toolName: 'write_records',
+				output: { message: 'Request failed', detail: apiKey },
 				isError: true,
 			},
 		]);
@@ -399,9 +414,23 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 		expect(events).toEqual([
 			{
 				type: 'tool-result',
-				toolCallId: 'tc-secret',
+				toolCallId: 'tc-error',
 				toolName: 'write_records',
 				output: 'Request failed with [REDACTED]',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-string',
+				toolName: 'write_records',
+				output: 'Error: Request failed with [REDACTED]',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-object',
+				toolName: 'write_records',
+				output: '{\n  "message": "Request failed",\n  "detail": "[REDACTED]"\n}',
 				isError: true,
 			},
 		]);

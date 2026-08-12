@@ -229,6 +229,30 @@ describe('buildAgentFixWithAssistantPrompt', () => {
 		expect(prompt.match(/<\/untrusted_data>/g)).toHaveLength(1);
 	});
 
+	it('normalizes invisible characters before scrubbing diagnostic text', () => {
+		const prompt = buildAgentFixWithAssistantPrompt(
+			{
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				executionId: 'execution-1',
+				failures: [
+					{
+						toolCallId: 'call-1',
+						toolName: 'http_request',
+						toolDisplayName: 'HTTP request',
+						error: 'Request failed with pass\u200Bword=hunter2',
+					},
+				],
+			},
+			i18n,
+		);
+		const [failure] = extractDiagnostics(prompt).failures;
+
+		expect(failure?.error).toBe('Request failed with [REDACTED]');
+		expect(failure?.error).not.toContain('hunter2');
+	});
+
 	it('preserves replacement-pattern characters in diagnostic values', () => {
 		const error = "Command output contains $&, $`, $', and $$";
 		const prompt = buildAgentFixWithAssistantPrompt(

@@ -1530,7 +1530,11 @@ watch(
 	() => sessionsStore.loading,
 	(isLoading, wasLoading) => {
 		if (!wasLoading || isLoading) return;
-		if (!isPreviewDockOpen.value || effectiveSessionId.value) return;
+		if (!isPreviewDockOpen.value) return;
+		if (isArtifactMode.value && props.artifactPreviewSessionId) {
+			void ensureArtifactPreviewSessionAvailable(props.artifactPreviewSessionId);
+		}
+		if (effectiveSessionId.value) return;
 		bindPreviewSession();
 	},
 );
@@ -1539,11 +1543,46 @@ watch(isPreviewDockOpen, (open) => {
 	if (open) bindPreviewSession();
 });
 
+function isNotFoundError(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'httpStatusCode' in error &&
+		error.httpStatusCode === 404
+	);
+}
+
+let latestArtifactPreviewValidationId = 0;
+async function ensureArtifactPreviewSessionAvailable(sessionId: string) {
+	const requestId = ++latestArtifactPreviewValidationId;
+	if (sessionsStore.loading || effectiveSessionId.value !== sessionId) return;
+	if (sessionsStore.threads.some((thread) => thread.id === sessionId)) return;
+
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	try {
+		await sessionsStore.getThreadDetail(targetProjectId, targetAgentId, sessionId);
+	} catch (error) {
+		if (
+			requestId !== latestArtifactPreviewValidationId ||
+			isStaleAgentTarget(targetProjectId, targetAgentId) ||
+			effectiveSessionId.value !== sessionId ||
+			!isNotFoundError(error)
+		) {
+			return;
+		}
+
+		activeChatSessionId.value = null;
+		bindPreviewSession();
+	}
+}
+
 watch(
 	[() => props.artifactPreviewSessionId, initialized],
 	([sessionId, isInitialized]) => {
 		if (!isArtifactMode.value || !isInitialized || !sessionId) return;
 		openArtifactPreview(sessionId);
+		void ensureArtifactPreviewSessionAvailable(sessionId);
 	},
 	{ immediate: true },
 );

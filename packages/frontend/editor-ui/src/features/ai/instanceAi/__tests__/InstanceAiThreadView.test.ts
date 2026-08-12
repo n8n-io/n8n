@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, reactive, ref, type PropType } from 'vue';
+import { defineComponent, h, inject, reactive, ref, type PropType, type Ref } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
@@ -18,6 +18,7 @@ import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPre
 import type {
 	FrontendModuleSettings,
 	InstanceAiAgentNode,
+	InstanceAiHandoffContext,
 	InstanceAiMessage,
 } from '@n8n/api-types';
 import {
@@ -26,6 +27,7 @@ import {
 	stashPendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
+import { handoffContextKey } from '../instanceAi.handoffContext';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
@@ -155,6 +157,7 @@ const InstanceAiInputStub = defineComponent({
 	emits: ['submit', 'cancel-plan-edit', 'dismiss-context-chip'],
 	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
+		const hasAttachments = ref(inputState.hasAttachments);
 		const setText = (text: string) => {
 			inputDraft.value = text;
 			inputSetTextSpy(text);
@@ -162,7 +165,7 @@ const InstanceAiInputStub = defineComponent({
 		const clearTextIfMatches = (text: string) => {
 			if (inputDraft.value === text) setText('');
 		};
-		const isDirty = () => inputDraft.value.trim().length > 0 || inputState.hasAttachments;
+		const isDirty = () => inputDraft.value.trim().length > 0 || hasAttachments.value;
 		expose({ focus: inputFocusSpy, setText, clearTextIfMatches, isDirty });
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
@@ -188,6 +191,29 @@ const InstanceAiInputStub = defineComponent({
 					props.contextChip?.icon ?? '',
 				),
 				h('span', { 'data-test-id': 'instance-ai-input-draft' }, inputDraft.value),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-attachments' },
+					hasAttachments.value ? 'attached' : '',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-edit-draft',
+						onClick: () => setText('Edited user draft'),
+					},
+					'Edit draft',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-add-attachment',
+						onClick: () => {
+							hasAttachments.value = true;
+						},
+					},
+					'Add attachment',
+				),
 				h(
 					'button',
 					{
@@ -324,6 +350,33 @@ const AgentSectionStub = defineComponent({
 	},
 });
 
+const InstanceAiArtifactsPanelStub = defineComponent({
+	name: 'InstanceAiArtifactsPanelStub',
+	setup() {
+		const pendingComposerContext = inject<
+			Readonly<Ref<InstanceAiHandoffContext | null>> | undefined
+		>('pendingComposerContext', undefined);
+		const dismissPendingComposerContext = inject<((key: string) => boolean) | undefined>(
+			'dismissPendingComposerContext',
+			undefined,
+		);
+
+		return () =>
+			h(
+				'button',
+				{
+					'data-test-id': 'instance-ai-artifacts-dismiss-pending-context',
+					disabled: !pendingComposerContext?.value,
+					onClick: () => {
+						const context = pendingComposerContext?.value;
+						if (context) dismissPendingComposerContext?.(handoffContextKey(context));
+					},
+				},
+				'Dismiss pending context',
+			);
+	},
+});
+
 const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
 		provide: {
@@ -336,7 +389,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 			AgentSection: AgentSectionStub,
 			InstanceAiDataTablePreview: { template: '<div data-test-id="data-table-preview-stub" />' },
-			InstanceAiArtifactsPanel: { template: '<div data-test-id="artifacts-panel-stub" />' },
+			InstanceAiArtifactsPanel: InstanceAiArtifactsPanelStub,
 		},
 	},
 });
@@ -589,6 +642,52 @@ describe('InstanceAiThreadView', () => {
 				'preview-session-1',
 			);
 		});
+	});
+
+	it('clears the generated draft when pending context is dismissed from the artifacts panel', async () => {
+		const { findByTestId, getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
+				'SEO Auditor session',
+			);
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool calls');
+		});
+
+		await user.click(getByTestId('instance-ai-artifacts-preview-toggle'));
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+		await user.click(await findByTestId('instance-ai-artifacts-dismiss-pending-context'));
+
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('');
+		expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
+		expect(localStorageState.store.has('n8n-instance-ai-composer-draft:thread-1')).toBe(false);
+	});
+
+	it('preserves edited text and attachments when artifacts-panel context is dismissed', async () => {
+		const { findByTestId, getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool calls');
+		});
+		await user.click(getByTestId('instance-ai-input-edit-draft'));
+		await user.click(getByTestId('instance-ai-input-add-attachment'));
+		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Edited user draft');
+		expect(getByTestId('instance-ai-input-attachments')).toHaveTextContent('attached');
+
+		await user.click(getByTestId('instance-ai-artifacts-preview-toggle'));
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+		await user.click(await findByTestId('instance-ai-artifacts-dismiss-pending-context'));
+
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Edited user draft');
+		expect(getByTestId('instance-ai-input-attachments')).toHaveTextContent('attached');
+		expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
+		expect(localStorageState.store.has('n8n-instance-ai-composer-draft:thread-1')).toBe(false);
 	});
 
 	it('keeps the in-place handoff when preview view metadata cannot be saved', async () => {

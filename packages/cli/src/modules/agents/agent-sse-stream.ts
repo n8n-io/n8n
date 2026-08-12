@@ -68,8 +68,9 @@ function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {
 }
 
 function toolResultOutputForSse(output: unknown, isError: boolean | undefined): unknown {
-	if (!isError || !(output instanceof Error)) return output;
-	return scrubSecretsInText(stringifyError(output) || output.name || 'Tool execution failed');
+	if (!isError) return output;
+	const fallback = output instanceof Error ? output.name : undefined;
+	return scrubSecretsInText(stringifyError(output) || fallback || 'Tool execution failed');
 }
 
 /** SSE-emit text/reasoning lifecycle chunks. */
