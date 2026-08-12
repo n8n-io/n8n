@@ -28,6 +28,7 @@ export { ExecutionsNlFilterRequestDto } from './ai/executions-nl-filter-request.
 export {
 	ExecutionsNlFilterResponseDto,
 	EXECUTIONS_NL_FILTER_STATUSES,
+	EXECUTIONS_NL_FILTER_VOTES,
 } from './ai/executions-nl-filter-response.dto';
 
 export {
