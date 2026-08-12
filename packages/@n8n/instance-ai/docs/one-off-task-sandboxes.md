@@ -27,7 +27,7 @@ This boundary is the most important design decision. Keep it strict.
 ```mermaid
 graph LR
     User --> IA["Instance AI<br/>(planner)"]
-    IA -->|"task contract<br/>(prompt via RPC)"| Harness["pi harness<br/>(executor)"]
+    IA -->|"task contract<br/>(one-shot prompt)"| Harness["pi harness<br/>(executor)"]
     subgraph SB["Ephemeral sandbox"]
         Harness --> Code["SDK code<br/>write → run → fix"]
         Code --> Verify["Read-back<br/>verification"]
@@ -98,19 +98,27 @@ waits in a chat.
 [pi](https://pi.dev) is a minimal terminal coding harness with the exact
 mechanisms this design needs.
 
-### Integration: RPC mode
+### Integration: JSON event-stream mode
 
-Instance AI drives pi through **RPC mode** (`pi --mode rpc`) — a JSONL
-protocol over stdin/stdout:
+Pi's RPC mode (JSONL over stdin/stdout) **cannot run on the default sandbox
+provider**: the sandbox service exec API exposes a command, env, output
+callbacks, and an abort signal — no writable stdin
+(`n8n-sandbox-sandbox.ts`; [sandboxing.md](./sandboxing.md) marks
+interactive process handles as unsupported). Instance AI therefore drives
+pi in **JSON event-stream mode**: a one-shot invocation with the task as
+the prompt argument and structured events on stdout.
 
-- Send the task: `{"type": "prompt", "message": "<task contract>"}`
-- Receive streamed events: `tool_execution_start`, `message_update`, …
-- Done signal: `agent_settled`
-- Kill switch: `{"type": "abort"}`
+- Send the task: prompt argument of the one-shot invocation.
+- Receive streamed events through the exec `onStdout` callback.
+- Done signal: process exit plus the final report.
+- Kill switch: the exec `abortSignal` kills the pi process. Graceful abort
+  is not needed — the sandbox is destroyed either way.
 
-This gives live progress for the user, a clean completion signal, and the
-abort mechanism the hard limits require. One-shot mode (`pi -p "<task>"`) is
-the fallback.
+What is lost against RPC mode: mid-run steering. A mid-task credential
+request becomes **exit-and-relaunch** — the harness exits with a
+"needs credential" report, and Instance AI relaunches the exec with the
+extra environment variable. RPC mode becomes an option again if the sandbox
+service grows an interactive execution API (see Future Hardening).
 
 ### Instruction layers
 
@@ -120,7 +128,7 @@ Static instructions are baked; only the task changes per run.
 | --- | --- | --- |
 | Role and rules | `~/.pi/agent/SYSTEM.md` (baked) | Identity: "You execute one one-off task. You read credentials from the environment by name. You verify by read-back. You produce a final report. You never print secret values." |
 | Conventions | `AGENTS.md` context file (baked) | Credential catalog format, how to request a new credential, report format. |
-| The task | RPC prompt (per run) | The task contract from Instance AI. |
+| The task | One-shot prompt (per run) | The task contract from Instance AI. |
 
 ### Guardrail extensions
 
@@ -131,7 +139,7 @@ every tool result before the model sees it.
 | Extension hook / tool | Purpose | Strength |
 | --- | --- | --- |
 | `tool_call` hook | Block obvious env-dumping commands (`env`, `printenv`, `echo $SECRET_*`). | **Soft.** A tripwire, not a wall — code can always read `process.env`. Do not oversell it. |
-| `tool_result` hook | Redact secret values from every tool output before the LLM sees them (`[REDACTED:NAME]`). The injector writes the secret env var names to a manifest; the hook compares outputs against the actual values, which are already inside the sandbox. | **Strong.** Even when the model or its code prints a token, the value never enters model context, transcript, or report. |
+| `tool_result` hook | Redact secret values from every tool output before the LLM sees them (`[REDACTED:NAME]`). The injector writes the secret env var names to a manifest; the hook compares outputs against the actual values, which are already inside the sandbox. | **Defense-in-depth, not a guarantee.** Pi streams `tool_execution_update` deltas *while* a tool runs — before this hook fires — so partial raw output can leave the sandbox first. The authoritative scrub is host-side, in the event translation layer (see Instance AI Integration). Exact-value matching also misses encoded or transformed secrets; that residual risk is what the egress allowlist addresses. |
 | `list_credentials` tool | Returns credential names and types only. The model has no reason to poke at the environment — availability is a tool call, not a shell command. | Convenience + risk reduction. |
 | `report_result` tool | Fixed schema: actions taken, verification evidence, artifact links. The system prompt requires it as the harness's last act. | Enforces the result contract by schema, not by hoping the model formats text. |
 | `lookup_docs` tool | Calls the Context7 API directly for current SDK docs. Pi has no documented native MCP support; a direct HTTP tool is simpler than bridging an MCP client. | Capability. |
@@ -152,14 +160,48 @@ variables **only to the exec call that starts the pi process**. They are
 never written to a file and never baked into the sandbox. No service change
 is needed.
 
+### Decryption: one privileged adapter method
+
+The existing Instance AI boundary deliberately returns credential metadata
+only — `CredentialDetail` in `types.ts` carries an explicit "never include
+decrypted credential data" note, and the setup flow resumes with IDs. That
+convention stays for the general surface. Injection goes through **one new,
+narrowly-scoped adapter method** in `packages/cli` — where decryption and
+the OAuth machinery already live: *resolve credential X to injectable env
+values for a one-off task*. The method:
+
+- **Rechecks user/project access at injection time**, not only at catalog
+  time.
+- **Static-key credentials:** maps fields to env vars directly. Multi-field
+  credentials become N env vars.
+- **OAuth credentials:** refreshes the token first, then injects **only the
+  fresh access token** — never the refresh token, never the client secret.
+  The sandbox's hard lifetime is far below the token TTL, so no refresh is
+  ever needed inside the sandbox; the expiry problem is solved by ordering,
+  not new infrastructure. The harness uses the token as a plain Bearer
+  token (the `AGENTS.md` conventions say so; SDKs accept raw access
+  tokens). If the task needs a scope the credential lacks, the API call
+  fails mid-task and the report says so — accepted.
+
+Both credential shapes are supported from day one; the injection contract
+(env var names → values) does not care about the type. Google Sheets
+(OAuth) is the demo slice.
+
 ### Two request paths
 
 **Path 1 — existing credential.** The harness reads the catalog (names and
 types only) via `list_credentials`. When the task needs one, it sends a
 structured request to Instance AI. The user approves. Instance AI decrypts
-the credential and injects it. Explicit approval per credential per task is
-the consent mechanism — do not skip it, even when the need is obvious. It is
+the credential and injects it. Explicit approval per credential is the
+consent mechanism — do not skip it, even when the need is obvious. It is
 the only gate for now.
+
+An approval is a **thread-scoped lease**: it covers that credential, in
+that thread, for a bounded window. A follow-up task inside the window gets
+a one-click, pre-filled confirmation instead of a full re-approval; when
+the lease expires (or the thread ends), full approval is required again.
+This keeps consent per-injection honest without adding friction to the
+common case.
 
 **Path 2 — new credential.** The harness requests a credential that does not
 exist. This reuses the **Templated Custom Auth** recipe flow
@@ -202,13 +244,13 @@ sequenceDiagram
     participant SB as Sandbox (pi)
 
     IA->>SB: create sandbox + bootstrap
-    IA->>SB: start pi (RPC), env = approved credentials
+    IA->>SB: start pi (JSON event-stream), env = approved credentials
     SB->>SB: write code, run, fix
-    SB->>IA: credential request (name/type or recipe)
+    SB->>IA: exit — needs credential (name/type or recipe)
     IA->>U: approval or setup card (masked)
     U->>IA: approve / paste values
     Note over IA: testUrl probe (new credentials)
-    IA->>SB: restart pi exec, env += new credential
+    IA->>SB: relaunch pi exec, env += new credential
     SB->>SB: complete task
     SB->>SB: read-back verification
     SB->>IA: report_result (actions, evidence, links)
@@ -241,10 +283,18 @@ carries:
 - Verification evidence (what was read back, what matched).
 - Artifacts (URLs to created resources).
 
-This doubles as an audit log. Keep the final report after the sandbox dies:
-if the user asks "do that again next month," Instance AI starts a fresh
-one-off task with the old report as a hint — knowledge reuse without any
-workflow machinery.
+The report is a **best-effort user summary, not an audit log**. A killed or
+crashed harness never calls `report_result`, and a model-authored summary
+is not trusted evidence. After an unclean stop, Instance AI reports "task
+interrupted — external state unknown" plus whatever the streamed events
+showed. A middle step: the `tool_call` hook appends every executed command
+to a journal file that n8n reads after the fact — it survives harness
+death, though it is still sandbox-resident and model-adjacent. A trusted,
+host-side audit log arrives with the credential proxy (Future Hardening).
+
+Keep the final report after the sandbox dies: if the user asks "do that
+again next month," Instance AI starts a fresh one-off task with the old
+report as a hint — knowledge reuse without any workflow machinery.
 
 ## Instance AI Integration
 
@@ -271,35 +321,51 @@ The streaming protocol already supports multiple agent branches: every event
 carries an `agentId`, spawned background agents carry a `parentId`, and the
 frontend renders those branches (see
 [streaming-protocol.md](./streaming-protocol.md)). The integration is a
-translation layer: pi RPC events map onto existing event types under the
-sandbox agent's ID.
+translation layer: pi's JSON-stream events (read from the exec `onStdout`
+callback) map onto existing event types under the sandbox agent's ID.
 
-| pi RPC event | Instance AI event |
+| pi event (JSON stream) | Instance AI event |
 | --- | --- |
 | `message_update` (text deltas) | `text-delta` |
 | `tool_execution_start` / `end` | tool events in the agent branch |
 | milestone progress | `status` ("Creating the sheet…") |
-| `agent_settled` | task completion → report card |
+| process exit + `report_result` | task completion → report card |
 
 Raw tool activity streams into the collapsible agent branch; occasional
-`status` lines keep the main view readable. Redaction happens below this
-layer — the pi `tool_result` hook scrubs secrets before events reach the
-stream.
+`status` lines keep the main view readable.
 
-### Abort: inherit both cancel paths, add reaping
+**The translation layer is also the authoritative redaction point.** n8n
+injected the secret values, so it scrubs every streamed delta against them
+before anything is persisted or emitted — building on the existing
+pattern-based redaction (`N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS`). This
+closes the window the in-sandbox `tool_result` hook cannot: pi streams
+partial tool output before that hook fires. Encoded or transformed secrets
+can evade both layers; the egress allowlist (Future Hardening) is the
+answer to that.
+
+### Abort and cleanup: three layers
 
 Background tasks already have two cancel paths: the global stop
 (`cancelRun` → `cancelBackgroundTasks(threadId)`) and the
 `cancel-background-task` tool for "stop that" requests. The sandbox harness
 runs as a background task and inherits both. The one-off addition: for this
-sandbox type, **cancellation is a security event** — the cancel handler
-sends pi the RPC `abort`, then destroys the sandbox.
+sandbox type, **cancellation is a security event** — aborting the exec
+kills the pi process, and the sandbox must be destroyed.
 
-Crash paths need a third mechanism. The thread-scoped workspace already
-derives sandbox identity deterministically (UUIDv5 from thread ID) so a
-restarted process reattaches; use the same trick in reverse — deterministic
-IDs or labels on one-off sandboxes so a startup sweep reaps orphans that
-outlived their run.
+Destruction cannot rely on task-manager callbacks: the background task
+registry is in-memory, and `cancelTask` drops the callbacks without
+invoking `onSettled` (`background-task-manager.ts`). Cleanup therefore has
+three layers:
+
+1. **`try/finally` in the task function itself.** The abort signal reaches
+   the task body; the `finally` destroys the sandbox on every in-process
+   path — success, failure, cancel.
+2. **A persisted sandbox lifecycle record.** Written at creation, cleared
+   at destruction. A restarted n8n sweeps it and reaps orphans
+   (deterministic IDs or labels make the sweep cheap — the same trick the
+   thread-scoped workspace uses for reattachment).
+3. **Service-enforced sandbox TTL.** The backstop that works when n8n
+   itself dies and never comes back.
 
 ### Confirmation and result UI
 
@@ -316,8 +382,9 @@ outlived their run.
 ### Follow-up turns
 
 The report arrives, the sandbox dies, the user replies "actually, make it 5
-columns." That is a **new task**: new sandbox, approvals inherited from the
-same thread, previous report passed as context. This keeps the security
+columns." That is a **new task**: new sandbox, previous report passed as
+context, credential access via the thread-scoped approval lease (one-click
+confirm inside the window, full approval after expiry). This keeps the security
 story clean (no idle sandbox holding credentials "just in case") and reuses
 the keep-the-report decision. The alternative — a short grace period — is
 what users may intuitively expect, so this stays an explicit product
@@ -413,7 +480,12 @@ while the guardrails are young.
 | Env vars vs proxy | Env vars, but per-exec — only the pi process sees them, never a file, never the sandbox image. |
 | MCP for Context7 | **No.** Pi has no native MCP support; a direct HTTP `lookup_docs` extension tool is simpler. |
 | LLM for the harness | **Same provider and model as Instance AI.** No new settings surface; per-run budget tokens are future hardening. |
-| Follow-up turns | **New task, new sandbox.** Previous report passed as context; approvals inherited from the thread. No idle sandbox holding credentials. |
+| Follow-up turns | **New task, new sandbox.** Previous report passed as context; credential access via the thread-scoped approval lease. No idle sandbox holding credentials. |
+| Harness drive mode | **JSON event-stream one-shot.** The sandbox exec API has no stdin, so pi RPC mode cannot run on the default provider. Exit-and-relaunch replaces mid-run steering; RPC returns if the service grows interactive execs. |
+| Credential decryption | **One privileged adapter method in `packages/cli`**, with access recheck at injection time. The general metadata-only boundary stays. |
+| OAuth support | **From day one.** Refresh-then-inject, access token only, sandbox lifetime below token TTL. Google Sheets (OAuth) is the demo slice. |
+| Credential approval | **Thread-scoped lease.** Per-injection consent with one-click confirm inside the window; full approval after expiry. |
+| Report status | **Best-effort user summary, not an audit log.** Unclean stop → "task interrupted — external state unknown." |
 
 ## Future Hardening
 
@@ -427,7 +499,8 @@ In rough priority order:
    types.
 2. **Credential proxy.** A small proxy at the sandbox boundary adds auth
    headers outside the sandbox, so raw tokens never enter it at all.
-   Supersedes env injection entirely.
+   Supersedes env injection entirely — and yields a trusted, host-side
+   audit log of every API call as a side effect.
 3. **Runner image bake.** Move from bootstrap-at-creation to pi baked into
    the sandbox service runner image (the production provisioning path above).
 4. **Short-lived, scoped tokens.** Inject access tokens only (never refresh
@@ -436,6 +509,9 @@ In rough priority order:
    proxy-minted, short-lived tokens carrying a per-task token budget. Caps
    the damage of a prompt-injected harness and yields per-task cost
    accounting.
+6. **Interactive execution API on the sandbox service.** Writable stdin (or
+   a process handle) enables pi RPC mode: mid-run steering and a credential
+   pause instead of exit-and-relaunch.
 
 ## One-Sentence Version
 
