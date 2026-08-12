@@ -99,30 +99,50 @@ export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () 
 		isNodePickerActive.value = !isNodePickerActive.value;
 	}
 
-	function addContextNodesFromSelection(nodeIds: string[]) {
-		if (!isNodePickerActive.value || nodeIds.length === 0) return;
-
+	function resolveContextNode(nodeId: string): InstanceAiContextNode | null {
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
+		const node = workflowDocumentStore.allNodes.find((candidate) => candidate.id === nodeId);
+		if (!node) return null;
+		return {
+			nodeId,
+			nodeName: node.name,
+			nodeType: node.type,
+		};
+	}
+
+	function addContextNodesFromSelection(nodeIds: string[]) {
+		if (!isNodePickerActive.value || nodeIds.length === 0) return;
+
 		const known = new Map(contextNodes.value.map((node) => [node.nodeId, node]));
 		let changed = false;
 
 		for (const nodeId of nodeIds) {
 			if (known.has(nodeId)) continue;
-			const node = workflowDocumentStore.allNodes.find((candidate) => candidate.id === nodeId);
-			if (!node) continue;
-			known.set(nodeId, {
-				nodeId,
-				nodeName: node.name,
-				nodeType: node.type,
-			});
+			const next = resolveContextNode(nodeId);
+			if (!next) continue;
+			known.set(nodeId, next);
 			changed = true;
 		}
 
 		if (changed) {
 			contextNodes.value = [...known.values()];
 		}
+	}
+
+	/** Click a canvas node while picker mode is on — pin it, or unpin if already pinned. */
+	function toggleContextNode(nodeId: string) {
+		if (!isNodePickerActive.value) return;
+
+		if (contextNodes.value.some((node) => node.nodeId === nodeId)) {
+			removeContextNode(nodeId);
+			return;
+		}
+
+		const next = resolveContextNode(nodeId);
+		if (!next) return;
+		contextNodes.value = [...contextNodes.value, next];
 	}
 
 	function removeContextNode(nodeId: string) {
@@ -216,6 +236,7 @@ export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () 
 		toggleNodePicker,
 		exitNodePicker,
 		addContextNodesFromSelection,
+		toggleContextNode,
 		removeContextNode,
 		clearContextNodes,
 	};

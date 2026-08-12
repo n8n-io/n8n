@@ -627,9 +627,6 @@ watch(selectedNodeIds, (newIds) => {
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
 	}
-	if (instanceAiPanelStore.isOpen && instanceAiPanelStore.isNodePickerActive) {
-		instanceAiPanelStore.addContextNodesFromSelection(newIds);
-	}
 });
 
 // Surface a selected group so surfaces outside the canvas (logs panel) can sync to it
@@ -1050,6 +1047,10 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
+	}
+
+	if (instanceAiPanelStore.isOpen && instanceAiPanelStore.isNodePickerActive) {
+		instanceAiPanelStore.toggleContextNode(node.id);
 	}
 
 	emit('click:node', node.id, getProjectedPosition(event));

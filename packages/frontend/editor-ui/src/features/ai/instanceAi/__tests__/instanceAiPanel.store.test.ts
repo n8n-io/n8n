@@ -211,11 +211,26 @@ describe('useInstanceAiPanelStore', () => {
 		]);
 	});
 
+	it('toggles a node in and out of context on click', () => {
+		const store = useInstanceAiPanelStore();
+		store.open();
+		store.toggleNodePicker();
+
+		store.toggleContextNode('node-1');
+		expect(store.contextNodes).toEqual([
+			{ nodeId: 'node-1', nodeName: 'Post to Slack', nodeType: 'n8n-nodes-base.slack' },
+		]);
+
+		store.toggleContextNode('node-1');
+		expect(store.contextNodes).toEqual([]);
+	});
+
 	it('ignores canvas selection when the picker is inactive', () => {
 		const store = useInstanceAiPanelStore();
 		store.open();
 
 		store.addContextNodesFromSelection(['node-1']);
+		store.toggleContextNode('node-1');
 
 		expect(store.contextNodes).toEqual([]);
 	});
