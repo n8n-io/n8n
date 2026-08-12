@@ -18,7 +18,6 @@ import type {
 	BulkMoveDestination,
 	ResolvedBulkAction,
 } from './bulkActions.types';
-import { getBulkSelectionCount } from './bulkActions.utils';
 
 const props = defineProps<{
 	open: boolean;
@@ -54,8 +53,8 @@ watch(
 const actionId = computed(() => props.action?.id ?? null);
 const affected = computed(() => props.action?.affected ?? []);
 const unchanged = computed(() => props.action?.unchanged ?? []);
-const affectedCount = computed(() => getBulkSelectionCount(affected.value));
-const unchangedCount = computed(() => getBulkSelectionCount(unchanged.value));
+const affectedCount = computed(() => affected.value.length);
+const unchangedCount = computed(() => unchanged.value.length);
 const selectedCount = computed(() => affectedCount.value + unchangedCount.value);
 
 const isShare = computed(() => actionId.value === 'share');

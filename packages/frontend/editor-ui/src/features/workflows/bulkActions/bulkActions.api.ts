@@ -30,6 +30,13 @@ export async function bulkDeleteWorkflowsApi(
 	return await makeRestApiRequest(context, 'POST', '/workflows/bulk/delete', { workflowIds });
 }
 
+export async function bulkUnpublishWorkflowsApi(
+	context: IRestApiContext,
+	workflowIds: string[],
+): Promise<BulkWorkflowActionResult> {
+	return await makeRestApiRequest(context, 'POST', '/workflows/bulk/unpublish', { workflowIds });
+}
+
 export async function bulkTransferWorkflowsApi(
 	context: IRestApiContext,
 	payload: {
@@ -68,22 +75,14 @@ export function normalizeWorkflowActionResult(
 	return { status: response.status, items, mocked: false };
 }
 
-// ── MCP aggregation (real endpoint for workflow ids + one call per folder) ──
-
-/**
- * Toggles MCP availability across a mixed selection: a single id-scoped request
- * for the workflows and one folder-scoped request per folder, then aggregates
- * every response into the shared result buckets.
- */
 export async function bulkToggleMcpAccess(
 	context: IRestApiContext,
 	params: {
 		workflows: BulkSelectableResource[];
-		folders: BulkSelectableResource[];
 		availableInMCP: boolean;
 	},
 ): Promise<BulkActionResult> {
-	const { workflows, folders, availableInMCP } = params;
+	const { workflows, availableInMCP } = params;
 	const items: BulkActionResultItem[] = [];
 	let hadFailure = false;
 
@@ -118,23 +117,6 @@ export async function bulkToggleMcpAccess(
 		}
 	}
 
-	for (const folder of folders) {
-		try {
-			const response = await toggleWorkflowsMcpAccessApi(
-				context,
-				{ folderId: folder.id },
-				availableInMCP,
-			);
-			const status =
-				response.failedCount > 0 ? 'failed' : response.updatedCount > 0 ? 'completed' : 'unchanged';
-			if (status === 'failed') hadFailure = true;
-			items.push({ id: folder.id, resourceType: 'folder', name: folder.name, status });
-		} catch {
-			hadFailure = true;
-			items.push({ id: folder.id, resourceType: 'folder', name: folder.name, status: 'failed' });
-		}
-	}
-
 	return {
 		status: hadFailure ? 'partial' : 'completed',
 		items,
@@ -142,7 +124,7 @@ export async function bulkToggleMcpAccess(
 	};
 }
 
-// ── Mocks (Unarchive, Share, folder-containing Move) ──
+// ── Mocks (Unarchive, Share) ──
 
 /** Marks every affected item as completed without touching the server. */
 export function mockCompletedResult(affected: BulkSelectableResource[]): BulkActionResult {

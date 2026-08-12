@@ -87,7 +87,6 @@ import type {
 	BulkActionConfig,
 	BulkActionId,
 } from '@/features/workflows/bulkActions/bulkActions.types';
-import { getBulkSelectionWeight } from '@/features/workflows/bulkActions/bulkActions.utils';
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
@@ -560,17 +559,13 @@ const workflowListResources = computed<Resource[]>(() => {
  * BULK SELECTION & ACTIONS (prototype)
  */
 
-// The list only ever holds workflows and folders; narrow to the selectable union.
+// Folders aren't selectable because their contents and available actions aren't
+// fully represented in the list response.
 const pageResources = computed(() =>
-	workflowListResources.value.filter(
-		(r): r is WorkflowResource | FolderResource =>
-			r.resourceType === 'workflow' || r.resourceType === 'folder',
-	),
+	workflowListResources.value.filter((r): r is WorkflowResource => r.resourceType === 'workflow'),
 );
 
-const selection = useResourcesListSelection<WorkflowResource | FolderResource>({
-	getItemWeight: getBulkSelectionWeight,
-});
+const selection = useResourcesListSelection<WorkflowResource>();
 
 const selectedResources = selection.selectedItems;
 
@@ -2507,6 +2502,7 @@ const onNameSubmit = async (name: string) => {
 			<Draggable
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:key="`folder-${index}`"
+				:class="$style.selectableListItem"
 				:disabled="!isDragNDropEnabled"
 				type="move"
 				target-data-key="folder"
@@ -2540,15 +2536,10 @@ const onNameSubmit = async (name: string) => {
 					}"
 					:show-ownership-badge="showCardsBadge"
 					:show-mcp-access-actions="showMcpAccessActions"
-					:selectable="true"
-					:selected="selection.isSelected(data as FolderResource)"
-					:selection-active="selectedCount > 0"
-					:selection-disabled="!selection.canSelect(data as FolderResource)"
 					data-target="folder"
 					data-droppable
 					class="mb-2xs"
 					@action="onFolderCardAction"
-					@update:selected="selection.toggleItem(data as FolderResource, $event)"
 					@mouseenter="folderHelpers.onDragEnter"
 					@mouseup="onFolderCardDrop"
 				/>
@@ -2556,6 +2547,7 @@ const onNameSubmit = async (name: string) => {
 			<Draggable
 				v-else
 				:key="`workflow-${index}`"
+				:class="$style.selectableListItem"
 				:disabled="!isDragNDropEnabled"
 				type="move"
 				target-data-key="workflow"
@@ -2780,6 +2772,10 @@ const onNameSubmit = async (name: string) => {
 	label {
 		color: var(--text-color--subtle);
 	}
+}
+
+.selectableListItem {
+	padding-left: var(--spacing--xl);
 }
 
 .breadcrumbs-container {

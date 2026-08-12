@@ -540,13 +540,18 @@ describe('Folders', () => {
 	});
 
 	it('should keep all card checkboxes visible after selecting a card', async () => {
+		const secondWorkflow = {
+			...TEST_WORKFLOW_RESOURCE,
+			id: '3',
+			name: 'Workflow 3',
+		} satisfies WorkflowListResource;
 		foldersStore.totalWorkflowCount = 2;
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
 			TEST_WORKFLOW_RESOURCE,
-			TEST_FOLDER_RESOURCE,
+			secondWorkflow,
 		]);
 		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
-		const { getAllByTestId, getByTestId } = renderComponent({ pinia });
+		const { getAllByTestId } = renderComponent({ pinia });
 		await waitAllPromises();
 
 		const selectionControls = getAllByTestId('card-selection-checkbox');
@@ -557,7 +562,7 @@ describe('Folders', () => {
 			),
 		).toBe(true);
 
-		await userEvent.click(getByTestId('workflow-card-checkbox'));
+		await userEvent.click(getAllByTestId('workflow-card-checkbox')[0]);
 
 		await waitFor(() => {
 			expect(
@@ -568,20 +573,21 @@ describe('Folders', () => {
 		});
 	});
 
-	it('should count the workflows in a selected folder', async () => {
-		const folder = {
-			...TEST_FOLDER_RESOURCE,
-			workflowCount: 5,
-		} satisfies WorkflowListResource;
-		foldersStore.totalWorkflowCount = 5;
-		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([folder]);
+	it('should not select folders when selecting all', async () => {
+		foldersStore.totalWorkflowCount = 2;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			TEST_WORKFLOW_RESOURCE,
+			TEST_FOLDER_RESOURCE,
+		]);
 		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
-		const { getByTestId } = renderComponent({ pinia });
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
 		await waitAllPromises();
 
-		await userEvent.click(getByTestId('folder-card-checkbox'));
+		expect(queryByTestId('folder-card-checkbox')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('select-all-checkbox'));
 
-		expect(getByTestId('selected-items-info')).toHaveTextContent('5');
+		expect(getByTestId('selected-items-info')).toHaveTextContent('1');
+		expect(getByTestId('workflow-card-checkbox')).toBeChecked();
 	});
 
 	it('should preserve selected cards across pages', async () => {
@@ -615,6 +621,45 @@ describe('Folders', () => {
 		await userEvent.click(getByTestId('workflow-card-checkbox'));
 
 		expect(getByTestId('selected-items-info')).toHaveTextContent('2');
+	});
+
+	it('should offer unpublish when at least one selected workflow is published', async () => {
+		const unpublishedWorkflow = {
+			...TEST_WORKFLOW_RESOURCE,
+			id: '3',
+			name: 'Workflow 3',
+			activeVersionId: null,
+		} satisfies WorkflowListResource;
+		foldersStore.totalWorkflowCount = 2;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			TEST_WORKFLOW_RESOURCE,
+			unpublishedWorkflow,
+		]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getByTestId, getByText } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('select-all-checkbox'));
+		await userEvent.click(within(getByTestId('selection-bulk-actions')).getByRole('button'));
+
+		expect(getByText('Unpublish')).toBeInTheDocument();
+	});
+
+	it('should not offer unpublish when no selected workflow is published', async () => {
+		const unpublishedWorkflow = {
+			...TEST_WORKFLOW_RESOURCE,
+			activeVersionId: null,
+		} satisfies WorkflowListResource;
+		foldersStore.totalWorkflowCount = 1;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([unpublishedWorkflow]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getByTestId, queryByText } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('workflow-card-checkbox'));
+		await userEvent.click(within(getByTestId('selection-bulk-actions')).getByRole('button'));
+
+		expect(queryByText('Unpublish')).not.toBeInTheDocument();
 	});
 
 	it('should show folder actions menu when not in the overview or sharing pages', async () => {

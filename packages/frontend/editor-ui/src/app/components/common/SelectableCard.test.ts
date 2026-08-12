@@ -1,4 +1,5 @@
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import SelectableCard from './SelectableCard.vue';
 
@@ -49,5 +50,17 @@ describe('SelectableCard', () => {
 		});
 
 		expect(getByRole('checkbox', { name: 'Select card' })).toBeDisabled();
+	});
+
+	it('should remove pointer focus after deselecting', async () => {
+		const { getByRole, emitted } = renderComponent({
+			props: { selectable: true, modelValue: true },
+		});
+		const checkbox = getByRole('checkbox', { name: 'Select card' });
+
+		await userEvent.click(checkbox);
+
+		expect(emitted('update:modelValue')).toEqual([[false]]);
+		await waitFor(() => expect(checkbox).not.toHaveFocus());
 	});
 });

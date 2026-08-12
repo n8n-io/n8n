@@ -2,7 +2,7 @@ import { computed, ref, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import type { FolderResource, WorkflowListResource, WorkflowResource } from '@/Interface';
+import type { WorkflowListResource } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 import {
@@ -10,6 +10,7 @@ import {
 	bulkDeleteWorkflowsApi,
 	bulkToggleMcpAccess,
 	bulkTransferWorkflowsApi,
+	bulkUnpublishWorkflowsApi,
 	mockCompletedResult,
 	normalizeWorkflowActionResult,
 } from './bulkActions.api';
@@ -20,10 +21,6 @@ import type {
 	BulkSelectableResource,
 	ResolvedBulkAction,
 } from './bulkActions.types';
-
-const isWorkflow = (r: BulkSelectableResource): r is WorkflowResource =>
-	r.resourceType === 'workflow';
-const isFolder = (r: BulkSelectableResource): r is FolderResource => r.resourceType === 'folder';
 
 /**
  * Static, prototype-scoped definition of one bulk action. `isAllowed` is the
@@ -40,7 +37,6 @@ type ActionSpec = {
 	/** Share/Move/Delete must apply to the whole selection or they hide. */
 	requiresFullSelection: boolean;
 	requiresMcp?: boolean;
-	supports: (r: BulkSelectableResource) => boolean;
 	isAllowed: (r: BulkSelectableResource) => boolean;
 	willChange: (r: BulkSelectableResource) => boolean;
 };
@@ -52,7 +48,6 @@ const ACTION_SPECS: ActionSpec[] = [
 		destructive: false,
 		needsConfig: true,
 		requiresFullSelection: true,
-		supports: () => true,
 		isAllowed: () => true,
 		willChange: () => true,
 	},
@@ -62,9 +57,8 @@ const ACTION_SPECS: ActionSpec[] = [
 		destructive: false,
 		needsConfig: false,
 		requiresFullSelection: false,
-		supports: isWorkflow,
 		isAllowed: () => true,
-		willChange: (r) => isWorkflow(r) && !r.isArchived,
+		willChange: (r) => !r.isArchived,
 	},
 	{
 		id: 'unarchive',
@@ -72,51 +66,54 @@ const ACTION_SPECS: ActionSpec[] = [
 		destructive: false,
 		needsConfig: false,
 		requiresFullSelection: false,
-		supports: isWorkflow,
 		isAllowed: () => true,
-		willChange: (r) => isWorkflow(r) && r.isArchived,
+		willChange: (r) => r.isArchived,
+	},
+	{
+		id: 'unpublish',
+		priority: 4,
+		destructive: false,
+		needsConfig: false,
+		requiresFullSelection: false,
+		isAllowed: () => true,
+		willChange: (r) => r.activeVersionId !== null,
 	},
 	{
 		id: 'share',
-		priority: 4,
+		priority: 5,
 		destructive: false,
 		needsConfig: true,
 		requiresFullSelection: true,
-		supports: isWorkflow,
 		isAllowed: () => true,
 		willChange: () => true,
 	},
 	{
 		id: 'enableMcp',
-		priority: 5,
-		destructive: false,
-		needsConfig: false,
-		requiresFullSelection: false,
-		requiresMcp: true,
-		supports: () => true,
-		isAllowed: () => true,
-		// Folders can't be evaluated client-side, so they always count as changeable.
-		willChange: (r) => isFolder(r) || !r.settings?.availableInMCP,
-	},
-	{
-		id: 'disableMcp',
 		priority: 6,
 		destructive: false,
 		needsConfig: false,
 		requiresFullSelection: false,
 		requiresMcp: true,
-		supports: () => true,
 		isAllowed: () => true,
-		willChange: (r) => isFolder(r) || !!r.settings?.availableInMCP,
+		willChange: (r) => !r.settings?.availableInMCP,
+	},
+	{
+		id: 'disableMcp',
+		priority: 7,
+		destructive: false,
+		needsConfig: false,
+		requiresFullSelection: false,
+		requiresMcp: true,
+		isAllowed: () => true,
+		willChange: (r) => !!r.settings?.availableInMCP,
 	},
 	{
 		id: 'delete',
-		priority: 7,
+		priority: 8,
 		destructive: true,
 		needsConfig: false,
 		requiresFullSelection: true,
-		supports: isWorkflow,
-		isAllowed: (r) => isWorkflow(r) && r.isArchived && r.activeVersionId === null,
+		isAllowed: (r) => r.isArchived && r.activeVersionId === null,
 		willChange: () => true,
 	},
 ];
@@ -140,8 +137,6 @@ export function useBulkWorkflowActions(options: {
 
 		for (const spec of ACTION_SPECS) {
 			if (spec.requiresMcp && !mcpEnabled.value) continue;
-			// Hidden unless every selected resource is supported.
-			if (!selection.every(spec.supports)) continue;
 			// Full-selection actions hide unless the whole selection is valid.
 			if (spec.requiresFullSelection && !selection.every(spec.isAllowed)) continue;
 
@@ -217,12 +212,6 @@ export function useBulkWorkflowActions(options: {
 		}
 	};
 
-	const applyMoveProjection = (affected: BulkSelectableResource[]) => {
-		// The items moved out of the current view; drop them from the projection.
-		const movedIds = new Set(affected.map((item) => item.id));
-		workflowsAndFolders.value = workflowsAndFolders.value.filter((item) => !movedIds.has(item.id));
-	};
-
 	// ── Execution ──
 
 	async function execute(config: BulkActionConfig = {}): Promise<BulkActionResult> {
@@ -231,44 +220,45 @@ export function useBulkWorkflowActions(options: {
 
 		const ctx = rootStore.restApiContext;
 		const affected = action.affected;
-		const workflows = affected.filter(isWorkflow);
-		const folders = affected.filter(isFolder);
 
 		switch (action.id) {
 			case 'archive': {
 				const response = await bulkArchiveWorkflowsApi(
 					ctx,
-					workflows.map((w) => w.id),
+					affected.map((w) => w.id),
 				);
 				return normalizeWorkflowActionResult(response, affected);
 			}
 			case 'delete': {
 				const response = await bulkDeleteWorkflowsApi(
 					ctx,
-					workflows.map((w) => w.id),
+					affected.map((w) => w.id),
+				);
+				return normalizeWorkflowActionResult(response, affected);
+			}
+			case 'unpublish': {
+				const response = await bulkUnpublishWorkflowsApi(
+					ctx,
+					affected.map((w) => w.id),
 				);
 				return normalizeWorkflowActionResult(response, affected);
 			}
 			case 'move': {
 				const destination = config.moveDestination;
-				// Only workflow-only selections with a destination hit the real endpoint;
-				// folder-containing moves are mocked at this boundary.
-				if (folders.length === 0 && destination) {
+				if (destination) {
 					const response = await bulkTransferWorkflowsApi(ctx, {
-						workflowIds: workflows.map((w) => w.id),
+						workflowIds: affected.map((w) => w.id),
 						destinationProjectId: destination.projectId,
 						destinationParentFolderId: destination.folderId,
 					});
 					return normalizeWorkflowActionResult(response, affected);
 				}
-				applyMoveProjection(affected);
 				return mockCompletedResult(affected);
 			}
 			case 'enableMcp':
 			case 'disableMcp':
 				return await bulkToggleMcpAccess(ctx, {
-					workflows,
-					folders,
+					workflows: affected,
 					availableInMCP: action.id === 'enableMcp',
 				});
 			case 'unarchive':

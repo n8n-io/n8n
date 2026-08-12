@@ -1,4 +1,4 @@
-import type { FolderResource, WorkflowResource } from '@/Interface';
+import type { WorkflowResource } from '@/Interface';
 import type {
 	SharedBulkActionItemStatus,
 	SharedBulkActionResult,
@@ -6,13 +6,13 @@ import type {
 } from '@/app/types/bulkActions.types';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
-/** The only two resource kinds the workflow list can hold. */
-export type BulkSelectableResource = WorkflowResource | FolderResource;
+export type BulkSelectableResource = WorkflowResource;
 
 export type BulkActionId =
 	| 'move'
 	| 'archive'
 	| 'unarchive'
+	| 'unpublish'
 	| 'share'
 	| 'enableMcp'
 	| 'disableMcp'
@@ -20,8 +20,8 @@ export type BulkActionId =
 
 /** Mirrors the backend `BulkWorkflowActionItemStatus` so mocks/MCP normalize to the same buckets. */
 export type BulkActionItemStatus = SharedBulkActionItemStatus;
-export type BulkActionResultItem = SharedBulkActionResultItem<'workflow' | 'folder'>;
-export type BulkActionResult = SharedBulkActionResult<'workflow' | 'folder'>;
+export type BulkActionResultItem = SharedBulkActionResultItem<'workflow'>;
+export type BulkActionResult = SharedBulkActionResult<'workflow'>;
 
 /** Destination chosen in the Move review dialog. */
 export type BulkMoveDestination = {

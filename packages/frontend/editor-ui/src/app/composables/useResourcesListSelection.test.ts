@@ -36,20 +36,6 @@ describe('useResourcesListSelection', () => {
 		expect(selection.isPageChecked(resources)).toBe(true);
 	});
 
-	it('should apply item weights to the selected count and limit', () => {
-		const resources = createResources(3);
-		const selection = useResourcesListSelection<TestResource>({
-			maxSelected: 5,
-			getItemWeight: (item) => (item.id === '0' ? 4 : 2),
-		});
-
-		selection.togglePage(resources, true);
-
-		expect(selection.selectedItems.value).toEqual([resources[0]]);
-		expect(selection.selectedCount.value).toBe(4);
-		expect(selection.canSelect(resources[1])).toBe(false);
-	});
-
 	it('should select the first items in projection order up to the maximum', () => {
 		const selection = useResourcesListSelection<TestResource>({ maxSelected: 2 });
 		const resources = createResources(4);

@@ -26,7 +26,6 @@ import {
 	N8nTooltip,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
-import SelectableCard from '@/app/components/common/SelectableCard.vue';
 
 type FolderCardAction = UserAction<IUser> & {
 	children?: FolderCardAction[];
@@ -44,10 +43,6 @@ type Props = {
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 	showMcpAccessActions?: boolean;
-	selectable?: boolean;
-	selected?: boolean;
-	selectionActive?: boolean;
-	selectionDisabled?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -55,10 +50,6 @@ const props = withDefaults(defineProps<Props>(), {
 	readOnly: true,
 	showOwnershipBadge: false,
 	showMcpAccessActions: false,
-	selectable: false,
-	selected: false,
-	selectionActive: false,
-	selectionDisabled: false,
 });
 
 const i18n = useI18n();
@@ -70,7 +61,6 @@ const favoritesStore = useFavoritesStore();
 const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
 	folderOpened: [{ folder: FolderResource }];
-	'update:selected': [value: boolean];
 }>();
 
 const dropdownId = `folder-card-actions-dropdown-${getCurrentInstance()?.uid ?? 0}`;
@@ -225,20 +215,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 </script>
 
 <template>
-	<SelectableCard
-		:model-value="selected"
-		:selectable="selectable"
-		:selection-active="selectionActive"
-		:selection-disabled="selectionDisabled"
-		:checkbox-aria-label="
-			i18n.baseText('workflows.bulkActions.selectRow', {
-				interpolate: { name: data.name },
-			})
-		"
-		checkbox-test-id="folder-card-checkbox"
-		data-test-id="folder-card"
-		@update:model-value="emit('update:selected', $event)"
-	>
+	<div data-test-id="folder-card">
 		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
 			<N8nCard :class="$style.card">
 				<template #prepend>
@@ -392,7 +369,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				</template>
 			</N8nCard>
 		</RouterLink>
-	</SelectableCard>
+	</div>
 </template>
 
 <style lang="scss" module>

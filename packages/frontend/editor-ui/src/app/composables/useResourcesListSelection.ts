@@ -9,9 +9,8 @@ export type SelectableResource = { resourceType: string; id: string };
 
 export const DEFAULT_RESOURCE_SELECTION_LIMIT = 100;
 
-type ResourcesListSelectionOptions<T> = {
+type ResourcesListSelectionOptions = {
 	maxSelected?: number;
-	getItemWeight?: (item: T) => number;
 };
 
 const selectionKey = (item: SelectableResource) => `${item.resourceType}:${item.id}`;
@@ -23,9 +22,9 @@ const selectionKey = (item: SelectableResource) => `${item.resourceType}:${item.
  * folder route, refresh, ...).
  */
 export function useResourcesListSelection<T extends SelectableResource>(
-	options: ResourcesListSelectionOptions<T> = {},
+	options: ResourcesListSelectionOptions = {},
 ) {
-	const { maxSelected = DEFAULT_RESOURCE_SELECTION_LIMIT, getItemWeight = () => 1 } = options;
+	const { maxSelected = DEFAULT_RESOURCE_SELECTION_LIMIT } = options;
 	// A Map keeps the full item around (not just its key) so consumers can act on
 	// the selection without re-resolving items from the list. shallowRef avoids
 	// deep-unwrapping the generic item type; reassigning the map drives reactivity.
@@ -39,15 +38,12 @@ export function useResourcesListSelection<T extends SelectableResource>(
 
 	const selectedItems = computed<T[]>(() => Array.from(selected.value.values()) as T[]);
 	const selectedKeys = computed(() => new Set(selected.value.keys()));
-	const selectedCount = computed(() =>
-		Array.from(selected.value.values()).reduce((count, item) => count + getItemWeight(item), 0),
-	);
+	const selectedCount = computed(() => selected.value.size);
 	const hasSelection = computed(() => selected.value.size > 0);
 	const isLimitReached = computed(() => selectedCount.value >= maxSelected);
 
 	const isSelected = (item: SelectableResource) => selected.value.has(selectionKey(item));
-	const canSelect = (item: T) =>
-		isSelected(item) || selectedCount.value + getItemWeight(item) <= maxSelected;
+	const canSelect = (item: T) => isSelected(item) || selectedCount.value < maxSelected;
 
 	/**
 	 * Add or remove a single item. When `value` is omitted the state is flipped.
@@ -87,15 +83,10 @@ export function useResourcesListSelection<T extends SelectableResource>(
 	const togglePage = (pageItems: T[], value?: boolean) => {
 		const shouldSelect = value ?? !isPageChecked(pageItems);
 		const next = new Map(selected.value);
-		let nextCount = selectedCount.value;
 		for (const item of pageItems) {
 			const key = selectionKey(item);
 			if (shouldSelect) {
-				if (!next.has(key)) {
-					const itemWeight = getItemWeight(item);
-					if (nextCount + itemWeight > maxSelected) continue;
-					nextCount += itemWeight;
-				}
+				if (!next.has(key) && next.size >= maxSelected) continue;
 				next.set(key, item);
 			} else {
 				next.delete(key);
