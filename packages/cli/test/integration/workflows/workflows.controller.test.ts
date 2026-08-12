@@ -4873,6 +4873,107 @@ describe('POST /workflows/:workflowId/run', () => {
 	});
 });
 
+describe('workflow bulk actions', () => {
+	test('archives workflows from different projects', async () => {
+		const teamProject = await createTeamProject('Bulk source', owner);
+		const workflows = await Promise.all([
+			createWorkflow({}, owner),
+			createWorkflow({}, teamProject),
+		]);
+
+		const response = await authOwnerAgent
+			.post('/workflows/bulk/archive')
+			.send({ workflowIds: workflows.map(({ id }) => id) })
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			status: 'completed',
+			results: workflows.map(({ id }) => ({ workflowId: id, status: 'completed' })),
+		});
+		await expect(workflowRepository.findByIds(workflows.map(({ id }) => id))).resolves.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: workflows[0].id, isArchived: true }),
+				expect.objectContaining({ id: workflows[1].id, isArchived: true }),
+			]),
+		);
+	});
+
+	test('does not mutate any workflow when strict preflight fails', async () => {
+		const accessibleWorkflow = await createWorkflow({}, owner);
+		const inaccessibleWorkflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent
+			.post('/workflows/bulk/archive')
+			.send({ workflowIds: [inaccessibleWorkflow.id, accessibleWorkflow.id] })
+			.expect(422);
+
+		expect(response.body.meta.issues).toEqual([
+			expect.objectContaining({
+				workflowId: accessibleWorkflow.id,
+				reason: 'notFoundOrForbidden',
+			}),
+		]);
+		await expect(workflowRepository.findById(inaccessibleWorkflow.id)).resolves.toMatchObject({
+			isArchived: false,
+		});
+	});
+
+	test('unpublishes active workflows and reports inactive workflows as unchanged', async () => {
+		const activeWorkflow = await createActiveWorkflow({}, owner);
+		const inactiveWorkflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent
+			.post('/workflows/bulk/unpublish')
+			.send({ workflowIds: [activeWorkflow.id, inactiveWorkflow.id] })
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			status: 'completed',
+			results: [
+				{ workflowId: activeWorkflow.id, status: 'completed' },
+				{ workflowId: inactiveWorkflow.id, status: 'unchanged' },
+			],
+		});
+	});
+
+	test('permanently deletes archived workflows', async () => {
+		const workflows = await Promise.all([
+			createWorkflow({ isArchived: true }, owner),
+			createWorkflow({ isArchived: true }, owner),
+		]);
+
+		const response = await authOwnerAgent
+			.post('/workflows/bulk/delete')
+			.send({ workflowIds: workflows.map(({ id }) => id) })
+			.expect(200);
+
+		expect(response.body.data.status).toBe('completed');
+		await expect(workflowRepository.findByIds(workflows.map(({ id }) => id))).resolves.toHaveLength(
+			0,
+		);
+	});
+
+	test('transfers workflows to one destination project', async () => {
+		const destinationProject = await createTeamProject('Bulk destination', owner);
+		const workflows = await Promise.all([createWorkflow({}, owner), createWorkflow({}, member)]);
+
+		const response = await authOwnerAgent
+			.post('/workflows/bulk/transfer')
+			.send({
+				workflowIds: workflows.map(({ id }) => id),
+				destinationProjectId: destinationProject.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.status).toBe('completed');
+		const sharings = await Container.get(SharedWorkflowRepository).findByWorkflowIds(
+			workflows.map(({ id }) => id),
+		);
+		expect(sharings).toHaveLength(2);
+		expect(sharings.every(({ projectId }) => projectId === destinationProject.id)).toBe(true);
+	});
+});
+
 describe('POST /workflows/:workflowId/archive', () => {
 	test('should archive workflow', async () => {
 		const workflow = await createWorkflow({}, owner);

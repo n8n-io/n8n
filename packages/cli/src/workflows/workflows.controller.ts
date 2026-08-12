@@ -1,6 +1,10 @@
 import {
 	ActivateWorkflowDto,
 	ArchiveWorkflowDto,
+	BulkArchiveWorkflowsDto,
+	BulkDeleteWorkflowsDto,
+	BulkTransferWorkflowsDto,
+	BulkUnpublishWorkflowsDto,
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
@@ -60,6 +64,7 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 
 import { CollaborationService } from '../collaboration/collaboration.service';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
+import { WorkflowBulkActionService } from './workflow-bulk-action.service';
 import { WorkflowCreationService } from './workflow-creation.service';
 import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
@@ -94,6 +99,7 @@ export class WorkflowsController {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowBulkActionService: WorkflowBulkActionService,
 	) {}
 
 	@Post('/')
@@ -345,6 +351,59 @@ export class WorkflowsController {
 	) {
 		const writeLock = await this.collaborationService.getWriteLock(req.user.id, workflowId);
 		return writeLock;
+	}
+
+	// ProjectScope cannot authorize IDs from several projects in a request body.
+	// WorkflowBulkActionService verifies every requested workflow before mutating any of them.
+	@Post('/bulk/archive')
+	async bulkArchive(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: BulkArchiveWorkflowsDto,
+	) {
+		return await this.workflowBulkActionService.archive(
+			req.user,
+			body.workflowIds,
+			req.headers['push-ref'] as string | undefined,
+		);
+	}
+
+	@Post('/bulk/delete')
+	async bulkDelete(req: AuthenticatedRequest, _res: Response, @Body body: BulkDeleteWorkflowsDto) {
+		return await this.workflowBulkActionService.delete(
+			req.user,
+			body.workflowIds,
+			req.headers['push-ref'] as string | undefined,
+		);
+	}
+
+	@Post('/bulk/unpublish')
+	async bulkUnpublish(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: BulkUnpublishWorkflowsDto,
+	) {
+		return await this.workflowBulkActionService.unpublish(
+			req.user,
+			body.workflowIds,
+			req.headers['push-ref'] as string | undefined,
+		);
+	}
+
+	@Post('/bulk/transfer')
+	async bulkTransfer(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: BulkTransferWorkflowsDto,
+	) {
+		return await this.workflowBulkActionService.transfer(
+			req.user,
+			body.workflowIds,
+			body.destinationProjectId,
+			body.shareCredentials,
+			body.destinationParentFolderId,
+			req.headers['push-ref'] as string | undefined,
+		);
 	}
 
 	@Delete('/:workflowId')

@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { WorkflowPublishedVersion } from '../entities';
@@ -46,6 +46,17 @@ export class WorkflowPublishedVersionRepository extends Repository<WorkflowPubli
 			select: ['publishedVersionId'],
 		});
 		return record?.publishedVersionId ?? null;
+	}
+
+	async getWorkflowIdsWithPublishedVersion(workflowIds: string[]): Promise<Set<string>> {
+		if (workflowIds.length === 0) return new Set();
+
+		const records = await this.find({
+			where: { workflowId: In(workflowIds) },
+			select: ['workflowId'],
+		});
+
+		return new Set(records.map(({ workflowId }) => workflowId));
 	}
 
 	/**
