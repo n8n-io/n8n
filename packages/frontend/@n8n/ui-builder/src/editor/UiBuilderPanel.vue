@@ -9,10 +9,11 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, toRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, reactive, ref, toRef } from 'vue';
 
-import UiRenderer from '../renderer/UiRenderer.vue';
 import type { UiScope } from '../core/types';
+import { createScopeRegistry, UiScopeRegistryKey } from '../renderer/scope-registry';
+import UiRenderer from '../renderer/UiRenderer.vue';
 import { useActionPreview } from './composables/useActionPreview';
 import { useOutline } from './composables/useOutline';
 import { usePages } from './composables/usePages';
@@ -67,11 +68,7 @@ const {
 	deleteSelected,
 	deleteNode,
 	moveNode,
-} = useUiDocument(
-	toRef(props, 'value'),
-	(json) => emit('update', json),
-	readOnly,
-);
+} = useUiDocument(toRef(props, 'value'), (json) => emit('update', json), readOnly);
 
 const {
 	pages,
@@ -129,6 +126,19 @@ const canvasScope = computed<UiScope>(() => ({
 		? { path: editingPage.value.path, params: {}, pageId: editingPage.value.id }
 		: undefined,
 }));
+
+const scopeRegistry = createScopeRegistry();
+provide(UiScopeRegistryKey, scopeRegistry);
+
+/**
+ * What the inspector previews and completes against: the scope the selected
+ * node is actually being rendered with, which carries `$item` and `$index` when
+ * it sits inside a repeat. Falls back to the page scope before the canvas has
+ * rendered it.
+ */
+const inspectorScope = computed<UiScope>(
+	() => scopeRegistry.scopeFor(selectedId.value) ?? canvasScope.value,
+);
 
 /**
  * `button` + `onClick` gives `buttonOnClick`, then `buttonOnClick2`. The host
@@ -200,8 +210,8 @@ function onEscape(event: KeyboardEvent) {
 			<N8nDialogHeader class="ui-builder__header">
 				<N8nDialogTitle>UI Builder</N8nDialogTitle>
 				<N8nDialogDescription>
-					Click a component in the canvas or the outline to select it. The palette inserts after
-					the selection.
+					Click a component in the canvas or the outline to select it. The palette inserts after the
+					selection.
 				</N8nDialogDescription>
 			</N8nDialogHeader>
 
@@ -292,6 +302,7 @@ function onEscape(event: KeyboardEvent) {
 					:target-region="targetRegion"
 					:pages="pages"
 					:targets="localTargets"
+					:scope="inspectorScope"
 					:disabled="readOnly"
 					:label-for="labelForUrl"
 					:browse="pickExternal"

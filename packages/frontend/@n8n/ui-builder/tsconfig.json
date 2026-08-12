@@ -1,21 +1,24 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
 	"compilerOptions": {
 		"noEmit": true,
-		"rootDirs": [".", "../design-system/src"],
-		"target": "esnext",
-		"module": "esnext",
+		"rootDirs": [".", "../design-system/src", "../i18n/src", "../expression-editor/src"],
 		"moduleResolution": "bundler",
-		"allowJs": true,
-		"importHelpers": true,
-		"incremental": false,
-		"allowSyntheticDefaultImports": true,
-		"resolveJsonModule": true,
+		"types": ["vite/client", "unplugin-icons/types/vue", "vitest/globals"],
 		"paths": {
 			"@n8n/ui-builder/*": ["./src/*"],
-			"@n8n/design-system*": ["../design-system/src*"]
-		},
-		"lib": ["esnext", "dom", "dom.iterable", "scripthost"]
+			"@n8n/design-system*": ["../design-system/src*"],
+			"@n8n/i18n": ["../i18n/src"],
+			"@n8n/i18n/*": ["../i18n/src/*"],
+			"@n8n/expression-editor": ["../expression-editor/src"],
+			"@n8n/expression-editor/*": ["../expression-editor/src/*"]
+		}
 	},
-	"include": ["**/*.ts", "**/*.vue"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.vue",
+		// design-system's own module shims; the barrel import drags in the
+		// components that need them.
+		"../design-system/src/shims-modules.d.ts"
+	]
 }

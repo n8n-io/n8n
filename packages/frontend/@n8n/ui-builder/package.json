@@ -35,11 +35,15 @@
   },
   "dependencies": {
     "@n8n/design-system": "workspace:*",
+    "@n8n/expression-editor": "workspace:*",
+    "@n8n/i18n": "workspace:*",
     "@n8n/tournament": "workspace:*",
     "lodash": "catalog:",
     "vue": "catalog:frontend"
   },
   "devDependencies": {
+    "@codemirror/autocomplete": "catalog:",
+    "@codemirror/state": "catalog:",
     "@iconify-json/lucide": "catalog:",
     "@iconify-json/mdi": "catalog:",
     "@n8n/eslint-config": "workspace:*",

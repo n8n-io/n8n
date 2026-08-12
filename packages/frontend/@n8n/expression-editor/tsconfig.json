@@ -1,0 +1,22 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDirs": [".", "../design-system/src", "../i18n/src"],
+		"moduleResolution": "bundler",
+		"types": ["vite/client", "unplugin-icons/types/vue", "vitest/globals"],
+		"paths": {
+			"@n8n/expression-editor/*": ["./src/*"],
+			"@n8n/design-system*": ["../design-system/src*"],
+			"@n8n/i18n": ["../i18n/src"],
+			"@n8n/i18n/*": ["../i18n/src/*"]
+		}
+	},
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.vue",
+		// design-system's own module shims; the barrel import drags in the
+		// components that need them.
+		"../design-system/src/shims-modules.d.ts"
+	]
+}

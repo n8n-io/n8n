@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, watchEffect } from 'vue';
 
+import { UiScopeRegistryKey } from './scope-registry';
 import { isActionInFlight, normaliseAction } from '../core/actions';
 import { childrenIn, regionsOf } from '../core/document';
 import { resolveValue } from '../core/expressions';
@@ -24,6 +25,11 @@ const props = withDefaults(
 	defineProps<{
 		node: UiNode;
 		scope: UiScope;
+		/**
+		 * False for every copy of this node except the one on the first-item path
+		 * of every enclosing repeat. Only that one publishes its scope.
+		 */
+		primary?: boolean;
 		edit?: boolean;
 		selectedId?: string;
 		hoveredId?: string;
@@ -33,6 +39,7 @@ const props = withDefaults(
 		onAct?: (request: UiActionRequest) => void;
 	}>(),
 	{
+		primary: true,
 		edit: false,
 		selectedId: undefined,
 		hoveredId: undefined,
@@ -175,6 +182,17 @@ function handleLeave() {
 onMounted(() => {
 	fire('onMount');
 });
+
+const scopeRegistry = inject(UiScopeRegistryKey, undefined);
+
+if (scopeRegistry) {
+	watchEffect(() => {
+		if (props.primary) scopeRegistry.publish(props.node.id, props.scope);
+	});
+	onBeforeUnmount(() => {
+		if (props.primary) scopeRegistry.forget(props.node.id);
+	});
+}
 </script>
 
 <template>
@@ -205,6 +223,7 @@ onMounted(() => {
 						:key="`${child.id}#${iteration}`"
 						:node="child"
 						:scope="iterationScope"
+						:primary="primary && iteration === 0"
 						:edit="edit"
 						:selected-id="selectedId"
 						:hovered-id="hoveredId"

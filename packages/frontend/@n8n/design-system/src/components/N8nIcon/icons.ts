@@ -194,6 +194,7 @@ import IconLucidePalette from '~icons/lucide/palette';
 import IconLucidePanelLeft from '~icons/lucide/panel-left';
 import IconLucidePanelLeftClose from '~icons/lucide/panel-left-close';
 import IconLucidePanelRight from '~icons/lucide/panel-right';
+import IconLucidePanelsTopLeft from '~icons/lucide/panels-top-left';
 import IconLucidePaperclip from '~icons/lucide/paperclip';
 import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
@@ -693,6 +694,7 @@ export const updatedIconSet = {
 	'panel-left': IconLucidePanelLeft,
 	'panel-left-close': IconLucidePanelLeftClose,
 	'panel-right': IconLucidePanelRight,
+	'panels-top-left': IconLucidePanelsTopLeft,
 	paperclip: IconLucidePaperclip,
 	pause: IconLucidePause,
 	pen: IconLucidePen,

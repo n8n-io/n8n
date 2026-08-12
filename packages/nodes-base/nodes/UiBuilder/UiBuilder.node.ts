@@ -27,7 +27,7 @@ export class UiBuilder implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'UI Builder',
 		name: 'uiBuilder',
-		icon: 'fa:window-maximize',
+		icon: 'fa:panels-top-left',
 		iconColor: 'purple',
 		group: ['output'],
 		version: 1,
@@ -112,8 +112,7 @@ export class UiBuilder implements INodeType {
 			if (authenticate) {
 				const ttl = this.getNodeParameter('tokenTtl', i, 3600) as number;
 				const credential = (await this.getCredentials('jwtAuth')) as JwtAuthCredential;
-				const key =
-					credential.keyType === 'pemKey' ? credential.privateKey : credential.secret;
+				const key = credential.keyType === 'pemKey' ? credential.privateKey : credential.secret;
 
 				if (!key) {
 					throw new NodeOperationError(

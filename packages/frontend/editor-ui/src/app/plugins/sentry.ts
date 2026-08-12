@@ -3,6 +3,7 @@ import { AxiosError } from 'axios';
 import { ResponseError } from '@n8n/rest-api-client';
 import * as Sentry from '@sentry/vue';
 import { getAndParseConfigFromMetaTag } from '@n8n/stores/metaTagConfig';
+import { setExpressionEditorErrorReporter } from '@n8n/expression-editor';
 
 const ignoredErrors = [
 	{ instanceof: AxiosError },
@@ -58,6 +59,8 @@ export function beforeSend(event: Sentry.ErrorEvent, { originalException }: Sent
 
 export const SentryPlugin: Plugin = {
 	install: (app) => {
+		setExpressionEditorErrorReporter(Sentry.captureException);
+
 		const sentryConfig = getAndParseConfigFromMetaTag<SentryConfig>('sentry');
 		if (!sentryConfig?.dsn) {
 			return;

@@ -7,13 +7,21 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodePropertyOptions } from 'n8n-workflow';
 
 import PaneShell from './PaneShell.vue';
 import UiActionEditor from './UiActionEditor.vue';
+import UiValueField from './UiValueField.vue';
 import { normaliseAction } from '../../core/actions';
 import { pageLabel } from '../../core/pages';
-import type { UiActionStep, UiNode, UiPageInfo, UiRegion } from '../../core/types';
+import type {
+	UiActionStep,
+	UiNode,
+	UiPageInfo,
+	UiProperty,
+	UiRegion,
+	UiScope,
+} from '../../core/types';
 import type { WebhookTarget } from '../composables/useWebhookTargets';
 
 /**
@@ -24,11 +32,13 @@ defineOptions({ name: 'InspectorPane' });
 
 const props = defineProps<{
 	node?: UiNode;
-	descriptors: INodeProperties[];
+	descriptors: UiProperty[];
 	regions: UiRegion[];
 	targetRegion: string;
 	pages: UiPageInfo[];
 	targets: WebhookTarget[];
+	/** What the selected node is being rendered with, so the preview matches the canvas. */
+	scope: UiScope;
 	disabled?: boolean;
 	labelFor: (url: string) => string;
 	browse: () => Promise<string | undefined>;
@@ -50,21 +60,11 @@ function valueOf(name: string): string {
 	return String(props.node?.props[name] ?? '');
 }
 
-/**
- * Every value prop takes an expression, and nothing on screen said so: an
- * author had to know the syntax before they could discover it. The placeholder
- * carries it, keyed to the prop's own type so the example is one you might
- * actually write.
- */
-function placeholderFor(descriptor: INodeProperties): string {
-	if (descriptor.type === 'statePath') return 'form.name';
-	if (descriptor.type === 'number') return '={{ $state.count }}';
-	return '={{ $state.title }}';
-}
-
-/** A bound prop reads as an expression, so the field says which mode it is in. */
-function isBound(name: string): boolean {
-	return valueOf(name).startsWith('=');
+/** Collections and nested properties can sit in `options` too; only real choices render. */
+function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
+	return (descriptor.options ?? []).filter(
+		(option): option is INodePropertyOptions => 'value' in option,
+	);
 }
 </script>
 
@@ -118,10 +118,10 @@ function isBound(name: string): boolean {
 						@update:model-value="emit('setProp', descriptor.name, $event)"
 					>
 						<N8nOption
-							v-for="option in descriptor.options ?? []"
-							:key="String((option as { value: unknown }).value)"
-							:label="(option as { name: string }).name"
-							:value="(option as { value: unknown }).value"
+							v-for="option in choicesOf(descriptor)"
+							:key="String(option.value)"
+							:label="option.name"
+							:value="option.value"
 						/>
 					</N8nSelect>
 
@@ -172,23 +172,24 @@ function isBound(name: string): boolean {
 						/>
 					</N8nSelect>
 
-					<div class="ui-value-field">
-						<N8nInput
-							:model-value="valueOf(descriptor.name)"
-							:disabled="disabled"
-							size="small"
-							:placeholder="placeholderFor(descriptor)"
-							@update:model-value="emit('setProp', descriptor.name, $event)"
-						/>
+					<!-- A dotted path into state, written as text: never an expression. -->
+					<N8nInput
+						v-if="descriptor.type === 'statePath'"
+						:model-value="valueOf(descriptor.name)"
+						:disabled="disabled"
+						size="small"
+						placeholder="form.name"
+						@update:model-value="emit('setProp', descriptor.name, $event)"
+					/>
 
-						<span
-							v-if="descriptor.type !== 'statePath'"
-							class="ui-value-field__mode"
-							:class="{ 'ui-value-field__mode--bound': isBound(descriptor.name) }"
-						>
-							{{ isBound(descriptor.name) ? 'expression' : 'fixed' }}
-						</span>
-					</div>
+					<UiValueField
+						v-else
+						:descriptor="descriptor"
+						:model-value="node.props[descriptor.name]"
+						:scope="scope"
+						:disabled="disabled"
+						@update="emit('setProp', descriptor.name, $event)"
+					/>
 				</N8nInputLabel>
 			</div>
 		</template>
@@ -204,28 +205,6 @@ function isBound(name: string): boolean {
 <style scoped>
 .ui-field {
 	margin: var(--spacing--xs) 0;
-}
-
-.ui-value-field {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-/*
- * Which mode the field is in, rather than a control to switch it: the syntax
- * is the switch, and a label that lit up when you typed `=` teaches it faster
- * than a toggle would.
- */
-.ui-value-field__mode {
-	flex-shrink: 0;
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
-	font-variant: small-caps;
-}
-
-.ui-value-field__mode--bound {
-	color: var(--color--primary);
 }
 
 .ui-inspector-empty {

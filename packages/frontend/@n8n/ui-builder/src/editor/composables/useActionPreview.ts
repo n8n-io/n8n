@@ -7,6 +7,10 @@ import type { UiState } from '../../core/types';
 import type { UiBuilderHost } from '../host';
 import type { WebhookTarget } from './useWebhookTargets';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return isPlainObject(value);
+}
+
 /**
  * Filling the canvas with real data.
  *
@@ -29,15 +33,16 @@ export function useActionPreview(
 	const previewStatus = ref('');
 
 	function apply(payload: unknown, source: string) {
-		const result = readResponse(payload);
+		const merged = readResponse(payload).state;
 
-		if (!isPlainObject(result.state)) {
+		// lodash's `isPlainObject` is typed as a plain boolean, so it narrows nothing.
+		if (!isRecord(merged)) {
 			previewStatus.value = `${source}: nothing to preview`;
 			return;
 		}
 
-		deepMerge(state, result.state);
-		previewStatus.value = `${source}: ${Object.keys(result.state).join(', ')}`;
+		deepMerge(state, merged);
+		previewStatus.value = `${source}: ${Object.keys(merged).join(', ')}`;
 	}
 
 	/** POST the canvas's state to the step's trigger, exactly as the running app would. */

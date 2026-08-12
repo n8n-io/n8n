@@ -14,13 +14,8 @@ import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
 import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
-import {
-	N8nActionToggle,
-	N8nIcon,
-	N8nIconButton,
-	N8nRadioButtons,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nActionToggle, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { ExpressionModeToggle, type ExpressionMode } from '@n8n/expression-editor';
 interface Props {
 	parameter: INodeProperties;
 	isReadOnly: boolean;
@@ -112,7 +107,9 @@ const shouldShowOptions = computed(() => {
 
 	return false;
 });
-const selectedView = computed(() => (isValueAnExpression.value ? 'expression' : 'fixed'));
+const selectedView = computed<ExpressionMode>(() =>
+	isValueAnExpression.value ? 'expression' : 'fixed',
+);
 const hasRemoteMethod = computed(
 	() =>
 		!!props.parameter.typeOptions?.loadOptionsMethod || !!props.parameter.typeOptions?.loadOptions,
@@ -171,7 +168,7 @@ const actions = computed(() => {
 });
 
 const onMenuToggle = (visible: boolean) => emit('menu-expanded', visible);
-const onViewSelected = (selected: string) => {
+const onViewSelected = (selected: ExpressionMode) => {
 	if (selected === 'expression') {
 		emit('update:modelValue', isValueAnExpression.value ? 'openExpression' : 'addExpression');
 	}
@@ -217,16 +214,11 @@ const onViewSelected = (selected: string) => {
 				/>
 			</div>
 
-			<N8nRadioButtons
+			<ExpressionModeToggle
 				v-if="shouldShowExpressionSelector"
-				size="small"
 				:class="$style.expressionSwitch"
 				:model-value="selectedView"
 				:disabled="isReadOnly"
-				:options="[
-					{ label: i18n.baseText('parameterInput.fixed'), value: 'fixed' },
-					{ label: i18n.baseText('parameterInput.expression'), value: 'expression' },
-				]"
 				@update:model-value="onViewSelected"
 			/>
 
