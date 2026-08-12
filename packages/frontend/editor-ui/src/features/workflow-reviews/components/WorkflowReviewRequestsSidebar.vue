@@ -1,9 +1,5 @@
 <script lang="ts" setup>
-import type {
-	WorkflowReviewEligibleReviewer,
-	WorkflowReviewInboxItem,
-	WorkflowReviewRequestState,
-} from '@n8n/api-types';
+import type { WorkflowReviewInboxItem, WorkflowReviewRequestState } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -14,10 +10,8 @@ import {
 	N8nLoading,
 	N8nTabs,
 	N8nText,
-	N8nUserStack,
 } from '@n8n/design-system';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
-import { useUsersStore } from '@n8n/stores/users.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
@@ -41,36 +35,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const usersStore = useUsersStore();
 const listRef = ref<HTMLElement | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
-
-const currentUserEmail = computed(() => usersStore.currentUser?.email ?? null);
-
-/**
- * Keep requester first so they keep a visible avatar slot, then reviewers ahead
- * of the remaining co-authors. A reviewer who updates the version also becomes an author.
- */
-function cardParticipants(item: WorkflowReviewInboxItem): WorkflowReviewEligibleReviewer[] {
-	const seen = new Set<string>();
-	const participants: WorkflowReviewEligibleReviewer[] = [];
-
-	for (const user of [
-		...(item.requester ? [item.requester] : []),
-		...item.reviewers,
-		...item.authors,
-	]) {
-		if (seen.has(user.id)) continue;
-		seen.add(user.id);
-		participants.push(user);
-	}
-
-	return participants;
-}
-
-const participantsByItemId = computed(
-	() => new Map(props.items.map((item) => [item.id, cardParticipants(item)] as const)),
-);
 
 const tabOptions = computed(() => [
 	{
@@ -179,14 +145,6 @@ function onListBackgroundClick() {
 								</span>
 							</N8nBadge>
 							<div :class="$style.cardMetaActions">
-								<N8nUserStack
-									v-if="participantsByItemId.get(item.id)?.length"
-									:users="participantsByItemId.get(item.id) ?? []"
-									:max-avatars="3"
-									:current-user-email="currentUserEmail"
-									size="xsmall"
-									data-test-id="workflow-review-request-users"
-								/>
 								<N8nText
 									size="xsmall"
 									color="text-light"
