@@ -71,6 +71,8 @@ export class WorkflowDependencyQueryService {
 				dataTableId: maps.dtMap.get(id)?.size ?? 0,
 				errorWorkflow: maps.errorWfMap.get(id)?.size ?? 0,
 				errorWorkflowParent: maps.errorWfParentMap.get(id)?.size ?? 0,
+				// Populated once the workflow index extracts Files-node references
+				fileId: 0,
 				workflowCall: maps.subMap.get(id)?.size ?? 0,
 				workflowParent: maps.parentMap.get(id)?.size ?? 0,
 			};
@@ -400,6 +402,10 @@ export class WorkflowDependencyQueryService {
 			}
 			case 'dataTable': {
 				return await this.filterDataTableIdsByAccess(ids, user);
+			}
+			case 'file': {
+				// Populated once the workflow index extracts Files-node references
+				return [];
 			}
 		}
 	}
