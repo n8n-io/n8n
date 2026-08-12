@@ -1,121 +1,159 @@
-# Tasks: `n8n-test` workflow-testing PoC
+# Tasks: `n8n-test` PoC — version 2
 
-Spec: `.agents/specs/n8n-test-poc.md` · Plan: `tasks/plan.md`
+Spec: `.agents/specs/n8n-test-poc-v2.md` · Plan: `tasks/plan.md` · v1 tasks in git history
 
-## Task 1: Scaffold `packages/n8n-test`
+## Task 1: `mockNode` + sub-workflow demo
 
-**Description:** Create the workspace package so it builds and runs an empty
-vitest suite. Wires the `@nodes-testing/*` tsconfig path alias (copied from
-`packages/nodes-base/tsconfig.json:8`) and workspace deps on `n8n-core`,
-`n8n-workflow`, `n8n-nodes-base`, `nock`, `vitest`.
+**Description:** Add `mockNode(workflowJson, nodeName, cannedOutput)` returning
+a handle with `input()`, plus `clearNodeMocks()`. Implementation per plan: a
+`WeakMap` registry, a per-run mock `INodeType` (modelled on
+`core/nodes-testing/test-data-node.ts`) served by an `INodeTypes` wrapper, and
+node-type rewriting inside `runWorkflow`. Add
+`demo/workflow-with-subworkflow.json` (trigger → HTTP → Edit Fields →
+Execute Sub-workflow @1.3) and two demo tests: the mocked sub-workflow test
+(canned output + `input()` capture) and the honesty test (same workflow
+without the mock rejects — sub-workflows cannot run for real in the harness).
 
 **Acceptance criteria:**
-- [x] `pnpm --filter n8n-test build` exits 0
-- [x] `pnpm --filter n8n-test demo` runs a placeholder test green
-- [x] No other package is modified
+- [ ] `workflow with subworkflow mocked` green: canned output surfaces in the
+      result and `sub.input()` captures what Edit Fields produced
+- [ ] Honesty test green: un-mocked run of the same workflow rejects
+- [ ] v1's three tests untouched and green
 
 **Verification:**
-- [x] Build succeeds: `pnpm --filter n8n-test build`
-- [x] Tests pass: `pnpm --filter n8n-test demo`
+- [ ] Tests pass: `pnpm --filter n8n-test demo`
+- [ ] Build succeeds: `pnpm --filter n8n-test build`
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `packages/n8n-test/package.json`
-- `packages/n8n-test/tsconfig.json`
-- `packages/n8n-test/vitest.config.ts`
+- `packages/n8n-test/src/mock-node.ts`
+- `packages/n8n-test/src/run-workflow.ts`
 - `packages/n8n-test/src/index.ts`
+- `packages/n8n-test/demo/workflow-with-subworkflow.json`
+- `packages/n8n-test/demo/workflow.test.ts` (or a new demo test file)
 
-**Estimated scope:** S
+**Estimated scope:** M
 
-## Task 2: `runWorkflow` happy path through the real engine
+## Task 2: Multi-node demo test
 
-**Description:** Implement `runWorkflow(workflowJson, input?)` by rearranging
-`executeWorkflow` from `packages/core/nodes-testing/node-test-harness.ts:199-264`:
-load real node types once (`LoadNodesAndCredentials`/`NodeTypes`), build a
-`Workflow`, seed the start node's `nodeExecutionStack` with
-`main: [[{ json: input ?? {} }]]`, run `WorkflowExecute.processRunExecutionData`,
-await the `workflowExecuteAfter` hook, and return
-`runData[lastNodeExecuted].at(-1).data.main[0][0].json`. Add
-`demo/workflow.json` (Notion sample retargeted to GET
-`https://test-endpoint.com/test`) and the happy-day demo test.
+**Description:** Demo test `workflow with every dependency mocked`: HTTP node
+and sub-workflow node both mocked on the sub-workflow demo JSON, no nock in
+the test; assert the real Edit Fields node's output flowed between the mocks
+via `sub.input()`, and re-mocking a name replaces the previous override.
 
 **Acceptance criteria:**
-- [x] Happy-day demo test green: nock 200 `{ data: 'Hello world' }` →
-      `output['test-output'] === 'Hello world'` via the real Set-node expression
-- [x] No mocked execution: real `WorkflowExecute`, real `nodes-base` node types
+- [ ] Test green with zero nock usage
+- [ ] `sub.input()` proves the real middle node ran between two mocks
 
 **Verification:**
-- [x] Tests pass: `pnpm --filter n8n-test demo`
-- [x] Manual check: temporarily change the nock reply body and watch the
-      assertion fail (proves the engine, not a canned value, produced output)
+- [ ] Tests pass: `pnpm --filter n8n-test demo` (6 green)
+- [ ] Manual check: lint + typecheck clean
 
 **Dependencies:** Task 1
 
 **Files likely touched:**
-- `packages/n8n-test/src/run-workflow.ts`
-- `packages/n8n-test/src/index.ts`
-- `packages/n8n-test/demo/workflow.json`
-- `packages/n8n-test/demo/workflow.test.ts`
-
-**Estimated scope:** M
-
-## Task 3: Throw-mode errors and network lockdown
-
-**Description:** When the run finishes with `result.data.resultData.error`,
-`runWorkflow` rejects with that error (n8n default `onError=stopWorkflow`).
-Add a vitest setup file calling `nock.disableNetConnect()` (mirroring
-`node-test-harness.ts:58`) so un-mocked HTTP fails loudly. Add the unhappy-day
-demo test (500 → `await expect(...).rejects.toThrowError()`).
-
-**Acceptance criteria:**
-- [x] Unhappy-day demo test green: nock 500 → `runWorkflow` rejects with the
-      HTTP Request node's error
-- [x] Removing a nock intercept makes the test fail with a blocked-connection
-      error, not a real network call
-
-**Verification:**
-- [x] Tests pass: `pnpm --filter n8n-test demo` (both tests)
-- [x] Manual check: comment out a nock intercept → loud failure
-
-**Dependencies:** Task 2
-
-**Files likely touched:**
-- `packages/n8n-test/src/run-workflow.ts`
-- `packages/n8n-test/demo/workflow.test.ts`
-- `packages/n8n-test/vitest.config.ts` (setup file)
+- `packages/n8n-test/demo/workflow.test.ts` (or the new demo test file)
 
 **Estimated scope:** S
 
-## Checkpoint: Feasibility proven — review with James before Task 4
+## Checkpoint: Phase A — 6 tests green, typecheck + lint clean
 
-- [x] Both demo tests green through the real engine
-- [x] Un-mocked network blocked
-- [x] Go/no-go on polish
+## Task 3: `bundle` command + npm-runtime validation (go/no-go)
 
-## Task 4: `input` parameter, demo tidy-up, gotchas write-up
-
-**Description:** Prove the `input` seeding end-to-end (a demo assertion that a
-field from `input` flows through), make the demo test file read like the Notion
-"Sample test" (it is the artifact on screen), add a short package README with
-the demo commands, and write the gotchas list (node-load time, dist-build
-requirement, error-mode semantics, SSRF-helper seam as production direction)
-into the spike branch/PR description.
+**Description:** Add `pnpm --filter n8n-test bundle`: an esbuild script
+(`scripts/bundle.mjs`) producing a self-contained CJS tarball of `n8n-test` —
+vendoring the `@nodes-testing/*` sources with their relative `../dist/*`
+imports rewritten to `n8n-core/dist/*` via an `onResolve` plugin; externals:
+`n8n-core`, `n8n-workflow`, `n8n-nodes-base`, `nock`, `vitest`,
+`reflect-metadata`. Validate in a scratch dir outside the monorepo: npm-install
+the tarball + released `n8n-core@2.16.x` / `n8n-workflow@2.16.x` /
+`n8n-nodes-base@2.15.x` / `nock` / `vitest`, copy the demo tests, run them.
+Shim small API gaps inside the bundle; stop and ask if the released engine
+diverges structurally.
 
 **Acceptance criteria:**
-- [x] `runWorkflow(workflowJson, { some: 'field' })` demonstrably influences output
-- [x] README documents: build prerequisite, `pnpm --filter n8n-test demo`
-- [x] Gotchas list exists (branch/PR description)
+- [ ] Tarball builds reproducibly from the package dir
+- [ ] All 6 demo tests pass in the scratch dir against released npm packages
 
 **Verification:**
-- [x] Tests pass: `pnpm --filter n8n-test demo`
-- [x] Manual check: demo dry-run from clean checkout following only the README
+- [ ] Manual check: scratch-dir vitest run output attached to the task notes
+
+**Dependencies:** Task 2 (bundles the final API)
+
+**Files likely touched:**
+- `packages/n8n-test/scripts/bundle.mjs`
+- `packages/n8n-test/package.json`
+
+**Estimated scope:** M
+
+## Task 4: Demo repo with exploded export, Action, release
+
+**Description:** Create a disposable repo under James's GitHub (suggestion:
+`n8n-workflow-tests-demo`): exploded `.n8np` layout (`manifest.json`,
+`projects/<project>/workflows/*.json` — the two demo workflows, authentic to
+the Ligo export format), `tests/*.test.ts` importing those JSONs,
+vanilla vitest config + `reflect-metadata`/nock setup, README, and a
+`pull_request` GitHub Action (node 22, npm cache) running vitest. Attach the
+Task 3 tarball as a GitHub release asset; `package.json` installs it by URL.
+First push must show a green run on the default branch.
+
+**Acceptance criteria:**
+- [ ] Fresh clone + `npm ci` + `npx vitest run` passes locally
+- [ ] Action green on the default branch, wall-clock under ~4 min
+
+**Verification:**
+- [ ] Manual check: Actions run URL green
 
 **Dependencies:** Task 3
 
+**Files likely touched:** (new repo, not the monorepo)
+
+**Estimated scope:** M
+
+## Task 5: The demo PR — red → green
+
+**Description:** In the demo repo, raise a PR that breaks a workflow (change
+the Edit Fields mapping in the exploded workflow JSON) — the check must fail
+with a readable assertion diff. Push a fix commit — the check must go green.
+Leave the PR open as the demo artifact.
+
+**Acceptance criteria:**
+- [ ] Failing check on the breaking commit, readable diff in the log
+- [ ] Green check on the fix commit, each run under ~4 min
+
+**Verification:**
+- [ ] Manual check: PR URL with both check runs
+
+**Dependencies:** Task 4
+
+**Files likely touched:** (demo repo)
+
+**Estimated scope:** S
+
+## Checkpoint: Phase B — PR shows red → green in under ~4 minutes
+
+## Task 6: README v2, gotchas, verification fan-out, push
+
+**Description:** README v2 section (`mockNode` usage, bundle command, demo-repo
+wiring + links), extend the gotchas with what v2 surfaced (npm-runtime deltas,
+mock-node plumbing), run the adversarial verification fan-out over the v2
+diff, apply must-fixes, push, and update the draft-PR description with a v2
+summary.
+
+**Acceptance criteria:**
+- [ ] README covers phase A API and phase B wiring with real links
+- [ ] Verification fan-out findings triaged; must-fixes applied
+- [ ] Branch pushed; draft PR body updated
+
+**Verification:**
+- [ ] Tests pass: `pnpm --filter n8n-test demo`
+- [ ] Manual check: draft PR renders the v2 summary
+
+**Dependencies:** Task 5
+
 **Files likely touched:**
-- `packages/n8n-test/demo/workflow.test.ts`
-- `packages/n8n-test/demo/workflow.json`
 - `packages/n8n-test/README.md`
+- PR #36120 body
 
 **Estimated scope:** S
