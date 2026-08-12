@@ -220,5 +220,86 @@ describe('CaptureService', () => {
 				'Could not identify the trigger node from this execution',
 			);
 		});
+
+		it('breaks a trigger tie by picking the lowest executionIndex', () => {
+			// Neither A nor B has an incoming main connection; B has the lower executionIndex.
+			const execution = buildExecution({
+				nodes: [
+					{ name: 'A', type: 'n8n-nodes-base.manualTrigger' },
+					{ name: 'B', type: 'n8n-nodes-base.manualTrigger' },
+				],
+				connections: {},
+				runData: {
+					A: [{ executionIndex: 5, data: { main: [[{ json: {} }]] } }],
+					B: [{ executionIndex: 2, data: { main: [[{ json: {} }]] } }],
+				},
+			});
+
+			const capture = captureService.buildCapture(execution);
+
+			expect(capture.triggerNodeName).toBe('B');
+		});
+
+		it('mocks a credentialed node with no main output data, skipping its fixture', () => {
+			const execution = buildExecution({
+				nodes: [
+					{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+					{
+						name: 'FailedApi',
+						type: 'n8n-nodes-base.slack',
+						credentials: { slackApi: { id: '1', name: 'Slack account' } },
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'FailedApi' }]] },
+				},
+				runData: {
+					Trigger: [{ executionIndex: 0, data: { main: [[{ json: {} }]] } }],
+					// Node errored: no `data` at all, so there is no main output to mock.
+					FailedApi: [{ executionIndex: 1 }],
+				},
+			});
+
+			const capture = captureService.buildCapture(execution);
+
+			expect(capture.fixtures.FailedApi).toBeUndefined();
+			expect(capture.expectations.some((e) => e.nodeName === 'FailedApi')).toBe(false);
+		});
+	});
+
+	describe('captureFromExecution', () => {
+		it('loads the execution via findSingleExecution, builds the capture, and returns it with workflowId', async () => {
+			const execution = {
+				...buildExecution({
+					nodes: [{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }],
+					connections: {},
+					runData: {
+						Trigger: [{ executionIndex: 0, data: { main: [[{ json: { ok: true } }]] } }],
+					},
+				}),
+				workflowId: 'workflow-123',
+			} as unknown as IExecutionResponse;
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const result = await captureService.captureFromExecution('execution-1');
+
+			expect(executionRepository.findSingleExecution).toHaveBeenCalledWith('execution-1', {
+				includeData: true,
+				unflattenData: true,
+			});
+			expect(result.workflowId).toBe('workflow-123');
+			expect(result.capture).toEqual(captureService.buildCapture(execution));
+		});
+
+		it('throws when the execution cannot be found', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(undefined);
+
+			await expect(captureService.captureFromExecution('missing-execution')).rejects.toThrow(
+				UnexpectedError,
+			);
+			await expect(captureService.captureFromExecution('missing-execution')).rejects.toThrow(
+				'Execution missing-execution not found',
+			);
+		});
 	});
 });
