@@ -99,6 +99,12 @@ export { PushWorkFolderRequestDto } from './source-control/push-work-folder-requ
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
+export { SnippetListRequestDto } from './snippets/snippet-list-request.dto';
+export {
+	CreateSnippetRequestDto,
+} from './snippets/create-snippet-request.dto';
+export { SNIPPET_NAME_REGEX } from './snippets/base.dto';
+export { UpdateSnippetRequestDto } from './snippets/update-snippet-request.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
 	CreateVariableRequestDto,

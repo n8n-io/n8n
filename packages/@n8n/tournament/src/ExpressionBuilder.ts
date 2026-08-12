@@ -168,6 +168,50 @@ export const getParsedExpression = (expr: string): Array<ExpressionText | Parsed
 	});
 };
 
+/**
+ * Compiles a single bare expression (no `{{ }}` template markers) through the
+ * same AST pipeline as template chunks. Unlike `getExpressionCode`, the input
+ * never passes through the template splitter, so `}}` sequences in the source
+ * are safe. The data node identifier is always used (never `this`), since the
+ * generated code is meant to be `.call()`ed with an explicit context.
+ */
+export const getStandaloneExpressionCode = (
+	exprBody: string,
+	dataNodeName: string,
+	hooks: TournamentHooks,
+): string => {
+	const code = maybeWrapExpr(exprBody);
+	const node = parse(code, {
+		parser: { parse: parseWithEsprimaNext },
+	}) as types.namedTypes.File;
+
+	const dataNode = b.identifier(dataNodeName);
+	const newProg = b.program([
+		b.variableDeclaration('var', [b.variableDeclarator(globalIdentifier, b.objectExpression([]))]),
+		b.variableDeclaration('var', [b.variableDeclarator(dataNode, b.thisExpression())]),
+	]);
+
+	const fixed = fixStringNewLines(node);
+	for (const hook of hooks.before) {
+		hook(fixed, dataNode);
+	}
+	const body = jsVariablePolyfill(fixed, dataNode);
+	if (body && body.length > 1) {
+		throw new SyntaxError('Only a single expression is allowed');
+	}
+	const parsed = body?.[0];
+	if (!parsed || parsed.type !== 'ExpressionStatement') {
+		throw new SyntaxError('Not a expression statement');
+	}
+	for (const hook of hooks.after) {
+		hook(parsed, dataNode);
+	}
+
+	newProg.body.push(b.returnStatement(parsed.expression));
+
+	return print(newProg).code;
+};
+
 export const getExpressionCode = (
 	expr: string,
 	dataNodeName: string,

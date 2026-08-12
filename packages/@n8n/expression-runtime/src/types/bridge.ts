@@ -94,6 +94,16 @@ export const DEFAULT_BRIDGE_CONFIG: Required<BridgeConfig> = {
 	logger: NO_OP_LOGGER,
 };
 
+/**
+ * Snippet programs already transformed through the tournament sandbox
+ * pipeline on the host, keyed by block name. Compiled inside the isolate
+ * and exposed to expressions as `$snippets` / `$project`.
+ */
+export interface TransformedSnippets {
+	global: Record<string, string>;
+	project: Record<string, string>;
+}
+
 /** Options for a single execute() call. */
 export interface ExecuteOptions {
 	/**
@@ -101,4 +111,7 @@ export interface ExecuteOptions {
 	 * Sets luxon Settings.defaultZone inside the isolate before execution.
 	 */
 	timezone?: string;
+
+	/** Snippets to expose as `$snippets` / `$project` for this evaluation. */
+	snippets?: TransformedSnippets;
 }

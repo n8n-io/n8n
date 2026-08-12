@@ -51,6 +51,7 @@ type EndpointGroup =
 	| 'module-settings'
 	| 'security-settings'
 	| 'data-table'
+	| 'snippets'
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
@@ -60,6 +61,7 @@ type EndpointGroup =
 
 type ModuleName =
 	| 'insights'
+	| 'snippets'
 	| 'external-secrets'
 	| 'community-packages'
 	| 'data-table'

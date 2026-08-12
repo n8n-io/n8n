@@ -89,3 +89,40 @@ export async function getDynamicVariableTypes(variables: string[]) {
 	${variables.map((key) => `${key}: string;`).join('\n')}
 }`);
 }
+
+/**
+ * Emits snippet sources into a real TS module so the language service
+ * infers actual signatures and return types for `$snippets` / `$project`.
+ * Sources that don't parse as an expression are skipped.
+ */
+export function getSnippetTypes(snippets: {
+	global: Record<string, string>;
+	project: Record<string, string>;
+}) {
+	const entries = (sources: Record<string, string>) =>
+		Object.entries(sources)
+			.filter(([, source]) => {
+				try {
+					// eslint-disable-next-line @typescript-eslint/no-implied-eval
+					new Function(`return (${source})`);
+					return true;
+				} catch {
+					return false;
+				}
+			})
+			.map(([name, source]) => `\t${name}: (${source}),`)
+			.join('\n');
+
+	return `export {};
+const __n8nSnippetsGlobal = {
+${entries(snippets.global)}
+};
+const __n8nSnippetsProject = {
+${entries(snippets.project)}
+};
+declare global {
+	const $snippets: typeof __n8nSnippetsGlobal;
+	const $project: typeof __n8nSnippetsProject;
+}
+`;
+}

@@ -96,6 +96,10 @@ const SettingsExternalSecrets = async () => {
 		'@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue'
 	);
 };
+const SettingsSnippets = async () =>
+	await import('@/features/settings/snippets/views/SettingsSnippets.vue');
+const SnippetEditorView = async () =>
+	await import('@/features/settings/snippets/views/SnippetEditorView.vue');
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
@@ -997,6 +1001,69 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'external-secrets',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'snippets',
+				name: VIEWS.SNIPPETS_SETTINGS,
+				component: SettingsSnippets,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['snippet:list'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'snippets',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'snippets/new',
+				name: VIEWS.SNIPPETS_NEW,
+				component: SnippetEditorView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['snippet:list'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'snippets',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'snippets/:snippetId',
+				name: VIEWS.SNIPPETS_EDIT,
+				component: SnippetEditorView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['snippet:list'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'snippets',
 							};
 						},
 					},

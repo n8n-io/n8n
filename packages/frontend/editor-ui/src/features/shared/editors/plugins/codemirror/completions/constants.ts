@@ -223,6 +223,24 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		}),
 	},
 	{
+		label: '$snippets',
+		section: METADATA_SECTION,
+		info: createInfoBoxRenderer({
+			name: '$snippets',
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$snippets'),
+		}),
+	},
+	{
+		label: '$project',
+		section: METADATA_SECTION,
+		info: createInfoBoxRenderer({
+			name: '$project',
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$project'),
+		}),
+	},
+	{
 		label: '$workflow',
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
@@ -467,6 +485,11 @@ export const TARGET_NODE_PARAMETER_FACET = Facet.define<
 	combine: (values) => values[0],
 });
 
-export const WORKFLOW_DOCUMENT_FACET = Facet.define<WorkflowDocumentId, WorkflowDocumentId>({
+// Output is undefined in editors outside the workflow editor (e.g. the code
+// block editor) — combine returns values[0] of an empty list there
+export const WORKFLOW_DOCUMENT_FACET = Facet.define<
+	WorkflowDocumentId,
+	WorkflowDocumentId | undefined
+>({
 	combine: (values) => values[0],
 });

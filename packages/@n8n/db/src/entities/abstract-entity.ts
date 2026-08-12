@@ -19,7 +19,9 @@ const timestampSyntax = {
 	postgresdb: 'CURRENT_TIMESTAMP(3)',
 }[dbType];
 
-export const jsonColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
+// `as const` keeps the literal union in emitted declarations, so consumers can
+// pass this to @Column({ type }) which rejects plain `string`
+export const jsonColumnType = dbType === 'sqlite' ? ('simple-json' as const) : ('json' as const);
 export const datetimeColumnType = dbType === 'postgresdb' ? 'timestamptz' : 'datetime';
 const binaryColumnTypeMap = {
 	sqlite: 'blob',

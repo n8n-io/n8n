@@ -1,7 +1,7 @@
 import * as Comlink from 'comlink';
 import type { LanguageServiceWorker, LanguageServiceWorkerInit } from '../types';
 import { indexedDbCache } from '@/app/plugins/cache';
-import { bufferChangeSets, fnPrefix } from './utils';
+import { bufferChangeSets, prefixForContext } from './utils';
 
 import type { CodeExecutionMode } from 'n8n-workflow';
 import { BINARY_MODE_COMBINED } from 'n8n-workflow';
@@ -11,6 +11,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { getCompletionsAtPos } from './completions';
 import { LUXON_VERSION, TYPESCRIPT_FILES } from './constants';
 import {
+	getSnippetTypes,
 	getDynamicInputNodeTypes,
 	getDynamicNodeTypes,
 	getDynamicVariableTypes,
@@ -39,6 +40,7 @@ export const worker: LanguageServiceWorkerInit = {
 		const allNodeNames = options.allNodeNames;
 		const codeFileName = `${options.id}.js`;
 		const mode = ref<CodeExecutionMode>(options.mode);
+		const context = options.context ?? 'codeNode';
 		const binaryMode = ref(options.binaryMode);
 		const busyApplyingChangesToCode = ref(false);
 
@@ -46,10 +48,11 @@ export const worker: LanguageServiceWorkerInit = {
 		const env = await setupTypescriptEnv({
 			cache,
 			mode: mode.value,
+			context,
 			code: { content: Text.of(options.content).toString(), fileName: codeFileName },
 		});
 
-		const prefix = computed(() => fnPrefix(mode.value));
+		const prefix = computed(() => prefixForContext(mode.value, context));
 
 		function editorPositionToTypescript(pos: number) {
 			return pos + prefix.value.length;
@@ -114,6 +117,13 @@ export const worker: LanguageServiceWorkerInit = {
 			);
 		}
 
+		async function setSnippetTypes() {
+			updateFile(
+				TYPESCRIPT_FILES.SNIPPETS_TYPES,
+				getSnippetTypes(options.snippets ?? { global: {}, project: {} }),
+			);
+		}
+
 		function updateFile(fileName: string, content: string) {
 			const exists = env.getSourceFile(fileName);
 			if (exists) {
@@ -127,7 +137,12 @@ export const worker: LanguageServiceWorkerInit = {
 			async (nodeName) => await loadNodeTypes(nodeName),
 		);
 		await Promise.all(
-			loadInputNodes.concat(loadTypesIfNeeded(), loadLuxonTypes(), setVariableTypes()),
+			loadInputNodes.concat(
+				loadTypesIfNeeded(),
+				loadLuxonTypes(),
+				setVariableTypes(),
+				setSnippetTypes(),
+			),
 		);
 
 		watch(

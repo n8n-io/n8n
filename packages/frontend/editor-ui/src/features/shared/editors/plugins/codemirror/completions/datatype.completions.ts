@@ -1,5 +1,7 @@
 import { VALID_EMAIL_REGEX } from '@/app/constants';
 import { i18n } from '@n8n/i18n';
+import { useSnippetsStore } from '@/features/settings/snippets/snippets.store';
+import { parseSnippetSignature } from '@/features/settings/snippets/snippets.utils';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import type {
@@ -67,7 +69,10 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -97,6 +102,8 @@ export async function datatypeCompletions(
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
+	} else if (base === '$snippets' || base === '$project') {
+		options = snippetOptions(base, workflowDocumentId);
 	} else if (/\$secrets\./.test(base) && isCredential) {
 		options = secretOptions(base).map(stripExcessParens(context));
 	} else if (base === '$secrets' && isCredential) {
@@ -789,6 +796,39 @@ function ensureKeyCanBeResolved(obj: IDataObject, key: string) {
 		throw new Error('Cannot generate options', { cause: error });
 	}
 }
+
+export const snippetOptions = (
+	base: '$snippets' | '$project',
+	workflowDocumentId: WorkflowDocumentId,
+) => {
+	const snippetsStore = useSnippetsStore();
+	const homeProjectId = useWorkflowDocumentStore(workflowDocumentId).homeProject?.id;
+
+	const snippets = snippetsStore.allSnippets.filter((snippet) =>
+		base === '$snippets' ? !snippet.project : !!homeProjectId && snippet.project?.id === homeProjectId,
+	);
+
+	return snippets.map((snippet) => {
+		const signature = parseSnippetSignature(snippet.code);
+
+		return createCompletionOption({
+			name: snippet.name,
+			isFunction: signature.isFunction,
+			doc: {
+				name: snippet.name,
+				returnType: 'any',
+				description:
+					snippet.description ??
+					i18n.baseText(
+						base === '$snippets'
+							? 'codeNodeEditor.completer.$snippets.blockName'
+							: 'codeNodeEditor.completer.$project.blockName',
+					),
+				args: signature.args.map((arg) => ({ name: arg.name, type: 'any' })),
+			},
+		});
+	});
+};
 
 export const variablesOptions = () => {
 	const environmentsStore = useEnvironmentsStore();

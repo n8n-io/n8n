@@ -1,7 +1,7 @@
 import type { TournamentHooks } from '@n8n/tournament';
 
 import type { Logger } from './bridge';
-import type { RuntimeBridge } from './bridge';
+import type { RuntimeBridge, TransformedSnippets } from './bridge';
 
 // ============================================================================
 // Phase 1.1: Core Evaluation Interfaces (MVP)
@@ -219,6 +219,9 @@ export interface EvaluateOptions {
 	 * Sets luxon Settings.defaultZone inside the isolate before execution.
 	 */
 	timezone?: string;
+
+	/** Snippets to expose as `$snippets` / `$project` for this evaluation. */
+	snippets?: TransformedSnippets;
 }
 
 // ============================================================================

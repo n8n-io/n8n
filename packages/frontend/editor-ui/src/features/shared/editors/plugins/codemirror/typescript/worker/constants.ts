@@ -22,6 +22,8 @@ export const TYPESCRIPT_FILES = {
 	DYNAMIC_TYPES: 'n8n-dynamic.d.ts',
 	DYNAMIC_INPUT_TYPES: 'n8n-dynamic-input.d.ts',
 	DYNAMIC_VARIABLES_TYPES: 'n8n-variables.d.ts',
+	// A real .ts file (not .d.ts) so block signatures are inferred from source
+	SNIPPETS_TYPES: 'n8n-snippets.ts',
 	MODE_TYPES: 'n8n-mode-specific.d.ts',
 	N8N_TYPES: 'n8n.d.ts',
 	GLOBAL_TYPES: 'globals.d.ts',

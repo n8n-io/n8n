@@ -2,8 +2,17 @@ import isObject from 'lodash/isObject';
 import set from 'lodash/set';
 import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow, Expression, jsonStringify } from 'n8n-workflow';
+import {
+	WorkflowDataProxy,
+	Workflow,
+	Expression,
+	jsonStringify,
+	extend,
+	extendOptional,
+	extendSnippetSource,
+} from 'n8n-workflow';
 import type {
+	SnippetSources,
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
 	IDataObject,
@@ -216,9 +225,13 @@ export class JsTaskRunner extends TaskRunner {
 		}
 
 		const neededBuiltInsResult = this.builtInsParser.parseUsedBuiltIns(settings.code);
-		const neededBuiltIns = neededBuiltInsResult.ok
-			? neededBuiltInsResult.result
-			: BuiltInsParserState.newNeedsAllDataState();
+		// ponytail: snippet bodies can reference any built-in, but their sources only
+		// arrive with the data response — so over-fetch whenever the script mentions them
+		const neededBuiltIns = /\$snippets\b|\$project\b/.test(settings.code)
+			? BuiltInsParserState.newNeedsAllDataState()
+			: neededBuiltInsResult.ok
+				? neededBuiltInsResult.result
+				: BuiltInsParserState.newNeedsAllDataState();
 
 		const dataResponse = await this.requestData<DataRequestResponse>(
 			taskId,
@@ -335,6 +348,7 @@ export class JsTaskRunner extends TaskRunner {
 			items: inputItems,
 			...settings.additionalProperties,
 		});
+		this.injectSnippets(context, data.additionalData.snippetSources);
 
 		try {
 			const result = await new Promise<TaskResultData['result']>((resolve, reject) => {
@@ -405,6 +419,7 @@ export class JsTaskRunner extends TaskRunner {
 			undefined,
 			settings.additionalProperties,
 		);
+		this.injectSnippets(context, data.additionalData.snippetSources);
 
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
 			const dataProxy = this.createDataProxy(data, workflow, index);
@@ -653,6 +668,49 @@ export class JsTaskRunner extends TaskRunner {
 			...this.buildRpcCallObject(taskId),
 			...additionalProperties,
 		});
+	}
+
+	/**
+	 * Exposes `$snippets` / `$project` namespaces built from snippet sources.
+	 * Blocks are compiled inside the task's vm context (never as host closures)
+	 * so they carry no host realm and resolve globals against the sandbox scope.
+	 */
+	private injectSnippets(context: Context, snippets?: SnippetSources) {
+		if (!snippets) return;
+		const globalSources = snippets.global ?? {};
+		const projectSources = snippets.project ?? {};
+		if (Object.keys(globalSources).length === 0 && Object.keys(projectSources).length === 0) {
+			return;
+		}
+
+		// Blocks may use expression extension methods (e.g. `.toTitleCase()`),
+		// which compile to `extend(...)` calls
+		context.extend = extend;
+		context.extendOptional = extendOptional;
+		context.$snippets = this.compileSnippetNamespace(context, globalSources);
+		context.$project = this.compileSnippetNamespace(context, projectSources);
+	}
+
+	private compileSnippetNamespace(context: Context, sources: Record<string, string>) {
+		const namespace: Record<string, unknown> = {};
+		for (const [name, source] of Object.entries(sources)) {
+			try {
+				namespace[name] = runInContext(`(${extendSnippetSource(source)})`, context, {
+					timeout: this.taskTimeout * 1000,
+				});
+			} catch (error) {
+				// A broken block must only fail where it's used, not the whole task
+				Object.defineProperty(namespace, name, {
+					enumerable: true,
+					get() {
+						throw new Error(
+							`Snippet "${name}" failed to compile: ${isErrorLike(error) ? error.message : String(error)}`,
+						);
+					},
+				});
+			}
+		}
+		return Object.freeze(namespace);
 	}
 
 	private createVmExecutableCode(code: string) {

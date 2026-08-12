@@ -30,8 +30,9 @@ export const matchText = (context: CompletionContext) => {
 export const typescriptCompletionSource: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(typescriptWorkerFacet);
 	const targetNodeParameter = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	// Unset outside the workflow editor (e.g. snippet editor) — only node
+	// name expansion depends on it
 	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
-	if (!workflowDocumentId) return null;
 	const word = matchText(context);
 
 	const blockComment = context.matchBefore(/\/\*?\*?/);
@@ -96,6 +97,7 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 		options = options
 			.flatMap((opt) => {
 				if (opt.label === '$()') {
+					if (!workflowDocumentId) return [];
 					return [
 						opt,
 						...autocompletableNodeNames(workflowDocumentId, targetNodeParameter).map((name) => ({

@@ -15,6 +15,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useSnippetsStore } from '@/features/settings/snippets/snippets.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -216,6 +217,8 @@ export function useWorkflowInitialization() {
 			if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
 				promises.push(environmentsStore.fetchAllVariables());
 			}
+
+			promises.push(useSnippetsStore().fetchAll());
 
 			return promises;
 		})();

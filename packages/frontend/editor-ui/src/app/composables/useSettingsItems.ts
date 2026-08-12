@@ -98,6 +98,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
 			},
 			{
+				id: 'settings-snippets',
+				icon: 'code',
+				label: i18n.baseText('settings.snippets.title'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.SNIPPETS_SETTINGS),
+				route: { to: { name: VIEWS.SNIPPETS_SETTINGS } },
+			},
+			{
 				id: 'settings-credential-resolvers',
 				icon: 'key-round',
 				label: i18n.baseText('credentialResolver.view.title'),

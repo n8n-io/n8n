@@ -16,6 +16,10 @@
 		{
 			"name": "DataTable",
 			"path": "packages/cli/src/modules/data-table/data-table.entity.ts"
+		},
+		{
+			"name": "Snippet",
+			"path": "packages/cli/src/modules/snippets/snippet.entity.ts"
 		}
 	],
 	"notTransferred": [

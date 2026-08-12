@@ -1,5 +1,6 @@
 import type { SsrfBridge } from '@n8n/backend-network';
 import type {
+	SnippetsProvider,
 	DataTableProxyProvider,
 	DynamicCredentialCheckProxyProvider,
 	IExecutionContext,
@@ -49,6 +50,7 @@ declare module 'n8n-workflow' {
 		 */
 		evalLlmMockHandler?: EvalLlmMockHandler;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
+		'snippets'?: { snippetsProvider: SnippetsProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };
 		// Project ID is currently only added on the additionalData if the user

@@ -19,7 +19,11 @@ export type WorkerInitOptions = {
 	allNodeNames: string[];
 	inputNodeNames: string[];
 	variables: string[];
+	/** Snippet sources keyed by name, for inferred `$snippets`/`$project` types */
+	snippets?: { global: Record<string, string>; project: Record<string, string> };
 	mode: CodeExecutionMode;
+	/** What the file contains: a Code node script (default) or a snippet expression */
+	context?: 'codeNode' | 'snippet';
 	binaryMode?: WorkflowSettingsBinaryMode;
 };
 

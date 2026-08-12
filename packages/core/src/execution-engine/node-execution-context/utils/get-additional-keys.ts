@@ -48,6 +48,7 @@ export function getAdditionalKeys(
 			: undefined,
 		$vars: additionalData.variables,
 		$secrets: options.isCredential ? getSecretsProxy(additionalData) : undefined,
+		$__snippets: additionalData.snippetSources,
 
 		// deprecated
 		$executionId: executionId,
@@ -66,5 +67,6 @@ export function getNonWorkflowAdditionalKeys(
 	return {
 		$vars: additionalData.variables,
 		$secrets: options.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
+		$__snippets: additionalData.snippetSources,
 	};
 }
