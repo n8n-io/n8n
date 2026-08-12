@@ -1,0 +1,28 @@
+packages/n8n-test/demo/workflow-with-subworkflow.test.ts
+  s_157f08ca3b0299::t_33e4d5e794947b 20-28,30-41
+  s_157f08ca3b0299::t_e537f0041c4720 17
+  s_157f08ca3b0299::t_96b145d960c2a8 29
+packages/n8n-test/src/mock-node.ts
+  s_157f08ca3b0299::t_1d4c94187763e0 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c595ddd6ea8e35e1b3af8d5960c1b776bbd2dcb7",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_157f08ca3b0299": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8158bab5-b092-4dee-bd6c-3fef6d0146f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
