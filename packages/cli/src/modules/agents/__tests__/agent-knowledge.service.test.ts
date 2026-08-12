@@ -9,8 +9,9 @@ import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 
 import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
+import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
-import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentFile } from '../entities/agent-file.entity';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -134,7 +135,8 @@ class InMemoryAgentFileRepository {
 describe('AgentKnowledgeService', () => {
 	let agentRepository: Mocked<AgentRepository>;
 	let agentFileRepository: InMemoryAgentFileRepository;
-	let agentKnowledgeSandboxService: Mocked<AgentKnowledgeSandboxService>;
+	let agentSandboxRuntimeService: Mocked<AgentSandboxRuntimeService>;
+	let agentKnowledgeMirrorService: Mocked<AgentKnowledgeMirrorService>;
 	let agentKnowledgeFileStore: Mocked<AgentKnowledgeFileStore>;
 	let logger: Mocked<Logger>;
 	let service: AgentKnowledgeService;
@@ -143,7 +145,8 @@ describe('AgentKnowledgeService', () => {
 		vi.clearAllMocks();
 		agentRepository = mock<AgentRepository>();
 		agentFileRepository = new InMemoryAgentFileRepository();
-		agentKnowledgeSandboxService = mock<AgentKnowledgeSandboxService>();
+		agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>();
+		agentKnowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
 		agentKnowledgeFileStore = mock<AgentKnowledgeFileStore>();
 		agentKnowledgeFileStore.write.mockImplementation(async (ref, content) => {
 			await drainIfStream(content);
@@ -157,7 +160,8 @@ describe('AgentKnowledgeService', () => {
 		service = new AgentKnowledgeService(
 			agentRepository,
 			agentFileRepository as unknown as AgentFileRepository,
-			agentKnowledgeSandboxService,
+			agentSandboxRuntimeService,
+			agentKnowledgeMirrorService,
 			agentKnowledgeFileStore,
 			logger,
 		);
@@ -411,7 +415,7 @@ describe('AgentKnowledgeService', () => {
 		} as never);
 
 		await expect(service.warmSandbox(agentId, projectId)).resolves.toBeUndefined();
-		expect(agentKnowledgeSandboxService.warmSandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(agentSandboxRuntimeService.warmSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
 	it('pre-warms the mirror after a successful upload', async () => {
@@ -433,7 +437,7 @@ describe('AgentKnowledgeService', () => {
 			}),
 		]);
 
-		expect(agentKnowledgeSandboxService.prewarmMirrorInBackground).toHaveBeenCalledWith(
+		expect(agentKnowledgeMirrorService.prewarmMirrorInBackground).toHaveBeenCalledWith(
 			projectId,
 			agentId,
 		);
@@ -449,7 +453,7 @@ describe('AgentKnowledgeService', () => {
 
 		await service.deleteFile(agentId, projectId, 'file-1');
 
-		expect(agentKnowledgeSandboxService.prewarmMirrorInBackground).toHaveBeenCalledWith(
+		expect(agentKnowledgeMirrorService.prewarmMirrorInBackground).toHaveBeenCalledWith(
 			projectId,
 			agentId,
 		);

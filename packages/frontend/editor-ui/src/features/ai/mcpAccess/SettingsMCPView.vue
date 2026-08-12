@@ -34,6 +34,8 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
+import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
+
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
@@ -48,13 +50,14 @@ const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents')
 
 const mcpStatusLoading = ref(false);
 const showDisableDialog = ref(false);
+const isLoadingClients = ref(true);
 
 const canManageMcpInstance = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'mcp:manage' } }),
 );
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
 
-const exposedWorkflowsCount = ref(0);
+const exposedWorkflowsCount = ref<number | null>(null);
 
 const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
@@ -72,19 +75,23 @@ const instanceCapacityNoticeContent = computed(() => {
 });
 
 const workflowsExposedValue = computed(() =>
-	i18n.baseText('settings.mcp.workflowsExposed.count', {
-		adjustToNumber: exposedWorkflowsCount.value,
-		interpolate: { count: String(exposedWorkflowsCount.value) },
-	}),
+	exposedWorkflowsCount.value === null
+		? UNKNOWN_COUNT_VALUE
+		: i18n.baseText('settings.mcp.workflowsExposed.count', {
+				adjustToNumber: exposedWorkflowsCount.value,
+				interpolate: { count: String(exposedWorkflowsCount.value) },
+			}),
 );
 
-const exposedAgentsCount = ref(0);
+const exposedAgentsCount = ref<number | null>(null);
 
 const agentsExposedValue = computed(() =>
-	i18n.baseText('settings.mcp.agentsExposed.count', {
-		adjustToNumber: exposedAgentsCount.value,
-		interpolate: { count: String(exposedAgentsCount.value) },
-	}),
+	exposedAgentsCount.value === null
+		? UNKNOWN_COUNT_VALUE
+		: i18n.baseText('settings.mcp.agentsExposed.count', {
+				adjustToNumber: exposedAgentsCount.value,
+				interpolate: { count: String(exposedAgentsCount.value) },
+			}),
 );
 
 const callbackUrlsValue = computed(() =>
@@ -148,8 +155,10 @@ const onConfirmDisable = async () => {
 
 /** Populates the store's client totals so the "N clients have access" count renders. */
 const fetchoAuthCLients = async () => {
+	isLoadingClients.value = true;
 	try {
 		await mcpStore.getAllOAuthClients();
+		isLoadingClients.value = false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	}
@@ -321,10 +330,12 @@ onMounted(async () => {
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.connectedClients.viewAll.title')"
 						:description="
-							i18n.baseText('settings.mcp.connectedClients.viewAll.description', {
-								adjustToNumber: connectedClientsTotal,
-								interpolate: { count: String(connectedClientsTotal) },
-							})
+							isLoadingClients
+								? UNKNOWN_COUNT_VALUE
+								: i18n.baseText('settings.mcp.connectedClients.viewAll.description', {
+										adjustToNumber: connectedClientsTotal,
+										interpolate: { count: String(connectedClientsTotal) },
+									})
 						"
 						clickable
 						data-test-id="mcp-clients-view-all-row"
