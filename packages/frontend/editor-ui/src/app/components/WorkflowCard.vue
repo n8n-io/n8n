@@ -39,6 +39,7 @@ import {
 	N8nBadge,
 	N8nBreadcrumbs,
 	N8nCard,
+	N8nCheckbox,
 	N8nIcon,
 	N8nTags,
 	N8nText,
@@ -79,6 +80,8 @@ const props = withDefaults(
 		canManageInstanceMcp?: boolean;
 		isWorkflowCardMcpToggleEnabled?: boolean;
 		areFoldersEnabled?: boolean;
+		selectable?: boolean;
+		selected?: boolean;
 	}>(),
 	{
 		readOnly: false,
@@ -90,6 +93,8 @@ const props = withDefaults(
 		canManageInstanceMcp: false,
 		isWorkflowCardMcpToggleEnabled: false,
 		areFoldersEnabled: false,
+		selectable: false,
+		selected: false,
 	},
 );
 
@@ -110,6 +115,7 @@ const emit = defineEmits<{
 			homeProjectId?: string;
 		},
 	];
+	'update:selected': [value: boolean];
 }>();
 
 const toast = useToast();
@@ -605,6 +611,20 @@ const tags = computed(
 		data-test-id="workflow-card"
 		@click="onClick"
 	>
+		<template v-if="selectable" #prepend>
+			<div :class="$style.selectionCheckbox" @click.stop @mousedown.stop @dragstart.stop.prevent>
+				<N8nCheckbox
+					:model-value="selected"
+					:aria-label="
+						locale.baseText('workflows.bulkActions.selectRow', {
+							interpolate: { name: data.name },
+						})
+					"
+					data-test-id="workflow-card-checkbox"
+					@update:model-value="emit('update:selected', $event)"
+				/>
+			</div>
+		</template>
 		<template #header>
 			<N8nText
 				tag="h2"
@@ -753,6 +773,20 @@ const tags = computed(
 
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
+	}
+}
+
+.selectionCheckbox {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding-left: var(--spacing--sm);
+	cursor: default;
+
+	// The design-system checkbox reserves space for a label; remove it so the
+	// standalone checkbox stays vertically centered in the card.
+	:global(.el-checkbox) {
+		margin-right: 0;
 	}
 }
 

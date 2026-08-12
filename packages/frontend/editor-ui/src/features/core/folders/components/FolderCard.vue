@@ -18,6 +18,7 @@ import {
 	N8nBadge,
 	N8nBreadcrumbs,
 	N8nCard,
+	N8nCheckbox,
 	N8nDropdownMenu,
 	N8nHeading,
 	N8nIcon,
@@ -43,6 +44,8 @@ type Props = {
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 	showMcpAccessActions?: boolean;
+	selectable?: boolean;
+	selected?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -50,6 +53,8 @@ const props = withDefaults(defineProps<Props>(), {
 	readOnly: true,
 	showOwnershipBadge: false,
 	showMcpAccessActions: false,
+	selectable: false,
+	selected: false,
 });
 
 const i18n = useI18n();
@@ -61,6 +66,7 @@ const favoritesStore = useFavoritesStore();
 const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
 	folderOpened: [{ folder: FolderResource }];
+	'update:selected': [value: boolean];
 }>();
 
 const dropdownId = `folder-card-actions-dropdown-${getCurrentInstance()?.uid ?? 0}`;
@@ -219,13 +225,33 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
 			<N8nCard :class="$style.card">
 				<template #prepend>
-					<N8nIcon
-						data-test-id="folder-card-icon"
-						:class="$style['folder-icon']"
-						icon="folder"
-						size="xlarge"
-						:stroke-width="1"
-					/>
+					<div :class="$style['prepend']">
+						<div
+							v-if="selectable"
+							:class="$style['selection-checkbox']"
+							@click.stop.prevent
+							@mousedown.stop
+							@dragstart.stop.prevent
+						>
+							<N8nCheckbox
+								:model-value="selected"
+								:aria-label="
+									i18n.baseText('workflows.bulkActions.selectRow', {
+										interpolate: { name: data.name },
+									})
+								"
+								data-test-id="folder-card-checkbox"
+								@update:model-value="emit('update:selected', $event)"
+							/>
+						</div>
+						<N8nIcon
+							data-test-id="folder-card-icon"
+							:class="$style['folder-icon']"
+							icon="folder"
+							size="xlarge"
+							:stroke-width="1"
+						/>
+					</div>
 				</template>
 				<template #header>
 					<div :class="$style['card-header']">
@@ -377,6 +403,22 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
+	}
+}
+
+.prepend {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.selection-checkbox {
+	display: flex;
+	align-items: center;
+	cursor: default;
+
+	:global(.el-checkbox) {
+		margin-right: 0;
 	}
 }
 

@@ -78,6 +78,17 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useResourcesListSelection } from '@/app/composables/useResourcesListSelection';
+import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
+import type { SelectionBarAction } from '@/app/components/common/SelectedItemsInfo.vue';
+import { useBulkWorkflowActions } from '@/features/workflows/bulkActions/useBulkWorkflowActions';
+import BulkActionReviewDialog from '@/features/workflows/bulkActions/BulkActionReviewDialog.vue';
+import type {
+	BulkActionConfig,
+	BulkActionId,
+} from '@/features/workflows/bulkActions/bulkActions.types';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
@@ -544,6 +555,119 @@ const workflowListResources = computed<Resource[]>(() => {
 	return resources;
 });
 
+/**
+ * BULK SELECTION & ACTIONS (prototype)
+ */
+
+// The list only ever holds workflows and folders; narrow to the selectable union.
+const pageResources = computed(() =>
+	workflowListResources.value.filter(
+		(r): r is WorkflowResource | FolderResource =>
+			r.resourceType === 'workflow' || r.resourceType === 'folder',
+	),
+);
+
+const selection = useResourcesListSelection<WorkflowResource | FolderResource>();
+
+const selectedResources = computed(() =>
+	pageResources.value.filter((r) => selection.isSelected(r)),
+);
+
+const isPageSelected = computed(() => selection.isPageChecked(pageResources.value));
+const isPageIndeterminate = computed(() => selection.isPageIndeterminate(pageResources.value));
+
+const bulkActions = useBulkWorkflowActions({
+	selectedItems: selectedResources,
+	workflowsAndFolders,
+	mcpEnabled,
+});
+
+const selectionBarActions = computed<SelectionBarAction[]>(() =>
+	bulkActions.availableActions.value.map((action) => ({
+		id: action.id,
+		label: action.label,
+		destructive: action.destructive,
+	})),
+);
+
+const projectSearchFn = useAvailableProjectSearch();
+const moveProjectFilterFn = (project: ProjectListItem) =>
+	!project.scopes || getResourcePermissions(project.scopes).workflow.create === true;
+
+// Flat aliases so the template unwraps these refs (nested refs on the composable
+// objects aren't auto-unwrapped in templates).
+const selectedCount = selection.selectedCount;
+const activeBulkAction = bulkActions.activeAction;
+
+const isBulkDialogOpen = computed(() => bulkActions.activeAction.value !== null);
+const isBulkSubmitting = ref(false);
+const bulkDialogError = ref<string | null>(null);
+
+const onSelectAllPage = (value: boolean) => {
+	selection.togglePage(pageResources.value, value);
+};
+
+const onBulkActionSelected = (id: string) => {
+	bulkDialogError.value = null;
+	bulkActions.openAction(id as BulkActionId);
+};
+
+const onBulkDialogOpenChange = (open: boolean) => {
+	if (open) return;
+	bulkActions.closeDialog();
+	bulkDialogError.value = null;
+};
+
+const showBulkResultToast = (result: Awaited<ReturnType<typeof bulkActions.execute>>) => {
+	const completed = result.items.filter((item) => item.status === 'completed').length;
+	const failed = result.items.filter((item) => item.status === 'failed').length;
+	const notAttempted = result.items.filter((item) => item.status === 'notAttempted').length;
+
+	if (result.status === 'completed') {
+		toast.showMessage({
+			title: i18n.baseText('workflows.bulkActions.toast.success', {
+				adjustToNumber: completed,
+				interpolate: { count: String(completed) },
+			}),
+			type: 'success',
+		});
+		return;
+	}
+
+	toast.showMessage({
+		title: i18n.baseText('workflows.bulkActions.toast.partial.title'),
+		message: i18n.baseText('workflows.bulkActions.toast.partial.message', {
+			interpolate: {
+				completed: String(completed),
+				failed: String(failed),
+				notAttempted: String(notAttempted),
+			},
+		}),
+		type: 'warning',
+	});
+};
+
+const onBulkConfirm = async (config: BulkActionConfig) => {
+	isBulkSubmitting.value = true;
+	bulkDialogError.value = null;
+	try {
+		const result = await bulkActions.execute(config);
+		bulkActions.closeDialog();
+		selection.clear();
+		// Mocked operations are session-only, so they intentionally skip the refresh.
+		if (!result.mocked) {
+			await refreshWorkflows();
+		}
+		showBulkResultToast(result);
+	} catch (error) {
+		// Keep the dialog and selection open so the user can retry.
+		bulkDialogError.value =
+			error instanceof Error ? error.message : i18n.baseText('workflows.bulkActions.toast.error');
+	} finally {
+		isBulkSubmitting.value = false;
+	}
+};
+
 const statusFilterOptions = computed(() => [
 	{
 		label: i18n.baseText('workflows.filters.status.all'),
@@ -846,6 +970,10 @@ const initialize = async () => {
  */
 const fetchWorkflows = async () => {
 	const isCurrent = nextFetch();
+
+	// Selection is page-scoped: any refetch (search, filter, sort, pagination,
+	// folder/route change, explicit or source-control refresh) drops it.
+	selection.clear();
 
 	// We debounce here so that fast enough fetches don't trigger
 	// the placeholder graphics for a few milliseconds, which would cause a flicker
@@ -2353,6 +2481,17 @@ const onNameSubmit = async (name: string) => {
 				</FolderBreadcrumbs>
 			</div>
 		</template>
+		<template #preamble>
+			<div v-if="pageResources.length" :class="$style['selection-header']">
+				<N8nCheckbox
+					:model-value="isPageSelected"
+					:indeterminate="isPageIndeterminate"
+					:label="i18n.baseText('workflows.bulkActions.selectAll')"
+					data-test-id="select-all-checkbox"
+					@update:model-value="onSelectAllPage"
+				/>
+			</div>
+		</template>
 		<template #item="{ item: data, index }">
 			<Draggable
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
@@ -2390,10 +2529,13 @@ const onNameSubmit = async (name: string) => {
 					}"
 					:show-ownership-badge="showCardsBadge"
 					:show-mcp-access-actions="showMcpAccessActions"
+					:selectable="true"
+					:selected="selection.isSelected(data as FolderResource)"
 					data-target="folder"
 					data-droppable
 					class="mb-2xs"
 					@action="onFolderCardAction"
+					@update:selected="selection.toggleItem(data as FolderResource, $event)"
 					@mouseenter="folderHelpers.onDragEnter"
 					@mouseup="onFolderCardDrop"
 				/>
@@ -2436,6 +2578,9 @@ const onNameSubmit = async (name: string) => {
 					:is-mcp-module-active="mcpModuleActive"
 					:can-manage-instance-mcp="canManageInstanceMcp"
 					:is-workflow-card-mcp-toggle-enabled="isWorkflowCardMcpToggleEnabled"
+					:selectable="true"
+					:selected="selection.isSelected(data as WorkflowResource)"
+					@update:selected="selection.toggleItem(data as WorkflowResource, $event)"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"
@@ -2565,6 +2710,33 @@ const onNameSubmit = async (name: string) => {
 					@click:button="addWorkflow"
 				/>
 			</div>
+
+			<SelectedItemsInfo
+				:selected-count="selectedCount"
+				:actions="selectionBarActions"
+				:selected-text="
+					i18n.baseText('workflows.bulkActions.selectedCount', {
+						adjustToNumber: selectedCount,
+						interpolate: { count: String(selectedCount) },
+					})
+				"
+				:no-actions-text="i18n.baseText('workflows.bulkActions.noActions')"
+				:no-actions-tooltip="i18n.baseText('workflows.bulkActions.noActions.tooltip')"
+				@action="onBulkActionSelected"
+				@clear-selection="selection.clear"
+			/>
+
+			<BulkActionReviewDialog
+				:open="isBulkDialogOpen"
+				:action="activeBulkAction"
+				:submitting="isBulkSubmitting"
+				:error-message="bulkDialogError"
+				:project-search-fn="projectSearchFn"
+				:move-filter-fn="moveProjectFilterFn"
+				:current-project-id="currentProject?.id"
+				@update:open="onBulkDialogOpenChange"
+				@confirm="onBulkConfirm"
+			/>
 		</template>
 	</ResourcesListLayout>
 </template>
@@ -2581,6 +2753,12 @@ const onNameSubmit = async (name: string) => {
 		align-items: center;
 		gap: var(--spacing--md);
 	}
+}
+
+.selection-header {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--2xs) var(--spacing--sm);
 }
 
 .breadcrumbs-container {
