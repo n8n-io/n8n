@@ -11,6 +11,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationReason,
 	WorkflowPublishedVersionRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -1568,7 +1569,12 @@ export class WorkflowService {
 				trx,
 			);
 
-			await this.outboxRepository.enqueue(workflowId, versionIdToActivate, trx);
+			await this.outboxRepository.enqueue(
+				workflowId,
+				versionIdToActivate,
+				WorkflowPublicationReason.Publish,
+				trx,
+			);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without
@@ -1609,7 +1615,12 @@ export class WorkflowService {
 				trx,
 			);
 
-			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
+			await this.outboxRepository.enqueue(
+				workflowId,
+				deactivatedVersionId,
+				WorkflowPublicationReason.Publish,
+				trx,
+			);
 
 			// Durable jobs are DB state, so their removal commits here rather than
 			// waiting on the leader's outbox handler: a lost hand-off would otherwise
