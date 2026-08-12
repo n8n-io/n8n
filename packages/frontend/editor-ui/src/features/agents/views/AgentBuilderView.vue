@@ -962,7 +962,22 @@ async function onOpenInstanceAi() {
 	);
 }
 
-function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
+function normalizeAgentConfigForSave(config: AgentJsonConfig): AgentJsonConfig {
+	if (config.engine?.type === 'harness') {
+		const normalized = { ...config };
+		delete normalized.memory;
+
+		const harnessConfig: NonNullable<AgentJsonConfig['config']> = {};
+		if (config.engine.adapter === 'codex') {
+			if (config.config?.reasoning) harnessConfig.reasoning = config.config.reasoning;
+			if (config.config?.webSearch) harnessConfig.webSearch = config.config.webSearch;
+		}
+		if (Object.keys(harnessConfig).length > 0) normalized.config = harnessConfig;
+		else delete normalized.config;
+
+		return normalized;
+	}
+
 	return {
 		...config,
 		memory: {
@@ -992,7 +1007,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		// session memory disabled. Normalize on save so legacy configs are
 		// corrected the next time the user makes a real edit, without mutating
 		// config during component mount.
-		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		config: normalizeAgentConfigForSave(deepCopy(localConfig.value)),
 	});
 }
 
@@ -1037,7 +1052,7 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		type: 'config',
-		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		config: normalizeAgentConfigForSave(deepCopy(localConfig.value)),
 	});
 }
 

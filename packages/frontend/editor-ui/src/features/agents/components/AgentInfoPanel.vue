@@ -161,6 +161,15 @@ function onModelChange(selection: AgentModelSelection) {
 	const modelName = sanitizeModelId(selection.provider, selection.model);
 	const model = `${selection.provider}/${modelName}`;
 	if (selection.harnessAdapter) {
+		const harnessConfig: NonNullable<AgentJsonConfig['config']> = {};
+		if (selection.harnessAdapter === 'codex') {
+			if (props.config?.config?.reasoning) {
+				harnessConfig.reasoning = props.config.config.reasoning;
+			}
+			if (props.config?.config?.webSearch) {
+				harnessConfig.webSearch = props.config.config.webSearch;
+			}
+		}
 		const isChangingHarness =
 			props.config?.engine?.type !== 'harness' ||
 			props.config.engine.adapter !== selection.harnessAdapter;
@@ -168,15 +177,15 @@ function onModelChange(selection: AgentModelSelection) {
 			engine: { type: 'harness', adapter: selection.harnessAdapter },
 			model,
 			credential: credentialId,
+			memory: undefined,
+			config: Object.keys(harnessConfig).length > 0 ? harnessConfig : undefined,
 			...(isChangingHarness
 				? {
-						memory: undefined,
 						subAgents: undefined,
 						skills: [],
 						mcpServers: [],
 						vectorStores: [],
 						providerTools: undefined,
-						config: undefined,
 					}
 				: {}),
 		});

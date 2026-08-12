@@ -16,7 +16,7 @@ import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import {
 	AGENT_HARNESS_ADAPTERS,
-	AGENT_HARNESS_MODELS,
+	AGENT_HARNESS_MODEL_PROVIDERS,
 	AI_GATEWAY_MANAGED_TAG,
 	type AgentHarnessAdapter,
 } from '@n8n/api-types';
@@ -486,11 +486,8 @@ const menu = computed(() => {
 	if (!showHarnessModels) return providerItems;
 
 	const harnessItems = AGENT_HARNESS_ADAPTERS.map<MenuItem>((adapter) => {
-		const provider: AgentModelProvider = adapter === 'claude-code' ? 'anthropic' : 'openai';
-		const allowedModels: readonly string[] = AGENT_HARNESS_MODELS[adapter];
-		const models = (modelsByProvider[provider]?.models ?? []).filter((model) =>
-			allowedModels.includes(`${provider}/${model.model}`),
-		);
+		const provider: AgentModelProvider = AGENT_HARNESS_MODEL_PROVIDERS[adapter];
+		const models = modelsByProvider[provider]?.models ?? [];
 		return providerToMenuItem(provider, {
 			id: `harness:${adapter}`,
 			label: getHarnessDisplayName(adapter),

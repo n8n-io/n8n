@@ -361,9 +361,6 @@ export class AgentValidationService {
 			issues.push(agentIssue('invalid_value', 'model'));
 		}
 
-		if (config.memory?.enabled) {
-			issues.push(agentIssue('invalid_value', 'memory'));
-		}
 		if (
 			(config.subAgents?.agents?.length ?? 0) > 0 ||
 			config.subAgents?.maxChildren !== undefined ||
@@ -382,9 +379,6 @@ export class AgentValidationService {
 		}
 		if (config.providerTools && Object.keys(config.providerTools).length > 0) {
 			issues.push(agentIssue('invalid_value', 'providerTools'));
-		}
-		if (config.config?.promptCaching?.enabled) {
-			issues.push(agentIssue('invalid_value', 'config.promptCaching'));
 		}
 		if (config.config?.toolCallConcurrency !== undefined) {
 			issues.push(agentIssue('invalid_value', 'config.toolCallConcurrency'));

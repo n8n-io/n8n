@@ -331,6 +331,32 @@ describe('AgentInfoPanel', () => {
 		});
 	});
 
+	it('clears stale memory and prompt caching when reselecting a harness model', async () => {
+		const wrapper = mountModelPanel({
+			name: 'Support agent',
+			model: 'openai/gpt-5.6-sol',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+			engine: { type: 'harness', adapter: 'codex' },
+			memory: { enabled: true, storage: 'n8n' },
+			config: { promptCaching: { enabled: true } },
+		});
+
+		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+			provider: 'openai',
+			model: 'gpt-5.6-sol',
+			harnessAdapter: 'codex',
+		});
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toMatchObject({
+			engine: { type: 'harness', adapter: 'codex' },
+			model: 'openai/gpt-5.6-sol',
+			memory: undefined,
+			config: undefined,
+		});
+	});
+
 	it('passes harness availability and the selected adapter to the model selector', () => {
 		const wrapper = mountModelPanel({
 			name: 'Support agent',

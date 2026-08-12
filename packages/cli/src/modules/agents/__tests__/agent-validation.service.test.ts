@@ -1079,12 +1079,25 @@ describe('AgentValidationService — harness engines', () => {
 		).resolves.toMatchObject({ status: 'valid', issues: [] });
 	});
 
-	it('accepts curated models and rejects Codex models outside the compatibility list', async () => {
+	it('accepts provider models and rejects models from the wrong provider', async () => {
 		const { service, agentRepository } = makeService({ modules: ['harnesses'] });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				...runnableConfig,
 				model: 'openai/gpt-5.6-sol',
+				credential: AI_GATEWAY_MANAGED_TAG,
+				engine: { type: 'harness', adapter: 'codex' },
+			}),
+		);
+
+		await expect(
+			service.validateAgentConfiguration(agentId, projectId, makeCredentialProvider()),
+		).resolves.toMatchObject({ status: 'valid', issues: [] });
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				model: 'anthropic/claude-sonnet-4-6',
 				credential: AI_GATEWAY_MANAGED_TAG,
 				engine: { type: 'harness', adapter: 'codex' },
 			}),
@@ -1098,15 +1111,21 @@ describe('AgentValidationService — harness engines', () => {
 		expect(incompatible.issues).toContainEqual(
 			expect.objectContaining({ code: 'invalid_value', path: 'model' }),
 		);
+	});
 
+	it('accepts stale n8n memory and prompt caching on a harness agent', async () => {
+		const { service, agentRepository } = makeService({ modules: ['harnesses'] });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				...runnableConfig,
-				model: 'openai/gpt-5.5',
+				model: 'openai/gpt-5.6-sol',
 				credential: AI_GATEWAY_MANAGED_TAG,
 				engine: { type: 'harness', adapter: 'codex' },
+				memory: { enabled: true, storage: 'n8n' },
+				config: { promptCaching: { enabled: true } },
 			}),
 		);
+
 		await expect(
 			service.validateAgentConfiguration(agentId, projectId, makeCredentialProvider()),
 		).resolves.toMatchObject({ status: 'valid', issues: [] });

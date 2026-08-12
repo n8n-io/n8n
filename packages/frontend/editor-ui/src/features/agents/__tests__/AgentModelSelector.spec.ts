@@ -186,6 +186,14 @@ const modelsByProvider: AgentModelsByProvider = {
 		models: [
 			{
 				provider: 'openai',
+				model: 'gpt-5.6-sol',
+				name: 'GPT-5.6 Sol',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'openai',
 				model: 'gpt-5.5',
 				name: 'GPT-5.5',
 				description: null,
@@ -282,7 +290,7 @@ describe('AgentModelSelector', () => {
 		expect(aiGatewayState.fetchConfig).toHaveBeenCalled();
 	});
 
-	it('shows Claude Code and Codex as top-level groups with curated models', async () => {
+	it('shows Claude Code and Codex with their provider model catalogs', async () => {
 		credentialsByType.value.openAiApi = [
 			{ id: 'openai-cred', name: 'OpenAI credential', type: 'openAiApi' },
 		];
@@ -300,12 +308,13 @@ describe('AgentModelSelector', () => {
 		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('Anthropic credential');
 		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('n8n Connect');
 		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('Claude Sonnet 4.5');
-		expect(JSON.stringify(claudeCode?.children ?? [])).not.toContain('Claude 3 Haiku');
+		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('Claude 3 Haiku');
 		expect(codex?.label).toBe('Codex (Preview)');
 		expect(JSON.stringify(codex?.children ?? [])).toContain('OpenAI credential');
 		expect(JSON.stringify(codex?.children ?? [])).toContain('n8n Connect');
+		expect(JSON.stringify(codex?.children ?? [])).toContain('GPT-5.6 Sol');
 		expect(JSON.stringify(codex?.children ?? [])).toContain('GPT-5.5');
-		expect(JSON.stringify(codex?.children ?? [])).not.toContain('GPT-5 mini');
+		expect(JSON.stringify(codex?.children ?? [])).toContain('GPT-5 mini');
 	});
 
 	it.each([
@@ -319,7 +328,7 @@ describe('AgentModelSelector', () => {
 		{
 			adapter: 'codex' as const,
 			provider: 'openai' as const,
-			model: 'gpt-5.5',
+			model: 'gpt-5.6-sol',
 			credential: 'openai-cred',
 			credentialType: 'openAiApi',
 		},

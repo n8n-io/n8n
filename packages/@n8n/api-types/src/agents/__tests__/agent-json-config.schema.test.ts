@@ -2,6 +2,7 @@ import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
+	isAgentHarnessModel,
 } from '../agent-json-config.schema';
 
 const minimalConfig = {
@@ -18,6 +19,12 @@ describe('AgentJsonConfigSchema — model', () => {
 		});
 
 		expect(result.success).toBe(true);
+	});
+
+	it('validates harness models by provider instead of an exact model allowlist', () => {
+		expect(isAgentHarnessModel('codex', 'openai/gpt-5.6-sol')).toBe(true);
+		expect(isAgentHarnessModel('claude-code', 'anthropic/claude-future')).toBe(true);
+		expect(isAgentHarnessModel('codex', 'anthropic/claude-sonnet-4-6')).toBe(false);
 	});
 });
 
