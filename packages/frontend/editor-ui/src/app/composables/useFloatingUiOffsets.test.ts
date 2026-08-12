@@ -9,6 +9,7 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
+import { setInstanceAiDockTopEdge } from '@/features/ai/instanceAi/instanceAiDock';
 import { setActivePinia } from 'pinia';
 import { useFloatingUiOffsets } from './useFloatingUiOffsets';
 import { reactive, shallowRef, type ShallowRef } from 'vue';
@@ -43,6 +44,7 @@ describe(useFloatingUiOffsets, () => {
 		);
 		workflowDocumentStore.setNodes([createTestNode({ name: 'n0' })]);
 		workflowDocumentIdRef = shallowRef(createWorkflowDocumentId(workflowsStore.workflowId));
+		setInstanceAiDockTopEdge(0);
 	});
 
 	describe('toastBottomOffset', () => {
@@ -89,5 +91,43 @@ describe(useFloatingUiOffsets, () => {
 				expect(toastBottomOffset.value).toBe('58px'); // 42px button + 16px NDV offset
 			},
 		);
+
+		it('should lift toasts clear of the Instance AI dock', () => {
+			const { toastBottomOffset } = useFloatingUiOffsets(workflowDocumentIdRef);
+
+			expect(toastBottomOffset.value).toBe('0px');
+
+			setInstanceAiDockTopEdge(76); // 24px inset + 52px launcher
+
+			expect(toastBottomOffset.value).toBe('76px');
+		});
+
+		it('should measure dock clearance from the viewport floor, not the log view', () => {
+			useLogsStore().setHeight(300);
+			setInstanceAiDockTopEdge(376); // dock sits above the open log view
+
+			const { toastBottomOffset } = useFloatingUiOffsets(workflowDocumentIdRef);
+
+			expect(toastBottomOffset.value).toBe('376px');
+
+			// NDV drops the log view offset, but the dock stays where it is.
+			useNDVStore(createWorkflowDocumentId('test-workflow')).setActiveNodeName('n0', 'other');
+
+			expect(toastBottomOffset.value).toBe('376px');
+		});
+
+		it('should not stack the dock and AI assistant floating button offsets', () => {
+			currentRouteName = EDITABLE_CANVAS_VIEWS[0];
+			useSettingsStore().setSettings({
+				...defaultSettings,
+				aiAssistant: { enabled: true, setup: true },
+			});
+			useNDVStore(createWorkflowDocumentId('test-workflow')).setActiveNodeName('n0', 'other');
+			setInstanceAiDockTopEdge(76);
+
+			const { toastBottomOffset } = useFloatingUiOffsets(workflowDocumentIdRef);
+
+			expect(toastBottomOffset.value).toBe('76px'); // taller of the two, not 58 + 76
+		});
 	});
 });

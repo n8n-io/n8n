@@ -156,7 +156,7 @@ describe('useInstanceAiProactiveOffer', () => {
 		expect(activeOffer.value).toBeNull();
 	});
 
-	it('accept opens the panel with the seeded offer', async () => {
+	it('accept opens the panel with the prefilled offer', async () => {
 		const { raise, accept, activeOffer } = useInstanceAiProactiveOffer();
 
 		raise(offer);

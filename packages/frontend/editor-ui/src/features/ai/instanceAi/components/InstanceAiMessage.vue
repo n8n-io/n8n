@@ -10,13 +10,19 @@ import {
 	N8nMessageRating,
 	N8nTag,
 	N8nText,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
-import { getContextBlockType, stripContextBlocks } from '../instanceAiProactive';
+import {
+	getExecutionErrorChipTooltip,
+	getProactiveContextChip,
+	stripContextBlocks,
+} from '../instanceAiProactive';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -39,22 +45,10 @@ const isUser = computed(() => props.message.role === 'user');
  */
 const userContent = computed(() => stripContextBlocks(props.message.content));
 
-const contextChip = computed(() => {
-	switch (getContextBlockType(props.message.content)) {
-		case 'execution-error':
-			return {
-				icon: 'triangle-alert' as const,
-				label: i18n.baseText('instanceAi.proactive.context.executionError'),
-			};
-		case 'credential-error':
-			return {
-				icon: 'key-round' as const,
-				label: i18n.baseText('instanceAi.proactive.context.credentialError'),
-			};
-		default:
-			return null;
-	}
-});
+const contextChip = computed(() => getProactiveContextChip(props.message.content));
+const contextChipTooltip = computed(
+	() => getExecutionErrorChipTooltip(props.message.content) ?? undefined,
+);
 
 const isStreaming = computed(() => props.message.isStreaming);
 const showContent = computed(() => props.message.content.length > 0 || isStreaming.value);
@@ -168,27 +162,36 @@ function formatJson(value: unknown): string {
 	>
 		<!-- User message -->
 		<div v-if="isUser">
-			<div v-if="attachments.length > 0" :class="$style.userAttachments">
+			<div v-if="attachments.length > 0 || contextChip" :class="$style.userChips">
 				<AttachmentPreview
 					v-for="(attachment, index) in attachments"
 					:key="index"
 					:attachment="attachment"
 					:is-removable="false"
 				/>
-			</div>
-			<div
-				v-if="contextChip"
-				:class="$style.contextChip"
-				data-test-id="instance-ai-message-context-chip"
-			>
-				<N8nTag :text="contextChip.label" :clickable="false" size="lg">
-					<template #tag>
-						<span :class="$style.contextChipContent">
-							<N8nIcon :icon="contextChip.icon" size="small" />
-							<span :class="$style.contextChipText">{{ contextChip.label }}</span>
-						</span>
+				<N8nTooltip
+					v-if="contextChip"
+					:disabled="!contextChipTooltip"
+					:show-after="TOOLTIP_DELAY_MS"
+					placement="top"
+				>
+					<template v-if="contextChipTooltip" #content>
+						<span :class="$style.chipTooltip">{{ contextChipTooltip }}</span>
 					</template>
-				</N8nTag>
+					<div
+						:class="[$style.contextChip, { [$style.chipWithTooltip]: contextChipTooltip }]"
+						data-test-id="instance-ai-message-context-chip"
+					>
+						<N8nTag :text="contextChip.label" :clickable="false" size="lg">
+							<template #tag>
+								<span :class="$style.contextChipContent">
+									<N8nIcon :icon="contextChip.icon" size="small" />
+									<span :class="$style.contextChipText">{{ contextChip.label }}</span>
+								</span>
+							</template>
+						</N8nTag>
+					</div>
+				</N8nTooltip>
 			</div>
 			<N8nText size="large">{{ userContent }}</N8nText>
 		</div>
@@ -290,17 +293,26 @@ function formatJson(value: unknown): string {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 
-.userAttachments {
+.userChips {
 	display: flex;
-	flex-wrap: wrap;
+	flex-direction: column;
+	align-items: flex-start;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);
 }
 
-/* Same visual language as the composer's handoff-context chip. */
+/* Same visual language as AttachmentPreview resource chips + composer pills. */
 .contextChip {
-	display: flex;
-	margin-bottom: var(--spacing--2xs);
+	max-width: 100%;
+}
+
+.chipWithTooltip {
+	cursor: default;
+
+	&:hover :global(.n8n-tag) {
+		background-color: var(--tag--color--background--hover);
+		border-color: var(--tag--border-color--hover);
+	}
 }
 
 .contextChipContent {
@@ -312,6 +324,13 @@ function formatJson(value: unknown): string {
 
 .contextChipText {
 	white-space: nowrap;
+}
+
+.chipTooltip {
+	display: block;
+	max-width: 16rem;
+	white-space: pre-line;
+	line-height: var(--line-height--md);
 }
 
 .statusIndicator {

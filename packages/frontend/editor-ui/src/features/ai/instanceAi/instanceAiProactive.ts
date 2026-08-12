@@ -1,4 +1,5 @@
-import { useI18n } from '@n8n/i18n';
+import type { IconName } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 export type { ProactiveOffer } from './instanceAiPanel.types';
 
@@ -64,6 +65,12 @@ export function stripContextBlocks(text: string): string {
 		.trim();
 }
 
+/** Pull complete context blocks out so a user-edited lead can reattach them on send. */
+export function extractContextBlocks(text: string): string {
+	const blocks = text.match(/<context\b[^>]*>[\s\S]*?<\/context>/gi);
+	return blocks?.join('\n\n') ?? '';
+}
+
 export function hasContextBlock(text: string): boolean {
 	return /<context\b[^>]*>/i.test(text);
 }
@@ -72,6 +79,58 @@ export function hasContextBlock(text: string): boolean {
 export function getContextBlockType(text: string): ProactiveContextType | null {
 	const type = CONTEXT_TYPE_ATTRIBUTE_REGEX.exec(text)?.[1];
 	return PROACTIVE_CONTEXT_TYPES.find((known) => known === type) ?? null;
+}
+
+/** Read one `key: value` line from the first context block body. */
+export function getContextBlockField(text: string, field: string): string | null {
+	const blockMatch = /<context\b[^>]*>([\s\S]*?)<\/context>/i.exec(text);
+	if (!blockMatch) return null;
+
+	const prefix = `${field}: `;
+	for (const line of blockMatch[1].split('\n')) {
+		if (line.startsWith(prefix)) return line.slice(prefix.length);
+	}
+	return null;
+}
+
+/**
+ * Hover copy for the execution-error chip — failed node (if known) plus the
+ * error message, so the pill label stays short and the detail is one hover away.
+ */
+export function getExecutionErrorChipTooltip(text: string): string | null {
+	if (getContextBlockType(text) !== 'execution-error') return null;
+
+	const message = getContextBlockField(text, 'message');
+	if (!message) return null;
+
+	const failedNode = getContextBlockField(text, 'failed node');
+	const nodeName = failedNode?.replace(/\s*\([^)]*\)\s*$/, '').trim();
+	return nodeName ? `${nodeName}\n${message}` : message;
+}
+
+const CONTEXT_CHIPS: Record<ProactiveContextType, { icon: IconName; labelKey: BaseTextKey }> = {
+	'execution-error': {
+		icon: 'triangle-alert',
+		labelKey: 'instanceAi.proactive.context.executionError',
+	},
+	'credential-error': {
+		icon: 'key-round',
+		labelKey: 'instanceAi.proactive.context.credentialError',
+	},
+};
+
+/**
+ * Pill standing in for a stripped `<context>` block. Shared by the message
+ * bubble (what the agent was given) and the floating composer (what a follow-up
+ * question will land on), so the two never drift apart.
+ */
+export function getProactiveContextChip(text: string): { icon: IconName; label: string } | null {
+	const i18n = useI18n();
+	const type = getContextBlockType(text);
+	if (!type) return null;
+
+	const { icon, labelKey } = CONTEXT_CHIPS[type];
+	return { icon, label: i18n.baseText(labelKey) };
 }
 
 /**
@@ -111,15 +170,14 @@ export interface CredentialErrorContext {
 }
 
 /**
- * Seeded message for a failed run: a plain sentence the transcript can stand on
- * once the block is stripped, followed by the machine-readable context.
+ * Seeded message for a failed run: a short ask the transcript can stand on once
+ * the block is stripped (workflow / error already show as chips), followed by
+ * the machine-readable context.
  */
 export function buildExecutionErrorSeedMessage(context: ExecutionErrorContext): string {
 	const i18n = useI18n();
 
-	const lead = i18n.baseText('instanceAi.proactive.executionError.prompt', {
-		interpolate: { nodeName: context.nodeName, workflowName: context.workflowName },
-	});
+	const lead = i18n.baseText('instanceAi.proactive.executionError.prompt');
 
 	const block = buildContextBlock('execution-error', {
 		workflow: `${context.workflowName} (id: ${context.workflowId})`,

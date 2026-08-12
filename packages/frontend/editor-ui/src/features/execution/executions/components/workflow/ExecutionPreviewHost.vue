@@ -12,6 +12,10 @@ import {
 	type EditorEnabledFeatures,
 } from '@/app/constants/injectionKeys';
 import { useExecutionPreviewDocument } from '@/features/execution/executions/composables/useExecutionPreviewDocument';
+import {
+	summarizeFailedExecution,
+	useInstanceAiExecutionErrorOffer,
+} from '@/features/ai/instanceAi/composables/useInstanceAiExecutionErrorOffer';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
@@ -56,6 +60,16 @@ provide(
 const isReady = computed(() => preview.documentStore.value !== null);
 const hasExecutionData = computed(() => preview.execution.value !== null);
 const hasLoadError = computed(() => preview.loadError.value !== null && !preview.isLoading.value);
+
+/**
+ * A failed run the user is sitting on is the one place an unprompted AI offer
+ * earns its keep. Dwell delay and once-per-execution restraint live in the
+ * composable; the sticky error toast this preview raises is retired when the
+ * user takes the offer.
+ */
+const failedExecution = computed(() => summarizeFailedExecution(preview.execution.value));
+
+useInstanceAiExecutionErrorOffer(failedExecution);
 
 function openDeepLinkedNode() {
 	const documentStore = preview.documentStore.value;

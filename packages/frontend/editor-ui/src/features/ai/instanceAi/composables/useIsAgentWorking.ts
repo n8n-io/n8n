@@ -14,7 +14,17 @@ import { useThread, type ThreadRuntime } from '../instanceAi.store';
  * `isAwaitingConfirmation` is deliberately unused — it can linger on
  * confirmations left unresolved by a finished run. A live confirmation keeps
  * `activeRunId` set, so `isStreaming` already covers that case.
- *
+ */
+export function isThreadAgentWorking(thread: ThreadRuntime): boolean {
+	return (
+		thread.isHydratingThread ||
+		thread.isStreaming ||
+		thread.isSendingMessage ||
+		collectActiveBuilderAgents(thread.messages).length > 0
+	);
+}
+
+/**
  * Pass `runtime` from the component that *provides* the thread — it can't
  * inject what it provides, and forking this logic there would leave two copies
  * to keep in sync. Everything below it just calls this with no argument.
@@ -22,11 +32,5 @@ import { useThread, type ThreadRuntime } from '../instanceAi.store';
 export function useIsAgentWorking(runtime?: ThreadRuntime): ComputedRef<boolean> {
 	const thread = runtime ?? useThread();
 
-	return computed(
-		() =>
-			thread.isHydratingThread ||
-			thread.isStreaming ||
-			thread.isSendingMessage ||
-			collectActiveBuilderAgents(thread.messages).length > 0,
-	);
+	return computed(() => isThreadAgentWorking(thread));
 }

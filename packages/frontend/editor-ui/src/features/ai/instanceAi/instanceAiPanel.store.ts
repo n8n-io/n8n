@@ -2,7 +2,6 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useRouter } from 'vue-router';
 import { STORES } from '@n8n/stores';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 
 import { INSTANCE_AI_THREAD_VIEW } from './constants';
@@ -16,13 +15,13 @@ export type { ProactiveOffer } from './instanceAiPanel.types';
 
 export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () => {
 	const router = useRouter();
-	const rootStore = useRootStore();
 	const toast = useToast();
 	const instanceAiStore = useInstanceAiStore();
 	const instanceAiAvailable = useInstanceAiAvailable();
 
 	const isOpen = ref(false);
 	const activeThreadId = ref<string | null>(null);
+	/** Offer the composer is drafting — context chip + prefill; send is the user's. */
 	const pendingOffer = ref<ProactiveOffer | null>(null);
 
 	const isAvailable = computed(() => instanceAiAvailable.value);
@@ -87,8 +86,9 @@ export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () 
 	}
 
 	/**
-	 * Open the floating panel on the project's quick-help thread and send the
-	 * offer message — same shape as handoff `startThread`, minus navigation.
+	 * Open the floating panel on the project's quick-help thread with the offer
+	 * prefilled in the composer. The user reviews / edits and sends — nothing
+	 * is posted until they do.
 	 */
 	async function openWithSeed(offer: ProactiveOffer): Promise<boolean> {
 		if (!isAvailable.value || seedInFlight) return false;
@@ -114,14 +114,17 @@ export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () 
 
 			pendingOffer.value = offer;
 			activeThreadId.value = threadId;
+			instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			isOpen.value = true;
-
-			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
-			void thread.sendMessage(offer.message, offer.attachments, rootStore.pushRef);
 			return true;
 		} finally {
 			seedInFlight = false;
 		}
+	}
+
+	/** Drops the context pill; the prefilled draft stays so the user can still send. */
+	function dismissPendingOffer() {
+		pendingOffer.value = null;
 	}
 
 	async function expandToFullView(): Promise<void> {
@@ -141,6 +144,7 @@ export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () 
 		toggle,
 		close,
 		openWithSeed,
+		dismissPendingOffer,
 		expandToFullView,
 	};
 });

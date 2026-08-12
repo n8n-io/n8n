@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nTag, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
 const props = defineProps<{
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 	remove: [file: File];
 }>();
 
+const i18n = useI18n();
 const loading = ref(true);
 
 // A workflow attachment is a resource reference (no bytes) — rendered as a
@@ -26,6 +28,31 @@ const agentAttachment = computed(() =>
 );
 const fileAttachment = computed(() =>
 	props.attachment?.type === 'file' ? props.attachment : undefined,
+);
+
+const workflowLabel = computed(
+	() => workflowAttachment.value?.name ?? i18n.baseText('instanceAi.proactive.context.workflow'),
+);
+const agentLabel = computed(
+	() => agentAttachment.value?.name ?? i18n.baseText('instanceAi.attachment.agent.fallback'),
+);
+
+/** Extra detail beyond the pill label — same “learn more” pattern as context chips. */
+const workflowTooltip = computed(() => {
+	if (!workflowAttachment.value) return '';
+	return workflowAttachment.value.executionId
+		? i18n.baseText('instanceAi.attachment.workflow.failedExecutionTooltip', {
+				interpolate: { name: workflowLabel.value },
+			})
+		: i18n.baseText('instanceAi.attachment.workflow.tooltip', {
+				interpolate: { name: workflowLabel.value },
+			});
+});
+
+const agentTooltip = computed(() =>
+	i18n.baseText('instanceAi.attachment.agent.tooltip', {
+		interpolate: { name: agentLabel.value },
+	}),
 );
 
 const mimeType = computed(() => props.file?.type ?? fileAttachment.value?.mimeType ?? '');
@@ -73,23 +100,43 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div
-		v-if="workflowAttachment"
-		:class="$style.resourceChip"
-		data-test-id="attachment-preview-resource"
-	>
-		<N8nIcon icon="workflow" size="small" />
-		<span :class="$style.resourceName">{{ workflowAttachment.name ?? 'Workflow' }}</span>
-		<N8nIcon v-if="workflowAttachment.executionId" icon="play" size="xsmall" />
-	</div>
-	<div
-		v-else-if="agentAttachment"
-		:class="$style.resourceChip"
-		data-test-id="attachment-preview-resource"
-	>
-		<N8nIcon icon="robot" size="small" />
-		<span :class="$style.resourceName">{{ agentAttachment.name ?? 'Agent' }}</span>
-	</div>
+	<N8nTooltip v-if="workflowAttachment" :show-after="TOOLTIP_DELAY_MS" placement="top">
+		<template #content>
+			<span :class="$style.chipTooltip">{{ workflowTooltip }}</span>
+		</template>
+		<div
+			:class="[$style.resourceChip, $style.chipWithTooltip]"
+			data-test-id="attachment-preview-resource"
+		>
+			<N8nTag :text="workflowLabel" :clickable="false" size="lg">
+				<template #tag>
+					<span :class="$style.resourceChipContent">
+						<N8nIcon icon="workflow" size="small" />
+						<span :class="$style.resourceName">{{ workflowLabel }}</span>
+						<N8nIcon v-if="workflowAttachment.executionId" icon="play" size="xsmall" />
+					</span>
+				</template>
+			</N8nTag>
+		</div>
+	</N8nTooltip>
+	<N8nTooltip v-else-if="agentAttachment" :show-after="TOOLTIP_DELAY_MS" placement="top">
+		<template #content>
+			<span :class="$style.chipTooltip">{{ agentTooltip }}</span>
+		</template>
+		<div
+			:class="[$style.resourceChip, $style.chipWithTooltip]"
+			data-test-id="attachment-preview-resource"
+		>
+			<N8nTag :text="agentLabel" :clickable="false" size="lg">
+				<template #tag>
+					<span :class="$style.resourceChipContent">
+						<N8nIcon icon="robot" size="small" />
+						<span :class="$style.resourceName">{{ agentLabel }}</span>
+					</span>
+				</template>
+			</N8nTag>
+		</div>
+	</N8nTooltip>
 	<div v-else-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">
 		<div v-if="loading" :class="$style.loadingSkeleton">
 			<N8nIcon icon="spinner" color="primary" spin size="small" />
@@ -114,16 +161,24 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .resourceChip {
+	max-width: 100%;
+}
+
+.chipWithTooltip {
+	cursor: default;
+
+	&:hover :global(.n8n-tag) {
+		background-color: var(--tag--color--background--hover);
+		border-color: var(--tag--border-color--hover);
+	}
+}
+
+.resourceChipContent {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
 	max-width: 220px;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	background: var(--color--foreground--tint-2);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--shade-1);
+	line-height: var(--line-height--xs);
 }
 
 .resourceName {
@@ -133,6 +188,13 @@ onBeforeUnmount(() => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.chipTooltip {
+	display: block;
+	max-width: 16rem;
+	white-space: pre-line;
+	line-height: var(--line-height--md);
 }
 
 .thumbnailWrapper {

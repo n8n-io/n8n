@@ -56,8 +56,9 @@ function clearActiveOffer(): void {
 /**
  * Shared restraint rules for every proactive Instance AI offer trigger.
  * Triggers call `raise(offer)`; the bubble host reads `activeOffer` and wires
- * accept / dismiss back through this composable. State is module-scoped so
- * every caller shares one offer pipeline.
+ * accept / dismiss back through this composable. Accept opens the panel with a
+ * prefilled draft — the user still has to send. State is module-scoped so every
+ * caller shares one offer pipeline.
  */
 export function useInstanceAiProactiveOffer(): {
 	activeOffer: Ref<ProactiveOffer | null>;
