@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import type { Alias } from 'vite';
 
-import { frontendModuleAliases, frontendSourceAliases } from './source-packages.js';
+import { frontendModuleAliases, frontendSourceAliases } from './source-packages.ts';
 
 /**
  * Workspace-resolution exceptions: packages reached *transitively*, so they are not declared

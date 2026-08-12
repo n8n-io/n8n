@@ -3,8 +3,10 @@
 	"compilerOptions": {
 		"types": ["node"],
 		"module": "ESNext",
-		"moduleResolution": "bundler"
+		"moduleResolution": "bundler",
+		// No emit: consumers compile this package from source, so `.ts` specifiers are what
+		// Node's ESM loader needs when it reads these files directly (vite config loading).
+		"allowImportingTsExtensions": true
 	},
-	"include": ["**/*.ts"],
-	"exclude": ["dist"]
+	"include": ["**/*.ts"]
 }

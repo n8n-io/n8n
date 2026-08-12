@@ -3,7 +3,7 @@ export {
 	shellAliases,
 	transitiveWorkspaceAliases,
 	vendorAliases,
-} from './aliases.js';
+} from './aliases.ts';
 
 export {
 	frontendModuleAliases,
@@ -11,4 +11,4 @@ export {
 	// The tables themselves, for the guard test that checks them against tsconfig `paths`.
 	modulePackages,
 	sourcePackages,
-} from './source-packages.js';
+} from './source-packages.ts';

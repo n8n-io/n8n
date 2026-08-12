@@ -3,10 +3,6 @@ import { dirname, join, relative, resolve } from 'node:path';
 import type { Alias } from 'vite';
 import { describe, expect, it } from 'vitest';
 
-// Resolved from this package's `dist`, so a bare `pnpm vitest run vite/aliases.test.ts` after
-// editing `frontend-vite-config` reads the previous build and can pass or fail against code that is
-// no longer there. Run it through turbo (`pnpm turbo test --filter=n8n-editor-ui`), which builds
-// first, or rebuild that package by hand.
 import { frontendAliases, modulePackages, sourcePackages } from '@n8n/frontend-vite-config';
 
 import { editorUiAliases } from './aliases.mjs';

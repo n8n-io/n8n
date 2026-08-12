@@ -11,22 +11,15 @@
     "typescript": "catalog:typescript",
     "vite": "catalog:"
   },
+  "main": "index.ts",
   "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
+    ".": "./index.ts"
   },
   "scripts": {
-    "clean": "rimraf dist .turbo",
-    "dev": "pnpm watch",
+    "clean": "rimraf .turbo",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
-    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
-    "format:check": "biome ci .",
-    "watch": "tsc -p tsconfig.build.json --watch"
+    "format:check": "biome ci ."
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
