@@ -372,6 +372,7 @@ describe('Recording the review lifecycle in the feed', () => {
 			.send({
 				title: 'Please review',
 				workflows: [{ workflowId, workflowVersionId, workflowVersionName: 'Release candidate' }],
+				reviewerUserIds: [owner.id],
 			})
 			.expect(201);
 		return response.body.data.id as string;
