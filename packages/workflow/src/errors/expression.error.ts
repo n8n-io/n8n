@@ -23,7 +23,8 @@ export interface ExpressionErrorOptions {
 		| 'paired_item_multiple_matches'
 		| 'paired_item_no_connection'
 		| 'paired_item_intermediate_nodes'
-		| 'undefined_value';
+		| 'undefined_value'
+		| 'undefined_coercion';
 }
 
 /**

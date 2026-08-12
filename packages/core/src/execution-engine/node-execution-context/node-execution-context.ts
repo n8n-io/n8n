@@ -56,6 +56,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	 */
 	protected readonly respectsThrowOnUndefinedExpression: boolean = true;
 
+	/** Whether this context's node opted into failing on `undefined`. */
+	protected get throwsOnUndefinedExpression(): boolean {
+		return this.node.throwOnUndefinedExpression === true && this.respectsThrowOnUndefinedExpression;
+	}
+
 	constructor(
 		readonly workflow: Workflow,
 		readonly node: INode,
@@ -538,11 +543,16 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				false,
 				{},
 				options?.contextNode?.name,
+				this.throwsOnUndefinedExpression,
 			);
 			cleanupParameterData(returnData);
 		} catch (e) {
 			if (
 				e instanceof ExpressionError &&
+				// The setting is opt-in, so its error outranks the PAY-684 rescue:
+				// swallowing it here would no-op the setting on the very node where
+				// `Hello, undefined` most often starts.
+				e.context.type !== 'undefined_coercion' &&
 				node.continueOnFail &&
 				node.type === 'n8n-nodes-base.set'
 			) {

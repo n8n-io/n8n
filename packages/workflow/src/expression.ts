@@ -10,8 +10,14 @@ import {
 	DollarSignValidator,
 	PrototypeSanitizer,
 	ThisSanitizer,
+	UndefinedCoercionGuard,
+	guardPlus,
+	guardTemplate,
+	plusGuardName,
 	sanitizer,
 	sanitizerName,
+	templateGuardName,
+	undefinedCoercionGateName,
 } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import * as LoggerProxy from './logger-proxy';
@@ -270,7 +276,7 @@ export class Expression {
 				idleTimeoutMs: options.idleTimeoutMs,
 				hooks: {
 					before: [ThisSanitizer],
-					after: [PrototypeSanitizer, DollarSignValidator],
+					after: [PrototypeSanitizer, DollarSignValidator, UndefinedCoercionGuard],
 				},
 				logger: LoggerProxy,
 				observability: options.observability,
@@ -542,11 +548,13 @@ export class Expression {
 	 * @param {NodeParameterValue} parameterValue - The parameter value to resolve
 	 * @param {IWorkflowDataProxyData} data - The workflow data proxy data
 	 * @param {boolean} [returnObjectAsString=false] - Whether to convert objects to strings
+	 * @param {boolean} [throwOnUndefinedCoercion=false] - Whether `undefined` coerced into text fails the evaluation
 	 */
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
 		data: IWorkflowDataProxyData,
 		returnObjectAsString = false,
+		throwOnUndefinedCoercion = false,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
 		if (!isExpression(parameterValue)) {
@@ -608,6 +616,16 @@ export class Expression {
 			value: sanitizer,
 			writable: false,
 			configurable: false,
+		});
+
+		// Runtime half of `UndefinedCoercionGuard`. The gate is a plain boolean
+		// because that is what crosses the isolate bridge; the guards themselves
+		// are dead weight under the VM engine, which has its own in-isolate copies
+		// (see packages/@n8n/expression-runtime/src/runtime/context.ts).
+		Object.defineProperties(data, {
+			[undefinedCoercionGateName]: { value: throwOnUndefinedCoercion, configurable: true },
+			[plusGuardName]: { value: guardPlus, configurable: true },
+			[templateGuardName]: { value: guardTemplate, configurable: true },
 		});
 
 		Object.assign(data, extendedFunctions);

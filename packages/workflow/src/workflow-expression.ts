@@ -41,6 +41,7 @@ export class WorkflowExpression {
 		returnObjectAsString = false,
 		selfData = {},
 		contextNodeName?: string,
+		throwOnUndefinedCoercion = false,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		if (!isExpression(parameterValue)) {
 			return parameterValue;
@@ -63,7 +64,12 @@ export class WorkflowExpression {
 		);
 		const data = dataProxy.getDataProxy();
 
-		return this.expression.resolveSimpleParameterValue(parameterValue, data, returnObjectAsString);
+		return this.expression.resolveSimpleParameterValue(
+			parameterValue,
+			data,
+			returnObjectAsString,
+			throwOnUndefinedCoercion,
+		);
 	}
 
 	/**
@@ -84,6 +90,12 @@ export class WorkflowExpression {
 		returnObjectAsString = false,
 		selfData = {},
 		contextNodeName?: string,
+		/**
+		 * Opt-in per call rather than read off the node here: only a real node
+		 * execution passes it. Editor-time resolution (NDV previews, load-options)
+		 * and routing metadata leave it at `false`, where `undefined` is expected.
+		 */
+		throwOnUndefinedCoercion = false,
 	): NodeParameterValueType {
 		// Helper function which returns true when the parameter is a complex one or array
 		const isComplexParameter = (value: NodeParameterValueType) => {
@@ -109,6 +121,7 @@ export class WorkflowExpression {
 					returnObjectAsString,
 					selfData,
 					contextNodeName,
+					throwOnUndefinedCoercion,
 				);
 			}
 
@@ -126,6 +139,7 @@ export class WorkflowExpression {
 				returnObjectAsString,
 				selfData,
 				contextNodeName,
+				throwOnUndefinedCoercion,
 			);
 		};
 
@@ -145,6 +159,7 @@ export class WorkflowExpression {
 				returnObjectAsString,
 				selfData,
 				contextNodeName,
+				throwOnUndefinedCoercion,
 			);
 		}
 
