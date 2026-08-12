@@ -95,6 +95,31 @@ describe('ConfluenceCloudOAuth2Api Credential', () => {
 		expect(scopeProperty?.default).toContain(pinnedScopes.join(' '));
 	});
 
+	it('should resolve the extends chain', () => {
+		const byName = (name: string) => resolvedProperties.find((p) => p.name === name);
+
+		const domain = byName('domain');
+		expect(domain?.type).toBe('string');
+		expect(domain?.required).toBe(true);
+		expect(domain?.displayName).toBe('Site URL');
+
+		expect(byName('grantType')?.default).toBe('authorizationCode');
+		expect(byName('authUrl')?.default).toBe('https://auth.atlassian.com/authorize');
+		expect(byName('accessTokenUrl')?.default).toBe('https://auth.atlassian.com/oauth/token');
+		expect(byName('authQueryParameters')?.default).toBe(
+			'audience=api.atlassian.com&prompt=consent',
+		);
+		expect(byName('authentication')?.default).toBe('header');
+		expect(byName('customScopes')?.default).toBe(false);
+		expect(byName('enabledScopes')?.default).toBe(defaultScopes.join(' '));
+
+		const scope = byName('scope');
+		expect(scope?.type).toBe('hidden');
+		expect(scope?.default).toBe(
+			'={{$self["customScopes"] ? $self["enabledScopes"] : "' + defaultScopes.join(' ') + '"}}',
+		);
+	});
+
 	it('should inherit the Site URL field from atlassianOAuth2Api', () => {
 		// Defined on the base; the credential must not shadow it
 		expect(confluenceOAuth2Api.properties.find((p) => p.name === 'domain')).toBeUndefined();
