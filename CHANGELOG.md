@@ -1,3 +1,11 @@
+## [2.34.5](https://github.com/n8n-io/n8n/compare/n8n@2.34.4...n8n@2.34.5) (2026-08-12)
+
+
+### Bug Fixes
+
+* **core:** Apply TLS options per hop when requests go through a proxy ([#36017](https://github.com/n8n-io/n8n/issues/36017)) ([01a52b4](https://github.com/n8n-io/n8n/commit/01a52b400cfe903b24a3cc088ebf2ead523e65f7))
+
+
 ## [2.34.4](https://github.com/n8n-io/n8n/compare/n8n@2.34.3...n8n@2.34.4) (2026-08-07)
 
 
