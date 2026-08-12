@@ -16,7 +16,11 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
-import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import type {
+	WorkflowData,
+	WorkflowDataUpdate,
+	WorkflowNodeDescriptions,
+} from '@n8n/rest-api-client/api/workflows';
 import {
 	type CanvasConnectionReplacement,
 	createInputConnectionHandle,
@@ -3050,16 +3054,29 @@ export function useCanvasOperations() {
 				});
 			}
 
+			const oldToNewIdMap = new Map(
+				Object.entries(nodeIdMap).map(([newId, previousId]) => [previousId, newId]),
+			);
+
 			// Remap nodeGroup nodeIds to new node IDs
 			if (regenerateIds && workflowData.nodeGroups?.length) {
-				const oldToNewIdMap = new Map(
-					Object.entries(nodeIdMap).map(([newId, previousId]) => [previousId, newId]),
-				);
-
 				workflowData.nodeGroups = workflowData.nodeGroups.map((group) => ({
 					...group,
 					nodeIds: group.nodeIds.map((id) => oldToNewIdMap.get(id) ?? id),
 				}));
+			}
+
+			// Remap nodeDescriptions keys (tour data) to new node IDs
+			if (regenerateIds && workflowData.meta?.nodeDescriptions) {
+				workflowData.meta = {
+					...workflowData.meta,
+					nodeDescriptions: Object.fromEntries(
+						Object.entries(workflowData.meta.nodeDescriptions).map(([nodeId, description]) => [
+							oldToNewIdMap.get(nodeId) ?? nodeId,
+							description,
+						]),
+					),
+				};
 			}
 
 			removeUnknownCredentials(workflowData);
@@ -3132,11 +3149,18 @@ export function useCanvasOperations() {
 				showMaxNodeTypeError: source === 'paste' || source === 'duplicate',
 			});
 
-			applyImportedNodeGroups(
-				workflowData.nodeGroups,
-				new Set(importResult.nodes?.map((node) => node.id).filter(isPresent) ?? []),
-				{ setStateDirty, trackHistory },
+			const importedNodeIds = new Set(
+				importResult.nodes?.map((node) => node.id).filter(isPresent) ?? [],
 			);
+
+			applyImportedNodeGroups(workflowData.nodeGroups, importedNodeIds, {
+				setStateDirty,
+				trackHistory,
+			});
+
+			applyImportedNodeDescriptions(workflowData.meta?.nodeDescriptions, importedNodeIds, {
+				setStateDirty,
+			});
 
 			if (ownsImportBulk) {
 				historyStore.stopRecordingUndo();
@@ -3278,6 +3302,34 @@ export function useCanvasOperations() {
 		}
 	}
 
+	function applyImportedNodeDescriptions(
+		nodeDescriptions: WorkflowNodeDescriptions | undefined,
+		importedNodeIds: Set<string>,
+		{ setStateDirty = true }: { setStateDirty?: boolean } = {},
+	) {
+		if (!nodeDescriptions || importedNodeIds.size === 0 || !workflowDocumentStore.value) {
+			return;
+		}
+
+		const descriptionsToImport = Object.fromEntries(
+			Object.entries(nodeDescriptions).filter(([nodeId]) => importedNodeIds.has(nodeId)),
+		);
+		if (Object.keys(descriptionsToImport).length === 0) {
+			return;
+		}
+
+		workflowDocumentStore.value.addToMeta({
+			nodeDescriptions: {
+				...workflowDocumentStore.value.meta?.nodeDescriptions,
+				...descriptionsToImport,
+			},
+		});
+
+		if (setStateDirty) {
+			uiStore.markStateDirty();
+		}
+	}
+
 	function getNodesToSave(nodes: INode[]): WorkflowData {
 		if (!workflowDocumentStore.value) {
 			throw new Error('Cannot serialize nodes: workflow document store is unavailable');
@@ -3325,6 +3377,16 @@ export function useCanvasOperations() {
 		);
 		if (nodeGroups.length > 0) {
 			data.nodeGroups = nodeGroups;
+		}
+
+		const nodeDescriptions = workflowDocumentStore.value.meta?.nodeDescriptions;
+		if (nodeDescriptions) {
+			const exportedNodeDescriptions = Object.fromEntries(
+				Object.entries(nodeDescriptions).filter(([nodeId]) => exportedNodeIds.has(nodeId)),
+			);
+			if (Object.keys(exportedNodeDescriptions).length > 0) {
+				data.meta = { ...data.meta, nodeDescriptions: exportedNodeDescriptions };
+			}
 		}
 
 		workflowHelpers.removeForeignCredentialsFromWorkflow(data, credentialsStore.allCredentials);
@@ -3401,7 +3463,6 @@ export function useCanvasOperations() {
 
 		workflowData.meta = {
 			...workflowData.meta,
-			...workflowDocumentStore.value.meta,
 			instanceId: rootStore.instanceId,
 		};
 

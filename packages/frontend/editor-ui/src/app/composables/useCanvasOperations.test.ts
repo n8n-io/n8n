@@ -4576,6 +4576,86 @@ describe('useCanvasOperations', () => {
 
 			expect(copiedData.nodeGroups).toBeUndefined();
 		});
+
+		it('should filter nodeDescriptions to only the copied nodes', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const nodes = buildImportNodes();
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'meta', 'get').mockReturnValue({
+				nodeDescriptions: {
+					'1': { summary: 'Node 1 summary' },
+					'2': { summary: 'Node 2 summary' },
+					'3': { summary: 'A node that is not part of this selection' },
+				},
+			});
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { getNodesToSave } = useCanvasOperations();
+			const copiedData = getNodesToSave([nodes[0]]);
+
+			expect(copiedData.meta?.nodeDescriptions).toEqual({
+				'1': { summary: 'Node 1 summary' },
+			});
+		});
+
+		it('should not add a meta field when no node in the selection has a description', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const nodes = buildImportNodes();
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'meta', 'get').mockReturnValue({
+				nodeDescriptions: {
+					'3': { summary: 'A node that is not part of this selection' },
+				},
+			});
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { getNodesToSave } = useCanvasOperations();
+			const copiedData = getNodesToSave(nodes);
+
+			expect(copiedData.meta).toBeUndefined();
+		});
+
+		it('should not leak the whole document meta into a copy of a partial selection', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const nodes = buildImportNodes();
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([nodes[0]]);
+			vi.spyOn(workflowDocumentStoreInstance, 'meta', 'get').mockReturnValue({
+				nodeDescriptions: {
+					'1': { summary: 'Node 1 summary' },
+					'2': { summary: 'Node 2 summary' },
+				},
+			});
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { copyNodes } = useCanvasOperations();
+			await copyNodes(['1']);
+
+			const [[copiedJson]] = vi.mocked(useClipboard().copy).mock.calls;
+			const copiedData = JSON.parse(copiedJson as string);
+
+			expect(copiedData.meta.nodeDescriptions).toEqual({
+				'1': { summary: 'Node 1 summary' },
+			});
+		});
 	});
 
 	describe('cutNodes', () => {
@@ -6202,6 +6282,117 @@ describe('useCanvasOperations', () => {
 				startCollapsed: true,
 			});
 			expect(workflowDocumentStoreInstance.getNextDefaultName).not.toHaveBeenCalled();
+		});
+
+		it('should remap and apply nodeDescriptions to new node IDs when regenerating IDs', async () => {
+			const oldId1 = 'old-node-id-1';
+			const oldId2 = 'old-node-id-2';
+
+			const workflowDataWithDescriptions = {
+				nodes: [
+					{
+						id: oldId1,
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: oldId2,
+						name: 'Node 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+				meta: {
+					nodeDescriptions: {
+						[oldId1]: { summary: 'First node' },
+						[oldId2]: { summary: 'Second node', rationale: 'Because reasons' },
+					},
+				},
+			};
+
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes,
+						connections,
+					}),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData(
+				workflowDataWithDescriptions,
+				'paste',
+				{
+					regenerateIds: true,
+				},
+			);
+
+			const newId1 = result.nodes![0].id;
+			const newId2 = result.nodes![1].id;
+			expect(newId1).not.toBe(oldId1);
+			expect(newId2).not.toBe(oldId2);
+
+			expect(workflowDocumentStoreInstance.addToMeta).toHaveBeenCalledWith({
+				nodeDescriptions: {
+					[newId1]: { summary: 'First node' },
+					[newId2]: { summary: 'Second node', rationale: 'Because reasons' },
+				},
+			});
+		});
+
+		it('should not apply nodeDescriptions for nodes that failed to import', async () => {
+			const oldId1 = 'old-node-id-1';
+
+			const workflowDataWithDescriptions = {
+				nodes: [
+					{
+						id: oldId1,
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+				meta: {
+					nodeDescriptions: {
+						[oldId1]: { summary: 'First node' },
+						'unrelated-node-id': { summary: 'Not part of this import' },
+					},
+				},
+			};
+
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes,
+						connections,
+					}),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData(
+				workflowDataWithDescriptions,
+				'paste',
+				{
+					regenerateIds: true,
+				},
+			);
+
+			const newId1 = result.nodes![0].id;
+
+			expect(workflowDocumentStoreInstance.addToMeta).toHaveBeenCalledWith({
+				nodeDescriptions: {
+					[newId1]: { summary: 'First node' },
+				},
+			});
 		});
 
 		it('should deduplicate imported group names only when they already exist', async () => {
