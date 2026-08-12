@@ -2,8 +2,8 @@ import CanvasConnectionLine from './CanvasConnectionLine.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import type { ConnectionLineProps } from '@vue-flow/core';
-import { Position } from '@vue-flow/core';
+import type { ConnectionLineProps } from '@/features/workflows/canvas/vueFlow.adapter';
+import { Position } from '@/features/workflows/canvas/vueFlow.adapter';
 import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
 

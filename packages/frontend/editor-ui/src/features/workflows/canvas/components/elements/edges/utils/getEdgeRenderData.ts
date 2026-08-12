@@ -1,5 +1,9 @@
-import type { EdgeProps } from '@vue-flow/core';
-import { getBezierPath, getSmoothStepPath, Position } from '@vue-flow/core';
+import type { EdgeProps } from '@/features/workflows/canvas/vueFlow.adapter';
+import {
+	getBezierPath,
+	getSmoothStepPath,
+	Position,
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType } from 'n8n-workflow';
 

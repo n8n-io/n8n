@@ -25,7 +25,11 @@ import {
 } from '@/features/workflows/canvas/stores/canvasNodeGroups.constants';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import type { GraphEdge, GraphNode, ViewportTransform } from '@vue-flow/core';
+import type {
+	GraphEdge,
+	GraphNode,
+	ViewportTransform,
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 

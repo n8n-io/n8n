@@ -2,7 +2,7 @@
 import { renderComponent } from '@/__tests__/render';
 import { type CanvasNode } from '../canvas.types';
 import { fireEvent } from '@testing-library/dom';
-import { type Rect, useVueFlow, VueFlow } from '@vue-flow/core';
+import { type Rect, useVueFlow, VueFlow } from '@/features/workflows/canvas/vueFlow.adapter';
 import { describe, expect, it } from 'vitest';
 import { computed, defineComponent, h } from 'vue';
 import { useCanvasNodeHover } from './useCanvasNodeHover';

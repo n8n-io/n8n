@@ -2,8 +2,8 @@
 import { computed, h, provide, toRef, useCssModule } from 'vue';
 import type { CanvasConnectionPort, CanvasElementPortWithRenderData } from '../../../canvas.types';
 import { CanvasConnectionMode } from '../../../canvas.types';
-import type { ValidConnectionFunc } from '@vue-flow/core';
-import { Handle } from '@vue-flow/core';
+import type { ValidConnectionFunc } from '@/features/workflows/canvas/vueFlow.adapter';
+import { Handle } from '@/features/workflows/canvas/vueFlow.adapter';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import CanvasHandleMainInput from './render-types/CanvasHandleMainInput.vue';
 import CanvasHandleMainOutput from './render-types/CanvasHandleMainOutput.vue';

@@ -8,7 +8,7 @@ import type {
 } from '@/features/workflows/canvas/canvas.types';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
-import { useVueFlow } from '@vue-flow/core';
+import { useVueFlow } from '@/features/workflows/canvas/vueFlow.adapter';
 import { watch } from 'vue';
 import Canvas from '@/features/workflows/canvas/components/Canvas.vue';
 import { createEventBus } from '@n8n/utils/event-bus';

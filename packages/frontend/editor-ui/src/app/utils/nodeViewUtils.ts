@@ -26,7 +26,7 @@ import {
 	type GraphNode,
 	type Rect,
 	type ViewportTransform,
-} from '@vue-flow/core';
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import * as workflowUtils from 'n8n-workflow/common';
 
 /*

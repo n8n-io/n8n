@@ -15,7 +15,7 @@ import type {
 	CanvasNodeDefaultRenderLabelSize,
 } from './canvas.types';
 import { CanvasConnectionMode } from './canvas.types';
-import type { Connection } from '@vue-flow/core';
+import type { Connection } from '@/features/workflows/canvas/vueFlow.adapter';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';

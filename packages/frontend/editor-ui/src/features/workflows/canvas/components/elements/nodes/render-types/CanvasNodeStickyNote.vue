@@ -3,9 +3,8 @@
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
 import { ref, computed, useCssModule, onMounted, onBeforeUnmount } from 'vue';
-import { NodeResizer } from '@vue-flow/node-resizer';
-import type { OnResize } from '@vue-flow/node-resizer';
-import type { XYPosition } from '@vue-flow/core';
+import { NodeResizer } from '@/features/workflows/canvas/vueFlow.adapter';
+import type { OnResize, XYPosition } from '@/features/workflows/canvas/vueFlow.adapter';
 
 import { N8nSticky } from '@n8n/design-system';
 defineOptions({
