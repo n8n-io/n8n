@@ -1,0 +1,62 @@
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.test.ts
+  s_90002f1fe023d1::t_1a50602dd5a9b6 1-7,9-131
+  s_90002f1fe023d1::t_a84ff0294cc524 8
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-generate-sample-data-request.dto.ts
+  s_90002f1fe023d1::t_2fa56e0ac1bbaa 1
+  s_90002f1fe023d1::t_b9d33f7dc157c3 17-26
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_90002f1fe023d1::t_633cd6e4317ca0 1982-1990
+packages/frontend/editor-ui/src/features/ndv/shared/composables/useGenerateSampleData.ts
+  s_90002f1fe023d1::t_7dabe28d09b5e1 105-117
+  s_90002f1fe023d1::t_42d37fc13b5f9f 1-75,77-104,118-126
+  s_90002f1fe023d1::t_0a3d23cae08e21 76
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_90002f1fe023d1::t_287bb048e19138 476-491
+  s_90002f1fe023d1::t_5cc719d493d489 11
+  s_90002f1fe023d1::t_fdc3869876fbb4 271-282
+  s_90002f1fe023d1::t_093bd5acbb88e1 99-108
+packages/frontend/editor-ui/src/features/ndv/shared/composables/useGenerateSampleData.test.ts
+  s_90002f1fe023d1::t_8650de8a5132f6 196
+  s_90002f1fe023d1::t_60de89aaac222e 182
+  s_90002f1fe023d1::t_7cb938aff28ec4 1-181,183-195,197-272
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_90002f1fe023d1::t_19441ce1e136cf 43-54,66-70
+  s_90002f1fe023d1::t_640b6db9145548 39
+  s_90002f1fe023d1::t_a84ff0294cc524 55-65
+  s_90002f1fe023d1::t_b923004df1fa7c 1548,1563
+  s_90002f1fe023d1::t_238e2db79740db 1605-1607
+  s_90002f1fe023d1::t_dd0fc17f1dabd0 155-189
+  s_90002f1fe023d1::t_0715a91da8f95c 1608
+packages/frontend/editor-ui/src/app/composables/usePinnedData.ts
+  s_90002f1fe023d1::t_f6323b730343e8 42-43
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_90002f1fe023d1::t_15e47ed0177518 1596-1609
+  s_90002f1fe023d1::t_ad3080c6ff4a48 317-327
+  s_90002f1fe023d1::t_b6f5c0dcb4bc57 654-661
+  s_90002f1fe023d1::t_39222ab8e83355 57
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_90002f1fe023d1::t_e90fc9e830dd1b 198,211-212
+  s_90002f1fe023d1::t_a6f185c3e47dec 15-16
+  s_90002f1fe023d1::t_67aa793587d095 197,199-210,213-219
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.api.test.ts
+  s_90002f1fe023d1::t_a10e973540abe6 5-6,8,24,46
+  s_90002f1fe023d1::t_336dbe75fc4e9b 1-4,7,9-23,25-45,47-60
+packages/@n8n/api-types/src/dto/index.ts
+  s_90002f1fe023d1::t_2fa56e0ac1bbaa 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a42b6d6c1ef87a95f247ff854cdc54b42414ea08",
+  "prompts": {},
+  "sessions": {
+    "s_90002f1fe023d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9dd1c3f-0c3e-4ea6-9f03-3f9ec6951428",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
