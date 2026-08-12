@@ -1,9 +1,4 @@
-import {
-	Agent as RuntimeAgent,
-	type BuiltAgent,
-	type BuiltTool,
-	type CredentialProvider,
-} from '@n8n/agents';
+import { type AgentRuntimeInstance, type BuiltTool, type CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
@@ -49,6 +44,24 @@ import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { describeStructuredOutputError } from './utils/structured-output-error';
 
+function supportsPerCallTools(agent: AgentRuntimeInstance): agent is AgentRuntimeInstance & {
+	readonly declaredTools: readonly BuiltTool[];
+	tool(tools: readonly BuiltTool[]): unknown;
+} {
+	return (
+		'declaredTools' in agent &&
+		Array.isArray(agent.declaredTools) &&
+		'tool' in agent &&
+		typeof agent.tool === 'function'
+	);
+}
+
+function supportsStructuredOutput(
+	agent: AgentRuntimeInstance,
+): agent is AgentRuntimeInstance & { structuredOutput(schema: JSONSchema7): unknown } {
+	return 'structuredOutput' in agent && typeof agent.structuredOutput === 'function';
+}
+
 /**
  * Executes agents invoked from inside a workflow execution (the AI Agent node
  * or a "Message an Agent" tool call): non-streaming runs against isolated
@@ -88,14 +101,26 @@ export class AgentWorkflowExecutionService {
 	 * it instead so the agent author can rename their tool.
 	 */
 	private applyPerCallAgentExtras(
-		reconstructed: RuntimeAgent,
+		reconstructed: AgentRuntimeInstance,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
-	): { ok: boolean; agent?: BuiltAgent; error?: string } {
+	): { ok: boolean; agent?: AgentRuntimeInstance; error?: string } {
 		if (outputSchema) {
+			if (!supportsStructuredOutput(reconstructed)) {
+				return {
+					ok: false,
+					error: 'Structured output is not currently supported for harness workflow execution.',
+				};
+			}
 			reconstructed.structuredOutput(outputSchema);
 		}
 		if (extraTools?.length) {
+			if (!supportsPerCallTools(reconstructed)) {
+				return {
+					ok: false,
+					error: 'This agent runtime cannot accept workflow context tools.',
+				};
+			}
 			const declared = new Set(reconstructed.declaredTools.map((t) => t.name));
 			const collisions = extraTools.filter((t) => declared.has(t.name)).map((t) => t.name);
 			if (collisions.length) {
@@ -111,7 +136,7 @@ export class AgentWorkflowExecutionService {
 			}
 			reconstructed.tool(extraTools);
 		}
-		return { ok: true, agent: reconstructed as BuiltAgent };
+		return { ok: true, agent: reconstructed };
 	}
 
 	/**
@@ -125,16 +150,9 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
-	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
+	): Promise<{ ok: boolean; agent?: AgentRuntimeInstance; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
-		}
-		if (agentEntity.schema.engine?.type === 'harness') {
-			return {
-				ok: false,
-				error:
-					'Harness agents cannot currently be invoked from workflow or queue-worker executions.',
-			};
 		}
 
 		try {
@@ -151,9 +169,6 @@ export class AgentWorkflowExecutionService {
 					credentialProvider,
 					runType,
 				);
-			if (!(reconstructed instanceof RuntimeAgent)) {
-				return { ok: false, error: 'Harness agents are not supported in workflow execution.' };
-			}
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {
 			return {
@@ -180,7 +195,7 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
-	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
+	): Promise<{ ok: boolean; agent?: AgentRuntimeInstance; error?: string }> {
 		if (config.engine?.type === 'harness') {
 			return {
 				ok: false,
@@ -224,9 +239,10 @@ export class AgentWorkflowExecutionService {
 
 	/** Stream one workflow-invoked agent run and collect its outcome. */
 	private async streamWorkflowAgent(params: {
-		agentInstance: BuiltAgent;
+		agentInstance: AgentRuntimeInstance;
 		message: string;
 		threadId: string;
+		persistenceResourceId: string;
 		telemetryAgentId: string;
 		telemetryUserId?: string;
 		runType: AgentRunTelemetryType;
@@ -244,6 +260,7 @@ export class AgentWorkflowExecutionService {
 			agentInstance,
 			message,
 			threadId,
+			persistenceResourceId,
 			telemetryAgentId,
 			telemetryUserId,
 			runType,
@@ -298,14 +315,10 @@ export class AgentWorkflowExecutionService {
 				});
 
 				const resultStream = await agentInstance.stream(message, {
-					// The memory store scopes message reads by `resourceId` (the
-					// "per-user scope"; chat integrations pass the chat user id there).
-					// Workflow runs have no user, so key the scope by the thread
-					// itself: it is stable across executions, which is what lets a
-					// caller-supplied session id actually continue the conversation.
-					// The previous key — the execution id — changed every run and hid
-					// all prior messages of the thread from the model.
-					persistence: { resourceId: threadId, threadId },
+					// Native memory stays thread-scoped. Harness workflows use a
+					// workflow-scoped resource id so their Daytona workspace is reused
+					// while each conversation retains its own thread state.
+					persistence: { resourceId: persistenceResourceId, threadId },
 					executionCounter: createAgentExecutionCounter(this.telemetry, {
 						agentId: telemetryAgentId,
 						userId: telemetryUserId,
@@ -468,6 +481,12 @@ export class AgentWorkflowExecutionService {
 		}
 		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
 		const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
+		const isHarness = agentData.schema?.engine?.type === 'harness';
+		const workflowId = workflowContext?.workflowId;
+		if (isHarness && !workflowId) {
+			throw new OperationalError('Harness workflow execution requires a workflow ID.');
+		}
+		const persistenceResourceId = isHarness && workflowId ? `workflow:${workflowId}` : threadId;
 
 		const extraTools = this.buildWorkflowExtraTools(workflowContext);
 		const compiled = await this.compileIsolated(
@@ -486,6 +505,7 @@ export class AgentWorkflowExecutionService {
 			agentInstance,
 			message,
 			threadId,
+			persistenceResourceId,
 			telemetryAgentId: agentId,
 			telemetryUserId,
 			runType,
@@ -626,6 +646,7 @@ export class AgentWorkflowExecutionService {
 			agentInstance: compiled.agent,
 			message,
 			threadId,
+			persistenceResourceId: threadId,
 			telemetryAgentId: syntheticAgentId,
 			telemetryUserId,
 			runType,

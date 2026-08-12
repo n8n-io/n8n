@@ -87,9 +87,34 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 
 	readonly snapshot: { readonly model: { provider: string | null; name: string | null } };
 
+	private readonly tools: BuiltTool[];
+
+	private readonly additionalToolInstructions: string[] = [];
+
 	constructor(private readonly settings: HarnessRuntimeAgentSettings) {
 		this.name = settings.name;
 		this.snapshot = { model: getSnapshotModel(settings.model) };
+		this.tools = [...(settings.tools ?? [])];
+	}
+
+	get declaredTools(): readonly BuiltTool[] {
+		return this.tools;
+	}
+
+	tool(toolOrTools: BuiltTool | readonly BuiltTool[]): this {
+		const additions: readonly BuiltTool[] = Array.isArray(toolOrTools)
+			? toolOrTools
+			: [toolOrTools];
+		const names = new Set(this.tools.map((tool) => tool.name));
+		for (const tool of additions) {
+			if (names.has(tool.name)) {
+				throw new UserError(`Agent tool "${tool.name}" is already registered`);
+			}
+			names.add(tool.name);
+			this.tools.push(tool);
+			if (tool.systemInstruction) this.additionalToolInstructions.push(tool.systemInstruction);
+		}
+		return this;
 	}
 
 	hasCheckpointStorage(): boolean {
@@ -137,7 +162,7 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 		const lifecycle: HarnessStreamLifecycleEmitter = {
 			emit: (chunk) => pendingLifecycle.push(chunk),
 		};
-		const tools = toHarnessTools(this.settings.tools ?? [], {
+		const tools = toHarnessTools(this.tools, {
 			runId,
 			persistence,
 			execution: { ...options, abortSignal },
@@ -146,7 +171,7 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 		const agent = new HarnessAgent({
 			harness: this.settings.harness,
 			sandbox: this.settings.createSandboxProvider(claim),
-			instructions: this.settings.instructions,
+			instructions: [this.settings.instructions, ...this.additionalToolInstructions].join('\n\n'),
 			permissionMode: 'allow-all',
 			tools,
 			...(this.settings.sandboxConfig ? { sandboxConfig: this.settings.sandboxConfig } : {}),
