@@ -1,4 +1,4 @@
-import type { IDataObject } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type { Iso8601DateTimeString } from './datetime';
 import type { WorkflowReviewEligibleReviewer } from './workflow-review-eligible-reviewer';
@@ -22,6 +22,45 @@ export type WorkflowReviewActivityType =
 	 * approval writes `review.approved` instead, never both. */
 	| 'review.closed';
 
+// These are the typeVersion 1 shapes. A typeVersion 2 gets its own schema, its own
+// union member and its own mapper case; never widen one of these in place.
+export const workflowReviewClosedReasonSchema = z.enum([
+	'workflow-archived',
+	'workflow-moved',
+	'workflow-deleted',
+]);
+export type WorkflowReviewClosedReason = z.infer<typeof workflowReviewClosedReasonSchema>;
+
+export const workflowReviewOpenedActivityDataSchema = z.object({
+	workflowVersionIds: z.array(z.string()),
+});
+export type WorkflowReviewOpenedActivityData = z.infer<
+	typeof workflowReviewOpenedActivityDataSchema
+>;
+
+export const workflowReviewDecisionActivityDataSchema = z.object({
+	workflowVersionIds: z.array(z.string()),
+	note: z.string().nullable(),
+});
+export type WorkflowReviewDecisionActivityData = z.infer<
+	typeof workflowReviewDecisionActivityDataSchema
+>;
+
+export const workflowReviewVersionUpdatedActivityDataSchema = z.object({
+	fromVersionId: z.string().nullable(),
+	toVersionId: z.string().nullable(),
+});
+export type WorkflowReviewVersionUpdatedActivityData = z.infer<
+	typeof workflowReviewVersionUpdatedActivityDataSchema
+>;
+
+export const workflowReviewClosedActivityDataSchema = z.object({
+	reason: workflowReviewClosedReasonSchema,
+});
+export type WorkflowReviewClosedActivityData = z.infer<
+	typeof workflowReviewClosedActivityDataSchema
+>;
+
 type WorkflowReviewActivityBase = {
 	/** Int in the database, string on the wire. */
 	id: string;
@@ -43,6 +82,8 @@ export type WorkflowReviewActivityMessage = {
 
 /**
  * Total over every type the CHECK constraint allows, so no stored row is ever unmappable.
+ * `data: null` on a non-comment entry means the stored payload did not parse; the renderer
+ * degrades rather than dropping the entry.
  */
 export type WorkflowReviewActivityEntry =
 	| (WorkflowReviewActivityBase & {
@@ -51,6 +92,22 @@ export type WorkflowReviewActivityEntry =
 			messages: WorkflowReviewActivityMessage[];
 	  })
 	| (WorkflowReviewActivityBase & {
-			type: Exclude<WorkflowReviewActivityType, 'comment.created'>;
-			data: IDataObject | null;
+			type: 'review.opened';
+			data: WorkflowReviewOpenedActivityData | null;
+	  })
+	| (WorkflowReviewActivityBase & {
+			type: 'review.changes_requested' | 'review.approved';
+			data: WorkflowReviewDecisionActivityData | null;
+	  })
+	| (WorkflowReviewActivityBase & {
+			type: 'review.version_updated';
+			data: WorkflowReviewVersionUpdatedActivityData | null;
+	  })
+	| (WorkflowReviewActivityBase & {
+			type: 'review.closed';
+			data: WorkflowReviewClosedActivityData | null;
+	  })
+	| (WorkflowReviewActivityBase & {
+			type: 'workflow.published';
+			data: null;
 	  });
