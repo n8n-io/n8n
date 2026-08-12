@@ -13,9 +13,9 @@ import type { UiAction, UiActionStep, UiWebhookStep } from './types';
  * or a page's `onEnter`.
  */
 export const ACTION_KINDS = [
-	{ kind: 'webhook', label: 'Call a webhook', short: 'Webhook' },
-	{ kind: 'notify', label: 'Show a notification', short: 'Notify' },
-	{ kind: 'navigate', label: 'Go to a page', short: 'Go to page' },
+	{ kind: 'webhook', label: 'Call the workflow', short: 'Workflow', icon: 'workflow' },
+	{ kind: 'notify', label: 'Show a notification', short: 'Notify', icon: 'bell' },
+	{ kind: 'navigate', label: 'Go to a page', short: 'Go to page', icon: 'arrow-right' },
 ] as const;
 
 export type UiActionKind = (typeof ACTION_KINDS)[number]['kind'];
@@ -36,9 +36,16 @@ function readStep(value: unknown): UiActionStep | undefined {
 	const kind = typeof step.kind === 'string' ? step.kind : step.url ? 'webhook' : undefined;
 
 	if (kind === 'webhook') {
-		return typeof step.url === 'string' && step.url
-			? { kind, url: step.url, method: step.method === 'GET' ? 'GET' : 'POST' }
-			: undefined;
+		// Unlike notify/navigate, an empty url can arrive here two ways: a step
+		// the editor just appended and one not yet pointed at a trigger, and a
+		// legacy `{}` with no kind and no url, which never reaches this branch
+		// (its kind comes out undefined above). So an explicit 'webhook' kind
+		// with an empty url is a real, still-unconfigured step, not "no action".
+		return {
+			kind,
+			url: typeof step.url === 'string' ? step.url : '',
+			method: step.method === 'GET' ? 'GET' : 'POST',
+		};
 	}
 
 	if (kind === 'notify') {
@@ -104,4 +111,3 @@ export function isActionInFlight(
 		webhookUrls(normaliseAction(nodeProps[name])).some((url) => loading[actionKey(url)]),
 	);
 }
-

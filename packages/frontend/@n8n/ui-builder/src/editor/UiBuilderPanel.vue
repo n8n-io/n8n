@@ -6,6 +6,7 @@ import {
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIconButton,
+	N8nResizeWrapper,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -17,6 +18,7 @@ import UiRenderer from '../renderer/UiRenderer.vue';
 import { useActionPreview } from './composables/useActionPreview';
 import { useOutline } from './composables/useOutline';
 import { usePages } from './composables/usePages';
+import { useUiBuilderLayout } from './composables/useUiBuilderLayout';
 import { useUiDocument } from './composables/useUiDocument';
 import { useWebhookTargets } from './composables/useWebhookTargets';
 import { UiTooltipParentKey, type UiBuilderHost } from './host';
@@ -50,13 +52,20 @@ const emit = defineEmits<{ update: [json: string] }>();
 const open = ref(false);
 const readOnly = computed(() => Boolean(props.readOnly));
 
+/**
+ * Preview strips the canvas down to what `UiRenderer` renders for the running
+ * app: no selection outline, no hover, no click-to-select. Toggled rather than
+ * a separate view, so it stays the same document and the same scroll position.
+ */
+const previewMode = ref(false);
+
 const {
 	doc,
 	selectedId,
+	selectedRegion,
 	hoveredId,
 	selected,
-	selectedRegions,
-	targetRegion,
+	selectedPseudo,
 	inspectorProps,
 	palette,
 	paletteCount,
@@ -64,6 +73,8 @@ const {
 	summary,
 	commit,
 	setProp,
+	selectNode,
+	selectRegion,
 	addComponent,
 	deleteSelected,
 	deleteNode,
@@ -82,7 +93,22 @@ const {
 	selectPage,
 } = usePages(doc, commit, selectedId, readOnly);
 
-const { outlineRows, indentOf } = useOutline(doc);
+const { outlineRows, indentOf, toggleCollapsed } = useOutline(
+	doc,
+	computed(() => editingPage.value?.id),
+);
+
+const {
+	paletteWidth,
+	pagesOutlineWidth,
+	inspectorWidth,
+	paletteBounds,
+	pagesOutlineBounds,
+	inspectorBounds,
+	onPaletteResize,
+	onPagesOutlineResize,
+	onInspectorResize,
+} = useUiBuilderLayout();
 
 const {
 	localTargets,
@@ -174,7 +200,7 @@ function isTextEntry(target: EventTarget | null): boolean {
  * itself, so a handler on any pane would never see the key.
  */
 function onKeydown(event: KeyboardEvent) {
-	if (!open.value || readOnly.value || !selectedId.value) return;
+	if (!open.value || readOnly.value || previewMode.value || !selectedId.value) return;
 	// The picker sits on top of the builder, so Delete there is aimed at it.
 	if (pickerOpen.value || renamingId.value) return;
 	if (isTextEntry(event.target)) return;
@@ -193,10 +219,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
  * still closes.
  */
 function onEscape(event: KeyboardEvent) {
-	if (!selectedId.value || isTextEntry(event.target)) return;
+	if ((!selectedId.value && !selectedRegion.value) || isTextEntry(event.target)) return;
 
 	event.preventDefault();
-	selectedId.value = undefined;
+	selectNode(undefined);
 }
 </script>
 
@@ -217,49 +243,80 @@ function onEscape(event: KeyboardEvent) {
 			</N8nDialogHeader>
 
 			<div class="ui-builder__layout">
-				<PalettePane
-					:sections="palette"
-					:count="paletteCount"
-					:disabled="readOnly"
-					@add="addComponent"
-				/>
+				<N8nResizeWrapper
+					class="ui-builder__resizer"
+					:width="paletteWidth"
+					:min-width="paletteBounds.min"
+					:max-width="paletteBounds.max"
+					:grid-size="1"
+					:supported-directions="['right']"
+					:style="{ width: `${paletteWidth}px` }"
+					@resize="onPaletteResize"
+				>
+					<PalettePane
+						:sections="palette"
+						:count="paletteCount"
+						:disabled="readOnly"
+						@add="addComponent"
+					/>
+				</N8nResizeWrapper>
 
 				<!--
 					Pages above the outline: picking one changes what the outline below
 					is showing, so the two read as one column doing that.
 				-->
-				<div class="ui-builder__column">
-					<PagesPane
-						class="ui-builder__pages"
-						:pages="pages"
-						:current-id="editingPage?.id"
-						:default-id="defaultPage?.id"
-						:renaming-id="renamingId"
-						:disabled="readOnly"
-						@add="addPage"
-						@select="selectPage"
-						@remove="removePage"
-						@make-default="makeDefault"
-						@rename="renamePage"
-						@update:renaming-id="renamingId = $event"
-					/>
+				<N8nResizeWrapper
+					class="ui-builder__resizer"
+					:width="pagesOutlineWidth"
+					:min-width="pagesOutlineBounds.min"
+					:max-width="pagesOutlineBounds.max"
+					:grid-size="1"
+					:supported-directions="['right']"
+					:style="{ width: `${pagesOutlineWidth}px` }"
+					@resize="onPagesOutlineResize"
+				>
+					<div class="ui-builder__column">
+						<PagesPane
+							class="ui-builder__pages"
+							:pages="pages"
+							:current-id="editingPage?.id"
+							:default-id="defaultPage?.id"
+							:renaming-id="renamingId"
+							:disabled="readOnly"
+							@add="addPage"
+							@select="selectPage"
+							@remove="removePage"
+							@make-default="makeDefault"
+							@rename="renamePage"
+							@update:renaming-id="renamingId = $event"
+						/>
 
-					<OutlinePane
-						:rows="outlineRows"
-						:count="componentCount"
-						:selected-id="selectedId"
-						:disabled="readOnly"
-						:indent-of="indentOf"
-						@select="selectedId = $event"
-						@move="moveNode"
-						@remove="deleteNode"
-					/>
-				</div>
+						<OutlinePane
+							:rows="outlineRows"
+							:count="componentCount"
+							:selected-id="selectedId"
+							:selected-region="selectedRegion"
+							:disabled="readOnly"
+							:indent-of="indentOf"
+							@select="selectNode"
+							@select-region="selectRegion"
+							@move="moveNode"
+							@remove="deleteNode"
+							@toggle-collapsed="toggleCollapsed"
+						/>
+					</div>
+				</N8nResizeWrapper>
 
 				<section class="ui-builder__canvas">
 					<div class="ui-builder__toolbar">
 						<N8nText size="small" color="text-light">
-							{{ selected ? `${selected.type} · ${selected.id}` : 'Nothing selected' }}
+							{{
+								selected
+									? `${selected.type} · ${selected.id}`
+									: selectedPseudo
+										? selectedPseudo.label
+										: 'Nothing selected'
+							}}
 						</N8nText>
 
 						<!-- Which page is on screen, since the canvas shows one at a time. -->
@@ -271,13 +328,25 @@ function onEscape(event: KeyboardEvent) {
 							preview: {{ previewStatus }}
 						</N8nText>
 
+						<N8nTooltip
+							:content="previewMode ? 'Back to editing' : 'Preview without editing chrome'"
+						>
+							<N8nIconButton
+								variant="ghost"
+								size="small"
+								:icon="previewMode ? 'eye-off' : 'eye'"
+								:aria-label="previewMode ? 'Back to editing' : 'Preview without editing chrome'"
+								@click="previewMode = !previewMode"
+							/>
+						</N8nTooltip>
+
 						<N8nTooltip content="Delete the selected component">
 							<N8nIconButton
 								variant="ghost"
 								size="small"
 								icon="trash-2"
 								aria-label="Delete the selected component"
-								:disabled="readOnly || !selectedId || selectedId === doc.id"
+								:disabled="readOnly || previewMode || !selectedId || selectedId === doc.id"
 								@click="deleteSelected"
 							/>
 						</N8nTooltip>
@@ -287,32 +356,41 @@ function onEscape(event: KeyboardEvent) {
 						<UiRenderer
 							:node="doc"
 							:scope="canvasScope"
-							:edit="true"
+							:edit="!previewMode"
 							:selected-id="selectedId"
 							:hovered-id="hoveredId"
-							:on-select="(id: string) => (selectedId = id)"
+							:on-select="selectNode"
 							:on-hover="(id?: string) => (hoveredId = id)"
 						/>
 					</div>
 				</section>
 
-				<InspectorPane
-					:node="selected"
-					:descriptors="inspectorProps"
-					:regions="selectedRegions"
-					:target-region="targetRegion"
-					:pages="pages"
-					:targets="localTargets"
-					:scope="inspectorScope"
-					:disabled="readOnly"
-					:label-for="labelForUrl"
-					:browse="pickExternal"
-					:create-trigger="createTrigger"
-					:run="(url: string) => void runAction(url)"
-					:history="(url: string) => void loadLastExecution(url)"
-					@set-prop="setProp"
-					@update:target-region="targetRegion = $event"
-				/>
+				<N8nResizeWrapper
+					class="ui-builder__resizer"
+					:width="inspectorWidth"
+					:min-width="inspectorBounds.min"
+					:max-width="inspectorBounds.max"
+					:grid-size="1"
+					:supported-directions="['left']"
+					:style="{ width: `${inspectorWidth}px` }"
+					@resize="onInspectorResize"
+				>
+					<InspectorPane
+						:node="selected"
+						:pseudo="selectedPseudo"
+						:descriptors="inspectorProps"
+						:pages="pages"
+						:targets="localTargets"
+						:scope="inspectorScope"
+						:disabled="readOnly"
+						:label-for="labelForUrl"
+						:browse="pickExternal"
+						:create-trigger="createTrigger"
+						:run="(url: string) => void runAction(url)"
+						:history="(url: string) => void loadLastExecution(url)"
+						@set-prop="setProp"
+					/>
+				</N8nResizeWrapper>
 			</div>
 		</div>
 	</N8nDialog>
@@ -354,21 +432,37 @@ function onEscape(event: KeyboardEvent) {
 .ui-builder__layout {
 	flex: 1;
 	min-height: 0;
-	display: grid;
+	display: flex;
 	/*
-	 * `minmax(0, …)` on both axes: without it the row is `auto` and the panes
-	 * grow to fit their content instead of scrolling inside themselves.
+	 * A plain flex row: each resizable column carries its own pixel width
+	 * (from `useUiBuilderLayout`), the canvas fills whatever is left. Flex's
+	 * default `align-items: stretch` gives every column the row's full height,
+	 * same as grid did before.
 	 */
-	grid-template-columns: 200px 220px minmax(0, 1fr) 320px;
-	grid-template-rows: minmax(0, 1fr);
 	gap: var(--spacing--xs);
 	overflow: hidden;
+}
+
+/*
+ * Sized entirely by its own inline `width` (bound to a resizable column's
+ * width ref) — never grows or shrinks on its own. `:deep` reaches into
+ * `PaneShell`'s root so the pane actually fills the height this wrapper
+ * gets from the flex row, instead of shrinking to its content.
+ */
+.ui-builder__resizer {
+	flex: 0 0 auto;
+	min-height: 0;
+}
+
+.ui-builder__resizer :deep(.ui-pane) {
+	height: 100%;
 }
 
 .ui-builder__column {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	height: 100%;
 	min-height: 0;
 }
 
@@ -384,6 +478,7 @@ function onEscape(event: KeyboardEvent) {
 .ui-builder__canvas {
 	display: flex;
 	flex-direction: column;
+	flex: 1 1 auto;
 	min-width: 0;
 	min-height: 0;
 	border: var(--border);

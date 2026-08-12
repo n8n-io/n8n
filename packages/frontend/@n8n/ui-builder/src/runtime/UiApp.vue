@@ -63,13 +63,13 @@ function onHashChange() {
 onMounted(() => window.addEventListener('hashchange', onHashChange));
 onUnmounted(() => window.removeEventListener('hashchange', onHashChange));
 
-const shell = computed(() => findPagedNode(props.definition));
-const pages = computed(() => (shell.value ? pageInfos(shell.value) : []));
+const frame = computed(() => findPagedNode(props.definition));
+const pages = computed(() => (frame.value ? pageInfos(frame.value) : []));
 
 /** Nothing when the document is a plain single page, which is how one keeps working. */
 const route = computed(() =>
-	shell.value
-		? resolveRoute(pages.value, hashPath.value, String(shell.value.props.defaultPage ?? ''))
+	frame.value
+		? resolveRoute(pages.value, hashPath.value, String(frame.value.props.defaultPage ?? ''))
 		: undefined,
 );
 
@@ -255,7 +255,7 @@ watch(
 	() => (route.value ? `${route.value.pageId} ${route.value.path}` : ''),
 	() => {
 		const page = currentPage.value;
-		if (!page || !shell.value) return;
+		if (!page || !frame.value) return;
 
 		state[APP_STATE_KEY] = {
 			route: { path: route.value?.path ?? '/', params: route.value?.params ?? {} },
@@ -264,17 +264,18 @@ watch(
 
 		// A page with no title of its own leaves the tab as the app's name alone,
 		// rather than rendering a dangling separator.
-		document.title = page.title && page.title !== appTitle ? `${page.title} - ${appTitle}` : appTitle;
+		document.title =
+			page.title && page.title !== appTitle ? `${page.title} - ${appTitle}` : appTitle;
 
-		const node = shellPageNode(page.id);
+		const node = framePageNode(page.id);
 		const steps = node ? normaliseAction(node.props.onEnter) : [];
 		if (steps.length) void runSteps(steps, scope.value);
 	},
 	{ immediate: true },
 );
 
-function shellPageNode(id: string): UiNode | undefined {
-	const children = shell.value ? Object.values(shell.value.tree).flat() : [];
+function framePageNode(id: string): UiNode | undefined {
+	const children = frame.value ? Object.values(frame.value.tree).flat() : [];
 	return children.find((child) => child.id === id);
 }
 
@@ -285,11 +286,7 @@ defineExpose({ state });
 	<UiRenderer :node="props.definition" :scope="scope" :on-write="write" :on-act="act" />
 
 	<div class="ui-toasts">
-		<N8nCallout
-			v-for="toast in toasts"
-			:key="toast.id"
-			:theme="TOAST_THEMES[toast.type ?? 'info']"
-		>
+		<N8nCallout v-for="toast in toasts" :key="toast.id" :theme="TOAST_THEMES[toast.type ?? 'info']">
 			{{ toast.message }}
 
 			<!-- The callout has no dismiss of its own, only a slot at the far end for one. -->

@@ -114,8 +114,8 @@ const emit = defineEmits<{
 
 		<div v-else class="ui-pages-empty">
 			<N8nText size="small" color="text-light">
-				One page. Adding another wraps what you have in a shell, with a header and footer that stay
-				put as the content swaps.
+				One page. Adding another wraps what you have in an app frame, with a header and footer that
+				stay put as the page swaps.
 			</N8nText>
 
 			<N8nButton variant="outline" size="mini" :disabled="disabled" @click="emit('add')">

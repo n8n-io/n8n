@@ -83,6 +83,23 @@ export function findNode(root: UiNode, id: string): UiNode | undefined {
 	return undefined;
 }
 
+/**
+ * The chain of ancestors from the root down to (not including) the node with
+ * `id`, or undefined if the document does not hold it. The root's own
+ * ancestor chain is empty, not undefined: it is in the document, it just has
+ * none.
+ */
+export function ancestorsOf(root: UiNode, id: string): UiNode[] | undefined {
+	if (root.id === id) return [];
+
+	for (const child of eachChild(root)) {
+		const found = ancestorsOf(child, id);
+		if (found) return [root, ...found];
+	}
+
+	return undefined;
+}
+
 /** Where a node sits: its parent, the region holding it, and its index there. */
 export interface UiPlacement {
 	parent: UiNode;

@@ -9,7 +9,7 @@ import type { UiNode } from '../../core/types';
 /**
  * The pages of the document, and the one being edited.
  *
- * A document is a single page until it holds a shell; from then on the shell's
+ * A document is a single page until it holds a frame; from then on the frame's
  * content region holds pages and the canvas shows one of them. Which one is the
  * editor's own question, so it lives here rather than in the document.
  */
@@ -19,13 +19,13 @@ export function usePages(
 	selectedId: Ref<string | undefined>,
 	readOnly: Ref<boolean>,
 ) {
-	const shell = computed(() => findPagedNode(doc.value));
-	const pages = computed(() => (shell.value ? pageInfos(shell.value) : []));
+	const frame = computed(() => findPagedNode(doc.value));
+	const pages = computed(() => (frame.value ? pageInfos(frame.value) : []));
 	const editingPageId = ref<string | undefined>();
 	const renamingId = ref<string | undefined>();
 
 	const defaultPage = computed(() => {
-		const path = normalisePath(String(shell.value?.props.defaultPage ?? ''));
+		const path = normalisePath(String(frame.value?.props.defaultPage ?? ''));
 		return pages.value.find((page) => page.path === path) ?? pages.value[0];
 	});
 
@@ -58,19 +58,19 @@ export function usePages(
 	}
 
 	/**
-	 * Turns a single-page document into a shell holding it.
+	 * Turns a single-page document into a frame holding it.
 	 *
 	 * The existing root becomes the first page rather than being thrown away, so
 	 * enabling pages never costs an author what they had composed.
 	 */
 	function enablePages() {
-		if (shell.value || readOnly.value) return;
+		if (frame.value || readOnly.value) return;
 
 		const root = doc.value;
-		const shellNode = createNode('shell', root);
+		const frameNode = createNode('frame', root);
 
 		// A root that is already a page becomes the first page. Anything else gets
-		// a page wrapped around it first, so the shell always ends up holding one
+		// a page wrapped around it first, so the frame always ends up holding one
 		// and nothing composed is lost either way.
 		let first = root;
 
@@ -82,9 +82,9 @@ export function usePages(
 		first.props.path = normalisePath(String(first.props.path ?? '/'));
 		first.props.title = String(first.props.title ?? '') || 'Home';
 
-		shellNode.tree[DEFAULT_REGION] = [first];
-		shellNode.props.defaultPage = first.props.path;
-		doc.value = shellNode;
+		frameNode.tree[DEFAULT_REGION] = [first];
+		frameNode.props.defaultPage = first.props.path;
+		doc.value = frameNode;
 
 		editingPageId.value = first.id;
 		commit();
@@ -93,7 +93,7 @@ export function usePages(
 	function addPage() {
 		if (readOnly.value) return;
 
-		if (!shell.value) {
+		if (!frame.value) {
 			enablePages();
 			return;
 		}
@@ -104,11 +104,11 @@ export function usePages(
 		node.props.title = isFirst ? 'Home' : `Page ${pages.value.length + 1}`;
 		node.props.path = pathFromTitle(String(node.props.title), isFirst);
 
-		insertRelativeTo(doc.value, { id: shell.value.id, region: DEFAULT_REGION }, node);
+		insertRelativeTo(doc.value, { id: frame.value.id, region: DEFAULT_REGION }, node);
 
 		// The first page is the default by default: an app with one page and no
 		// default set would warn at runtime for no reason.
-		if (isFirst) shell.value.props.defaultPage = node.props.path;
+		if (isFirst) frame.value.props.defaultPage = node.props.path;
 
 		editingPageId.value = node.id;
 		selectedId.value = node.id;
@@ -123,8 +123,8 @@ export function usePages(
 
 		// The default cannot point at a page that is gone, and neither can the
 		// canvas: both fall to whatever is left.
-		if (shell.value && normalisePath(String(shell.value.props.defaultPage ?? '')) === going.path) {
-			shell.value.props.defaultPage = pages.value.find((page) => page.id !== id)?.path ?? '';
+		if (frame.value && normalisePath(String(frame.value.props.defaultPage ?? '')) === going.path) {
+			frame.value.props.defaultPage = pages.value.find((page) => page.id !== id)?.path ?? '';
 		}
 
 		if (editingPageId.value === id) editingPageId.value = undefined;
@@ -135,9 +135,9 @@ export function usePages(
 
 	function makeDefault(id: string) {
 		const page = pages.value.find((entry) => entry.id === id);
-		if (!page || !shell.value || readOnly.value) return;
+		if (!page || !frame.value || readOnly.value) return;
 
-		shell.value.props.defaultPage = page.path;
+		frame.value.props.defaultPage = page.path;
 		commit();
 	}
 
@@ -159,7 +159,7 @@ export function usePages(
 	}
 
 	return {
-		shell,
+		frame,
 		pages,
 		editingPageId,
 		editingPage,

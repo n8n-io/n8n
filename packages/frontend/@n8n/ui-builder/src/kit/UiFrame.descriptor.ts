@@ -1,17 +1,18 @@
 import { DEFAULT_REGION, ROUTE_PROP_TYPE, type UiComponentDef } from '../core/types';
-import UiShell from './UiShell.vue';
+import UiFrame from './UiFrame.vue';
 
-export const SHELL_DEF: UiComponentDef = {
-	type: 'shell',
+export const FRAME_DEF: UiComponentDef = {
+	type: 'frame',
 	group: 'Layout',
-	label: 'Shell (pages)',
-	component: UiShell,
+	label: 'App',
+	icon: 'layout-template',
+	component: UiFrame,
 	// The content region holds pages and shows one; the other two stay on
 	// screen across every route.
 	regions: [
-		{ name: 'header', label: 'Header' },
-		{ name: DEFAULT_REGION, label: 'Pages' },
-		{ name: 'footer', label: 'Footer' },
+		{ name: 'header', label: 'Header', icon: 'menu' },
+		{ name: DEFAULT_REGION, label: 'Pages', icon: 'files' },
+		{ name: 'footer', label: 'Footer', icon: 'info' },
 	],
 	pagedRegion: DEFAULT_REGION,
 	props: [

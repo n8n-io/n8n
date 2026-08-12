@@ -5,7 +5,7 @@ import type { UiNode, UiPageInfo, UiRoute } from './types';
 /**
  * Pages, and the routing that picks one.
  *
- * An app is one page until it holds a shell. The shell owns a region whose
+ * An app is one page until it holds a frame. The frame owns a region whose
  * children are pages, of which exactly one renders; everything in its other
  * regions stays on screen while the content swaps. Pages are ordinary nodes in
  * an ordinary region, so the outline shows them and the inspector edits them.
@@ -22,7 +22,7 @@ import type { UiNode, UiPageInfo, UiRoute } from './types';
  */
 export const APP_STATE_KEY = '$app';
 
-/** The shell, if the document has one. The first found wins; see `nested shells` in the spec. */
+/** The frame, if the document has one. The first found wins; see `nested frames` in the spec. */
 export function findPagedNode(root: UiNode): UiNode | undefined {
 	if (getComponentDef(root.type)?.pagedRegion) return root;
 
@@ -36,12 +36,12 @@ export function findPagedNode(root: UiNode): UiNode | undefined {
 	return undefined;
 }
 
-/** The page nodes a shell holds, in document order. */
-export function pageNodes(shell: UiNode): UiNode[] {
-	const region = getComponentDef(shell.type)?.pagedRegion;
+/** The page nodes a frame holds, in document order. */
+export function pageNodes(frame: UiNode): UiNode[] {
+	const region = getComponentDef(frame.type)?.pagedRegion;
 	if (!region) return [];
 
-	return childrenIn(shell, region).filter((child) => child.type === 'page');
+	return childrenIn(frame, region).filter((child) => child.type === 'page');
 }
 
 /**
@@ -49,8 +49,8 @@ export function pageNodes(shell: UiNode): UiNode[] {
  * app's name alone for an untitled page, and inventing a title here would give
  * it a dangling separator instead.
  */
-export function pageInfos(shell: UiNode): UiPageInfo[] {
-	return pageNodes(shell).map((node) => ({
+export function pageInfos(frame: UiNode): UiPageInfo[] {
+	return pageNodes(frame).map((node) => ({
 		id: node.id,
 		path: normalisePath(String(node.props.path ?? '')),
 		title: String(node.props.title ?? ''),
@@ -164,15 +164,15 @@ export function resolveRoute(
 }
 
 /** Which page the renderer should show, given what the runtime worked out. */
-export function currentPageId(shell: UiNode, route: UiRoute | undefined): string | undefined {
-	const pages = pageInfos(shell);
+export function currentPageId(frame: UiNode, route: UiRoute | undefined): string | undefined {
+	const pages = pageInfos(frame);
 	if (pages.length === 0) return undefined;
 
 	if (route?.pageId && pages.some((page) => page.id === route.pageId)) return route.pageId;
 
 	// No route, or one naming a page that has since gone: fall back the same way
 	// the runtime would, so the canvas and the app agree.
-	const fallbackPath = route?.path ?? String(shell.props.defaultPage ?? '');
+	const fallbackPath = route?.path ?? String(frame.props.defaultPage ?? '');
 	const matched = pages.find((page) => matchPath(page.path, normalisePath(fallbackPath)));
 
 	return (matched ?? pages[0]).id;

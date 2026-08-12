@@ -6,7 +6,9 @@ import type { UiComponentDef } from '../../core/types';
 
 /**
  * The components on offer, in sections. Clicking one inserts it relative to the
- * current selection; where exactly is the document's rule, not this pane's.
+ * current selection: into it if it takes children, into the nearest ancestor
+ * that does otherwise, or into the app frame's pages when nothing is selected.
+ * Working out where is the document's rule, not this pane's.
  */
 defineOptions({ name: 'PalettePane' });
 

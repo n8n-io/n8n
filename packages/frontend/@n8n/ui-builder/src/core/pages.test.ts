@@ -16,10 +16,10 @@ function page(id: string, path: string, title = ''): UiNode {
 	return { id, type: 'page', props: { path, title }, tree: {} };
 }
 
-function shell(pages: UiNode[], props: Record<string, unknown> = {}): UiNode {
+function frame(pages: UiNode[], props: Record<string, unknown> = {}): UiNode {
 	return {
-		id: 'shell-1',
-		type: 'shell',
+		id: 'frame-1',
+		type: 'frame',
 		props,
 		tree: { header: [{ id: 'text-1', type: 'text', props: {}, tree: {} }], default: pages },
 	};
@@ -76,19 +76,19 @@ describe('matchPath', () => {
 
 describe('pageInfos', () => {
 	it('normalises each page path on the way out', () => {
-		expect(pageInfos(shell([page('page-1', 'orders/')]))).toEqual([
+		expect(pageInfos(frame([page('page-1', 'orders/')]))).toEqual([
 			{ id: 'page-1', path: '/orders', title: '' },
 		]);
 	});
 
 	it("keeps an untitled page's title empty rather than inventing one", () => {
-		const [info] = pageInfos(shell([page('page-1', '/orders')]));
+		const [info] = pageInfos(frame([page('page-1', '/orders')]));
 
 		expect(info.title).toBe('');
 	});
 
-	it('ignores whatever else the shell holds outside its paged region', () => {
-		expect(pageInfos(shell([ORDERS]))).toHaveLength(1);
+	it('ignores whatever else the frame holds outside its paged region', () => {
+		expect(pageInfos(frame([ORDERS]))).toHaveLength(1);
 	});
 });
 
@@ -109,7 +109,7 @@ describe('pageLabel', () => {
 });
 
 describe('resolveRoute', () => {
-	const pages: UiPageInfo[] = pageInfos(shell([HOME, ORDERS, ORDER]));
+	const pages: UiPageInfo[] = pageInfos(frame([HOME, ORDERS, ORDER]));
 
 	it('resolves an exact route to its page', () => {
 		expect(resolveRoute(pages, '/orders')).toEqual({
@@ -136,7 +136,7 @@ describe('resolveRoute', () => {
 	});
 
 	it('falls back to the first page when no default page is set', () => {
-		expect(resolveRoute(pageInfos(shell([ORDERS, HOME])), '/nowhere')?.pageId).toBe('page-2');
+		expect(resolveRoute(pageInfos(frame([ORDERS, HOME])), '/nowhere')?.pageId).toBe('page-2');
 	});
 
 	it('resolves nothing when there are no pages at all', () => {
@@ -146,7 +146,7 @@ describe('resolveRoute', () => {
 	it('says the default page is gone rather than that none was set', () => {
 		// No page answers `/` here, so the empty route has to fall back, which is
 		// the only situation in which the default page is consulted at all.
-		const homeless = pageInfos(shell([ORDERS, ORDER]));
+		const homeless = pageInfos(frame([ORDERS, ORDER]));
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		resolveRoute(homeless, '/', '/deleted');
@@ -174,43 +174,43 @@ describe('resolveRoute', () => {
 
 describe('currentPageId', () => {
 	it('shows the page the route names', () => {
-		const node = shell([HOME, ORDERS]);
+		const node = frame([HOME, ORDERS]);
 
 		expect(currentPageId(node, { path: '/orders', params: {}, pageId: 'page-2' })).toBe('page-2');
 	});
 
 	it('falls back to the path when the route names a page that has since gone', () => {
-		const node = shell([HOME, ORDERS]);
+		const node = frame([HOME, ORDERS]);
 
 		expect(currentPageId(node, { path: '/orders', params: {}, pageId: 'page-9' })).toBe('page-2');
 	});
 
 	it('falls back to the default page when there is no route yet', () => {
-		const node = shell([HOME, ORDERS], { defaultPage: '/orders' });
+		const node = frame([HOME, ORDERS], { defaultPage: '/orders' });
 
 		expect(currentPageId(node, undefined)).toBe('page-2');
 	});
 
 	it('falls back to the first page when there is neither a route nor a default', () => {
-		const node = shell([ORDERS, ORDER]);
+		const node = frame([ORDERS, ORDER]);
 
 		expect(currentPageId(node, undefined)).toBe('page-2');
 	});
 
-	it('shows nothing when the shell holds no pages', () => {
-		expect(currentPageId(shell([]), undefined)).toBeUndefined();
+	it('shows nothing when the frame holds no pages', () => {
+		expect(currentPageId(frame([]), undefined)).toBeUndefined();
 	});
 });
 
 describe('findPagedNode', () => {
-	it('finds the shell when the shell is the root', () => {
-		const node = shell([HOME]);
+	it('finds the frame when the frame is the root', () => {
+		const node = frame([HOME]);
 
 		expect(findPagedNode(node)).toBe(node);
 	});
 
-	it('finds a shell nested inside the document', () => {
-		const inner = shell([HOME]);
+	it('finds a frame nested inside the document', () => {
+		const inner = frame([HOME]);
 		const root: UiNode = {
 			id: 'page',
 			type: 'page',
@@ -221,7 +221,7 @@ describe('findPagedNode', () => {
 		expect(findPagedNode(root)).toBe(inner);
 	});
 
-	it('finds nothing in a document with no shell', () => {
+	it('finds nothing in a document with no frame', () => {
 		const root: UiNode = { id: 'page', type: 'page', props: {}, tree: {} };
 
 		expect(findPagedNode(root)).toBeUndefined();
