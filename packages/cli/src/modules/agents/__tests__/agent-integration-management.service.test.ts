@@ -69,6 +69,15 @@ describe('AgentIntegrationManagementService', () => {
 		};
 	}
 
+	/**
+	 * Mirrors what the real delta does to the entity: it corrects `activeVersionId`
+	 * to the row it read, which is what callers derive their response from.
+	 */
+	function deltaResult(agent: Agent, published: boolean, extra: object = {}) {
+		agent.activeVersionId = published ? 'version-1' : null;
+		return { agent, changed: true, published, ...extra };
+	}
+
 	/** First call order of a mock, for asserting one step ran before another. */
 	function order(fn: { mock: { invocationCallOrder: number[] } }): number {
 		const [first] = fn.mock.invocationCallOrder;
@@ -222,16 +231,17 @@ describe('AgentIntegrationManagementService', () => {
 			// Loaded as a draft, so step 1 only pre-validated; the write saw it published.
 			const { service, persistenceService, chatService } = makeService();
 			const agent = makeAgent({ activeVersionId: null });
-			persistenceService.applyIntegrationDelta.mockResolvedValue({
-				agent,
-				changed: true,
-				published: true,
-			});
+			persistenceService.applyIntegrationDelta.mockImplementation(async () =>
+				deltaResult(agent, true),
+			);
 
-			await service.connect({ agent, user: user as never, integration });
+			const { savedAgent } = await service.connect({ agent, user: user as never, integration });
 
 			expect(chatService.validateBeforeConnect).toHaveBeenCalled();
 			expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId);
+			// The controller reports "configured" vs "connected" off this value, so a
+			// started runtime must not come back looking unpublished.
+			expect(savedAgent.activeVersionId).not.toBeNull();
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
 				order(chatService.connect),
 			);
@@ -245,11 +255,9 @@ describe('AgentIntegrationManagementService', () => {
 		it('does not report a connection when the post-publish start fails', async () => {
 			const { service, persistenceService, chatService } = makeService();
 			const agent = makeAgent({ activeVersionId: null });
-			persistenceService.applyIntegrationDelta.mockResolvedValue({
-				agent,
-				changed: true,
-				published: true,
-			});
+			persistenceService.applyIntegrationDelta.mockImplementation(async () =>
+				deltaResult(agent, true),
+			);
 			chatService.connect.mockRejectedValue(new Error('Slack connect failed'));
 
 			// The entry is already durable, so this must not fail the request.
@@ -263,13 +271,11 @@ describe('AgentIntegrationManagementService', () => {
 			// Loaded as published, so step 1 connected; the write saw it unpublished.
 			const { service, persistenceService, chatService } = makeService();
 			const agent = makeAgent();
-			persistenceService.applyIntegrationDelta.mockResolvedValue({
-				agent,
-				changed: true,
-				published: false,
-			});
+			persistenceService.applyIntegrationDelta.mockImplementation(async () =>
+				deltaResult(agent, false),
+			);
 
-			await service.connect({ agent, user: user as never, integration });
+			const { savedAgent } = await service.connect({ agent, user: user as never, integration });
 
 			expect(chatService.connect).toHaveBeenCalled();
 			// An unpublished agent must not receive events, and must not be announced
@@ -278,16 +284,16 @@ describe('AgentIntegrationManagementService', () => {
 				deleteSubscriptions: false,
 			});
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+			// ...and the response must not claim it is connected.
+			expect(savedAgent.activeVersionId).toBeNull();
 		});
 
 		it('leaves an unpublished agent alone when the write agrees it is unpublished', async () => {
 			const { service, persistenceService, chatService } = makeService();
 			const agent = makeAgent({ activeVersionId: null });
-			persistenceService.applyIntegrationDelta.mockResolvedValue({
-				agent,
-				changed: true,
-				published: false,
-			});
+			persistenceService.applyIntegrationDelta.mockImplementation(async () =>
+				deltaResult(agent, false),
+			);
 
 			await service.connect({ agent, user: user as never, integration });
 

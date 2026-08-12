@@ -435,6 +435,8 @@ describe('AgentIntegrationPersistenceService', () => {
 			);
 
 			expect(result.published).toBe(true);
+			// Callers derive their response from the entity, so it has to agree.
+			expect(result.agent.activeVersionId).toBe('version-1');
 		});
 
 		it('reports an unpublished row even when the caller thought it was published', async () => {
@@ -449,6 +451,23 @@ describe('AgentIntegrationPersistenceService', () => {
 			);
 
 			expect(result.published).toBe(false);
+			expect(result.agent.activeVersionId).toBeNull();
+		});
+
+		it('corrects the entity even when the delta turned out to be a no-op', async () => {
+			const { service, agent, row } = setup({ versionId: 'v', activeVersionId: null });
+			agent.activeVersionId = null;
+			row.activeVersionId = 'version-1';
+
+			const result = await service.applyIntegrationDelta(
+				agent,
+				{ remove: { type: 'slack', credentialId: 'gone' } },
+				byUser,
+			);
+
+			expect(result.changed).toBe(false);
+			expect(result.published).toBe(true);
+			expect(result.agent.activeVersionId).toBe('version-1');
 		});
 	});
 

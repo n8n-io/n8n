@@ -173,6 +173,13 @@ export class AgentIntegrationPersistenceService {
 				: undefined;
 
 			const published = state.activeVersionId !== null;
+			// The caller's copy can predate a concurrent publish or unpublish, and
+			// callers derive their response ("configured" vs "connected") and their
+			// runtime decisions from the entity. Carry the value that was actually
+			// read so the entity agrees with the row this delta was applied to. Only
+			// the scalar is set: `activeVersion` is a loaded relation nothing on this
+			// path reads, and inventing one would be worse than leaving it.
+			agent.activeVersionId = state.activeVersionId;
 
 			// A removal of something already gone is not a failure — and with
 			// nothing to add there is no write left to make.
