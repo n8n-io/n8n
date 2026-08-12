@@ -5,6 +5,7 @@ import { useCanvasNode } from '../../../../composables/useCanvasNode';
 defineProps<{
 	width: number;
 	height: number;
+	configurable?: boolean;
 }>();
 
 const $style = useCssModule();
@@ -36,7 +37,7 @@ const classes = computed(() => ({
 		:style="{ width: `${width}px`, height: `${height}px` }"
 		data-test-id="canvas-node-placeholder"
 	>
-		<div :class="$style.label">{{ label }}</div>
+		<div :class="[$style.label, configurable ? $style.labelInside : '']">{{ label }}</div>
 	</div>
 </template>
 
@@ -96,5 +97,18 @@ const classes = computed(() => ({
 	-webkit-line-clamp: 2;
 	overflow: hidden;
 	overflow-wrap: anywhere;
+}
+
+// Configurable nodes show the name inside the card (CanvasNodeDefault
+// &.configurable .description), not below it.
+.labelInside {
+	top: 50%;
+	left: 0;
+	right: 0;
+	transform: translateY(-50%);
+	margin-top: 0;
+	padding: 0 var(--spacing--sm);
+	text-align: left;
+	max-width: 100%;
 }
 </style>

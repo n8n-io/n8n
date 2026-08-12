@@ -453,7 +453,11 @@ onBeforeUnmount(() => {
 				:connectable-end="placeholderConnectable(target, CanvasConnectionMode.Input).end"
 				:is-valid-connection="isValidConnection"
 			/>
-			<CanvasNodePlaceholder :width="placeholderSize.width" :height="placeholderSize.height" />
+			<CanvasNodePlaceholder
+				:width="placeholderSize.width"
+				:height="placeholderSize.height"
+				:configurable="defaultRenderOptions.configurable ?? false"
+			/>
 		</template>
 		<template v-else>
 			<template
