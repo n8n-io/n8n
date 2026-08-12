@@ -153,7 +153,7 @@ const onAction = (action: string, file: ProjectFileResponse) => {
 	>
 		<template #[`item.name`]="{ item }">
 			<div :class="$style.nameCell">
-				<N8nIcon :icon="fileIcon(item.mimeType)" color="text-light" />
+				<N8nIcon :icon="fileIcon(item.mimeType)" color="text-light" :class="$style.icon" />
 				<N8nTooltip :content="item.name" placement="top">
 					<N8nText :class="$style.name" bold>{{ item.name }}</N8nText>
 				</N8nTooltip>
@@ -225,6 +225,11 @@ const onAction = (action: string, file: ProjectFileResponse) => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+	overflow: hidden;
+}
+
+.icon {
+	flex-shrink: 0;
 }
 
 .workflowActor {
@@ -235,6 +240,9 @@ const onAction = (action: string, file: ProjectFileResponse) => {
 }
 
 .name {
+	// Without `min-width: 0` the flex item keeps its full text width and spills
+	// into the next column instead of truncating.
+	min-width: 0;
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
