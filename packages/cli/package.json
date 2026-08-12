@@ -167,6 +167,7 @@
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
+    "@n8n/sandbox-client": "file:../../vendor/n8n-sandbox-client-0.1.0.tgz",
     "@n8n/scheduler": "workspace:*",
     "@n8n/syslog-client": "workspace:*",
     "@n8n/task-runner": "workspace:*",
