@@ -149,7 +149,7 @@
 	"generic.unknownError": "An unknown error occurred",
 	"generic.upgradeToEnterprise": "Upgrade to Enterprise",
 	"generic.never": "Never",
-	"generic.list.bulkActions": "Bulk actions",
+	"generic.list.bulkActions": "Actions",
 	"generic.list.clearSelection": "Clear selection",
 	"generic.list.selected": "{count} row selected | {count} rows selected",
 	"generic.project": "Project",
