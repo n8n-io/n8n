@@ -584,11 +584,12 @@ Supporting changes outside the module, both in `@n8n/backend-common/src/logging/
 - [ ] Composite source: ring buffer → Redis stream → log file *(integration)*
 
 ### Slice 3 — execution cross-link
-- [ ] Execution `AsyncLocalStorage` in `@n8n/backend-common/src/logging/`
-- [ ] `Logger.log()` reads it → `executionId` reaches `n8n.log` as well
-- [ ] Wrap worker `processJob()` and the main's own-process runner
-- [ ] Stamp `executionId` / `workflowId` on records
-- [ ] `?executionId=` deep link + **View logs** button on execution detail
+- [x] Execution `AsyncLocalStorage` in `@n8n/backend-common/src/logging/`
+- [x] `Logger.log()` reads it → labels reach `n8n.log` as well (verified: 35/35)
+- [x] Wrap worker `processJob()` and `WorkflowRunner.run()`
+- [x] Stamp `executionId` / `workflowId` on records, explicit metadata winning
+- [x] `?executionId=` deep link (console side)
+- [ ] **View logs** button on execution detail *(frontend, not yet wired)*
 
 ### Slice 4 — AI tool
 - [x] `logs.tool.ts`: `search` / `context` / `snapshot`

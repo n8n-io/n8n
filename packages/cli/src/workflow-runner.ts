@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { Logger } from '@n8n/backend-common';
+import type { LogExecutionContext } from '@n8n/backend-common';
+import { Logger, runWithExecutionContext } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -246,96 +247,113 @@ export class WorkflowRunner {
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		const establishContextError = await this.establishContextForPersistence(data);
+		// Ambient labels for every log line this execution produces — including
+		// from the async chain started below, which outlives this method. Explicit
+		// metadata still wins, so this only fills gaps: most notably `workflowId`,
+		// which many call sites omit even when they pass `executionId`.
+		const executionContext: LogExecutionContext = { workflowId: data.workflowData.id };
 
-		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, existingExecution);
+		return await runWithExecutionContext(executionContext, async () => {
+			const establishContextError = await this.establishContextForPersistence(data);
 
-		if (establishContextError) {
-			await this.failExecution(data, executionId, establishContextError, responsePromise);
-			return executionId;
-		}
+			// Register a new execution
+			const executionId = await this.activeExecutions.add(data, existingExecution);
 
-		const { id: workflowId, nodes } = data.workflowData;
+			// The store is read at log time, so filling the id in here labels every
+			// line from this point on — including ones emitted after `run()` returns.
+			executionContext.executionId = executionId;
 
-		try {
-			await this.credentialsPermissionChecker.check(workflowId, nodes);
-		} catch (error) {
-			await this.failExecution(data, executionId, error, responsePromise);
-			return executionId;
-		}
+			if (establishContextError) {
+				await this.failExecution(data, executionId, establishContextError, responsePromise);
+				return executionId;
+			}
 
-		if (responsePromise) {
-			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
-		}
+			const { id: workflowId, nodes } = data.workflowData;
 
-		// Set up streaming heartbeat on the main process that holds the HTTP response.
-		// This must happen BEFORE the queue/local decision because in queue mode the
-		// execution runs on a worker process that has no access to the HTTP response.
-		let heartbeatInterval: NodeJS.Timeout | undefined;
-		if (data.streamingEnabled === true && data.httpResponse) {
-			const res = data.httpResponse;
-			heartbeatInterval = setInterval(() => {
-				if (!res.writableEnded) {
-					res.write(STREAMING_KEEPALIVE_CHUNK);
-					flushResponse(res);
-				}
-			}, STREAMING_HEARTBEAT_INTERVAL_MS);
-		}
+			try {
+				await this.credentialsPermissionChecker.check(workflowId, nodes);
+			} catch (error) {
+				await this.failExecution(data, executionId, error, responsePromise);
+				return executionId;
+			}
 
-		// @TODO: Reduce to true branch once feature is stable
-		const shouldEnqueue =
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-				? this.executionsConfig.mode === 'queue'
-				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
+			if (responsePromise) {
+				this.activeExecutions.attachResponsePromise(executionId, responsePromise);
+			}
 
-		if (shouldEnqueue) {
-			await this.enqueueExecution(
-				executionId,
-				workflowId,
-				data,
-				loadStaticData,
-				realtime,
-				existingExecution?.executionId,
-			);
-		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
-		}
+			// Set up streaming heartbeat on the main process that holds the HTTP response.
+			// This must happen BEFORE the queue/local decision because in queue mode the
+			// execution runs on a worker process that has no access to the HTTP response.
+			let heartbeatInterval: NodeJS.Timeout | undefined;
+			if (data.streamingEnabled === true && data.httpResponse) {
+				const res = data.httpResponse;
+				heartbeatInterval = setInterval(() => {
+					if (!res.writableEnded) {
+						res.write(STREAMING_KEEPALIVE_CHUNK);
+						flushResponse(res);
+					}
+				}, STREAMING_HEARTBEAT_INTERVAL_MS);
+			}
 
-		// only run these when not in queue mode or when the execution is manual,
-		// since these calls are now done by the worker directly
-		if (
-			this.executionsConfig.mode !== 'queue' ||
-			this.instanceSettings.instanceType === 'worker' ||
-			data.executionMode === 'manual' ||
-			data.executionMode === 'chat'
-		) {
-			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
-			postExecutePromise.catch((error) => {
-				if (error instanceof ExecutionCancelledError) return;
-				this.errorReporter.error(error, {
-					extra: { executionId, workflowId },
-				});
-				this.logger.error('There was an error in the post-execution promise', {
-					error,
+			// @TODO: Reduce to true branch once feature is stable
+			const shouldEnqueue =
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+					? this.executionsConfig.mode === 'queue'
+					: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
+
+			if (shouldEnqueue) {
+				await this.enqueueExecution(
 					executionId,
 					workflowId,
-					workflowName: data.workflowData.name,
-					...(data.projectId && { projectId: data.projectId }),
-					...(data.projectName && { projectName: data.projectName }),
+					data,
+					loadStaticData,
+					realtime,
+					existingExecution?.executionId,
+				);
+			} else {
+				await this.runMainProcess(
+					executionId,
+					data,
+					loadStaticData,
+					existingExecution?.executionId,
+				);
+			}
+
+			// only run these when not in queue mode or when the execution is manual,
+			// since these calls are now done by the worker directly
+			if (
+				this.executionsConfig.mode !== 'queue' ||
+				this.instanceSettings.instanceType === 'worker' ||
+				data.executionMode === 'manual' ||
+				data.executionMode === 'chat'
+			) {
+				const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+				postExecutePromise.catch((error) => {
+					if (error instanceof ExecutionCancelledError) return;
+					this.errorReporter.error(error, {
+						extra: { executionId, workflowId },
+					});
+					this.logger.error('There was an error in the post-execution promise', {
+						error,
+						executionId,
+						workflowId,
+						workflowName: data.workflowData.name,
+						...(data.projectId && { projectId: data.projectId }),
+						...(data.projectName && { projectName: data.projectName }),
+					});
 				});
-			});
-		}
+			}
 
-		// Clean up the streaming heartbeat when the execution finishes
-		if (heartbeatInterval) {
-			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
-			void postExecutePromise.finally(() => {
-				clearInterval(heartbeatInterval);
-			});
-		}
+			// Clean up the streaming heartbeat when the execution finishes
+			if (heartbeatInterval) {
+				const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+				void postExecutePromise.finally(() => {
+					clearInterval(heartbeatInterval);
+				});
+			}
 
-		return executionId;
+			return executionId;
+		});
 	}
 
 	/** Run the workflow in current process */

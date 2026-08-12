@@ -5,7 +5,11 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  * Deliberately tiny — this is read on every `Logger.log()` call.
  */
 export type LogExecutionContext = {
-	executionId: string;
+	/**
+	 * Absent until the execution has been registered — a run is entered knowing
+	 * only its workflow, and the id is minted a moment later.
+	 */
+	executionId?: string;
 	workflowId?: string;
 };
 
