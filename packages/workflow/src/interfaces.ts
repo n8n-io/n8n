@@ -29,7 +29,7 @@ import type {
 } from './data-table.types';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
-import type { IProjectFileWriteService } from './project-file.types';
+import type { IProjectFileService } from './project-file.types';
 import type { NodeApiError } from './errors/node-api.error';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
@@ -1154,12 +1154,12 @@ export type DataTableProxyFunctions = {
 };
 
 export type ProjectFileProxyProvider = {
-	getProjectFileProxy(workflow: Workflow, node: INode): Promise<IProjectFileWriteService>;
+	getProjectFileProxy(workflow: Workflow, node: INode): Promise<IProjectFileService>;
 };
 
 export type ProjectFileProxyFunctions = {
 	// Optional to account for situations where the project-files module is disabled
-	getProjectFileProxy?(): Promise<IProjectFileWriteService>;
+	getProjectFileProxy?(): Promise<IProjectFileService>;
 };
 
 export type CredentialCheckStatus = {
@@ -1382,7 +1382,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
+	helpers: RequestHelperFunctions &
+		SSHTunnelFunctions &
+		DataTableProxyFunctions &
+		ProjectFileProxyFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };

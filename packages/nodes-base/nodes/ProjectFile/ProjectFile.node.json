@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.projectFile",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"details": "Add file to project",
+	"details": "Project file",
 	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
@@ -18,7 +18,10 @@
 		"project files",
 		"save file",
 		"store file",
+		"read file",
+		"delete file",
 		"upload",
+		"download",
 		"attachment",
 		"storage"
 	],

@@ -3,10 +3,14 @@ import { Service } from '@n8n/di';
 import {
 	NodeOperationError,
 	type INode,
-	type IProjectFileWriteService,
+	type IProjectFileService,
+	type ProjectFileListResult,
 	type ProjectFileNodeInput,
 	type ProjectFileNodeOutput,
 	type ProjectFileProxyProvider,
+	type ProjectFileReadResult,
+	type ProjectFileRef,
+	type ProjectFileWriteResult,
 	type Workflow,
 } from 'n8n-workflow';
 
@@ -31,12 +35,13 @@ export function isAllowedNode(s: string): s is AllowedNode {
 }
 
 /**
- * Bridges the project-files module to the node that writes files from inside a
- * workflow. Published into workflow context by `ProjectFilesModule.context()`.
+ * Bridges the project-files module to the node that reads, writes and deletes
+ * files from inside a workflow. Published into workflow context by
+ * `ProjectFilesModule.context()`.
  *
- * The project is always the one that owns the executing workflow — there is no
- * project parameter on the node, so a workflow cannot write to another project's
- * files, and no per-execution scope check is needed.
+ * The project is always the one that owns the executing workflow — the node has
+ * no project parameter, so a workflow cannot reach another project's files, and
+ * no per-execution scope check is needed.
  */
 @Service()
 export class ProjectFileProxyService implements ProjectFileProxyProvider {
@@ -49,7 +54,7 @@ export class ProjectFileProxyService implements ProjectFileProxyProvider {
 		this.logger = this.logger.scoped('project-files');
 	}
 
-	async getProjectFileProxy(workflow: Workflow, node: INode): Promise<IProjectFileWriteService> {
+	async getProjectFileProxy(workflow: Workflow, node: INode): Promise<IProjectFileService> {
 		if (!isAllowedNode(node.type)) {
 			throw new Error('This proxy is only available for the Project File node');
 		}
@@ -57,8 +62,26 @@ export class ProjectFileProxyService implements ProjectFileProxyProvider {
 		const projectId = await this.resolveProjectId(workflow, node);
 		const actor: ProjectFileActor = { type: 'workflow', workflowId: workflow.id };
 
+		const resolve = async (ref: ProjectFileRef): Promise<ProjectFile> => {
+			const file =
+				ref.by === 'id'
+					? await this.projectFileService.findById(projectId, ref.id)
+					: await this.projectFileService.findByName(projectId, ref.name);
+
+			if (!file) {
+				const subject = ref.by === 'id' ? `ID '${ref.id}'` : `name '${ref.name}'`;
+
+				throw new NodeOperationError(node, `No file with ${subject} exists in this project`, {
+					description:
+						"Check the file name, or switch the file selector to 'From List' to pick an existing file.",
+				});
+			}
+
+			return file;
+		};
+
 		return {
-			addFile: async (file: ProjectFileNodeInput, options): Promise<ProjectFileNodeOutput> => {
+			addFile: async (file: ProjectFileNodeInput, options): Promise<ProjectFileWriteResult> => {
 				this.checkInstanceWriteAccess();
 
 				try {
@@ -73,6 +96,42 @@ export class ProjectFileProxyService implements ProjectFileProxyProvider {
 				} catch (error) {
 					throw this.toNodeError(node, error);
 				}
+			},
+
+			getFile: async (ref: ProjectFileRef): Promise<ProjectFileReadResult> => {
+				const file = await resolve(ref);
+
+				try {
+					const { stream } = await this.projectFileService.getAsStream(projectId, file.id);
+
+					return { file: toNodeOutput(file), stream };
+				} catch (error) {
+					throw this.toNodeError(node, error);
+				}
+			},
+
+			deleteFile: async (ref: ProjectFileRef) => {
+				this.checkInstanceWriteAccess();
+
+				const file = await resolve(ref);
+
+				try {
+					await this.projectFileService.delete(projectId, file.id);
+
+					return { id: file.id, name: file.name };
+				} catch (error) {
+					throw this.toNodeError(node, error);
+				}
+			},
+
+			listFiles: async (options): Promise<ProjectFileListResult> => {
+				const { count, data } = await this.projectFileService.list(projectId, {
+					search: options?.search,
+					take: options?.take,
+					skip: options?.skip,
+				});
+
+				return { count, data: data.map(toNodeOutput) };
 			},
 		};
 	}
@@ -103,7 +162,7 @@ export class ProjectFileProxyService implements ProjectFileProxyProvider {
 			});
 
 			throw new NodeOperationError(node, 'Could not find the project this workflow belongs to', {
-				description: 'Save the workflow before writing files to its project.',
+				description: 'Save the workflow before using its project files.',
 			});
 		}
 	}
@@ -145,7 +204,7 @@ export class ProjectFileProxyService implements ProjectFileProxyProvider {
  * Node output is visible in the NDV and persisted in execution data, so the
  * binary data reference is dropped here — it must never leave the server.
  */
-function toNodeOutput(file: ProjectFile): Omit<ProjectFileNodeOutput, 'overwritten'> {
+function toNodeOutput(file: ProjectFile): ProjectFileNodeOutput {
 	return {
 		id: file.id,
 		name: file.name,

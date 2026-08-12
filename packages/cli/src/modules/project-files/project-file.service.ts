@@ -122,6 +122,21 @@ export class ProjectFileService {
 		return await this.getOrFail(projectId, fileId);
 	}
 
+	async findById(projectId: string, fileId: string): Promise<ProjectFile | null> {
+		return await this.repository.findByIdInProject(fileId, projectId, {});
+	}
+
+	/**
+	 * Resolves a per-project name to its row.
+	 *
+	 * Normalizes through `toStoredName` so a caller addressing a file by name hits
+	 * the row that was written under the sanitized name, rather than silently
+	 * missing a file that is plainly visible in the UI.
+	 */
+	async findByName(projectId: string, name: string): Promise<ProjectFile | null> {
+		return await this.repository.findByProjectIdAndName(projectId, this.toStoredName(name), {});
+	}
+
 	async getAsStream(
 		projectId: string,
 		fileId: string,

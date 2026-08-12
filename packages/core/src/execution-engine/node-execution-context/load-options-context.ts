@@ -12,6 +12,7 @@ import type {
 import { NodeExecutionContext } from './node-execution-context';
 import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { extractValue } from './utils/extract-value';
+import { getProjectFileHelperFunctions } from './utils/project-file-helper-functions';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
@@ -30,6 +31,7 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 			...getSSHTunnelFunctions(),
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getDataTableHelperFunctions(additionalData, workflow, node),
+			...getProjectFileHelperFunctions(additionalData, workflow, node),
 		};
 	}
 

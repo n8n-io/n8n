@@ -13,7 +13,7 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataService, type BinaryDataConfig, type ErrorReporter } from 'n8n-core';
 import { NodeOperationError, type INode, type Workflow } from 'n8n-workflow';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable, type Readable as ReadableType } from 'node:stream';
@@ -58,6 +58,24 @@ describe('ProjectFileProxyService', () => {
 	/** The proxy only ever reads `workflow.id`. */
 	function workflowRef(id: string) {
 		return mock<Workflow>({ id });
+	}
+
+	/**
+	 * Blobs stored for the project, excluding the companion `.metadata` entries the
+	 * filesystem backend writes alongside them.
+	 */
+	async function listStoredBlobs(projectId: string = project.id): Promise<string[]> {
+		const dir = join(storagePath, 'projects', projectId, 'files', 'binary_data');
+
+		try {
+			const entries = await readdir(dir, { withFileTypes: true });
+
+			return entries
+				.filter((entry) => entry.isFile() && !entry.name.endsWith('.metadata'))
+				.map((entry) => entry.name);
+		} catch {
+			return []; // nothing was ever written for this project
+		}
 	}
 
 	async function addFile(
@@ -222,6 +240,150 @@ describe('ProjectFileProxyService', () => {
 
 			const [, otherCount] = await repository.findManyByProjectId(otherProject.id, {}, {});
 			expect(otherCount).toBe(0);
+		});
+	});
+
+	describe('getFile', () => {
+		it('returns the stored bytes, addressed by id', async () => {
+			const stored = await addFile('a,b\n1,2\n');
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+
+			const { file, stream } = await proxy.getFile({ by: 'id', id: stored.id });
+
+			expect(await readStream(stream)).toEqual(Buffer.from('a,b\n1,2\n'));
+			expect(file).toMatchObject({ id: stored.id, name: 'report.csv', mimeType: 'text/csv' });
+		});
+
+		it('returns the stored bytes, addressed by name', async () => {
+			await addFile('by-name\n');
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+
+			const { stream } = await proxy.getFile({ by: 'name', name: 'report.csv' });
+
+			expect(await readStream(stream)).toEqual(Buffer.from('by-name\n'));
+		});
+
+		it('never exposes the stored binary reference to the node', async () => {
+			// `GET /rest/binary-data?id=` has no ownership check, so this reference
+			// reaching execution data would be a cross-project read.
+			const stored = await addFile('a,b\n1,2\n');
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+
+			const { file } = await proxy.getFile({ by: 'id', id: stored.id });
+
+			expect(file).not.toHaveProperty('binaryDataId');
+			expect(JSON.stringify(file)).not.toContain('filesystem-v2');
+		});
+
+		it('resolves a name the same way the write path sanitized it', async () => {
+			await addFile('trimmed\n', undefined, { name: 'spaced name.csv' });
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+
+			const { stream } = await proxy.getFile({ by: 'name', name: '  spaced name.csv  ' });
+
+			expect(await readStream(stream)).toEqual(Buffer.from('trimmed\n'));
+		});
+
+		it('raises a node error for a file that does not exist', async () => {
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+
+			await expect(proxy.getFile({ by: 'name', name: 'missing.csv' })).rejects.toThrow(
+				NodeOperationError,
+			);
+			await expect(proxy.getFile({ by: 'id', id: 'nope' })).rejects.toThrow(
+				/No file with ID 'nope' exists in this project/,
+			);
+		});
+
+		it('is allowed on a read-only instance', async () => {
+			const stored = await addFile('readable\n');
+			sourceControl.getPreferences.mockReturnValue(
+				mock<SourceControlPreferences>({ branchReadOnly: true }),
+			);
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+
+			const { stream } = await proxy.getFile({ by: 'id', id: stored.id });
+
+			expect(await readStream(stream)).toEqual(Buffer.from('readable\n'));
+		});
+	});
+
+	describe('deleteFile', () => {
+		it('removes the row and the stored bytes', async () => {
+			const stored = await addFile('doomed\n');
+			expect(await listStoredBlobs()).toHaveLength(1);
+
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+			const result = await proxy.deleteFile({ by: 'id', id: stored.id });
+
+			expect(result).toEqual({ id: stored.id, name: 'report.csv' });
+
+			const [, count] = await repository.findManyByProjectId(project.id, {}, {});
+			expect(count).toBe(0);
+			expect(await listStoredBlobs()).toHaveLength(0);
+		});
+
+		it('deletes by name', async () => {
+			await addFile('doomed\n');
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+
+			await proxy.deleteFile({ by: 'name', name: 'report.csv' });
+
+			const [, count] = await repository.findManyByProjectId(project.id, {}, {});
+			expect(count).toBe(0);
+		});
+
+		it('raises a node error for a file that does not exist', async () => {
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+
+			await expect(proxy.deleteFile({ by: 'name', name: 'missing.csv' })).rejects.toThrow(
+				NodeOperationError,
+			);
+		});
+
+		it('is refused on a read-only instance', async () => {
+			const stored = await addFile('protected\n');
+			sourceControl.getPreferences.mockReturnValue(
+				mock<SourceControlPreferences>({ branchReadOnly: true }),
+			);
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+
+			await expect(proxy.deleteFile({ by: 'id', id: stored.id })).rejects.toThrow(ForbiddenError);
+		});
+	});
+
+	describe('listFiles', () => {
+		it('lists only the files of the project owning the workflow', async () => {
+			await addFile('mine\n', undefined, { name: 'mine.csv' });
+
+			const otherProject = await createTeamProject(undefined, owner);
+			const otherWorkflow = await createWorkflow({}, otherProject);
+			const otherProxy = await proxyService.getProjectFileProxy(
+				workflowRef(otherWorkflow.id),
+				NODE,
+			);
+			await otherProxy.addFile({
+				name: 'theirs.csv',
+				mimeType: 'text/csv',
+				sizeBytes: 3,
+				source: { type: 'buffer', buffer: Buffer.from('a,b') },
+			});
+
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+			const { count, data } = await proxy.listFiles();
+
+			expect(count).toBe(1);
+			expect(data.map((file) => file.name)).toEqual(['mine.csv']);
+		});
+
+		it('filters by name', async () => {
+			await addFile('a\n', undefined, { name: 'rates-latest.csv' });
+			await addFile('b\n', undefined, { name: 'invoice.pdf' });
+			const proxy = await proxyService.getProjectFileProxy(workflowRef(workflowId), NODE);
+
+			const { data } = await proxy.listFiles({ search: 'rates' });
+
+			expect(data.map((file) => file.name)).toEqual(['rates-latest.csv']);
 		});
 	});
 

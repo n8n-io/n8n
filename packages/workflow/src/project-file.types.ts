@@ -28,13 +28,42 @@ export type ProjectFileNodeOutput = {
 	projectId: string;
 	createdAt: string;
 	updatedAt: string;
+};
+
+export type ProjectFileWriteResult = ProjectFileNodeOutput & {
 	/** True when this replaced the content of an existing file of the same name. */
 	overwritten: boolean;
 };
 
-export type IProjectFileWriteService = {
+/** How a node points at a file that already exists. */
+export type ProjectFileRef = { by: 'id'; id: string } | { by: 'name'; name: string };
+
+export type ProjectFileReadResult = {
+	file: ProjectFileNodeOutput;
+	/**
+	 * Bytes of the stored file. The caller must copy these into execution-scoped
+	 * binary storage rather than referencing the stored blob, so that the project
+	 * file's reference never reaches execution data.
+	 */
+	stream: Readable;
+};
+
+export type ProjectFileListResult = {
+	count: number;
+	data: ProjectFileNodeOutput[];
+};
+
+export type IProjectFileService = {
 	addFile(
 		file: ProjectFileNodeInput,
 		options?: { overwrite?: boolean },
-	): Promise<ProjectFileNodeOutput>;
+	): Promise<ProjectFileWriteResult>;
+	getFile(ref: ProjectFileRef): Promise<ProjectFileReadResult>;
+	deleteFile(ref: ProjectFileRef): Promise<Pick<ProjectFileNodeOutput, 'id' | 'name'>>;
+	/** Backs the `list` mode of the node's file selector. */
+	listFiles(options?: {
+		search?: string;
+		take?: number;
+		skip?: number;
+	}): Promise<ProjectFileListResult>;
 };
