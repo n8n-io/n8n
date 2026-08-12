@@ -6,6 +6,8 @@ export type RedisClientType = N8nRedisClientType | BullRedisClientType;
  * - `subscriber(n8n)` to listen for messages from scaling mode pubsub channels
  * - `publisher(n8n)` to send messages into scaling mode pubsub channels
  * - `cache(n8n)` for caching operations (variables, resource ownership, etc.)
+ * - `log-tail(n8n)` for the operator console's log stream, which needs a
+ *   connection of its own because `XREAD BLOCK` monopolizes one
  */
 type N8nRedisClientType =
 	| 'subscriber(n8n)'
@@ -13,7 +15,8 @@ type N8nRedisClientType =
 	| 'cache(n8n)'
 	| 'registry(n8n)'
 	| 'leader(n8n)'
-	| 'lock(n8n)';
+	| 'lock(n8n)'
+	| 'log-tail(n8n)';
 
 /**
  * Redis client used internally by Bull. Suffixed with `(bull)` at `ScalingService.setupQueue`.

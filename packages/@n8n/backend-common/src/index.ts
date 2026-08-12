@@ -3,7 +3,10 @@ export type * from './types';
 
 export { inDevelopment, inProduction, inTest } from './environment';
 export { isObjectLiteral } from './utils/is-object-literal';
-export { Logger } from './logging/logger';
+export { Logger, LogTransport } from './logging/logger';
+export type { LogTransportOptions } from './logging/logger';
+export { getExecutionContext, runWithExecutionContext } from './logging/execution-context';
+export type { LogExecutionContext } from './logging/execution-context';
 export { ModuleRegistry } from './modules/module-registry';
 export type { ModuleName } from './modules/modules.config';
 export { ModulesConfig } from './modules/modules.config';

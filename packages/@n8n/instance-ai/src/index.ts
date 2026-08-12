@@ -196,6 +196,15 @@ export {
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
+/** Implemented by the cli-side operator-console adapter. Read the security
+ *  contract in the source file before implementing it. */
+export type {
+	InstanceAiLogQueryPort,
+	LogQueryContextOptions,
+	LogQueryReadOptions,
+	LogRedactionAttestation,
+	RedactedLogPage,
+} from './tools/log-query.port';
 export {
 	agentBuilderTargetMetadata,
 	clearedAgentBuilderTargetMetadata,

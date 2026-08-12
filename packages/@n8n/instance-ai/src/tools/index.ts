@@ -29,6 +29,7 @@ const loadEvalConfigTool = lazyMod(
 const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
+const loadLogsTool = lazyMod(() => require('./logs.tool') as typeof import('./logs.tool'));
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
 const loadMcpServersTool = lazyMod(
 	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
@@ -117,6 +118,12 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
 	}
 
+	// Presence of the log query port = the operator-console module is enabled and
+	// its AI tool is switched on. Disabled instances never see the tool.
+	if (context.logQueryService) {
+		tools.push([DOMAIN_TOOL_IDS.LOGS, loadLogsTool().createLogsTool(context)]);
+	}
+
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
 		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, loadParseFileTool().createParseFileTool(context)]);
 	}
@@ -155,6 +162,11 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 	// only — sub-agents can't offer the user a connection.
 	if (context.mcpService) {
 		tools.push([DOMAIN_TOOL_IDS.MCP_SERVERS, loadMcpServersTool().createMcpServersTool(context)]);
+	}
+
+	// See createAllTools — presence of the port is the operator-console gate.
+	if (context.logQueryService) {
+		tools.push([DOMAIN_TOOL_IDS.LOGS, loadLogsTool().createLogsTool(context)]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {

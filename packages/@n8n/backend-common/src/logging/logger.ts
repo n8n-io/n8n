@@ -3,7 +3,7 @@ import { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import callsites from 'callsites';
 import type { TransformableInfo } from 'logform';
-import { LoggerProxy, LOG_LEVELS } from 'n8n-workflow';
+import { LoggerProxy, LOG_LEVELS, UnexpectedError } from 'n8n-workflow';
 import type {
 	Logger as LoggerType,
 	LogLocationMetadata,
@@ -15,9 +15,41 @@ import pc from 'picocolors';
 import winston from 'winston';
 
 import { inDevelopment, inProduction } from '../environment';
+import { getExecutionContext } from './execution-context';
 import { isObjectLiteral } from '../utils/is-object-literal';
 
 const noOp = () => {};
+
+/** A winston transport instance, e.g. one produced by subclassing {@link LogTransport}. */
+export type LogTransport = winston.transport;
+
+export type LogTransportOptions = winston.transport.TransportStreamOptions;
+
+type LogTransportCtor = new (options?: LogTransportOptions) => LogTransport;
+
+/**
+ * winston exposes its transport base class at runtime as `winston.Transport`,
+ * but its bundled type declarations only surface it under the lowercase
+ * `winston.transport` alias. Reading it through a structural view of the
+ * namespace bridges the two without an unchecked cast.
+ */
+const winstonExports: Partial<typeof winston> & { Transport?: LogTransportCtor } = winston;
+
+function resolveTransportBase(): LogTransportCtor {
+	const base = winstonExports.Transport;
+	if (base === undefined) {
+		throw new UnexpectedError('winston no longer exports its transport base class');
+	}
+	return base;
+}
+
+/**
+ * Base class for custom log transports. Re-exported here so other packages can
+ * subclass it and hand the result to {@link Logger.attachTransport} without
+ * taking a direct dependency on winston — logging plumbing stays an
+ * implementation detail of this package.
+ */
+export const LogTransport: LogTransportCtor = resolveTransportBase();
 
 @Service()
 export class Logger implements LoggerType {
@@ -124,7 +156,13 @@ export class Logger implements LoggerType {
 			}
 		}
 
-		this.internalLogger.log(level, message, { ...metadata, ...location });
+		// Stamped here rather than at any downstream consumer so that the execution
+		// cross-link also lands in `n8n.log`, which the file transport writes
+		// straight from this metadata. Explicit metadata wins over the ambient
+		// context.
+		const executionContext = getExecutionContext();
+
+		this.internalLogger.log(level, message, { ...executionContext, ...metadata, ...location });
 	}
 
 	private setLevel() {
@@ -278,6 +316,24 @@ export class Logger implements LoggerType {
 	}
 
 	// #endregion
+
+	/**
+	 * Attach a winston transport to the underlying winston logger, so a consumer
+	 * can observe log entries as structured records instead of re-parsing
+	 * formatted text.
+	 *
+	 * Scoped loggers are winston children of the root logger and write through
+	 * the same transports, so one attachment on the root covers all of them.
+	 *
+	 * Two caveats worth knowing:
+	 * - Entries below the configured log level never reach winston at all
+	 *   (`setLevel` no-ops those methods), so no transport can see them.
+	 * - Scope filtering is applied per transport via its format. A transport
+	 *   attached without a format therefore sees every scope.
+	 */
+	attachTransport(transport: LogTransport) {
+		this.internalLogger.add(transport);
+	}
 
 	// #region For testing only
 

@@ -45,6 +45,7 @@ import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
+import type { InstanceAiLogQueryPort } from './tools/log-query.port';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
@@ -1058,6 +1059,11 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
+	/** Optional — present when the `operator-console` module is enabled and
+	 *  `N8N_OPERATOR_CONSOLE_AI_TOOL` is on. Presence gates the `logs` tool.
+	 *  Everything it returns is sent to the model, so the port only ever yields
+	 *  redacted records — see the contract in `tools/log-query.port.ts`. */
+	logQueryService?: InstanceAiLogQueryPort;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

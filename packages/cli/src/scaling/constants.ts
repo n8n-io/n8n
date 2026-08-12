@@ -49,4 +49,7 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'display-workflow-activation-error',
 	'display-workflow-publication-status',
 	'workflow-publish-wake-up',
+	// A lease heartbeat debounced by 300ms would arrive late enough to let a tail
+	// lapse, and a filter change must take effect on the next line, not eventually.
+	'log-tail-start',
 ]);

@@ -5,6 +5,11 @@ export const DOMAIN_TOOL_IDS = {
 	EVALS: 'evals',
 	EVAL_CONFIG: 'eval-config',
 	EXECUTIONS: 'executions',
+	/** Only registered when the host wires `logQueryService` (operator-console
+	 *  module enabled + `N8N_OPERATOR_CONSOLE_AI_TOOL`). Deferred on purpose:
+	 *  most turns never need instance logs, and keeping it out of the core set
+	 *  leaves the cached system prefix identical on instances that enable it. */
+	LOGS: 'logs',
 	CREDENTIALS: 'credentials',
 	DATA_TABLES: 'data-tables',
 	WORKSPACE: 'workspace',

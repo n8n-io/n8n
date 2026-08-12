@@ -143,9 +143,19 @@ Two things this **must** get right:
   stream, split on `\n`, flush a partial tail on a short timer.
 - **Reentrancy guard.** The winston Console transport itself writes to stdout.
   Without a guard, every structured log is captured twice *and* the broadcast
-  path's own debug logs recurse infinitely. A module-level `isInternalWrite`
-  flag around the winston write, plus excluding the `operator-console` scope
-  from capture entirely.
+  path's own debug logs recurse infinitely.
+
+  **The guard must wrap `internalLogger.write`, not sit inside our transport.**
+  Winston fans an entry out to transports in attachment order, so Console has
+  already written to stdout by the time our transport runs — a flag set inside
+  the transport misses every duplicate. `internalLogger.write` is the single
+  funnel that `Logger.log()` and every `scoped()` child both pass through:
+
+  ```ts
+  internalLogger.write = (info: unknown) => runInternal(() => originalWrite(info));
+  ```
+
+  Plus excluding the `operator-console` scope from capture entirely.
 
 ### Record shape
 
@@ -192,12 +202,22 @@ string cursor** is what does the work.
 
 ```ts
 interface LogSource {
-  read(opts: { since?: string; filter: OperatorLogFilter; limit: number }):
-    Promise<{ records: OperatorLogRecord[]; nextCursor: string; gap: boolean }>;
+  read(opts: {
+    since?: string;
+    filter: OperatorLogFilter;
+    limit: number;
+    direction?: 'forward' | 'backward';   // default 'backward'
+  }): Promise<{ records: OperatorLogRecord[]; nextCursor: string; gap: boolean }>;
 
   subscribe(filter: OperatorLogFilter, onBatch: (b: OperatorLogBatch) => void): () => void;
+
+  hosts(): Promise<OperatorLogHost[]>;
 }
 ```
+
+`direction` defaults to `backward` because opening a console wants the *newest*
+lines. Reading from the oldest record is never what a log tail wants, and over a
+rotated file set it would be pathological.
 
 - `RingBufferSource` encodes `seq`; `RedisStreamSource` uses the stream ID;
   `LogFileSource` encodes `(file, byteOffset)`.
@@ -374,7 +394,42 @@ over a real file** rather than a bespoke query DSL.
 |---|---|
 | `search({ query, executionId?, hostIds?, level?, since?, limit? })` | Matching records via `LogSource.read()`. |
 | `context({ hostId, seq, before = 50, after = 50 })` | Surrounding lines for a hit. **Not optional** — a grep hit without neighbours is nearly useless for debugging, and the agent flounders without it. |
-| `snapshot({ filter })` | Materializes a bounded JSONL into `/workspace/logs/snapshot-<id>.jsonl` **inside the sandbox**; returns path + line count. |
+| `snapshot({ filter })` | Materializes a bounded JSONL into `<workspaceRoot>/logs/snapshot-<id>.jsonl` **inside the sandbox**; returns path + line count. |
+
+### The `InstanceAiLogQueryPort`
+
+`packages/@n8n/instance-ai` cannot import from `packages/cli`, so the tool codes
+against a port that the cli side adapts to `LogSource`:
+
+```ts
+type LogRedactionAttestation = { applied: true; redactor: string };
+type RedactedLogPage = OperatorLogReadResult & { redaction: LogRedactionAttestation };
+
+interface InstanceAiLogQueryPort {
+  readonly maxSnapshotLines?: number;
+  read(options: LogQueryReadOptions): Promise<RedactedLogPage>;
+  readContext(options: LogQueryContextOptions): Promise<RedactedLogPage>;
+}
+```
+
+Two deliberate properties:
+
+- **`readContext` is separate from `read`** because a `(hostId, seq)` window is
+  not expressible through an opaque cursor.
+- **Redaction is attested, not assumed.** `applied` is the literal `true`, so the
+  adapter cannot produce a page without explicitly asserting redaction and naming
+  which redactor ran; `assertRedactedLogPage()` re-checks at runtime before any
+  record reaches the model or the sandbox. Fail-closed — this is the one path
+  that ships log content off-instance.
+
+**Gating is by presence**, matching `mcpService` in the same package: when the
+module is off or `N8N_OPERATOR_CONSOLE_AI_TOOL=false`, leave
+`InstanceAiContext.logQueryService` unset and the tool is never registered. No
+separate boolean.
+
+The tool is **not** in `ALWAYS_LOADED_TOOL_NAMES` — most turns never need
+instance logs, and adding a conditionally-present tool to the core set would
+change the cached system prefix for instances that enable the module.
 
 ### Why snapshot-on-demand, not a continuous tail into the sandbox
 
@@ -434,6 +489,12 @@ credential-shaped material.
     console stream and anything sourced from memory or Redis, from one code
     path. Cost is one pass per line even when nobody is watching; `REDACT=false`
     exists for anyone who measures a problem.
+
+    **`packages/cli/src/modules/redaction` does not fit.** It redacts structured
+    execution data against per-workflow policies and node-declared fields; there
+    is no free-text scrubber in it. `capture/redactor.ts` is a small scoped one
+    (auth headers, scheme tokens, secret-named assignments, URL userinfo,
+    secret-named meta keys) with its limits documented in the file header.
   - *History path:* **`n8n.log` is unredacted.** It is written by the existing
     winston file transport, which we deliberately do not intercept — so
     entry-time redaction does not cover it. `LogFileSource` must therefore
@@ -488,16 +549,16 @@ Supporting changes outside the module, both in `@n8n/backend-common/src/logging/
 ## Implementation TODO
 
 ### Slice 0 — capture layer
-- [ ] `OperatorLogRecord` / `OperatorLogBatch` / `OperatorLogFilter` in `@n8n/api-types`
-- [ ] `LogSource` interface
-- [ ] Register `operator-console` in `MODULE_NAMES` (not in `defaultModules`)
-- [ ] `operator-console.config.ts` + update `@n8n/config` `config.test.ts` snapshot
-- [ ] `Logger.attachTransport()` in `@n8n/backend-common`
-- [ ] Ring buffer: bounded, `seq`-stamped, rate-capped, drop counter
-- [ ] Entry-point redaction
-- [ ] Winston transport → ring buffer
-- [ ] stdout/stderr tee + line assembler + reentrancy guard
-- [ ] Module entrypoint wiring for all three instance types
+- [x] `OperatorLogRecord` / `OperatorLogBatch` / `OperatorLogFilter` in `@n8n/api-types`
+- [x] `LogSource` interface
+- [x] Register `operator-console` in `MODULE_NAMES` (not in `defaultModules`) and `LOG_SCOPES`
+- [x] `operator-console.config.ts` + `@n8n/config` tests green
+- [x] `Logger.attachTransport()` + exported `LogTransport` base in `@n8n/backend-common`
+- [x] Ring buffer: bounded, `seq`-stamped, rate-capped, drop counter
+- [x] Entry-point redaction (`capture/redactor.ts` — the `redaction` module doesn't fit)
+- [x] Winston transport → ring buffer
+- [x] stdout/stderr tee + line assembler + reentrancy guard
+- [ ] Module entrypoint wiring for all three instance types *(integration)*
 
 ### Slice 1 — single-main live tail (complete feature, no Redis)
 - [ ] `RingBufferSource`
@@ -508,18 +569,19 @@ Supporting changes outside the module, both in `@n8n/backend-common/src/logging/
 
 ### Slice 1.5 — history (crash survival)
 - [ ] Attach the winston file transport when `HISTORY=true` and `N8N_LOG_OUTPUT` omits `file`
-- [ ] `LogFileSource`: glob the rotation set, `(file, byteOffset)` cursor
-- [ ] Winston JSON → `OperatorLogRecord` parser
-- [ ] Redact on read (`n8n.log` is unredacted — see [Security](#security))
+- [x] `LogFileSource`: glob the rotation set, synthetic `fileIndex * 1e9 + line` cursor
+- [x] Winston JSON → `OperatorLogRecord` parser (tolerates a torn final line)
+- [x] Redact on read, fail-closed when unwired (`n8n.log` is unredacted — see [Security](#security))
 - [ ] Composite source: ring buffer → log file
 - [ ] `gap` detection and UI marker; "history — structured logs only" boundary marker
 
 ### Slice 2 — scaling fan-out
-- [ ] `RedisStreamSource` (`XADD` / `XREAD BLOCK` / `XRANGE`, `MAXLEN ~`)
-- [ ] `log-tail-start` pubsub command + lease heartbeat
-- [ ] Producer-side filter evaluation
-- [ ] Cursor-resume on reconnect
-- [ ] Composite source: ring buffer → Redis stream → sink file
+- [x] `RedisStreamSource` (`XADD` / `XREAD BLOCK` / `XRANGE`, `MAXLEN ~`)
+- [x] `log-tail-start` pubsub command + lease heartbeat
+- [x] Producer-side filter evaluation (`producer/log-filter.ts`, `compileFilter` fast path)
+- [x] Cursor-resume on reconnect
+- [x] `unionFilters` — producers hold one lease, so N consoles are served by the union
+- [ ] Composite source: ring buffer → Redis stream → log file *(integration)*
 
 ### Slice 3 — execution cross-link
 - [ ] Execution `AsyncLocalStorage` in `@n8n/backend-common/src/logging/`
@@ -529,10 +591,12 @@ Supporting changes outside the module, both in `@n8n/backend-common/src/logging/
 - [ ] `?executionId=` deep link + **View logs** button on execution detail
 
 ### Slice 4 — AI tool
-- [ ] `logs.tool.ts`: `search` / `context` / `snapshot`
-- [ ] Register in the instance-ai tool registry, gated by env var
-- [ ] Sandbox snapshot materialization into `/workspace/logs/`
-- [ ] Prompt guidance: prefer `snapshot` + `rg` over `search` for open-ended questions
+- [x] `logs.tool.ts`: `search` / `context` / `snapshot`
+- [x] `InstanceAiLogQueryPort` + attested redaction (`assertRedactedLogPage`)
+- [x] Register in the instance-ai tool registry, presence-gated via `InstanceAiContext`
+- [x] Sandbox snapshot materialization via `writeWorkspaceFile()`
+- [x] Prompt guidance in the tool descriptions: prefer `snapshot` + `rg`
+- [ ] cli-side adapter implementing the port against the composite `LogSource` *(integration)*
 
 ### Slice 5 — stretch
 - [ ] Distributed grep: `search-logs` command → each host greps its own
@@ -571,5 +635,13 @@ Supporting changes outside the module, both in `@n8n/backend-common/src/logging/
 7. **Multi-main.** A browser is attached to one main but needs logs from all
    hosts. Every instance produces to the stream; only the console-owning main
    consumes. Direct push between mains would not cover this.
-8. **Config snapshot test.** New `@Env` fields in `@n8n/config` require
+8. **Winston rotates the opposite way to logrotate.** `File` transport increments
+   `_created` and keeps writing to the *higher* index, so `n8n.log` is the
+   **oldest** file and `n8n2.log` is newer. Reading them in logrotate order
+   silently serves stale history with no error. Pinned by a test in
+   `__tests__/log-file.source.test.ts`.
+9. **`packages/@n8n/instance-ai/.gitignore` ignores `logs/`.** Any source
+   directory named `logs/` in that package is silently untracked. The log tool's
+   port lives at `src/tools/log-query.port.ts`, not `src/tools/logs/`.
+10. **Config snapshot test.** New `@Env` fields in `@n8n/config` require
    `test/config.test.ts` to be updated and that package's tests re-run.

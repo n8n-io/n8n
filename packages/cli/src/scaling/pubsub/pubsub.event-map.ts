@@ -2,6 +2,7 @@ import type {
 	AgentIntegrationConfig,
 	ChatHubMessageStatus,
 	InstanceAiEvent,
+	OperatorLogFilter,
 	PushMessage,
 	PushPayload,
 	WorkerStatus,
@@ -329,6 +330,29 @@ export type PubSubCommandMap = {
 	 * updates its own cache synchronously in set().
 	 */
 	'redaction-floor-changed': never;
+
+	// #endregion
+
+	// #region Operator console
+
+	/**
+	 * Lease heartbeat that arms the operator console's log tail on every producing
+	 * instance. Published by a main while at least one console is open and re-armed
+	 * every `ttlMs / 2`; producers stop publishing once `ttlMs` elapses without a
+	 * refresh, so a closed tab or a dead main silences the stream on its own.
+	 *
+	 * The filter travels with the lease because it is evaluated **at the producer** —
+	 * unfiltered lines must never cross the network to be filtered later.
+	 *
+	 * Must NOT be added to SELF_SEND_COMMANDS: the publishing main already reads its
+	 * own records straight from its local ring buffer, so self-sending would make it
+	 * see every one of its own lines twice.
+	 */
+	'log-tail-start': {
+		filter: OperatorLogFilter;
+		/** Ms after the last heartbeat at which the producer goes quiet again. */
+		ttlMs: number;
+	};
 
 	// #endregion
 };

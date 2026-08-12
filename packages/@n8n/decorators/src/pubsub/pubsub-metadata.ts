@@ -42,7 +42,8 @@ export type PubSubEventName =
 	| 'agent-chat-subscription-changed'
 	| 'agent-config-changed'
 	| 'agent-tasks-changed'
-	| 'redaction-floor-changed';
+	| 'redaction-floor-changed'
+	| 'log-tail-start';
 
 export type PubSubEventFilter =
 	| {
