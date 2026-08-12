@@ -4602,7 +4602,7 @@
 	"workflowReviews.publishChoice.publish": "Publish",
 	"workflowReviews.submitForReview.title": "Submit for review",
 	"workflowReviews.submitForReview.step": "Step {step} of {total}",
-	"workflowReviews.submitForReview.ariaDescription": "Name and describe the workflow version, then add a review title, an optional description, and a reviewer.",
+	"workflowReviews.submitForReview.ariaDescription": "Name and describe the workflow version, then add a review title, a reviewer, and an optional description.",
 	"workflowReviews.submitForReview.reviewTitle.label": "Review title",
 	"workflowReviews.submitForReview.description.label": "Description",
 	"workflowReviews.submitForReview.reviewer.label": "Reviewer",
