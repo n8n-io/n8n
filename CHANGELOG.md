@@ -1,3 +1,12 @@
+## [2.35.1](https://github.com/n8n-io/n8n/compare/n8n@2.35.0...n8n@2.35.1) (2026-08-12)
+
+
+### Bug Fixes
+
+* **core:** Accept Always allow scope on data-tables resume ([#36080](https://github.com/n8n-io/n8n/issues/36080)) ([b81e52d](https://github.com/n8n-io/n8n/commit/b81e52d76d05ab90bf77fcd201b5e29e4e05ea37))
+* **core:** Apply TLS options per hop when requests go through a proxy ([#36016](https://github.com/n8n-io/n8n/issues/36016)) ([2e2ad77](https://github.com/n8n-io/n8n/commit/2e2ad771142487b105d2e5590ba70528c69b750b))
+
+
 # [2.35.0](https://github.com/n8n-io/n8n/compare/n8n@2.34.0...n8n@2.35.0) (2026-08-11)
 
 
