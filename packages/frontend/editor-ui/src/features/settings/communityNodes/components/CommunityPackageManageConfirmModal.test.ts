@@ -25,7 +25,7 @@ const renderComponent = createComponentRenderer(CommunityPackageManageConfirmMod
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalsById: {
+				modalStateById: {
 					[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]: { open: true },
 				},
 			},

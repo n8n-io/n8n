@@ -16,12 +16,12 @@ import type {
 import { BaseRepository } from './base-repository';
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
-import type { OperationContext } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
-	constructor(dataSource: DataSource) {
-		super(SharedWorkflow, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
 	async getSharedWorkflowIds(workflowIds: string[]) {

@@ -20,6 +20,7 @@ import {
 	type AgentConfigValidationMessages,
 } from '@n8n/ai-utilities/agent-config';
 import {
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
@@ -122,6 +123,49 @@ const createSkillInputSchema = z
 	.strict();
 
 type CreateSkillInput = z.infer<typeof createSkillInputSchema>;
+
+const readSkillInputSchema = z
+	.object({
+		skillId: z.string().min(1).describe('Persisted target-agent skill id to read.'),
+		referencePaths: z
+			.array(z.string().min(1))
+			.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
+			.optional()
+			.describe(
+				'Optional reference paths whose content is needed. Omit to receive paths and UTF-8 byte sizes only.',
+			),
+	})
+	.strict();
+
+type ReadSkillInput = z.infer<typeof readSkillInputSchema>;
+
+const updateSkillFieldsSchema = z
+	.object({
+		name: agentSkillSchema.shape.name.optional(),
+		description: agentSkillSchema.shape.description.optional(),
+		instructions: agentSkillSchema.shape.instructions.optional(),
+		allowedTools: agentSkillSchema.shape.allowedTools.unwrap().min(1).nullable().optional(),
+		references: agentSkillSchema.shape.references
+			.unwrap()
+			.refine((references) => references.length > 0, 'Pass null to clear references.')
+			.nullable()
+			.optional(),
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, {
+		message: 'At least one skill field must be supplied.',
+	});
+
+const updateSkillInputSchema = z
+	.object({
+		skillId: z.string().min(1).describe('Persisted target-agent skill id to update.'),
+		updates: updateSkillFieldsSchema.describe(
+			'Only the fields to change. Pass null for allowedTools or references to remove that field; empty arrays are invalid.',
+		),
+	})
+	.strict();
+
+type UpdateSkillInput = z.infer<typeof updateSkillInputSchema>;
 
 interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
@@ -989,6 +1033,118 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const readSkillTool = new Tool(BUILDER_TOOLS.READ_SKILL)
+			.description(
+				'Read an existing target-agent skill by id. The response includes its instructions, but ' +
+					'references are returned as { path, sizeBytes } metadata by default to keep context small. ' +
+					'Pass only the referencePaths whose content you need. Returns { ok: true, id, skill } or ' +
+					'{ ok: false, errors }.',
+			)
+			.input(readSkillInputSchema)
+			.handler(async ({ skillId, referencePaths = [] }: ReadSkillInput) => {
+				try {
+					const skill = await this.agentSkillsService.getSkill(agentId, projectId, skillId);
+					const { references, ...body } = skill;
+					const requestedPaths = new Set(referencePaths);
+					const knownPaths = new Set(references?.map((reference) => reference.path) ?? []);
+					const missingPaths = referencePaths.filter((path) => !knownPaths.has(path));
+					if (missingPaths.length > 0) {
+						return {
+							ok: false,
+							errors: [
+								{
+									message: `Reference path${missingPaths.length === 1 ? '' : 's'} not found: ${missingPaths.join(', ')}`,
+								},
+							],
+						};
+					}
+
+					return {
+						ok: true,
+						id: skillId,
+						skill: {
+							...body,
+							...(references
+								? {
+										references: references.map((reference) => ({
+											path: reference.path,
+											sizeBytes: new TextEncoder().encode(reference.content).byteLength,
+											...(requestedPaths.has(reference.path) ? { content: reference.content } : {}),
+										})),
+									}
+								: {}),
+						},
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const listSkillsTool = new Tool(BUILDER_TOOLS.LIST_SKILLS)
+			.description(
+				'List lightweight metadata for persisted target-agent skills. Use this to identify which ' +
+					'existing skill owns a capability before reading or creating a skill. Returns ' +
+					'{ ok: true, skills: [{ id, name, description }] } or { ok: false, errors }.',
+			)
+			.input(z.object({}).strict())
+			.handler(async () => {
+				try {
+					const skills = await this.agentSkillsService.listSkills(agentId, projectId);
+					return {
+						ok: true,
+						skills: Object.entries(skills).map(([id, skill]) => ({
+							id,
+							name: skill.name,
+							description: skill.description,
+						})),
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const updateSkillTool = new Tool(BUILDER_TOOLS.UPDATE_SKILL)
+			.description(
+				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
+					'agent config reference. Pass null for allowedTools to remove the tool restriction, or null ' +
+					'for references to remove all references; empty arrays are invalid. Returns ' +
+					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }.',
+			)
+			.input(updateSkillInputSchema)
+			.handler(async ({ skillId, updates }: UpdateSkillInput) => {
+				const { allowedTools, references, ...requiredUpdates } = updates;
+				const normalizedUpdates = {
+					...requiredUpdates,
+					...(allowedTools !== undefined ? { allowedTools: allowedTools ?? undefined } : {}),
+					...(references !== undefined ? { references: references ?? undefined } : {}),
+				};
+
+				try {
+					const updated = await this.agentSkillsService.updateSkill(
+						agentId,
+						projectId,
+						skillId,
+						normalizedUpdates,
+						{ user, modifiedBy: 'builder' },
+					);
+					return { ok: true, id: updated.id, name: updated.skill.name };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
 		const createTasksTool = new Tool(BUILDER_TOOLS.CREATE_TASKS)
 			.description(
 				'Create one or more recurring scheduled tasks for the target agent (name + objective + cron ' +
@@ -1088,6 +1244,9 @@ export class AgentsBuilderToolsService {
 		return [
 			buildCustomToolTool,
 			createSkillsTool,
+			listSkillsTool,
+			readSkillTool,
+			this.withConfigMutationMarker(updateSkillTool, agentId),
 			this.withConfigMutationMarker(createTasksTool, agentId),
 			listWorkflowsTool,
 			buildGetResourceLocatorOptionsTool({

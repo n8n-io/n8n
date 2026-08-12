@@ -1249,16 +1249,21 @@ describe('CredentialsService', () => {
 			transactionManager.findOneBy.mockResolvedValue(credential);
 			setRepositoryTransaction(transactionManager);
 			const encrypted = mock<ICredentialsDb>({ id: credential.id });
-			connectionStatusProxy.findConnectedCredentialIds.mockResolvedValue(new Set([credential.id]));
+			connectionStatusProxy.findMyConnections.mockResolvedValue(
+				new Map([[credential.id, { accountIdentifier: 'me@gmail.com' }]]),
+			);
 
 			const result = await service.update(credential.id, encrypted, undefined, {
 				user: ownerUser,
 			});
 
-			expect(connectionStatusProxy.findConnectedCredentialIds).toHaveBeenCalledWith(ownerUser.id, [
+			expect(connectionStatusProxy.findMyConnections).toHaveBeenCalledWith(ownerUser.id, [
 				credential.id,
 			]);
-			expect(result).toMatchObject({ connectedByMe: true });
+			expect(result).toMatchObject({
+				connectedByMe: true,
+				connectedAccountIdentifier: 'me@gmail.com',
+			});
 		});
 
 		it('does not enrich the returned credential when no user is passed', async () => {
@@ -1273,7 +1278,7 @@ describe('CredentialsService', () => {
 
 			await service.update(credential.id, encrypted);
 
-			expect(connectionStatusProxy.findConnectedCredentialIds).not.toHaveBeenCalled();
+			expect(connectionStatusProxy.findMyConnections).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2470,7 +2475,7 @@ describe('CredentialsService', () => {
 				(c) => ({ ...c, scopes: ['credential:read'] }) as ListQueryDb.Credentials.WithScopes,
 			);
 			sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([]);
-			connectionStatusProxy.findConnectedCredentialIds.mockResolvedValue(new Set());
+			connectionStatusProxy.findMyConnections.mockResolvedValue(new Map());
 			ownershipService.addOwnedByAndSharedWith.mockImplementation(
 				(c: ListQueryDb.Credentials.WithOwnedByAndSharedWith) => {
 					c.homeProject = null;

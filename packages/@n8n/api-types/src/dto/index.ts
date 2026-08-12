@@ -187,7 +187,11 @@ export {
 
 export { UpdateRoleDto } from './roles/update-role.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
-export { RolePublicDto } from './roles/role-public.dto';
+export {
+	RolePublicDto,
+	RoleListPublicDto,
+	RoleListQueryPublicDto,
+} from './roles/role-public.dto';
 export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';
 export {
 	PatchRoleMappingRuleDto,
@@ -326,6 +330,10 @@ export {
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
 export * from './workflow-reviews/list-workflow-review-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
+export {
+	ListWorkflowReviewActivityQueryDto,
+	type ListWorkflowReviewActivityResponse,
+} from './workflow-reviews/workflow-review-activity.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';

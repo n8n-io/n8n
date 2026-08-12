@@ -2,6 +2,9 @@ packages:
   - packages/*
   - packages/@n8n/*
   - packages/frontend/**
+  # `packages/*` stops one level short of `<module>/frontend`, so feature modules need their own
+  # glob or they are not workspace packages at all.
+  - packages/modules/**
   - packages/extensions/**
   - packages/testing/**
 
@@ -66,7 +69,7 @@ catalog:
   '@modelcontextprotocol/sdk': 1.26.0
   '@modelcontextprotocol/server': 2.0.0
   '@mozilla/readability': ^0.6.0
-  '@n8n_io/ai-assistant-sdk': 1.25.0
+  '@n8n_io/ai-assistant-sdk': 1.26.0
   '@openrouter/ai-sdk-provider': ^3.0.0
   '@opentelemetry/api': 1.9.1
   '@pinecone-database/pinecone': ^5.0.2
@@ -279,7 +282,7 @@ catalogs:
     '@typescript/native': 'npm:typescript@7.0.2'
     typescript: 'npm:@typescript/typescript6@6.0.2'
   undici-v6:
-    undici: ^6.27.0
+    undici: ^6.28.0
   undici-v7:
     undici: ^7.29.0
 
