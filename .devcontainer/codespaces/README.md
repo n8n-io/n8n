@@ -107,6 +107,22 @@ and repo investigation. Login registers it from the repo-level
 it. Tell the agent to call `get_flaky_context` first — it returns the rules
 the tools assume.
 
+## Quality skills (Claude plugin)
+
+Claude sessions can also load the private quality skills from the
+`n8n-io/n8n-claude-skills` plugin marketplace (bug insights, defect attribution,
+mutation testing, and more). `post-start.mjs` installs the `quality` plugin on
+each container start, so every session gets the skills with no per-session step.
+
+The codespace's own GitHub token reads only `n8n-io/n8n`, so the private
+marketplace needs its own credential. Add a `CLAUDE_SKILLS_TOKEN` secret at
+[github.com/settings/codespaces](https://github.com/settings/codespaces): a
+fine-grained PAT with read-only `contents` on `n8n-io/n8n-claude-skills`. The
+step is skipped without it, and the log is at `/tmp/post-start.log`.
+
+Note: the token sits in the container, which runs `claude
+--dangerously-skip-permissions`. Keep it read-only and scoped to that one repo.
+
 ## Viewing the dev UI locally
 
 Two terminal windows:

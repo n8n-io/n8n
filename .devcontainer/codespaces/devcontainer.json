@@ -20,10 +20,10 @@
 	"forwardPorts": [8080, 5678],
 	// Runs in prebuilds, so a fresh codespace starts with deps installed and the build warm
 	"onCreateCommand": "corepack install && pnpm install && (pnpm build > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log) && pnpm --filter=n8n-playwright exec playwright install chromium",
-	// Start the poll worker on each container start. `bash -lc` loads the secrets
-	// shim, so the worker gets AGENT_WORKER_TOKEN. tmux detaches it, so it does not
-	// block startup. The worker makes only outbound calls. It exposes nothing inbound.
-	"postStartCommand": "tmux new-session -d -s agent-worker 'bash -lc \"node /workspaces/n8n/.devcontainer/codespaces/agent-worker.mjs >> /tmp/agent-worker.log 2>&1\"' || true",
+	// On each container start: install the private skills marketplace into Claude
+	// (best-effort) and start the poll worker. `bash -lc` loads the secrets shim,
+	// so both get their tokens. Logs: /tmp/post-start.log, /tmp/agent-worker.log.
+	"postStartCommand": "bash -lc 'node /workspaces/n8n/.devcontainer/codespaces/post-start.mjs >> /tmp/post-start.log 2>&1' || true",
 	"secrets": {
 		"ANTHROPIC_API_KEY": {
 			"description": "Anthropic API key for Claude Code / OpenCode sessions"
@@ -33,6 +33,9 @@
 		},
 		"N8N_DEQUEUE_URL": {
 			"description": "n8n webhook the poll worker calls to claim a pending turn"
+		},
+		"CLAUDE_SKILLS_TOKEN": {
+			"description": "Read-only PAT for n8n-io/n8n-claude-skills, so Claude can install the private quality skills marketplace. Optional; the skills step is skipped without it."
 		},
 		"CLAUDE_CODE_OAUTH_TOKEN": {
 			"description": "Alternative to an API key: token from `claude setup-token` (Max subscription)"
