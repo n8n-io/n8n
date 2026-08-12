@@ -392,7 +392,7 @@ onBeforeUnmount(() => {
 			</span>
 		</span>
 
-		<ConnectionTracker v-if="!route.meta.formsOnlyView" class="actions">
+		<ConnectionTracker v-if="!route.meta?.formsOnlyView" class="actions">
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
 				:is-archived="isArchived"
