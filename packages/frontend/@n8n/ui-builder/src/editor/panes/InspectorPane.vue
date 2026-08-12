@@ -55,6 +55,8 @@ const props = defineProps<{
 	createTrigger: (propName: string) => Promise<string | undefined>;
 	run: (url: string, method?: 'GET' | 'POST') => void;
 	history: (url: string) => void;
+	/** What the last run/history click against a webhook step returned, if anything. */
+	previewStatus?: string;
 }>();
 
 const emit = defineEmits<{
@@ -193,12 +195,14 @@ function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
 						:steps="steps(descriptor.name)"
 						:targets="targets"
 						:pages="pages"
+						:scope="scope"
 						:disabled="disabled"
 						:label-for="labelFor"
 						:browse="browse"
 						:create="async () => await createTrigger(descriptor.name)"
 						:run="run"
 						:history="history"
+						:preview-status="previewStatus"
 						@update="emit('setProp', descriptor.name, $event)"
 					/>
 				</N8nCollapsiblePanel>

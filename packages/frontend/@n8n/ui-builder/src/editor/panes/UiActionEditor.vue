@@ -9,15 +9,20 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+
+import UiValueField from './UiValueField.vue';
 import { ACTION_KINDS, createStep } from '../../core/actions';
-import { pageLabel } from '../../core/pages';
 import type { UiActionKind } from '../../core/actions';
-import type {
-	UiActionStep,
-	UiNavigateStep,
-	UiNotifyStep,
-	UiPageInfo,
-	UiWebhookStep,
+import { pageLabel } from '../../core/pages';
+import {
+	ROUTE_PROP_TYPE,
+	type UiActionStep,
+	type UiNavigateStep,
+	type UiNotifyStep,
+	type UiPageInfo,
+	type UiProperty,
+	type UiScope,
+	type UiWebhookStep,
 } from '../../core/types';
 import type { WebhookTarget } from '../composables/useWebhookTargets';
 
@@ -41,6 +46,8 @@ const props = defineProps<{
 	targets: WebhookTarget[];
 	/** Pages a navigate step can go to. Empty in a single-page app. */
 	pages: UiPageInfo[];
+	/** What the selected node is being rendered with, for the navigate step's expression editor. */
+	scope: UiScope;
 	disabled?: boolean;
 	/** How a URL that is not among `targets` should read. */
 	labelFor: (url: string) => string;
@@ -50,6 +57,8 @@ const props = defineProps<{
 	create: () => Promise<string | undefined>;
 	run: (url: string, method?: 'GET' | 'POST') => void;
 	history: (url: string) => void;
+	/** What the last run/history click returned, if anything. Not tied to a particular step. */
+	previewStatus?: string;
 }>();
 
 const emit = defineEmits<{ update: [steps: UiActionStep[]] }>();
@@ -131,6 +140,19 @@ async function onCreate(index: number) {
 	// The pair the "+" button adds is always created as a POST trigger.
 	if (url) patch(index, { url, method: 'POST' });
 }
+
+/**
+ * Not a real property, just enough of one for `UiValueField` to render this
+ * step's destination through: a `route` field, the same widget the
+ * property-level "Go to page" field uses. No label, since the step's own
+ * kind picker above already says what this row is.
+ */
+const toDescriptor: UiProperty = {
+	displayName: '',
+	name: 'to',
+	type: ROUTE_PROP_TYPE,
+	default: '',
+};
 </script>
 
 <template>
@@ -181,59 +203,66 @@ async function onCreate(index: number) {
 			</div>
 
 			<!-- Webhook: the trigger this step posts the app's state to. -->
-			<div v-if="step.kind === 'webhook'" :class="$style.row">
-				<N8nSelect
-					:class="$style.grow"
-					:model-value="(step as UiWebhookStep).url"
-					:disabled="disabled"
-					size="small"
-					filterable
-					clearable
-					placeholder="Pick a webhook trigger"
-					@update:model-value="void onPick(index, $event)"
-				>
-					<N8nOption
-						v-for="target in optionsFor((step as UiWebhookStep).url)"
-						:key="target.url"
-						:label="target.label"
-						:value="target.url"
-					/>
-					<N8nOption :value="BROWSE" label="From another workflow…" :disabled="disabled" />
-				</N8nSelect>
-
-				<N8nTooltip content="Add a Webhook trigger and Respond node for this step">
-					<N8nIconButton
-						variant="ghost"
-						size="small"
-						icon="plus"
-						aria-label="Add a webhook trigger"
+			<template v-if="step.kind === 'webhook'">
+				<div :class="$style.row">
+					<N8nSelect
+						:class="$style.grow"
+						:model-value="(step as UiWebhookStep).url"
 						:disabled="disabled"
-						@click="void onCreate(index)"
-					/>
-				</N8nTooltip>
-
-				<N8nTooltip content="Run this step now and preview what it returns">
-					<N8nIconButton
-						variant="ghost"
 						size="small"
-						icon="play"
-						aria-label="Run this step now"
-						:disabled="disabled || !(step as UiWebhookStep).url"
-						@click="run((step as UiWebhookStep).url, (step as UiWebhookStep).method)"
-					/>
-				</N8nTooltip>
+						filterable
+						clearable
+						placeholder="Pick a webhook trigger"
+						@update:model-value="void onPick(index, $event)"
+					>
+						<N8nOption
+							v-for="target in optionsFor((step as UiWebhookStep).url)"
+							:key="target.url"
+							:label="target.label"
+							:value="target.url"
+						/>
+						<N8nOption :value="BROWSE" label="From another workflow…" :disabled="disabled" />
+					</N8nSelect>
 
-				<N8nTooltip content="Preview what this step returned when it last ran">
-					<N8nIconButton
-						variant="ghost"
-						size="small"
-						icon="history"
-						aria-label="Load the last execution"
-						:disabled="disabled || !(step as UiWebhookStep).url"
-						@click="history((step as UiWebhookStep).url)"
-					/>
-				</N8nTooltip>
-			</div>
+					<N8nTooltip content="Add a Webhook trigger and Respond node for this step">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="plus"
+							aria-label="Add a webhook trigger"
+							:disabled="disabled"
+							@click="void onCreate(index)"
+						/>
+					</N8nTooltip>
+
+					<N8nTooltip content="Run this step now and preview what it returns">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="play"
+							aria-label="Run this step now"
+							:disabled="disabled || !(step as UiWebhookStep).url"
+							@click="run((step as UiWebhookStep).url, (step as UiWebhookStep).method)"
+						/>
+					</N8nTooltip>
+
+					<N8nTooltip content="Preview what this step returned when it last ran">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="history"
+							aria-label="Load the last execution"
+							:disabled="disabled || !(step as UiWebhookStep).url"
+							@click="history((step as UiWebhookStep).url)"
+						/>
+					</N8nTooltip>
+				</div>
+
+				<!-- What the run/history buttons above just returned, if anything. -->
+				<N8nText v-if="previewStatus" size="small" color="text-light" :class="$style.preview">
+					{{ previewStatus }}
+				</N8nText>
+			</template>
 
 			<!--
 				Notify: the client's own message. The envelope's `toast` is the
@@ -265,24 +294,35 @@ async function onCreate(index: number) {
 
 			<!-- Navigate: a page of this app, or an expression producing a path. -->
 			<div v-else :class="$style.row">
-				<N8nSelect
+				<UiValueField
 					:class="$style.grow"
+					:descriptor="toDescriptor"
 					:model-value="(step as UiNavigateStep).to"
+					:scope="scope"
 					:disabled="disabled"
-					size="small"
-					filterable
-					allow-create
-					default-first-option
-					:placeholder="pages.length ? 'Pick a page' : 'This app has no pages yet'"
-					@update:model-value="patch(index, { to: $event })"
+					@update="patch(index, { to: String($event ?? '') })"
 				>
-					<N8nOption
-						v-for="page in pages"
-						:key="page.id"
-						:label="pageLabel(page)"
-						:value="page.path"
-					/>
-				</N8nSelect>
+					<template #fixed="{ value, disabled: isDisabled, update }">
+						<N8nSelect
+							:model-value="value"
+							:disabled="isDisabled"
+							size="small"
+							filterable
+							allow-create
+							default-first-option
+							clearable
+							:placeholder="pages.length ? 'Pick a page' : 'This app has no pages yet'"
+							@update:model-value="update($event ?? '')"
+						>
+							<N8nOption
+								v-for="page in pages"
+								:key="page.id"
+								:label="pageLabel(page)"
+								:value="page.path"
+							/>
+						</N8nSelect>
+					</template>
+				</UiValueField>
 			</div>
 		</div>
 
@@ -353,5 +393,10 @@ async function onCreate(index: number) {
 .narrow {
 	width: 96px;
 	flex-shrink: 0;
+}
+
+.preview {
+	display: block;
+	margin-top: var(--spacing--5xs);
 }
 </style>

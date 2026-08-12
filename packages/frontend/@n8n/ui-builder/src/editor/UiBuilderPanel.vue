@@ -2,6 +2,7 @@
 import {
 	N8nButton,
 	N8nDialog,
+	N8nIcon,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nText,
@@ -10,6 +11,7 @@ import {
 import { computed, onBeforeUnmount, onMounted, provide, reactive, ref, toRef } from 'vue';
 
 import type { UiScope } from '../core/types';
+import { getComponentDef } from '../kit';
 import { createScopeRegistry, UiScopeRegistryKey } from '../renderer/scope-registry';
 import UiRenderer from '../renderer/UiRenderer.vue';
 import { useActionPreview } from './composables/useActionPreview';
@@ -164,6 +166,11 @@ const inspectorScope = computed<UiScope>(
 	() => scopeRegistry.scopeFor(selectedId.value) ?? canvasScope.value,
 );
 
+/** The selected component's descriptor, for the small selection panel above the inspector. */
+const selectedDef = computed(() =>
+	selected.value ? getComponentDef(selected.value.type) : undefined,
+);
+
 /**
  * The real production URL of the Webhook that serves this page, when the host
  * can pin one down unambiguously — see `UiBuilderHost.liveWebhookUrl`. Read
@@ -258,14 +265,10 @@ function onEscape(event: KeyboardEvent) {
 		<div class="ui-builder">
 			<header class="ui-builder__header">
 				<div class="ui-builder__header-content">
-					<N8nText v-if="editingPage" size="small" bold>
-						{{ editingPage.title || editingPage.path }}
-					</N8nText>
-					<N8nText v-else size="small" bold>UI Builder</N8nText>
-
-					<N8nText v-if="previewStatus" size="small" color="text-light">
-						preview: {{ previewStatus }}
-					</N8nText>
+					<N8nIcon icon="layout-template" size="medium" class="ui-builder__header-icon" />
+					<div class="ui-builder__header-title">
+						<N8nText size="small">UI Builder</N8nText>
+					</div>
 				</div>
 
 				<div class="ui-builder__header-actions">
@@ -403,21 +406,52 @@ function onEscape(event: KeyboardEvent) {
 					:style="{ width: `${inspectorWidth}px` }"
 					@resize="onInspectorResize"
 				>
-					<InspectorPane
-						:node="selected"
-						:pseudo="selectedPseudo"
-						:descriptors="inspectorProps"
-						:pages="pages"
-						:targets="localTargets"
-						:scope="inspectorScope"
-						:disabled="readOnly"
-						:label-for="labelForUrl"
-						:browse="pickExternal"
-						:create-trigger="createTrigger"
-						:run="(url: string, method?: 'GET' | 'POST') => void runAction(url, method)"
-						:history="(url: string) => void loadLastExecution(url)"
-						@set-prop="setProp"
-					/>
+					<div class="ui-builder__column">
+						<!--
+							The top bar is generic, panel-level actions only (see the header
+							above); what is actually selected lives here instead, right next
+							to the properties it describes.
+						-->
+						<div class="ui-builder__selection">
+							<N8nText size="small" color="text-light">
+								{{ editingPage ? editingPage.title || editingPage.path : 'No page selected' }}
+							</N8nText>
+							<template v-if="selected">
+								<N8nText size="small" color="text-light">/</N8nText>
+								<N8nIcon
+									v-if="selectedDef?.icon"
+									:icon="selectedDef.icon"
+									size="small"
+									class="ui-builder__selection-icon"
+								/>
+								<N8nText size="small" bold color="text-dark">
+									{{ selectedDef?.label ?? selected.type }}
+								</N8nText>
+							</template>
+							<template v-else-if="selectedPseudo">
+								<N8nText size="small" color="text-light">/</N8nText>
+								<N8nText size="small" bold color="text-dark">{{ selectedPseudo.label }}</N8nText>
+							</template>
+						</div>
+
+						<InspectorPane
+							class="ui-builder__inspector"
+							:node="selected"
+							:pseudo="selectedPseudo"
+							:descriptors="inspectorProps"
+							:pages="pages"
+							:targets="localTargets"
+							:scope="inspectorScope"
+							:disabled="readOnly"
+							:label-for="labelForUrl"
+							:browse="pickExternal"
+							:create-trigger="createTrigger"
+							:run="(url: string, method?: 'GET' | 'POST') => void runAction(url, method)"
+							:history="(url: string) => void loadLastExecution(url)"
+							:preview-status="previewStatus"
+							@set-prop="setProp"
+						/>
+					</div>
 				</N8nResizeWrapper>
 			</div>
 		</div>
@@ -452,11 +486,13 @@ function onEscape(event: KeyboardEvent) {
 }
 
 /*
- * NDV-style top bar: a page/status label on the left, the builder's controls
- * on the right, styled after `NDVHeader.vue` so the two authoring surfaces
- * read as the same family. Also carries what the removed `N8nDialogHeader`
- * used to: `padding-right` clears the dialog's absolutely positioned close
- * button.
+ * The same structure as the NDV's own `NDVHeader.vue`: an icon and a title on
+ * the left (`.content`/`.title` there), generic panel actions on the right
+ * (`.actions`), so the two authoring surfaces read as the same family. This
+ * bar is panel-level only — what is actually selected lives in
+ * `.ui-builder__selection` instead, next to the properties it describes.
+ * `padding-right` carries what the removed `N8nDialogHeader` used to: it
+ * clears the dialog's absolutely positioned close button.
  */
 .ui-builder__header {
 	display: flex;
@@ -464,9 +500,8 @@ function onEscape(event: KeyboardEvent) {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
+	padding: var(--spacing--4xs);
 	padding-right: var(--spacing--xl);
-	border-radius: var(--radius);
 	background: var(--color--background--light-3);
 }
 
@@ -476,6 +511,15 @@ function onEscape(event: KeyboardEvent) {
 	gap: var(--spacing--2xs);
 	margin-left: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.ui-builder__header-icon {
+	align-self: center;
+}
+
+.ui-builder__header-title {
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--sm);
 }
 
 .ui-builder__header-actions {
@@ -488,6 +532,28 @@ function onEscape(event: KeyboardEvent) {
 .ui-builder__header-actions > *:not(:last-child) {
 	border-right: var(--border);
 	padding-right: var(--spacing--2xs);
+}
+
+/*
+ * The selection breadcrumb that used to sit in the top bar: the page being
+ * edited, and the component selected within it. A slim row, not a full pane
+ * (`PaneShell` is for panes with their own scrollable body), sitting directly
+ * above the properties it describes.
+ */
+.ui-builder__selection {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	flex-shrink: 0;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--background--subtle);
+	min-width: 0;
+}
+
+.ui-builder__selection-icon {
+	color: var(--color--text--tint-1);
 }
 
 .ui-builder__layout {
@@ -560,6 +626,12 @@ function onEscape(event: KeyboardEvent) {
 
 /* Grows to absorb whatever height the content-sized pages pane leaves it. */
 .ui-builder__outline {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+/* Grows to absorb whatever height the content-sized selection row leaves it. */
+.ui-builder__inspector {
 	flex: 1 1 auto;
 	min-height: 0;
 }
