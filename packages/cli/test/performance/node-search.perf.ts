@@ -9,7 +9,7 @@
  */
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { STICKY_NODE_TYPE } from 'n8n-workflow';
@@ -17,18 +17,13 @@ import { v4 as uuid } from 'uuid';
 
 import { WorkflowNodeSearchService } from '@/workflows/workflow-node-search.service';
 
-import { createOwner } from '../integration/shared/db/users';
+import { LOREM, seedCorpus } from './shared';
 
 const CORPUS_SIZES = [1_000, 5_000, 20_000];
 const NODES_PER_WORKFLOW = 12;
 const SAMPLES = 30;
 
-/** Prose padding so each workflow carries a realistic JSON payload (~6-8 KB). */
-const LOREM =
-	'This node handles the customer onboarding flow. It reads from the CRM, ' +
-	'normalises the payload, and forwards it to the billing pipeline. Retries ' +
-	'are configured for transient upstream failures. Owner: platform team. ';
-
+/** Realistic multi-node workflow (~6-8 KB JSON payload each). */
 function buildNodes(workflowIndex: number) {
 	const nodes = [];
 	for (let n = 0; n < NODES_PER_WORKFLOW - 2; n++) {
@@ -77,34 +72,6 @@ function buildNodes(workflowIndex: number) {
 	return nodes;
 }
 
-async function seed(count: number, projectId: string) {
-	const workflowRepository = Container.get(WorkflowRepository);
-	const sharedRepository = Container.get(SharedWorkflowRepository);
-	const CHUNK = 250;
-
-	for (let start = 0; start < count; start += CHUNK) {
-		const size = Math.min(CHUNK, count - start);
-		const rows = Array.from({ length: size }, (_, i) => {
-			const idx = start + i;
-			return workflowRepository.create({
-				id: `perf-wf-${idx.toString().padStart(7, '0')}`,
-				name: `Perf Workflow ${idx}`,
-				active: false,
-				isArchived: false,
-				nodes: buildNodes(idx),
-				connections: {},
-				nodeGroups: [],
-				versionId: uuid(),
-				settings: {},
-			});
-		});
-		await workflowRepository.insert(rows);
-		await sharedRepository.insert(
-			rows.map((w) => ({ workflowId: w.id, projectId, role: 'workflow:owner' as const })),
-		);
-	}
-}
-
 function stats(samples: number[]) {
 	const sorted = [...samples].sort((a, b) => a - b);
 	const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
@@ -128,7 +95,6 @@ async function timeIt(fn: () => Promise<unknown>) {
 describe('node search performance', () => {
 	let searchService: WorkflowNodeSearchService;
 	let owner: User;
-	let projectId: string;
 	const report: string[] = [];
 
 	beforeAll(async () => {
@@ -146,20 +112,9 @@ describe('node search performance', () => {
 	for (const corpusSize of CORPUS_SIZES) {
 		describe(`corpus of ${corpusSize} workflows`, () => {
 			beforeAll(async () => {
-				await testDb.truncate([
-					'SharedWorkflow',
-					'ProjectRelation',
-					'WorkflowEntity',
-					'Project',
-					'User',
-				]);
-				owner = await createOwner();
-				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-					owner.id,
-				);
-				projectId = project.id;
-
-				const seedMs = await timeIt(async () => await seed(corpusSize, projectId));
+				const seedMs = await timeIt(async () => {
+					owner = (await seedCorpus(corpusSize, buildNodes)).owner;
+				});
 
 				// A freshly bulk-loaded table has no statistics, so the planner guesses
 				// and picks wildly different plans run to run. Real instances have been

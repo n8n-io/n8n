@@ -1,12 +1,8 @@
-import {
-	NODE_SEARCH_MAX_CANDIDATE_WORKFLOWS,
-	NODE_SEARCH_MAX_RESULTS,
-	NODE_SEARCH_PER_WORKFLOW_CAP,
-	type NodeSearchHit,
-} from '@n8n/api-types';
+import type { NodeSearchHit } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
 import type { INode } from 'n8n-workflow';
 import { STICKY_NODE_TYPE } from 'n8n-workflow';
 import pLimit from 'p-limit';
@@ -14,7 +10,16 @@ import pLimit from 'p-limit';
 import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
 import { RoleService } from '@/services/role.service';
 
-const SEARCH_SCOPES = ['workflow:read'] as const;
+const MAX_RESULTS = 50;
+const PER_WORKFLOW_CAP = 5;
+
+/**
+ * Workflows scanned before matching nodes in memory. Filling MAX_RESULTS needs
+ * at most 50 workflows (1 hit each), so this leaves 2x headroom for workflows
+ * that match the raw JSON but yield no node hit.
+ */
+const MAX_CANDIDATE_WORKFLOWS = 100;
+
 const STICKY_PREVIEW_MAX_LENGTH = 200;
 const STICKY_PREVIEW_LEAD_IN = 40;
 
@@ -62,7 +67,7 @@ export class WorkflowNodeSearchService {
 		// Reuses the shared list query: sharing is a subquery rather than a
 		// materialised ID list, and `take` paginates over DISTINCT workflows so the
 		// owner join cannot multiply rows out of the cap.
-		const scopes = [...SEARCH_SCOPES];
+		const scopes: Scope[] = ['workflow:read'];
 		const [projectRoles, workflowRoles] = await Promise.all([
 			this.roleService.rolesWithScope('project', scopes),
 			this.roleService.rolesWithScope('workflow', scopes),
@@ -80,7 +85,7 @@ export class WorkflowNodeSearchService {
 				// for the few workflows that actually produced hits.
 				// `updatedAt` is selected because it is the ORDER BY column.
 				select: { name: true, isArchived: true, nodes: true, updatedAt: true },
-				take: NODE_SEARCH_MAX_CANDIDATE_WORKFLOWS,
+				take: MAX_CANDIDATE_WORKFLOWS,
 				sortBy: 'updatedAt:desc',
 			},
 		);
@@ -89,15 +94,15 @@ export class WorkflowNodeSearchService {
 		const results: NodeSearchHit[] = [];
 
 		for (const workflow of workflows) {
-			if (results.length >= NODE_SEARCH_MAX_RESULTS) break;
+			if (results.length >= MAX_RESULTS) break;
 
 			const matchedNodes = (workflow.nodes ?? []).filter((node) =>
 				this.nodeMatches(node, queryLower),
 			);
 			if (matchedNodes.length === 0) continue;
 
-			const remainingGlobal = NODE_SEARCH_MAX_RESULTS - results.length;
-			const take = matchedNodes.slice(0, Math.min(NODE_SEARCH_PER_WORKFLOW_CAP, remainingGlobal));
+			const remainingGlobal = MAX_RESULTS - results.length;
+			const take = matchedNodes.slice(0, Math.min(PER_WORKFLOW_CAP, remainingGlobal));
 
 			for (const node of take) {
 				const isSticky = node.type === STICKY_NODE_TYPE;
@@ -144,12 +149,9 @@ export class WorkflowNodeSearchService {
 	private nodeMatches(node: INode, queryLower: string): boolean {
 		if (node.name?.toLowerCase().includes(queryLower)) return true;
 		if (node.notes?.toLowerCase().includes(queryLower)) return true;
-		if (node.parameters) {
-			try {
-				if (JSON.stringify(node.parameters).toLowerCase().includes(queryLower)) return true;
-			} catch {
-				// Unserialisable parameters (e.g. circular) simply do not match.
-			}
+		// Parameters were just deserialised from the JSON column, so stringify cannot throw.
+		if (node.parameters && JSON.stringify(node.parameters).toLowerCase().includes(queryLower)) {
+			return true;
 		}
 		return false;
 	}

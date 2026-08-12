@@ -895,9 +895,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			scopes?: Scope[];
 			projectRoles?: string[];
 			workflowRoles?: string[];
-			isPersonalProject?: boolean;
-			personalProjectOwnerId?: string;
-			onlySharedWithMe?: boolean;
 		},
 		options: ListQuery.Options = {},
 	): Promise<WorkflowEntity[]> {

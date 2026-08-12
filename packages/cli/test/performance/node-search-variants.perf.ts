@@ -14,12 +14,10 @@
  */
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { v4 as uuid } from 'uuid';
 
-import { createOwner } from '../integration/shared/db/users';
+import { seedCorpus } from './shared';
 
 const CORPUS = 20_000;
 const SAMPLES = 15;
@@ -30,7 +28,6 @@ type PlanRow = { detail: string };
 /** SQLite-only: uses EXPLAIN QUERY PLAN and sqlite_master. See
  * node-search-postgres-plan.perf.ts for the Postgres equivalent. */
 const isSqlite = () => Container.get(GlobalConfig).database.type === 'sqlite';
-const LOREM = 'onboarding flow reads from the CRM and forwards it to billing. '.repeat(6);
 
 describe('node search SQL variants', () => {
 	let ds: DataSource;
@@ -39,53 +36,7 @@ describe('node search SQL variants', () => {
 	beforeAll(async () => {
 		if (!isSqlite()) return;
 		await testDb.init();
-		await testDb.truncate([
-			'SharedWorkflow',
-			'ProjectRelation',
-			'WorkflowEntity',
-			'Project',
-			'User',
-		]);
-		const owner = await createOwner();
-		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			owner.id,
-		);
-		const repo = Container.get(WorkflowRepository);
-		const shared = Container.get(SharedWorkflowRepository);
-
-		for (let start = 0; start < CORPUS; start += 500) {
-			const size = Math.min(500, CORPUS - start);
-			const rows = Array.from({ length: size }, (_, k) =>
-				repo.create({
-					id: `var-wf-${(start + k).toString().padStart(7, '0')}`,
-					name: `Workflow ${start + k}`,
-					active: false,
-					isArchived: false,
-					nodes: [
-						{
-							id: uuid(),
-							name: `Step 3 of flow ${start + k}`,
-							type: 'n8n-nodes-base.set',
-							typeVersion: 1,
-							position: [0, 0] as [number, number],
-							parameters: { body: LOREM },
-						},
-					],
-					connections: {},
-					nodeGroups: [],
-					versionId: uuid(),
-					settings: {},
-				}),
-			);
-			await repo.insert(rows);
-			await shared.insert(
-				rows.map((w) => ({
-					workflowId: w.id,
-					projectId: project.id,
-					role: 'workflow:owner' as const,
-				})),
-			);
-		}
+		await seedCorpus(CORPUS);
 		ds = Container.get(DataSource);
 	});
 

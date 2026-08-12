@@ -16,6 +16,7 @@ import type { Scope } from '@n8n/permissions';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 
 import { createTestRun } from '../../shared/db/evaluation';
+import { createOwner } from '../../shared/db/users';
 
 // Test helper functions
 async function shareWorkflowsToProject(
@@ -770,7 +771,6 @@ describe('WorkflowRepository', () => {
 
 		it('matches on node content and excludes non-matching workflows', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users.js');
 			const owner = await createOwner();
 
 			await createWorkflow({ name: 'Has Slack', nodes: [nodeNamed('Send Slack Alert')] }, owner);
@@ -788,7 +788,6 @@ describe('WorkflowRepository', () => {
 		// silently returns nothing; without escaping at all, % and _ act as wildcards.
 		it('treats % and _ in the query as literals, not wildcards', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users.js');
 			const owner = await createOwner();
 
 			await createWorkflow({ name: 'Literal', nodes: [nodeNamed('Discount 50% off')] }, owner);
