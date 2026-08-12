@@ -25,7 +25,7 @@ export type NodeSearchHitProject = {
 };
 
 /** Which node field the query matched. Drives ordering and the result subtitle. */
-export type NodeSearchMatchedField = 'name' | 'type' | 'notes' | 'parameters';
+export type NodeSearchMatchedField = 'name' | 'type' | 'notes' | 'parameters' | 'credentials';
 
 export type NodeSearchHit = {
 	workflowId: string;

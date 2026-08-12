@@ -34,6 +34,7 @@ const MATCHED_FIELD_RANK: Record<NodeSearchMatchedField, number> = {
 	type: 1,
 	notes: 2,
 	parameters: 3,
+	credentials: 4,
 };
 
 const SNIPPET_SUFFIX_MAX_LENGTH = 40;
@@ -160,7 +161,10 @@ export function useGlobalNodeSearchCommands(options: {
 
 		// Nodes is the section; project is the subsection. Keep type + workflow on the row.
 		const showSnippet =
-			(hit.matchedField === 'notes' || hit.matchedField === 'parameters') && !!hit.snippet;
+			(hit.matchedField === 'notes' ||
+				hit.matchedField === 'parameters' ||
+				hit.matchedField === 'credentials') &&
+			!!hit.snippet;
 		const suffix = [showSnippet ? formatSnippetForSuffix(hit.snippet) : typeLabel, hit.workflowName]
 			.filter(Boolean)
 			.join(' · ');

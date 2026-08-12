@@ -14,11 +14,21 @@ import { findNodeSearchMatch, STICKY_NODE_TYPE } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 
 /**
- * Workflows pulled from the DB per search. The coarse SQL pre-filter matches JSON
- * structure as well as content, so it over-fetches; this bounds the in-memory
- * re-match on queries that hit a large share of the corpus.
+ * Workflows hydrated per keyset batch. The coarse SQL pre-filter matches JSON
+ * structure as well as content (node ids, webhook ids, positions), so a batch
+ * can be entirely false positives; the scan continues on an `(updatedAt, id)`
+ * cursor instead of giving up, so those false positives cannot silently
+ * displace real hits further down — a fixed candidate cap did exactly that.
  */
-const CANDIDATE_WORKFLOW_LIMIT = NODE_SEARCH_MAX_RESULTS * 10;
+const BATCH_SIZE = 100;
+
+/**
+ * Safety rail for pathological queries where nothing matches in memory but the
+ * blob keeps matching: bounds hydration cost, not correctness of ranking.
+ * ponytail: practical-completeness bound; the real fix at ~100k+ workflows is a
+ * dedicated search index table maintained by the workflow-index module.
+ */
+const MAX_SCANNED_WORKFLOWS = 2000;
 
 /** Relevance order for matched fields — a node-name hit beats a buried parameter hit. */
 const MATCHED_FIELD_RANK: Record<NodeSearchMatchedField, number> = {
@@ -26,6 +36,7 @@ const MATCHED_FIELD_RANK: Record<NodeSearchMatchedField, number> = {
 	type: 1,
 	notes: 2,
 	parameters: 3,
+	credentials: 4,
 };
 
 type ScoredHit = NodeSearchHit & { rank: number };
@@ -56,19 +67,34 @@ export class WorkflowNodeSearchService {
 			this.roleService.rolesWithScope('workflow', scopes),
 		]);
 
-		const candidates = await this.workflowRepository.findNodeSearchCandidates(
-			user,
-			{ scopes, projectRoles, workflowRoles },
-			query,
-			CANDIDATE_WORKFLOW_LIMIT,
-			options.projectId,
-		);
-
 		const queryLower = query.toLowerCase();
 		const hits: ScoredHit[] = [];
 
-		for (const candidate of candidates) {
-			hits.push(...this.matchWorkflow(candidate, queryLower));
+		// Keyset scan, newest first. Stops as soon as enough hits exist to fill the
+		// result list and decide `hasMore`, so queries that match stop after a batch
+		// or two; only queries whose matches are blob-only false positives walk on,
+		// bounded by MAX_SCANNED_WORKFLOWS.
+		let cursor: { updatedAt: Date; id: string } | undefined;
+		let scanned = 0;
+		while (scanned < MAX_SCANNED_WORKFLOWS && hits.length <= NODE_SEARCH_MAX_RESULTS) {
+			const candidates = await this.workflowRepository.findNodeSearchCandidates(
+				user,
+				{ scopes, projectRoles, workflowRoles },
+				query,
+				BATCH_SIZE,
+				options.projectId,
+				cursor,
+			);
+
+			for (const candidate of candidates) {
+				hits.push(...this.matchWorkflow(candidate, queryLower));
+			}
+
+			scanned += candidates.length;
+			if (candidates.length < BATCH_SIZE) break; // corpus exhausted
+
+			const last = candidates[candidates.length - 1];
+			cursor = { updatedAt: last.updatedAt, id: last.id };
 		}
 
 		// Candidates arrive newest-first, so a stable sort by matched-field rank

@@ -143,6 +143,28 @@ describe('findNodeSearchMatch', () => {
 		expect(findNodeSearchMatch(node, 'url')).toBeNull();
 	});
 
+	it('matches credential names after every other field', () => {
+		const node = makeNode({
+			name: 'Notify',
+			credentials: { slackApi: { id: 'c-1', name: 'Slack Prod Account' } },
+		});
+
+		expect(findNodeSearchMatch(node, 'prod account')).toEqual({
+			field: 'credentials',
+			snippet: 'Slack Prod Account',
+		});
+	});
+
+	it('does not match credential type keys', () => {
+		const node = makeNode({
+			name: 'Notify',
+			type: 'n8n-nodes-base.noOp',
+			credentials: { slackApi: { id: 'c-1', name: 'Team credential' } },
+		});
+
+		expect(findNodeSearchMatch(node, 'slackapi')).toBeNull();
+	});
+
 	it('is case insensitive against the lowercased query', () => {
 		const node = makeNode({ parameters: { channel: '#Deploys' } });
 		expect(findNodeSearchMatch(node, 'deploys')?.field).toBe('parameters');
