@@ -12,11 +12,16 @@ const SCRIPT_CONTEXT_ESCAPES: Record<string, string> = {
  * legacy JS engines. Same approach the Chat Trigger node takes.
  */
 export function escapeForScriptContext(value: unknown): string {
-	return JSON.stringify(value).replace(
-		/[<>&\u2028\u2029]/g,
-		(c) => SCRIPT_CONTEXT_ESCAPES[c] ?? c,
-	);
+	return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (c) => SCRIPT_CONTEXT_ESCAPES[c] ?? c);
 }
+
+/**
+ * Cache-busts the runtime asset URLs so a CDN in front of this instance never
+ * needs a manual purge: every process boot (a fresh deploy, a restart) gets a
+ * new value, so the URL itself changes and the CDN has to fetch fresh rather
+ * than keep serving whatever it cached under the old, unversioned path.
+ */
+const RUNTIME_BUILD_ID = Date.now();
 
 function escapeHtml(value: string): string {
 	return value
@@ -45,7 +50,7 @@ export function getAppPage(title: string, definition: unknown, token?: string): 
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>${escapeHtml(title)}</title>
-		<link rel="stylesheet" href="/static/ui-runtime.css" />
+		<link rel="stylesheet" href="/static/ui-runtime.css?v=${RUNTIME_BUILD_ID}" />
 		<style>
 			html, body { margin: 0; padding: 0; height: 100%; }
 		</style>
@@ -53,7 +58,7 @@ export function getAppPage(title: string, definition: unknown, token?: string): 
 	<body>
 		<div id="app"></div>
 		<script>window.__N8N_UI__ = ${escapeForScriptContext({ definition, token, title })};</script>
-		<script type="module" src="/static/ui-runtime.js"></script>
+		<script type="module" src="/static/ui-runtime.js?v=${RUNTIME_BUILD_ID}"></script>
 	</body>
 </html>`;
 }

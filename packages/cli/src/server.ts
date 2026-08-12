@@ -87,7 +87,7 @@ import { AuthStrategyRegistry } from './services/auth-strategy.registry';
  * unauthenticated build assets, so allowing any origin to read them costs
  * nothing.
  */
-const UI_BUILDER_RUNTIME_PATH = /^\/static\/ui-runtime\.(js|css)$/;
+const UI_BUILDER_RUNTIME_PATH = /^\/static\/ui-runtime\.(js|css)(\?.*)?$/;
 
 function setUiBuilderRuntimeCorsHeader(res: express.Response) {
 	if (UI_BUILDER_RUNTIME_PATH.test(res.req.url)) {
