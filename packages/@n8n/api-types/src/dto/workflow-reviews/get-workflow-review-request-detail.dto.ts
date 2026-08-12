@@ -32,7 +32,10 @@ export interface WorkflowReviewRequestWorkflowDetail {
  * map reasons to copy; unknown future reasons should fall back to a generic
  * hint.
  */
-export type WorkflowReviewDecisionIneligibilityReason = 'author' | 'missing_publish_permission';
+export type WorkflowReviewDecisionIneligibilityReason =
+	| 'author'
+	| 'missing_permission'
+	| 'missing_reviewer_permission';
 
 export interface WorkflowReviewRequestDetail extends WorkflowReviewInboxItem {
 	description: string | null;

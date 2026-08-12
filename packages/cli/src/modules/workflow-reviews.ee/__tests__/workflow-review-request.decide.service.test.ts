@@ -37,6 +37,11 @@ import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.servi
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });
+const requesterUser = mock<User>({
+	id: 'requester-1',
+	disabled: false,
+	role: { slug: 'global:member' },
+});
 
 const requestId = 'req-1';
 const projectId = 'proj-1';
@@ -84,6 +89,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		new WorkflowReviewEligibilityService(
 			workflowFinderService,
 			authorRepository,
+			reviewerRepository,
 			projectRelationRepository,
 		),
 		roleService,
@@ -100,6 +106,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			decision: 'pending',
 			closedById: null,
 			approvedAt: null,
+			createdById: requesterUser.id,
 			createdAt: new Date('2026-07-20T10:00:00.000Z'),
 			updatedAt: new Date('2026-07-20T11:00:00.000Z'),
 			...overrides,
@@ -119,7 +126,9 @@ describe('WorkflowReviewRequestService.decide', () => {
 			mock<WorkflowEntity>({ isArchived: false }),
 		);
 		authorRepository.isAuthor.mockResolvedValue(false);
+		reviewerRepository.isReviewer.mockResolvedValue(true);
 		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+		userRepository.findManyByIds.mockResolvedValue([requesterUser]);
 		requestRepository.saveRequest.mockImplementation(async (request) => request);
 	};
 
@@ -167,7 +176,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
-	it('throws NotFoundError when the user lacks publish access to the workflow', async () => {
+	it('throws NotFoundError when the user cannot view the workflow', async () => {
 		mockSuccessfulDecidePath();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
@@ -178,8 +187,19 @@ describe('WorkflowReviewRequestService.decide', () => {
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
 			'wf-1',
 			expect.anything(),
-			['workflow:publish'],
+			['workflow:read'],
 		);
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+	});
+
+	it('throws NotFoundError for a non-assigned viewer without an admin override', async () => {
+		mockSuccessfulDecidePath();
+		reviewerRepository.isReviewer.mockResolvedValue(false);
+
+		await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
+			NotFoundError,
+		);
+
 		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
@@ -198,9 +218,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 	});
 
 	describe('author eligibility', () => {
-		it('throws ForbiddenError for an author without an admin override', async () => {
+		it('throws ForbiddenError for an author without an admin override, even when assigned', async () => {
 			mockSuccessfulDecidePath();
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(true);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 
 			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
@@ -235,6 +256,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			async (slug) => {
 				mockSuccessfulDecidePath();
 				authorRepository.isAuthor.mockResolvedValue(true);
+				reviewerRepository.isReviewer.mockResolvedValue(false);
 				const admin = mock<User>({ id: 'user-1', role: { slug } });
 
 				const result = await service.decide(admin, requestId, approveDto);
@@ -247,6 +269,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		it('allows an author who is a project admin of the review project', async () => {
 			mockSuccessfulDecidePath();
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId]);
 
 			const result = await service.decide(memberUser(), requestId, approveDto);
@@ -382,20 +405,20 @@ describe('WorkflowReviewRequestService.decide', () => {
 		expect(result.workflowVersionId).toBe('ver-2');
 		// The published version must be the one the approval was recorded against.
 		expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
-			expect.objectContaining({ id: 'user-1' }),
+			expect.objectContaining({ id: requesterUser.id }),
 			'wf-1',
 			{ versionId: 'ver-2', source: 'review-approval' },
 		);
 	});
 
 	describe('auto-publish on approval', () => {
-		it('publishes the pinned version as the reviewer, after the approval commits', async () => {
+		it('publishes the pinned version as the requester, after the approval commits', async () => {
 			mockSuccessfulDecidePath();
 
 			const result = await service.decide(memberUser(), requestId, approveDto);
 
 			expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(
-				expect.objectContaining({ id: 'user-1' }),
+				expect.objectContaining({ id: requesterUser.id }),
 				'wf-1',
 				{ versionId: 'ver-1', source: 'review-approval' },
 			);
@@ -412,7 +435,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 			await service.decide(memberUser(), requestId, approveDto);
 
-			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', 'user-1');
+			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				'wf-1',
+				requesterUser.id,
+			);
 		});
 
 		it('never publishes on changes_requested and omits the outcome', async () => {
@@ -447,6 +473,69 @@ describe('WorkflowReviewRequestService.decide', () => {
 				expect.objectContaining({ workflowId: 'wf-1', pinnedVersionId: 'ver-1' }),
 			);
 			expect(collaborationService.broadcastWorkflowUpdate).not.toHaveBeenCalled();
+		});
+
+		it('keeps the approval as a system close when the requester user has been deleted', async () => {
+			mockSuccessfulDecidePath();
+			userRepository.findManyByIds.mockResolvedValue([]);
+
+			const result = await service.decide(memberUser(), requestId, approveDto);
+
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith([requesterUser.id], {
+				includeRole: true,
+			});
+			expect(requestRepository.saveRequest.mock.calls[0]?.[0]).toMatchObject({
+				decision: 'approved',
+				state: 'closed',
+				closedById: null,
+			});
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result.autoPublish).toEqual({
+				status: 'failed',
+				message: 'The review requester is no longer available',
+			});
+		});
+
+		it('keeps the approval as a system close when the requester has been deactivated', async () => {
+			mockSuccessfulDecidePath();
+			userRepository.findManyByIds.mockResolvedValue([
+				mock<User>({ id: requesterUser.id, disabled: true, role: { slug: 'global:member' } }),
+			]);
+
+			const result = await service.decide(memberUser(), requestId, approveDto);
+
+			expect(requestRepository.saveRequest.mock.calls[0]?.[0]).toMatchObject({
+				decision: 'approved',
+				state: 'closed',
+				closedById: null,
+			});
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result.autoPublish).toEqual({
+				status: 'failed',
+				message: 'The review requester is no longer available',
+			});
+		});
+
+		it('keeps the approval as a system close when the requester lost publish rights', async () => {
+			mockSuccessfulDecidePath();
+			workflowFinderService.findWorkflowForUser
+				// Decider: workflow:read
+				.mockResolvedValueOnce(mock<WorkflowEntity>({ isArchived: false }))
+				// Requester publishability: workflow:publish
+				.mockResolvedValueOnce(null);
+
+			const result = await service.decide(memberUser(), requestId, approveDto);
+
+			expect(requestRepository.saveRequest.mock.calls[0]?.[0]).toMatchObject({
+				decision: 'approved',
+				state: 'closed',
+				closedById: null,
+			});
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result.autoPublish).toEqual({
+				status: 'failed',
+				message: 'The review requester no longer has permission to publish this workflow',
+			});
 		});
 
 		it('skips publishing and reports a failure when the pinned version was pruned', async () => {

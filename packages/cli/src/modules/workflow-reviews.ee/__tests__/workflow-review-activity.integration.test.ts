@@ -15,6 +15,7 @@ import {
 	WorkflowReviewActivityRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
+	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -187,6 +188,10 @@ describe('Commenting on a review', () => {
 
 	test('lets a reviewer who can approve the review comment on it', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
+		await Container.get(WorkflowReviewRequestReviewerRepository).addReviewers(
+			{ workflowReviewRequestId: request.id, userIds: [member.id] },
+			{},
+		);
 
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
@@ -195,6 +200,7 @@ describe('Commenting on a review', () => {
 
 		const detail = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 		expect(detail.body.data.viewerCanComment).toBe(true);
+		expect(detail.body.data.viewerCanDecide).toBe(true);
 	});
 
 	test('lets a reader who cannot approve read the feed but not post to it', async () => {
@@ -235,13 +241,13 @@ describe('Commenting on a review', () => {
 	test('lets a requester downgraded to view-only keep commenting on their own review', async () => {
 		// Opening a review needs workflow:publish, so this state is only reachable by a
 		// downgrade. project:viewer keeps workflow:read, and read is the scope that gates
-		// commenting, so this must pass while deciding does not.
+		// commenting, so this must pass while deciding does not (author block).
 		const { request } = await seedReviewInTeamProject(viewer);
 
 		const detail = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 		expect(detail.body.data.viewerCanComment).toBe(true);
 		expect(detail.body.data.viewerCanDecide).toBe(false);
-		expect(detail.body.data.viewerDecisionIneligibilityReason).toBe('missing_publish_permission');
+		expect(detail.body.data.viewerDecisionIneligibilityReason).toBe('author');
 
 		await viewerAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
@@ -531,6 +537,10 @@ describe('Reading the activity feed', () => {
 
 	test('keeps each comment with its own body and author', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
+		await Container.get(WorkflowReviewRequestReviewerRepository).addReviewers(
+			{ workflowReviewRequestId: request.id, userIds: [member.id] },
+			{},
+		);
 		await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
 			.send({ body: 'From the owner' })
@@ -561,6 +571,10 @@ describe('Reading the activity feed', () => {
 
 	test('keeps a comment readable after its author is deleted from the instance', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
+		await Container.get(WorkflowReviewRequestReviewerRepository).addReviewers(
+			{ workflowReviewRequestId: request.id, userIds: [member.id] },
+			{},
+		);
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
 			.send({ body: 'Written before leaving' })
