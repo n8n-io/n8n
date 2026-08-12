@@ -1,14 +1,14 @@
 <script lang="ts" setup>
 import type { ExecutionsNlFilterResponseDto } from '@n8n/api-types';
-import { useElementSize, useIntervalFn } from '@vueuse/core';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { useIntervalFn } from '@vueuse/core';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { EnterpriseEditionFeature, DEBOUNCE_TIME } from '@/app/constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useAnnotationTagsStore } from '@/features/shared/tags/tags.store';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nIcon, N8nInput, N8nPopover } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nPopover } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { i18n as locale } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -35,11 +35,11 @@ const isTranslating = ref(false);
 const lastTranslatedQuery = ref('');
 let requestId = 0;
 
-const isHistoryOpen = ref(false);
+const isFocused = ref(false);
+/** Set by Escape and by picking an entry, so the dropdown stays shut while the input keeps focus. */
+const isHistoryDismissed = ref(false);
 const inputWrapper = ref<HTMLDivElement>();
-// The dropdown matches the input's width but is anchored to it rather than nested inside, so it
-// overlays instead of stretching the input; the history button stays the popover's trigger.
-const { width: inputWidth } = useElementSize(inputWrapper);
+const historyList = ref<HTMLUListElement>();
 
 const { debounce } = useDebounce();
 const toast = useToast();
@@ -49,8 +49,23 @@ const annotationTagsStore = useAnnotationTagsStore();
 const settingsStore = useSettingsStore();
 const { history, record } = useExecutionsNlFilterHistory();
 
-/** Newest first — the dropdown reads top-down, while storage stays chronological ascending. */
-const recentQueries = computed(() => [...history.value].reverse());
+/**
+ * Newest first (storage stays chronological ascending), narrowed to what's typed so the dropdown
+ * behaves as an autocomplete rather than a fixed overlay sitting on top of the executions list.
+ */
+const matchingQueries = computed(() => {
+	const needle = query.value.trim().toLowerCase();
+	const newestFirst = [...history.value].reverse();
+
+	if (!needle) return newestFirst;
+	return newestFirst.filter((entry) => entry.query.toLowerCase().includes(needle));
+});
+
+// Derived rather than a ref, so it can't get stuck open: it closes on blur, on Escape, and
+// automatically once what's typed no longer matches anything in history.
+const isHistoryOpen = computed(
+	() => isFocused.value && !isHistoryDismissed.value && matchingQueries.value.length > 0,
+);
 
 const isAnnotationFiltersEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
@@ -152,7 +167,9 @@ const debouncedRunTranslation = debounce(runTranslation, {
 });
 
 function onHistorySelect(entry: ExecutionsNlFilterHistoryEntry) {
-	isHistoryOpen.value = false;
+	// The picked query matches itself, so without dismissing, the dropdown would reopen the moment
+	// focus lands back on the input. Typing again (or leaving and returning) clears the flag.
+	isHistoryDismissed.value = true;
 	query.value = entry.query;
 	// Marking it translated stops a subsequent Enter from re-sending identical text to the model —
 	// the stored extraction is already what that query resolves to.
@@ -164,6 +181,8 @@ function onHistorySelect(entry: ExecutionsNlFilterHistoryEntry) {
 
 function onQueryChange(value: string) {
 	query.value = value;
+	// Typing is a fresh intent to browse, so an earlier Escape/selection stops suppressing the list.
+	isHistoryDismissed.value = false;
 
 	if (value.trim().length < MIN_AUTO_QUERY_LENGTH) {
 		// Too short to be worth an auto-fire; also cancel any pending one from a longer,
@@ -179,37 +198,71 @@ function onEnter() {
 	debouncedRunTranslation.cancel();
 	void runTranslation();
 }
+
+function onFocus() {
+	isFocused.value = true;
+}
+
+function onBlur() {
+	isFocused.value = false;
+	// Reset here rather than on focus: on focus it would immediately undo the suppression that
+	// `onHistorySelect` just set, reopening the dropdown as focus returns to the input.
+	isHistoryDismissed.value = false;
+}
+
+function onEscape() {
+	isHistoryDismissed.value = true;
+}
+
+/** The list is portaled out of the tab order, so give the keyboard an explicit way in. */
+async function onArrowDown() {
+	if (!isHistoryOpen.value) return;
+	await nextTick();
+	historyList.value?.querySelector('button')?.focus();
+}
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div ref="inputWrapper" :class="$style.container">
+		<N8nInput
+			:model-value="query"
+			:placeholder="placeholderText"
+			clearable
+			data-test-id="executions-nl-filter-input"
+			@update:model-value="onQueryChange"
+			@focus="onFocus"
+			@blur="onBlur"
+			@keydown.enter="onEnter"
+			@keydown.esc="onEscape"
+			@keydown.down.prevent="onArrowDown"
+		>
+			<template v-if="isTranslating" #suffix>
+				<N8nIcon icon="spinner" spin data-test-id="executions-nl-filter-loading" />
+			</template>
+		</N8nInput>
 		<N8nPopover
-			v-model:open="isHistoryOpen"
+			:open="isHistoryOpen"
 			:reference="inputWrapper"
-			:width="`${inputWidth}px`"
+			width="var(--reka-popper-anchor-width)"
 			side="bottom"
 			align="start"
 			max-height="320px"
+			:suppress-auto-focus="true"
 			:content-class="$style.historyPopover"
 		>
-			<template #trigger>
-				<N8nButton
-					variant="ghost"
-					size="medium"
-					icon="history"
-					icon-only
-					:disabled="recentQueries.length === 0"
-					:aria-label="locale.baseText('executionsNlFilter.history.ariaLabel')"
-					data-test-id="executions-nl-filter-history-button"
-				/>
-			</template>
 			<template #content>
-				<ul :class="$style.historyList" data-test-id="executions-nl-filter-history-list">
-					<li v-for="entry in recentQueries" :key="entry.savedAt">
+				<ul
+					ref="historyList"
+					:class="$style.historyList"
+					:aria-label="locale.baseText('executionsNlFilter.history.ariaLabel')"
+					data-test-id="executions-nl-filter-history-list"
+				>
+					<li v-for="entry in matchingQueries" :key="entry.savedAt">
 						<button
 							type="button"
 							:class="$style.historyItem"
 							:title="entry.query"
+							@mousedown.prevent
 							@click="onHistorySelect(entry)"
 						>
 							{{ entry.query }}
@@ -218,33 +271,13 @@ function onEnter() {
 				</ul>
 			</template>
 		</N8nPopover>
-		<div ref="inputWrapper" :class="$style.inputWrapper">
-			<N8nInput
-				:model-value="query"
-				:placeholder="placeholderText"
-				clearable
-				data-test-id="executions-nl-filter-input"
-				@update:model-value="onQueryChange"
-				@keydown.enter="onEnter"
-			>
-				<template v-if="isTranslating" #suffix>
-					<N8nIcon icon="spinner" spin data-test-id="executions-nl-filter-loading" />
-				</template>
-			</N8nInput>
-		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+/* Also the popover's anchor, so the dropdown inherits the input's width and left edge. */
 .container {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 	width: 100%;
-}
-
-.inputWrapper {
-	flex: 1 1 auto;
 	min-width: 0;
 }
 
