@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
 
+import { isOneOffTaskEnabled } from '../one-off-task/is-one-off-task-enabled';
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
@@ -70,6 +71,10 @@ const loadVerifyBuiltWorkflowTool = lazyMod(
 );
 const loadResearchTool = lazyMod(
 	() => require('./research.tool') as typeof import('./research.tool'),
+);
+const loadRunOneOffTaskTool = lazyMod(
+	() =>
+		require('../one-off-task/run-one-off-task.tool') as typeof import('../one-off-task/run-one-off-task.tool'),
 );
 const loadAskUserTool = lazyMod(
 	() => require('./shared/ask-user.tool') as typeof import('./shared/ask-user.tool'),
@@ -213,6 +218,16 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.GET_SESSION,
 			loadGetSessionTool().createGetSessionTool(context),
+		]);
+	}
+
+	// Opt-in flag plus host-wired deps (sandbox provider + credential resolver):
+	// the host only sets `oneOffTask` when an n8n sandbox service is configured.
+	const oneOffTaskDeps = context.oneOffTask;
+	if (oneOffTaskDeps && isOneOffTaskEnabled()) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.RUN_ONE_OFF_TASK,
+			loadRunOneOffTaskTool().createRunOneOffTaskTool(context, oneOffTaskDeps),
 		]);
 	}
 

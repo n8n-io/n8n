@@ -9,6 +9,9 @@ import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
+import type * as OneOffTaskContractsMod from './one-off-task/contracts';
+import type * as RunOneOffTaskToolMod from './one-off-task/run-one-off-task.tool';
+import type * as OneOffTaskSandboxMod from './one-off-task/sandbox';
 import type * as StructuredFileParserMod from './parsers/structured-file-parser';
 import type * as ValidateAttachmentsMod from './parsers/validate-attachments';
 import type * as PlannedTaskPermissionsMod from './planned-tasks/planned-task-permissions';
@@ -110,6 +113,15 @@ const loadAgentPersistence = lazyModule(
 	() => require('./tools/orchestration/agent-persistence') as typeof AgentPersistenceMod,
 );
 const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeof TitleUtilsMod);
+const loadOneOffTaskContracts = lazyModule(
+	() => require('./one-off-task/contracts') as typeof OneOffTaskContractsMod,
+);
+const loadRunOneOffTaskTool = lazyModule(
+	() => require('./one-off-task/run-one-off-task.tool') as typeof RunOneOffTaskToolMod,
+);
+const loadOneOffTaskSandbox = lazyModule(
+	() => require('./one-off-task/sandbox') as typeof OneOffTaskSandboxMod,
+);
 const loadMcpClientManager = lazyModule(
 	() => require('./mcp/mcp-client-manager') as typeof McpClientManagerMod,
 );
@@ -716,3 +728,74 @@ export type UnsupportedAttachmentError = ValidateAttachmentsMod.UnsupportedAttac
 export const UnsupportedAttachmentError: typeof ValidateAttachmentsMod.UnsupportedAttachmentError =
 	lazyClass(() => loadValidateAttachments().UnsupportedAttachmentError);
 export type { UnsupportedAttachmentDetail } from './parsers/validate-attachments';
+
+// ── One-off task sandboxes ───────────────────────────────────────────────────
+
+export { isOneOffTaskEnabled, ONE_OFF_TASK_SKILL_ID } from './one-off-task/is-one-off-task-enabled';
+export const credentialEnvVarName: typeof OneOffTaskContractsMod.credentialEnvVarName =
+	lazyFunction(() => loadOneOffTaskContracts().credentialEnvVarName);
+export declare const ONE_OFF_TASK_PI_VERSION: typeof OneOffTaskContractsMod.ONE_OFF_TASK_PI_VERSION;
+export declare const TASK_DIR: typeof OneOffTaskContractsMod.TASK_DIR;
+export declare const SECRETS_MANIFEST_PATH: typeof OneOffTaskContractsMod.SECRETS_MANIFEST_PATH;
+export declare const REPORT_PATH: typeof OneOffTaskContractsMod.REPORT_PATH;
+export declare const SESSION_DIR: typeof OneOffTaskContractsMod.SESSION_DIR;
+export declare const ONE_OFF_TASK_CREDENTIAL_WAIT_TIMEOUT_MS: typeof OneOffTaskContractsMod.ONE_OFF_TASK_CREDENTIAL_WAIT_TIMEOUT_MS;
+export declare const secretsManifestSchema: typeof OneOffTaskContractsMod.secretsManifestSchema;
+export declare const injectedCredentialSchema: typeof OneOffTaskContractsMod.injectedCredentialSchema;
+export declare const oneOffTaskContractSchema: typeof OneOffTaskContractsMod.oneOffTaskContractSchema;
+export declare const credentialRecipeRequestSchema: typeof OneOffTaskContractsMod.credentialRecipeRequestSchema;
+export declare const harnessReportSchema: typeof OneOffTaskContractsMod.harnessReportSchema;
+export declare const piStreamEventSchema: typeof OneOffTaskContractsMod.piStreamEventSchema;
+export declare const resolvedCredentialEnvSchema: typeof OneOffTaskContractsMod.resolvedCredentialEnvSchema;
+defineLazyExport(
+	'ONE_OFF_TASK_PI_VERSION',
+	() => loadOneOffTaskContracts().ONE_OFF_TASK_PI_VERSION,
+);
+defineLazyExport('TASK_DIR', () => loadOneOffTaskContracts().TASK_DIR);
+defineLazyExport('SECRETS_MANIFEST_PATH', () => loadOneOffTaskContracts().SECRETS_MANIFEST_PATH);
+defineLazyExport('REPORT_PATH', () => loadOneOffTaskContracts().REPORT_PATH);
+defineLazyExport('SESSION_DIR', () => loadOneOffTaskContracts().SESSION_DIR);
+defineLazyExport(
+	'ONE_OFF_TASK_CREDENTIAL_WAIT_TIMEOUT_MS',
+	() => loadOneOffTaskContracts().ONE_OFF_TASK_CREDENTIAL_WAIT_TIMEOUT_MS,
+);
+defineLazyExport('secretsManifestSchema', () => loadOneOffTaskContracts().secretsManifestSchema);
+defineLazyExport(
+	'injectedCredentialSchema',
+	() => loadOneOffTaskContracts().injectedCredentialSchema,
+);
+defineLazyExport(
+	'oneOffTaskContractSchema',
+	() => loadOneOffTaskContracts().oneOffTaskContractSchema,
+);
+defineLazyExport(
+	'credentialRecipeRequestSchema',
+	() => loadOneOffTaskContracts().credentialRecipeRequestSchema,
+);
+defineLazyExport('harnessReportSchema', () => loadOneOffTaskContracts().harnessReportSchema);
+defineLazyExport('piStreamEventSchema', () => loadOneOffTaskContracts().piStreamEventSchema);
+defineLazyExport(
+	'resolvedCredentialEnvSchema',
+	() => loadOneOffTaskContracts().resolvedCredentialEnvSchema,
+);
+export type {
+	HarnessReport,
+	HarnessRunResult,
+	OneOffTaskContract,
+	OneOffTaskCredentialResolver,
+	OneOffTaskSandbox,
+	OneOffTaskSandboxProvider,
+	ResolvedCredentialEnv,
+	SecretsManifest,
+} from './one-off-task/contracts';
+export const createOneOffTaskSandboxProvider: typeof OneOffTaskSandboxMod.createOneOffTaskSandboxProvider =
+	lazyFunction(() => loadOneOffTaskSandbox().createOneOffTaskSandboxProvider);
+export type { CreateOneOffTaskSandboxProviderOptions } from './one-off-task/sandbox';
+export const createRunOneOffTaskTool: typeof RunOneOffTaskToolMod.createRunOneOffTaskTool =
+	lazyFunction(() => loadRunOneOffTaskTool().createRunOneOffTaskTool);
+export declare const RUN_ONE_OFF_TASK_TOOL_ID: typeof RunOneOffTaskToolMod.RUN_ONE_OFF_TASK_TOOL_ID;
+defineLazyExport(
+	'RUN_ONE_OFF_TASK_TOOL_ID',
+	() => loadRunOneOffTaskTool().RUN_ONE_OFF_TASK_TOOL_ID,
+);
+export type { OneOffTaskOutcome, OneOffTaskToolDeps } from './one-off-task/run-one-off-task.tool';

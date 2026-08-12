@@ -16,6 +16,8 @@ vi.mock('@n8n/instance-ai', async () => {
 		emitAgentSnapshotTraceEvent: vi.fn(async () => await Promise.resolve('emitted')),
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
+		isOneOffTaskEnabled: vi.fn(() => false),
+		createOneOffTaskSandboxProvider: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(
 			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
 				id: args.id ?? 'lazy-runtime-workspace',
@@ -204,6 +206,7 @@ import {
 	createOrchestratorRunControl,
 	createSandbox,
 	createWorkspace,
+	isOneOffTaskEnabled,
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
@@ -232,6 +235,7 @@ import {
 } from '../instance-ai-terminal-outcome.service';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
 import { InstanceAiService } from '../instance-ai.service';
+import { OneOffTaskCredentialService } from '../one-off-task-credential.service';
 import { InstanceAiSandboxService } from '../sandbox';
 
 type ServiceInternals = {
@@ -914,70 +918,73 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		}));
 	});
 
-	it('defers sandbox creation and setup until the lazy workspace is used', async () => {
-		const service = Object.create(InstanceAiService.prototype) as unknown as {
-			createExecutionEnvironment: (
-				user: User,
-				threadId: string,
-				runId: string,
-				abortSignal: AbortSignal,
-			) => Promise<{
-				orchestrationContext: {
-					workspace?: unknown;
-					runtimeSkills?: {
-						registry: { skillsHash: string; skills: Array<{ id: string }> };
-						loadSkill: (skillId: string) => Promise<unknown>;
-					};
-					claimSubAgentUsage?: (
-						dedupeId: string,
-						usage: BuilderUsageItem[],
-						status: TraceStatus,
-					) => Promise<void>;
+	type EnvironmentTestService = {
+		createExecutionEnvironment: (
+			user: User,
+			threadId: string,
+			runId: string,
+			abortSignal: AbortSignal,
+		) => Promise<{
+			orchestrationContext: {
+				workspace?: unknown;
+				runtimeSkills?: {
+					registry: { skillsHash: string; skills: Array<{ id: string }> };
+					loadSkill: (skillId: string) => Promise<unknown>;
 				};
-			}>;
-			settingsService: {
-				getAdminSettings: Mock;
-				getSandboxStatus: Mock;
-				isLocalGatewayDisabledForUser: Mock;
-				getPermissions: Mock;
+				claimSubAgentUsage?: (
+					dedupeId: string,
+					usage: BuilderUsageItem[],
+					status: TraceStatus,
+				) => Promise<void>;
+				oneOffTask?: { harnessLlm?: { envVars: Record<string, string> } };
 			};
-			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
-			aiService: { isProxyEnabled: Mock };
-			adapterService: {
-				createContext: Mock;
-				getNodeDefinitionDirs: Mock;
-				isConfigEvalsEnabled: Mock;
-				isMcpConnectionsEnabled: Mock;
-			};
-			sourceControlPreferencesService: { getPreferences: Mock };
-			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
-			ensureThreadExists: Mock;
-			agentMemory: unknown;
-			dbIterationLogStorage: unknown;
-			dbSnapshotStorage: unknown;
-			checkpointStore: unknown;
-			instanceAiConfig: Record<string, never>;
-			defaultTimeZone: string;
-			eventBus: unknown;
-			logger: { warn: Mock };
-			telemetry: { track: Mock };
-			oauth2CallbackUrl: string;
-			webhookBaseUrl: string;
-			formBaseUrl: string;
-			runState: { touchActiveRun: Mock; registerPendingConfirmation: Mock };
-			spawnBackgroundTask: Mock;
-			cancelBackgroundTask: Mock;
-			backgroundTasks: { touchTask: Mock };
-			schedulePlannedTasks: Mock;
-			sendCorrectionToTask: Mock;
-			sandboxService: InstanceAiSandboxService;
-			browserSessionService: { findMcpServer: Mock };
-			domainAccessTrackersByThread: Map<string, unknown>;
-			threadGrantRepo: { findKeys: Mock };
-			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
-			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+		}>;
+		settingsService: {
+			getAdminSettings: Mock;
+			getSandboxStatus: Mock;
+			isLocalGatewayDisabledForUser: Mock;
+			getPermissions: Mock;
 		};
+		gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
+		aiService: { isProxyEnabled: Mock };
+		adapterService: {
+			createContext: Mock;
+			getNodeDefinitionDirs: Mock;
+			isConfigEvalsEnabled: Mock;
+			isMcpConnectionsEnabled: Mock;
+		};
+		sourceControlPreferencesService: { getPreferences: Mock };
+		modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
+		ensureThreadExists: Mock;
+		agentMemory: unknown;
+		dbIterationLogStorage: unknown;
+		dbSnapshotStorage: unknown;
+		checkpointStore: unknown;
+		instanceAiConfig: Record<string, never>;
+		defaultTimeZone: string;
+		eventBus: unknown;
+		logger: { warn: Mock };
+		telemetry: { track: Mock };
+		oauth2CallbackUrl: string;
+		webhookBaseUrl: string;
+		formBaseUrl: string;
+		runState: { touchActiveRun: Mock; registerPendingConfirmation: Mock };
+		spawnBackgroundTask: Mock;
+		cancelBackgroundTask: Mock;
+		backgroundTasks: { touchTask: Mock };
+		schedulePlannedTasks: Mock;
+		sendCorrectionToTask: Mock;
+		sandboxService: InstanceAiSandboxService;
+		browserSessionService: { findMcpServer: Mock };
+		domainAccessTrackersByThread: Map<string, unknown>;
+		threadGrantRepo: { findKeys: Mock };
+		evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
+		instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
+		creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+	};
+
+	function createEnvironmentTestService(): EnvironmentTestService {
+		const service = Object.create(InstanceAiService.prototype) as unknown as EnvironmentTestService;
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -1050,6 +1057,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			claimRunUsage: vi.fn(),
 			ensureQuotaLockApplied: vi.fn(async () => {}),
 		};
+		return service;
+	}
+
+	it('defers sandbox creation and setup until the lazy workspace is used', async () => {
+		const service = createEnvironmentTestService();
 		(createAllTools as Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -1187,6 +1199,71 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createLazyWorkspaceRuntimeSkillSource).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
+	});
+
+	it('wires one-off task harnessLlm for the anthropic model shape but not for a custom endpoint', async () => {
+		vi.mocked(isOneOffTaskEnabled).mockReturnValue(true);
+		Container.set(OneOffTaskCredentialService, {} as OneOffTaskCredentialService);
+		try {
+			const service = createEnvironmentTestService();
+			(createAllTools as Mock).mockReturnValue(new Map());
+			service.sandboxService = new InstanceAiSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'http://sandbox.local',
+					n8nSandboxServiceApiKey: '',
+				} as InstanceAiConfig,
+				logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+				errorReporter: { error: vi.fn() } as unknown as ErrorReporter,
+				runState: {
+					getActiveRunId: vi.fn(() => undefined),
+					hasSuspendedRun: vi.fn(() => false),
+				},
+				backgroundTasks: { getRunningTasks: vi.fn(() => []) },
+				settingsService: {
+					resolveDaytonaConfig: vi.fn(async () => ({})),
+					resolveN8nSandboxConfig: vi.fn(async () => ({})),
+				},
+				aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+			});
+
+			// Built-in Anthropic shape with a configured key → the key is forwarded
+			// as the env var the in-sandbox harness reads.
+			service.modelService.resolveAgentModelConfig.mockResolvedValue({
+				id: 'anthropic/claude-opus-4-8',
+				url: '',
+				apiKey: 'anthropic-key',
+			});
+			const anthropicEnvironment = await service.createExecutionEnvironment(
+				fakeUser,
+				'thread-1',
+				'run-1',
+				new AbortController().signal,
+			);
+			expect(anthropicEnvironment.orchestrationContext.oneOffTask?.harnessLlm).toEqual({
+				envVars: { ANTHROPIC_API_KEY: 'anthropic-key' },
+			});
+
+			// Custom-endpoint shape (N8N_INSTANCE_AI_MODEL_URL) has no harness env
+			// mapping yet — deps are still wired, but harnessLlm stays undefined so
+			// the tool fails fast instead of launching a keyless harness.
+			service.modelService.resolveAgentModelConfig.mockResolvedValue({
+				id: 'anthropic/claude-opus-4-8',
+				url: 'http://localhost:1234/v1',
+				apiKey: 'anthropic-key',
+			});
+			const customEndpointEnvironment = await service.createExecutionEnvironment(
+				fakeUser,
+				'thread-2',
+				'run-2',
+				new AbortController().signal,
+			);
+			expect(customEndpointEnvironment.orchestrationContext.oneOffTask).toBeDefined();
+			expect(customEndpointEnvironment.orchestrationContext.oneOffTask?.harnessLlm).toBeUndefined();
+		} finally {
+			vi.mocked(isOneOffTaskEnabled).mockReturnValue(false);
+		}
 	});
 });
 

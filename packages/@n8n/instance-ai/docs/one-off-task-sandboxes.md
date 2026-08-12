@@ -1,8 +1,9 @@
 # One-Off Task Sandboxes
 
-> **Status:** Hackathon design. Not implemented. This document describes the
-> concept, the decisions made, and the path from hackathon prototype to
-> production.
+> **Status:** Hackathon prototype, working end-to-end (verified live against
+> Google Sheets with OAuth injection, 2026-08-12). Gated behind
+> `N8N_INSTANCE_AI_ONE_OFF_TASKS=true`. This document describes the concept,
+> the decisions made, and the path from prototype to production.
 
 ## The Concept
 
@@ -447,7 +448,9 @@ accounting. See Future Hardening.
 
 ### Production trio
 
-- **Feature flag** (PostHog) gating the skill and tool.
+- **Feature flag** gating the skill and tool. Implemented as the
+  `N8N_INSTANCE_AI_ONE_OFF_TASKS=true` env var for the hackathon; a PostHog
+  flag is the eventual rollout mechanism.
 - **Telemetry** through the `@n8n/telemetry` registry: task started,
   credentials requested/approved, task completed/failed/timed out, tokens
   spent.
@@ -541,6 +544,14 @@ In rough priority order:
    audit log of every API call as a side effect.
 3. **Runner image bake.** Move from bootstrap-at-creation to pi baked into
    the sandbox service runner image (the production provisioning path above).
+   Live-testing findings that raise its priority: the current sandbox image
+   ships Node 18 (pi needs ≥ 22) and a non-root user with no `/usr/local`
+   write access, so the bootstrap must download a standalone Node 22 plus a
+   local pi install per fresh sandbox (~40 MB, 30–90 s) — and that makes
+   bootstrap depend on egress to nodejs.org and registry.npmjs.org, which a
+   future egress allowlist would otherwise have to permit. Baking Node 22 +
+   pi into the image removes the delay, the egress dependency, and the
+   (TLS-only today) tarball-integrity question in one move.
 4. **Short-lived, scoped tokens.** Inject access tokens only (never refresh
    tokens), scoped down where the provider supports it.
 5. **Per-run LLM budget tokens.** Replace the injected provider key with

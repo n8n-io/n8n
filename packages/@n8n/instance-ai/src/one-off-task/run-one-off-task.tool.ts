@@ -21,6 +21,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import { ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 import type { OrchestrationContext } from '../types';
 import {
 	harnessReportSchema,
@@ -31,18 +32,22 @@ import {
 	type OneOffTaskSandbox,
 	type OneOffTaskSandboxProvider,
 } from './contracts';
-
-export type { OneOffTaskSandboxProvider } from './contracts';
-import { resolveTaskCredentials, type ResolvedTaskSecrets } from './credential-injection';
+import {
+	resolveTaskCredentials,
+	withHarnessLlmEnv,
+	type ResolvedTaskSecrets,
+} from './credential-injection';
 import { createPiEventTranslator } from './event-translation';
 import { formatOneOffTaskPrompt } from './prompt-formatter';
 import { scrubDeep, type ScrubSecret } from './redaction';
+
+export type { OneOffTaskSandboxProvider } from './contracts';
 
 // TODO: register one-off task telemetry (task started, credentials
 // requested/approved, task completed/failed/timed out, tokens spent) through
 // the @n8n/telemetry registry — follow the n8n:telemetry skill.
 
-export const RUN_ONE_OFF_TASK_TOOL_ID = 'run-one-off-task';
+export const RUN_ONE_OFF_TASK_TOOL_ID = ORCHESTRATION_TOOL_IDS.RUN_ONE_OFF_TASK;
 
 export const CREDENTIAL_WAIT_TIMEOUT_MINUTES = ONE_OFF_TASK_CREDENTIAL_WAIT_TIMEOUT_MS / 60_000;
 
@@ -56,7 +61,20 @@ export const INTERRUPTED_SUMMARY =
 export interface OneOffTaskToolDeps {
 	sandboxProvider: OneOffTaskSandboxProvider;
 	credentialResolver: OneOffTaskCredentialResolver;
+	/**
+	 * Env vars pi needs for model access inside the sandbox, e.g.
+	 * `{ ANTHROPIC_API_KEY: '…' }` (design doc, "LLM access for the harness").
+	 * The harness runs its own LLM loop, so without these it fails on its
+	 * first step. Injected per-exec exactly like task credentials, and treated
+	 * as secrets by both redaction layers (scrub list + secrets manifest,
+	 * label = env var name). When absent or empty the tool fails fast without
+	 * creating a sandbox.
+	 */
+	harnessLlm?: { envVars: Record<string, string> };
 }
+
+export const HARNESS_LLM_MISSING_REASON =
+	'one-off tasks require harness model access; none is configured';
 
 // ── Input schema ─────────────────────────────────────────────────────────────
 
@@ -227,6 +245,14 @@ export async function executeOneOffTask(
 	const agentId = `agent-one-off-task-${sessionId.slice(0, 8)}`;
 	const isRelaunch = input.resume !== undefined;
 
+	// Fail fast before any provisioning: a harness without model access cannot
+	// run a single step, so a sandbox must never be created (or relaunched)
+	// for it.
+	const harnessLlmEnvVars = deps.harnessLlm?.envVars ?? {};
+	if (Object.keys(harnessLlmEnvVars).length === 0) {
+		return { outcome: 'failed', sessionId, reason: HARNESS_LLM_MISSING_REASON, actions: [] };
+	}
+
 	// Resolve credentials before provisioning: an access denial must not leak
 	// a sandbox. On relaunch a denial leaves the existing sandbox to the wait
 	// timeout, same as a user who never answers.
@@ -247,6 +273,10 @@ export async function executeOneOffTask(
 		}
 		throw error;
 	}
+
+	// The harness's model key rides along on every launch and relaunch, under
+	// both redaction layers, but never enters the task contract.
+	resolved = withHarnessLlmEnv(resolved, harnessLlmEnvVars);
 
 	const contract: OneOffTaskContract = {
 		goal: input.goal,

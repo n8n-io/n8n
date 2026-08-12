@@ -31,6 +31,7 @@ import {
 	type SecretsManifest,
 } from '../contracts';
 import { harnessAssetFiles } from '../harness-assets';
+import { scrub } from '../redaction';
 
 /**
  * Hard wall-clock lifetime for the whole sandbox. The sandbox holds decrypted
@@ -42,6 +43,59 @@ export const ONE_OFF_TASK_SANDBOX_TTL_MS = 15 * 60_000;
 
 /** Per-run prompt file; `@file` on the pi command line avoids shell-escaping a multiline prompt. */
 const PROMPT_PATH = `${TASK_DIR}/prompt.md`;
+
+/**
+ * Node runtime downloaded into the sandbox at bootstrap. The runner image
+ * ships Node 18, but pi 0.84.1 requires >= 22.19, and the sandbox user is
+ * non-root (no `npm install -g`, no /usr/local writes) — so bootstrap brings
+ * its own Node and installs pi locally under TASK_DIR. Baking both into the
+ * runner image is the production path (see the design doc).
+ */
+export const ONE_OFF_TASK_NODE_VERSION = '22.21.1';
+
+/** `<extracted dir>` is symlinked to `current` so later paths are arch-independent. */
+const NODE_BIN_PATH = `${TASK_DIR}/node/current/bin`;
+
+const HARNESS_INSTALL_PREFIX = `${TASK_DIR}/harness`;
+
+const PI_BIN_PATH = `${HARNESS_INSTALL_PREFIX}/node_modules/.bin/pi`;
+
+/**
+ * Own budget for the bootstrap install exec: the Node download is seconds,
+ * but the npm install of pi's dependency tree can take minutes on the
+ * sandbox image. Always additionally capped by the remaining sandbox TTL.
+ */
+const HARNESS_INSTALL_TIMEOUT_MS = 180_000;
+
+/**
+ * How much of pi's stderr to keep for unclean-stop diagnostics. The tail, not
+ * the head: startup noise leads, the fatal error (missing LLM key, crash)
+ * trails.
+ */
+const STDERR_TAIL_MAX_CHARS = 8_192;
+
+function createTailBuffer(maxChars: number) {
+	let buffer = '';
+	return {
+		push(chunk: string) {
+			buffer = (buffer + chunk).slice(-maxChars);
+		},
+		get(): string {
+			return buffer;
+		},
+	};
+}
+
+/**
+ * Structural superset of the contract's `HarnessRunResult`: adds the stderr
+ * tail for unclean-stop debugging. Callers typed against the contract simply
+ * ignore the extra field. contracts.ts should eventually gain the optional
+ * field (reported, not edited here).
+ */
+export interface OneOffTaskHarnessRunResult extends HarnessRunResult {
+	/** Scrubbed tail of pi's stderr; present only on unclean stops. */
+	stderrTail?: string;
+}
 
 export interface OneOffTaskSandboxServiceOptions {
 	sandbox: SandboxInstance;
@@ -177,7 +231,7 @@ export class OneOffTaskSandboxService implements OneOffTaskSandbox {
 		);
 
 		// The install dominates bootstrap latency, so it runs alongside the writes.
-		await Promise.all([this.installHarness(abortSignal), ...writeAssets, writeManifest]);
+		await Promise.all([this.installHarness(abortSignal, root), ...writeAssets, writeManifest]);
 	}
 
 	async runHarness(options: {
@@ -186,7 +240,7 @@ export class OneOffTaskSandboxService implements OneOffTaskSandbox {
 		env: Record<string, string>;
 		abortSignal: AbortSignal;
 		onEvent: (event: unknown) => void;
-	}): Promise<HarnessRunResult> {
+	}): Promise<OneOffTaskHarnessRunResult> {
 		this.assertUsable();
 		this.armTtl();
 
@@ -206,6 +260,10 @@ export class OneOffTaskSandboxService implements OneOffTaskSandbox {
 		await this.filesystem.writeFile(promptPath, options.prompt, { recursive: true, abortSignal });
 
 		const forwarder = createJsonlForwarder(options.onEvent, this.logger);
+		// Black box recorder for unclean stops: the report is the happy-path
+		// signal, but a harness that dies before writing one (e.g. missing LLM
+		// key) explains itself only on stderr.
+		const stderrTail = createTailBuffer(STDERR_TAIL_MAX_CHARS);
 		const command = this.buildHarnessCommand(root, options.sessionId, promptPath);
 
 		let result: CommandResult;
@@ -218,6 +276,7 @@ export class OneOffTaskSandboxService implements OneOffTaskSandbox {
 				abortSignal,
 				timeout: this.remainingTtlMs(),
 				onStdout: (chunk) => forwarder.push(chunk),
+				onStderr: (chunk) => stderrTail.push(chunk),
 			});
 		} catch (error) {
 			if (this.lifetimeController.signal.aborted && !options.abortSignal.aborted) {
@@ -236,7 +295,25 @@ export class OneOffTaskSandboxService implements OneOffTaskSandbox {
 		// the unclean-stop signal — the caller reports "task interrupted", so no
 		// exception here.
 		const report = await this.readReport(reportPath);
-		return { report, exitCode: result.exitCode };
+		if (report !== undefined) {
+			return { report, exitCode: result.exitCode };
+		}
+
+		// The injected env values are the secrets — scrub them out before the
+		// tail leaves this method (log line or return value).
+		const secrets = Object.entries(options.env).map(([envVar, value]) => ({
+			value,
+			label: envVar,
+		}));
+		const scrubbedTail = scrub(stderrTail.get(), secrets);
+		this.logger?.warn('One-off task harness stopped without a valid report', {
+			exitCode: result.exitCode,
+			stderrTail: scrubbedTail,
+		});
+		return {
+			exitCode: result.exitCode,
+			...(scrubbedTail.length > 0 ? { stderrTail: scrubbedTail } : {}),
+		};
 	}
 
 	async destroy(): Promise<void> {
@@ -301,23 +378,53 @@ export class OneOffTaskSandboxService implements OneOffTaskSandbox {
 		return await this.workspaceRootPromise;
 	}
 
-	private async installHarness(abortSignal: AbortSignal): Promise<void> {
+	private async installHarness(abortSignal: AbortSignal, root: string): Promise<void> {
 		// Bootstrap runs again on every relaunch to refresh the secrets manifest;
 		// this sandbox is exclusive to this instance, so a completed install
-		// makes the re-run redundant.
+		// makes the re-run (Node download + npm install) redundant.
 		if (this.harnessInstalled) return;
-		// Pinned exactly: session-resume semantics were verified against this version.
-		const result = await this.execute(
-			`npm install -g --ignore-scripts @earendil-works/pi-coding-agent@${ONE_OFF_TASK_PI_VERSION}`,
-			[],
-			{ abortSignal },
-		);
+		const result = await this.execute(this.buildInstallCommand(root), [], {
+			abortSignal,
+			timeout: Math.min(HARNESS_INSTALL_TIMEOUT_MS, this.remainingTtlMs()),
+		});
 		if (result.exitCode !== 0) {
 			throw new OperationalError(
 				`Failed to install the one-off task harness (exit ${result.exitCode}): ${result.stderr}`,
 			);
 		}
 		this.harnessInstalled = true;
+	}
+
+	/**
+	 * One `set -e` script: download a pinned Node (the image's Node 18 is too
+	 * old for pi, and the non-root sandbox user cannot `npm install -g`), then
+	 * install pi locally under TASK_DIR with the downloaded npm. The `current`
+	 * symlink hides the arch-specific directory name from every later path.
+	 * Future hardening: verify the tarball against nodejs.org SHASUMS256.txt.
+	 */
+	private buildInstallCommand(root: string): string {
+		const nodeDir = shellQuote(posix.join(root, TASK_DIR, 'node'));
+		const nodeBin = shellQuote(posix.join(root, NODE_BIN_PATH));
+		const nodeExecutable = shellQuote(posix.join(root, NODE_BIN_PATH, 'node'));
+		const currentLink = shellQuote(posix.join(root, TASK_DIR, 'node', 'current'));
+		const harnessPrefix = shellQuote(posix.join(root, HARNESS_INSTALL_PREFIX));
+		const nodeVersion = ONE_OFF_TASK_NODE_VERSION;
+		return [
+			'set -e',
+			`if [ ! -x ${nodeExecutable} ]; then`,
+			'  case "$(uname -m)" in',
+			'    aarch64|arm64) NODE_ARCH=arm64 ;;',
+			'    x86_64|amd64) NODE_ARCH=x64 ;;',
+			'    *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;',
+			'  esac',
+			`  mkdir -p ${nodeDir}`,
+			`  curl -fsSL "https://nodejs.org/dist/v${nodeVersion}/node-v${nodeVersion}-linux-\${NODE_ARCH}.tar.gz" | tar -xz -C ${nodeDir}`,
+			`  ln -sfn "node-v${nodeVersion}-linux-\${NODE_ARCH}" ${currentLink}`,
+			'fi',
+			// Pi pinned exactly: session-resume semantics were verified against
+			// this version. PATH prefix makes npm run under the downloaded Node.
+			`PATH=${nodeBin}:"$PATH" npm install --prefix ${harnessPrefix} --ignore-scripts @earendil-works/pi-coding-agent@${ONE_OFF_TASK_PI_VERSION}`,
+		].join('\n');
 	}
 
 	/**
@@ -332,10 +439,15 @@ export class OneOffTaskSandboxService implements OneOffTaskSandbox {
 	 * - `@file` includes the prompt file's content as the initial message.
 	 * - `< /dev/null` ends stdin immediately — pi reads piped stdin at startup
 	 *   and must not block on a pipe that never closes.
+	 *
+	 * Pi runs from its local install under TASK_DIR; the PATH prefix makes its
+	 * `#!/usr/bin/env node` shebang resolve to the downloaded Node 22 instead
+	 * of the image's Node 18.
 	 */
 	private buildHarnessCommand(root: string, sessionId: string, promptPath: string): string {
 		return [
-			'pi',
+			`PATH=${shellQuote(posix.join(root, NODE_BIN_PATH))}:"$PATH"`,
+			shellQuote(posix.join(root, PI_BIN_PATH)),
 			'--mode',
 			'json',
 			'--approve',

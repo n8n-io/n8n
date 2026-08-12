@@ -40,6 +40,7 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
+import type { OneOffTaskToolDeps } from './one-off-task/run-one-off-task.tool';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
@@ -1744,6 +1745,9 @@ export interface OrchestrationContext {
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Propagated to sub-agents
 	 *  so they can resolve "now" consistently with the orchestrator. */
 	timeZone?: string;
+	/** Deps for the run-one-off-task tool. Wired by the host only when the
+	 *  one-off-task flag is on and an n8n sandbox service is configured. */
+	oneOffTask?: OneOffTaskToolDeps;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────

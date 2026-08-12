@@ -1,54 +1,23 @@
 import type { CredentialsEntity } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import {
+	credentialEnvVarName,
+	resolvedCredentialEnvSchema,
+	type OneOffTaskCredentialResolver,
+	type ResolvedCredentialEnv,
+} from '@n8n/instance-ai';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { OauthService } from '@/oauth/oauth.service';
 
-// ── One-off task credential contracts ────────────────────────────────────────
-//
-// Literal copies of `credentialEnvVarName`, `resolvedCredentialEnvSchema`, and
-// `OneOffTaskCredentialResolver` from
-// `packages/@n8n/instance-ai/src/one-off-task/contracts.ts`. The package does
-// not export that module yet, so this service mirrors the contracts
-// structurally; integration swaps these copies for the package import once the
-// subpath is exported. Keep the logic byte-identical to the source.
-
-/**
- * Deterministic env var name for an injected credential field:
- * `N8N_TASK_<CREDENTIAL>_<FIELD>`, upper-snake.
- */
-export function credentialEnvVarName(credentialName: string, field: string): string {
-	const toUpperSnake = (value: string) =>
-		value
-			.replace(/[^a-zA-Z0-9]+/g, '_')
-			.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-			.replace(/^_+|_+$/g, '')
-			.toUpperCase();
-	return `N8N_TASK_${toUpperSnake(credentialName)}_${toUpperSnake(field)}`;
-}
-
-export const resolvedCredentialEnvSchema = z.object({
-	/** Env var name → secret value, named per `credentialEnvVarName`. */
-	envVars: z.record(z.string()),
-	/** For OAuth: access-token expiry (ISO 8601). Absent for static keys. */
-	expiresAt: z.string().optional(),
-});
-export type ResolvedCredentialEnv = z.infer<typeof resolvedCredentialEnvSchema>;
-
-export interface OneOffTaskCredentialResolver {
-	resolveForOneOffTask(options: {
-		credentialId: string;
-		userId: string;
-		projectId?: string;
-	}): Promise<ResolvedCredentialEnv>;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
+// Re-exported so this service's consumers and tests keep a single import site
+// for the one-off task credential contracts.
+export { credentialEnvVarName, resolvedCredentialEnvSchema };
+export type { OneOffTaskCredentialResolver, ResolvedCredentialEnv };
 
 /** Root credential type every OAuth2-based credential extends. */
 const OAUTH2_BASE_CREDENTIAL_TYPE = 'oAuth2Api';

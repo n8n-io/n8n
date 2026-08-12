@@ -40,6 +40,8 @@ import {
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
 	disabledInstanceAiSkillIds,
+	createOneOffTaskSandboxProvider,
+	isOneOffTaskEnabled,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	emitAgentSnapshotTraceEvent,
@@ -83,6 +85,7 @@ import {
 	type McpServerConfig,
 	type ModelConfig,
 	type AgentSnapshotArtifact,
+	type OneOffTaskToolDeps,
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
@@ -167,6 +170,7 @@ import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
+import { OneOffTaskCredentialService } from './one-off-task-credential.service';
 import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	PlannedTaskActionRunner,
@@ -2394,6 +2398,7 @@ export class InstanceAiService {
 		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
+		let oneOffTask: OneOffTaskToolDeps | undefined;
 
 		const sandboxStatus = this.settingsService.getSandboxStatus();
 		if (sandboxStatus.workflowBuilderAvailable) {
@@ -2405,6 +2410,12 @@ export class InstanceAiService {
 
 			if (sandboxConfig.enabled) {
 				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
+
+				// One-off task sandboxes need the n8n sandbox service (same
+				// N8N_SANDBOX_SERVICE_URL config path as the runtime workspace).
+				if (isOneOffTaskEnabled() && sandboxConfig.provider === 'n8n-sandbox') {
+					oneOffTask = this.getOneOffTaskToolDeps(sandboxConfig, this.resolveHarnessLlm(modelId));
+				}
 
 				let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
 				const getSandboxEntry = async () => {
@@ -2562,6 +2573,7 @@ export class InstanceAiService {
 			domainContext: context,
 			tracingProxyConfig,
 			memory,
+			oneOffTask,
 		};
 
 		return {
@@ -2575,6 +2587,67 @@ export class InstanceAiService {
 			modelId,
 			orchestrationContext,
 		};
+	}
+
+	/**
+	 * LLM provider env vars for the in-sandbox pi harness, derived from the
+	 * same resolved model config the orchestrator runs on. Only the built-in
+	 * Anthropic shape maps to a harness env today (design doc "LLM access");
+	 * custom endpoints (`N8N_INSTANCE_AI_MODEL_URL`), other providers, and
+	 * proxy-built LanguageModel instances return undefined so the tool fails
+	 * fast instead of launching a harness without model access.
+	 */
+	private resolveHarnessLlm(modelId: ModelConfig): { envVars: Record<string, string> } | undefined {
+		// Plain string = built-in provider resolving its key from the host env;
+		// forward the same env var the provider SDK itself reads.
+		if (typeof modelId === 'string') {
+			if (!modelId.startsWith('anthropic/')) return undefined;
+			const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+			return apiKey ? { envVars: { ANTHROPIC_API_KEY: apiKey } } : undefined;
+		}
+		if ('url' in modelId && 'id' in modelId && typeof modelId.id === 'string') {
+			// A URL means an OpenAI-compatible custom endpoint — no harness shape yet.
+			if (modelId.url || !modelId.id.startsWith('anthropic/')) return undefined;
+			return modelId.apiKey ? { envVars: { ANTHROPIC_API_KEY: modelId.apiKey } } : undefined;
+		}
+		return undefined;
+	}
+
+	/**
+	 * One-off task deps, memoized per sandbox-service + harness-LLM config.
+	 * The sandbox provider is the process-local reattach registry for the
+	 * credential approval wait — a fresh registry per run would orphan
+	 * sandboxes paused on `needs_credential`, so one provider is shared
+	 * across runs. The fingerprint stays in memory only; never log it.
+	 */
+	private oneOffTaskDeps?: { fingerprint: string; deps: OneOffTaskToolDeps };
+
+	private getOneOffTaskToolDeps(
+		config: { serviceUrl: string; apiKey?: string },
+		harnessLlm: { envVars: Record<string, string> } | undefined,
+	): OneOffTaskToolDeps {
+		const fingerprint = [
+			config.serviceUrl,
+			config.apiKey ?? '',
+			JSON.stringify(harnessLlm?.envVars ?? null),
+		].join('\n');
+		let cached = this.oneOffTaskDeps;
+		if (cached?.fingerprint !== fingerprint) {
+			cached = {
+				fingerprint,
+				deps: {
+					sandboxProvider: createOneOffTaskSandboxProvider({
+						serviceUrl: config.serviceUrl,
+						apiKey: config.apiKey,
+						logger: this.logger,
+					}),
+					credentialResolver: Container.get(OneOffTaskCredentialService),
+					harnessLlm,
+				},
+			};
+			this.oneOffTaskDeps = cached;
+		}
+		return cached.deps;
 	}
 
 	/**

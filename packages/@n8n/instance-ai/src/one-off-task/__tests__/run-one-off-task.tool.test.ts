@@ -13,6 +13,7 @@ import type {
 } from '../contracts';
 import {
 	createRunOneOffTaskTool,
+	HARNESS_LLM_MISSING_REASON,
 	type OneOffTaskOutcome,
 	type OneOffTaskSandboxProvider,
 	type OneOffTaskToolDeps,
@@ -21,6 +22,7 @@ import {
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
 const GOOGLE_TOKEN = 'ya29.secret-token';
+const HARNESS_LLM_KEY = 'sk-ant-harness-key-000';
 
 const completedReport: HarnessReport = {
 	status: 'completed',
@@ -86,10 +88,18 @@ function harnessOptions(sandbox: OneOffTaskSandbox): HarnessOptions {
 	return call[0];
 }
 
-function createDeps(sandbox: OneOffTaskSandbox): OneOffTaskToolDeps & {
+/** Pass `harnessLlm: null` to build deps without harness model access. */
+function createDeps(
+	sandbox: OneOffTaskSandbox,
+	options: { harnessLlm?: OneOffTaskToolDeps['harnessLlm'] | null } = {},
+): OneOffTaskToolDeps & {
 	sandboxProvider: { create: Mock; reattach: Mock };
 	credentialResolver: { resolveForOneOffTask: Mock };
 } {
+	const harnessLlm =
+		options.harnessLlm === null
+			? undefined
+			: (options.harnessLlm ?? { envVars: { ANTHROPIC_API_KEY: HARNESS_LLM_KEY } });
 	const sandboxProvider = {
 		create: vi.fn(async () => await Promise.resolve({ sandbox, sandboxRef: 'sb-fresh-1' })),
 		reattach: vi.fn(async () => await Promise.resolve(sandbox)),
@@ -106,7 +116,7 @@ function createDeps(sandbox: OneOffTaskSandbox): OneOffTaskToolDeps & {
 			},
 		),
 	} satisfies OneOffTaskCredentialResolver;
-	return { sandboxProvider, credentialResolver };
+	return { sandboxProvider, credentialResolver, ...(harnessLlm ? { harnessLlm } : {}) };
 }
 
 function publishedEvents(context: OrchestrationContext): InstanceAiEvent[] {
@@ -138,20 +148,31 @@ describe('run-one-off-task tool', () => {
 			const outcome = await run(context, deps, baseInput);
 
 			expect(outcome.outcome).toBe('completed');
-			// Manifest: labels + env var names, never values.
+			// Manifest: labels + env var names — task credentials AND the harness
+			// model key — never values.
 			expect(sandbox.bootstrap).toHaveBeenCalledWith({
 				version: 1,
 				secrets: [
 					{ envVar: 'N8N_TASK_GOOGLE_SHEETS_ACCESS_TOKEN', label: 'GOOGLE_SHEETS_ACCESS_TOKEN' },
+					{ envVar: 'ANTHROPIC_API_KEY', label: 'ANTHROPIC_API_KEY' },
 				],
 			});
-			// Secret values reach only the harness exec env.
+			const manifestJson = JSON.stringify((sandbox.bootstrap as Mock).mock.calls[0][0]);
+			expect(manifestJson).not.toContain(GOOGLE_TOKEN);
+			expect(manifestJson).not.toContain(HARNESS_LLM_KEY);
+			// Secret values (incl. the model key) reach only the harness exec env.
 			const options = harnessOptions(sandbox);
-			expect(options.env).toEqual({ N8N_TASK_GOOGLE_SHEETS_ACCESS_TOKEN: GOOGLE_TOKEN });
-			// Prompt carries the serialized contract.
+			expect(options.env).toEqual({
+				N8N_TASK_GOOGLE_SHEETS_ACCESS_TOKEN: GOOGLE_TOKEN,
+				ANTHROPIC_API_KEY: HARNESS_LLM_KEY,
+			});
+			// Prompt carries the serialized contract — but never a secret value,
+			// and the model key is plumbing, not a task credential.
 			expect(options.prompt).toContain(baseInput.goal);
 			expect(options.prompt).toContain('N8N_TASK_GOOGLE_SHEETS_ACCESS_TOKEN');
 			expect(options.prompt).not.toContain(GOOGLE_TOKEN);
+			expect(options.prompt).not.toContain(HARNESS_LLM_KEY);
+			expect(options.prompt).not.toContain('ANTHROPIC_API_KEY');
 			// Terminal outcome → destroyed exactly once.
 			expect(sandbox.destroy).toHaveBeenCalledTimes(1);
 		});
@@ -271,10 +292,12 @@ describe('run-one-off-task tool', () => {
 			const options = harnessOptions(sandbox);
 			expect(options.sessionId).toBe('11111111-2222-3333-4444-555555555555');
 			expect(outcome.sessionId).toBe('11111111-2222-3333-4444-555555555555');
-			// Both the original and the newly approved credential are injected.
+			// The original credential, the newly approved credential, and the
+			// harness model key are all injected on relaunch.
 			expect(options.env).toEqual({
 				N8N_TASK_GOOGLE_SHEETS_ACCESS_TOKEN: GOOGLE_TOKEN,
 				N8N_TASK_SLACK_BOT_TOKEN: 'xoxb-slack-secret',
+				ANTHROPIC_API_KEY: HARNESS_LLM_KEY,
 			});
 			// The prior progress summary rides along in the prompt.
 			expect(options.prompt).toContain(resumeInput.priorReport);
@@ -284,6 +307,7 @@ describe('run-one-off-task tool', () => {
 				secrets: [
 					{ envVar: 'N8N_TASK_GOOGLE_SHEETS_ACCESS_TOKEN', label: 'GOOGLE_SHEETS_ACCESS_TOKEN' },
 					{ envVar: 'N8N_TASK_SLACK_BOT_TOKEN', label: 'SLACK_BOT_TOKEN' },
+					{ envVar: 'ANTHROPIC_API_KEY', label: 'ANTHROPIC_API_KEY' },
 				],
 			});
 			// Completed after relaunch → destroyed exactly once.
@@ -399,6 +423,67 @@ describe('run-one-off-task tool', () => {
 			expect(outcome.reason).toContain('You no longer have access to this credential');
 			expect(deps.sandboxProvider.create).not.toHaveBeenCalled();
 			expect(sandbox.runHarness).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('harness model access', () => {
+		it('fails fast without creating a sandbox when harnessLlm is absent', async () => {
+			const sandbox = createMockSandbox(
+				async () => await Promise.resolve({ report: completedReport, exitCode: 0 }),
+			);
+			const deps = createDeps(sandbox, { harnessLlm: null });
+			const context = createMockContext();
+
+			const outcome = await run(context, deps, baseInput);
+
+			if (outcome.outcome !== 'failed') throw new Error('expected failed');
+			expect(outcome.reason).toBe(HARNESS_LLM_MISSING_REASON);
+			expect(deps.sandboxProvider.create).not.toHaveBeenCalled();
+			expect(deps.sandboxProvider.reattach).not.toHaveBeenCalled();
+			expect(deps.credentialResolver.resolveForOneOffTask).not.toHaveBeenCalled();
+			expect(sandbox.runHarness).not.toHaveBeenCalled();
+		});
+
+		it('fails fast when harnessLlm carries no env vars', async () => {
+			const sandbox = createMockSandbox(
+				async () => await Promise.resolve({ report: completedReport, exitCode: 0 }),
+			);
+			const deps = createDeps(sandbox, { harnessLlm: { envVars: {} } });
+			const context = createMockContext();
+
+			const outcome = await run(context, deps, baseInput);
+
+			expect(outcome.outcome).toBe('failed');
+			expect(deps.sandboxProvider.create).not.toHaveBeenCalled();
+			expect(sandbox.runHarness).not.toHaveBeenCalled();
+		});
+
+		it('scrubs the model key from streamed deltas and report fields like any credential', async () => {
+			const leakyReport: HarnessReport = {
+				...completedReport,
+				summary: `Done, called the model with ${HARNESS_LLM_KEY}.`,
+			};
+			const sandbox = createMockSandbox(async ({ onEvent }) => {
+				onEvent({
+					type: 'message_update',
+					assistantMessageEvent: { type: 'text_delta', delta: `model key ${HARNESS_LLM_KEY}` },
+				});
+				return await Promise.resolve({ report: leakyReport, exitCode: 0 });
+			});
+			const deps = createDeps(sandbox);
+			const context = createMockContext();
+
+			const outcome = await run(context, deps, baseInput);
+
+			const delta = publishedEvents(context).find((event) => event.type === 'text-delta');
+			expect(delta).toMatchObject({
+				payload: { text: 'model key [REDACTED:ANTHROPIC_API_KEY]' },
+			});
+			expect(JSON.stringify(outcome)).not.toContain(HARNESS_LLM_KEY);
+			if (outcome.outcome !== 'completed') throw new Error('expected completed');
+			expect(outcome.report.summary).toBe(
+				'Done, called the model with [REDACTED:ANTHROPIC_API_KEY].',
+			);
 		});
 	});
 });

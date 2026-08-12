@@ -7,8 +7,10 @@ import type {
 import { OperationalError, UnexpectedError, jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
+import type { Logger } from '../../../logger';
 import { ONE_OFF_TASK_PI_VERSION, type HarnessReport, type SecretsManifest } from '../../contracts';
 import {
+	ONE_OFF_TASK_NODE_VERSION,
 	ONE_OFF_TASK_SANDBOX_TTL_MS,
 	OneOffTaskSandboxService,
 } from '../one-off-task-sandbox-service';
@@ -25,6 +27,12 @@ vi.mock('../../harness-assets', () => ({
 const WORKSPACE_ROOT = '/home/user/workspace';
 const REPORT_FILE = `${WORKSPACE_ROOT}/.n8n-task/report.json`;
 const PROMPT_FILE = `${WORKSPACE_ROOT}/.n8n-task/prompt.md`;
+const NODE_BIN_DIR = `${WORKSPACE_ROOT}/.n8n-task/node/current/bin`;
+const PI_BIN = `${WORKSPACE_ROOT}/.n8n-task/harness/node_modules/.bin/pi`;
+
+function isPiCommand(command: string): boolean {
+	return command.includes('/node_modules/.bin/pi ');
+}
 
 const okResult: CommandResult = {
 	success: true,
@@ -62,7 +70,7 @@ function createSandboxMock(piExec?: ExecImpl): SandboxInstance & {
 			if (command === 'echo $HOME') {
 				return { ...okResult, stdout: '/home/user\n' };
 			}
-			if (command.startsWith('pi ') && piExec) {
+			if (isPiCommand(command) && piExec) {
 				return await piExec(command, args, options);
 			}
 			return okResult;
@@ -103,6 +111,7 @@ function createService(options?: {
 	piExec?: ExecImpl;
 	filesystem?: SandboxFilesystem;
 	ttlMs?: number;
+	logger?: Logger;
 }) {
 	const sandbox = createSandboxMock(options?.piExec);
 	const filesystem = options?.filesystem ?? createFilesystemMock();
@@ -110,8 +119,13 @@ function createService(options?: {
 		sandbox,
 		filesystem,
 		ttlMs: options?.ttlMs,
+		logger: options?.logger,
 	});
 	return { service, sandbox, filesystem };
+}
+
+function createLoggerMock() {
+	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 }
 
 type ExecCall = [string, string[]?, ExecuteCommandOptions?];
@@ -140,15 +154,32 @@ function runHarnessOptions(
 
 describe('OneOffTaskSandboxService', () => {
 	describe('bootstrap', () => {
-		it('installs the pinned pi version with --ignore-scripts', async () => {
+		it('downloads a pinned Node and installs the pinned pi locally (non-root, no -g)', async () => {
 			const { service, sandbox } = createService();
 			await service.bootstrap(manifest);
 
 			const installCall = execCalls(sandbox).find(([command]) => command.includes('npm install'));
-			expect(installCall?.[0]).toBe(
-				`npm install -g --ignore-scripts @earendil-works/pi-coding-agent@${ONE_OFF_TASK_PI_VERSION}`,
+			const command = installCall?.[0] ?? '';
+			expect(command).toMatch(/^set -e\n/);
+			expect(command).toContain(
+				`https://nodejs.org/dist/v${ONE_OFF_TASK_NODE_VERSION}/node-v${ONE_OFF_TASK_NODE_VERSION}-linux-`,
 			);
+			expect(command).toContain(
+				`PATH=${NODE_BIN_DIR}:"$PATH" npm install --prefix ${WORKSPACE_ROOT}/.n8n-task/harness ` +
+					`--ignore-scripts @earendil-works/pi-coding-agent@${ONE_OFF_TASK_PI_VERSION}`,
+			);
+			expect(command).not.toContain('npm install -g');
 			expect(ONE_OFF_TASK_PI_VERSION).toBe('0.84.1');
+			expect(ONE_OFF_TASK_NODE_VERSION).toBe('22.21.1');
+		});
+
+		it('gives the install exec its own budget, capped by the remaining TTL', async () => {
+			const { service, sandbox } = createService();
+			await service.bootstrap(manifest);
+
+			const installCall = execCalls(sandbox).find(([command]) => command.includes('npm install'));
+			// Fresh TTL (15 min) exceeds the install budget, so the budget wins.
+			expect(installCall?.[2]?.timeout).toBe(180_000);
 		});
 
 		it('creates the task and session directories', async () => {
@@ -214,8 +245,14 @@ describe('OneOffTaskSandboxService', () => {
 			expect(manifestWrites).toHaveLength(2);
 			expect(jsonParse(manifestWrites[1][1])).toEqual(relaunchManifest);
 
+			// One combined install exec total: neither the Node download nor the
+			// pi install re-runs on a relaunch bootstrap.
 			const installs = execCalls(sandbox).filter(([command]) => command.includes('npm install'));
 			expect(installs).toHaveLength(1);
+			const downloads = execCalls(sandbox).filter(([command]) =>
+				command.includes('nodejs.org/dist'),
+			);
+			expect(downloads).toHaveLength(1);
 		});
 
 		it('fails when the harness install exits non-zero', async () => {
@@ -241,9 +278,9 @@ describe('OneOffTaskSandboxService', () => {
 			const options = runHarnessOptions();
 			await service.runHarness(options);
 
-			const piCall = execCalls(sandbox).find(([command]) => command.startsWith('pi '));
+			const piCall = execCalls(sandbox).find(([command]) => isPiCommand(command));
 			expect(piCall?.[0]).toBe(
-				'pi --mode json --approve ' +
+				`PATH=${NODE_BIN_DIR}:"$PATH" ${PI_BIN} --mode json --approve ` +
 					`--session-dir ${WORKSPACE_ROOT}/.n8n-task/sessions ` +
 					`--session-id ${options.sessionId} ` +
 					`@${PROMPT_FILE} < /dev/null`,
@@ -263,7 +300,7 @@ describe('OneOffTaskSandboxService', () => {
 
 			const piCommands = execCalls(sandbox)
 				.map(([command]) => command)
-				.filter((command) => command.startsWith('pi '));
+				.filter((command) => isPiCommand(command));
 			expect(piCommands).toHaveLength(2);
 			for (const command of piCommands) {
 				expect(command).toContain(`--session-id ${sessionId}`);
@@ -277,7 +314,7 @@ describe('OneOffTaskSandboxService', () => {
 			await service.runHarness(runHarnessOptions({ env }));
 
 			for (const [command, , options] of execCalls(sandbox)) {
-				if (command.startsWith('pi ')) {
+				if (isPiCommand(command)) {
 					expect(options?.env).toEqual(env);
 				} else {
 					expect(options?.env).toBeUndefined();
@@ -395,6 +432,69 @@ describe('OneOffTaskSandboxService', () => {
 
 			const result = await service.runHarness(runHarnessOptions());
 			expect(result.report).toBeUndefined();
+		});
+
+		it('returns the bounded stderr tail (last 8KB) on an unclean stop', async () => {
+			const filesystem = createFilesystemMock({
+				readFile: vi.fn(async () => await Promise.reject(new Error('404 not found'))),
+			});
+			const { service } = createService({
+				filesystem,
+				piExec: async (_command, _args, options) => {
+					options?.onStderr?.('x'.repeat(9_000));
+					options?.onStderr?.('\nFATAL: no LLM key configured');
+					return await Promise.resolve({ ...okResult, exitCode: 1 });
+				},
+			});
+			await service.bootstrap(manifest);
+
+			const result = await service.runHarness(runHarnessOptions());
+			expect(result.stderrTail).toBeDefined();
+			// Bounded to the tail: the head is dropped, the fatal error survives.
+			expect(result.stderrTail?.length).toBe(8_192);
+			expect(result.stderrTail?.endsWith('FATAL: no LLM key configured')).toBe(true);
+		});
+
+		it('scrubs injected env values from the stderr tail and the warning log', async () => {
+			const logger = createLoggerMock();
+			const filesystem = createFilesystemMock({
+				readFile: vi.fn(async () => await Promise.reject(new Error('404 not found'))),
+			});
+			const { service } = createService({
+				filesystem,
+				logger,
+				piExec: async (_command, _args, options) => {
+					options?.onStderr?.('auth failed for token super-secret-value, giving up\n');
+					return await Promise.resolve({ ...okResult, exitCode: 1 });
+				},
+			});
+			await service.bootstrap(manifest);
+
+			const result = await service.runHarness(
+				runHarnessOptions({ env: { N8N_TASK_GOOGLE_TOKEN: 'super-secret-value' } }),
+			);
+			expect(result.stderrTail).toContain('[REDACTED:N8N_TASK_GOOGLE_TOKEN]');
+			expect(result.stderrTail).not.toContain('super-secret-value');
+
+			const warnCalls = logger.warn.mock.calls as Array<[string, Record<string, unknown>?]>;
+			const warnCall = warnCalls.find(([message]) => message.includes('without a valid report'));
+			expect(warnCall).toBeDefined();
+			expect(JSON.stringify(warnCall)).not.toContain('super-secret-value');
+			expect(JSON.stringify(warnCall)).toContain('[REDACTED:N8N_TASK_GOOGLE_TOKEN]');
+		});
+
+		it('omits the stderr tail on a clean completion', async () => {
+			const { service } = createService({
+				piExec: async (_command, _args, options) => {
+					options?.onStderr?.('harmless startup warning\n');
+					return await Promise.resolve(okResult);
+				},
+			});
+			await service.bootstrap(manifest);
+
+			const result = await service.runHarness(runHarnessOptions());
+			expect(result.report).toEqual(validReport);
+			expect(result.stderrTail).toBeUndefined();
 		});
 
 		it('deletes a stale report before launching the harness', async () => {

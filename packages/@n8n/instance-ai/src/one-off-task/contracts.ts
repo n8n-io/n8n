@@ -190,6 +190,8 @@ export interface HarnessRunResult {
 	/** Parsed REPORT_PATH, absent on unclean stop. */
 	report?: HarnessReport;
 	exitCode: number;
+	/** Scrubbed tail of pi's stderr; present only on unclean stops. */
+	stderrTail?: string;
 }
 
 /** Pi JSON-stream events the translation layer consumes (others ignored). */

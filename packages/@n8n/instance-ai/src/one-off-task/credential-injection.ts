@@ -91,3 +91,33 @@ export async function resolveTaskCredentials(
 		injectedCredentials,
 	};
 }
+
+/**
+ * Merge the harness's LLM provider env vars (e.g. `ANTHROPIC_API_KEY`) into
+ * the resolved task secrets. The model key is a secret like any credential
+ * value — it joins the per-exec env, the scrub list, and the secrets manifest
+ * (label = the env var name) — but it is NOT a task credential, so
+ * `injectedCredentials` (and therefore the task contract/prompt) stays
+ * untouched.
+ */
+export function withHarnessLlmEnv(
+	resolved: ResolvedTaskSecrets,
+	llmEnvVars: Record<string, string>,
+): ResolvedTaskSecrets {
+	const env = { ...resolved.env };
+	const manifestSecrets = [...resolved.manifest.secrets];
+	const scrubSecrets = [...resolved.scrubSecrets];
+
+	for (const [envVar, value] of Object.entries(llmEnvVars)) {
+		env[envVar] = value;
+		manifestSecrets.push({ envVar, label: envVar });
+		scrubSecrets.push({ value, label: envVar });
+	}
+
+	return {
+		env,
+		manifest: { version: 1, secrets: manifestSecrets },
+		scrubSecrets,
+		injectedCredentials: resolved.injectedCredentials,
+	};
+}
