@@ -8,11 +8,14 @@ import SettingsMCPView from '@/features/ai/mcpAccess/SettingsMCPView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { FrontendSettings } from '@n8n/api-types';
+import type { FrontendSettings, OAuthClientResponseDto } from '@n8n/api-types';
 import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import type { WorkflowListItem } from '@/Interface';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import type { Agent } from '@/features/agents/agent.types';
+
+import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
 const { hasPermissionMock } = vi.hoisted(() => ({
@@ -150,15 +153,16 @@ describe('SettingsMCPView', () => {
 
 		it('should keep the connected-clients row (stating the count) when there are none', async () => {
 			mcpStore.oauthClientTotals = { mine: 0 };
+			mcpStore.getAllOAuthClients.mockResolvedValue([]);
 
 			const { getByTestId, queryByTestId } = createComponent({ pinia });
-			await nextTick();
 
-			// No dashed empty-state card on the overview; the settings row stays and states the count.
-			expect(queryByTestId('mcp-clients-empty')).not.toBeInTheDocument();
-			const row = getByTestId('mcp-clients-view-all-row');
-			expect(row).toBeVisible();
-			expect(row).toHaveTextContent('0');
+			await waitFor(() => {
+				expect(queryByTestId('mcp-clients-empty')).not.toBeInTheDocument();
+				const row = getByTestId('mcp-clients-view-all-row');
+				expect(row).toBeVisible();
+				expect(row).toHaveTextContent('0');
+			});
 		});
 
 		it('should navigate to the connected clients page from the view-all row', async () => {
@@ -197,6 +201,137 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('mcp-connect-client-button'));
 
 			expect(mcpStore.openConnectPopover).toHaveBeenCalled();
+		});
+	});
+
+	describe('Connected clients loading state', () => {
+		beforeEach(() => {
+			enableMcpSettings();
+		});
+
+		it('should show placeholder instead of 0 while getAllOAuthClients is pending', async () => {
+			// Create a promise we control so we can keep it pending
+			let resolveClients!: (value: OAuthClientResponseDto[]) => void;
+			const clientsPromise = new Promise<OAuthClientResponseDto[]>((res) => {
+				resolveClients = res;
+			});
+			mcpStore.getAllOAuthClients.mockReturnValue(clientsPromise);
+
+			const { getAllByText, queryByText, queryAllByText } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getAllByText(UNKNOWN_COUNT_VALUE).length).toBeGreaterThan(0);
+			expect(queryByText('0 clients have access')).not.toBeInTheDocument();
+
+			resolveClients([]);
+			await waitFor(() => {
+				expect(queryAllByText(UNKNOWN_COUNT_VALUE)).toHaveLength(0);
+			});
+		});
+
+		it('should show 0 after getAllOAuthClients resolves with zero clients', async () => {
+			mcpStore.oauthClientTotals = { mine: 0 };
+			mcpStore.getAllOAuthClients.mockResolvedValue([]);
+
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				const row = getByTestId('mcp-clients-view-all-row');
+				expect(row).not.toHaveTextContent(UNKNOWN_COUNT_VALUE);
+				expect(row).toHaveTextContent('0');
+			});
+		});
+
+		it('should keep — and not silently show 0 when getAllOAuthClients fails', async () => {
+			mcpStore.getAllOAuthClients.mockRejectedValue(new Error('network error'));
+
+			const { getAllByText, queryByText } = createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
+			});
+
+			expect(getAllByText(UNKNOWN_COUNT_VALUE).length).toBeGreaterThan(0);
+			expect(queryByText('0 clients have access')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Workflows and agents loading state', () => {
+		beforeEach(() => {
+			enableMcpSettings();
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+			mcpStore.fetchAgentsAvailableForMCP.mockResolvedValue({ data: [], count: 0 });
+		});
+
+		it('should show placeholder while fetchWorkflowsAvailableForMCP is pending', async () => {
+			let resolveWorkflows!: (value: { data: WorkflowListItem[]; count: number }) => void;
+			const workflowsPromise = new Promise<{ data: WorkflowListItem[]; count: number }>((res) => {
+				resolveWorkflows = res;
+			});
+			mcpStore.fetchWorkflowsAvailableForMCP.mockReturnValue(workflowsPromise);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('mcp-workflows-exposed-row')).toHaveTextContent(UNKNOWN_COUNT_VALUE);
+
+			resolveWorkflows({ data: [], count: 3 });
+			await waitFor(() => {
+				expect(getByTestId('mcp-workflows-exposed-row')).toHaveTextContent('3 workflows');
+			});
+		});
+
+		it('should show 0 after fetchWorkflowsAvailableForMCP resolves with zero', async () => {
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue({ data: [], count: 0 });
+
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-workflows-exposed-row')).not.toHaveTextContent(UNKNOWN_COUNT_VALUE);
+				expect(getByTestId('mcp-workflows-exposed-row')).toHaveTextContent('0');
+			});
+		});
+
+		it('should keep — when fetchWorkflowsAvailableForMCP fails', async () => {
+			mcpStore.fetchWorkflowsAvailableForMCP.mockRejectedValue(new Error('network error'));
+
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalled();
+			});
+
+			expect(getByTestId('mcp-workflows-exposed-row')).toHaveTextContent(UNKNOWN_COUNT_VALUE);
+		});
+
+		it('should show placeholder while fetchAgentsAvailableForMCP is pending', async () => {
+			let resolveAgents!: (value: { data: Agent[]; count: number }) => void;
+			const agentsPromise = new Promise<{ data: Agent[]; count: number }>((res) => {
+				resolveAgents = res;
+			});
+
+			mcpStore.fetchAgentsAvailableForMCP.mockReturnValue(agentsPromise);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('mcp-agents-exposed-row')).toHaveTextContent(UNKNOWN_COUNT_VALUE);
+
+			resolveAgents({ data: [], count: 2 });
+			await waitFor(() => {
+				expect(getByTestId('mcp-agents-exposed-row')).toHaveTextContent('2');
+			});
+		});
+
+		it('should keep — when fetchAgentsAvailableForMCP fails', async () => {
+			mcpStore.fetchAgentsAvailableForMCP.mockRejectedValue(new Error('network error'));
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitFor(() => {
+				expect(mcpStore.fetchAgentsAvailableForMCP).toHaveBeenCalled();
+			});
+
+			expect(getByTestId('mcp-agents-exposed-row')).toHaveTextContent(UNKNOWN_COUNT_VALUE);
 		});
 	});
 
