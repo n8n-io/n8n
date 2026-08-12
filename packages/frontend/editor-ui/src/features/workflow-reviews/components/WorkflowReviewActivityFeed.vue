@@ -156,6 +156,7 @@ onMounted(() => {
 					v-for="entry in entries"
 					:key="entry.id"
 					role="listitem"
+					:class="$style.item"
 					data-test-id="workflow-review-activity-entry"
 				>
 					<component :is="resolveActivityComponent(entry)" :entry="entry" />
@@ -189,6 +190,26 @@ onMounted(() => {
 	gap: var(--spacing--md);
 	/* Entries sit inset; a boxed entry cancels this to reach the panel edge. */
 	padding-inline: var(--spacing--sm);
+	/* Every entry leads with an `xxsmall` avatar (`N8nAvatar/avatarSizes.ts`), and a boxed
+		entry's negative margin and padding cancel out, so all avatars share this column. The
+		rail below is centred on it. */
+	--activity-avatar-size: 16px;
+}
+
+.item {
+	position: relative;
+}
+
+/* Threads the entries into one timeline. Drawn in the gap above each entry rather than
+	inside it, because the line belongs to the space between two entries and only the list
+	knows that gap. The first entry has nothing above it to join. */
+.item:not(:first-child)::before {
+	content: '';
+	position: absolute;
+	bottom: 100%;
+	left: calc(var(--activity-avatar-size) / 2);
+	height: var(--spacing--md);
+	border-left: var(--border);
 }
 
 .errorRow {
