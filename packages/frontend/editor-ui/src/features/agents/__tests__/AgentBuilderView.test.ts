@@ -394,6 +394,22 @@ async function startArtifactPreviewSend(
 	return { pending: beforeSend() };
 }
 
+/**
+ * `onToggleMcpAccess` no-ops while `agent` is null, so a toggle emitted before the
+ * agent resolves is silently dropped and there is nothing left to flush.
+ *
+ * The component is re-found on every poll on purpose: until the view leaves its
+ * loading state the editor column is not rendered at all, and a wrapper captured
+ * beforehand stays empty forever — `props()` on it throws rather than resolving.
+ */
+async function waitForLoadedEditorColumn(wrapper: Awaited<ReturnType<typeof renderView>>) {
+	await vi.waitFor(() => {
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agent')).toBeTruthy();
+	});
+
+	return wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+}
+
 async function readBlobText(blob: Blob): Promise<string> {
 	return await new Promise<string>((resolve, reject) => {
 		const reader = new FileReader();
@@ -1359,14 +1375,14 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
 			.mockReturnValueOnce(mcpSave.promise);
 
-		// Match the sibling MCP-flush test: wait for the emit handler to schedule
-		// the debounced autosave before switching agents, otherwise initialize's
-		// flushAutosave can race the schedule and find nothing pending.
+		// Match the sibling MCP-flush test: emit only once the agent has resolved,
+		// otherwise the handler drops the toggle and initialize's flushAutosave
+		// finds nothing pending.
+		const editorColumn = await waitForLoadedEditorColumn(wrapper);
+
 		vi.useFakeTimers();
 		try {
-			wrapper
-				.findComponent({ name: 'AgentBuilderEditorColumn' })
-				.vm.$emit('toggle-mcp-access', true);
+			editorColumn.vm.$emit('toggle-mcp-access', true);
 			await nextTick();
 
 			await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
@@ -1381,9 +1397,13 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await flushPromises();
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a3');
-		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved')).toBe(
-			false,
-		);
+		// Re-initialization re-renders the column, so this cannot assume it is already
+		// mounted — the same reason the emit above waits.
+		await vi.waitFor(() => {
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved'),
+			).toBe(false);
+		});
 	});
 
 	it('mints a fresh preview session when landing with no prior threads', async () => {
@@ -1849,11 +1869,10 @@ describe('AgentBuilderView — three-column shell', () => {
 			unchangedIds: [],
 		});
 
-		// The toggle handler no-ops until the agent resolves, so emitting after a
-		// single flushPromises() left this racing the scheduler: under a full suite
-		// run the emit could land before the agent was there and simply be dropped.
-		const editorColumn = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
-		await vi.waitFor(() => expect(editorColumn.props('agent')).toBeTruthy());
+		// Emitting after a single flushPromises() left this racing the scheduler:
+		// under a full suite run the emit could land before the agent was there and
+		// simply be dropped.
+		const editorColumn = await waitForLoadedEditorColumn(wrapper);
 
 		vi.useFakeTimers();
 		try {
