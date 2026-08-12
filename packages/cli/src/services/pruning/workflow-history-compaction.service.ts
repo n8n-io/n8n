@@ -115,10 +115,12 @@ export class WorkflowHistoryCompactionService {
 
 		this.trimmingInterval = setInterval(trimOnceADay, 1 * Time.hours.toMilliseconds);
 
-		if (this.config.trimOnStartUp) {
-			void this.trimLongRunningHistories();
-		} else {
-			void trimOnceADay();
+		if (!this.config.skipOnStartUp) {
+			if (this.config.trimOnStartUp) {
+				void this.trimLongRunningHistories();
+			} else {
+				void trimOnceADay();
+			}
 		}
 
 		this.logger.debug('Trimming histories once a day at 3am server time');
@@ -136,7 +138,7 @@ export class WorkflowHistoryCompactionService {
 			`Optimizing histories every ${this.config.optimizingTimeWindowHours / 2.0} hour(s)`,
 		);
 
-		void this.optimizeHistories();
+		if (!this.config.skipOnStartUp) void this.optimizeHistories();
 	}
 
 	@OnShutdown()
