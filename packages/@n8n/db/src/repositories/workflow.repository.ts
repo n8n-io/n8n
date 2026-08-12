@@ -915,15 +915,18 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		qb.addOrderBy('workflow.id', 'DESC');
 		if (cursor) {
-			qb.andWhere(
-				'(workflow.updatedAt < :cursorUpdatedAt OR (workflow.updatedAt = :cursorUpdatedAt AND workflow.id < :cursorId))',
-				{
-					// Stringified for the raw comparison; same pattern as execution.repository.
-					// String() narrows DateUtils' `any` return — always a string for a Date input.
-					cursorUpdatedAt: String(DateUtils.mixedDateToUtcDatetimeString(cursor.updatedAt)),
-					cursorId: cursor.id,
-				},
-			);
+			// Row-value comparison, NOT the equivalent `a < x OR (a = x AND b < y)`:
+			// the OR form makes SQLite pick a MULTI-INDEX OR plan that materialises
+			// and sorts every row older than the cursor on every batch — measured
+			// ~175ms/batch (one full scan each) vs ~3ms with the row value, which
+			// keeps the `updatedAt<?` index seek and short-circuits at the limit.
+			// See test/performance/node-search.perf.ts ('blob-only' shape).
+			qb.andWhere('(workflow.updatedAt, workflow.id) < (:cursorUpdatedAt, :cursorId)', {
+				// Stringified for the raw comparison; same pattern as execution.repository.
+				// String() narrows DateUtils' `any` return — always a string for a Date input.
+				cursorUpdatedAt: String(DateUtils.mixedDateToUtcDatetimeString(cursor.updatedAt)),
+				cursorId: cursor.id,
+			});
 		}
 
 		if (this.globalConfig.database.type !== 'postgresdb') return await qb.getMany();

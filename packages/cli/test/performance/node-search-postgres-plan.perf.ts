@@ -88,6 +88,43 @@ describe('postgres planner hint', () => {
 		expect(hinted.ms).toBeLessThan(plain.ms);
 	});
 
+	// The keyset scan's later batches carry a `(updatedAt, id) < (?, ?)` cursor.
+	// The row-value form lets the planner derive an index bound from the
+	// `updatedAt` prefix, so batches keep short-circuiting under the hint.
+	it('row-value cursor keeps the index scan under the hint', async () => {
+		if (!isPostgres()) return;
+
+		const [cursorRow] = await ds.query<Array<{ updatedAt: Date; id: string }>>(
+			`SELECT w."updatedAt", w.id FROM ${table} w ORDER BY w."updatedAt" DESC, w.id DESC LIMIT 1 OFFSET 99`,
+		);
+
+		const sql = `SELECT w."updatedAt" AS w_updatedAt, w.id FROM ${table} w
+			WHERE EXISTS (SELECT 1 FROM ${sharedTable} sw WHERE sw."workflowId" = w.id)
+			AND LOWER(w.nodes::text) LIKE $1 ESCAPE '\\'
+			AND (w."updatedAt", w.id) < ($2, $3)
+			ORDER BY w."updatedAt" DESC, w.id DESC LIMIT 100`;
+		const params = ['%step 3 of flow%', cursorRow.updatedAt, cursorRow.id];
+
+		const runner = ds.createQueryRunner();
+		await runner.connect();
+		await runner.startTransaction();
+		await runner.query('SET LOCAL enable_seqscan = off');
+		const t0 = performance.now();
+		await runner.query(sql, params);
+		const ms = performance.now() - t0;
+		const plan = (await runner.query(`EXPLAIN ${sql}`, params)) as Array<Record<string, string>>;
+		await runner.rollbackTransaction();
+		await runner.release();
+
+		const planText = plan.map((r) => Object.values(r)[0]).join(' | ');
+		report.push(`\n  cursor batch, hinted: ${ms.toFixed(1)}ms\n    ${planText.slice(0, 200)}`);
+
+		expect(planText).toContain('IDX_');
+		// A batch continuing mid-scan must stay near the first batch's cost, not
+		// restart the scan — generous bound for CI noise.
+		expect(ms).toBeLessThan(100);
+	});
+
 	it('does not regress a query that matches nothing', async () => {
 		if (!isPostgres()) return;
 

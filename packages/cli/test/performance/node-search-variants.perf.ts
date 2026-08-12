@@ -9,6 +9,10 @@
  *  2. Sharing must be expressed as `EXISTS`, not `id IN (subquery)`. The `IN`
  *     form makes SQLite drive from `shared_workflow` and sort every match in a
  *     temp B-tree, which throws away the index entirely.
+ *  3. The keyset cursor must be a row-value comparison `(updatedAt, id) < (?, ?)`,
+ *     not the logically equivalent OR form. The OR form triggers a MULTI-INDEX OR
+ *     plan that materialises and sorts every row older than the cursor on every
+ *     batch — turning the batched scan quadratic.
  *
  * Run with: pnpm test:performance
  */
@@ -85,6 +89,54 @@ describe('node search SQL variants', () => {
 		expect(inForm.plan).toContain('TEMP B-TREE FOR ORDER BY');
 		expect(existsForm.plan).toContain('IDX_workflow_entity_updatedAt');
 		expect(existsForm.p50).toBeLessThan(inForm.p50);
+	});
+
+	it('row-value cursor keeps the index seek; the OR form materialises per batch', async () => {
+		if (!isSqlite()) return;
+
+		// Cursor positioned 100 rows in — where batch 2 of the keyset scan starts.
+		const [cursorRow] = await ds.query<Array<{ updatedAt: string; id: string }>>(
+			'SELECT updatedAt, id FROM workflow_entity ORDER BY updatedAt DESC, id DESC LIMIT 1 OFFSET 99',
+		);
+
+		const SELECT = 'SELECT w.updatedAt AS w_updatedAt, w.id FROM workflow_entity w';
+		const WHERE =
+			"WHERE EXISTS (SELECT 1 FROM shared_workflow sw WHERE sw.workflowId = w.id) AND LOWER(w.nodes) LIKE ? ESCAPE '\\'";
+		const TAIL = 'ORDER BY w_updatedAt DESC, w.id DESC LIMIT 100';
+
+		const bench = async (label: string, cursorSql: string, params: unknown[]) => {
+			const sql = `${SELECT} ${WHERE} AND ${cursorSql} ${TAIL}`;
+			const samples: number[] = [];
+			for (let i = 0; i < SAMPLES; i++) {
+				const t0 = performance.now();
+				await ds.query(sql, params);
+				samples.push(performance.now() - t0);
+			}
+			samples.sort((a, b) => a - b);
+			const plan = await ds.query<PlanRow[]>(`EXPLAIN QUERY PLAN ${sql}`, params);
+			const p50 = samples[Math.floor(samples.length / 2)];
+			report.push(`\n  ${label}\n    p50=${p50.toFixed(1)}ms`);
+			plan.forEach((p) => report.push(`      ${p.detail}`));
+			return { p50, plan: plan.map((p) => p.detail).join(' | ') };
+		};
+
+		const pattern = '%step 3 of flow%';
+		const orForm = await bench(
+			'cursor as: updatedAt < ? OR (updatedAt = ? AND id < ?)',
+			'(w.updatedAt < ? OR (w.updatedAt = ? AND w.id < ?))',
+			[pattern, cursorRow.updatedAt, cursorRow.updatedAt, cursorRow.id],
+		);
+		const rowValue = await bench(
+			'cursor as: (updatedAt, id) < (?, ?)   [shipped]',
+			'(w.updatedAt, w.id) < (?, ?)',
+			[pattern, cursorRow.updatedAt, cursorRow.id],
+		);
+
+		// The OR form materialises and sorts; the row value seeks and stops at the limit.
+		expect(orForm.plan).toContain('MULTI-INDEX OR');
+		expect(rowValue.plan).not.toContain('MULTI-INDEX OR');
+		expect(rowValue.plan).toContain('IDX_workflow_entity_updatedAt');
+		expect(rowValue.p50).toBeLessThan(orForm.p50);
 	});
 
 	it('dropping the updatedAt index regresses the shipped shape', async () => {

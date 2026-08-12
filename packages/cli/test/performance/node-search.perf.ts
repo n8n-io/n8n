@@ -23,12 +23,20 @@ const CORPUS_SIZES = [20_000];
 const NODES_PER_WORKFLOW = 12;
 const SAMPLES = 30;
 
-/** Realistic multi-node workflow (~6-8 KB JSON payload each). */
+/**
+ * Realistic multi-node workflow (~6-8 KB JSON payload each).
+ *
+ * Every step node id carries the `xblobonlyx` marker: it appears in the raw
+ * JSON blob (which the DB prefilter matches) but in no field the in-memory
+ * matcher checks. Searching it forces the keyset scan's worst case — every
+ * batch full of candidates, none producing a hit — until MAX_SCANNED_WORKFLOWS
+ * stops the scan.
+ */
 function buildNodes(workflowIndex: number) {
 	const nodes = [];
 	for (let n = 0; n < NODES_PER_WORKFLOW - 2; n++) {
 		nodes.push({
-			id: uuid(),
+			id: `xblobonlyx-${uuid()}`,
 			name: `Step ${n} of flow ${workflowIndex}`,
 			type: n % 3 === 0 ? 'n8n-nodes-base.httpRequest' : 'n8n-nodes-base.set',
 			typeVersion: 1,
@@ -128,12 +136,16 @@ describe('node search performance', () => {
 			});
 
 			it('search latency across query shapes', async () => {
-				// 'step' hits nearly every workflow (worst case: cap always saturated).
+				// 'step' hits nearly every workflow (result cap saturated in one batch).
 				// 'zzyzx' hits exactly one. 'qqxzptv' hits none (full scan, no early exit).
+				// 'xblobonlyx' matches every blob but no node field: the keyset scan
+				// hydrates batch after batch of false positives until the
+				// MAX_SCANNED_WORKFLOWS safety rail (2000 workflows / 20 batches) stops it.
 				const shapes: Array<[string, string]> = [
 					['broad hit (matches ~all)', 'step 3 of flow'],
 					['rare hit (matches 1)', 'zzyzx-unique-token'],
 					['no match (full scan)', 'qqxzptvnomatch'],
+					['blob-only (multi-batch)', 'xblobonlyx'],
 					['sticky prose', 'billing pipeline'],
 				];
 
@@ -154,6 +166,15 @@ describe('node search performance', () => {
 				// the sharing predicate reverts from EXISTS to IN (both measured >150ms).
 				expect(measured['broad hit (matches ~all)'].p95).toBeLessThan(50);
 				expect(measured['sticky prose'].p95).toBeLessThan(50);
+
+				// The multi-batch worst case is bounded by the safety rail, not by
+				// corpus size: 20 batches of 100 hydrated-and-rejected candidates. It
+				// must stay in the same order of magnitude as the no-match full scan —
+				// if it blows past this, batching went quadratic (e.g. the cursor
+				// regressed to OFFSET) or the rail stopped applying.
+				expect(measured['blob-only (multi-batch)'].p95).toBeLessThan(
+					Math.max(500, measured['no match (full scan)'].p95 * 5),
+				);
 			});
 
 			it('does not degrade concurrent workflow list queries', async () => {
@@ -187,7 +208,12 @@ describe('node search performance', () => {
 				 * Uses the 'no match' query on purpose — it is the slowest shape, since
 				 * proving absence cannot short-circuit on the updatedAt index.
 				 */
-				const underLoad = async (label: string, concurrentUsers: number, pacingMs: number) => {
+				const underLoad = async (
+					label: string,
+					concurrentUsers: number,
+					pacingMs: number,
+					query = 'qqxzptvnomatch',
+				) => {
 					let running = true;
 					let served = 0;
 					let shed = 0;
@@ -195,7 +221,7 @@ describe('node search performance', () => {
 						while (running) {
 							const started = performance.now();
 							try {
-								await searchService.search(owner, 'qqxzptvnomatch');
+								await searchService.search(owner, query);
 								served++;
 							} catch {
 								// 429 from the concurrency cap: load shed, which is the point.
@@ -221,6 +247,10 @@ describe('node search performance', () => {
 				const oneUser = await underLoad('1 user @ rate limit', 1, 500);
 				const manyUsers = await underLoad('20 users @ rate limit', 20, 500);
 				const adversarial = await underLoad('adversarial (unthrottled)', 4, 0);
+				// The keyset scan's slowest shape (multi-batch blob-only candidates)
+				// holds the single concurrency slot longer per call — list impact must
+				// stay bounded all the same.
+				const multiBatch = await underLoad('20 users, multi-batch query', 20, 500, 'xblobonlyx');
 
 				// The point of the concurrency cap: impact stays bounded and does not
 				// escalate with the number of clients searching. Without it, 20 users
@@ -230,7 +260,7 @@ describe('node search performance', () => {
 				// p50 covers the typical concurrent request; p95 is looser because a
 				// single in-flight scan can land on one sampled query and add its whole
 				// duration to that one sample.
-				for (const s of [oneUser, manyUsers, adversarial]) {
+				for (const s of [oneUser, manyUsers, adversarial, multiBatch]) {
 					expect(s.p50 / b.p50).toBeLessThan(2);
 					expect(s.p95 / b.p95).toBeLessThan(5);
 				}
