@@ -206,7 +206,13 @@ const selectItem = (item: CommandBarItem) => {
 const handleKeydown = (event: KeyboardEvent) => {
 	if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
 		event.preventDefault();
-		void openCommandBar();
+		// Toggle: reopening while open would reset input and selection but
+		// keep the current parent view, leaving the bar in a mixed state
+		if (isOpen.value) {
+			closeCommandBar();
+		} else {
+			void openCommandBar();
+		}
 		return;
 	}
 

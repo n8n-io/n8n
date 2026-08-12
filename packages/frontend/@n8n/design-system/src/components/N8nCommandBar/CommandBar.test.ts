@@ -148,6 +148,37 @@ describe('components', () => {
 			);
 		});
 
+		it('toggles closed when Cmd+K is pressed while open', async () => {
+			render(N8nCommandBar, { props: { items: createSampleItems() } });
+			await openCommandBar();
+
+			document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+
+			await waitFor(() =>
+				expect(screen.queryByPlaceholderText('Type a command...')).not.toBeInTheDocument(),
+			);
+		});
+
+		it('closes fully on Cmd+K inside a parent item and reopens at the root', async () => {
+			const wrapper = render(N8nCommandBar, { props: { items: createSampleItems() } });
+			await openCommandBar();
+
+			await fireEvent.click(screen.getByText('Search nodes'));
+			await waitFor(() => expect(screen.getByPlaceholderText('Search nodes…')).toBeInTheDocument());
+
+			document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+			await waitFor(() =>
+				expect(screen.queryByPlaceholderText('Search nodes…')).not.toBeInTheDocument(),
+			);
+
+			// Leaving the parent view notifies consumers so they can reset state
+			const events = wrapper.emitted('navigateTo') ?? [];
+			expect(events[events.length - 1]).toEqual([null]);
+
+			await openCommandBar();
+			expect(screen.getByPlaceholderText('Type a command...')).toBeInTheDocument();
+		});
+
 		it('emits navigateTo(null) when closed while inside a parent item', async () => {
 			const wrapper = render(N8nCommandBar, { props: { items: createSampleItems() } });
 			await openCommandBar();

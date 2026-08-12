@@ -19,8 +19,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import * as permissionsModule from '@n8n/permissions';
 
+const debounceCancelSpy = vi.hoisted(() => vi.fn());
+
 vi.mock('lodash/debounce', () => ({
-	default: (fn: (...args: unknown[]) => unknown) => fn,
+	default: (fn: (...args: unknown[]) => unknown) =>
+		Object.assign((...args: unknown[]) => fn(...args), { cancel: debounceCancelSpy }),
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -524,6 +527,22 @@ describe('useWorkflowNavigationCommands', () => {
 			// Leaving the view with no query removes it again
 			api.handlers?.onCommandBarNavigateTo?.(null);
 			expect(api.commands.value.find((c) => c.id === 'deep-search-workflows')).toBeUndefined();
+		});
+
+		it('cancels a pending root quick-search fetch on navigation', () => {
+			const api = useWorkflowNavigationCommands({
+				lastQuery: ref('alpha'),
+				activeNodeId: ref(null),
+				currentProjectName: ref('My Project'),
+			});
+
+			debounceCancelSpy.mockClear();
+			api.handlers?.onCommandBarNavigateTo?.('deep-search-workflows');
+			expect(debounceCancelSpy).toHaveBeenCalled();
+
+			debounceCancelSpy.mockClear();
+			api.handlers?.onCommandBarNavigateTo?.(null);
+			expect(debounceCancelSpy).toHaveBeenCalled();
 		});
 
 		it('clears results when navigating back to root', async () => {

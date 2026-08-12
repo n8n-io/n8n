@@ -577,6 +577,11 @@ export function useWorkflowNavigationCommands(options: {
 	function onCommandBarNavigateTo(to: string | null) {
 		activeNodeId.value = to;
 
+		// A quick-search fetch scheduled at the root must not fire after
+		// navigation: it would overwrite fresh results and clear the shared
+		// loading state while a deep search is still running
+		fetchWorkflowsDebounced.cancel();
+
 		if (to === ITEM_ID.OPEN_WORKFLOW) {
 			isLoading.value = true;
 			void fetchWorkflowsImpl('');
