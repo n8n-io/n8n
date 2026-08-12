@@ -107,6 +107,31 @@ describe('generatePinData', () => {
 		expect(createEvalAgentMock).not.toHaveBeenCalled();
 	});
 
+	describe('injected generate port', () => {
+		it('uses the injected generator and never builds the eval agent', async () => {
+			const generate = vi.fn().mockResolvedValue(JSON.stringify({ 'Get Posted Keys': [] }));
+
+			const result = await generatePinData({ workflow, nodeNames: ['Get Posted Keys'], generate });
+
+			expect(result).toEqual({ 'Get Posted Keys': [] });
+			expect(generate).toHaveBeenCalledTimes(1);
+			// The eval agent resolves its model from env vars and throws without one, so a
+			// caller supplying its own model must never construct it.
+			expect(createEvalAgentMock).not.toHaveBeenCalled();
+		});
+
+		it('hands the prompt and generation tuning to the injected generator', async () => {
+			const generate = vi.fn().mockResolvedValue(JSON.stringify({ 'Get Posted Keys': [] }));
+
+			await generatePinData({ workflow, nodeNames: ['Get Posted Keys'], generate });
+
+			const [prompt, options] = generate.mock.calls[0];
+			expect(prompt).toContain('Get Posted Keys');
+			expect(options.providerOptions).toEqual({ anthropic: { maxTokens: 16_384 } });
+			expect(options.abortSignal).toBeInstanceOf(AbortSignal);
+		});
+	});
+
 	describe('field-name drift', () => {
 		const dataTableColumns = {
 			'Get Posted Keys': [{ name: 'contact_email', type: 'string' }],
@@ -149,6 +174,21 @@ describe('generatePinData', () => {
 			const retryPrompt = generateMock.mock.calls[1][0] as string;
 			expect(retryPrompt).toContain('## Correction required');
 			expect(retryPrompt).toContain('remove/rename these unknown fields: email');
+		});
+
+		it('routes the corrective retry through the injected generator too', async () => {
+			const generate = vi.fn().mockResolvedValueOnce(drifted).mockResolvedValueOnce(conforming);
+
+			const result = await generatePinData({
+				workflow,
+				nodeNames: ['Get Posted Keys'],
+				dataTableColumns,
+				generate,
+			});
+
+			expect(result['Get Posted Keys'][0].json).toMatchObject({ contact_email: 'a@b.c' });
+			expect(generate).toHaveBeenCalledTimes(2);
+			expect(generate.mock.calls[1][0]).toContain('## Correction required');
 		});
 
 		it('fails loud instead of serving a still-drifted fixture after the retry', async () => {

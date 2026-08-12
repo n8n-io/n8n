@@ -43,6 +43,23 @@ type PinData = Record<string, Array<Record<string, unknown>>>;
  */
 const PIN_DATA_LLM_TIMEOUT_MS = 180_000;
 
+/**
+ * The single LLM call this module makes, as an injectable port: takes a prompt,
+ * returns the model's raw text. Callers that own their model resolution (the
+ * user-facing sample-data endpoint) supply their own so the eval agent — which
+ * resolves its model from env vars and throws without one — is never built.
+ *
+ * A callback rather than an `Agent` because generation may run twice (initial
+ * call plus corrective retry); the caller's closure can accumulate token usage
+ * across both for credit metering.
+ */
+export type PinDataGenerateFn = (prompt: string, options: AgentGenerateOptions) => Promise<string>;
+
+/** Generation options as the agent SDK declares them, so the port stays in sync with it. */
+type AgentGenerateOptions = NonNullable<
+	Parameters<ReturnType<typeof createEvalAgent>['generate']>[1]
+>;
+
 export interface GeneratePinDataOptions {
 	/** The workflow containing the nodes to generate data for */
 	workflow: WorkflowJSON;
@@ -60,6 +77,18 @@ export interface GeneratePinDataOptions {
 	 * authoritative row shape; pinned rows are validated against these keys.
 	 */
 	dataTableColumns?: Record<string, DataTableColumnInfo[]>;
+	/** LLM call to use. Defaults to the env-resolved eval agent. */
+	generate?: PinDataGenerateFn;
+}
+
+/** Default port: the env-resolved eval agent, built once and reused across the retry. */
+function createEvalGenerate(): PinDataGenerateFn {
+	const agent = createEvalAgent('eval-pin-data-generator', {
+		instructions: PIN_DATA_SYSTEM_PROMPT,
+		cache: true,
+	});
+
+	return async (prompt, options) => extractText(await agent.generate(prompt, options));
 }
 
 /**
@@ -98,18 +127,13 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 	});
 	const expectedNodeNames = contexts.map((c) => c.nodeName);
 
-	const agent = createEvalAgent('eval-pin-data-generator', {
-		instructions: PIN_DATA_SYSTEM_PROMPT,
-		cache: true,
-	});
+	const generate = options.generate ?? createEvalGenerate();
 
 	const generateOnce = async (prompt: string): Promise<PinData> => {
-		const result = await agent.generate(prompt, {
+		const responseText = await generate(prompt, {
 			providerOptions: { anthropic: { maxTokens: 16_384 } },
 			abortSignal: AbortSignal.timeout(PIN_DATA_LLM_TIMEOUT_MS),
 		});
-
-		const responseText = extractText(result);
 		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
 
 		const missing = expectedNodeNames.filter((name) => !(name in pinData));
