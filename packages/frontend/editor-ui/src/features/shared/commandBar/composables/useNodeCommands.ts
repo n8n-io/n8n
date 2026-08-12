@@ -116,13 +116,8 @@ export function useNodeCommands(options: {
 
 		const keywords: string[] = [name, type];
 		if (node.notes) keywords.push(node.notes);
-		if (node.parameters) {
-			try {
-				keywords.push(JSON.stringify(node.parameters));
-			} catch {
-				// ignore non-serializable parameters
-			}
-		}
+		// Parameters are plain deserialised JSON, so stringify cannot throw.
+		if (node.parameters) keywords.push(JSON.stringify(node.parameters));
 
 		return {
 			id,

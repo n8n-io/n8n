@@ -62,6 +62,23 @@ describe('WorkflowNodeSearchService', () => {
 		expect(results[0].projectName).not.toBe('');
 	});
 
+	// Parity with in-editor cmd+k, which also matches on node type.
+	it('matches on node type even when the node was renamed', async () => {
+		// ARRANGE
+		const member = await createMember();
+		await createWorkflow(
+			{ name: 'CRM', nodes: [node('Notify team', { type: 'n8n-nodes-base.slack' })] },
+			member,
+		);
+
+		// ACT
+		const results = await service.search(member, 'slack');
+
+		// ASSERT
+		expect(results).toHaveLength(1);
+		expect(results[0].nodeType).toBe('n8n-nodes-base.slack');
+	});
+
 	it('excludes workflows the user cannot read', async () => {
 		// ARRANGE
 		const owner = await createOwner();

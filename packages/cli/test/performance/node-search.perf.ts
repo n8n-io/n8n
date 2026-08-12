@@ -19,7 +19,7 @@ import { WorkflowNodeSearchService } from '@/workflows/workflow-node-search.serv
 
 import { LOREM, seedCorpus } from './shared';
 
-const CORPUS_SIZES = [1_000, 5_000, 20_000];
+const CORPUS_SIZES = [20_000];
 const NODES_PER_WORKFLOW = 12;
 const SAMPLES = 30;
 

@@ -148,6 +148,7 @@ export class WorkflowNodeSearchService {
 	 */
 	private nodeMatches(node: INode, queryLower: string): boolean {
 		if (node.name?.toLowerCase().includes(queryLower)) return true;
+		if (node.type?.toLowerCase().includes(queryLower)) return true;
 		if (node.notes?.toLowerCase().includes(queryLower)) return true;
 		// Parameters were just deserialised from the JSON column, so stringify cannot throw.
 		if (node.parameters && JSON.stringify(node.parameters).toLowerCase().includes(queryLower)) {

@@ -67,6 +67,22 @@ describe('useGlobalNodeSearchCommands', () => {
 		});
 	});
 
+	// Hits matched inside node parameters (e.g. urls) appear in no other keyword;
+	// without the query as a keyword the command bar's own filter would hide them.
+	it('includes the matched query in keywords so parameter-only hits survive filtering', async () => {
+		searchMock.mockResolvedValue({ results: [hit()] });
+		const options = {
+			lastQuery: ref('https://api.example.com'),
+			activeNodeId: ref<string | null>(null),
+		};
+		const { commands, handlers } = useGlobalNodeSearchCommands(options);
+
+		handlers!.onCommandBarChange!('https://api.example.com');
+		await flush();
+
+		expect(commands.value[0].keywords).toContain('https://api.example.com');
+	});
+
 	it('does not query below the minimum query length', async () => {
 		const { handlers } = setup();
 

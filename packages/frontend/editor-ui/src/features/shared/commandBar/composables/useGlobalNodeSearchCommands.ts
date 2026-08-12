@@ -27,6 +27,11 @@ export function useGlobalNodeSearchCommands(options: {
 	const { lastQuery, activeNodeId } = options;
 
 	const results = ref<NodeSearchHit[]>([]);
+	// The query that produced `results`. The command bar re-filters items against
+	// title+keywords, but the backend also matches inside node parameters (urls,
+	// expressions) that appear in no keyword — so the matched query itself must be
+	// a keyword or those hits get silently hidden.
+	const matchedQuery = ref('');
 	const isLoading = ref(false);
 	// Responses can land out of order; only the newest request may write results.
 	let latestRequestId = 0;
@@ -34,18 +39,13 @@ export function useGlobalNodeSearchCommands(options: {
 	const fetchImpl = async (query: string) => {
 		const requestId = ++latestRequestId;
 		try {
-			const trimmed = query.trim();
-			if (trimmed.length < NODE_SEARCH_MIN_QUERY_LENGTH) {
-				results.value = [];
-				return;
-			}
-
-			const response = await searchWorkflowNodes(rootStore.restApiContext, trimmed);
+			const response = await searchWorkflowNodes(rootStore.restApiContext, query);
 			if (requestId !== latestRequestId) return;
 
 			const currentWorkflowId = currentWorkflowIdRef.value;
 			// Exclude current workflow — its nodes are already covered by useNodeCommands.
 			results.value = response.results.filter((hit) => hit.workflowId !== currentWorkflowId);
+			matchedQuery.value = query;
 		} catch {
 			if (requestId === latestRequestId) results.value = [];
 		} finally {
@@ -72,6 +72,7 @@ export function useGlobalNodeSearchCommands(options: {
 		const keywords = [hit.nodeName, hit.nodeType, hit.workflowName];
 		if (hit.projectName) keywords.push(hit.projectName);
 		if (hit.stickyPreview) keywords.push(hit.stickyPreview);
+		if (matchedQuery.value) keywords.push(matchedQuery.value);
 
 		return {
 			id: `global-node-${hit.workflowId}-${hit.nodeId}`,
@@ -85,22 +86,9 @@ export function useGlobalNodeSearchCommands(options: {
 			},
 			section: i18n.baseText('commandBar.globalNodeSearch.section'),
 			keywords,
-			...(nodeType
-				? {
-						icon: {
-							component: NodeIcon,
-							props: {
-								nodeType,
-								size: 16,
-							},
-						},
-					}
-				: {
-						icon: {
-							component: N8nIcon,
-							props: { icon: 'search' },
-						},
-					}),
+			icon: nodeType
+				? { component: NodeIcon, props: { nodeType, size: 16 } }
+				: { component: N8nIcon, props: { icon: 'search' } },
 			handler: () => {
 				void router.push({
 					name: VIEWS.WORKFLOW,
@@ -121,6 +109,7 @@ export function useGlobalNodeSearchCommands(options: {
 	function reset() {
 		latestRequestId++;
 		results.value = [];
+		matchedQuery.value = '';
 		isLoading.value = false;
 		fetchDebounced.cancel();
 	}
