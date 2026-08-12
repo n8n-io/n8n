@@ -87,7 +87,11 @@ import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
+import { createAnalyzeWorkflowCompatibilityTool } from './tools/workflow-builder/analyze-workflow-compatibility.tool';
+import {
+	ANALYZE_WORKFLOW_COMPATIBILITY_TOOL_NAME,
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+} from './tools/workflow-builder/constants';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
@@ -395,6 +399,9 @@ export class McpService {
 		const builderInstructionsEnabled =
 			builderEnabled &&
 			(allowedToolNames?.has(MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName) ?? true);
+		const templateCompatibilityInstructionsEnabled =
+			builderInstructionsEnabled &&
+			(allowedToolNames?.has(ANALYZE_WORKFLOW_COMPATIBILITY_TOOL_NAME) ?? true);
 		const agentsEnabled = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
 		// Same rationale as builderInstructionsEnabled: a grant that cannot call
 		// the agent tools gets no agent build walkthrough.
@@ -411,6 +418,7 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
+					isTemplateCompatibilityEnabled: templateCompatibilityInstructionsEnabled,
 				}),
 			},
 		);
@@ -656,6 +664,15 @@ export class McpService {
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
 		registerIfAllowed(validateNodeTool);
+
+		const compatibilityTool = createAnalyzeWorkflowCompatibilityTool(
+			user,
+			this.projectRepository,
+			this.credentialsService,
+			this.nodeTypes,
+			this.telemetry,
+		);
+		registerIfAllowed(compatibilityTool);
 
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,

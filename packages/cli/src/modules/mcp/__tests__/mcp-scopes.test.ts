@@ -83,6 +83,11 @@ describe('getAllowedToolNames', () => {
 		expect(allowed).toContain('unpublish_agent');
 	});
 
+	it('gates workflow compatibility analysis behind credential:read', () => {
+		expect(getAllowedToolNames(['credential:read'])).toContain('analyze_workflow_compatibility');
+		expect(getAllowedToolNames(['workflow:write'])).not.toContain('analyze_workflow_compatibility');
+	});
+
 	it('grants only call_agent with agent:execute', () => {
 		expect(getAllowedToolNames(['agent:execute'])).toEqual(new Set(['call_agent']));
 	});

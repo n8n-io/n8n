@@ -199,6 +199,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			versionDescription?: string;
 			projectId?: string;
 			folderId?: string;
+			disableCredentialAutoAssign?: boolean;
 		},
 		tool = createTool(),
 	) =>
@@ -212,6 +213,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				versionDescription: input.versionDescription as string,
 				projectId: input.projectId as string,
 				folderId: input.folderId as string,
+				disableCredentialAutoAssign: input.disableCredentialAutoAssign,
 			},
 			{} as never,
 		);
@@ -256,6 +258,23 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(response.nodeCount).toBe(2);
 			expect(response.url).toBe('https://n8n.example.com/workflow/wf-saved-1');
 			expect(result.isError).toBeUndefined();
+		});
+
+		test('disables user credential auto-assignment when requested', async () => {
+			await callHandler({
+				code: 'const wf = ...',
+				disableCredentialAutoAssign: true,
+			});
+
+			expect(mockAutoPopulateNodeCredentials).toHaveBeenCalledWith(
+				expect.any(WorkflowEntity),
+				user,
+				nodeTypes,
+				credentialsService,
+				'personal-project-1',
+				aiGatewayService,
+				{ disableUserCredentialAutoAssign: true },
+			);
 		});
 
 		test('surfaces validation warnings in the response', async () => {
@@ -741,7 +760,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				(credentialsService.getOne as Mock).mockReset();
 			});
 
-			test('rejects a credential id that belongs to another project', async () => {
+			test('validates explicit credentials when automatic assignment is disabled', async () => {
 				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([]);
 				(credentialsService.getOne as Mock).mockResolvedValue({
 					id: '6CoUMkVOJRNsbmr2',
@@ -757,7 +776,10 @@ describe('create-workflow-from-code MCP tool', () => {
 					},
 				});
 
-				const result = await callHandler({ code: 'const wf = ...' });
+				const result = await callHandler({
+					code: 'const wf = ...',
+					disableCredentialAutoAssign: true,
+				});
 
 				const response = parseResult(result);
 				expect(result.isError).toBe(true);

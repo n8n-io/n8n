@@ -14,3 +14,5 @@ export {
 	MCP_EXPLORE_NODE_RESOURCES_TOOL,
 	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL,
 } from '@n8n/ai-workflow-builder';
+
+export const ANALYZE_WORKFLOW_COMPATIBILITY_TOOL_NAME = 'analyze_workflow_compatibility';

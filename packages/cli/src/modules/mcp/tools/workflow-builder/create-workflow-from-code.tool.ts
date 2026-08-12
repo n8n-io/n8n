@@ -98,6 +98,12 @@ const inputSchema = {
 		.describe(
 			'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project.',
 		),
+	disableCredentialAutoAssign: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, do not attach ordinary user credentials to empty slots. Use this after analyze_workflow_compatibility so only credentials explicitly approved by the user are applied.',
+		),
 } satisfies z.ZodRawShape;
 
 // The MCP SDK publishes this schema with `additionalProperties: false` and
@@ -200,7 +206,7 @@ export const createCreateWorkflowFromCodeTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If installing a template after analyze_workflow_compatibility, pass disableCredentialAutoAssign=true so empty or deliberately unresolved credential slots are not filled without consent. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -220,6 +226,7 @@ export const createCreateWorkflowFromCodeTool = (
 		versionDescription,
 		projectId,
 		folderId,
+		disableCredentialAutoAssign = false,
 	}: {
 		code: string;
 		skillsUsed?: string[];
@@ -229,6 +236,7 @@ export const createCreateWorkflowFromCodeTool = (
 		versionDescription?: string;
 		projectId?: string;
 		folderId?: string;
+		disableCredentialAutoAssign?: boolean;
 	}) => {
 		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
@@ -242,6 +250,7 @@ export const createCreateWorkflowFromCodeTool = (
 				hasFolderId: !!folderId,
 				hasVersionName: !!versionName,
 				hasVersionDescription: !!versionDescription,
+				disableCredentialAutoAssign,
 			},
 		};
 
@@ -342,6 +351,7 @@ export const createCreateWorkflowFromCodeTool = (
 				credentialsService,
 				effectiveProjectId,
 				aiGatewayService,
+				{ disableUserCredentialAutoAssign: disableCredentialAutoAssign },
 			);
 
 			// Explicit credential ids in the generated code bypass auto-assignment,

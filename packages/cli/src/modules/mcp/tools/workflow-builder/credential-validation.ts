@@ -116,12 +116,12 @@ export type CredentialProjectScope = { workflowId: string } | { projectId: strin
  *   workflow can't use, so execution would reject it.
  * - `not-found`: the credential doesn't exist or the user can't access it.
  */
-type CredentialClassification =
+export type CredentialClassification =
 	| { status: 'usable'; type: string }
 	| { status: 'cross-project'; type: string }
 	| { status: 'not-found' };
 
-type CredentialClassifier = (credentialId: string) => Promise<CredentialClassification>;
+export type CredentialClassifier = (credentialId: string) => Promise<CredentialClassification>;
 
 const fail = (opIndex: number, message: string): CredentialValidationFailure => ({
 	ok: false,
@@ -139,12 +139,15 @@ const fail = (opIndex: number, message: string): CredentialValidationFailure => 
  * genuinely missing credential apart from one that exists but belongs to a
  * different project, so we can return an actionable error message.
  */
-async function buildProjectCredentialClassifier(
+export async function buildProjectCredentialClassifier(
 	user: User,
 	scope: CredentialProjectScope,
 	credentialsService: CredentialsService,
+	knownUsableCredentials?: Array<{ id: string; type: string }>,
 ): Promise<CredentialClassifier> {
-	const usable = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, scope);
+	const usable =
+		knownUsableCredentials ??
+		(await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, scope));
 	const usableTypeById = new Map<string, string>();
 	for (const credential of usable) {
 		usableTypeById.set(credential.id, credential.type);
@@ -222,7 +225,10 @@ function describeCredentialProblem(
  * the node type can't be resolved, signalling that every credential reference
  * should be checked as a safe fallback.
  */
-function computeActiveCredentialTypes(node: INode, nodeTypes: NodeTypes): Set<string> | null {
+export function computeActiveCredentialTypes(
+	node: INode,
+	nodeTypes: NodeTypes,
+): Set<string> | null {
 	let description: INodeTypeDescription;
 	try {
 		description = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
@@ -231,9 +237,18 @@ function computeActiveCredentialTypes(node: INode, nodeTypes: NodeTypes): Set<st
 	}
 
 	const activeTypes = new Set<string>();
+	const parametersWithDefaults =
+		NodeHelpers.getNodeParameters(
+			description.properties ?? [],
+			node.parameters,
+			true,
+			false,
+			node,
+			description,
+		) ?? node.parameters;
 
 	for (const credDef of description.credentials ?? []) {
-		if (NodeHelpers.displayParameter(node.parameters, credDef, node, description)) {
+		if (NodeHelpers.displayParameter(parametersWithDefaults, credDef, node, description)) {
 			activeTypes.add(credDef.name);
 		}
 	}

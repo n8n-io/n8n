@@ -2,7 +2,10 @@ import type { User } from '@n8n/db';
 import type { INode, INodeTypeDescription, INodeCredentialDescription } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import { validateWorkflowCredentialReferences } from '../tools/workflow-builder/credential-validation';
+import {
+	computeActiveCredentialTypes,
+	validateWorkflowCredentialReferences,
+} from '../tools/workflow-builder/credential-validation';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -93,6 +96,33 @@ describe('validateWorkflowCredentialReferences', () => {
 		expect(result.ok).toBe(true);
 		// Lazy: never builds the classifier when there's nothing to check.
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+
+	test('uses parameter defaults when resolving the active credential type', () => {
+		vi.restoreAllMocks();
+		const description = makeNodeTypeDescription({
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					default: 'accessToken',
+					options: [{ name: 'Access Token', value: 'accessToken' }],
+				},
+			],
+			credentials: [
+				{
+					name: 'slackApi',
+					required: true,
+					displayOptions: { show: { authentication: ['accessToken'] } },
+				},
+			],
+		});
+		const { nodeTypes } = createMocks({
+			nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', description]]),
+		});
+
+		expect(computeActiveCredentialTypes(makeNode(), nodeTypes)).toEqual(new Set(['slackApi']));
 	});
 
 	test('passes when the credential is reachable from the project', async () => {

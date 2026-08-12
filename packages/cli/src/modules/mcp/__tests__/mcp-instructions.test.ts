@@ -34,6 +34,26 @@ describe('getMcpInstructions', () => {
 		expect(instructions).not.toContain('n8n credits');
 	});
 
+	describe('template compatibility', () => {
+		test('includes the install flow only when compatibility analysis is available', () => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: true,
+				isTemplateCompatibilityEnabled: true,
+			});
+
+			expect(instructions).toContain('analyze_workflow_compatibility');
+			expect(instructions).toContain('disableCredentialAutoAssign=true');
+			expect(instructions).toContain('final confirmation');
+		});
+
+		test('omits the install flow when the grant lacks compatibility analysis', () => {
+			const instructions = getMcpInstructions({ isBuilderEnabled: true });
+
+			expect(instructions).not.toContain('analyze_workflow_compatibility');
+			expect(instructions).not.toContain('disableCredentialAutoAssign=true');
+		});
+	});
+
 	describe('node groups pointer', () => {
 		describe('when canvasGroupsEnabled is true', () => {
 			test('points the client to the groups reference', () => {

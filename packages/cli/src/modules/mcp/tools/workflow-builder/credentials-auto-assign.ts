@@ -111,6 +111,11 @@ export interface AutoAssignResult {
 	outcomes: SlotOutcome[];
 }
 
+export interface CredentialAutoAssignOptions {
+	/** Keep ordinary user credential slots empty so an MCP client cannot bypass an explicit choice. */
+	disableUserCredentialAutoAssign?: boolean;
+}
+
 /**
  * Telemetry payload for the `MCP credentials autoassign` event. Reuses `SlotSource`
  * and `ReasonNotAiGateway` so the tracked values stay aligned with the slot outcomes.
@@ -208,9 +213,9 @@ function resolveNodeParameters(node: INode, description: INodeTypeDescription): 
  *
  * HTTP Request nodes are skipped for security.
  *
- * When `aiGatewayService` is omitted, behavior is byte-for-byte pre-change:
- * only steps 1, 2, 4 run, and `outcomes` records
- * `reasonNotAiGateway: 'notAvailable'` for any unfilled slot.
+ * When `aiGatewayService` is omitted and user assignment is enabled, only
+ * steps 1, 2, 4 run. Disabling user assignment leaves matching slots empty
+ * and records that a user credential was available without selecting it.
  */
 export async function autoPopulateNodeCredentials(
 	workflow: IWorkflowBase,
@@ -219,6 +224,7 @@ export async function autoPopulateNodeCredentials(
 	credentialsService: CredentialsService,
 	projectId: string,
 	aiGatewayService?: AiGatewayService,
+	options: CredentialAutoAssignOptions = {},
 ): Promise<AutoAssignResult> {
 	const usableCredentials = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 		projectId,
@@ -295,7 +301,7 @@ export async function autoPopulateNodeCredentials(
 			const userCandidates = credentialsByType.get(credDesc.name);
 			const hadUserCredential = !!userCandidates?.length;
 
-			if (hadUserCredential) {
+			if (hadUserCredential && !options.disableUserCredentialAutoAssign) {
 				node.credentials = node.credentials ?? {};
 				node.credentials[credDesc.name] = {
 					id: userCandidates[0].id,
@@ -371,7 +377,7 @@ export async function autoPopulateNodeCredentials(
 					nodeName: node.name,
 					credentialType: credDesc.name,
 					source: 'none',
-					hadUserCredential: false,
+					hadUserCredential,
 					aiGatewayAvailable: true,
 					reasonNotAiGateway: eligibility.reason,
 				});
@@ -382,7 +388,7 @@ export async function autoPopulateNodeCredentials(
 				nodeName: node.name,
 				credentialType: credDesc.name,
 				source: 'none',
-				hadUserCredential: false,
+				hadUserCredential,
 				aiGatewayAvailable: false,
 				reasonNotAiGateway: 'notAvailable',
 			});

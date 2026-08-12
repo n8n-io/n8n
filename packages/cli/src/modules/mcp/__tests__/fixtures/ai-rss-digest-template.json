@@ -1,0 +1,95 @@
+{
+	"name": "AI-powered RSS digest",
+	"nodes": [
+		{
+			"id": "rss-trigger",
+			"name": "RSS Feed Trigger",
+			"type": "n8n-nodes-base.rssFeedReadTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {
+				"feedUrl": "https://example.com/feed.xml"
+			}
+		},
+		{
+			"id": "chain",
+			"name": "Summarize",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"typeVersion": 1.7,
+			"position": [240, 0],
+			"parameters": {
+				"promptType": "define",
+				"text": "=Summarize this RSS item: {{ $json.title }}\n{{ $json.content }}"
+			}
+		},
+		{
+			"id": "openai-model",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [240, 180],
+			"parameters": {
+				"model": "gpt-4o-mini",
+				"options": {}
+			}
+		},
+		{
+			"id": "notion",
+			"name": "Create digest page",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 2.2,
+			"position": [500, 0],
+			"parameters": {
+				"resource": "databasePage",
+				"operation": "create",
+				"databaseId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "source-database-id"
+				},
+				"title": "={{ $('RSS Feed Trigger').item.json.title }}"
+			},
+			"credentials": {
+				"notionApi": {
+					"id": "credential-from-template-author",
+					"name": "Template author's Notion"
+				}
+			}
+		},
+		{
+			"id": "slack",
+			"name": "Post digest notification",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [760, 0],
+			"parameters": {
+				"resource": "message",
+				"operation": "post",
+				"authentication": "accessToken",
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "C01234567"
+				},
+				"messageType": "text",
+				"text": "={{ $json }}"
+			}
+		}
+	],
+	"connections": {
+		"RSS Feed Trigger": {
+			"main": [[{ "node": "Summarize", "type": "main", "index": 0 }]]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [[{ "node": "Summarize", "type": "ai_languageModel", "index": 0 }]]
+		},
+		"Summarize": {
+			"main": [[{ "node": "Create digest page", "type": "main", "index": 0 }]]
+		},
+		"Create digest page": {
+			"main": [[{ "node": "Post digest notification", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {}
+}

@@ -17,6 +17,7 @@ import {
 	CODE_BUILDER_SEARCH_NODES_TOOL,
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
+	ANALYZE_WORKFLOW_COMPATIBILITY_TOOL_NAME,
 } from './constants';
 import { LIST_N8N_CONNECT_SERVICES_TOOL_NAME } from '../../mcp.constants';
 
@@ -44,6 +45,9 @@ export type McpInstructionsOptions = {
 	 * If true, the instructions include Agent build guidance and artifact routing.
 	 */
 	isAgentsEnabled?: boolean;
+
+	/** Whether this grant can analyze template compatibility as well as create workflows. */
+	isTemplateCompatibilityEnabled?: boolean;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
@@ -51,6 +55,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isN8nConnectAvailable = false,
 		canvasGroupsEnabled = false,
 		isAgentsEnabled = false,
+		isTemplateCompatibilityEnabled = false,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
@@ -108,6 +113,8 @@ Credentials: when a node needs a credential and another node in the workflow alr
 
 Error handling has two complementary layers. (1) Per-node: set onError ("continueRegularOutput" / "continueErrorOutput"), retryOnFail, and maxTries via setNodeSettings on ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. (2) Failure notifications via an Error Trigger node, which can be wired two ways: (a) Dedicated/shared error workflow — point settings.errorWorkflow (via the setWorkflowSettings operation) at a SEPARATE workflow whose first node is an Error Trigger; this is the common best practice and lets one handler cover many workflows. (b) Same-workflow — add an Error Trigger node (→ a notification node such as Send Email or Slack) INTO this workflow; n8n runs it automatically when the workflow fails, with no settings change needed. Caveats: both fire only for production executions (not manual/test runs), and a configured settings.errorWorkflow takes precedence over a same-workflow Error Trigger for the failing run. When a user asks to "add error handling", "get notified on failure", or "make this reliable", briefly explain both patterns — most users do not know Error Triggers exist — and ask which they prefer before setting one up; do not enable error handling silently. For the shared pattern, reuse an existing handler (find its ID with search_workflows) or create a new one — but a dedicated error workflow must be PUBLISHED before it can be linked, in this order: (1) create it (${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName}, first node = Error Trigger → a notification node), (2) publish it (publish_workflow), (3) set settings.errorWorkflow via ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. Setting settings.errorWorkflow is rejected if the target has no published version, or no Error Trigger in that published version.${GROUPS_HINT}`;
 
+	const TEMPLATE_COMPATIBILITY_INSTRUCTIONS = `Template installation: when the user provides n8n workflow JSON or a workflow-template URL and asks to install it, obtain the JSON yourself (ask the user to paste it if you cannot fetch the URL) and call ${ANALYZE_WORKFLOW_COMPATIBILITY_TOOL_NAME} before creating anything. Resolve a named project with search_projects first. Analysis is read-only, so do not ask permission merely to analyze. Surface every issue and propose only repairs returned by the analyzer; never invent replacements. Get explicit approval for each repair, then one final confirmation covering the repairs and creation before any write. Apply only approved changes, validate replaced nodes with ${CODE_BUILDER_VALIDATE_NODE_TOOL.toolName}, validate the full SDK code with ${CODE_BUILDER_VALIDATE_TOOL.toolName}, and create with disableCredentialAutoAssign=true. Report the target project, workflow URL, remaining setup, and that the workflow is inactive. Never request credential secrets in chat.`;
+
 	const AGENT_INSTRUCTIONS = `This MCP server provides tools to build and manage n8n Agents.
 
 An n8n Agent is a first-class persisted Agent artifact, not an AI Agent node inside a workflow.
@@ -121,6 +128,7 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
+		isBuilderEnabled && isTemplateCompatibilityEnabled ? TEMPLATE_COMPATIBILITY_INSTRUCTIONS : '',
 	]
 		.filter(Boolean)
 		.join('\n\n');

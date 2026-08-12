@@ -71,7 +71,12 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	'agent:execute': ['call_agent'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
-	'credential:read': ['list_credentials', 'list_n8n_connect_services', 'explore_node_resources'],
+	'credential:read': [
+		'list_credentials',
+		'list_n8n_connect_services',
+		'explore_node_resources',
+		'analyze_workflow_compatibility',
+	],
 	'dataTable:read': ['search_data_tables'],
 	// Writing requires finding tables, so search rides along.
 	'dataTable:write': [
@@ -104,6 +109,7 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'archive_workflow',
 	'restore_workflow_version',
 	'explore_node_resources',
+	'analyze_workflow_compatibility',
 	'search_projects',
 	'search_folders',
 ]);

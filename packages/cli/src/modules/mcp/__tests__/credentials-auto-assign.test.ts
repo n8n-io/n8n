@@ -297,6 +297,40 @@ describe('autoPopulateNodeCredentials', () => {
 		expect(node.credentials?.slackApi).toEqual({ id: 'cred-1', name: 'Slack Token A' });
 	});
 
+	test('leaves ordinary credential slots empty when user auto-assignment is disabled', async () => {
+		const node = makeNode();
+		const workflow = makeWorkflow([node]);
+		const desc = makeNodeTypeDescription();
+		const { credentialsService, nodeTypes } = createMocks({
+			usableCredentials: [{ id: 'cred-1', name: 'My Slack Token', type: 'slackApi' }],
+			nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
+		});
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+
+		const result = await autoPopulateNodeCredentials(
+			workflow,
+			user,
+			nodeTypes,
+			credentialsService,
+			projectId,
+			undefined,
+			{ disableUserCredentialAutoAssign: true },
+		);
+
+		expect(result.assignments).toEqual([]);
+		expect(node.credentials).toBeUndefined();
+		expect(result.outcomes).toEqual([
+			{
+				nodeName: 'Test Node',
+				credentialType: 'slackApi',
+				source: 'none',
+				hadUserCredential: true,
+				aiGatewayAvailable: false,
+				reasonNotAiGateway: 'notAvailable',
+			},
+		]);
+	});
+
 	test('handles multiple nodes with different credential types', async () => {
 		const slackNode = makeNode({ id: '1', name: 'Slack', type: 'n8n-nodes-base.slack' });
 		const gmailNode = makeNode({ id: '2', name: 'Gmail', type: 'n8n-nodes-base.gmail' });
