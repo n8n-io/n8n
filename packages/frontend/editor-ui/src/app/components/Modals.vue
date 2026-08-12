@@ -38,7 +38,6 @@ import {
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
-	AGENT_CONFIRMATION_MODAL_KEY,
 	TRIAL_INTRO_MODAL_KEY,
 } from '@/app/constants';
 import {
@@ -112,8 +111,6 @@ import WorkflowActivationConflictingWebhookModal from '@/app/components/Workflow
 import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
-import AgentConfirmationModal from '@/features/agents/components/AgentConfirmationModal.vue';
-import type { AgentConfirmationModalData } from '@/features/agents/components/AgentConfirmationModal.vue';
 import WorkflowVersionFormModal, {
 	type WorkflowVersionFormModalData,
 } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
@@ -357,15 +354,6 @@ const TrialIntroModal = defineAsyncComponent(
 					data-test-id="workflow-history-version-unpublish-modal"
 					:modal-name="modalName"
 					:data="data"
-				/>
-			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="AGENT_CONFIRMATION_MODAL_KEY">
-			<template #default="{ modalName, data }">
-				<AgentConfirmationModal
-					:modal-name="modalName"
-					:data="data as AgentConfirmationModalData"
 				/>
 			</template>
 		</ModalRoot>

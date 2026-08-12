@@ -44,7 +44,6 @@ export const INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY = 'instanceAiCredentialSetup
 export const INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY = 'instanceAiComputerUseSetup';
 export const INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY = 'instanceAiBrowserUseSetup';
 export const INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY = 'instanceAiToolsConnection';
-export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const ADD_EXECUTION_TO_DATASET_MODAL_KEY = 'addExecutionToDataset';
 export const TRIAL_INTRO_MODAL_KEY = 'trialIntroModal';
 export const MIGRATE_WORKFLOW_MODAL_KEY = 'migrateWorkflow';

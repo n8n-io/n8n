@@ -1,7 +1,6 @@
 import {
 	ABOUT_MODAL_KEY,
 	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
-	AGENT_CONFIRMATION_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
 	BINARY_DATA_VIEW_MODAL_KEY,
@@ -88,7 +87,6 @@ import type { ModalState } from '@/Interface';
 export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = Object.freeze({
 	[ABOUT_MODAL_KEY]: { open: false },
 	[ADD_EXECUTION_TO_DATASET_MODAL_KEY]: { open: false, data: {} },
-	[AGENT_CONFIRMATION_MODAL_KEY]: { open: false },
 	[AI_BUILDER_DIFF_MODAL_KEY]: { open: false },
 	[AI_GATEWAY_TOP_UP_MODAL_KEY]: { open: false },
 	[ANNOTATION_TAGS_MANAGER_MODAL_KEY]: { open: false },
