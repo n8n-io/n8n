@@ -280,6 +280,8 @@ export type CanvasEventBusEvents = {
 	};
 	'create:sticky': never;
 	'deprecated:tab-shortcut': never;
+	/** Move keyboard focus back to the canvas element */
+	focus: never;
 };
 
 export interface CanvasNodeInjectionData {

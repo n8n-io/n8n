@@ -152,20 +152,22 @@ const scrollSelectedIntoView = () => {
 	});
 };
 
-// Watch instead of imperative open so parents can open via the `open` model too
+// Watch instead of imperative open/close so parents can drive the `open` model too
 watch(isOpen, async (open) => {
-	if (!open) return;
-	selectedIndex.value = 0;
-	inputValue.value = '';
-	await nextTick();
-	inputRef.value?.focus();
+	if (open) {
+		selectedIndex.value = 0;
+		inputValue.value = '';
+		await nextTick();
+		inputRef.value?.focus();
+	} else {
+		selectedIndex.value = -1;
+		inputValue.value = '';
+		currentParentId.value = null;
+	}
 });
 
 const closeCommandBar = () => {
 	isOpen.value = false;
-	selectedIndex.value = -1;
-	inputValue.value = '';
-	currentParentId.value = null;
 };
 
 const navigateToChildren = (item: CommandBarItem) => {

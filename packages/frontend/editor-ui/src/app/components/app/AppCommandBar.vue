@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nCommandBar } from '@n8n/design-system';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useStyles } from '@n8n/composables/useStyles';
@@ -47,8 +48,24 @@ function onOpenRequest() {
 	isCommandBarOpen.value = true;
 }
 
-onMounted(() => commandBarEventBus.on('open:request', onOpenRequest));
-onBeforeUnmount(() => commandBarEventBus.off('open:request', onOpenRequest));
+// Cmd+F toggles: the canvas keymap opens, but can't close while the bar's input has focus
+function onDocumentKeydown(event: KeyboardEvent) {
+	if (!isCommandBarOpen.value) return;
+	if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
+		event.preventDefault();
+		isCommandBarOpen.value = false;
+		void nextTick(() => canvasEventBus.emit('focus'));
+	}
+}
+
+onMounted(() => {
+	commandBarEventBus.on('open:request', onOpenRequest);
+	document.addEventListener('keydown', onDocumentKeydown, { capture: true });
+});
+onBeforeUnmount(() => {
+	commandBarEventBus.off('open:request', onOpenRequest);
+	document.removeEventListener('keydown', onDocumentKeydown, { capture: true });
+});
 </script>
 
 <template>

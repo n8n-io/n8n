@@ -6,6 +6,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import AppCommandBar from './AppCommandBar.vue';
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
@@ -63,6 +64,21 @@ describe('AppCommandBar', () => {
 
 		commandBarEventBus.emit('open:request');
 		await waitFor(() => expect(getByTestId('command-bar-stub').dataset.open).toBe('true'));
+	});
+
+	it('closes the command bar on Cmd+F and refocuses the canvas', async () => {
+		const emitSpy = vi.spyOn(canvasEventBus, 'emit');
+		const { getByTestId } = renderComponent({ pinia });
+
+		commandBarEventBus.emit('open:request');
+		await waitFor(() => expect(getByTestId('command-bar-stub').dataset.open).toBe('true'));
+
+		document.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'f', metaKey: true, cancelable: true }),
+		);
+
+		await waitFor(() => expect(getByTestId('command-bar-stub').dataset.open).toBe('false'));
+		await waitFor(() => expect(emitSpy).toHaveBeenCalledWith('focus'));
 	});
 
 	it('does not render the command bar in canvas-only mode', () => {
