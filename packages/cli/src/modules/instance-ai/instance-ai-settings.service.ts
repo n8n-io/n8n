@@ -172,6 +172,19 @@ function isVertexAnthropicModelId(
 	return id.startsWith('google-vertex-anthropic/');
 }
 
+/** `project_id` from a GCP service-account JSON blob, if present and parseable. */
+function projectIdFromServiceAccountJson(json: string | undefined): string {
+	if (!json?.trim()) return '';
+	try {
+		const parsed: unknown = JSON.parse(json);
+		if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return '';
+		const projectId = (parsed as Record<string, unknown>).project_id;
+		return typeof projectId === 'string' ? projectId.trim() : '';
+	} catch {
+		return '';
+	}
+}
+
 function validateSearchCredential({
 	type,
 	data,
@@ -398,12 +411,7 @@ export class InstanceAiSettingsService {
 			modelProviderApiKeyEnv && process.env[modelProviderApiKeyEnv]?.trim(),
 		);
 		const vertexModelEnvConfigured =
-			modelProvider === 'google-vertex-anthropic' &&
-			Boolean(
-				c.vertexProjectId?.trim() ||
-					c.vertexServiceAccountJson?.trim() ||
-					process.env.GOOGLE_VERTEX_PROJECT?.trim(),
-			);
+			modelProvider === 'google-vertex-anthropic' && Boolean(this.resolveVertexProjectId());
 		const modelConnectionEnvConfigured = Boolean(
 			c.modelApiKey.trim() ||
 				c.modelUrl.trim() ||
@@ -1594,11 +1602,7 @@ export class InstanceAiSettingsService {
 	private hasEnvironmentModelConnection(): boolean {
 		const provider = this.config.model.split('/', 1)[0] ?? '';
 		if (provider === 'google-vertex-anthropic') {
-			return Boolean(
-				this.config.vertexProjectId?.trim() ||
-					this.config.vertexServiceAccountJson?.trim() ||
-					process.env.GOOGLE_VERTEX_PROJECT?.trim(),
-			);
+			return Boolean(this.resolveVertexProjectId());
 		}
 		const providerApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(provider);
 		return Boolean(
@@ -1659,6 +1663,21 @@ export class InstanceAiSettingsService {
 		return model;
 	}
 
+	private resolveVertexProjectId(): string {
+		return (
+			this.config.vertexProjectId?.trim() ||
+			process.env.GOOGLE_VERTEX_PROJECT?.trim() ||
+			projectIdFromServiceAccountJson(this.config.vertexServiceAccountJson) ||
+			''
+		);
+	}
+
+	private resolveVertexLocation(): string {
+		return (
+			this.config.vertexLocation?.trim() || process.env.GOOGLE_VERTEX_LOCATION?.trim() || 'global'
+		);
+	}
+
 	/**
 	 * Build a typed Vertex Anthropic model config from Instance AI env vars.
 	 * Returns null when the model id is not `google-vertex-anthropic/*`.
@@ -1666,16 +1685,12 @@ export class InstanceAiSettingsService {
 	private vertexAnthropicModelConfig(id: `${string}/${string}`): VertexAnthropicModelConfig | null {
 		if (!isVertexAnthropicModelId(id)) return null;
 
-		const project =
-			this.config.vertexProjectId?.trim() || process.env.GOOGLE_VERTEX_PROJECT?.trim() || '';
-		const location =
-			this.config.vertexLocation?.trim() || process.env.GOOGLE_VERTEX_LOCATION?.trim() || 'global';
 		const googleCredentials = this.config.vertexServiceAccountJson?.trim() || undefined;
 
 		return {
 			id,
-			project,
-			location,
+			project: this.resolveVertexProjectId(),
+			location: this.resolveVertexLocation(),
 			...(googleCredentials ? { googleCredentials } : {}),
 		};
 	}

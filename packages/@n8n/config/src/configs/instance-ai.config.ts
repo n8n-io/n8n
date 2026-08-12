@@ -18,17 +18,17 @@ export class InstanceAiConfig {
 
 	/**
 	 * Google Cloud project for `google-vertex-anthropic/*` models.
-	 * Falls back to `GOOGLE_VERTEX_PROJECT` when empty.
+	 * Falls back to `GOOGLE_VERTEX_PROJECT`, then `project_id` in the service-account JSON.
 	 */
 	@Env('N8N_INSTANCE_AI_VERTEX_PROJECT_ID')
 	vertexProjectId: string = '';
 
 	/**
 	 * Vertex location for `google-vertex-anthropic/*` models (e.g. `global`, `us-east5`).
-	 * Falls back to `GOOGLE_VERTEX_LOCATION`, then `global`.
+	 * Empty falls back to `GOOGLE_VERTEX_LOCATION`, then `global`.
 	 */
 	@Env('N8N_INSTANCE_AI_VERTEX_LOCATION')
-	vertexLocation: string = 'global';
+	vertexLocation: string = '';
 
 	/**
 	 * Service-account JSON for `google-vertex-anthropic/*` models.

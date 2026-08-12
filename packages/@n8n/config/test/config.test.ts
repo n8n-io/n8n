@@ -323,7 +323,7 @@ describe('GlobalConfig', () => {
 			modelUrl: '',
 			modelApiKey: '',
 			vertexProjectId: '',
-			vertexLocation: 'global',
+			vertexLocation: '',
 			vertexServiceAccountJson: '',
 			mcpServers: '',
 			localGatewayDisabled: false,
