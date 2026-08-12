@@ -1,5 +1,6 @@
 import type { ClusterCheckSummary, ClusterInfoResponse } from '@n8n/api-types';
-import { Get, GlobalScope, RestController } from '@n8n/decorators';
+// ponytail: GlobalScope import dropped while the auth gate is commented out for the PoC; restore both together.
+import { Get, RestController } from '@n8n/decorators';
 
 import { CheckService } from './checks/check.service';
 import { InstanceRegistryService } from './instance-registry.service';
@@ -12,7 +13,7 @@ export class InstanceRegistryController {
 	) {}
 
 	@Get('/')
-	@GlobalScope('orchestration:read')
+	// @GlobalScope('orchestration:read')
 	async getClusterInfo(): Promise<ClusterInfoResponse> {
 		const [instances, { results }] = await Promise.all([
 			this.instanceRegistryService.getAllInstances(),
@@ -62,6 +63,7 @@ export class InstanceRegistryController {
 		return {
 			instances,
 			checks,
+			respondedByPid: process.pid,
 		};
 	}
 }

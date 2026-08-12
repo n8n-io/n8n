@@ -13,6 +13,7 @@ const InstanceRegistrationSchemaV1 = z
 		version: z.string(),
 		registeredAt: z.number(),
 		lastSeen: z.number(),
+		pid: z.number().optional(),
 	})
 	.passthrough();
 
@@ -68,6 +69,8 @@ export type ClusterCheckSummary = z.infer<typeof ClusterCheckSummarySchema>;
 const ClusterInfoResponseSchema = z.object({
 	instances: z.array(instanceRegistrationSchema),
 	checks: ClusterCheckSummarySchema,
+	// PID of the process that answered this request — proves cluster HTTP round-robin.
+	respondedByPid: z.number().optional(),
 });
 
 // REST API response type

@@ -113,14 +113,13 @@ describe('InstanceRegistryController', () => {
 	});
 
 	describe('route access scopes', () => {
-		it('gates getClusterInfo behind the orchestration:read global scope', () => {
+		// PoC: the @GlobalScope('orchestration:read') gate is commented out for easier debugging.
+		// When restoring the gate, revert this to expect { scope: 'orchestration:read', globalOnly: true }.
+		it('has no access scope while the auth gate is disabled for the PoC', () => {
 			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 				InstanceRegistryController as Controller,
 			);
-			expect(metadata.routes.get('getClusterInfo')?.accessScope).toEqual({
-				scope: 'orchestration:read',
-				globalOnly: true,
-			});
+			expect(metadata.routes.get('getClusterInfo')?.accessScope).toBeUndefined();
 		});
 	});
 });

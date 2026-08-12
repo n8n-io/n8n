@@ -1,7 +1,7 @@
 import { instanceRegistrationSchema, type InstanceRegistration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse, jsonStringify } from 'n8n-workflow';
@@ -37,6 +37,9 @@ export class RedisInstanceStorage implements InstanceStorage {
 
 	async heartbeat(registration: InstanceRegistration): Promise<void> {
 		try {
+			Container.get(Logger).warn('Heartbeat called on RedisInstanceStorage', {
+				registration,
+			});
 			await this.upsertRegistration(registration);
 		} catch (error) {
 			this.logger.warn('Failed to heartbeat instance', {

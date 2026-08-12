@@ -10,11 +10,11 @@ import {
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
+import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
 import { BinaryDataConfig } from 'n8n-core';
-import { sleep } from '@n8n/utils/sleep';
 import { jsonParse } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
@@ -32,18 +32,20 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
+import { HypervisorLeaderElection } from '@/scaling/hypervisor-leader-election';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { TransportModeService } from '@/scaling/transport-mode.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { UrlService } from '@/services/url.service';
+import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import { BaseCommand } from './base-command';
@@ -106,7 +108,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
 			if (this.instanceSettings.isMultiMain) {
-				await Container.get(MultiMainSetup).shutdown();
+				await this.leaderElection().shutdown();
 			}
 
 			if (this.globalConfig.executions.mode === 'queue') {
@@ -213,6 +215,14 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await super.init();
 
+		// Fail fast on impossible transport selections (e.g. ipc without a hypervisor).
+		try {
+			Container.get(TransportModeService).validateAtBoot();
+		} catch (error) {
+			this.logger.error((error as Error).message);
+			process.exit(1);
+		}
+
 		Container.get(DeprecationService).warn();
 
 		// Resolved lazily at activation time, so this only needs to run before the
@@ -292,7 +302,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await Container.get(AuthHandlerRegistry).init();
 
 		if (this.instanceSettings.isMultiMain) {
-			Container.get(MultiMainSetup).registerEventHandlers();
+			this.leaderElection().registerEventHandlers();
 		}
 
 		await this.executionContextHookRegistry.init();
@@ -331,10 +341,22 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		});
 
 		if (this.instanceSettings.isMultiMain) {
-			await Container.get(MultiMainSetup).init();
+			await this.leaderElection().init();
 		} else {
 			this.instanceSettings.markAsLeader();
 		}
+	}
+
+	/**
+	 * The active leader-election engine, chosen by the explicit
+	 * `N8N_TRANSPORT_LEADER_ELECTION` config: hypervisor IPC or the Redis-lease
+	 * MultiMainSetup. Both share the init/shutdown/registerEventHandlers surface
+	 * consumers rely on.
+	 */
+	private leaderElection() {
+		return Container.get(TransportModeService).resolve('leaderElection') === 'ipc'
+			? Container.get(HypervisorLeaderElection)
+			: Container.get(MultiMainSetup);
 	}
 
 	/**

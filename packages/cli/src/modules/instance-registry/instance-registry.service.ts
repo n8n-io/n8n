@@ -103,6 +103,7 @@ export class InstanceRegistryService {
 			version: N8N_VERSION,
 			registeredAt: this.registeredAt,
 			lastSeen: Date.now(),
+			pid: process.pid,
 		};
 	}
 
