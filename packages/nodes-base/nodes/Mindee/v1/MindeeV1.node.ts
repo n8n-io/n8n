@@ -54,6 +54,7 @@ const versionDescription: INodeTypeDescription = {
 			isNodeSetting: true,
 			displayOptions: {
 				show: {
+					// eslint-disable-next-line @typescript-eslint/naming-convention
 					'@version': [1],
 				},
 			},
@@ -81,6 +82,7 @@ const versionDescription: INodeTypeDescription = {
 			isNodeSetting: true,
 			displayOptions: {
 				show: {
+					// eslint-disable-next-line @typescript-eslint/naming-convention
 					'@version': [2],
 				},
 			},
@@ -108,6 +110,7 @@ const versionDescription: INodeTypeDescription = {
 			isNodeSetting: true,
 			displayOptions: {
 				show: {
+					// eslint-disable-next-line @typescript-eslint/naming-convention
 					'@version': [3],
 				},
 			},
@@ -267,6 +270,8 @@ export class MindeeV1 implements INodeType {
 									},
 								},
 							);
+						} else {
+							throw new NodeOperationError(this.getNode(), 'Invalid API version');
 						}
 						if (!rawData) {
 							if (version === 1) {
@@ -362,11 +367,11 @@ export class MindeeV1 implements INodeType {
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
+					returnData.push(responseData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as Error).message });
 					continue;
 				}
 				throw error;

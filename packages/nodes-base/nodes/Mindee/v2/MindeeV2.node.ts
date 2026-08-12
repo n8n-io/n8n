@@ -37,7 +37,7 @@ const versionDescription: INodeTypeDescription = {
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
-			name: 'mindeeV2Api',
+			name: 'mindeeApi',
 			required: true,
 		},
 	],
@@ -49,11 +49,12 @@ const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: '✨ Document Data Extraction',
+					name: 'Data Extraction',
 					value: 'extraction',
 					description:
-						'Extract data from a document file and return the result. ' +
-						"Use any extraction model you've built on the Mindee platform.",
+						'Extract data from a document file and return the result ' +
+						"using any extraction model you've built on the Mindee platform. " +
+						"Select this action if you aren't sure which one to use.",
 					action: 'Document Data Extraction',
 				},
 				{
@@ -176,128 +177,141 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Polling Timeout (Seconds)',
-			name: 'pollingTimeoutCount',
-			type: 'number',
-			typeOptions: {
-				minValue: 5,
-				numberStepSize: 1,
-			},
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add option',
+			default: {},
 			displayOptions: {
 				show: {
 					operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
 				},
 			},
-			default: 180,
-			description:
-				'How long the polling will last for after the document has been sent to the server',
-		},
-		{
-			displayName: 'Enable Confidence Scores',
-			name: 'confidence',
-			type: 'options',
 			options: [
 				{
-					name: 'Use Model Default',
-					value: 'default',
+					displayName: 'Enable Confidence Scores',
+					name: 'confidence',
+					type: 'options',
+					options: [
+						{
+							name: 'Use Model Default',
+							value: 'default',
+						},
+						{
+							name: 'Enabled',
+							value: 'true',
+						},
+						{
+							name: 'Disabled',
+							value: 'false',
+						},
+					],
+					default: 'default',
+					displayOptions: {
+						show: {
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							'/operation': ['extraction'],
+						},
+					},
+					description:
+						'Calculate confidence scores for all fields, and fill their `confidence` attribute',
 				},
 				{
-					name: 'Enabled',
-					value: 'true',
+					displayName: 'Enable Polygons (Location Data)',
+					name: 'polygon',
+					type: 'options',
+					options: [
+						{
+							name: 'Use Model Default',
+							value: 'default',
+						},
+						{
+							name: 'Enabled',
+							value: 'true',
+						},
+						{
+							name: 'Disabled',
+							value: 'false',
+						},
+					],
+					default: 'default',
+					displayOptions: {
+						show: {
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							'/operation': ['extraction'],
+						},
+					},
+					description:
+						'Calculate bounding box polygons for all fields, and fill their `locations` attribute',
 				},
 				{
-					name: 'Disabled',
-					value: 'false',
+					displayName: 'Enable RAG',
+					name: 'rag',
+					type: 'options',
+					options: [
+						{
+							name: 'Use Model Default',
+							value: 'default',
+						},
+						{
+							name: 'Enabled',
+							value: 'true',
+						},
+						{
+							name: 'Disabled',
+							value: 'false',
+						},
+					],
+					default: 'default',
+					displayOptions: {
+						show: {
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							'/operation': ['extraction'],
+						},
+					},
+					description: 'Enhance extraction accuracy with Retrieval-Augmented Generation',
+				},
+				{
+					displayName: 'Enable Raw Text',
+					name: 'rawText',
+					type: 'options',
+					options: [
+						{
+							name: 'Use Model Default',
+							value: 'default',
+						},
+						{
+							name: 'Enabled',
+							value: 'true',
+						},
+						{
+							name: 'Disabled',
+							value: 'false',
+						},
+					],
+					default: 'default',
+					displayOptions: {
+						show: {
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							'/operation': ['extraction'],
+						},
+					},
+					description:
+						'Extract the full text content from the document as strings, and fill the `raw_text` attribute',
+				},
+				{
+					displayName: 'Polling Timeout (Seconds)',
+					name: 'pollingTimeoutCount',
+					type: 'number',
+					typeOptions: {
+						minValue: 5,
+						numberStepSize: 1,
+					},
+					default: 180,
+					description:
+						'How long the polling will last for after the document has been sent to the server',
 				},
 			],
-			default: 'default',
-			displayOptions: {
-				show: {
-					operation: ['extraction'],
-				},
-			},
-			description:
-				'Calculate confidence scores for all fields, and fill their `confidence` attribute',
-		},
-		{
-			displayName: 'Enable Polygons (Location Data)',
-			name: 'polygon',
-			type: 'options',
-			options: [
-				{
-					name: 'Use Model Default',
-					value: 'default',
-				},
-				{
-					name: 'Enabled',
-					value: 'true',
-				},
-				{
-					name: 'Disabled',
-					value: 'false',
-				},
-			],
-			default: 'default',
-			displayOptions: {
-				show: {
-					operation: ['extraction'],
-				},
-			},
-			description:
-				'Calculate bounding box polygons for all fields, and fill their `locations` attribute',
-		},
-		{
-			displayName: 'Enable RAG',
-			name: 'rag',
-			type: 'options',
-			options: [
-				{
-					name: 'Use Model Default',
-					value: 'default',
-				},
-				{
-					name: 'Enabled',
-					value: 'true',
-				},
-				{
-					name: 'Disabled',
-					value: 'false',
-				},
-			],
-			default: 'default',
-			displayOptions: {
-				show: {
-					operation: ['extraction'],
-				},
-			},
-			description: 'Enhance extraction accuracy with Retrieval-Augmented Generation',
-		},
-		{
-			displayName: 'Enable Raw Text',
-			name: 'rawText',
-			type: 'options',
-			options: [
-				{
-					name: 'Use Model Default',
-					value: 'default',
-				},
-				{
-					name: 'Enabled',
-					value: 'true',
-				},
-				{
-					name: 'Disabled',
-					value: 'false',
-				},
-			],
-			default: 'default',
-			displayOptions: {
-				show: {
-					operation: ['extraction'],
-				},
-			},
-			description:
-				'Extract the full text content from the document as strings, and fill the `raw_text` attribute',
 		},
 	],
 };
@@ -324,18 +338,14 @@ export class MindeeV2 implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			let result: IDataObject[] | undefined;
 			try {
-				const operation = this.getNodeParameter('operation', i) as string;
+				const operation = this.getNodeParameter('operation', i);
 				const slug = operation;
 
 				if (['extraction', 'classification', 'crop', 'ocr', 'split'].includes(slug)) {
 					const params = readUIParams(this, i);
 					const form = new FormData();
 					await buildRequestBody(this, i, params, form);
-					const headers = {
-						...form.getHeaders?.(),
-						// eslint-disable-next-line @typescript-eslint/naming-convention
-						'User-Agent': `mindee-api-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
-					} as IDataObject;
+					const headers = form.getHeaders();
 					const enqueue = await mindeeApiRequest.call(
 						this,
 						'POST',

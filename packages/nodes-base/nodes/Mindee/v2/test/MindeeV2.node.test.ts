@@ -10,7 +10,7 @@ import okProcessed from './fixtures/okProcessed.json';
 import okProcessing from './fixtures/okProcessing.json';
 /* eslint-enable import-x/extensions */
 
-const credentials = { mindeeV2Api: { apiKey: 'mindeeApiKey' } };
+const credentials = { mindeeApi: { apiKey: 'mindeeApiKey' } };
 const filePath = path.join(__dirname, 'fixtures/invoice.pdf');
 const ROOT_URL = 'https://api-v2.mindee.net/v2';
 

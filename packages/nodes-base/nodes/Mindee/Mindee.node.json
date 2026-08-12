@@ -1,6 +1,6 @@
 {
 	"node": "n8n-nodes-base.mindee",
-	"nodeVersion": "4.0",
+	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Utility"],
 	"resources": {

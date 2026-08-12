@@ -18,10 +18,12 @@ export class Mindee extends VersionedNodeType {
 		// Versions 1-3 target the legacy Mindee API, which only supports existing
 		// products. Version 4 targets the Mindee V2 API.
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
+			/* eslint-disable @typescript-eslint/naming-convention */
 			1: new MindeeV1(baseDescription),
 			2: new MindeeV1(baseDescription),
 			3: new MindeeV1(baseDescription),
 			4: new MindeeV2(baseDescription),
+			/* eslint-enable @typescript-eslint/naming-convention */
 		};
 
 		super(nodeVersions, baseDescription);

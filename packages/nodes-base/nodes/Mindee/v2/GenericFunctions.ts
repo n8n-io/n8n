@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import type FormData from 'form-data';
 import type {
 	IExecuteFunctions,
@@ -8,7 +9,6 @@ import type {
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { setTimeout } from 'node:timers/promises';
 
 const INITIAL_DELAY_MS = 1500;
 const POLL_DELAY_MS = 1000;
@@ -57,7 +57,11 @@ export async function mindeeApiRequest(
 	option: Partial<IHttpRequestOptions> = {},
 ): Promise<IDataObject> {
 	const options: IHttpRequestOptions = {
-		headers,
+		headers: {
+			...headers,
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			'User-Agent': `mindee-api-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
+		},
 		method,
 		url,
 		body,
@@ -67,7 +71,7 @@ export async function mindeeApiRequest(
 
 	let response: unknown;
 	try {
-		response = await this.helpers.httpRequestWithAuthentication.call(this, 'mindeeV2Api', {
+		response = await this.helpers.httpRequestWithAuthentication.call(this, 'mindeeApi', {
 			...options,
 		});
 	} catch (error) {
@@ -112,7 +116,7 @@ export async function pollMindee(
 	pollingTimeoutCounter: number,
 ): Promise<IDataObject[]> {
 	const result: IDataObject[] = [];
-	await setTimeout(INITIAL_DELAY_MS);
+	await sleep(INITIAL_DELAY_MS);
 	let serverResponse = await mindeeApiRequest.call(funcRef, 'GET', pollUrl);
 	if ('inference' in serverResponse) {
 		return [serverResponse];
@@ -140,7 +144,7 @@ export async function pollMindee(
 				message: 'The Mindee API replied with an unexpected reply.',
 			});
 		jobStatus = (serverResponse.job as IDataObject).status as string;
-		await setTimeout(POLL_DELAY_MS);
+		await sleep(POLL_DELAY_MS);
 	}
 
 	if (!('inference' in (serverResponse as JsonObject)))
@@ -164,23 +168,23 @@ export function readUIParams(ctx: IExecuteFunctions, index: number): MindeeV2UIP
 			: typeof rawModel?.value === 'string'
 				? rawModel.value
 				: '';
-	const pollingTimeoutCount = ctx.getNodeParameter('pollingTimeoutCount', index, 120) as number;
+	const options = ctx.getNodeParameter('options', index, {});
+	const pollingTimeoutCount =
+		typeof options.pollingTimeoutCount === 'number' ? options.pollingTimeoutCount : 180;
 	const documentSource = ctx.getNodeParameter('documentSource', index, 'binary') as
 		| 'binary'
 		| 'url';
 	const binaryPropertyName =
-		documentSource === 'binary'
-			? (ctx.getNodeParameter('binaryPropertyName', index, '') as string)
-			: undefined;
+		documentSource === 'binary' ? ctx.getNodeParameter('binaryPropertyName', index, '') : undefined;
 	const documentUrl =
 		documentSource === 'url'
 			? (ctx.getNodeParameter('documentUrl', index, '') as string)
 			: undefined;
 
-	const rag = ctx.getNodeParameter('rag', index, 'default') as string;
-	const polygon = ctx.getNodeParameter('polygon', index, 'default') as string;
-	const confidence = ctx.getNodeParameter('confidence', index, 'default') as string;
-	const rawText = ctx.getNodeParameter('rawText', index, 'default') as string;
+	const rag = typeof options.rag === 'string' ? options.rag : 'default';
+	const polygon = typeof options.polygon === 'string' ? options.polygon : 'default';
+	const confidence = typeof options.confidence === 'string' ? options.confidence : 'default';
+	const rawText = typeof options.rawText === 'string' ? options.rawText : 'default';
 	return {
 		modelId,
 		rag,

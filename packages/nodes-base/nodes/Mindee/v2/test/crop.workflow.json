@@ -25,7 +25,7 @@
 			"id": "117a1394-59f6-458f-aea0-e0ebf73bcbec",
 			"name": "Upload a document and get the result",
 			"credentials": {
-				"mindeeV2Api": {
+				"mindeeApi": {
 					"id": "testIdMindeeAPI",
 					"name": "Mindee V2 account"
 				}
