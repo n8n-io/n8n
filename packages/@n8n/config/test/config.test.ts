@@ -682,7 +682,6 @@ describe('GlobalConfig', () => {
 			modules: [],
 			harnessClaimTtlSeconds: 60,
 			harnessSessionTtlSeconds: 3600,
-			harnessAllowDirectCredentials: false,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',

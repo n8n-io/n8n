@@ -60,7 +60,6 @@ const {
 	credentialModalAppendToBody = false,
 	showHarnessModels = false,
 	selectedHarnessAdapter = null,
-	harnessAllowDirectCredentials = false,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
 	credentials: AgentCredentialsByProvider | null;
@@ -81,8 +80,6 @@ const {
 	showHarnessModels?: boolean;
 	/** The harness group that owns the persisted model selection. */
 	selectedHarnessAdapter?: AgentHarnessAdapter | null;
-	/** Allow stored provider credentials in harness groups instead of only n8n Connect. */
-	harnessAllowDirectCredentials?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -232,7 +229,6 @@ interface ProviderMenuItemOptions {
 	id?: string;
 	label?: string;
 	harnessAdapter?: AgentHarnessAdapter;
-	managedCredentialsOnly?: boolean;
 	models?: AgentModelOption[];
 }
 
@@ -269,8 +265,7 @@ function providerToMenuItem(
 ): MenuItem {
 	const definition = AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
 	const groupId = options.id ?? provider;
-	const managedCredentialsOnly = options.managedCredentialsOnly === true;
-	const credentialOptions = managedCredentialsOnly ? [] : getCredentialsForProvider(provider);
+	const credentialOptions = getCredentialsForProvider(provider);
 	const selectedProviderCredentialId = credentials?.[provider] ?? null;
 	const models = options.models ?? modelsByProvider[provider]?.models ?? [];
 	const modelsUnavailable = modelsByProvider[provider]?.unavailable === true;
@@ -298,32 +293,31 @@ function providerToMenuItem(
 		data: itemData,
 	}));
 
-	const createCredentialItems: MenuItem[] =
-		canCreateCredentials.value && !managedCredentialsOnly
-			? credentialTypes.length === 1
-				? [
-						{
-							id: itemId('configure', credentialTypes[0]),
-							label: i18n.baseText('agents.modelSelector.configureCredentials'),
+	const createCredentialItems: MenuItem[] = canCreateCredentials.value
+		? credentialTypes.length === 1
+			? [
+					{
+						id: itemId('configure', credentialTypes[0]),
+						label: i18n.baseText('agents.modelSelector.configureCredentials'),
+						disabled: false,
+						data: { ...itemData, leadingIcon: 'plus' },
+					},
+				]
+			: [
+					{
+						id: `${groupId}::configure`,
+						label: i18n.baseText('agents.modelSelector.configureCredentials'),
+						disabled: false,
+						data: { ...itemData, leadingIcon: 'plus' },
+						children: credentialTypes.map<MenuItem>((credentialType) => ({
+							id: itemId('configure', credentialType),
+							label: getCredentialTypeDisplayName(credentialType),
 							disabled: false,
 							data: { ...itemData, leadingIcon: 'plus' },
-						},
-					]
-				: [
-						{
-							id: `${groupId}::configure`,
-							label: i18n.baseText('agents.modelSelector.configureCredentials'),
-							disabled: false,
-							data: { ...itemData, leadingIcon: 'plus' },
-							children: credentialTypes.map<MenuItem>((credentialType) => ({
-								id: itemId('configure', credentialType),
-								label: getCredentialTypeDisplayName(credentialType),
-								disabled: false,
-								data: { ...itemData, leadingIcon: 'plus' },
-							})),
-						},
-					]
-			: [];
+						})),
+					},
+				]
+		: [];
 
 	// The type the gateway actually serves, which for a multi-credential-type
 	// provider need not be the first one listed.
@@ -353,7 +347,6 @@ function providerToMenuItem(
 	const freeOpenAiCreditsItems: MenuItem[] =
 		provider === FREE_OPENAI_CREDITS_PROVIDER &&
 		canUseFreeOpenAiCredits.value &&
-		!managedCredentialsOnly &&
 		!options.harnessAdapter
 			? [
 					{
@@ -502,7 +495,6 @@ const menu = computed(() => {
 			id: `harness:${adapter}`,
 			label: getHarnessDisplayName(adapter),
 			harnessAdapter: adapter,
-			managedCredentialsOnly: !harnessAllowDirectCredentials,
 			models,
 		});
 	});

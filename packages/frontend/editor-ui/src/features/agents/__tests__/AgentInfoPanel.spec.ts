@@ -78,7 +78,7 @@ vi.mock('@n8n/stores/users.store', () => ({
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		isAgentModuleActive: (module: string) => module === 'harnesses',
-		moduleSettings: { agents: { harnessAllowDirectCredentials: false } },
+		moduleSettings: { agents: {} },
 	}),
 }));
 
@@ -134,7 +134,6 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 			'modelsByProvider',
 			'showHarnessModels',
 			'selectedHarnessAdapter',
-			'harnessAllowDirectCredentials',
 		],
 		emits: ['change'],
 	},
@@ -344,7 +343,6 @@ describe('AgentInfoPanel', () => {
 		expect(selectorProps(wrapper)).toMatchObject({
 			showHarnessModels: true,
 			selectedHarnessAdapter: 'claude-code',
-			harnessAllowDirectCredentials: false,
 		});
 	});
 

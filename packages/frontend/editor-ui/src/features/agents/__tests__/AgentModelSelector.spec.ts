@@ -211,7 +211,6 @@ async function mountSelector(
 		boundCredentialId?: string | null;
 		showHarnessModels?: boolean;
 		selectedHarnessAdapter?: AgentHarnessAdapter | null;
-		harnessAllowDirectCredentials?: boolean;
 		selectedModel?: AgentModelOption | null;
 	} = {},
 ) {
@@ -287,18 +286,24 @@ describe('AgentModelSelector', () => {
 		credentialsByType.value.openAiApi = [
 			{ id: 'openai-cred', name: 'OpenAI credential', type: 'openAiApi' },
 		];
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi', 'openAiApi']);
 		const wrapper = await mountSelector(
 			{ anthropic: 'anthropic-cred', openai: 'openai-cred' },
-			{ showHarnessModels: true, harnessAllowDirectCredentials: true },
+			{ showHarnessModels: true },
 		);
 
 		const claudeCode = getHarnessItem(wrapper, 'claude-code');
 		const codex = getHarnessItem(wrapper, 'codex');
 
 		expect(claudeCode?.label).toBe('Claude Code (Preview)');
+		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('Anthropic credential');
+		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('n8n Connect');
 		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('Claude Sonnet 4.5');
 		expect(JSON.stringify(claudeCode?.children ?? [])).not.toContain('Claude 3 Haiku');
 		expect(codex?.label).toBe('Codex (Preview)');
+		expect(JSON.stringify(codex?.children ?? [])).toContain('OpenAI credential');
+		expect(JSON.stringify(codex?.children ?? [])).toContain('n8n Connect');
 		expect(JSON.stringify(codex?.children ?? [])).toContain('GPT-5.5');
 		expect(JSON.stringify(codex?.children ?? [])).not.toContain('GPT-5 mini');
 	});
@@ -328,7 +333,7 @@ describe('AgentModelSelector', () => {
 		];
 		const wrapper = await mountSelector(
 			{ [testCase.provider]: testCase.credential },
-			{ showHarnessModels: true, harnessAllowDirectCredentials: true },
+			{ showHarnessModels: true },
 		);
 
 		getDropdown(wrapper).vm.$emit(
@@ -347,13 +352,13 @@ describe('AgentModelSelector', () => {
 		]);
 	});
 
-	it('keeps stored credentials available to normal providers when harnesses require n8n Connect', async () => {
+	it('offers stored credentials in the harness submenu', async () => {
 		const wrapper = await mountSelector(
 			{ anthropic: 'anthropic-cred' },
-			{ showHarnessModels: true, harnessAllowDirectCredentials: false },
+			{ showHarnessModels: true },
 		);
 
-		expect(JSON.stringify(getHarnessItem(wrapper, 'claude-code')?.children ?? [])).not.toContain(
+		expect(JSON.stringify(getHarnessItem(wrapper, 'claude-code')?.children ?? [])).toContain(
 			'Anthropic credential',
 		);
 		expect(JSON.stringify(getProviderItem(wrapper, 'anthropic')?.children ?? [])).toContain(

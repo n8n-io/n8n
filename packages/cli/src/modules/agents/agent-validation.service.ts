@@ -357,14 +357,6 @@ export class AgentValidationService {
 		if (!this.agentsConfig.modules.includes('harnesses')) {
 			issues.push(agentIssue('invalid_value', 'engine'));
 		}
-		if (
-			config.credential?.trim() &&
-			config.credential !== AI_GATEWAY_MANAGED_TAG &&
-			!this.agentsConfig.harnessAllowDirectCredentials
-		) {
-			issues.push(agentIssue('incompatible_credential', 'credential'));
-		}
-
 		if (!isAgentHarnessModel(config.engine.adapter, config.model)) {
 			issues.push(agentIssue('invalid_value', 'model'));
 		}

@@ -98,9 +98,6 @@ const showHarnessModels = computed(
 const selectedHarnessAdapter = computed(() =>
 	props.config?.engine?.type === 'harness' ? props.config.engine.adapter : null,
 );
-const harnessAllowDirectCredentials = computed(
-	() => settingsStore.moduleSettings.agents?.harnessAllowDirectCredentials === true,
-);
 
 // The agent's persisted `config.credential` is the source of truth for the selected
 // model's provider. `credentialsByProvider` only tracks manual (localStorage) selections,
@@ -269,7 +266,6 @@ function onInstructionsInput(value: string) {
 				:bound-credential-id="props.config?.credential ?? null"
 				:show-harness-models="showHarnessModels"
 				:selected-harness-adapter="selectedHarnessAdapter"
-				:harness-allow-direct-credentials="harnessAllowDirectCredentials"
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"

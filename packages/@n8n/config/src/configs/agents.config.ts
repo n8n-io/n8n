@@ -79,10 +79,6 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_HARNESS_SESSION_TTL')
 	harnessSessionTtlSeconds: number = 60 * Time.minutes.toSeconds;
 
-	/** Allow long-lived provider keys in harness sandboxes for explicitly opted-in development. */
-	@Env('N8N_AGENTS_HARNESS_ALLOW_DIRECT_CREDENTIALS')
-	harnessAllowDirectCredentials: boolean = false;
-
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;

@@ -1059,6 +1059,26 @@ describe('AgentValidationService — structured issues', () => {
 });
 
 describe('AgentValidationService — harness engines', () => {
+	it('accepts a stored provider credential', async () => {
+		const { service, agentRepository } = makeService({ modules: ['harnesses'] });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'anthropic-main',
+				engine: { type: 'harness', adapter: 'claude-code' },
+			}),
+		);
+
+		await expect(
+			service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'anthropic-main', type: 'anthropicApi' }]),
+			),
+		).resolves.toMatchObject({ status: 'valid', issues: [] });
+	});
+
 	it('accepts curated models and rejects Codex models outside the compatibility list', async () => {
 		const { service, agentRepository } = makeService({ modules: ['harnesses'] });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(

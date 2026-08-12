@@ -14,7 +14,6 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_TASK_DIFFICULTIES,
-	AI_GATEWAY_MANAGED_TAG,
 	buildProxyHeaders,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
@@ -500,15 +499,6 @@ export class AgentRuntimeReconstructionService {
 			throw new UserError('Harness agents are not enabled on this instance');
 		}
 		if (!config.credential) throw new UserError('Harness agents require a model credential');
-		if (
-			config.credential !== AI_GATEWAY_MANAGED_TAG &&
-			!this.agentsConfig.harnessAllowDirectCredentials
-		) {
-			throw new UserError(
-				'Direct provider credentials in harness sandboxes are disabled on this instance',
-			);
-		}
-
 		const resolvedTools: BuiltTool[] = [];
 		const toolResolver = this.makeToolResolver(
 			projectId,

@@ -163,7 +163,6 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: config.sandboxEnabled,
 			proxyEnabled,
-			harnessAllowDirectCredentials: config.harnessAllowDirectCredentials,
 		};
 	}
 
