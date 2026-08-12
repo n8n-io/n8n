@@ -597,21 +597,34 @@ function removeOverride(clearField = false) {
 
 .horizontalField {
 	display: grid;
-	grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+	// Favour the control, not the label: the label truncates gracefully, a squeezed
+	// input does not.
+	grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
 	column-gap: var(--spacing--xs);
 	align-items: center;
+	position: relative;
 
 	> :first-child,
 	> :nth-child(2) {
 		min-width: 0;
 	}
 
-	> :first-child > label {
-		position: relative;
+	// The options row (fixed/expression switch, kebab) would otherwise sit between
+	// the label and the control and eat the row. Float it just above the control
+	// instead, so the input keeps its full column width.
+	// No background: the container is present even while its contents are hidden
+	// (they only appear on hover/focus), so anything painted here shows up as an
+	// empty box above every field.
+	> :first-child > label > :last-child {
+		position: absolute;
+		right: 0;
+		bottom: calc(100% - var(--spacing--2xs));
+		z-index: 1;
+		transform: scale(0.9);
+		transform-origin: bottom right;
 
-		> :last-child {
-			position: absolute;
-			right: 0;
+		&:empty {
+			display: none;
 		}
 	}
 }
