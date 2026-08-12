@@ -2,6 +2,7 @@ import type { AgentEventData } from '@n8n/agents';
 import { AgentEvent } from '@n8n/agents';
 
 import { deriveGoalStatuses, diffGoalStatuses } from './derive-status';
+import { coerceToSlotType } from './expressions';
 import type { GoalGraphStateService } from './goal-graph-state.service';
 import type {
 	GoalGraphDefinition,
@@ -48,17 +49,17 @@ export function applySlotWrites(options: {
 		stateService.getState(agentId, threadId, definition),
 	);
 
+	const slotsByName = new Map(definition.slots.map((slot) => [slot.name, slot]));
 	for (const write of writes) {
-		const { previous } = stateService.setSlot(
-			agentId,
-			persistence,
-			definition,
-			write.slot,
-			write.value,
-		);
+		// Align the written value with the slot's declared type — goal conditions
+		// compare strictly, so e.g. a numeric code arriving as a number must be
+		// stored as the string the slot declares.
+		const declared = slotsByName.get(write.slot);
+		const value = declared ? coerceToSlotType(declared, write.value) : write.value;
+		const { previous } = stateService.setSlot(agentId, persistence, definition, write.slot, value);
 		const payload: GoalSlotChangedPayload = {
 			slot: write.slot,
-			value: write.value,
+			value,
 			previous,
 			source: write.source,
 			toolName: write.toolName,

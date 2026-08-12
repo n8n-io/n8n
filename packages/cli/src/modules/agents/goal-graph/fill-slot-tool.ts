@@ -1,7 +1,10 @@
 import type { BuiltTool } from '@n8n/agents';
 import { z } from 'zod';
 
+import type { AgentSlotConfig } from '@n8n/api-types';
+
 import { applySlotWrites } from './apply-slot-writes';
+import { coerceToSlotType } from './expressions';
 import type { GoalGraphStateService } from './goal-graph-state.service';
 import type { GoalGraphDefinition } from './types';
 
@@ -13,6 +16,22 @@ const SLOT_TYPE_VALIDATORS = {
 	boolean: z.boolean(),
 	object: z.union([z.record(z.unknown()), z.array(z.unknown())]),
 } as const;
+
+/**
+ * Undo the model's habit of wrapping string values in literal quotes to mark
+ * them as strings (`"484357"` for a numeric-looking code). One matching outer
+ * pair is stripped for string slots only; everything else passes through.
+ */
+function normalizeFillValue(slot: AgentSlotConfig, value: unknown): unknown {
+	if (slot.type === 'string' && typeof value === 'string') {
+		const trimmed = value.trim();
+		if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+			return trimmed.slice(1, -1);
+		}
+		return value;
+	}
+	return coerceToSlotType(slot, value);
+}
 
 /**
  * Built-in tool letting the agent record information learned in conversation
@@ -52,16 +71,18 @@ export function createFillSlotTool(options: {
 				)
 				.join(', '),
 		systemInstruction:
-			'Use fill_slot as soon as the user provides information matching an unfilled state slot — goal progress is computed from slots, not from the conversation text.',
+			'Use fill_slot as soon as the user provides information matching an unfilled state slot — goal progress is computed from slots, not from the conversation text. ' +
+			'Pass values raw, exactly as the user provided them: never wrap a value in quotes or JSON-encode it; type conversion to the slot type is automatic.',
 		inputSchema,
 		// eslint-disable-next-line @typescript-eslint/require-await -- BuiltTool handlers must return a Promise; slot writes are synchronous (persistence is fire-and-forget).
 		handler: async (input, ctx) => {
-			const { slot: slotName, value } = inputSchema.parse(input);
+			const { slot: slotName, value: rawValue } = inputSchema.parse(input);
 			const slot = slotsByName.get(slotName);
 			if (!slot) {
 				return { ok: false, message: `Unknown or non-fillable slot "${slotName}".` };
 			}
 
+			const value = normalizeFillValue(slot, rawValue);
 			const validator = SLOT_TYPE_VALIDATORS[slot.type];
 			const validated = validator.safeParse(value);
 			if (!validated.success) {

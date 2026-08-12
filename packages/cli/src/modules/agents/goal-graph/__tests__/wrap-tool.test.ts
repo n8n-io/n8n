@@ -230,6 +230,23 @@ describe('wrapGoalTool', () => {
 		expect(handler).toHaveBeenCalledWith({ days: 14, customerId: 'SF-1' }, expect.anything());
 	});
 
+	it('stores mapped output values in the slot-declared type', async () => {
+		// The tool returns the trial end as a number; the slot declares string.
+		const handler = vi.fn().mockResolvedValue({ newTrialEnd: 20260701 });
+		const { stateService, state } = makeStateService({ customerSalesforceId: 'SF-1' });
+		const wrapped = wrapGoalTool({
+			tool: makeTool(handler),
+			attachments: [extendTrialAttachment],
+			definition,
+			agentId: 'agent-1',
+			stateService,
+		});
+
+		await wrapped.handler!({ days: 14 }, makeCtx([]));
+
+		expect(state.trialExtendedUntil).toBe('20260701');
+	});
+
 	it('respects availableWhen on the attachment', async () => {
 		const handler = vi.fn();
 		const { stateService } = makeStateService({ customerSalesforceId: 'SF-1' });

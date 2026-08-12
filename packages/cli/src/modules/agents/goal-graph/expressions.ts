@@ -1,3 +1,4 @@
+import type { AgentSlotConfig } from '@n8n/api-types';
 import type {
 	IDataObject,
 	INode,
@@ -130,6 +131,35 @@ export function toSlotValue(value: unknown): SlotValues[string] {
 		return deepCopy(value) as SlotValues[string];
 	} catch {
 		return null;
+	}
+}
+
+/**
+ * Losslessly align a slot write with the slot's declared type — writes come
+ * from the model (`fill_slot`) and from tool output mappings, and both may
+ * deliver the right value with the wrong primitive type (a numeric code as a
+ * number for a string slot, a counter as a numeric string). Goal conditions
+ * compare strictly (`===`), so mismatched primitives would silently never
+ * match. Values that cannot be coerced losslessly pass through unchanged.
+ */
+export function coerceToSlotType(slot: Pick<AgentSlotConfig, 'type'>, value: unknown): unknown {
+	if (value === null || value === undefined) return value;
+	switch (slot.type) {
+		case 'string':
+			if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+			return value;
+		case 'number':
+			if (typeof value === 'string') {
+				const trimmed = value.trim();
+				if (trimmed !== '' && Number.isFinite(Number(trimmed))) return Number(trimmed);
+			}
+			return value;
+		case 'boolean':
+			if (value === 'true') return true;
+			if (value === 'false') return false;
+			return value;
+		default:
+			return value;
 	}
 }
 

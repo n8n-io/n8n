@@ -122,16 +122,37 @@ describe('createGoalGraphRuntime', () => {
 			expect(state.customerSalesforceId).toBeNull();
 		});
 
-		it('rejects type-mismatched fill_slot values without writing', async () => {
+		it('rejects un-coercible fill_slot values without writing', async () => {
 			const { stateService, state } = makeStateService({});
 			const runtime = createGoalGraphRuntime({ agentId: 'agent-1', config, stateService });
 
 			const result = await runtime.fillSlotTool!.handler!(
-				{ slot: 'customerEmail', value: 42 },
+				{ slot: 'customerEmail', value: { nested: true } },
 				{ persistence },
 			);
 			expect(result).toMatchObject({ ok: false });
 			expect(state.customerEmail).toBeNull();
+		});
+
+		it('normalizes fill_slot values to the slot type', async () => {
+			const { stateService, state } = makeStateService({});
+			const runtime = createGoalGraphRuntime({ agentId: 'agent-1', config, stateService });
+
+			// The model wraps string values in literal quotes to mark them as strings.
+			const quoted = await runtime.fillSlotTool!.handler!(
+				{ slot: 'customerEmail', value: '"484357"' },
+				{ persistence },
+			);
+			expect(quoted).toMatchObject({ ok: true });
+			expect(state.customerEmail).toBe('484357');
+
+			// A numeric value for a string slot is stored as its string form.
+			const numeric = await runtime.fillSlotTool!.handler!(
+				{ slot: 'customerEmail', value: 484357 },
+				{ persistence },
+			);
+			expect(numeric).toMatchObject({ ok: true });
+			expect(state.customerEmail).toBe('484357');
 		});
 	});
 });
