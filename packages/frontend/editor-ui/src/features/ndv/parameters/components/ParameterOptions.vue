@@ -18,7 +18,7 @@ import {
 	N8nActionToggle,
 	N8nIcon,
 	N8nIconButton,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nText,
 } from '@n8n/design-system';
 interface Props {
@@ -217,7 +217,7 @@ const onViewSelected = (selected: string) => {
 				/>
 			</div>
 
-			<N8nRadioButtons
+			<N8nSegmentControl
 				v-if="shouldShowExpressionSelector"
 				size="small"
 				:class="$style.expressionSwitch"
