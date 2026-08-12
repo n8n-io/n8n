@@ -1,4 +1,6 @@
 {
+	"id": "uiBuilderDemoApp",
+	"name": "UI Builder demo — Orders",
 	"nodes": [
 		{
 			"parameters": {
