@@ -23,10 +23,7 @@ export type FetchWorkflowReviewInboxParams = {
 };
 
 /** What a reviewer submits with a decision; `pending` is the initial state, never an input. */
-export type WorkflowReviewDecisionInput = {
-	decision: DecideWorkflowReviewRequestDto['decision'];
-	note?: string;
-};
+export type WorkflowReviewDecisionInput = Pick<DecideWorkflowReviewRequestDto, 'decision' | 'note'>;
 
 /** Workflow-scoped list used by the review status sync (toggle + canvas banner). */
 export async function fetchWorkflowReviewRequests(

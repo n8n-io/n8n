@@ -1,4 +1,4 @@
-import { WORKFLOW_REVIEW_COMMENT_MAX_LENGTH } from '@n8n/api-types';
+import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
@@ -70,12 +70,12 @@ describe('WorkflowReviewCommentComposer', () => {
 		const textarea = getByRole('textbox');
 
 		textarea.focus();
-		await userEvent.paste('x'.repeat(WORKFLOW_REVIEW_COMMENT_MAX_LENGTH));
+		await userEvent.paste('x'.repeat(WORKFLOW_REVIEW_TEXT_MAX_LENGTH));
 		await waitFor(() => expect(getByTestId('send-message-button')).not.toBeDisabled());
 		// Shift+Enter inserts the newline itself, so `maxlength` on the textarea does not stop it
 		await userEvent.keyboard('{Shift>}{Enter}{/Shift}');
 
-		expect(textarea).toHaveValue(`${'x'.repeat(WORKFLOW_REVIEW_COMMENT_MAX_LENGTH)}\n`);
+		expect(textarea).toHaveValue(`${'x'.repeat(WORKFLOW_REVIEW_TEXT_MAX_LENGTH)}\n`);
 		await waitFor(() => expect(getByTestId('send-message-button')).toBeDisabled());
 	});
 

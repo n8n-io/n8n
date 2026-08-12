@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { WORKFLOW_REVIEW_COMMENT_MAX_LENGTH } from '@n8n/api-types';
+import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import { N8nChatInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -21,7 +21,7 @@ const submitDisabled = computed(
 	() =>
 		posting.value ||
 		draft.value.trim().length === 0 ||
-		draft.value.length > WORKFLOW_REVIEW_COMMENT_MAX_LENGTH ||
+		draft.value.length > WORKFLOW_REVIEW_TEXT_MAX_LENGTH ||
 		!props.canComment,
 );
 
@@ -49,7 +49,7 @@ async function onSubmit() {
 		</span>
 		<N8nChatInput
 			v-model="draft"
-			:max-length="WORKFLOW_REVIEW_COMMENT_MAX_LENGTH"
+			:max-length="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
 			:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
 			refocus-after-send
 			:disabled="!canComment"
