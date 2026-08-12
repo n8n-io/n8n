@@ -88,14 +88,18 @@ const actorName = computed(() =>
 
 <template>
 	<div v-if="content" :class="$style.entry">
-		<div :class="$style.headline">
-			<template v-if="hasActor">
-				<N8nAvatar
-					size="xxsmall"
-					:first-name="entry.createdBy?.firstName"
-					:last-name="entry.createdBy?.lastName"
-				/>
+		<N8nAvatar
+			v-if="hasActor"
+			size="xxsmall"
+			:first-name="entry.createdBy?.firstName"
+			:last-name="entry.createdBy?.lastName"
+		/>
+		<!-- Column beside the avatar, as in the comment entry, so a note lines up with the
+			sentence above it instead of starting back at the avatar. -->
+		<div :class="$style.content">
+			<div :class="$style.headline">
 				<N8nText
+					v-if="hasActor"
 					size="medium"
 					color="text-base"
 					:class="$style.line"
@@ -106,25 +110,32 @@ const actorName = computed(() =>
 						separator on the actorless entries. -->
 					<span aria-hidden="true" :class="$style.separator">|</span>
 				</N8nText>
-			</template>
-			<N8nText size="medium" color="text-light" :class="$style.line" :data-test-id="content.testId">
-				{{ content.text }}
-			</N8nText>
-			<N8nText size="xsmall" color="text-light">
-				<time :datetime="entry.createdAt">
-					<TimeAgo :date="entry.createdAt" />
-				</time>
+				<!-- The sentence and the time read as one phrase ("Requested changes 2 hours ago"),
+					so they share a size and sit a word apart. -->
+				<N8nText
+					size="medium"
+					color="text-light"
+					:class="$style.line"
+					:data-test-id="content.testId"
+				>
+					{{ content.text }}
+				</N8nText>
+				<N8nText size="medium" color="text-light" :class="$style.line">
+					<time :datetime="entry.createdAt">
+						<TimeAgo :date="entry.createdAt" />
+					</time>
+				</N8nText>
+			</div>
+			<N8nText
+				v-if="content.note"
+				size="medium"
+				color="text-base"
+				:class="[$style.body, $style.line]"
+				data-test-id="workflow-review-activity-note"
+			>
+				{{ content.note }}
 			</N8nText>
 		</div>
-		<N8nText
-			v-if="content.note"
-			size="medium"
-			color="text-light"
-			:class="[$style.body, $style.line]"
-			data-test-id="workflow-review-activity-note"
-		>
-			{{ content.note }}
-		</N8nText>
 	</div>
 	<WorkflowReviewActivityFallback v-else />
 </template>
@@ -132,19 +143,28 @@ const actorName = computed(() =>
 <style lang="scss" module>
 .entry {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
 }
 
+.content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+/* A word's worth of gap, so the sentence and its timestamp read as one phrase. The
+	separator carries its own wider spacing. */
 .headline {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	align-items: baseline;
+	gap: var(--spacing--4xs);
 	flex-wrap: wrap;
 }
 
 .separator {
-	margin-inline-start: var(--spacing--4xs);
+	margin-inline: var(--spacing--3xs);
 }
 
 /* Figma asks for 20px on 14px text; no line-height token gives that ratio. */

@@ -24,7 +24,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 	<div :class="$style.entry">
 		<div v-for="message in entry.messages" :key="message.id" :class="$style.message">
 			<N8nAvatar
-				size="small"
+				size="xxsmall"
 				:first-name="message.createdBy?.firstName"
 				:last-name="message.createdBy?.lastName"
 			/>
@@ -59,7 +59,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 				<N8nText
 					v-else
 					size="medium"
-					color="text-light"
+					color="text-base"
 					:class="[$style.body, $style.line]"
 					data-test-id="workflow-review-activity-comment-body"
 				>
