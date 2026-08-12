@@ -39,8 +39,11 @@ function handleEditClick() {
 	<li
 		:class="$style.nodeIssue"
 		role="listitem"
+		tabindex="0"
 		:aria-label="`Edit ${issue.node} node`"
 		@click="handleEditClick"
+		@keydown.enter.prevent="handleEditClick"
+		@keydown.space.prevent="handleEditClick"
 	>
 		<!-- Node icon with tooltip -->
 		<NodeIcon
