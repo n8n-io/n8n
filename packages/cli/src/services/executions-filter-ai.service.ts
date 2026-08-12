@@ -22,7 +22,8 @@ Rules:
 - Only return a name that is in that list. If a mentioned workflow matches nothing in the list, or several candidates are equally plausible with nothing to separate them, omit it rather than guessing — a wrong workflow filter silently shows the wrong executions. Omit "workflowNames" entirely if the query names no workflow.
 - Workflow names can themselves contain "&" or "and" (e.g. "Sales & Marketing"). Let the list settle whether such a phrase is one workflow or two: prefer whichever reading matches actual entries in it.
 - "status" must be one of: all, error, canceled, new, running, success, waiting. Map "failed" and "crashed" to "error".
-- "startDate" and "endDate" are ISO 8601 timestamps, resolved relative to the given current time and timezone. Recognise a time period however it is phrased, including:
+- "startDate" and "endDate" are ISO 8601 timestamps in the user's LOCAL time, carrying the same UTC offset as the current time given below. Write the wall-clock time the user means and append that offset — never convert to UTC and never end with "Z". If the current time is 2026-08-12T11:00:00+01:00, then "10am today" is "2026-08-12T10:00:00+01:00" and the start of today is "2026-08-12T00:00:00+01:00".
+- Resolve times relative to that current time. Recognise a time period however it is phrased, including:
   - relative durations: "last 5 hours", "in the past 30 minutes", "previous 3 days", "over the last couple of weeks"
   - named periods: "today", "yesterday", "this week", "last month", "this quarter"
   - anchored or bounded points: "since Monday", "after 9am", "before 2026-01-01", "between March and April"

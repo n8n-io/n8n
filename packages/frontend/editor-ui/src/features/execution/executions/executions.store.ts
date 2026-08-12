@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type {
@@ -154,7 +155,10 @@ export const useExecutionsStore = defineStore('executions', () => {
 	): Promise<ExecutionsNlFilterResponseDto> {
 		return await makeRestApiRequest(rootStore.restApiContext, 'POST', '/ai/executions-filter', {
 			query,
-			now: new Date().toISOString(),
+			// Local time *with* its UTC offset (e.g. 2026-08-12T11:00:00+01:00) rather than a `Z`
+			// timestamp: the model then reads the user's wall clock directly and can echo the offset
+			// back, instead of having to convert in both directions and getting it wrong.
+			now: DateTime.now().toISO() ?? new Date().toISOString(),
 			timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			workflowNames,
 		});
