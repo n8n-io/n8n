@@ -24,9 +24,11 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nSegmentControl, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { isExternalIntegrationNode } from '@/features/ndv/runData/generateMockData.utils';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -80,6 +82,7 @@ const ndvStore = injectNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const activeNode = computed(() => ndvStore.value.activeNode);
@@ -108,13 +111,25 @@ const collapsingColumnName = ref<string | null>(null);
 
 // Computed
 
+const node = computed(() => {
+	return ndvStore.value.activeNode ?? undefined;
+});
+
+const insertTestDataLabel = computed(() => {
+	const isExternalIntegration = isExternalIntegrationNode(
+		node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
+	);
+
+	return i18n.baseText(
+		settingsStore.isAskAiAvailable && isExternalIntegration
+			? 'ndv.output.generateMockData'
+			: 'ndv.output.insertTestData',
+	);
+});
 const workflowObject = computed(() =>
 	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
 );
 
-const node = computed(() => {
-	return ndvStore.value.activeNode ?? undefined;
-});
 const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
 const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
@@ -448,7 +463,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<br />
 						{{ i18n.baseText('generic.or') }}
 						<N8nText tag="a" size="medium" color="primary" @click="insertTestData">
-							{{ i18n.baseText('ndv.output.insertTestData') }}
+							{{ insertTestDataLabel }}
 						</N8nText>
 					</template>
 				</template>
