@@ -107,6 +107,9 @@ const selectedTab = computed({
 const updateScrollPosition = useThrottleFn((nodeId: string, scrollTop: number) => {
 	experimentalNdvStore.updateNodePanelState(nodeId, { scrollTop });
 }, 100);
+// Anchored (popover) mode is deliberately minimal: secondary actions collapse
+// into a single control that expands into the roomier side panel.
+const isAnchoredMode = computed(() => experimentalNdvStore.isPanelAnchored);
 const isDataTab = computed(() => selectedTab.value === 'input' || selectedTab.value === 'output');
 const isSettingsTab = computed(() => selectedTab.value === 'settings');
 const dataTab = computed(() =>
@@ -298,19 +301,31 @@ onBeforeUnmount(() => {
 					<template #content>{{ i18n.baseText('generic.communityNode') }}</template>
 					<N8nBadge theme="tertiary">{{ i18n.baseText('nodePanel.community') }}</N8nBadge>
 				</N8nTooltip>
-				<NodeExecuteButton
-					v-if="!isReadOnly"
-					:node-name="node.name"
-					:label="i18n.baseText('ndv.execute.testStep')"
-					:aria-label="i18n.baseText('ndv.execute.testStep')"
-					telemetry-source="node_panel"
-					variant="ghost"
-					size="small"
-					square
-					hide-label
-					@execute="handleExecute"
-				/>
-				<N8nTooltip placement="bottom">
+				<N8nTooltip v-if="!isReadOnly" placement="bottom">
+					<template #content>{{ i18n.baseText('ndv.execute.testStep') }}</template>
+					<NodeExecuteButton
+						:node-name="node.name"
+						:label="i18n.baseText('ndv.execute.testStep')"
+						:aria-label="i18n.baseText('ndv.execute.testStep')"
+						telemetry-source="node_panel"
+						variant="ghost"
+						size="small"
+						square
+						hide-label
+						@execute="handleExecute"
+					/>
+				</N8nTooltip>
+				<N8nTooltip v-if="isAnchoredMode" placement="bottom">
+					<template #content>{{ i18n.baseText('nodePanel.expandToSidePanel') }}</template>
+					<N8nIconButton
+						variant="ghost"
+						icon="maximize-2"
+						size="small"
+						:aria-label="i18n.baseText('nodePanel.expandToSidePanel')"
+						@click="experimentalNdvStore.setPanelAnchored(false)"
+					/>
+				</N8nTooltip>
+				<N8nTooltip v-if="!isAnchoredMode" placement="bottom">
 					<template #content>
 						{{
 							i18n.baseText(

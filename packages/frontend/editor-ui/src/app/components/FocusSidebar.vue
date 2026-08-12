@@ -93,13 +93,18 @@ const isAnchored = computed(
 	() => experimentalNdvStore.isNdvInFocusPanelEnabled && experimentalNdvStore.isPanelAnchored,
 );
 
+// Falls back to the right-edge geometry rather than nothing: `.isAnchored` clears
+// `inset`, so an undefined style leaves an unpositioned stub in the corner. The
+// host element also only exists once rendered, so the first pass always lands here.
+const ANCHOR_FALLBACK_STYLE = { inset: '0 0 0 auto', height: '100%' } as const;
+
 const anchorStyle = computed(() => {
 	if (!isAnchored.value) return undefined;
 
 	const selected = vueFlow.getSelectedNodes.value[0];
 	const { x, y, zoom } = vueFlow.viewport.value;
 	const host = wrapperRef.value?.parentElement;
-	if (!selected || !host) return undefined;
+	if (!selected || !host) return ANCHOR_FALLBACK_STYLE;
 
 	const hostRect = host.getBoundingClientRect();
 	const nodeLeft = selected.computedPosition.x * zoom + x;

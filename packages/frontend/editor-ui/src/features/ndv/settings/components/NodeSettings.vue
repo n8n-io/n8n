@@ -1017,6 +1017,13 @@ function handleSelectAction(params: INodeParameters) {
 							:label="i18n.baseText('nodePanel.showFewerSettings')"
 							@click="emit('showAllSettingsChanged', false)"
 						/>
+						<!-- Only offered once you are looking at the full list; it stays here
+							 rather than outside so ticking it cannot hide its own off-switch. -->
+						<N8nCheckbox
+							:model-value="alwaysShowAllSettings"
+							:label="i18n.baseText('nodePanel.alwaysShowAllSettings')"
+							@update:model-value="emit('alwaysShowAllSettingsChanged', Boolean($event))"
+						/>
 					</template>
 					<N8nButton
 						v-else-if="disclosedParameters.length > 0"
@@ -1032,11 +1039,6 @@ function handleSelectAction(params: INodeParameters) {
 							})
 						"
 						@click="emit('showAllSettingsChanged', true)"
-					/>
-					<N8nCheckbox
-						:model-value="alwaysShowAllSettings"
-						:label="i18n.baseText('nodePanel.alwaysShowAllSettings')"
-						@update:model-value="emit('alwaysShowAllSettingsChanged', Boolean($event))"
 					/>
 				</div>
 				<section v-if="showExecutionSettings" :class="$style.moreSettings">
