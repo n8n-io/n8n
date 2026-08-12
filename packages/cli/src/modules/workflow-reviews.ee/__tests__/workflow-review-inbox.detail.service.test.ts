@@ -104,6 +104,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		eligibilityService.resolveViewerEligibility.mockResolvedValue({
 			canDecide: true,
 			decisionIneligibilityReason: null,
+			canComment: true,
 		});
 	});
 
@@ -181,23 +182,26 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	});
 
 	describe('viewer eligibility', () => {
-		it('tells the client the viewer may decide', async () => {
+		it('tells the client the viewer may both decide and comment', async () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.viewerCanDecide).toBe(true);
 			expect(detail.viewerDecisionIneligibilityReason).toBeNull();
+			expect(detail.viewerCanComment).toBe(true);
 		});
 
-		it('tells an author why they cannot decide', async () => {
+		it('tells an author why they cannot decide while still letting them comment', async () => {
 			eligibilityService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
 				decisionIneligibilityReason: 'author',
+				canComment: true,
 			});
 
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.viewerCanDecide).toBe(false);
 			expect(detail.viewerDecisionIneligibilityReason).toBe('author');
+			expect(detail.viewerCanComment).toBe(true);
 		});
 
 		it('checks what the viewer may do against the workflow under review, even one they cannot open', async () => {
@@ -212,18 +216,21 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			eligibilityService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_publish_permission',
+				canComment: false,
 			});
 
 			const detail = await service.getDetail(requester, requestId);
 
-			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
-				requester,
-				expect.objectContaining({ id: requestId }),
-				workflowId,
-			);
+			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(requester, {
+				request: expect.objectContaining({ id: requestId }),
+				readableWorkflowRows: [],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: false,
+			});
 			expect(detail.workflows).toEqual([]);
 			expect(detail.viewerCanDecide).toBe(false);
 			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_publish_permission');
+			expect(detail.viewerCanComment).toBe(false);
 		});
 
 		it('passes no workflow id when a closed review no longer covers any workflow', async () => {
@@ -234,8 +241,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
 				requester,
-				expect.objectContaining({ id: requestId }),
-				null,
+				expect.objectContaining({ pinnedWorkflowId: null, canReadPinnedWorkflow: false }),
 			);
 		});
 	});

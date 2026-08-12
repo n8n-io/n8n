@@ -94,12 +94,17 @@ describe('useReviewActivityStore', () => {
 		expect(store.entries.map((entry) => entry.id)).toEqual(['9']);
 	});
 
-	it('puts older entries above the ones already loaded', async () => {
+	it('puts older entries above and a new comment at the bottom', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
 			makePage(['3', '4'], { nextCursor: 'cursor-1', hasMore: true }),
 		);
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockResolvedValue(makeEntry('5'));
 		const store = useReviewActivityStore();
 		await store.fetchFeed('req-1');
+
+		await store.postComment('hi');
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['3', '4', '5']);
 
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
 			makePage(['1', '2']),
@@ -113,7 +118,7 @@ describe('useReviewActivityStore', () => {
 			'req-1',
 			{ limit: 25, cursor: 'cursor-1' },
 		);
-		expect(store.entries.map((entry) => entry.id)).toEqual(['1', '2', '3', '4']);
+		expect(store.entries.map((entry) => entry.id)).toEqual(['1', '2', '3', '4', '5']);
 		expect(store.hasMore).toBe(false);
 		expect(store.nextCursor).toBeNull();
 	});
@@ -143,6 +148,49 @@ describe('useReviewActivityStore', () => {
 		expect(store.entries.map((entry) => entry.id)).toEqual(['7']);
 	});
 
+	it('keeps a comment posted while the first page was still in flight', async () => {
+		let resolveFeed!: (response: ListWorkflowReviewActivityResponse) => void;
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockImplementationOnce(
+			async () =>
+				await new Promise<ListWorkflowReviewActivityResponse>((resolve) => {
+					resolveFeed = resolve;
+				}),
+		);
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockResolvedValue(makeEntry('5'));
+		const store = useReviewActivityStore();
+
+		const pendingFeed = store.fetchFeed('req-1');
+		await store.postComment('hi');
+		// The page was snapshotted server-side before the comment was written
+		resolveFeed(makePage(['3', '4']));
+		await pendingFeed;
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['3', '4', '5']);
+	});
+
+	it('does not duplicate a comment the refetched feed already returned', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage([]));
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+
+		let resolvePost!: (entry: WorkflowReviewActivityEntry) => void;
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockImplementationOnce(
+			async () =>
+				await new Promise<WorkflowReviewActivityEntry>((resolve) => {
+					resolvePost = resolve;
+				}),
+		);
+
+		const pendingPost = store.postComment('hi');
+		await store.fetchFeed('req-2');
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['5']));
+		await store.fetchFeed('req-1');
+		resolvePost(makeEntry('5'));
+		await pendingPost;
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['5']);
+	});
+
 	it('stops paging when an older page comes back empty', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
 			makePage(['3'], { nextCursor: 'cursor-1', hasMore: true }),
@@ -157,6 +205,13 @@ describe('useReviewActivityStore', () => {
 
 		expect(store.hasMore).toBe(false);
 		expect(store.entries.map((entry) => entry.id)).toEqual(['3']);
+	});
+
+	it('rejects a post with no review selected instead of reporting success', async () => {
+		const store = useReviewActivityStore();
+
+		await expect(store.postComment('hi')).rejects.toThrow();
+		expect(workflowReviewsApi.createWorkflowReviewComment).not.toHaveBeenCalled();
 	});
 
 	it('does not ask for older entries when the feed is already complete', async () => {
@@ -181,12 +236,158 @@ describe('useReviewActivityStore', () => {
 		const store = useReviewActivityStore();
 
 		const pending = store.fetchFeed('req-1');
+		store.draft = 'for req-1 only';
 		store.reset();
 		resolveFeed(makePage(['1']));
 		await pending;
 
 		expect(store.entries).toEqual([]);
 		expect(store.currentReviewId).toBeNull();
+		// Leaving the view must not carry a draft into whatever review is opened next.
+		expect(store.draft).toBe('');
+	});
+
+	it('does not leave the next review stuck in a sending state', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockReturnValue(
+			new Promise(() => {}),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+
+		void store.postComment('hi');
+		expect(store.posting).toBe(true);
+
+		await store.fetchFeed('req-2');
+
+		expect(store.posting).toBe(false);
+	});
+
+	it('keeps send disabled for the post the viewer is still waiting on after leaving and returning', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		const resolvers: Array<(entry: WorkflowReviewActivityEntry) => void> = [];
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockImplementation(
+			async () => await new Promise((resolve) => resolvers.push(resolve)),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		const first = store.postComment('hi');
+
+		await store.fetchFeed('req-2');
+		await store.fetchFeed('req-1');
+		const second = store.postComment('again');
+		expect(store.posting).toBe(true);
+
+		resolvers[0](makeEntry('9'));
+		await first;
+		expect(store.posting).toBe(true);
+
+		resolvers[1](makeEntry('10'));
+		await second;
+		expect(store.posting).toBe(false);
+	});
+
+	it('keeps the send button disabled when a failed page is retried mid-post', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockRejectedValue(new Error('boom'));
+		let resolvePost: (entry: WorkflowReviewActivityEntry) => void = () => {};
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockReturnValue(
+			new Promise((resolve) => {
+				resolvePost = resolve;
+			}),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		store.draft = 'half a thought';
+
+		const pending = store.postComment('hi');
+		expect(store.posting).toBe(true);
+
+		// Retrying refetches the same review.
+		await store.fetchFeed('req-1');
+		expect(store.posting).toBe(true);
+		expect(store.draft).toBe('half a thought');
+
+		resolvePost(makeEntry('9'));
+		await pending;
+		expect(store.posting).toBe(false);
+	});
+
+	it('keeps a comment posted onto a failed feed visible while that feed is retried', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockRejectedValue(new Error('boom'));
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockResolvedValue(makeEntry('9'));
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		await store.postComment('hi');
+		expect(store.entries.map((entry) => entry.id)).toEqual(['9']);
+
+		await store.fetchFeed('req-1');
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['9']);
+	});
+
+	it('drops older pages a refetch did not return so the feed stays in order', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
+			makePage(['3', '4'], { nextCursor: 'cursor-1', hasMore: true }),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
+			makePage(['1', '2']),
+		);
+		await store.loadMore();
+		expect(store.entries.map((entry) => entry.id)).toEqual(['1', '2', '3', '4']);
+
+		// Kept older pages would land after the newer one and invert the list.
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
+			makePage(['3', '4'], { nextCursor: 'cursor-1', hasMore: true }),
+		);
+		await store.fetchFeed('req-1');
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['3', '4']);
+	});
+
+	it("does not drop a stale post's comment into the review the viewer moved to", async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		let resolvePost: (entry: WorkflowReviewActivityEntry) => void = () => {};
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockReturnValue(
+			new Promise((resolve) => {
+				resolvePost = resolve;
+			}),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		const pending = store.postComment('hi');
+
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['2']));
+		await store.fetchFeed('req-2');
+		resolvePost(makeEntry('9'));
+		await pending;
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['2']);
+	});
+
+	it('drops the draft when the viewer moves to another review', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		store.draft = 'for req-1 only';
+
+		await store.fetchFeed('req-2');
+
+		expect(store.draft).toBe('');
+	});
+
+	it('reports a failed comment to the composer, not as a feed error', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockRejectedValue(new Error('nope'));
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+
+		await expect(store.postComment('hi')).rejects.toThrow('nope');
+
+		expect(store.error).toBeNull();
+		expect(store.posting).toBe(false);
+		expect(store.entries.map((entry) => entry.id)).toEqual(['1']);
 	});
 
 	it('shows a failed load in the feed rather than throwing', async () => {

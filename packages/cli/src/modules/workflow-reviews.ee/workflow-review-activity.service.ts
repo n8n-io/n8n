@@ -1,11 +1,14 @@
 import type {
+	CreateWorkflowReviewCommentDto,
 	ListWorkflowReviewActivityQueryDto,
 	ListWorkflowReviewActivityResponse,
 	WorkflowReviewActivityEntry,
 	WorkflowReviewEligibleReviewer,
 } from '@n8n/api-types';
 import {
+	TransactionRunner,
 	UserRepository,
+	WorkflowReviewActivityCommentRepository,
 	WorkflowReviewActivityRepository,
 	type User,
 	type WorkflowReviewActivityFeedEntry,
@@ -13,8 +16,10 @@ import {
 import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { WorkflowReviewAccessService } from './workflow-review-access.service';
+import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toActivityEntry, toEligibleReviewer } from './workflow-review.mapper';
 
@@ -23,8 +28,11 @@ export class WorkflowReviewActivityService {
 	constructor(
 		private readonly featureGate: WorkflowReviewFeatureGate,
 		private readonly accessService: WorkflowReviewAccessService,
+		private readonly eligibilityService: WorkflowReviewEligibilityService,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
+		private readonly activityCommentRepository: WorkflowReviewActivityCommentRepository,
 		private readonly userRepository: UserRepository,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async listActivity(
@@ -48,6 +56,47 @@ export class WorkflowReviewActivityService {
 		const nextCursor = hasMore && oldest ? this.encodeCursor(oldest.activity.id) : null;
 
 		return { data: await this.hydrate(entries), nextCursor, hasMore };
+	}
+
+	async createComment(
+		user: User,
+		workflowReviewRequestId: string,
+		dto: CreateWorkflowReviewCommentDto,
+	): Promise<WorkflowReviewActivityEntry> {
+		await this.featureGate.assertAvailable();
+
+		const access = await this.accessService.findReadableRequestOrFail(
+			user,
+			workflowReviewRequestId,
+		);
+
+		// No lifecycle guard on purpose: a settled review stays open to discussion.
+		const eligibility = await this.eligibilityService.resolveViewerEligibility(user, access);
+		if (!eligibility.canComment) {
+			throw new ForbiddenError('You are not allowed to comment on this review');
+		}
+
+		// Every query inside must go through `ctx`. A stray read here needs a second
+		// pooled connection while the transaction holds one — a deadlock on a
+		// single-connection pool.
+		const { activity, message } = await this.txRunner.run({}, async (ctx) => {
+			const activity = await this.activityRepository.createActivity(
+				{
+					workflowReviewRequestId,
+					type: 'comment.created',
+					data: null,
+					createdById: user.id,
+				},
+				ctx,
+			);
+			const message = await this.activityCommentRepository.createComment(
+				{ activityId: activity.id, createdById: user.id, body: dto.body },
+				ctx,
+			);
+			return { activity, message };
+		});
+
+		return toActivityEntry(activity, [message], new Map([[user.id, toEligibleReviewer(user)]]));
 	}
 
 	private async hydrate(

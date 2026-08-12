@@ -61,6 +61,13 @@ describe('workflow-review-requests (env flag off)', () => {
 	test('GET activity is unreachable (404)', async () => {
 		await ownerAgent.get('/workflow-review-requests/some-id/activity').expect(404);
 	});
+
+	test('POST comment is unreachable (404)', async () => {
+		await ownerAgent
+			.post('/workflow-review-requests/some-id/comments')
+			.send({ body: 'Hello' })
+			.expect(404);
+	});
 });
 
 describe('GET /workflow-review-requests (env flag off)', () => {

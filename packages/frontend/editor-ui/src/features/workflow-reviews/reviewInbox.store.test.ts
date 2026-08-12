@@ -507,5 +507,6 @@ function createDetail(): WorkflowReviewRequestDetail {
 		workflows: [],
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
+		viewerCanComment: true,
 	};
 }

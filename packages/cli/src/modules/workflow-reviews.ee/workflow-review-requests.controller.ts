@@ -1,4 +1,5 @@
 import {
+	CreateWorkflowReviewCommentDto,
 	CreateWorkflowReviewRequestDto,
 	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
@@ -9,6 +10,7 @@ import {
 	type ListWorkflowReviewActivityResponse,
 	type ListWorkflowReviewInboxResponse,
 	ListWorkflowReviewInboxQueryDto,
+	type WorkflowReviewActivityEntry,
 	type WorkflowReviewRequestDetail,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -123,6 +125,23 @@ export class WorkflowReviewRequestsController {
 			workflowReviewRequestId,
 			query,
 		);
+	}
+
+	@Post('/:workflowReviewRequestId/comments')
+	@Licensed('feat:workflowReviews')
+	async createComment(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Body dto: CreateWorkflowReviewCommentDto,
+	): Promise<WorkflowReviewActivityEntry> {
+		const entry = await this.workflowReviewActivityService.createComment(
+			req.user,
+			workflowReviewRequestId,
+			dto,
+		);
+		res.status(201);
+		return entry;
 	}
 
 	/**
