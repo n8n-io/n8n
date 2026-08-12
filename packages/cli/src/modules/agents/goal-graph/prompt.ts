@@ -38,11 +38,13 @@ export function buildGoalGraphPrompt(
 		.map((goal) => `### ${goal.name}\n${goal.instructions}`)
 		.join('\n\n');
 
+	// `private` slots are invisible to the model — never listed, even by name.
 	const slotLines = definition.slots
+		.filter((slot) => slot.access !== 'private')
 		.map((slot) => {
 			const value = state[slot.name];
 			const rendered = value === null || value === undefined ? 'not filled' : JSON.stringify(value);
-			const writer = slot.source === 'agent' ? 'fill via fill_slot' : 'set by tool results';
+			const writer = slot.access === 'standard' ? 'fill via fill_slot' : 'set by tool results';
 			const description = slot.description ? ` — ${slot.description}` : '';
 			return `- ${slot.name} (${slot.type}, ${writer}): ${rendered}${description}`;
 		})

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { AgentGoalConfig, AgentSlotConfig } from '@n8n/api-types';
+import { migrateSlotAccess } from '@n8n/api-types';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -49,7 +50,7 @@ function openLivePreview() {
 }
 
 const goals = computed(() => props.config?.goals ?? []);
-const slots = computed(() => props.config?.slots ?? []);
+const slots = computed(() => (props.config?.slots ?? []).map(migrateSlotAccess));
 const toolIcons = useGoalGraphToolIcons(() => props.config);
 
 // Structure-only preview: no run has happened, so statuses/tools are empty

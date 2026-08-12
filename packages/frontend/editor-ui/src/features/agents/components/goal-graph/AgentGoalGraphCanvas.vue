@@ -553,12 +553,17 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 							slot.displayName || slot.name
 						}}</span>
 						<span
+							v-if="slot.access !== 'standard'"
 							:class="[
 								$style.slotBadge,
-								slot.source === 'agent' ? $style.badgeAgent : $style.badgeTool,
+								slot.access === 'private' ? $style.badgePrivate : $style.badgeProtected,
 							]"
 						>
-							{{ slot.source }}
+							{{
+								slot.access === 'private'
+									? i18n.baseText('agents.goalGraph.slotAccess.private')
+									: i18n.baseText('agents.goalGraph.slotAccess.protected')
+							}}
 						</span>
 					</div>
 					<span
@@ -871,14 +876,14 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 	flex-shrink: 0;
 }
 
-.badgeAgent {
-	color: var(--color--secondary);
-	background: var(--color--secondary--tint-3, rgba(124, 58, 237, 0.14));
+.badgeProtected {
+	color: var(--color--warning);
+	background: var(--color--warning--tint-3, rgba(217, 119, 6, 0.14));
 }
 
-.badgeTool {
-	color: var(--color--success);
-	background: var(--color--success--tint-3, rgba(13, 148, 136, 0.14));
+.badgePrivate {
+	color: var(--color--danger);
+	background: var(--color--danger--tint-3, rgba(220, 38, 38, 0.14));
 }
 
 .slotValue {

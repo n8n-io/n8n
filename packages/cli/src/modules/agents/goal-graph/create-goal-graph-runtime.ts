@@ -1,5 +1,6 @@
 import type { AgentPersistenceOptions, BuiltTool } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
+import { migrateSlotAccess } from '@n8n/api-types';
 
 import { deriveGoalStatuses } from './derive-status';
 import { createFillSlotTool } from './fill-slot-tool';
@@ -19,7 +20,7 @@ export interface GoalGraphRuntime {
 	isManagedTool(name: string): boolean;
 	/** Wrap a managed tool with bindings/mappings/gating. Pass-through otherwise. */
 	wrapTool(tool: BuiltTool): BuiltTool;
-	/** Built-in fill_slot tool, when agent-source slots are declared. */
+	/** Built-in fill_slot tool, when `standard` (agent-writable) slots are declared. */
 	fillSlotTool?: BuiltTool;
 	/** Runtime hook: hides managed tools whose goals are not Active. */
 	toolsFilter(tools: BuiltTool[], persistence?: AgentPersistenceOptions): BuiltTool[];
@@ -50,7 +51,7 @@ export function createGoalGraphRuntime(options: {
 }): GoalGraphRuntime {
 	const { agentId, stateService } = options;
 	const definition: GoalGraphDefinition = {
-		slots: options.config.slots ?? [],
+		slots: (options.config.slots ?? []).map(migrateSlotAccess),
 		goals: options.config.goals ?? [],
 	};
 

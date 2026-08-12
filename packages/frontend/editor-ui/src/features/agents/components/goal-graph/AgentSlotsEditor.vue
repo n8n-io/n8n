@@ -11,7 +11,6 @@ import { createDefaultSlot } from './goalGraphEdit';
 const SLOT_NAME_REGEX = /^[A-Za-z][A-Za-z0-9_]*$/;
 const SLOT_NAME_MAX_LENGTH = 64;
 const SLOT_TYPES: Array<AgentSlotConfig['type']> = ['string', 'number', 'boolean', 'object'];
-const SLOT_SOURCES: Array<AgentSlotConfig['source']> = ['agent', 'tool'];
 
 const props = withDefaults(defineProps<{ slots: AgentSlotConfig[]; disabled?: boolean }>(), {
 	disabled: false,
@@ -21,11 +20,23 @@ const emit = defineEmits<{ 'update:slots': [AgentSlotConfig[]] }>();
 
 const i18n = useI18n();
 
+const accessOptions = computed(() => [
+	{
+		value: 'standard' as const,
+		label: i18n.baseText('agents.builder.goals.slots.access.standard'),
+	},
+	{
+		value: 'protected' as const,
+		label: i18n.baseText('agents.builder.goals.slots.access.protected'),
+	},
+	{ value: 'private' as const, label: i18n.baseText('agents.builder.goals.slots.access.private') },
+]);
+
 interface SlotRow {
 	name: string;
 	displayName: string;
 	type: AgentSlotConfig['type'];
-	source: AgentSlotConfig['source'];
+	access: AgentSlotConfig['access'];
 	description: string;
 	initialValueText: string;
 }
@@ -35,7 +46,7 @@ function toRow(slot: AgentSlotConfig): SlotRow {
 		name: slot.name,
 		displayName: slot.displayName ?? '',
 		type: slot.type,
-		source: slot.source,
+		access: slot.access,
 		description: slot.description ?? '',
 		initialValueText:
 			slot.initialValue === undefined
@@ -92,7 +103,7 @@ function buildSlots(): AgentSlotConfig[] {
 			name: row.name,
 			...(displayName ? { displayName } : {}),
 			type: row.type,
-			source: row.source,
+			access: row.access,
 			...(description ? { description } : {}),
 			...(initialValue !== undefined ? { initialValue } : {}),
 		};
@@ -147,7 +158,7 @@ function removeSlot(index: number) {
 				{{ i18n.baseText('agents.builder.goals.slots.type') }}
 			</N8nText>
 			<N8nText size="xsmall" color="text-light">
-				{{ i18n.baseText('agents.builder.goals.slots.source') }}
+				{{ i18n.baseText('agents.builder.goals.slots.access') }}
 			</N8nText>
 			<N8nText size="xsmall" color="text-light">
 				{{ i18n.baseText('agents.builder.goals.slots.description') }}
@@ -185,14 +196,19 @@ function removeSlot(index: number) {
 					<N8nOption v-for="type in SLOT_TYPES" :key="type" :value="type" :label="type" />
 				</N8nSelect>
 				<N8nSelect
-					:model-value="row.source"
+					:model-value="row.access"
 					size="small"
 					:teleported="false"
 					:disabled="props.disabled"
-					data-testid="agent-slot-source"
-					@update:model-value="updateRow(index, { source: $event })"
+					data-testid="agent-slot-access"
+					@update:model-value="updateRow(index, { access: $event })"
 				>
-					<N8nOption v-for="source in SLOT_SOURCES" :key="source" :value="source" :label="source" />
+					<N8nOption
+						v-for="option in accessOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
 				</N8nSelect>
 				<N8nInput
 					:model-value="row.description"
@@ -244,7 +260,7 @@ function removeSlot(index: number) {
 
 .grid {
 	display: grid;
-	grid-template-columns: 1fr 1fr 90px 80px 1.4fr 1fr 30px;
+	grid-template-columns: 1fr 1fr 90px 110px 1.3fr 1fr 30px;
 	gap: var(--spacing--2xs);
 	align-items: center;
 }

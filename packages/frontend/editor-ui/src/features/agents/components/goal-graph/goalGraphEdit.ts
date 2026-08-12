@@ -115,7 +115,7 @@ export function generateSlotName(slots: AgentSlotConfig[]): string {
 }
 
 export function createDefaultSlot(slots: AgentSlotConfig[]): AgentSlotConfig {
-	return { name: generateSlotName(slots), type: 'string', source: 'agent' };
+	return { name: generateSlotName(slots), type: 'string', access: 'standard' };
 }
 
 /** Replaces the slot at `index`, or appends when `index` is null. */

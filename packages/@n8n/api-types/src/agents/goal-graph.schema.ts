@@ -23,9 +23,20 @@ import { z } from 'zod';
 const GoalExpressionSchema = z.string().min(1);
 
 export const AGENT_SLOT_TYPES = ['string', 'number', 'boolean', 'object'] as const;
-export const AGENT_SLOT_SOURCES = ['agent', 'tool'] as const;
 
-export const AgentSlotSchema = z.object({
+/**
+ * Slot access level — who may read and write the slot:
+ * - `standard`  — the agent both reads it and writes it (via `fill_slot`).
+ * - `protected` — the agent reads it but cannot write it; only tool output
+ *                 mappings write it (so the agent cannot self-certify a gate).
+ * - `private`   — the agent can neither read nor write it; only tools read it
+ *                 (via bindings) and write it (via output mappings). Its value
+ *                 never reaches the model, yet still drives goal statuses.
+ */
+export const AGENT_SLOT_ACCESS_LEVELS = ['standard', 'protected', 'private'] as const;
+export type AgentSlotAccess = (typeof AGENT_SLOT_ACCESS_LEVELS)[number];
+
+const AgentSlotObjectSchema = z.object({
 	name: z
 		.string()
 		.min(1)
@@ -37,15 +48,26 @@ export const AgentSlotSchema = z.object({
 	 */
 	displayName: z.string().max(128).optional(),
 	type: z.enum(AGENT_SLOT_TYPES),
-	/**
-	 * Who may write the slot: `agent` slots are fillable via the built-in
-	 * `fill_slot` tool; `tool` slots can only be written by attachment
-	 * `outputMappings` (the agent cannot self-certify).
-	 */
-	source: z.enum(AGENT_SLOT_SOURCES),
+	access: z.enum(AGENT_SLOT_ACCESS_LEVELS),
 	description: z.string().max(512).optional(),
 	initialValue: z.unknown().optional(),
 });
+
+/**
+ * Accepts the current `access` field and migrates the legacy `source` field
+ * (`agent` → `standard`, `tool` → `protected`) so slots authored before the
+ * access model keep loading.
+ */
+export const AgentSlotSchema = z.preprocess((value) => {
+	if (value && typeof value === 'object' && !Array.isArray(value)) {
+		const record = value as Record<string, unknown>;
+		if (record.access === undefined && record.source !== undefined) {
+			const { source, ...rest } = record;
+			return { ...rest, access: source === 'tool' ? 'protected' : 'standard' };
+		}
+	}
+	return value;
+}, AgentSlotObjectSchema);
 
 export const GoalToolAttachmentSchema = z.object({
 	/** Runtime tool name of a tool configured on this agent (custom tools only for now). */
@@ -99,6 +121,19 @@ export const AgentGoalsConfigSchema = z
 export type AgentSlotConfig = z.infer<typeof AgentSlotSchema>;
 export type GoalToolAttachmentConfig = z.infer<typeof GoalToolAttachmentSchema>;
 export type AgentGoalConfig = z.infer<typeof AgentGoalSchema>;
+
+/**
+ * Migrate a slot that may still carry the legacy `source` field
+ * (`agent` → `standard`, `tool` → `protected`) to the `access` model. Slots
+ * that already declare `access` pass through unchanged. Use wherever slots are
+ * read outside the zod schema (which migrates via its own preprocess).
+ */
+export function migrateSlotAccess(slot: AgentSlotConfig): AgentSlotConfig {
+	const raw = slot as { access?: AgentSlotAccess; source?: 'agent' | 'tool' };
+	if (raw.access) return slot;
+	const { source, ...rest } = raw;
+	return { ...(rest as AgentSlotConfig), access: source === 'tool' ? 'protected' : 'standard' };
+}
 
 /** Derived, never stored. */
 export type GoalStatus = 'locked' | 'active' | 'achieved' | 'failed';

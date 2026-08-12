@@ -6,6 +6,7 @@ import { N8nIconButton, N8nResizeWrapper, N8nText, type ResizeData } from '@n8n/
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
+import { migrateSlotAccess } from '@n8n/api-types';
 
 import { LOCAL_STORAGE_AGENT_GOAL_PREVIEW_CHAT_WIDTH } from '@/app/constants';
 import { getAgent } from '../composables/useAgentApi';
@@ -43,7 +44,7 @@ const loading = ref(true);
 const { config, fetchConfig } = useAgentConfig();
 
 const goals = computed(() => config.value?.goals ?? []);
-const slots = computed(() => config.value?.slots ?? []);
+const slots = computed(() => (config.value?.slots ?? []).map(migrateSlotAccess));
 const toolIcons = useGoalGraphToolIcons(config);
 
 // The chat panel is a resizable right-docked column; the graph fills the rest.

@@ -8,8 +8,8 @@ import type { SlotValues } from '../types';
 
 const config = {
 	slots: [
-		{ name: 'customerEmail', type: 'string' as const, source: 'agent' as const },
-		{ name: 'customerSalesforceId', type: 'string' as const, source: 'tool' as const },
+		{ name: 'customerEmail', type: 'string' as const, access: 'standard' as const },
+		{ name: 'customerSalesforceId', type: 'string' as const, access: 'protected' as const },
 	],
 	goals: [
 		{
@@ -101,7 +101,7 @@ describe('createGoalGraphRuntime', () => {
 			expect(runtime.wrapTool(tool)).toBe(tool);
 		});
 
-		it('exposes a fill_slot tool restricted to agent-source slots', async () => {
+		it('exposes a fill_slot tool restricted to standard slots', async () => {
 			const { stateService, state } = makeStateService({});
 			const runtime = createGoalGraphRuntime({ agentId: 'agent-1', config, stateService });
 
@@ -115,7 +115,7 @@ describe('createGoalGraphRuntime', () => {
 			expect(ok).toMatchObject({ ok: true });
 			expect(state.customerEmail).toBe('a@b.co');
 
-			// Tool-source slots are not accepted (zod enum only covers agent slots).
+			// Non-standard slots are not accepted (zod enum only covers standard slots).
 			await expect(
 				runtime.fillSlotTool!.handler!({ slot: 'customerSalesforceId', value: 'SF-1' }, ctx),
 			).rejects.toThrow();

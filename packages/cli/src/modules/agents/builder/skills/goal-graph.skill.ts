@@ -22,11 +22,16 @@ merely being *asked* not to in its prompt.
 
 Two config sections do this:
 
-- \`slots\` — typed named pieces of run state.
-  - \`source: "tool"\` — only tool **outputs** can write it; the agent cannot.
-    Use for anything that must be trustworthy (a verified flag, an id, a counter).
-  - \`source: "agent"\` — the agent fills it from the conversation via the
-    built-in \`fill_slot\` tool. Use for info the user simply states (an email).
+- \`slots\` — typed named pieces of run state, each with an \`access\` level:
+  - \`access: "standard"\` — the agent reads it and writes it (via the built-in
+    \`fill_slot\` tool). Use for info the user simply states (an email).
+  - \`access: "protected"\` — the agent reads it but **cannot** write it; only
+    tool **outputs** can. Use for anything that must be trustworthy (a verified
+    flag, an id, a counter) — the agent cannot forge it.
+  - \`access: "private"\` — the agent can **neither read nor write** it; only
+    tools read it (via bindings) and write it (via outputMappings). Its value
+    never reaches the model yet still drives goal statuses. Use for sensitive
+    data the agent must act on but never see.
 - \`goals\` — outcomes with deterministic conditions over state:
   \`achievedWhen\` (done), optional \`failedWhen\`, optional \`unlockedWhen\`, and
   \`requires\` (prerequisite goal ids). A goal's attached **tools are callable
@@ -48,17 +53,17 @@ hidden from the model) and \`outputMappings\` (write a tool result back into a s
    (verified, authenticated, approved, threshold met). Prefer a check that a
    **tool or sub-workflow decides**, not the agent's own judgment.
 4. **Model state as slots:**
-   - a \`source: "tool"\` boolean/id slot the precondition tool sets
+   - a \`protected\` boolean/id slot the precondition tool sets
      (e.g. \`emailVerified\`, \`customerId\`) — the agent cannot forge it;
-   - \`source: "agent"\` slots for info the user provides (e.g. \`email\`);
-   - a \`source: "tool"\` counter slot with \`initialValue: 0\` if you want
+   - \`standard\` slots for info the user provides (e.g. \`email\`);
+   - a \`protected\` counter slot with \`initialValue: 0\` if you want
      bounded retries;
    - **keep secrets out of slots.** OTP codes, passwords, PII should live inside
      the deterministic tool/sub-workflow (it stores and compares them) and the
      tool should return only a boolean or an opaque handle — never the secret.
 5. **Model goals:**
    - a *precondition* goal — attach the deterministic tool; \`achievedWhen\`
-     reads its tool-source slot (e.g. \`={{ $state.emailVerified === true }}\`);
+     reads its \`protected\`/\`private\` slot (e.g. \`={{ $state.emailVerified === true }}\`);
      add \`failedWhen\` for a retry bound if relevant.
    - each *gated-action* goal — set \`requires: ["<precondition-goal-id>"]\` and
      attach its tool. It stays LOCKED (tool hidden) until the precondition is
@@ -76,7 +81,7 @@ hidden from the model) and \`outputMappings\` (write a tool result back into a s
 - \`achievedWhen\`, \`failedWhen\`, \`unlockedWhen\`, \`bindings\`, and
   \`outputMappings\` values are n8n expressions over \`$state\` (and \`$json\`,
   the tool output, for \`outputMappings\`). Always wrap them: \`={{ ... }}\`.
-- Only gate on \`source: "tool"\` slots. The agent can write \`source: "agent"\`
+- Only gate on \`protected\`/\`private\` slots. The agent can write \`standard\`
   slots, so gating on one is not a real guardrail.
 - A tool the agent must not use early belongs on a \`requires\`-gated goal — never
   rely on instructions alone to hold a hard guarantee.
@@ -92,11 +97,11 @@ hidden from the model) and \`outputMappings\` (write a tool result back into a s
 \`\`\`json
 {
   "slots": [
-    { "name": "email", "type": "string", "source": "agent" },
-    { "name": "verificationId", "type": "string", "source": "tool" },
-    { "name": "emailVerified", "type": "boolean", "source": "tool" },
-    { "name": "verificationAttempts", "type": "number", "source": "tool", "initialValue": 0 },
-    { "name": "trialExtendedUntil", "type": "string", "source": "tool" }
+    { "name": "email", "type": "string", "access": "standard" },
+    { "name": "verificationId", "type": "string", "access": "private" },
+    { "name": "emailVerified", "type": "boolean", "access": "protected" },
+    { "name": "verificationAttempts", "type": "number", "access": "protected", "initialValue": 0 },
+    { "name": "trialExtendedUntil", "type": "string", "access": "protected" }
   ],
   "goals": [
     {
@@ -138,7 +143,7 @@ Here \`extend_trial\`'s tool is unavailable until \`emailVerified\` is set true 
 ## Verify before finishing
 
 - Every gated tool sits on a goal whose \`requires\` points at the precondition goal.
-- The precondition's \`achievedWhen\` reads a \`source: "tool"\` slot, not an agent slot.
+- The precondition's \`achievedWhen\` reads a \`protected\`/\`private\` slot, not a \`standard\` one.
 - Every attachment \`tool\` name matches a tool actually configured on the agent.
 - No secret (code, password, PII) is stored in a slot.
 - \`requires\` forms a DAG.`,

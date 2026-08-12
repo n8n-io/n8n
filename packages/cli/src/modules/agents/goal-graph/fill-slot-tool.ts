@@ -16,11 +16,11 @@ const SLOT_TYPE_VALIDATORS = {
 
 /**
  * Built-in tool letting the agent record information learned in conversation
- * (e.g. the email a customer states) into agent-source slots. Tool-source
- * slots are not offered — they can only be written by declared tool output
- * mappings, so the agent cannot self-certify past a gate.
+ * (e.g. the email a customer states) into `standard` slots. `protected` and
+ * `private` slots are not offered — they can only be written by declared tool
+ * output mappings, so the agent cannot self-certify past a gate.
  *
- * Returns `undefined` when the definition declares no agent-source slots.
+ * Returns `undefined` when the definition declares no `standard` slots.
  */
 export function createFillSlotTool(options: {
 	agentId: string;
@@ -29,7 +29,7 @@ export function createFillSlotTool(options: {
 }): BuiltTool | undefined {
 	const { agentId, definition, stateService } = options;
 
-	const agentSlots = definition.slots.filter((slot) => slot.source === 'agent');
+	const agentSlots = definition.slots.filter((slot) => slot.access === 'standard');
 	if (agentSlots.length === 0) return undefined;
 
 	const slotsByName = new Map(agentSlots.map((slot) => [slot.name, slot]));

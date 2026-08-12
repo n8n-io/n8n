@@ -225,7 +225,7 @@ describe('AgentConfigService', () => {
 
 			const result = await service.validateConfig({
 				...baseConfig,
-				slots: [{ name: 'customerId', type: 'string', source: 'tool' }],
+				slots: [{ name: 'customerId', type: 'string', access: 'protected' }],
 				goals: [{ id: 'verify', name: 'Verify', instructions: 'Verify the customer' }],
 			});
 
@@ -241,7 +241,7 @@ describe('AgentConfigService', () => {
 			await expect(
 				service.validateConfig({
 					...baseConfig,
-					slots: [{ name: 'customerId', type: 'string', source: 'tool' }],
+					slots: [{ name: 'customerId', type: 'string', access: 'protected' }],
 					goals: [{ id: 'verify', name: 'Verify', instructions: 'Verify the customer' }],
 				}),
 			).resolves.toMatchObject({ valid: true });
@@ -411,7 +411,7 @@ describe('AgentConfigService', () => {
 			const { service, agentRepository } = makeService({ modules: ['goal-graph'] });
 			const configWithGoals: AgentJsonConfig = {
 				...baseConfig,
-				slots: [{ name: 'customerId', type: 'string', source: 'tool' }],
+				slots: [{ name: 'customerId', type: 'string', access: 'protected' }],
 				goals: [{ id: 'verify', name: 'Verify', instructions: 'Verify the customer' }],
 			};
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());

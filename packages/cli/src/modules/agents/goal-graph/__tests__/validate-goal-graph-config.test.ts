@@ -18,7 +18,7 @@ describe('validateGoalGraphConfig', () => {
 
 	it('accepts a valid goal graph', () => {
 		const config = makeConfig({
-			slots: [{ name: 'customerId', type: 'string', source: 'tool' }],
+			slots: [{ name: 'customerId', type: 'string', access: 'protected' }],
 			goals: [
 				{ id: 'a', name: 'A', instructions: 'a' },
 				{
@@ -59,7 +59,7 @@ describe('validateGoalGraphConfig', () => {
 
 	it('rejects output mappings to undeclared slots', () => {
 		const config = makeConfig({
-			slots: [{ name: 'known', type: 'string', source: 'tool' }],
+			slots: [{ name: 'known', type: 'string', access: 'protected' }],
 			goals: [
 				{
 					id: 'a',

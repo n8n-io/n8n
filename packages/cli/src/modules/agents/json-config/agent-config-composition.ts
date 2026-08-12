@@ -1,4 +1,5 @@
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
+import { migrateSlotAccess } from '@n8n/api-types';
 
 import type { Agent } from '../entities/agent.entity';
 
@@ -11,6 +12,9 @@ export function composeJsonConfig(agent: Agent): AgentJsonConfig | null {
 	if (!agent.schema) return null;
 	return {
 		...agent.schema,
+		// Heal slots persisted with the legacy `source` field (the raw entity
+		// schema bypasses the zod migration).
+		...(agent.schema.slots ? { slots: agent.schema.slots.map(migrateSlotAccess) } : {}),
 		integrations: agent.integrations ?? [],
 	};
 }

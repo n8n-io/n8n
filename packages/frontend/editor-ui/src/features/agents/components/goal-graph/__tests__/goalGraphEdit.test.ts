@@ -22,7 +22,7 @@ function goal(id: string, requires?: string[]): AgentGoalConfig {
 }
 
 function slot(name: string): AgentSlotConfig {
-	return { name, type: 'string', source: 'agent' };
+	return { name, type: 'string', access: 'standard' };
 }
 
 describe('generateGoalId', () => {
@@ -173,8 +173,8 @@ describe('slots', () => {
 		expect(generateSlotName([slot('slot1'), slot('slot2')])).toBe('slot3');
 	});
 
-	it('createDefaultSlot creates an agent-source string slot', () => {
-		expect(createDefaultSlot([])).toEqual({ name: 'slot1', type: 'string', source: 'agent' });
+	it('createDefaultSlot creates a standard-access string slot', () => {
+		expect(createDefaultSlot([])).toEqual({ name: 'slot1', type: 'string', access: 'standard' });
 	});
 
 	it('upsertSlot appends when index is null and replaces otherwise', () => {
