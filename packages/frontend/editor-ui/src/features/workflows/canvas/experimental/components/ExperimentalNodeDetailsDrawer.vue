@@ -138,14 +138,6 @@ const latestNodeError = computed(() => {
 	const error = latestTaskData.value?.error;
 	return isNodeError(error) ? error : undefined;
 });
-const runStatus = computed(() => {
-	if (workflowExecutionStateStore.value.executingNode.isNodeExecuting(props.node.name)) {
-		return i18n.baseText('nodePanel.status.running');
-	}
-	if (latestNodeError.value) return i18n.baseText('nodePanel.status.error');
-	if (latestTaskData.value) return i18n.baseText('nodePanel.status.succeeded');
-	return undefined;
-});
 const preferredInputNodeName = computed(() => {
 	return (
 		parentNodeNames.value.find(
@@ -303,6 +295,18 @@ onBeforeUnmount(() => {
 					<template #content>{{ i18n.baseText('generic.communityNode') }}</template>
 					<N8nBadge theme="tertiary">{{ i18n.baseText('nodePanel.community') }}</N8nBadge>
 				</N8nTooltip>
+				<NodeExecuteButton
+					v-if="!isReadOnly"
+					:node-name="node.name"
+					:label="i18n.baseText('ndv.execute.testStep')"
+					:aria-label="i18n.baseText('ndv.execute.testStep')"
+					telemetry-source="node_panel"
+					variant="ghost"
+					size="small"
+					square
+					hide-label
+					@execute="handleExecute"
+				/>
 				<N8nTooltip placement="bottom">
 					<template #content>
 						{{
@@ -355,13 +359,6 @@ onBeforeUnmount(() => {
 						/>
 					</template>
 				</N8nDropdownMenu>
-				<N8nIconButton
-					variant="ghost"
-					icon="x"
-					size="small"
-					:aria-label="i18n.baseText('nodePanel.close')"
-					@click="closePanel"
-				/>
 			</header>
 
 			<div :class="$style.tabBar">
@@ -410,21 +407,6 @@ onBeforeUnmount(() => {
 					@execute="handleExecute"
 				/>
 			</main>
-
-			<footer v-if="!isReadOnly" :class="$style.footer">
-				<N8nText v-if="runStatus" size="xsmall" color="text-base" :class="$style.runStatus">
-					{{ runStatus }}
-				</N8nText>
-				<NodeExecuteButton
-					:node-name="node.name"
-					:label="i18n.baseText('ndv.execute.testStep')"
-					telemetry-source="node_panel"
-					variant="subtle"
-					size="large"
-					:class="$style.executeButton"
-					@execute="handleExecute"
-				/>
-			</footer>
 		</template>
 
 		<N8nPopover
@@ -525,6 +507,8 @@ onBeforeUnmount(() => {
 .title {
 	min-width: 0;
 	flex: 1;
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
 }
 
 .titleGroup {
@@ -601,23 +585,6 @@ onBeforeUnmount(() => {
 	border: 1px solid var(--border-color--danger);
 	border-radius: var(--radius--md);
 	background: var(--background--danger);
-}
-
-.footer {
-	position: relative;
-	padding: var(--spacing--xs);
-	border-top: 1px solid var(--border-color--subtle);
-	background: var(--background--surface);
-}
-
-.runStatus {
-	display: block;
-	margin-bottom: var(--spacing--2xs);
-	text-align: center;
-}
-
-.executeButton {
-	width: 100%;
 }
 
 .mapper {

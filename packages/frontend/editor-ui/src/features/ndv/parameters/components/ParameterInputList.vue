@@ -14,7 +14,16 @@ import {
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
-import { computed, defineAsyncComponent, nextTick, onErrorCaptured, ref, watch } from 'vue';
+import {
+	computed,
+	defineAsyncComponent,
+	inject,
+	nextTick,
+	onErrorCaptured,
+	provide,
+	ref,
+	watch,
+} from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -41,6 +50,7 @@ import ImportCurlParameter from './ImportCurlParameter.vue';
 import MultipleParameter from './MultipleParameter.vue';
 import ParameterInputFull from './ParameterInputFull.vue';
 import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
+import { parameterFieldLayoutKey, type ParameterFieldLayout } from './parameterFieldLayout';
 
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
@@ -101,6 +111,7 @@ type Props = {
 	optionsOverrides?: ParameterOptionsOverrides;
 	assignmentCollectionEditableValueIndices?: Record<string, number[]>;
 	layout?: 'inline';
+	fieldLayout?: ParameterFieldLayout;
 	flattenSingleValueCollections?: boolean;
 	noticeTheme?: 'warning' | 'info';
 	useParameterDefaultsForMissingValues?: boolean;
@@ -136,6 +147,13 @@ const {
 	isRagStarterCalloutVisible,
 } = useCalloutHelpers();
 const aiGateway = useAiGateway();
+const inheritedFieldLayout = inject(
+	parameterFieldLayoutKey,
+	computed<ParameterFieldLayout>(() => 'stacked'),
+);
+const resolvedFieldLayout = computed(() => props.fieldLayout ?? inheritedFieldLayout.value);
+
+provide(parameterFieldLayoutKey, resolvedFieldLayout);
 
 const MODEL_PARAMETER_NAMES = new Set(['modelId', 'model', 'modelName']);
 
@@ -1077,6 +1095,7 @@ watch(
 					:path="item.path"
 					:is-read-only="isReadOnly || item.isDisabled"
 					:hide-label="layout === 'inline'"
+					:field-layout="resolvedFieldLayout"
 					:node-values="nodeValues"
 					:show-delete="
 						!isReadOnly &&
