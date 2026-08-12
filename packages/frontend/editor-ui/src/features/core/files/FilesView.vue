@@ -458,6 +458,13 @@ onMounted(() => {
 .container {
 	position: relative;
 	height: 100%;
+	// The routed view is a flex item of the app shell's centered content
+	// wrapper; without an explicit width it shrink-fits instead of stretching.
+	// Mirror the shell's centering so the capped page column sits centered,
+	// exactly like the sibling list views that render PageViewLayout as root.
+	width: 100%;
+	display: flex;
+	justify-content: center;
 }
 
 .hiddenInput {
