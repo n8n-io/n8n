@@ -1,0 +1,32 @@
+packages/n8n-test/scripts/bundle.mjs
+  s_157f08ca3b0299::t_a8d49c3c8789f1 30-31,35
+  s_157f08ca3b0299::t_d98820cddabdf2 117-119
+packages/n8n-test/src/mock-node.ts
+  s_157f08ca3b0299::t_3816e43cde96c0 30-33,35,42-46
+  s_157f08ca3b0299::t_7b16d4fe268469 63-66
+packages/n8n-test/src/run-workflow.ts
+  s_157f08ca3b0299::t_4b17dd25d2a065 129-140
+packages/n8n-test/README.md
+  s_157f08ca3b0299::t_a33e167b610dd2 125-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5e51b07b68e7aa20c7fb795f5eead484e615d8ea",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_157f08ca3b0299": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8158bab5-b092-4dee-bd6c-3fef6d0146f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
