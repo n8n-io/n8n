@@ -1284,6 +1284,7 @@ async function dismissComposerContextChip() {
 	display: flex;
 	min-width: 0;
 	overflow: hidden;
+	padding-top: var(--spacing--sm);
 }
 
 .agentPreviewLayoutTransition {
@@ -1310,7 +1311,13 @@ async function dismissComposerContextChip() {
 .canvasArea {
 	flex-shrink: 0;
 	min-width: 0;
-	border-left: var(--border);
+	border: var(--border);
+	border-right-color: transparent;
+	background-color: var(--background--surface);
+	margin-bottom: var(--spacing--sm);
+	border-top-left-radius: var(--radius--lg);
+	border-bottom-left-radius: var(--radius--lg);
+	box-shadow: var(--shadow--xs);
 
 	// Widen the resize handle hit area for easier grabbing
 	:global([data-test-id='resize-handle']) {
