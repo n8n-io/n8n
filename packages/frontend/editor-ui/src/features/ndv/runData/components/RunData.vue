@@ -48,6 +48,7 @@ import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEdit
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import RunDataPinButton from './RunDataPinButton.vue';
+import GenerateSampleDataPopover from '@/features/ndv/shared/components/GenerateSampleDataPopover.vue';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -89,6 +90,7 @@ import {
 	N8nBlockUi,
 	N8nButton,
 	N8nCallout,
+	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
@@ -651,6 +653,11 @@ const pinButtonDisabled = computed(
 	() => hasNoData.value || hasBinaryData.value || isReadOnly.value,
 );
 
+/**
+ * The toolbar action generates straight away rather than offering the scenario
+ * popover: it is the fast repeat action once data already exists, and a popover
+ * would tax every regeneration. Steering lives on the edit-mode wand instead.
+ */
 const showGenerateSampleDataButton = computed(
 	() =>
 		!props.disableEdit &&
@@ -1590,6 +1597,22 @@ defineExpose({ enterEditMode });
 					@change="onDisplayModeChange"
 				/>
 
+				<N8nButton
+					v-if="showGenerateSampleDataButton"
+					v-show="!editMode.enabled"
+					variant="subtle"
+					size="small"
+					:class="$style.aiButton"
+					:title="i18n.baseText('ndv.output.generateSampleData.tooltip')"
+					:loading="isGeneratingSampleData"
+					:disabled="node?.disabled || isGeneratingSampleData"
+					data-test-id="ndv-generate-sample-data"
+					@click="() => generateSampleData()"
+				>
+					<template #icon><N8nIcon icon="sparkles" /></template>
+					{{ i18n.baseText('ndv.output.generateSampleData.button') }}
+				</N8nButton>
+
 				<N8nIconButton
 					variant="subtle"
 					size="small"
@@ -1609,20 +1632,6 @@ defineExpose({ enterEditMode });
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
 
-				<N8nIconButton
-					v-if="showGenerateSampleDataButton"
-					v-show="!editMode.enabled"
-					variant="subtle"
-					size="small"
-					:title="i18n.baseText('ndv.output.generateSampleData.tooltip')"
-					:circle="false"
-					:loading="isGeneratingSampleData"
-					:disabled="node?.disabled || isGeneratingSampleData"
-					icon="sparkles"
-					data-test-id="ndv-generate-sample-data"
-					@click="() => generateSampleData()"
-				/>
-
 				<RunDataPinButton
 					v-if="showPinButton"
 					:disabled="pinButtonDisabled"
@@ -1637,19 +1646,27 @@ defineExpose({ enterEditMode });
 				/>
 
 				<div v-if="!props.disableEdit" v-show="editMode.enabled" :class="$style.editModeActions">
-					<N8nIconButton
+					<GenerateSampleDataPopover
 						v-if="canGenerateSampleData"
-						variant="subtle"
-						size="small"
-						class="mr-2xs"
-						:title="i18n.baseText('ndv.output.generateSampleData.editor.tooltip')"
-						:circle="false"
-						:loading="isGeneratingSampleData"
-						:disabled="node?.disabled || isGeneratingSampleData"
-						icon="wand-sparkles"
-						data-test-id="ndv-generate-sample-data-editor"
-						@click="generateSampleData(applySampleDataToEditor)"
-					/>
+						:is-generating="isGeneratingSampleData"
+						:disabled="node?.disabled"
+						@generate="(hint) => generateSampleData(applySampleDataToEditor, hint)"
+					>
+						<template #trigger>
+							<N8nButton
+								variant="subtle"
+								size="small"
+								:class="[$style.aiButton, 'mr-2xs']"
+								:title="i18n.baseText('ndv.output.generateSampleData.editor.tooltip')"
+								:loading="isGeneratingSampleData"
+								:disabled="node?.disabled || isGeneratingSampleData"
+								data-test-id="ndv-generate-sample-data-editor"
+							>
+								<template #icon><N8nIcon icon="wand-sparkles" /></template>
+								{{ i18n.baseText('ndv.output.generateSampleData.button') }}
+							</N8nButton>
+						</template>
+					</GenerateSampleDataPopover>
 					<N8nButton
 						variant="subtle"
 						:label="i18n.baseText('runData.editor.cancel')"
@@ -2527,6 +2544,21 @@ defineExpose({ enterEditMode });
 	justify-content: flex-end;
 	align-items: center;
 	margin-left: var(--ndv--spacing);
+}
+
+/* Purple marks AI actions across the platform (agent banners, pinned-node borders). */
+.aiButton svg {
+	color: var(--color--purple-500);
+}
+
+:global(body[data-theme='dark']) .aiButton svg {
+	color: var(--color--purple-400);
+}
+
+@media (prefers-color-scheme: dark) {
+	:global(body:not([data-theme])) .aiButton svg {
+		color: var(--color--purple-400);
+	}
 }
 
 .stretchVertically {

@@ -209,11 +209,15 @@ describe('RunData', () => {
 			it('fills the editor instead of pinning', async () => {
 				generateSampleData.mockResolvedValue({ pinData: { 'Test Node': [{ json: { id: 7 } }] } });
 
-				const { getByTestId } = render({ displayMode: 'table', instanceAiEnabled: true });
+				const { getByTestId, findByTestId } = render({
+					displayMode: 'table',
+					instanceAiEnabled: true,
+				});
 				ndvStore.outputPanelEditMode = { enabled: true, value: '[]' };
 				await waitFor(() => expect(getByTestId('ndv-generate-sample-data-editor')).toBeVisible());
 
 				await userEvent.click(getByTestId('ndv-generate-sample-data-editor'));
+				await userEvent.click(await findByTestId('ndv-sample-data-generate'));
 
 				// The user reviews and saves; generating must not pin behind their back.
 				await waitFor(() =>

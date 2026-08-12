@@ -474,13 +474,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							{{ i18n.baseText('ndv.output.insertTestData') }}
 						</N8nText>
 						<template v-if="canGenerateSampleData">
+							<br />
 							{{ i18n.baseText('generic.or') }}
 							<N8nText
 								tag="a"
 								size="medium"
 								color="primary"
 								data-test-id="ndv-generate-sample-data-link"
-								@click="onGenerateSampleData"
+								@click="() => onGenerateSampleData()"
 							>
 								{{
 									isGeneratingSampleData

@@ -31,7 +31,7 @@ export type ApplySampleData = (items: INodeExecutionData[]) => boolean;
 export type UseGenerateSampleDataReturn = {
 	isGenerating: Ref<boolean>;
 	canGenerate: ComputedRef<boolean>;
-	generate: (apply?: ApplySampleData) => Promise<void>;
+	generate: (apply?: ApplySampleData, hint?: string) => Promise<void>;
 };
 
 /**
@@ -79,7 +79,7 @@ export function useGenerateSampleData(
 		return true;
 	}
 
-	async function generate(apply?: ApplySampleData): Promise<void> {
+	async function generate(apply?: ApplySampleData, hint?: string): Promise<void> {
 		// A custom target reports its own outcome visibly (the editor fills in), and
 		// the pinned-data success copy would be a lie there — nothing is pinned until
 		// the user saves. Drift is still announced either way: that is about the data.
@@ -103,6 +103,7 @@ export function useGenerateSampleData(
 					connections,
 				},
 				nodeNames: [node.name],
+				...(hint ? { hint } : {}),
 			});
 
 			const items = response.pinData[node.name];

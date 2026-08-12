@@ -118,6 +118,8 @@ describe('OutputPanel', () => {
 		expect(queryByTestId('ndv-generate-sample-data-link')).not.toBeInTheDocument();
 	});
 
+	// The empty state generates straight away — steering the scenario lives on the
+	// editor wand, where the user is already reviewing the data.
 	it('requests sample data for the active node on click', async () => {
 		generateSampleData.mockResolvedValue({ pinData: { [ACTIVE_NODE.name]: [{ json: { a: 1 } }] } });
 
@@ -127,5 +129,6 @@ describe('OutputPanel', () => {
 
 		await waitFor(() => expect(generateSampleData).toHaveBeenCalledTimes(1));
 		expect(generateSampleData.mock.calls[0][1].nodeNames).toEqual([ACTIVE_NODE.name]);
+		expect(generateSampleData.mock.calls[0][1].hint).toBeUndefined();
 	});
 });
