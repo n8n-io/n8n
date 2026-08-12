@@ -587,6 +587,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						state: 'open',
 						decision: 'pending',
 						workflowVersionId: 'version-0',
+						description: null,
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T10:00:00.000Z',
 						decisionBy: null,
@@ -694,6 +695,9 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const updateDialog = await findByRole('dialog', {
 				name: 'Submit latest changes to existing review',
 			});
+			// The update dialog is a two-step flow: version metadata, then the review
+			// description.
+			await userEvent.click(within(updateDialog).getByTestId('workflow-update-review-next-button'));
 			await userEvent.click(
 				within(updateDialog).getByTestId('workflow-update-review-submit-button'),
 			);
@@ -1274,6 +1278,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						decision: 'pending',
 						// Differs from the saved 'version-1', so the review is out of date
 						workflowVersionId: 'version-0',
+						description: null,
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T10:00:00.000Z',
 						decisionBy: null,

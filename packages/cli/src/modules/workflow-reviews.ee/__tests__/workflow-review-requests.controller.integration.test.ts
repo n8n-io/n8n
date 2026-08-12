@@ -22,15 +22,15 @@ import {
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
+import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
+import type { SuperAgentTest } from '@test-integration/types';
+import * as utils from '@test-integration/utils';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
-import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
-import type { SuperAgentTest } from '@test-integration/types';
-import * as utils from '@test-integration/utils';
 
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
@@ -936,7 +936,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 		versionId: string,
 		author: User,
 		projectId = ownerProject.id,
-		overrides: { state?: 'open' | 'closed'; decision?: 'pending' | 'changes_requested' } = {},
+		overrides: {
+			state?: 'open' | 'closed';
+			decision?: 'pending' | 'changes_requested';
+			description?: string | null;
+		} = {},
 	) {
 		const request = await requestRepository.createRequest(
 			{
@@ -1064,6 +1068,70 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 		const unchanged = await requestRepository.findById(request.id, {});
 		expect(unchanged?.updatedAt).toEqual(request.updatedAt);
 		expect(unchanged?.decision).toBe('changes_requested');
+	});
+
+	test('updates the review description when re-pinning the version', async () => {
+		const { workflow } = await createReviewableWorkflow('version-1');
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
+		const request = await seedOpenRequest(workflow.id, 'version-1', owner, ownerProject.id, {
+			description: 'Original review description',
+		});
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-2',
+				workflowVersionName: 'Release candidate',
+				description: '  Updated review description  ',
+			})
+			.expect(200);
+
+		const updated = await requestRepository.findById(request.id, {});
+		expect(updated?.description).toBe('Updated review description');
+	});
+
+	test('updates the review description when the version is already pinned', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await seedOpenRequest(workflow.id, versionId, owner, ownerProject.id, {
+			decision: 'changes_requested',
+			description: 'Original review description',
+		});
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+				workflowVersionName: 'Release candidate',
+				description: 'Updated review description',
+			})
+			.expect(200);
+
+		const updated = await requestRepository.findById(request.id, {});
+		expect(updated).toMatchObject({
+			description: 'Updated review description',
+			decision: 'changes_requested',
+		});
+	});
+
+	test('clears the review description when an empty string is sent', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await seedOpenRequest(workflow.id, versionId, owner, ownerProject.id, {
+			description: 'Original review description',
+		});
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+				workflowVersionName: 'Release candidate',
+				description: '',
+			})
+			.expect(200);
+
+		expect((await requestRepository.findById(request.id, {}))?.description).toBeNull();
 	});
 
 	test('returns 404 for an unknown review request id', async () => {
@@ -1940,12 +2008,43 @@ describe('GET /workflow-review-requests', () => {
 			state: 'open',
 			decision: 'pending',
 			workflowVersionId: versionId,
+			// The owner can act on the review, so the description rides along; the
+			// title stays off the workflow-scoped list entirely.
+			description: 'Confidential description',
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 			// Neither applies to a pending review
 			decisionBy: null,
 			approvedVersionPublicationState: null,
 		});
+	});
+
+	test('withholds the description from a requester who cannot act on the review', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+		const request = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Confidential title',
+				description: 'Confidential description',
+				createdById: owner.id,
+			},
+			{},
+		);
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+
+		const viewerResponse = await viewerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+		expect(viewerResponse.body.data.data[0].description).toBeNull();
+
+		const editorResponse = await memberAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+		expect(editorResponse.body.data.data[0].description).toBe('Confidential description');
 	});
 
 	test('returns the newest review, closed included, with take=1 and no state filter', async () => {

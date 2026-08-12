@@ -77,10 +77,15 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 	 * refetch. Mutation responses carry the minimal summary: a brand-new review is
 	 * pending, so neither derived field applies yet.
 	 */
-	const setOpenReview = (workflowId: string, review: WorkflowReviewRequestSummary): void => {
+	const setOpenReview = (
+		workflowId: string,
+		review: WorkflowReviewRequestSummary,
+		description: string | null = null,
+	): void => {
 		latestSequenceByWorkflowId[workflowId] = (latestSequenceByWorkflowId[workflowId] ?? 0) + 1;
 		latestReviewByWorkflowId.value[workflowId] = {
 			...review,
+			description,
 			decisionBy: null,
 			approvedVersionPublicationState: null,
 		};

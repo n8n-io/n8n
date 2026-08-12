@@ -47,9 +47,13 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toEligibleReviewer } from './workflow-review.mapper';
-
 /** Omitted stays omitted (column untouched); an empty/whitespace string clears to null. */
 function normalizeVersionDescription(description: string | undefined): string | null | undefined {
+	if (description === undefined) return undefined;
+	return description.trim() || null;
+}
+
+function normalizeReviewDescription(description: string | undefined): string | null | undefined {
 	if (description === undefined) return undefined;
 	return description.trim() || null;
 }
@@ -113,20 +117,28 @@ export class WorkflowReviewRequestService {
 			throw new NotFoundError('Could not find workflow');
 		}
 
-		const [requests, count] = await this.workflowReviewRequestRepository.findRequestsForWorkflow(
-			query.workflowId,
-			{ state: query.state, skip: query.skip, take: query.take },
-		);
+		const [[requests, count], canPublish] = await Promise.all([
+			this.workflowReviewRequestRepository.findRequestsForWorkflow(query.workflowId, {
+				state: query.state,
+				skip: query.skip,
+				take: query.take,
+			}),
+			// the description is only for whoever can act on the review
+			this.workflowFinderService
+				.findWorkflowForUser(query.workflowId, user, ['workflow:publish'])
+				.then((found) => found !== null),
+		]);
 
 		return {
 			count,
-			data: await this.toWorkflowScopedItems(query.workflowId, requests),
+			data: await this.toWorkflowScopedItems(query.workflowId, requests, canPublish),
 		};
 	}
 
 	private async toWorkflowScopedItems(
 		workflowId: string,
 		requests: WorkflowReviewRequestForWorkflowRow[],
+		canPublish: boolean,
 	): Promise<WorkflowReviewRequestForWorkflow[]> {
 		const [decisionActors, publicationStates] = await Promise.all([
 			this.resolveDecisionActors(requests),
@@ -137,6 +149,7 @@ export class WorkflowReviewRequestService {
 			id: request.id,
 			state: request.state,
 			decision: request.decision,
+			description: canPublish ? request.description : null,
 			workflowVersionId: request.workflowVersionId,
 			createdAt: request.createdAt.toISOString(),
 			updatedAt: request.updatedAt.toISOString(),
@@ -481,12 +494,18 @@ export class WorkflowReviewRequestService {
 
 		const versionName = dto.workflowVersionName.trim();
 		const versionDescription = normalizeVersionDescription(dto.workflowVersionDescription);
+		const reviewDescription = normalizeReviewDescription(dto.description);
 		const metadataChanged = (current: { name: string | null; description: string | null }) =>
 			versionName !== current.name ||
 			(versionDescription !== undefined && versionDescription !== current.description);
+		const hasReviewDescriptionChanged = (current: WorkflowReviewRequest) =>
+			reviewDescription !== undefined && reviewDescription !== current.description;
 
-		// Nothing new to review: skip the lock, write nothing, broadcast nothing.
-		if (workflowRow.workflowVersionId === dto.workflowVersionId) {
+		// Nothing new to review: skip the lock unless the review request itself must change.
+		if (
+			workflowRow.workflowVersionId === dto.workflowVersionId &&
+			!hasReviewDescriptionChanged(request)
+		) {
 			// A rename or re-description is the one thing that can still be pending
 			// here, and a lone UPDATE is atomic, so apply it rather than silently
 			// dropping it.
@@ -542,7 +561,15 @@ export class WorkflowReviewRequestService {
 						);
 					}
 
-					return { request: current, changed: false };
+					if (reviewDescription === undefined || reviewDescription === current.description) {
+						return { request: current, changed: false };
+					}
+
+					current.description = reviewDescription;
+					current.updatedById = user.id;
+					const saved = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
+
+					return { request: saved, changed: true };
 				}
 
 				await this.workflowReviewRequestWorkflowRepository.updateWorkflowVersion(
@@ -563,6 +590,9 @@ export class WorkflowReviewRequestService {
 				);
 
 				current.decision = 'pending';
+				if (reviewDescription !== undefined) {
+					current.description = reviewDescription;
+				}
 				current.updatedById = user.id;
 				const saved = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
 

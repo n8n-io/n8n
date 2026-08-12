@@ -175,8 +175,6 @@ const statusSummary = computed(() => {
 	min-width: 0;
 }
 
-/* No card header here, so the role labels carry the grouping — they need more air
-   between sections than between a label and its own rows. */
 .peopleCard {
 	--n8n--card-body--gap: var(--spacing--sm);
 }
@@ -197,8 +195,6 @@ const statusSummary = computed(() => {
 	> span > span {
 		display: flex;
 		flex: 1;
-		/* Long names wrap, so the icon tracks the first line rather than centring
-		   itself against the whole block. */
 		align-items: flex-start;
 		min-width: 0;
 	}

@@ -37,6 +37,8 @@ export type WorkflowReviewApprovedPublicationState =
  * stay on the minimal summary.
  */
 export interface WorkflowReviewRequestForWorkflow extends WorkflowReviewRequestSummary {
+	/** The review description, but only for a requester who can act on the review */
+	description: string | null;
 	/** Who made the current decision; `null` when there is none or the user is gone. */
 	decisionBy: WorkflowReviewEligibleReviewer | null;
 	/** Only derived for an approved review; `null` otherwise. */

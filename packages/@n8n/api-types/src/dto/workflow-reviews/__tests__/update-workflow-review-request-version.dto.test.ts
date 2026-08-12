@@ -29,6 +29,24 @@ describe('UpdateWorkflowReviewRequestVersionDto', () => {
 					workflowVersionDescription: '',
 				},
 			},
+			{
+				name: 'an optional review description',
+				request: {
+					workflowId: 'workflow-1',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+					description: 'Review the retry behavior',
+				},
+			},
+			{
+				name: 'an empty review description',
+				request: {
+					workflowId: 'workflow-1',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+					description: '',
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = UpdateWorkflowReviewRequestVersionDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -110,6 +128,16 @@ describe('UpdateWorkflowReviewRequestVersionDto', () => {
 					workflowVersionDescription: 'a'.repeat(2049),
 				},
 				expectedErrorPath: ['workflowVersionDescription'],
+			},
+			{
+				name: 'a review description longer than 512 characters',
+				request: {
+					workflowId: 'workflow-1',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+					description: 'a'.repeat(513),
+				},
+				expectedErrorPath: ['description'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = UpdateWorkflowReviewRequestVersionDto.safeParse(request);
