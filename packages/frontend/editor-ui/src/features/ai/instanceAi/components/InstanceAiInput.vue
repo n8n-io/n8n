@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nTag } from '@n8n/design-system';
+import { N8nIcon, N8nTag, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
@@ -41,7 +41,14 @@ type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
-type ContextChip = { label: string; icon?: string; testId?: string } | null;
+type ContextChip = {
+	key?: string;
+	label: string;
+	icon?: string;
+	testId?: string;
+	/** Shown on hover — e.g. the full execution error behind a short pill label. */
+	tooltip?: string;
+};
 
 const props = withDefaults(
 	defineProps<{
@@ -67,7 +74,12 @@ const props = withDefaults(
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		submitLabel?: string;
 		submitActiveRequiresFocus?: boolean;
-		contextChip?: ContextChip;
+		/** @deprecated Prefer `contextChips` when more than one pill is needed. */
+		contextChip?: ContextChip | null;
+		/** Composer context pills (execution error, workflow, handoff, …). */
+		contextChips?: ContextChip[];
+		/** External draft (e.g. proactive offer). Applied when the value changes; clearing does not wipe typing. */
+		prefillText?: string | null;
 	}>(),
 	{
 		isStreaming: false,
@@ -83,6 +95,8 @@ const props = withDefaults(
 		submitLabel: undefined,
 		submitActiveRequiresFocus: false,
 		contextChip: null,
+		contextChips: undefined,
+		prefillText: null,
 	},
 );
 
@@ -90,7 +104,7 @@ const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
 	'cancel-plan-edit': [];
-	'dismiss-context-chip': [];
+	'dismiss-context-chip': [key?: string];
 	'workflow-preview': [workflowFile: string | null];
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	// Fires when the composer goes between empty and non-empty so the split
@@ -98,6 +112,11 @@ const emit = defineEmits<{
 	// (auto-focus on mount must NOT pause the cycle).
 	'content-change': [hasContent: boolean];
 }>();
+
+const resolvedContextChips = computed(() => {
+	if (props.contextChips) return props.contextChips;
+	return props.contextChip ? [props.contextChip] : [];
+});
 
 const i18n = useI18n();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
@@ -246,6 +265,16 @@ watch(inputText, (text) => {
 		selectedSuggestionDraft.value = null;
 	}
 });
+
+watch(
+	() => props.prefillText,
+	(text, previous) => {
+		if (text == null || text === previous) return;
+		inputText.value = text;
+		void nextTick(() => focus());
+	},
+	{ immediate: true },
+);
 
 watch(
 	() => props.isPlanEditMode,
@@ -483,33 +512,55 @@ const resizable = computed(() => {
 						</template>
 					</N8nTag>
 				</div>
-				<div
-					v-else-if="props.contextChip"
-					:class="$style.contextChip"
-					:data-test-id="props.contextChip.testId ?? 'instance-ai-handoff-context-chip'"
-				>
-					<N8nTag :text="props.contextChip.label" :clickable="false" size="lg">
-						<template #tag>
-							<span :class="$style.contextChipContent">
-								<N8nIcon
-									:icon="props.contextChip.icon ?? 'robot'"
-									size="small"
-									data-test-id="instance-ai-handoff-context-chip-icon"
-								/>
-								<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
-								<button
-									type="button"
-									:class="$style.contextChipClose"
-									:title="i18n.baseText('generic.close')"
-									:aria-label="i18n.baseText('generic.close')"
-									data-test-id="instance-ai-handoff-context-chip-dismiss"
-									@click.stop="emit('dismiss-context-chip')"
-								>
-									<N8nIcon icon="x" size="xsmall" />
-								</button>
-							</span>
+				<div v-else-if="resolvedContextChips.length > 0" :class="$style.contextChips">
+					<N8nTooltip
+						v-for="(chip, index) in resolvedContextChips"
+						:key="chip.key ?? chip.label"
+						:disabled="!chip.tooltip"
+						:show-after="TOOLTIP_DELAY_MS"
+						placement="top"
+					>
+						<template v-if="chip.tooltip" #content>
+							<span :class="$style.chipTooltip">{{ chip.tooltip }}</span>
 						</template>
-					</N8nTag>
+						<div
+							:class="[$style.contextChip, { [$style.chipWithTooltip]: chip.tooltip }]"
+							:data-test-id="chip.testId ?? 'instance-ai-handoff-context-chip'"
+						>
+							<N8nTag :text="chip.label" :clickable="false" size="lg">
+								<template #tag>
+									<span :class="$style.contextChipContent">
+										<N8nIcon
+											:icon="chip.icon ?? 'robot'"
+											size="small"
+											:data-test-id="
+												index === 0 ? 'instance-ai-handoff-context-chip-icon' : undefined
+											"
+										/>
+										<span :class="$style.contextChipText">{{ chip.label }}</span>
+										<button
+											type="button"
+											:class="$style.contextChipClose"
+											:title="i18n.baseText('generic.close')"
+											:aria-label="i18n.baseText('generic.close')"
+											:data-test-id="
+												index === 0
+													? 'instance-ai-handoff-context-chip-dismiss'
+													: `${chip.testId ?? 'instance-ai-handoff-context-chip'}-dismiss`
+											"
+											@click.stop="
+												chip.key
+													? emit('dismiss-context-chip', chip.key)
+													: emit('dismiss-context-chip')
+											"
+										>
+											<N8nIcon icon="x" size="xsmall" />
+										</button>
+									</span>
+								</template>
+							</N8nTag>
+						</div>
+					</N8nTooltip>
 				</div>
 				<div v-if="!props.isPlanEditMode && attachedFiles.length > 0" :class="$style.attachments">
 					<AttachmentPreview
@@ -564,9 +615,26 @@ const resizable = computed(() => {
 	gap: var(--spacing--2xs);
 }
 
-.contextChip {
+.contextChips {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
 	align-self: flex-start;
 	max-width: 100%;
+}
+
+.contextChip {
+	max-width: 100%;
+}
+
+.chipWithTooltip {
+	cursor: default;
+
+	&:hover :global(.n8n-tag) {
+		background-color: var(--tag--color--background--hover);
+		border-color: var(--tag--border-color--hover);
+	}
 }
 
 .contextChipContent {
@@ -578,6 +646,13 @@ const resizable = computed(() => {
 
 .contextChipText {
 	white-space: nowrap;
+}
+
+.chipTooltip {
+	display: block;
+	max-width: 16rem;
+	white-space: pre-line;
+	line-height: var(--line-height--md);
 }
 
 .contextChipClose {

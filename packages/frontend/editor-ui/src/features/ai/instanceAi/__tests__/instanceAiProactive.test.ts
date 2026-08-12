@@ -6,7 +6,10 @@ import {
 	buildExecutionErrorSeedMessage,
 	credentialErrorOfferKey,
 	executionErrorOfferKey,
+	extractContextBlocks,
+	getContextBlockField,
 	getContextBlockType,
+	getExecutionErrorChipTooltip,
 	hasContextBlock,
 	stripContextBlocks,
 } from '../instanceAiProactive';
@@ -110,6 +113,14 @@ describe('stripContextBlocks', () => {
 		].join('\n');
 
 		expect(stripContextBlocks(message)).toBe('My "Daily sync" workflow just failed.');
+		expect(extractContextBlocks(message)).toBe(
+			[
+				'<context type="execution-error">',
+				'workflow: Daily sync (id: abc123)',
+				'message: 401 Unauthorized',
+				'</context>',
+			].join('\n'),
+		);
 	});
 
 	it('removes several blocks and collapses the gap they leave behind', () => {
@@ -175,6 +186,41 @@ describe('getContextBlockType', () => {
 	});
 });
 
+describe('getContextBlockField', () => {
+	it('reads a field from the first context block', () => {
+		const text = buildContextBlock('execution-error', {
+			'failed node': 'HTTP Request (n8n-nodes-base.httpRequest)',
+			message: 'Connection refused',
+		});
+
+		expect(getContextBlockField(text, 'message')).toBe('Connection refused');
+		expect(getContextBlockField(text, 'failed node')).toBe(
+			'HTTP Request (n8n-nodes-base.httpRequest)',
+		);
+		expect(getContextBlockField(text, 'missing')).toBeNull();
+	});
+});
+
+describe('getExecutionErrorChipTooltip', () => {
+	it('returns null when there is no execution-error message', () => {
+		expect(getExecutionErrorChipTooltip('plain text')).toBeNull();
+		expect(
+			getExecutionErrorChipTooltip(
+				buildContextBlock('credential-error', { message: 'invalid_auth' }),
+			),
+		).toBeNull();
+	});
+
+	it('joins the failed node name and error message', () => {
+		const text = buildContextBlock('execution-error', {
+			'failed node': 'HTTP Request (n8n-nodes-base.httpRequest)',
+			message: 'Connection refused',
+		});
+
+		expect(getExecutionErrorChipTooltip(text)).toBe('HTTP Request\nConnection refused');
+	});
+});
+
 describe('offer keys', () => {
 	it('scopes execution offers by execution id', () => {
 		expect(executionErrorOfferKey('4711')).toBe('execution-error:4711');
@@ -200,9 +246,7 @@ describe('buildExecutionErrorSeedMessage', () => {
 		const message = buildExecutionErrorSeedMessage(context);
 
 		expect(message.startsWith('instanceAi.proactive.executionError.prompt')).toBe(true);
-		expect(stripContextBlocks(message)).toBe(
-			'instanceAi.proactive.executionError.prompt:{"nodeName":"HTTP Request","workflowName":"Daily sync"}',
-		);
+		expect(stripContextBlocks(message)).toBe('instanceAi.proactive.executionError.prompt');
 	});
 
 	it('carries the workflow, execution, failed node and error message', () => {

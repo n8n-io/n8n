@@ -95,7 +95,7 @@ describe('useInstanceAiPanelStore', () => {
 		expect(store.isOpen).toBe(false);
 	});
 
-	it('openWithSeed syncs the quick-help thread, opens the panel, and sends the message', async () => {
+	it('openWithSeed syncs the quick-help thread, opens the panel, and prefills without sending', async () => {
 		const store = useInstanceAiPanelStore();
 
 		await expect(store.openWithSeed(offer)).resolves.toBe(true);
@@ -107,7 +107,7 @@ describe('useInstanceAiPanelStore', () => {
 			sourceContext: { offerKey: 'execution:4711' },
 		});
 		expect(mocks.getOrCreateRuntime).toHaveBeenCalledWith('thread-1', 'project-1');
-		expect(mocks.sendMessage).toHaveBeenCalledWith(offer.message, undefined, 'push-ref');
+		expect(mocks.sendMessage).not.toHaveBeenCalled();
 		expect(store.isOpen).toBe(true);
 		expect(store.activeThreadId).toBe('thread-1');
 		expect(store.pendingOffer).toEqual(offer);

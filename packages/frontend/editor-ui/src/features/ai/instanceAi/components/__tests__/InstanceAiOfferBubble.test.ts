@@ -9,7 +9,6 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		baseText: (key: string) => {
 			const map: Record<string, string> = {
 				'instanceAi.proactiveOffer.dismiss': 'Dismiss',
-				'aiAssistant.name': 'n8n AI',
 			};
 			return map[key] ?? key;
 		},

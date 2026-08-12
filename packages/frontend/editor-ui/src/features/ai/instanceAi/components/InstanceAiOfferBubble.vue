@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 defineProps<{
@@ -29,15 +29,7 @@ const i18n = useI18n();
 				data-test-id="instance-ai-offer-bubble-accept"
 				@click="$emit('accept')"
 			>
-				<div :class="$style.agentRow">
-					<span :class="$style.avatar" aria-hidden="true">
-						<N8nIcon icon="sparkles" size="small" />
-					</span>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('aiAssistant.name') }}
-					</N8nText>
-				</div>
-				<N8nText bold tag="span" :class="$style.title">{{ title }}</N8nText>
+				<N8nText tag="span" :class="$style.title">{{ title }}</N8nText>
 				<N8nText v-if="detail" tag="span" size="small" color="text-light" :class="$style.detail">
 					{{ detail }}
 				</N8nText>
@@ -57,29 +49,39 @@ const i18n = useI18n();
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .root {
-	/* Positioned by the launcher dock. */
-	width: 100%;
-	filter: drop-shadow(0 4px 14px var(--color--black-alpha-100));
+	/* Positioned by the launcher dock; shrink-wrap so short copy feels like a chat bubble. */
+	width: fit-content;
+	max-width: 100%;
+	--animation--fade-in-up--duration: var(--duration--base);
+	--animation--fade-in-up--translate: var(--spacing--xs);
+
+	@include motion.fade-in-up;
+	animation-fill-mode: both;
+	/* drop-shadow so the tail picks up the same soft elevation as the body */
+	filter: drop-shadow(0 var(--spacing--4xs) var(--spacing--sm) var(--color--black-alpha-100));
 }
 
 .bubble {
 	position: relative;
-	border: var(--border);
-	border-radius: var(--radius--lg) var(--radius--lg) var(--radius--lg) var(--radius--md);
-	background-color: var(--color--background--light-3);
+	border: var(--border-width) solid var(--border-color--subtle);
+	border-radius: var(--radius--xl);
+	background-color: var(--background--surface);
 }
 
-/* Speech-bubble tip aimed at the launcher circle (bottom-right). */
+/* Soft tip aimed at the launcher (bottom-right). */
 .tail {
 	position: absolute;
-	right: var(--spacing--lg);
-	bottom: calc(-1 * var(--spacing--xs));
+	right: var(--spacing--md);
+	bottom: calc(-1 * var(--spacing--2xs));
 	width: var(--spacing--sm);
 	height: var(--spacing--sm);
-	background-color: var(--color--background--light-3);
-	border-right: var(--border);
-	border-bottom: var(--border);
+	background-color: var(--background--surface);
+	border-right: var(--border-width) solid var(--border-color--subtle);
+	border-bottom: var(--border-width) solid var(--border-color--subtle);
+	border-radius: 0 0 var(--radius--4xs) 0;
 	transform: rotate(45deg);
 }
 
@@ -91,22 +93,23 @@ const i18n = useI18n();
 	width: 100%;
 	min-width: 0;
 	margin: 0;
-	padding: var(--spacing--sm) var(--spacing--2xl) var(--spacing--sm) var(--spacing--sm);
+	padding: var(--spacing--sm) var(--spacing--2xl) var(--spacing--sm) var(--spacing--md);
 	border: none;
+	border-radius: inherit;
 	background: transparent;
 	text-align: left;
 	cursor: pointer;
 	color: inherit;
 	font: inherit;
+	transition: background-color var(--duration--snappy) var(--easing--ease-out);
 
 	&:hover {
-		background-color: var(--color--background);
+		background-color: color-mix(in srgb, var(--color--background) 70%, transparent);
 	}
 
 	&:focus-visible {
 		outline: 2px solid var(--color--primary);
 		outline-offset: -2px;
-		border-radius: inherit;
 	}
 }
 
@@ -115,29 +118,13 @@ const i18n = useI18n();
 	top: var(--spacing--3xs);
 	right: var(--spacing--3xs);
 	z-index: 1;
-}
-
-.agentRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	margin-bottom: var(--spacing--5xs);
-}
-
-.avatar {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 1.25rem;
-	height: 1.25rem;
-	border-radius: 50%;
-	color: var(--button--color--text--primary);
-	background: var(--color--primary);
-	flex-shrink: 0;
+	color: var(--color--text--tint-1);
 }
 
 .title {
 	min-width: 0;
+	line-height: var(--line-height--lg);
+	color: var(--color--text);
 }
 
 .detail {

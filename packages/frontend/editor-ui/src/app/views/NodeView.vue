@@ -122,6 +122,10 @@ import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { usePostMessageControls } from '@/app/composables/usePostMessageHandler';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import {
+	summarizeFailedExecution,
+	useInstanceAiExecutionErrorOffer,
+} from '@/features/ai/instanceAi/composables/useInstanceAiExecutionErrorOffer';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -304,7 +308,19 @@ const {
 	readOnly: externalReadOnly,
 	expandGroups: externalExpandGroups,
 	executionButtonType,
+	executionErrorToasts,
 } = useEditorContext();
+
+/**
+ * Canvas Execute-workflow failures. Gated on executionErrorToasts so read-only
+ * hosts that suppress those toasts (and own their own offer wiring, e.g.
+ * ExecutionPreviewHost) don't double-raise.
+ */
+const failedCanvasExecution = computed(() => {
+	if (!executionErrorToasts.value) return null;
+	return summarizeFailedExecution(workflowExecutionState.value.activeExecution);
+});
+useInstanceAiExecutionErrorOffer(failedCanvasExecution);
 
 const runWorkflowButtonType = computed(() =>
 	isDemoRoute.value ? 'secondary' : executionButtonType.value,
