@@ -336,6 +336,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 				:min="SUB_AGENT_MAX_CHILDREN_MIN"
 				:max="SUB_AGENT_MAX_CHILDREN_MAX"
 				:precision="0"
+				:controls="false"
 				:disabled="disabled"
 				:class="$style.shortInput"
 				data-testid="agent-sub-agents-max-children-input"
