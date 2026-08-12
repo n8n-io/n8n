@@ -1002,11 +1002,12 @@ Evals run automatically on PRs that change Instance AI code (path-filtered). The
 
 The job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts. When `LANGSMITH_API_KEY` is set via the `EVALS_LANGSMITH_API_KEY` secret, runs also land as LangSmith experiments tagged with commit SHA + branch, so you can compare against master side-by-side.
 
-For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`). Native providers use `model` alone (`anthropic/*`, `openai/*`, `openrouter/*`, `xai/*`). OpenAI-compatible vendors use **`custom/<model>` + `model-url` + `model-key`** — no first-class provider prefixes.
+For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`). Native providers use `model` alone (`anthropic/*`, `openai/*`, `openrouter/*`, `xai/*`, `google-vertex-anthropic/*`). OpenAI-compatible vendors use **`custom/<model>` + `model-url` + `model-key`** — no first-class provider prefixes.
 
 | Experiment | `model` | `model-url` | `model-key` → secret |
 |------------|---------|-------------|----------------------|
 | Anthropic / OpenAI / OpenRouter / xAI | `anthropic/…`, `openai/…`, etc. | empty | (prefix → `EVALS_*`) |
+| Google Vertex Claude | `google-vertex-anthropic/claude-opus-4-8` | empty | (prefix → `EVALS_VERTEX_KEY` + `EVALS_VERTEX_PROJECT_ID`; optional `EVALS_VERTEX_LOCATION`, default `global`) |
 | Baseten | `custom/<model>` | `https://inference.baseten.co/v1` | `baseten` → `EVALS_BASETEN_KEY` |
 | Fireworks | `custom/accounts/fireworks/models/…` | `https://api.fireworks.ai/inference/v1` | `fireworks` → `EVALS_FIREWORKS_KEY` |
 | Together | `custom/moonshotai/Kimi-K3` | `https://api.together.ai/v1` | `together` → `EVALS_TOGETHER_KEY` |

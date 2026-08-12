@@ -13,9 +13,10 @@ export function isEndpointModelConfig(modelId: ModelConfig): modelId is {
 } {
 	if (!isRecord(modelId)) return false;
 	if ('doGenerate' in modelId || 'specificationVersion' in modelId) return false;
+	if (!('url' in modelId) || !('id' in modelId)) return false;
 
-	const id = modelId?.id;
-	const url = modelId?.url;
+	const id = modelId.id;
+	const url = modelId.url;
 	if (typeof id !== 'string' || !id.includes('/')) return false;
 	if (typeof url !== 'string') return false;
 	return true;

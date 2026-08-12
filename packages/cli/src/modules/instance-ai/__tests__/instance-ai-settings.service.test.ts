@@ -1985,6 +1985,26 @@ describe('InstanceAiSettingsService', () => {
 			globalConfig.instanceAi.modelApiKey = '';
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toBe('openai/gpt-4');
 		});
+
+		it('builds google-vertex-anthropic configs from Vertex environment variables', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'google-vertex-anthropic/claude-opus-4-8');
+			Object.assign(globalConfig.instanceAi, {
+				model: 'google-vertex-anthropic/claude-opus-4-8',
+				modelUrl: '',
+				modelApiKey: '',
+				vertexProjectId: 'instance-ai-494613',
+				vertexLocation: 'global',
+				vertexServiceAccountJson: '{"client_email":"svc@example.com","private_key":"k"}',
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'instance-ai-494613',
+				location: 'global',
+				googleCredentials: '{"client_email":"svc@example.com","private_key":"k"}',
+			});
+		});
 	});
 
 	describe('isSetupCompleted', () => {

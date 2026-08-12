@@ -126,6 +126,27 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
+	it('google-vertex-anthropic: emits Anthropic adaptive thinking under the anthropic namespace', () => {
+		expect(
+			getProviderQuirks('google-vertex-anthropic').thinkingToProviderOptions?.(
+				{ mode: 'adaptive', effort: 'medium' },
+				'google-vertex-anthropic/claude-opus-4-8',
+			),
+		).toEqual({
+			anthropic: {
+				thinking: { type: 'adaptive', display: 'summarized' },
+				effort: 'medium',
+			},
+		});
+	});
+
+	it('google-vertex-anthropic: tool defaults land under the anthropic namespace', () => {
+		expect(getProviderQuirks('google-vertex-anthropic').providerOptionsNamespace).toBe('anthropic');
+		expect(applyToolProviderOptionDefaults(undefined)).toEqual({
+			anthropic: { eagerInputStreaming: false },
+		});
+	});
+
 	it('openai: defaults reasoningEffort to medium', () => {
 		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({}, 'openai/gpt-5')).toEqual({
 			openai: { reasoningEffort: 'medium', reasoningSummary: null },

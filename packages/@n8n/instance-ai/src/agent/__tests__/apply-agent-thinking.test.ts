@@ -31,6 +31,15 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
+	it('enables adaptive thinking with medium effort for Google Vertex Anthropic', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'google-vertex-anthropic/claude-opus-4-8');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('google-vertex-anthropic', {
+			mode: 'adaptive',
+			effort: 'medium',
+		});
+	});
+
 	it('enables adaptive thinking with medium effort for dotted Anthropic provider IDs', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'anthropic.messages/claude-opus-4-8');

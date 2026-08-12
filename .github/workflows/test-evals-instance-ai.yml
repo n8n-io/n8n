@@ -60,7 +60,7 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override (provider/model). Empty = anthropic/claude-opus-4-8. OpenAI-compat experiments use custom/<model> + model-url + model-key. See evaluations/README.md.'
+        description: 'Model override (provider/model). Empty = anthropic/claude-opus-4-8. Vertex Claude: google-vertex-anthropic/<model>. OpenAI-compat experiments use custom/<model> + model-url + model-key. See evaluations/README.md.'
         required: false
         type: string
         default: ''
@@ -125,7 +125,7 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). OpenAI-compat experiments: custom/<model> + model-url + model-key.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Vertex Claude: google-vertex-anthropic/<model>. OpenAI-compat experiments: custom/<model> + model-url + model-key.'
         required: false
         default: ''
       model-url:
@@ -242,8 +242,9 @@ jobs:
           EVALS_MODAL_KEY: ${{ secrets.EVALS_MODAL_KEY }}
           EVALS_LYCEUM_KEY: ${{ secrets.EVALS_LYCEUM_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
-          EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
-          EVALS_VERTEX_PROJECT: ${{ secrets.EVALS_VERTEX_PROJECT }}
+          EVALS_VERTEX_KEY: ${{ secrets.EVALS_VERTEX_KEY }}
+          EVALS_VERTEX_PROJECT_ID: ${{ secrets.EVALS_VERTEX_PROJECT_ID }}
+          EVALS_VERTEX_LOCATION: ${{ secrets.EVALS_VERTEX_LOCATION }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
@@ -355,6 +356,19 @@ jobs:
             else
               MODEL_API_KEY=""
             fi
+          elif [ "$MODEL_PROVIDER" = "google-vertex-anthropic" ]; then
+            if [ -n "$INSTANCE_AI_MODEL_URL" ]; then
+              echo "::error::google-vertex-anthropic/* does not use model-url (leave it empty)"
+              exit 1
+            fi
+            require_secret EVALS_VERTEX_KEY "$EVALS_VERTEX_KEY"
+            require_secret EVALS_VERTEX_PROJECT_ID "$EVALS_VERTEX_PROJECT_ID"
+            MODEL_API_KEY=""
+            MODEL_ARGS+=(
+              -e N8N_INSTANCE_AI_VERTEX_PROJECT_ID="$EVALS_VERTEX_PROJECT_ID"
+              -e N8N_INSTANCE_AI_VERTEX_LOCATION="${EVALS_VERTEX_LOCATION:-global}"
+              -e N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON="$EVALS_VERTEX_KEY"
+            )
           elif [ -n "$INSTANCE_AI_MODEL_URL" ]; then
             # anthropic/* + model-url = Azure Foundry Claude (or model-key=azure).
             if [ -n "$INSTANCE_AI_MODEL_KEY" ]; then
@@ -600,6 +614,7 @@ jobs:
           EVALS_MODAL_KEY: ${{ secrets.EVALS_MODAL_KEY }}
           EVALS_LYCEUM_KEY: ${{ secrets.EVALS_LYCEUM_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
+          EVALS_VERTEX_KEY: ${{ secrets.EVALS_VERTEX_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
@@ -613,7 +628,8 @@ jobs:
           for v in "$EVALS_ANTHROPIC_KEY" "$EVALS_OPENAI_KEY" "$EVALS_OPENROUTER_KEY" \
                    "$EVALS_XAI_KEY" "$EVALS_BASETEN_KEY" "$EVALS_FIREWORKS_KEY" \
                    "$EVALS_TOGETHER_KEY" "$EVALS_DATABRICKS_KEY" "$EVALS_MODAL_KEY" \
-                   "$EVALS_LYCEUM_KEY" "$EVALS_AZURE_FOUNDRY_KEY" "$DAYTONA_API_KEY" \
+                   "$EVALS_LYCEUM_KEY" "$EVALS_AZURE_FOUNDRY_KEY" "$EVALS_VERTEX_KEY" \
+                   "$DAYTONA_API_KEY" \
                    "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" "$N8N_ENCRYPTION_KEY" \
                    "$EVALS_LANGSMITH_API_KEY"; do
             [ -z "$v" ] && continue

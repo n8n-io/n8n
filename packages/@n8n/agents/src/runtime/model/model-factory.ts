@@ -72,6 +72,36 @@ type OpenAiCompatibleCreds = {
 };
 
 /**
+ * Parse a Vertex service-account JSON string into `googleAuthOptions`.
+ * Accepts either a full SA JSON blob or the subset `{ client_email, private_key }`.
+ * Returns undefined when unset so ADC can take over.
+ */
+function parseGoogleVertexAuthOptions(
+	googleCredentials: string | undefined,
+): { credentials: Record<string, unknown> } | undefined {
+	if (!googleCredentials?.trim()) return undefined;
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(googleCredentials);
+	} catch {
+		throw new Error(
+			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be valid JSON',
+		);
+	}
+	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+		throw new Error(
+			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be a JSON object',
+		);
+	}
+	const credentials = { ...(parsed as Record<string, unknown>) };
+	// SA keys often arrive with literal `\n` escapes when pasted into env files.
+	if (typeof credentials.private_key === 'string') {
+		credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+	}
+	return { credentials };
+}
+
+/**
  * Shared builder for OpenAI-compatible HTTP providers. Prefer this over
  * `@ai-sdk/<provider>` packages that pull optional NAPI binaries or v4-only types.
  */
@@ -155,6 +185,21 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				}
 			}
 			return createAnthropic({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
+		},
+	},
+	'google-vertex-anthropic': {
+		build: (creds, model, fetch) => {
+			const { createVertexAnthropic } =
+				require('@ai-sdk/google-vertex/anthropic') as typeof import('@ai-sdk/google-vertex/anthropic');
+			const googleAuthOptions = parseGoogleVertexAuthOptions(creds.googleCredentials);
+			return createVertexAnthropic({
+				project: creds.project,
+				location: creds.location,
+				baseURL: creds.baseURL,
+				headers: creds.headers,
+				...(googleAuthOptions ? { googleAuthOptions } : {}),
+				fetch,
+			})(model);
 		},
 	},
 	google: {

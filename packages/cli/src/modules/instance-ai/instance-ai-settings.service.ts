@@ -22,7 +22,11 @@ import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { DbLock, DbLockService, SettingsRepository, UserRepository } from '@n8n/db';
 import type { CredentialsEntity, ICredentialsDb, OperationContext, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { resolveCustomModelExperimentDefaultsFromEnv, type ModelConfig } from '@n8n/instance-ai';
+import {
+	resolveCustomModelExperimentDefaultsFromEnv,
+	type ModelConfig,
+	type VertexAnthropicModelConfig,
+} from '@n8n/instance-ai';
 import { hasGlobalScope } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
@@ -160,6 +164,12 @@ function modelCredentialHeaders(
 		if (headerName) headers[headerName] = data.headerValue;
 	}
 	return Object.keys(headers).length ? headers : undefined;
+}
+
+function isVertexAnthropicModelId(
+	id: `${string}/${string}`,
+): id is `google-vertex-anthropic/${string}` {
+	return id.startsWith('google-vertex-anthropic/');
 }
 
 function validateSearchCredential({
@@ -380,21 +390,25 @@ export class InstanceAiSettingsService {
 		credentialSelection: AdminCredentialSelection,
 	): InstanceAiAdminSettingsResponse {
 		const c = this.config;
-		const modelProviderApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(c.model.split('/', 1)[0] ?? '');
+		const modelProvider = c.model.split('/', 1)[0] ?? '';
+		const modelProviderApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(modelProvider);
 		const isProxyEnabled = this.aiService.isProxyEnabled();
 		const isManaged = this.isCloud || isProxyEnabled;
 		const providerModelApiKeyConfigured = Boolean(
 			modelProviderApiKeyEnv && process.env[modelProviderApiKeyEnv]?.trim(),
 		);
-		const vertexEnvConfigured = Boolean(
-			c.model.startsWith('vertex/') &&
-				(c.vertexProject.trim() ||
-					c.vertexCredentials.trim() ||
-					process.env.GOOGLE_VERTEX_PROJECT?.trim() ||
-					process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim()),
-		);
+		const vertexModelEnvConfigured =
+			modelProvider === 'google-vertex-anthropic' &&
+			Boolean(
+				c.vertexProjectId?.trim() ||
+					c.vertexServiceAccountJson?.trim() ||
+					process.env.GOOGLE_VERTEX_PROJECT?.trim(),
+			);
 		const modelConnectionEnvConfigured = Boolean(
-			c.modelApiKey.trim() || c.modelUrl.trim() || providerModelApiKeyConfigured || vertexEnvConfigured,
+			c.modelApiKey.trim() ||
+				c.modelUrl.trim() ||
+				providerModelApiKeyConfigured ||
+				vertexModelEnvConfigured,
 		);
 		const sandboxEnvConfigured = this.hasEnvironmentSandboxConnection();
 		const searchEnvConfigured = this.hasEnvironmentSearchConnection();
@@ -1579,6 +1593,13 @@ export class InstanceAiSettingsService {
 
 	private hasEnvironmentModelConnection(): boolean {
 		const provider = this.config.model.split('/', 1)[0] ?? '';
+		if (provider === 'google-vertex-anthropic') {
+			return Boolean(
+				this.config.vertexProjectId?.trim() ||
+					this.config.vertexServiceAccountJson?.trim() ||
+					process.env.GOOGLE_VERTEX_PROJECT?.trim(),
+			);
+		}
 		const providerApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(provider);
 		return Boolean(
 			this.config.modelApiKey.trim() ||
@@ -1614,6 +1635,9 @@ export class InstanceAiSettingsService {
 			: `custom/${model}`;
 		const customOptions = this.customModelOptionsFor(id);
 
+		const vertexConfig = this.vertexAnthropicModelConfig(id);
+		if (vertexConfig) return vertexConfig;
+
 		if (modelUrl) {
 			return {
 				id,
@@ -1633,6 +1657,27 @@ export class InstanceAiSettingsService {
 		}
 
 		return model;
+	}
+
+	/**
+	 * Build a typed Vertex Anthropic model config from Instance AI env vars.
+	 * Returns null when the model id is not `google-vertex-anthropic/*`.
+	 */
+	private vertexAnthropicModelConfig(id: `${string}/${string}`): VertexAnthropicModelConfig | null {
+		if (!isVertexAnthropicModelId(id)) return null;
+
+		const project =
+			this.config.vertexProjectId?.trim() || process.env.GOOGLE_VERTEX_PROJECT?.trim() || '';
+		const location =
+			this.config.vertexLocation?.trim() || process.env.GOOGLE_VERTEX_LOCATION?.trim() || 'global';
+		const googleCredentials = this.config.vertexServiceAccountJson?.trim() || undefined;
+
+		return {
+			id,
+			project,
+			location,
+			...(googleCredentials ? { googleCredentials } : {}),
+		};
 	}
 
 	/** Optional custom/* knobs from env override → known-model map → omit. */

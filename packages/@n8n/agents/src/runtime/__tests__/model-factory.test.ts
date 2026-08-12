@@ -188,6 +188,25 @@ vi.mock('@ai-sdk/amazon-bedrock', () => ({
 		}),
 }));
 
+vi.mock('@ai-sdk/google-vertex/anthropic', () => ({
+	createVertexAnthropic:
+		(opts?: {
+			project?: string;
+			location?: string;
+			googleAuthOptions?: { credentials?: Record<string, unknown> };
+			fetch?: typeof globalThis.fetch;
+		}) =>
+		(model: string) => ({
+			provider: 'google-vertex-anthropic',
+			modelId: model,
+			project: opts?.project,
+			location: opts?.location,
+			googleAuthOptions: opts?.googleAuthOptions,
+			fetch: opts?.fetch,
+			specificationVersion: 'v3',
+		}),
+}));
+
 const { mockProxyAgent } = vi.hoisted(() => ({ mockProxyAgent: vi.fn() }));
 vi.mock('undici', () => ({
 	ProxyAgent: mockProxyAgent,
@@ -490,6 +509,58 @@ describe('createModel', () => {
 					secretAccessKey: 'secret',
 				}),
 			).toThrow(/Invalid credentials for provider "aws-bedrock"/);
+		});
+	});
+
+	describe('google-vertex-anthropic', () => {
+		it('should create model with project, location, and service-account JSON', () => {
+			const model = createModel({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'my-project',
+				location: 'global',
+				googleCredentials: JSON.stringify({
+					client_email: 'svc@my-project.iam.gserviceaccount.com',
+					private_key: '-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----\\n',
+				}),
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('google-vertex-anthropic');
+			expect(model.modelId).toBe('claude-opus-4-8');
+			expect(model.project).toBe('my-project');
+			expect(model.location).toBe('global');
+			expect(model.googleAuthOptions).toEqual({
+				credentials: {
+					client_email: 'svc@my-project.iam.gserviceaccount.com',
+					private_key: '-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----\n',
+				},
+			});
+		});
+
+		it('should default location to global when omitted', () => {
+			const model = createModel({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'my-project',
+			}) as unknown as Record<string, unknown>;
+			expect(model.location).toBe('global');
+			expect(model.googleAuthOptions).toBeUndefined();
+		});
+
+		it('should throw if project is missing', () => {
+			expect(() =>
+				createModel({
+					id: 'google-vertex-anthropic/claude-opus-4-8',
+					location: 'global',
+				}),
+			).toThrow(/Invalid credentials for provider "google-vertex-anthropic"/);
+		});
+
+		it('should throw if googleCredentials is not valid JSON', () => {
+			expect(() =>
+				createModel({
+					id: 'google-vertex-anthropic/claude-opus-4-8',
+					project: 'my-project',
+					googleCredentials: 'not-json',
+				}),
+			).toThrow(/googleCredentials must be valid JSON/);
 		});
 	});
 

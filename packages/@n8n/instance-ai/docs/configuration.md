@@ -11,9 +11,12 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. Must be set for the module to enable. Opus 5: `anthropic/claude-opus-5`. |
+| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. Must be set for the module to enable. Opus 5: `anthropic/claude-opus-5`. Vertex Claude: `google-vertex-anthropic/claude-opus-4-8`. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
+| `N8N_INSTANCE_AI_VERTEX_PROJECT_ID` | string | `''` | Google Cloud project for `google-vertex-anthropic/*`. Falls back to `GOOGLE_VERTEX_PROJECT`. |
+| `N8N_INSTANCE_AI_VERTEX_LOCATION` | string | `global` | Vertex location for `google-vertex-anthropic/*` (e.g. `global`, `us-east5`). Falls back to `GOOGLE_VERTEX_LOCATION`. |
+| `N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON` | string | `''` | Service-account JSON for Vertex Claude. Omit to use ADC (`gcloud auth application-default login`). |
 | `N8N_INSTANCE_AI_REASONING_EFFORT` | string | unset | Optional reasoning effort for `custom/*` (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`). Unset = known-model map in `src/utils/custom-model-defaults.ts`; still unresolved = omit. |
 | `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
@@ -237,6 +240,13 @@ N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 # With custom OpenAI-compatible endpoint (e.g. LM Studio, Ollama)
 N8N_INSTANCE_AI_MODEL=your-tool-capable-model
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
+
+# Direct Google Vertex Claude (no AI assistant proxy)
+# Keep N8N_AI_ASSISTANT_BASE_URL unset/empty.
+N8N_INSTANCE_AI_MODEL=google-vertex-anthropic/claude-opus-4-8
+N8N_INSTANCE_AI_VERTEX_PROJECT_ID=my-gcp-project
+N8N_INSTANCE_AI_VERTEX_LOCATION=global
+N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
 
 # Output filtering — secrets + email only, with a custom placeholder
 N8N_INSTANCE_AI_OUTPUT_REDACTION_PII=email

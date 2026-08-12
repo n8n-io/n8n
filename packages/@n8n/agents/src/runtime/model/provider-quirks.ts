@@ -10,6 +10,12 @@ import type {
 } from '../../types';
 
 export interface ProviderQuirks {
+	/**
+	 * Namespace used in AI SDK `providerOptions` / `providerMetadata`.
+	 * Defaults to the registry key. Vertex Anthropic still speaks the Anthropic
+	 * Messages wire format, so its quirks emit under `anthropic`.
+	 */
+	providerOptionsNamespace?: string;
 	/** providerMetadata keys on reasoning parts that must be copied to providerOptions and survive replay. */
 	reasoningReplayKeys?: string[];
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
@@ -21,6 +27,31 @@ export interface ProviderQuirks {
 		thinking: ThinkingConfig,
 		modelId: string,
 	) => Record<string, Record<string, unknown>>;
+}
+
+/** Shared Anthropic Messages thinking mapping (also used by Vertex Anthropic). */
+function anthropicThinkingToProviderOptions(
+	thinking: ThinkingConfig,
+	modelId: string,
+): Record<string, Record<string, unknown>> {
+	const cfg = thinking as AnthropicThinkingConfig;
+	const adaptive = cfg.mode === 'adaptive' ? cfg : undefined;
+	if (anthropicUsesAdaptiveThinking(modelId)) {
+		return {
+			anthropic: {
+				thinking: { type: 'adaptive', display: adaptive?.display ?? 'summarized' },
+				effort: adaptive?.effort ?? 'medium',
+			},
+		};
+	}
+	const budgetTokens = cfg.mode === 'adaptive' ? undefined : cfg.budgetTokens;
+	const effort = cfg.mode === 'adaptive' ? undefined : cfg.effort;
+	return {
+		anthropic: {
+			thinking: { type: 'enabled', budgetTokens: budgetTokens ?? 10000 },
+			...(effort !== undefined ? { effort } : {}),
+		},
+	};
 }
 
 /** Anthropic model families that take the adaptive thinking API. */
@@ -77,26 +108,14 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// QUIRK(anthropic): the two thinking APIs are mutually exclusive — an
 		// adaptive model rejects `type: 'enabled'` and vice versa — so the model
 		// decides the shape and the config only fills in its details.
-		thinkingToProviderOptions: (thinking, modelId) => {
-			const cfg = thinking as AnthropicThinkingConfig;
-			const adaptive = cfg.mode === 'adaptive' ? cfg : undefined;
-			if (anthropicUsesAdaptiveThinking(modelId)) {
-				return {
-					anthropic: {
-						thinking: { type: 'adaptive', display: adaptive?.display ?? 'summarized' },
-						effort: adaptive?.effort ?? 'medium',
-					},
-				};
-			}
-			const budgetTokens = cfg.mode === 'adaptive' ? undefined : cfg.budgetTokens;
-			const effort = cfg.mode === 'adaptive' ? undefined : cfg.effort;
-			return {
-				anthropic: {
-					thinking: { type: 'enabled', budgetTokens: budgetTokens ?? 10000 },
-					...(effort !== undefined ? { effort } : {}),
-				},
-			};
-		},
+		thinkingToProviderOptions: anthropicThinkingToProviderOptions,
+	},
+	// Vertex Claude uses AnthropicLanguageModel under the hood — providerOptions
+	// stay under the `anthropic` namespace even though the model id prefix differs.
+	'google-vertex-anthropic': {
+		providerOptionsNamespace: 'anthropic',
+		toolProviderOptionDefaults: { eagerInputStreaming: false },
+		thinkingToProviderOptions: anthropicThinkingToProviderOptions,
 	},
 	openai: {
 		// QUIRK(openai): the Responses API pairs each function_call item with a
@@ -185,7 +204,8 @@ export function applyToolProviderOptionDefaults(
 	const result = { ...toolProviderOptions };
 	for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
 		if (!quirks.toolProviderOptionDefaults) continue;
-		result[provider] = { ...quirks.toolProviderOptionDefaults, ...result[provider] };
+		const namespace = quirks.providerOptionsNamespace ?? provider;
+		result[namespace] = { ...quirks.toolProviderOptionDefaults, ...result[namespace] };
 	}
 	return result;
 }

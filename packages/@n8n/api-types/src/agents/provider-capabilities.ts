@@ -78,6 +78,16 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: ['anthropic.web_search'],
 		attachments: { image: true, pdf: true, audio: false },
 	},
+	// Claude on Vertex — same Messages capabilities as Anthropic; providerTools
+	// stay empty because Vertex only exposes a subset and Instance AI does not
+	// wire Vertex-specific Anthropic provider tools yet.
+	'google-vertex-anthropic': {
+		thinking: 'budgetTokens',
+		promptCaching: 'ttl',
+		webSearch: false,
+		providerTools: [],
+		attachments: { image: true, pdf: true, audio: false },
+	},
 	openai: {
 		thinking: 'reasoningEffort',
 		promptCaching: true,
