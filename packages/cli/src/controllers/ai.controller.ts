@@ -10,11 +10,13 @@ import {
 	AiTruncateMessagesRequestDto,
 	AiClearSessionRequestDto,
 	AiGatewayUsageQueryDto,
+	ExecutionsNlFilterRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
+import { UserError } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
@@ -28,6 +30,7 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
+import { ExecutionsFilterAiService } from '@/services/executions-filter-ai.service';
 import { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 
 export type FlushableResponse = Response & { flush: () => void };
@@ -40,6 +43,7 @@ export class AiController {
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly executionsFilterAiService: ExecutionsFilterAiService,
 	) {}
 
 	private toAiAssistantResponseError(error: APIResponseError) {
@@ -208,6 +212,24 @@ export class AiController {
 		} catch (e) {
 			if (e instanceof APIResponseError) {
 				throw this.toAiAssistantResponseError(e);
+			}
+
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Post('/executions-filter', { ipRateLimit: { limit: 100 } })
+	async translateExecutionsFilter(
+		_req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: ExecutionsNlFilterRequestDto,
+	) {
+		try {
+			return await this.executionsFilterAiService.translate(payload);
+		} catch (e) {
+			if (e instanceof UserError) {
+				throw e;
 			}
 
 			assert(e instanceof Error);
