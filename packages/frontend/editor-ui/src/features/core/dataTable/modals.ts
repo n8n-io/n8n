@@ -20,6 +20,6 @@ export const DATA_TABLE_MODALS: ModalDefinition[] = [
  * the store but never registered, so they are declared here instead — otherwise
  * every one of them looks like a modal whose registration was forgotten.
  */
-[DOWNLOAD_DATA_TABLE_MODAL_KEY, IMPORT_CSV_MODAL_KEY].forEach(
-	modalRegistry.declareAdHocKeyPrefix,
-);
+[DOWNLOAD_DATA_TABLE_MODAL_KEY, IMPORT_CSV_MODAL_KEY].forEach((prefix) => {
+	modalRegistry.declareAdHocKeyPrefix(prefix);
+});

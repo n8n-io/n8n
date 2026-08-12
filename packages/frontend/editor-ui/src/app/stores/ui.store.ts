@@ -393,15 +393,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * iterates registered keys, so nothing ever reads it — the click is the only
 	 * signal. Needs that click, so a modal nobody opens in dev stays silent.
 	 */
-	const warnIfUnknownModalKey = (name: string): void => {
+	const warnIfUnknownModalKey = (name: ModalKey): void => {
 		if (!import.meta.env.DEV) return;
-		if (name in shellModalDefaults || modalRegistry.has(name) || modalRegistry.isAdHocKey(name)) {
+
+		const key = String(name);
+		if (key in shellModalDefaults || modalRegistry.has(key) || modalRegistry.isAdHocKey(key)) {
 			return;
 		}
 
 		console.warn(
-			`[modals] Opening "${name}", which nothing defines — no shell catalogue entry and no registry entry, so it will not render.\n` +
-				'Register it from the owning feature\'s `modals.ts`, or declare its prefix with `modalRegistry.declareAdHocKeyPrefix()` if the key is minted at runtime.',
+			`[modals] Opening "${key}", which nothing defines — no shell catalogue entry and no registry entry, so it will not render.\n` +
+				"Register it from the owning feature's `modals.ts`, or declare its prefix with `modalRegistry.declareAdHocKeyPrefix()` if the key is minted at runtime.",
 		);
 	};
 
