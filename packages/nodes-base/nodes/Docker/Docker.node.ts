@@ -320,6 +320,10 @@ export class Docker implements INodeType {
 					});
 					continue;
 				}
+				this.logger.error('Docker node: item failed', {
+					itemIndex,
+					error: ensureError(error).message,
+				});
 				throw error;
 			}
 		}

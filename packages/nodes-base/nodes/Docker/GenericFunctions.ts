@@ -1,7 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, IHttpRequestOptions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -170,6 +171,26 @@ const reduceEvent = (state: JobState, event: JobEvent): JobState => {
 	}
 };
 
+const extractStatusCode = (error: unknown): number | undefined => {
+	if (typeof error !== 'object' || error === null) {
+		return undefined;
+	}
+	if ('response' in error) {
+		const response: unknown = error.response;
+		if (typeof response === 'object' && response !== null && 'status' in response) {
+			const status: unknown = response.status;
+			if (typeof status === 'number') {
+				return status;
+			}
+		}
+	}
+	if ('httpCode' in error && typeof error.httpCode === 'string') {
+		const parsed = Number(error.httpCode);
+		return Number.isNaN(parsed) ? undefined : parsed;
+	}
+	return undefined;
+};
+
 const reduceLine = (state: JobState, line: string): JobState => {
 	const event = parseEvent(line.trim());
 	if (event === undefined) {
@@ -228,6 +249,39 @@ const consumeStream = async (
 	}
 };
 
+/**
+ * Logs any sandbox API failure (method, URL, status code) and converts it
+ * into a NodeOperationError. Transport errors (axios) hold circular
+ * request/socket references and crash JSON serialization when the engine
+ * stores them in execution data, so they must never leave this function.
+ * Cancellation is rethrown as-is.
+ */
+async function sandboxRequest<T>(
+	this: IExecuteFunctions,
+	options: IHttpRequestOptions,
+): Promise<T> {
+	try {
+		return (await this.helpers.httpRequest(options)) as T;
+	} catch (error) {
+		const statusCode = extractStatusCode(error);
+		const message = ensureError(error).message;
+		this.logger.error('Docker node: sandbox API request failed', {
+			method: options.method,
+			url: options.url,
+			statusCode,
+			error: message,
+		});
+		if (options.abortSignal?.aborted === true) {
+			throw error;
+		}
+		throw new NodeOperationError(this.getNode(), 'The sandbox API request failed', {
+			description: `${options.method ?? 'GET'} ${options.url} failed${
+				statusCode === undefined ? '' : ` with status ${statusCode}`
+			}: ${message}`,
+		});
+	}
+}
+
 function getSandboxConfig(this: IExecuteFunctions): { baseUrl: string; apiKey: string } {
 	const { n8nSandboxServiceUrl, n8nSandboxServiceApiKey } = Container.get(GlobalConfig).instanceAi;
 	if (n8nSandboxServiceUrl === '') {
@@ -262,7 +316,7 @@ async function pollJobRecord(
 		maxAttempts: attempts,
 	});
 	for (let attempt = 0; attempt < attempts; attempt++) {
-		const record = (await this.helpers.httpRequest({
+		const record = (await sandboxRequest.call(this, {
 			method: 'GET',
 			url: `${ctx.baseUrl}/jobs/${ctx.jobId}`,
 			headers: ctx.headers,
@@ -297,7 +351,7 @@ async function pollJobRecord(
  */
 async function trackJob(this: IExecuteFunctions, ctx: SandboxContext): Promise<JobState> {
 	this.logger.info('Docker node: starting sandbox job', { jobId: ctx.jobId });
-	const startStream = (await this.helpers.httpRequest({
+	const startStream = (await sandboxRequest.call(this, {
 		method: 'POST',
 		url: `${ctx.baseUrl}/jobs/${ctx.jobId}/start`,
 		headers: ctx.headers,
@@ -316,7 +370,7 @@ async function trackJob(this: IExecuteFunctions, ctx: SandboxContext): Promise<J
 			maxAttempts: RESUME_MAX_ATTEMPTS,
 		});
 		await sleep(RESUME_DELAY_MS);
-		const response = (await this.helpers.httpRequest({
+		const response = (await sandboxRequest.call(this, {
 			method: 'GET',
 			url: `${ctx.baseUrl}/jobs/${ctx.jobId}/events`,
 			qs: { after: state.lastSeq, follow: 'true' },
@@ -388,7 +442,7 @@ export async function runContainer(
 		timeoutMs,
 	});
 
-	const job = (await this.helpers.httpRequest({
+	const job = (await sandboxRequest.call(this, {
 		method: 'POST',
 		url: `${baseUrl}/jobs`,
 		headers,
@@ -413,7 +467,7 @@ export async function runContainer(
 				size: file.size,
 				mimeType: file.mimeType,
 			});
-			await this.helpers.httpRequest({
+			await sandboxRequest.call(this, {
 				method: 'PUT',
 				url: `${baseUrl}/jobs/${job.id}/files`,
 				qs: { path: file.path },
@@ -473,7 +527,7 @@ export async function runContainer(
 	} finally {
 		try {
 			// No abortSignal: cleanup must also run when the execution is cancelled
-			await this.helpers.httpRequest({
+			await sandboxRequest.call(this, {
 				method: 'DELETE',
 				url: `${baseUrl}/jobs/${job.id}`,
 				headers,
