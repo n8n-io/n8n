@@ -95,7 +95,7 @@ describe('abort helpers', () => {
 				try {
 					const pending = raceWithAbort(new Promise(() => undefined), undefined, 50);
 					vi.advanceTimersByTime(50);
-					const error = await pending.catch((e) => e);
+					const error = await pending.catch((e: unknown) => e);
 					expect(error).toMatchObject({ name: 'TimeoutError' });
 					expect(isAbortError(error)).toBe(false);
 				} finally {
