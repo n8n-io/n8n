@@ -44,6 +44,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { MessageTransportService } from '@/scaling/transport/message-transport.service';
+import { TransportModeService } from '@/scaling/transport-mode.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
@@ -157,8 +158,10 @@ export abstract class BaseCommand<F = never> {
 		// requires Redis for the execution queue regardless - so this swap doesn't yet let a
 		// real deployment drop Redis. It proves the transport is swappable the same way locking
 		// is: a working `IpcMessageTransport` is the default, and this is the single call site
-		// that opts a deployment into `RedisMessageTransport` instead.
-		if (this.globalConfig.executions.mode === 'queue') {
+		// that opts a deployment into `RedisMessageTransport` instead. The decision comes from
+		// `TransportModeService` (explicit `N8N_TRANSPORT_PUBSUB`, defaulting to `redis`), the
+		// same mechanism `Start.leaderElection()` uses for `leaderElection` - not re-derived here.
+		if (Container.get(TransportModeService).resolve('pubsub') === 'redis') {
 			const { RedisMessageTransport } = await import(
 				'@/scaling/transport/redis-message-transport.js'
 			);

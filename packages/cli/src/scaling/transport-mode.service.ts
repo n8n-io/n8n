@@ -22,13 +22,20 @@ export class TransportModeService {
 	}
 
 	/**
-	 * Fail fast at boot for selections that cannot work. Only leader election
-	 * consumes the `ipc` value today; this grows as other subsystems are wired.
+	 * Fail fast at boot for selections that cannot work. Leader election and
+	 * pubsub consume the `ipc` value today; this grows as other subsystems are
+	 * wired.
 	 */
 	validateAtBoot(): void {
 		if (this.resolve('leaderElection') === 'ipc' && process.env.N8N_HYPERVISOR_MODE !== '1') {
 			throw new UserError(
 				'N8N_TRANSPORT_LEADER_ELECTION=ipc requires running under `n8n hypervisor` (no IPC channel otherwise).',
+			);
+		}
+
+		if (this.resolve('pubsub') === 'ipc' && process.env.N8N_HYPERVISOR_MODE !== '1') {
+			throw new UserError(
+				'N8N_TRANSPORT_PUBSUB=ipc requires running under `n8n hypervisor` (no IPC channel otherwise).',
 			);
 		}
 	}
