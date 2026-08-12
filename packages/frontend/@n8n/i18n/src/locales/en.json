@@ -238,6 +238,8 @@
 	"auth.setup.setupOwner": "Set up owner account",
 	"auth.signin": "Sign in",
 	"auth.signin.error": "Problem logging in",
+	"auth.signin.sessionExpired.title": "Session expired",
+	"auth.signin.sessionExpired": "Your session has expired. Please log in again to continue using n8n.",
 	"auth.signout": "Sign out",
 	"auth.signout.error": "Could not sign out",
 	"auth.signup.finishAccountSetup": "Finish account setup",
