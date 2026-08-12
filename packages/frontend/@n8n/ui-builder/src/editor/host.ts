@@ -41,6 +41,20 @@ export interface UiBuilderHost {
 	/** The workflow being edited, if it has been saved. */
 	workflowId: () => string | undefined;
 
+	/** Whether the workflow being edited is currently active. A live webhook 404s until it is. */
+	workflowActive: () => boolean;
+
+	/**
+	 * The production URL of the Webhook trigger that serves this node's page — the
+	 * page a browser lands on is whatever that trigger's response chain returns, so
+	 * this is "open the real thing", not the NDV's temporary test-webhook URL.
+	 *
+	 * Undefined whenever that trigger cannot be pinned down unambiguously: no
+	 * upstream Webhook node reachable from this one, more than one candidate, or
+	 * the candidate isn't configured for GET (a browser tab can only ever do GET).
+	 */
+	liveWebhookUrl: () => string | undefined;
+
 	/**
 	 * Adds a Webhook trigger on this path, wired to a Respond to Webhook, to the
 	 * workflow being edited. Resolves false if the host declined.

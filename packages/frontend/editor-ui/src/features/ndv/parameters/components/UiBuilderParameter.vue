@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { UiBuilderPanel } from '@n8n/ui-builder';
 import type { HostExecutionOutput, HostWorkflow, UiBuilderHost } from '@n8n/ui-builder';
-import { NodeConnectionTypes } from 'n8n-workflow';
-import type { NodeParameterValueType } from 'n8n-workflow';
+import { getNodeWebhookUrl, NodeConnectionTypes } from 'n8n-workflow';
+import type { INode, NodeParameterValueType } from 'n8n-workflow';
 import { computed } from 'vue';
 
 import { RESPOND_TO_WEBHOOK_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -25,6 +25,8 @@ import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/
 const props = defineProps<{
 	value: NodeParameterValueType;
 	path: string;
+	/** This node, so the live-webhook lookup has somewhere to start walking from. */
+	node: INodeUi | null;
 	isReadOnly?: boolean;
 }>();
 
@@ -50,6 +52,34 @@ function pathsOf(nodes: Array<{ type: string; parameters?: Record<string, unknow
 		.filter(Boolean);
 }
 
+/**
+ * A browser tab opened for this button only ever does a GET, so a Webhook
+ * configured for another single method — or one left in "multiple methods"
+ * mode, where there is no one method to point a tab at — doesn't qualify.
+ * Matches the Webhook node's own default: an unset `httpMethod` means GET.
+ */
+function isGetWebhook(node: INode): boolean {
+	if (node.parameters?.multipleMethods) return false;
+	const method = node.parameters?.httpMethod;
+	return method === undefined || method === 'GET';
+}
+
+/**
+ * The nearest upstream Webhook trigger(s) reachable from this node's own main
+ * input — the entry point(s) of whatever chain renders this page. Walking
+ * ancestors rather than scanning every Webhook node in the workflow is what
+ * keeps an unrelated webhook elsewhere in a bigger workflow out of the running:
+ * an ancestor of this node is, by construction, upstream of the same subgraph.
+ */
+function upstreamWebhookTriggers(nodeName: string): INode[] {
+	const store = documentStore.value;
+
+	return store
+		.getParentNodes(nodeName)
+		.map((name) => store.getNodeByNameFromWorkflow(name))
+		.filter((candidate): candidate is INode => candidate?.type === WEBHOOK_NODE_TYPE);
+}
+
 const host: UiBuilderHost = {
 	// `path` and not a node's resolved name: the Webhook node's description is
 	// `isFullPath`, so the production URL is the path on its own.
@@ -60,6 +90,29 @@ const host: UiBuilderHost = {
 	localWebhookPaths: () => pathsOf(documentStore.value?.allNodes ?? []),
 
 	workflowId: () => documentStore.value?.workflowId,
+
+	workflowActive: () => Boolean(documentStore.value?.active),
+
+	/**
+	 * Undefined unless exactly one GET-configured Webhook trigger is upstream of
+	 * this node and the workflow is active — a live webhook 404s otherwise, and
+	 * more than one candidate means guessing which page it actually serves.
+	 */
+	liveWebhookUrl: () => {
+		const store = documentStore.value;
+		const workflowId = store?.workflowId;
+		const nodeName = props.node?.name;
+		if (!workflowId || !nodeName || !store.active) return undefined;
+
+		const candidates = upstreamWebhookTriggers(nodeName).filter(isGetWebhook);
+		if (candidates.length !== 1) return undefined;
+
+		const [trigger] = candidates;
+		const path = String(trigger.parameters?.path ?? '').replace(/^\//, '');
+		const isFullPath = Boolean(trigger.parameters?.isFullPath);
+
+		return getNodeWebhookUrl(rootStore.webhookUrl, workflowId, trigger, path, isFullPath);
+	},
 
 	/**
 	 * The pair an action needs: the trigger receives the posted state, the
@@ -180,10 +233,5 @@ function onUpdate(json: string) {
 </script>
 
 <template>
-	<UiBuilderPanel
-		:value="document"
-		:host="host"
-		:read-only="isReadOnly"
-		@update="onUpdate"
-	/>
+	<UiBuilderPanel :value="document" :host="host" :read-only="isReadOnly" @update="onUpdate" />
 </template>

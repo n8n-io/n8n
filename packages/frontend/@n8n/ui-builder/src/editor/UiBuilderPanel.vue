@@ -153,6 +153,25 @@ const canvasScope = computed<UiScope>(() => ({
 }));
 
 /**
+ * The real production URL of the Webhook that serves this page, when the host
+ * can pin one down unambiguously — see `UiBuilderHost.liveWebhookUrl`. Read
+ * fresh on click rather than cached, since it also depends on the workflow's
+ * saved connections, which the host is better placed to track than this pane.
+ */
+const liveWebhookUrl = computed(() => props.host.liveWebhookUrl());
+
+const liveWebhookTooltip = computed(() => {
+	if (liveWebhookUrl.value) return 'Open the live webhook URL in a new tab';
+	if (!props.host.workflowActive()) return 'Activate the workflow to get a live URL';
+	return 'No single GET Webhook trigger serving this page could be found';
+});
+
+function openLiveWebhook() {
+	if (!liveWebhookUrl.value) return;
+	window.open(liveWebhookUrl.value, '_blank', 'noopener');
+}
+
+/**
  * `button` + `onClick` gives `buttonOnClick`, then `buttonOnClick2`. The host
  * makes the pair; naming it after what points at it is this pane's business.
  */
@@ -294,16 +313,6 @@ function onEscape(event: KeyboardEvent) {
 
 				<section class="ui-builder__canvas">
 					<div class="ui-builder__toolbar">
-						<N8nText size="small" color="text-light">
-							{{
-								selected
-									? `${selected.type} · ${selected.id}`
-									: selectedPseudo
-										? selectedPseudo.label
-										: 'Nothing selected'
-							}}
-						</N8nText>
-
 						<!-- Which page is on screen, since the canvas shows one at a time. -->
 						<N8nText v-if="editingPage" size="small" color="text-light">
 							{{ editingPage.title || editingPage.path }}
@@ -322,6 +331,17 @@ function onEscape(event: KeyboardEvent) {
 								:icon="previewMode ? 'eye-off' : 'eye'"
 								:aria-label="previewMode ? 'Back to editing' : 'Preview without editing chrome'"
 								@click="previewMode = !previewMode"
+							/>
+						</N8nTooltip>
+
+						<N8nTooltip :content="liveWebhookTooltip">
+							<N8nIconButton
+								variant="ghost"
+								size="small"
+								icon="external-link"
+								:aria-label="liveWebhookTooltip"
+								:disabled="!liveWebhookUrl"
+								@click="openLiveWebhook"
 							/>
 						</N8nTooltip>
 
