@@ -257,11 +257,16 @@ user-facing trigger appears.
 - **Context B** (standalone editor): build → mint/resolve thread →
   `stashPendingDraftAttachment` → navigate to `/assistant/:threadId` → thread
   view consumes into the draft, unsent.
-- **Entry points**, both gated by `isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)`:
-  new `N8nIconButton` in `CanvasSelectionToolbar.vue` (alongside group/extract,
-  visible when `selectedNodeIds.length > 1`); a **new** `ContextMenuAction` in
-  `useContextMenuItems.ts` + `onContextMenuAction` (do not touch legacy
-  `focus_ai_on_selected`); `⌘↵` shortcut with an "Add N nodes to chat" tooltip.
+- **Entry points**, all gated by `isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)`:
+  - new `N8nIconButton` in `CanvasSelectionToolbar.vue` (alongside group/extract,
+    visible when `selectedNodeIds.length > 1` — the floating selection toolbar
+    only appears for multi-selections, so single-node support comes via the
+    context menu, not here); `⌘↵` shortcut, "Add N nodes to chat" tooltip.
+  - a **new** `ContextMenuAction` in `useContextMenuItems.ts` +
+    `onContextMenuAction` (do not touch legacy `focus_ai_on_selected`), shown for
+    **1 or more** selected nodes (`nodes.length >= 1`) — this is the single-node
+    path in the screenshots. **Count-aware label** via i18n `adjustToNumber`:
+    "Add node to chat" (1) / "Add N nodes to chat" (N). `⌘↵` shortcut.
 
 Tests: toolbar button visibility (flag on + >1 selected); context-menu item
 presence by flag (legacy entry untouched); handler stages via Phase 2 and, when

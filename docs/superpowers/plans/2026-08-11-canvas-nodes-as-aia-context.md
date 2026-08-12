@@ -1565,18 +1565,22 @@ git commit -m "feat(editor): Add selection-toolbar button for AIA node context (
 **Interfaces:**
 - Consumes: `useAddNodesToChat().isNodeContextEnabled` (or read the flag directly via posthog in the composable, matching how `focusedNodesStore.isFeatureEnabled` is read).
 - Produces: new action id `'add_nodes_to_chat'` on the `ContextMenuAction` union; a menu item gated by the flag (NOT by `aiAssistant`/`aiBuilder`; and unlike the legacy item, NOT excluded when `instanceAi` is on — this one is for Instance AI); a `case 'add_nodes_to_chat'` in `onContextMenuAction` calling `onAddNodesToChat(nodeIds)`.
+- **Shown for 1 or more selected nodes** (`nodes.length >= 1`) — this is the single-node right-click path (label "Add node to chat"), distinct from the toolbar button which is multi-select only. **Count-aware label** via `adjustToNumber`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 // Extend the existing useContextMenu test setup. Assert:
-//  - with the flag ON and 2+ nodes selected, an 'add_nodes_to_chat' item is present.
-//  - with the flag OFF, it is absent.
+//  - with the flag ON and a SINGLE node selected, an 'add_nodes_to_chat' item is
+//    present and its label is the singular "Add node to chat".
+//  - with the flag ON and 3 nodes selected, the item is present with the plural
+//    "Add 3 nodes to chat".
+//  - with the flag OFF, it is absent (any selection size).
 //  - the legacy 'focus_ai_on_selected' item's presence is UNCHANGED by our item
 //    (do not assert its value beyond "we didn't break it" — mock the same as before).
 ```
 
-> Implementer note: mirror the mocking already used in `useContextMenu.test.ts` for `usePostHog`/`useEditorContext`. Add a case where `isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)` is true.
+> Implementer note: mirror the mocking already used in `useContextMenu.test.ts` for `usePostHog`/`useEditorContext`. Add a case where `isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)` is true, once with a 1-node selection and once with 3.
 
 - [ ] **Step 2: Run to verify failure** — FAIL (no such item).
 
@@ -1589,10 +1593,12 @@ In `useContextMenuItems.ts`:
 
 ```ts
 !onlyStickies &&
-	nodes.length > 1 &&
+	nodes.length >= 1 &&
 	posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG) && {
 		id: 'add_nodes_to_chat',
 		divided: true,
+		// adjustToNumber picks the singular ("Add node to chat") or plural
+		// ("Add {count} nodes to chat") form — matches the single-node screenshot.
 		label: i18n.baseText('contextMenu.addNodesToChat', { adjustToNumber: nodes.length, interpolate: { count: nodes.length } }),
 		shortcut: { metaKey: true, keys: ['Enter'] },
 		disabled: isReadOnly.value,
@@ -1608,7 +1614,10 @@ case 'add_nodes_to_chat': {
 }
 ```
 
-- [ ] **Step 4: Add i18n key** `contextMenu.addNodesToChat` = `"Add {count} nodes to chat"` (+ `canvas.selection.toolbar.addToChat` from Task 4.3 if not yet added) in `en.json`.
+- [ ] **Step 4: Add i18n key** in `en.json`, using the `adjustToNumber` singular|plural format (like `contextMenu.group`):
+  `"contextMenu.addNodesToChat": "Add node to chat | Add {count} nodes to chat"`.
+  Also add the toolbar key from Task 4.3 if not yet present:
+  `"canvas.selection.toolbar.addToChat": "Add node to chat | Add {count} nodes to chat"`.
 
 - [ ] **Step 5: Run + typecheck + lint** — item test PASS; `pnpm typecheck`; `pnpm lint`.
 
