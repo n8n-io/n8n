@@ -23,6 +23,10 @@ import type { WorkflowTagMapping } from './workflow-tag-mapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
 
 @Entity()
+// Mirrors AddUpdatedAtIndexToWorkflowEntity1786525332822. Workflow lists and the
+// command-bar node search both order by `updatedAt`; the index lets the planner
+// stop at the limit instead of sorting the whole table.
+@Index(['updatedAt'])
 export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
 	// TODO: Add XSS check
 	@Index({ unique: true })

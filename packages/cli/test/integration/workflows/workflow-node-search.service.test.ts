@@ -170,6 +170,50 @@ describe('WorkflowNodeSearchService', () => {
 			expect(results).toEqual([]);
 		});
 
+		it('matches credential names', async () => {
+			await createWorkflow(
+				{
+					nodes: [
+						makeNode({
+							name: 'Notify',
+							credentials: { slackApi: { id: 'c-1', name: 'My Slack account' } },
+						}),
+					],
+				},
+				member,
+			);
+
+			const { results } = await service.search(member, 'slack account');
+
+			expect(results).toHaveLength(1);
+			expect(results[0]).toMatchObject({ nodeName: 'Notify', matchedField: 'credentials' });
+		});
+
+		// The DB prefilter matches the raw JSON blob, which contains fields the
+		// in-memory matcher deliberately skips (node ids, positions, webhookIds).
+		// A hit older than a full batch of such blob-only candidates must still be
+		// found — a fixed candidate cap silently returned nothing here.
+		it('finds hits beyond a full batch of blob-only false positives', async () => {
+			// The real hit is oldest, then 100 newer workflows that match the blob
+			// only via node id and fill the first keyset batch entirely.
+			await createWorkflow({ nodes: [makeNode({ name: 'needle hit' })] }, member);
+			await new Promise((resolve) => setTimeout(resolve, 10)); // decoys must sort newer
+			await Promise.all(
+				Array.from(
+					{ length: 100 },
+					async (_, i) =>
+						await createWorkflow(
+							{ nodes: [makeNode({ id: `needle-${i}`, name: `Decoy ${i}` })] },
+							member,
+						),
+				),
+			);
+
+			const { results } = await service.search(member, 'needle');
+
+			expect(results.map((hit) => hit.nodeName)).toEqual(['needle hit']);
+		});
+
 		it('is case insensitive', async () => {
 			await createWorkflow({ nodes: [makeNode({ name: 'Fetch ORDERS' })] }, member);
 
@@ -187,6 +231,31 @@ describe('WorkflowNodeSearchService', () => {
 			const { results } = await service.search(member, 'orders');
 
 			expect(results).toEqual([]);
+		});
+	});
+
+	describe('load shedding', () => {
+		// The per-user rate limit cannot bound load on a shared database: 20 users
+		// each staying within their own limit measured 66x list-query degradation
+		// before the process-wide cap existed (#30294).
+		it('sheds load once the concurrency cap and its queue are full', async () => {
+			await createWorkflow({ nodes: [makeNode({ name: 'Send Slack Alert' })] }, member);
+
+			// Fire more than (max concurrent + max queued) at once. The guard is
+			// evaluated synchronously before the limiter awaits, so this is deterministic.
+			const outcomes = await Promise.allSettled(
+				Array.from({ length: 10 }, async () => await service.search(member, 'slack')),
+			);
+
+			const rejected = outcomes.filter((outcome) => outcome.status === 'rejected');
+			const fulfilled = outcomes.filter((outcome) => outcome.status === 'fulfilled');
+			expect(rejected.length).toBeGreaterThan(0);
+			expect(fulfilled.length).toBeGreaterThan(0);
+			expect(rejected[0].reason).toMatchObject({ httpStatusCode: 429 });
+
+			// The cap must not wedge the service: later calls succeed normally.
+			const { results } = await service.search(member, 'slack');
+			expect(results).toHaveLength(1);
 		});
 	});
 
@@ -269,6 +338,43 @@ describe('WorkflowNodeSearchService', () => {
 			);
 
 			expect(candidates.map((c) => c.id)).toEqual([newer.id, older.id]);
+		});
+
+		it('continues after the cursor without skipping or repeating rows', async () => {
+			const workflows = [];
+			for (let i = 0; i < 3; i++) {
+				workflows.push(
+					await createWorkflow({ nodes: [makeNode({ name: `orders ${i}` })] }, member),
+				);
+			}
+			// Same timestamp on every row: the id tiebreak alone must page correctly.
+			const sharedTime = new Date(Date.now() + 60_000);
+			for (const workflow of workflows) {
+				await workflowRepository.update(workflow.id, { updatedAt: sharedTime });
+			}
+
+			const sharingOptions = await readSharingOptions();
+			const first = await workflowRepository.findNodeSearchCandidates(
+				member,
+				sharingOptions,
+				'orders',
+				2,
+			);
+			expect(first).toHaveLength(2);
+
+			const last = first[first.length - 1];
+			const second = await workflowRepository.findNodeSearchCandidates(
+				member,
+				sharingOptions,
+				'orders',
+				2,
+				undefined,
+				{ updatedAt: last.updatedAt, id: last.id },
+			);
+
+			const seen = [...first, ...second].map((candidate) => candidate.id);
+			expect(seen).toHaveLength(3);
+			expect(new Set(seen).size).toBe(3);
 		});
 
 		it('respects the candidate limit', async () => {

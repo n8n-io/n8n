@@ -16,7 +16,7 @@ export const NODE_SEARCH_TEXT_MAX_LENGTH = 2_000;
 /** Individual values longer than this are skipped — almost always encoded blobs. */
 const NODE_SEARCH_VALUE_MAX_LENGTH = 512;
 
-export type NodeSearchField = 'name' | 'type' | 'notes' | 'parameters';
+export type NodeSearchField = 'name' | 'type' | 'notes' | 'parameters' | 'credentials';
 
 export type NodeSearchMatch = {
 	field: NodeSearchField;
@@ -127,6 +127,16 @@ export function findNodeSearchMatch(node: INode, queryLower: string): NodeSearch
 	for (const value of collectNodeParameterValues(node.parameters)) {
 		if (value.toLowerCase().includes(queryLower)) {
 			return { field: 'parameters', snippet: buildNodeSearchSnippet(value, queryLower) };
+		}
+	}
+
+	// Credential names appear in the serialized workflow, so the SQL pre-filter
+	// matches them; without this, a credential-name query ("Slack Prod Account")
+	// only ever produces false positives. Names only — the type keys (`slackApi`)
+	// would make node-type-ish queries double-match.
+	for (const credential of Object.values(node.credentials ?? {})) {
+		if (credential.name?.toLowerCase().includes(queryLower)) {
+			return { field: 'credentials', snippet: buildNodeSearchSnippet(credential.name, queryLower) };
 		}
 	}
 

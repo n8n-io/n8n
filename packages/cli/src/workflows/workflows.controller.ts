@@ -25,6 +25,7 @@ import {
 } from '@n8n/db';
 import {
 	Body,
+	createUserKeyedRateLimiter,
 	Delete,
 	Get,
 	Licensed,
@@ -164,8 +165,14 @@ export class WorkflowsController {
 	 * every project the caller has access to, so there is no single scope to check.
 	 * Access is enforced inside the query itself, via the shared-workflow subquery
 	 * restricted to `workflow:read`.
+	 *
+	 * Each call runs an unindexable substring scan, so it is rate limited per
+	 * user: the client debounces its keystrokes, which no human can sustain past
+	 * this ceiling. Cross-user load is bounded by the service's concurrency gate.
 	 */
-	@Get('/search-nodes')
+	@Get('/search-nodes', {
+		keyedRateLimit: createUserKeyedRateLimiter({ limit: 120, windowMs: 60_000 }),
+	})
 	async searchNodes(
 		req: AuthenticatedRequest,
 		_res: express.Response,

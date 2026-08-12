@@ -11,6 +11,7 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import type { INode } from 'n8n-workflow';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
@@ -61,6 +62,8 @@ export type WorkflowFolderUnionFull = (
 export type NodeSearchCandidate = {
 	id: string;
 	name: string;
+	/** Keyset cursor position for the next batch. */
+	updatedAt: Date;
 	nodes: INode[];
 	homeProject: SlimProject | null;
 	parentFolder: { id: string; name: string } | null;
@@ -873,6 +876,10 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	 *
 	 * Only draft `nodes` are searched: that is what the user edits and what they
 	 * navigate back to. Published versions are deliberately out of scope.
+	 *
+	 * `cursor` continues a keyset scan: only workflows strictly older than
+	 * `(cursor.updatedAt, cursor.id)` are returned, so the caller can batch
+	 * through candidates without revisiting rows.
 	 */
 	async findNodeSearchCandidates(
 		user: User,
@@ -884,6 +891,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		query: string,
 		limit: number,
 		projectId?: string,
+		cursor?: { updatedAt: Date; id: string },
 	): Promise<NodeSearchCandidate[]> {
 		const qb = this.createQueryBuilder('workflow').select([
 			'workflow.id',
@@ -892,11 +900,31 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			'workflow.updatedAt',
 		]);
 
-		const sharedWorkflowSubquery = this.buildSharedWorkflowIdsSubquery(user, sharingOptions);
-		qb.where(`workflow.id IN (${sharedWorkflowSubquery.getQuery()})`);
+		// EXISTS, not `workflow.id IN (subquery)`: the IN form makes SQLite drive
+		// from `shared_workflow` and sort every LIKE match in a temp B-tree, which
+		// discards the `updatedAt` index this query relies on to stop at the limit.
+		const sharedWorkflowSubquery = this.buildSharedWorkflowIdsSubquery(
+			user,
+			sharingOptions,
+		).andWhere('sw.workflowId = workflow.id');
+		qb.where(`EXISTS (${sharedWorkflowSubquery.getQuery()})`);
 		qb.setParameters(sharedWorkflowSubquery.getParameters());
 
 		qb.andWhere('workflow.isArchived = :isArchived', { isArchived: false });
+
+		if (cursor) {
+			// Row-value comparison, NOT the equivalent `a < x OR (a = x AND b < y)`:
+			// the OR form makes SQLite pick a MULTI-INDEX OR plan that materialises
+			// and sorts every row older than the cursor on every batch, while the
+			// row value keeps the `updatedAt<?` index seek and short-circuits at
+			// the limit (measured ~175ms vs ~3ms per batch on a 20k corpus).
+			qb.andWhere('(workflow.updatedAt, workflow.id) < (:cursorUpdatedAt, :cursorId)', {
+				// Stringified for the raw comparison; same pattern as execution.repository.
+				// String() narrows DateUtils' `any` return — always a string for a Date input.
+				cursorUpdatedAt: String(DateUtils.mixedDateToUtcDatetimeString(cursor.updatedAt)),
+				cursorId: cursor.id,
+			});
+		}
 
 		// Postgres stores `nodes` as json and needs an explicit text cast for LIKE;
 		// sqlite already stores it as text. Mirrors `applyTriggerNodeTypesFilter`.
@@ -944,9 +972,25 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			'parentFolder.name',
 		]);
 
-		qb.orderBy('workflow.updatedAt', 'DESC').limit(limit);
+		// `id DESC` tiebreak: `updatedAt` is not unique, so without it rows sharing
+		// a timestamp could be skipped or duplicated at batch boundaries.
+		qb.orderBy('workflow.updatedAt', 'DESC').addOrderBy('workflow.id', 'DESC').limit(limit);
 
-		const workflows = await qb.getMany();
+		// Postgres cannot estimate the selectivity of `LIKE '%…%'`, so it assumes
+		// almost nothing matches and picks a sequential scan with a top-N sort over
+		// the whole table rather than walking the `updatedAt` index and stopping at
+		// the limit. The planner still falls back to a sequential scan when no index
+		// can serve the query, so this only removes a bad choice. SET LOCAL keeps it
+		// scoped to this transaction so pooled connections are unaffected.
+		const workflows =
+			this.globalConfig.database.type !== 'postgresdb'
+				? await qb.getMany()
+				: await this.manager.transaction(async (tx) => {
+						const { queryRunner } = tx;
+						if (!queryRunner) return await qb.getMany();
+						await tx.query('SET LOCAL enable_seqscan = off');
+						return await qb.setQueryRunner(queryRunner).getMany();
+					});
 
 		return workflows.map((workflow) => {
 			const ownerProject = workflow.shared?.[0]?.project ?? null;
@@ -954,6 +998,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			return {
 				id: workflow.id,
 				name: workflow.name,
+				updatedAt: workflow.updatedAt,
 				nodes: workflow.nodes ?? [],
 				homeProject: ownerProject
 					? {

@@ -23,6 +23,7 @@ const makeNode = (overrides: Partial<INode> = {}): INode => ({
 const makeCandidate = (overrides: Partial<NodeSearchCandidate> = {}): NodeSearchCandidate => ({
 	id: 'wf-1',
 	name: 'My Workflow',
+	updatedAt: new Date('2025-01-01T00:00:00.000Z'),
 	nodes: [],
 	homeProject: { id: 'proj-1', name: 'Acme Corp', type: 'team', icon: null },
 	parentFolder: null,
@@ -69,6 +70,7 @@ describe('WorkflowNodeSearchService', () => {
 				'orders',
 				expect.any(Number),
 				undefined,
+				undefined,
 			);
 		});
 
@@ -83,6 +85,7 @@ describe('WorkflowNodeSearchService', () => {
 				'orders',
 				expect.any(Number),
 				'proj-1',
+				undefined,
 			);
 		});
 
@@ -96,6 +99,7 @@ describe('WorkflowNodeSearchService', () => {
 				expect.anything(),
 				'orders',
 				expect.any(Number),
+				undefined,
 				undefined,
 			);
 		});
@@ -277,6 +281,79 @@ describe('WorkflowNodeSearchService', () => {
 			const { hasMore } = await service.search(user, 'orders');
 
 			expect(hasMore).toBe(false);
+		});
+
+		it('matches credential names, ranked below parameter hits', async () => {
+			const { service } = setup([
+				makeCandidate({
+					nodes: [
+						makeNode({
+							id: 'cred',
+							name: 'Notify',
+							credentials: { slackApi: { id: 'c-1', name: 'Slack Prod Account' } },
+						}),
+						makeNode({ id: 'param', name: 'Other', parameters: { q: 'prod account' } }),
+					],
+				}),
+			]);
+
+			const { results } = await service.search(user, 'prod account');
+
+			expect(results.map((hit) => [hit.nodeId, hit.matchedField])).toEqual([
+				['param', 'parameters'],
+				['cred', 'credentials'],
+			]);
+			expect(results[1].snippet).toContain('Slack Prod Account');
+		});
+
+		it('scans past a full batch of blob-only false positives on a keyset cursor', async () => {
+			// A full batch where the SQL pre-filter matched but no node does (ids,
+			// webhook ids, positions) must not end the search — a fixed cap did.
+			const falsePositives = Array.from({ length: 100 }, (_, i) =>
+				makeCandidate({
+					id: `decoy-${i}`,
+					updatedAt: new Date(2025, 0, 2),
+					nodes: [makeNode({ name: 'Unrelated' })],
+				}),
+			);
+			const realHit = makeCandidate({
+				id: 'real',
+				updatedAt: new Date(2025, 0, 1),
+				nodes: [makeNode({ name: 'Fetch orders' })],
+			});
+
+			const { service, workflowRepository } = setup();
+			workflowRepository.findNodeSearchCandidates
+				.mockResolvedValueOnce(falsePositives)
+				.mockResolvedValueOnce([realHit]);
+
+			const { results } = await service.search(user, 'orders');
+
+			expect(results.map((hit) => hit.workflowId)).toEqual(['real']);
+			// Second batch continues from the last row of the first.
+			expect(workflowRepository.findNodeSearchCandidates).toHaveBeenNthCalledWith(
+				2,
+				user,
+				expect.anything(),
+				'orders',
+				expect.any(Number),
+				undefined,
+				{ updatedAt: falsePositives[99].updatedAt, id: 'decoy-99' },
+			);
+		});
+
+		it('stops scanning at the safety rail on pathological queries', async () => {
+			// Every batch full, nothing ever matches in memory: the scan must stop.
+			const batch = Array.from({ length: 100 }, (_, i) =>
+				makeCandidate({ id: `decoy-${i}`, nodes: [makeNode({ name: 'Unrelated' })] }),
+			);
+			const { service, workflowRepository } = setup(batch);
+
+			await expect(service.search(user, 'orders')).resolves.toEqual({
+				results: [],
+				hasMore: false,
+			});
+			expect(workflowRepository.findNodeSearchCandidates).toHaveBeenCalledTimes(20);
 		});
 
 		it('preserves recency order within a relevance tier', async () => {
