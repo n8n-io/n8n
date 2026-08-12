@@ -134,6 +134,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
 | [workflow_review_request_workflow](workflow_review_request_workflow.md) | 5 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
+| [workflow_test](workflow_test.md) | 9 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
 ## Relations
@@ -1571,6 +1572,17 @@ erDiagram
   INTEGER rootCount
   VARCHAR_36_ workflowId
   VARCHAR_128_ workflowName
+}
+"workflow_test" {
+  datetime_3_ createdAt
+  TEXT expectations
+  TEXT fixtures
+  varchar_36_ id PK
+  varchar_128_ name
+  varchar_36_ sourceExecutionId
+  varchar_128_ triggerNodeName
+  datetime_3_ updatedAt
+  varchar_36_ workflowId
 }
 "workflows_tags" {
   INTEGER tagId PK
