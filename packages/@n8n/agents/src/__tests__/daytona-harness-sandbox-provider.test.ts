@@ -6,7 +6,14 @@ const daytona = vi.hoisted(() => {
 	let resolvePtyWait: ((value: { exitCode?: number; error?: string }) => void) | undefined;
 
 	const remote = {
+		cpu: 1,
+		memory: 1,
 		getWorkDir: vi.fn().mockResolvedValue('/home/daytona'),
+		resize: vi.fn().mockImplementation(async (resources: { cpu?: number; memory?: number }) => {
+			await Promise.resolve();
+			if (resources.cpu !== undefined) remote.cpu = resources.cpu;
+			if (resources.memory !== undefined) remote.memory = resources.memory;
+		}),
 		getSignedPreviewUrl: vi.fn().mockResolvedValue({
 			url: 'https://4000-signed-token.proxy.daytona.test',
 			token: 'signed-token',
@@ -86,6 +93,8 @@ const daytona = vi.hoisted(() => {
 		reconnectMissing = false;
 		onPtyData = undefined;
 		resolvePtyWait = undefined;
+		remote.cpu = 1;
+		remote.memory = 1;
 	};
 
 	return {
@@ -156,7 +165,9 @@ describe('DaytonaHarnessSandboxProvider', () => {
 			apiUrl: 'https://daytona.test',
 			labels: { n8n_harness_adapter: 'claude-code' },
 			public: false,
+			resources: { cpu: 2, memory: 4 },
 		});
+		expect(daytona.remote.resize).toHaveBeenCalledWith({ cpu: 2, memory: 4 });
 		expect(onFirstCreate).toHaveBeenCalledOnce();
 		await expect(session.getPortUrl({ port: 4000, protocol: 'ws' })).resolves.toBe(
 			'wss://4000-signed-token.proxy.daytona.test/',
@@ -224,7 +235,7 @@ describe('DaytonaHarnessSandboxProvider', () => {
 					'fi',
 				].join('\n'),
 			],
-			expect.objectContaining({}),
+			expect.objectContaining({ timeout: 15 * 60 * 1000 }),
 		);
 	});
 

@@ -3,7 +3,7 @@ import type {
 	Experimental_SandboxProcess as SandboxProcess,
 	Experimental_SandboxSession as SandboxSession,
 } from '@ai-sdk/provider-utils';
-import type { CreateSandboxFromImageParams, PtyHandle } from '@daytona/sdk';
+import type { CreateSandboxFromImageParams, PtyHandle, Resources } from '@daytona/sdk';
 import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -17,6 +17,9 @@ import { DAYTONA_HOME } from '../workspace/sandbox/workspace-root';
 const DEFAULT_BRIDGE_PORT = 4000;
 const DEFAULT_PREVIEW_URL_TTL_SECONDS = 3600;
 const MAX_PREVIEW_URL_TTL_SECONDS = 24 * 60 * 60;
+const DEFAULT_BOOTSTRAP_TIMEOUT_MS = 15 * 60 * 1000;
+const DEFAULT_HARNESS_CPU = 2;
+const DEFAULT_HARNESS_MEMORY_GIB = 4;
 const PNPM_FALLBACK_VERSION = '10.32.1';
 
 export interface DaytonaHarnessSandboxProviderOptions {
@@ -27,8 +30,10 @@ export interface DaytonaHarnessSandboxProviderOptions {
 	previewUrlTtlSeconds?: number;
 	timeout?: number;
 	createTimeoutSeconds?: number;
+	bootstrapTimeout?: number;
 	image?: CreateSandboxFromImageParams['image'];
 	snapshot?: string;
+	resources?: Pick<Resources, 'cpu' | 'memory'>;
 	ephemeral?: boolean;
 	autoStopInterval?: number;
 	logger?: Logger;
@@ -119,6 +124,10 @@ function withPnpmFallback(command: string): string {
 	].join('\n');
 }
 
+function isPnpmCommand(command: string): boolean {
+	return /^pnpm(?=$|\s)/.test(command);
+}
+
 function toPortUrl(url: string, protocol: 'http' | 'https' | 'ws' | undefined): string {
 	if (protocol === undefined || protocol === 'https') return url;
 	const parsed = new URL(url);
@@ -186,6 +195,14 @@ export function createDaytonaHarnessSandboxProvider(
 		MAX_PREVIEW_URL_TTL_SECONDS,
 		Math.max(1, options.previewUrlTtlSeconds ?? DEFAULT_PREVIEW_URL_TTL_SECONDS),
 	);
+	const resources = {
+		cpu: options.resources?.cpu ?? DEFAULT_HARNESS_CPU,
+		memory: options.resources?.memory ?? DEFAULT_HARNESS_MEMORY_GIB,
+	};
+	const bootstrapTimeout = Math.max(
+		options.timeout ?? 0,
+		options.bootstrapTimeout ?? DEFAULT_BOOTSTRAP_TIMEOUT_MS,
+	);
 
 	const createSandbox = (sessionId: string, reconnectOnly = false) =>
 		new DaytonaSandbox({
@@ -199,12 +216,23 @@ export function createDaytonaHarnessSandboxProvider(
 			autoStopInterval: options.autoStopInterval,
 			timeout: options.timeout,
 			createTimeoutSeconds: options.createTimeoutSeconds,
+			resources,
 			labels: { ...options.labels, n8n_harness_adapter: options.harness },
 			logger: options.logger,
 			public: false,
 			createStrategyMode: 'direct',
 			reconnectOnly,
 		});
+	const ensureResources = async (sandbox: DaytonaSandbox) => {
+		await sandbox.withSandbox(async (instance) => {
+			const required: Pick<Resources, 'cpu' | 'memory' | 'disk'> = {};
+			if (instance.cpu < resources.cpu) required.cpu = resources.cpu;
+			if (instance.memory < resources.memory) required.memory = resources.memory;
+			if (required.cpu !== undefined || required.memory !== undefined) {
+				await instance.resize(required);
+			}
+		});
+	};
 
 	const buildSession = async (sandbox: DaytonaSandbox): Promise<HarnessV1NetworkSandboxSession> => {
 		const filesystem = new DaytonaFilesystem(sandbox);
@@ -330,6 +358,7 @@ export function createDaytonaHarnessSandboxProvider(
 			},
 			spawn,
 			run: async (processOptions) => {
+				const pnpmCommand = isPnpmCommand(processOptions.command);
 				const result = await sandbox.executeCommand(
 					'sh',
 					['-lc', withPnpmFallback(processOptions.command)],
@@ -337,7 +366,7 @@ export function createDaytonaHarnessSandboxProvider(
 						cwd: processOptions.workingDirectory,
 						env: processOptions.env,
 						abortSignal: processOptions.abortSignal,
-						timeout: options.timeout,
+						timeout: pnpmCommand ? bootstrapTimeout : options.timeout,
 					},
 				);
 				return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
@@ -389,21 +418,23 @@ export function createDaytonaHarnessSandboxProvider(
 		createSession: async ({ sessionId = randomUUID(), abortSignal, onFirstCreate } = {}) => {
 			abortSignal?.throwIfAborted();
 			const sandbox = createSandbox(sessionId);
-			await sandbox._start();
-			const session = await buildSession(sandbox);
 			try {
+				await sandbox._start();
+				await ensureResources(sandbox);
+				const session = await buildSession(sandbox);
 				if (onFirstCreate) await onFirstCreate(session.restricted(), { abortSignal });
+				return session;
 			} catch (error) {
-				await Promise.resolve(session.destroy?.()).catch(() => {});
+				await sandbox._destroy().catch(() => {});
 				throw error;
 			}
-			return session;
 		},
 		resumeSession: async ({ sessionId, abortSignal }) => {
 			abortSignal?.throwIfAborted();
 			const sandbox = createSandbox(sessionId, true);
 			try {
 				await sandbox._start();
+				await ensureResources(sandbox);
 			} catch (error) {
 				if (error instanceof DaytonaSandboxNotFoundError) throw new HarnessSessionExpiredError();
 				throw error;
