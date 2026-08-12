@@ -106,7 +106,9 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	 * lost its last one covers nothing and can never be acted on again. `create` writes
 	 * the request and its link row in one transaction, so a request is only ever visible
 	 * without links once the workflow behind it is gone — the two steps here cannot see
-	 * a half-written create and so need no lock.
+	 * a half-written create. They can race another sweep or a concurrent decision though,
+	 * since the update keys off the ids selected rather than off the state: the caller holds
+	 * the review-request lock for that.
 	 */
 	async closeOrphanedOpenRequests(ctx: OperationContext): Promise<string[]> {
 		const openState: WorkflowReviewRequestState = 'open';

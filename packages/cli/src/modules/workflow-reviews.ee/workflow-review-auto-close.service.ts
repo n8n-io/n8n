@@ -54,8 +54,31 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 	 */
 	async afterWorkflowsDeleted(workflowIds: string[]): Promise<void> {
 		try {
-			const closedRequestIds = await this.workflowReviewRequestRepository.closeOrphanedOpenRequests(
-				{},
+			const closedRequestIds = await this.dbLockService.withLockContext(
+				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+				async (ctx) => {
+					const requestIds =
+						await this.workflowReviewRequestRepository.closeOrphanedOpenRequests(ctx);
+
+					// Under the same lock and in the same transaction as every other close path: the
+					// sweep selects orphans and then updates them by id, so two sweeps racing across
+					// that gap would both explain the same close and both overwrite whatever a
+					// concurrent approval wrote. A failed entry rolls the close back and the next
+					// sweep closes it again, which is what the sweep is for.
+					for (const workflowReviewRequestId of requestIds) {
+						await this.activityRepository.createActivity(
+							{
+								workflowReviewRequestId,
+								type: 'review.closed',
+								data: { reason: 'workflow-deleted' },
+								createdById: null,
+							},
+							ctx,
+						);
+					}
+
+					return requestIds;
+				},
 			);
 
 			if (closedRequestIds.length === 0) return;
@@ -65,27 +88,6 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 				workflowIds,
 				workflowReviewRequestIds: closedRequestIds,
 			});
-
-			// Post-commit and best-effort, unlike the lock path below: the close has already
-			// committed, so a failed entry can only be logged.
-			for (const workflowReviewRequestId of closedRequestIds) {
-				try {
-					await this.activityRepository.createActivity(
-						{
-							workflowReviewRequestId,
-							type: 'review.closed',
-							data: { reason: 'workflow-deleted' },
-							createdById: null,
-						},
-						{},
-					);
-				} catch (error) {
-					this.logger.error('Failed to record why a swept review closed', {
-						workflowReviewRequestId,
-						error,
-					});
-				}
-			}
 		} catch (error) {
 			// The delete has already committed; failing it now would be worse than a
 			// request that stays open until the next sweep closes it.

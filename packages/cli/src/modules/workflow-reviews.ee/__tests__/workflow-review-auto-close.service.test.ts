@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { DbLock } from '@n8n/db';
 import type {
 	DbLockService,
 	OperationContext,
@@ -137,16 +138,30 @@ describe('WorkflowReviewAutoCloseService', () => {
 	});
 
 	describe('afterWorkflowsDeleted', () => {
-		it('closes the requests the delete orphaned, outside any lock', async () => {
+		it('closes the requests the delete orphaned and explains each of them', async () => {
 			requestRepository.closeOrphanedOpenRequests.mockResolvedValue(['req-9']);
+			activityRepository.createActivity.mockResolvedValue(mock<WorkflowReviewActivity>());
 
 			await service.afterWorkflowsDeleted(['wf-1', 'wf-2']);
 
-			// A single atomic statement pair, so it needs no lock — and must not take one
-			// after a delete, where camping on the create lock would serialize submissions.
-			// The sweep is global, so the batch never reaches the query; it is log context only.
-			expect(requestRepository.closeOrphanedOpenRequests).toHaveBeenCalledExactlyOnceWith({});
-			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+			// Same lock and same transaction as every other close path: the sweep updates the
+			// orphans it selected by id, so two racing sweeps would otherwise explain the same
+			// close twice. The sweep is global, so the batch never reaches the query; it is log
+			// context only.
+			expect(dbLockService.withLockContext).toHaveBeenCalledWith(
+				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+				expect.any(Function),
+			);
+			expect(requestRepository.closeOrphanedOpenRequests).toHaveBeenCalledExactlyOnceWith(ctx);
+			expect(activityRepository.createActivity).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflowReviewRequestId: 'req-9',
+					type: 'review.closed',
+					data: { reason: 'workflow-deleted' },
+					createdById: null,
+				},
+				ctx,
+			);
 			expect(logger.info).toHaveBeenCalledExactlyOnceWith(
 				expect.any(String),
 				expect.objectContaining({
@@ -165,21 +180,17 @@ describe('WorkflowReviewAutoCloseService', () => {
 			expect(logger.info).not.toHaveBeenCalled();
 		});
 
-		// The close has already committed on the root context, so a failed explanation can only
-		// be logged — and must not strand the requests behind it in the batch.
-		it('explains the swept reviews it can and only logs the ones it cannot', async () => {
-			requestRepository.closeOrphanedOpenRequests.mockResolvedValue(['req-9', 'req-10']);
-			activityRepository.createActivity
-				.mockRejectedValueOnce(new Error('db down'))
-				.mockResolvedValueOnce(mock<WorkflowReviewActivity>());
+		// The close and its explanation share one transaction, so an unwritable entry rolls the
+		// close back and the next sweep picks the review up again. The delete already committed,
+		// so there is nothing left to fail.
+		it('leaves a review it cannot explain to the next sweep', async () => {
+			requestRepository.closeOrphanedOpenRequests.mockResolvedValue(['req-9']);
+			activityRepository.createActivity.mockRejectedValue(new Error('db down'));
 
 			await expect(service.afterWorkflowsDeleted(['wf-1'])).resolves.toBeUndefined();
 
-			expect(activityRepository.createActivity).toHaveBeenCalledTimes(2);
-			expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-				expect.any(String),
-				expect.objectContaining({ workflowReviewRequestId: 'req-9' }),
-			);
+			expect(logger.error).toHaveBeenCalled();
+			expect(logger.info).not.toHaveBeenCalled();
 		});
 
 		// The delete already committed, so there is nothing left to abort.
