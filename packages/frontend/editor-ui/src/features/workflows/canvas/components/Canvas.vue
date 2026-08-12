@@ -1063,6 +1063,13 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		return;
 	}
 
+	// Mid-tour, a node click jumps to that node's tour step instead of the
+	// regular selection/panel behavior. Nodes without a description are inert.
+	if (workflowTourStore.isActive) {
+		workflowTour.goToNode(node.id);
+		return;
+	}
+
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
 	}
@@ -1340,6 +1347,12 @@ function getProjectedPosition(event?: MouseEvent | TouchEvent) {
 }
 
 function onClickPane(event: MouseEvent) {
+	// Mid-tour, clicking the blank canvas exits the tour.
+	if (workflowTourStore.isActive) {
+		workflowTour.exit();
+		return;
+	}
+
 	emit('click:pane', getProjectedPosition(event));
 }
 
