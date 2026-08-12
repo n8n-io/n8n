@@ -1905,6 +1905,51 @@ describe('update-workflow MCP tool', () => {
 			);
 		});
 
+		test('setNodeDescription persists into meta.nodeDescriptions keyed by node id', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{
+						type: 'setNodeDescription',
+						nodeName: 'A',
+						summary: 'Fetches the latest orders.',
+						rationale: 'Polling was chosen because the API has no webhook support.',
+					},
+				],
+			});
+
+			expect(updateMock.mock.calls[0][1].meta).toEqual(
+				expect.objectContaining({
+					nodeDescriptions: {
+						a: {
+							summary: 'Fetches the latest orders.',
+							rationale: 'Polling was chosen because the API has no webhook support.',
+						},
+					},
+				}),
+			);
+		});
+
+		test('setNodeDescription preserves an existing description on another node', async () => {
+			const existing = buildExistingWorkflow();
+			existing.meta = { nodeDescriptions: { b: { summary: 'Existing B summary' } } };
+			findWorkflowMock.mockResolvedValue(existing);
+
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setNodeDescription', nodeName: 'A', summary: 'New A summary' }],
+			});
+
+			expect(updateMock.mock.calls[0][1].meta).toEqual(
+				expect.objectContaining({
+					nodeDescriptions: {
+						a: { summary: 'New A summary' },
+						b: { summary: 'Existing B summary' },
+					},
+				}),
+			);
+		});
+
 		test('broadcasts workflow update on success', async () => {
 			await callHandler({
 				workflowId: 'wf-1',

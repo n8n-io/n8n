@@ -8,6 +8,7 @@ import type {
 	IWorkflowGroup,
 	IWorkflowSettings,
 	NodeConnectionType,
+	WorkflowNodeDescriptions,
 } from 'n8n-workflow';
 import {
 	GROUP_DESCRIPTION_MAX_LENGTH,
@@ -267,6 +268,17 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		description: z.string().max(255).optional(),
 	}),
 	z.object({
+		type: z.literal('setNodeDescription'),
+		nodeName: z.string().describe('Name of the existing node to update.'),
+		summary: z.string().describe('1-2 plain sentences on what this node does in this workflow.'),
+		rationale: z
+			.string()
+			.optional()
+			.describe(
+				'One sentence on why this node or approach was chosen over the alternative (e.g. webhook vs polling). Omit to clear.',
+			),
+	}),
+	z.object({
 		type: z.literal('setWorkflowSettings'),
 		settings: workflowSettingsInputSchema.describe(
 			'Workflow-level settings to update. Only the keys you include are written; omitted keys are left unchanged.',
@@ -387,6 +399,8 @@ interface WorkflowSlice {
 	nodeGroups?: IWorkflowGroup[];
 	/** Existing tag names on the workflow. Undefined when not loaded; tag ops require this. */
 	tagNames?: string[];
+	/** Guided-tour descriptions keyed by node id. Undefined when the workflow has none. */
+	nodeDescriptions?: WorkflowNodeDescriptions;
 }
 
 export interface SkippedOperation {
@@ -445,6 +459,9 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	settings: workflow.settings ? structuredClone(workflow.settings) : undefined,
 	nodeGroups: workflow.nodeGroups ? structuredClone(workflow.nodeGroups) : undefined,
 	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
+	nodeDescriptions: workflow.nodeDescriptions
+		? structuredClone(workflow.nodeDescriptions)
+		: undefined,
 });
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -935,6 +952,23 @@ const handleSetNodeSettings: OpHandler<'setNodeSettings'> = (op, ctx) => {
 	return null;
 };
 
+const handleSetNodeDescription: OpHandler<'setNodeDescription'> = (op, ctx) => {
+	const node = ctx.nodeByName.get(op.nodeName);
+	if (!node) {
+		return `node '${op.nodeName}' not found`;
+	}
+
+	ctx.workflow.nodeDescriptions = {
+		...(ctx.workflow.nodeDescriptions ?? {}),
+		[node.id]: {
+			summary: op.summary,
+			...(op.rationale !== undefined ? { rationale: op.rationale } : {}),
+		},
+	};
+
+	return null;
+};
+
 const handleSetWorkflowMetadata: OpHandler<'setWorkflowMetadata'> = (op, ctx) => {
 	if (op.name !== undefined) {
 		ctx.workflow.name = op.name;
@@ -1119,6 +1153,7 @@ const OPERATION_HANDLERS: { [K in PartialUpdateOperation['type']]: OpHandler<K> 
 	setNodePosition: handleSetNodePosition,
 	setNodeDisabled: handleSetNodeDisabled,
 	setNodeSettings: handleSetNodeSettings,
+	setNodeDescription: handleSetNodeDescription,
 	setWorkflowMetadata: handleSetWorkflowMetadata,
 	setWorkflowSettings: handleSetWorkflowSettings,
 	setNodeGroups: handleSetNodeGroups,
@@ -1219,5 +1254,6 @@ export function toWorkflowSlice(
 		settings: workflow.settings,
 		nodeGroups: workflow.nodeGroups,
 		tagNames,
+		nodeDescriptions: workflow.meta?.nodeDescriptions,
 	};
 }

@@ -70,6 +70,7 @@ const baseOperationTypes = [
 	'setNodePosition',
 	'setNodeDisabled',
 	'setNodeSettings',
+	'setNodeDescription',
 	'setWorkflowMetadata',
 	'setWorkflowSettings',
 	'addTags',
@@ -174,6 +175,18 @@ const buildOperationInputSchema = (canvasGroupsEnabled: boolean) =>
 			settings: combinedSettingsInputSchema
 				.optional()
 				.describe('For setNodeSettings or setWorkflowSettings.'),
+			summary: z
+				.string()
+				.optional()
+				.describe(
+					'For setNodeDescription: 1-2 plain sentences on what this node does in this workflow.',
+				),
+			rationale: z
+				.string()
+				.optional()
+				.describe(
+					'For setNodeDescription: one sentence on why this node or approach was chosen over the alternative (e.g. webhook vs polling). Omit to clear.',
+				),
 			name: z
 				.string()
 				.max(128)
@@ -890,6 +903,9 @@ export const createUpdateWorkflowTool = (
 				meta: hasNonTagOperations
 					? {
 							...(existingWorkflow.meta ?? {}),
+							...(result.workflow.nodeDescriptions !== undefined
+								? { nodeDescriptions: result.workflow.nodeDescriptions }
+								: {}),
 							aiBuilderAssisted: true,
 							builderVariant: 'mcp',
 						}

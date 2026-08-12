@@ -704,6 +704,83 @@ describe('applyOperations', () => {
 		});
 	});
 
+	describe('setNodeDescription', () => {
+		test('sets summary and rationale on the node id, keyed by name', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{
+					type: 'setNodeDescription',
+					nodeName: 'A',
+					summary: 'Fetches the latest orders.',
+					rationale: 'Polling was chosen because the API has no webhook support.',
+				},
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeDescriptions).toEqual({
+				a: {
+					summary: 'Fetches the latest orders.',
+					rationale: 'Polling was chosen because the API has no webhook support.',
+				},
+			});
+		});
+
+		test('sets summary only when rationale is omitted', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'setNodeDescription', nodeName: 'A', summary: 'Fetches the latest orders.' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeDescriptions).toEqual({
+				a: { summary: 'Fetches the latest orders.' },
+			});
+		});
+
+		test("preserves other nodes' descriptions when setting one", () => {
+			const wf = baseWorkflow();
+			const result = applyOperations(wf, [
+				{ type: 'setNodeDescription', nodeName: 'A', summary: 'Summary A' },
+				{ type: 'setNodeDescription', nodeName: 'B', summary: 'Summary B' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeDescriptions).toEqual({
+				a: { summary: 'Summary A' },
+				b: { summary: 'Summary B' },
+			});
+		});
+
+		test('overwrites an existing description for the same node, clearing rationale when omitted', () => {
+			const wf = {
+				...baseWorkflow(),
+				nodeDescriptions: { a: { summary: 'Old summary', rationale: 'Old rationale' } },
+			};
+			const result = applyOperations(wf, [
+				{ type: 'setNodeDescription', nodeName: 'A', summary: 'New summary' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeDescriptions).toEqual({ a: { summary: 'New summary' } });
+		});
+
+		test('rejects when node does not exist', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'setNodeDescription', nodeName: 'Missing', summary: 'x' },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.opIndex).toBe(0);
+			expect(result.error).toContain("'Missing' not found");
+		});
+
+		test('schema requires summary', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setNodeDescription',
+				nodeName: 'A',
+			});
+			expect(parsed.success).toBe(false);
+		});
+	});
+
 	describe('setWorkflowMetadata', () => {
 		test('updates name and description', () => {
 			const result = applyOperations(baseWorkflow(), [
@@ -1674,6 +1751,16 @@ describe('applyOperations', () => {
 				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'] }],
 			} as never);
 			expect(slice.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a'] }]);
+		});
+
+		test('carries nodeDescriptions through from meta', () => {
+			const slice = toWorkflowSlice({
+				name: 'wf',
+				nodes: [],
+				connections: {},
+				meta: { nodeDescriptions: { a: { summary: 'Does a thing' } } },
+			} as never);
+			expect(slice.nodeDescriptions).toEqual({ a: { summary: 'Does a thing' } });
 		});
 	});
 });
