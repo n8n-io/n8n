@@ -123,17 +123,12 @@ const registerOAuthClient = async () => {
 };
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS = 'true'; // gates the webhook-trigger resolvers
 	owner = await createOwner();
 	member = await createMember();
 	const { endpoints } = Container.get(GlobalConfig);
 	webhookEndpoint = endpoints.webhook;
 	webhookTestEndpoint = endpoints.webhookTest;
 	registrations = Container.get(TestWebhookRegistrationsService);
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS;
 });
 
 afterEach(async () => {
@@ -205,19 +200,6 @@ describe('protected resource metadata for test webhook triggers', () => {
 		const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should not resolve when the feature flag is disabled', async () => {
-		const webhookPath = randomUUID();
-		await registerTestWebhook(webhookPath, webhookNode());
-
-		delete process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS;
-		try {
-			const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
-			expect(response.statusCode).toBe(404);
-		} finally {
-			process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS = 'true';
-		}
 	});
 
 	test('should not resolve a non-test-webhook path even if the registration exists', async () => {

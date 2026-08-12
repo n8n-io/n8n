@@ -431,7 +431,6 @@ export function useNodeHelpers() {
 	function getBlockingTrigger(): {
 		isSystemResolver: boolean;
 		formOAuth2Enabled: boolean;
-		webhookOAuth2Enabled: boolean;
 	} | null {
 		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
 			(trigger) => !trigger.disabled,
@@ -441,20 +440,17 @@ export function useNodeHelpers() {
 		const resolverId = workflowDocumentStore.value.settings?.credentialResolverId;
 		const isSystemResolver = !resolverId || resolverId === SYSTEM_RESOLVER_ID;
 		const formOAuth2Enabled = isEnvFeatureEnabled.value('FORM_TRIGGER_OAUTH2');
-		const webhookOAuth2Enabled = isEnvFeatureEnabled.value('WEBHOOK_PRIVATE_CREDENTIALS');
 
 		const hasBlockingTrigger = triggers.some((trigger) => {
 			const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
 				trigger.type,
 				trigger.parameters,
-				{ isFormOAuth2Enabled: formOAuth2Enabled, isWebhookOAuth2Enabled: webhookOAuth2Enabled },
+				{ isFormOAuth2Enabled: formOAuth2Enabled },
 			);
 			return isSystemResolver ? !providesN8nIdentity : !providesExternalIdentity;
 		});
 
-		return hasBlockingTrigger
-			? { isSystemResolver, formOAuth2Enabled, webhookOAuth2Enabled }
-			: null;
+		return hasBlockingTrigger ? { isSystemResolver, formOAuth2Enabled } : null;
 	}
 
 	function collectPrivateCredentialIssues(
@@ -477,21 +473,17 @@ export function useNodeHelpers() {
 			// merely-not-yet-connected credential is surfaced via the callout/banner.
 			// The message depends on the resolver: the system resolver needs a trigger
 			// that establishes the n8n user identity, a custom resolver needs one that
-			// extracts an external identity. Form and webhook are only listed as
-			// supported while their respective OAuth2 flags are on — without them
-			// neither establishes an identity, so listing them would advertise a fix
-			// that doesn't work.
+			// extracts an external identity. Form is only listed as supported while its
+			// OAuth2 flag is on — without it the form establishes no identity, so listing
+			// it would advertise a fix that doesn't work.
 			if (blockingTrigger) {
-				let messageKey: BaseTextKey = 'nodeIssues.credentials.privateRequiresIdentityTrigger';
+				let messageKey: BaseTextKey =
+					'nodeIssues.credentials.privateRequiresIdentityTriggerWithWebhook';
 
 				if (!blockingTrigger.isSystemResolver) {
 					messageKey = 'nodeIssues.credentials.privateRequiresIdentityExtractor';
-				} else if (blockingTrigger.formOAuth2Enabled && blockingTrigger.webhookOAuth2Enabled) {
-					messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithFormAndWebhook';
 				} else if (blockingTrigger.formOAuth2Enabled) {
-					messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithForm';
-				} else if (blockingTrigger.webhookOAuth2Enabled) {
-					messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithWebhook';
+					messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithFormAndWebhook';
 				}
 				foundIssues[credTypeName] = [i18n.baseText(messageKey)];
 			}

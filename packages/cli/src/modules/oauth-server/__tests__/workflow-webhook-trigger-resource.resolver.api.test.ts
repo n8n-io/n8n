@@ -110,14 +110,9 @@ const decodeJwtPayload = (token: string): Record<string, unknown> =>
 	JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()) as Record<string, unknown>;
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS = 'true'; // gates the webhook-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	webhookEndpoint = Container.get(GlobalConfig).endpoints.webhook;
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS;
 });
 
 afterEach(async () => {
@@ -276,19 +271,6 @@ describe('protected resource metadata for webhook triggers', () => {
 		const response = await testServer.restlessAgent.get(prmPathFor(randomUUID()));
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should not resolve when the feature flag is disabled', async () => {
-		const webhookPath = randomUUID();
-		await createPublishedWebhookWorkflow(webhookPath, webhookNode());
-
-		delete process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS;
-		try {
-			const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
-			expect(response.statusCode).toBe(404);
-		} finally {
-			process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS = 'true';
-		}
 	});
 
 	test('should not resolve a non-webhook path even if the webhook exists', async () => {

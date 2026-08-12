@@ -117,42 +117,16 @@ describe('classifyTriggerIdentity', () => {
 	});
 
 	describe('Webhook node', () => {
-		it('provides both identities when authentication is n8nOAuth2 and the flag is enabled', () => {
+		it('provides both identities when authentication is n8nOAuth2', () => {
 			expect(
-				classifyTriggerIdentity(
-					'n8n-nodes-base.webhook',
-					{ authentication: 'n8nOAuth2' },
-					{ isWebhookOAuth2Enabled: true },
-				),
+				classifyTriggerIdentity('n8n-nodes-base.webhook', { authentication: 'n8nOAuth2' }),
 			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: true });
 		});
 
-		it('provides no identity when authentication is n8nOAuth2 but the flag is disabled', () => {
-			expect(
-				classifyTriggerIdentity(
-					'n8n-nodes-base.webhook',
-					{ authentication: 'n8nOAuth2' },
-					{ isWebhookOAuth2Enabled: false },
-				),
-			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
-		});
-
-		it('provides no identity when the options bag is omitted', () => {
-			// Fails closed: a caller that has not read the flag must not let the
-			// combination through.
-			expect(
-				classifyTriggerIdentity('n8n-nodes-base.webhook', { authentication: 'n8nOAuth2' }),
-			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
-		});
-
-		it('provides no identity for other authentication modes even when the flag is enabled', () => {
-			expect(
-				classifyTriggerIdentity(
-					'n8n-nodes-base.webhook',
-					{ authentication: 'none' },
-					{ isWebhookOAuth2Enabled: true },
-				),
-			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
+		it('provides no identity for other authentication modes', () => {
+			expect(classifyTriggerIdentity('n8n-nodes-base.webhook', { authentication: 'none' })).toEqual(
+				{ providesN8nIdentity: false, providesExternalIdentity: false },
+			);
 		});
 	});
 
