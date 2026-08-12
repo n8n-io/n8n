@@ -98,6 +98,25 @@ const inputSchema = {
 		.describe(
 			'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project.',
 		),
+	nodeDescriptions: z
+		.record(
+			z.string(),
+			z.object({
+				summary: z
+					.string()
+					.describe('1-2 plain sentences on what this node does in this workflow.'),
+				rationale: z
+					.string()
+					.optional()
+					.describe(
+						'One sentence on why this node or approach was chosen over the alternative (e.g. webhook vs polling).',
+					),
+			}),
+		)
+		.optional()
+		.describe(
+			'Guided-tour descriptions keyed by node NAME, exactly as named in the workflow code. Provide an entry for every node. These power a step-by-step tour shown to the user on the canvas — write plainly and keep each field short.',
+		),
 } satisfies z.ZodRawShape;
 
 // The MCP SDK publishes this schema with `additionalProperties: false` and
@@ -220,6 +239,7 @@ export const createCreateWorkflowFromCodeTool = (
 		versionDescription,
 		projectId,
 		folderId,
+		nodeDescriptions,
 	}: {
 		code: string;
 		skillsUsed?: string[];
@@ -229,6 +249,7 @@ export const createCreateWorkflowFromCodeTool = (
 		versionDescription?: string;
 		projectId?: string;
 		folderId?: string;
+		nodeDescriptions?: Record<string, { summary: string; rationale?: string }>;
 	}) => {
 		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
@@ -242,6 +263,7 @@ export const createCreateWorkflowFromCodeTool = (
 				hasFolderId: !!folderId,
 				hasVersionName: !!versionName,
 				hasVersionDescription: !!versionDescription,
+				hasNodeDescriptions: !!nodeDescriptions && Object.keys(nodeDescriptions).length > 0,
 			},
 		};
 
@@ -284,6 +306,15 @@ export const createCreateWorkflowFromCodeTool = (
 			);
 			if (invalidToolSourceResponse) return invalidToolSourceResponse;
 
+			// The tour keys descriptions by node id, but ids are generated during
+			// parsing — the agent only knows node names, so remap here.
+			const nodeDescriptionsById = Object.fromEntries(
+				Object.entries(nodeDescriptions ?? {}).flatMap(([nodeName, nodeDescription]) => {
+					const node = workflowJson.nodes.find((n) => n.name === nodeName);
+					return node ? [[node.id, nodeDescription]] : [];
+				}),
+			);
+
 			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
 				name: name ?? workflowJson.name ?? 'Untitled Workflow',
@@ -294,7 +325,14 @@ export const createCreateWorkflowFromCodeTool = (
 				...(options.canvasGroupsEnabled ? { nodeGroups: workflowJson.nodeGroups ?? [] } : {}),
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
-				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
+				meta: {
+					...workflowJson.meta,
+					...(Object.keys(nodeDescriptionsById).length
+						? { nodeDescriptions: nodeDescriptionsById }
+						: {}),
+					aiBuilderAssisted: true,
+					builderVariant: 'mcp',
+				},
 			});
 
 			resolveNodeWebhookIds(newWorkflow, nodeTypes);
