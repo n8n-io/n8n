@@ -466,7 +466,8 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						Although this is not the most elegant solution, it's straightforward and simpler than introducing a new props and logic to handle this.
 				-->
 			<component :is="'style'">button.linkRun { display: none }</component>
-			<div :class="$style.mappedNode">
+			<!-- Nothing to pick from on a trigger — an empty selector is just noise. -->
+			<div v-if="rootNodesParents.length" :class="$style.mappedNode">
 				<InputNodeSelect
 					:model-value="mappedNode"
 					:nodes="rootNodesParents"
