@@ -55,8 +55,17 @@ export interface UiNode {
  */
 export interface UiAction {
 	url: string;
-	method?: 'GET' | 'POST';
+	method?: UiHttpMethod;
 }
+
+/**
+ * What a step can call a trigger with. Beyond GET and POST because an API
+ * Router endpoint is free to be any of them, and only GET is special: it is the
+ * one the browser refuses to give a body.
+ */
+export type UiHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+export const HTTP_METHODS: readonly UiHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
 /**
  * What an interaction prop holds now: a list of steps run in order.
@@ -68,31 +77,42 @@ export interface UiAction {
 export type UiActionStep = UiWebhookStep | UiNotifyStep | UiNavigateStep | UiSetStep;
 
 /**
- * Where a reply lands. A state path takes the whole body; an object maps state
- * paths to paths within the body, so one call can fill several keys and a
- * workflow is free to answer in whatever shape it likes.
+ * Where a reply used to land, before a `set` step could read `$response`. Read
+ * from documents that still hold it, never written: `normaliseAction` turns it
+ * into the `set` steps it was always shorthand for.
  */
 export type UiResponseBinding = string | Record<string, string>;
 
 /**
- * Call a workflow. The step owns both ends of the exchange, so the workflow
- * never has to know an app's state keys and can return its nodes' own output.
+ * Call a workflow. What it answers is not placed anywhere by the step itself —
+ * it becomes `$response` for the rest of the chain, and a `set` step decides
+ * what of it is worth keeping.
  */
 export interface UiWebhookStep {
 	kind: 'webhook';
 	url: string;
-	method?: 'GET' | 'POST';
-	/** State path to send as the body. Unset sends all of it; a GET sends none of it. */
+	method?: UiHttpMethod;
+	/**
+	 * The request body, as an expression: `={{ $state.form }}`. Unset sends all
+	 * of state; a GET sends none of it either way.
+	 */
 	request?: string;
-	/** Unset discards the reply, which is what a save that changes nothing on screen wants. */
-	response?: UiResponseBinding;
+	/**
+	 * What this call's reply is called for the rest of the chain, as
+	 * `$responses.<key>`. A chain that calls more than once needs it: `$response`
+	 * alone only ever means the latest, and a `set` step may want either.
+	 */
+	key?: string;
 }
 
-/** Write into state without asking a workflow: reset a form, flip a flag. */
+/**
+ * Write into state without asking a workflow: keep part of a reply, reset a
+ * form, flip a flag.
+ */
 export interface UiSetStep {
 	kind: 'set';
 	path: string;
-	/** Literal or expression, resolved when the step runs. */
+	/** Literal or expression, resolved when the step runs — `$response` included. */
 	value?: unknown;
 }
 
@@ -163,6 +183,16 @@ export interface UiScope {
 	$pages?: UiPageInfo[];
 	$item?: unknown;
 	$index?: number;
+	/**
+	 * What the chain's last webhook step answered, for the steps after it. Absent
+	 * everywhere else: a prop rendering in the canvas has no chain behind it.
+	 */
+	$response?: unknown;
+	/**
+	 * Every reply the chain has had so far, by the key its call was given, so a
+	 * chain that calls twice can put each answer somewhere different.
+	 */
+	$responses?: Record<string, unknown>;
 }
 
 /**
@@ -217,6 +247,14 @@ export interface UiComponentDef {
 	 * own need it, and only they should have to know that `$loading` exists.
 	 */
 	wantsBusyFlag?: boolean;
+	/**
+	 * The prop that receives whatever is currently at this component's
+	 * `statePath`. An input is one binding, not two: it renders what it writes,
+	 * so the author names the place once and the renderer reads it back. A
+	 * component whose displayed value could differ from the one it writes would
+	 * fight its own typing — every keystroke reverted on the next render.
+	 */
+	bindsValueTo?: string;
 }
 
 export const ACTION_PROP_TYPE = 'action';

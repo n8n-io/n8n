@@ -3,13 +3,23 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { UiBuilderPanel } from '@n8n/ui-builder';
-import type { HostExecutionOutput, HostWorkflow, UiBuilderHost } from '@n8n/ui-builder';
+import type {
+	HostEndpoint,
+	HostExecutionOutput,
+	HostWorkflow,
+	UiBuilderHost,
+	UiHttpMethod,
+} from '@n8n/ui-builder';
 import { getNodeWebhookUrl, NodeConnectionTypes } from 'n8n-workflow';
 import type { INode, INodeParameters, NodeParameterValueType } from 'n8n-workflow';
 import { computed } from 'vue';
 
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/app/constants';
-import { RESPOND_TO_WEBHOOK_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/app/constants/nodeTypes';
+import {
+	API_ROUTER_NODE_TYPE,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+} from '@/app/constants/nodeTypes';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -46,11 +56,82 @@ const executionsStore = useExecutionsStore();
 const documentStore = injectWorkflowDocumentStore();
 const { addNodes, addConnections } = useCanvasOperations();
 
-function pathsOf(nodes: Array<{ type: string; parameters?: Record<string, unknown> }>): string[] {
-	return nodes
-		.filter((node) => node.type === WEBHOOK_NODE_TYPE)
-		.map((node) => String(node.parameters?.path ?? '').replace(/^\//, ''))
-		.filter(Boolean);
+/** One endpoint of an API Router, as the node stores it. */
+interface RouterEndpoint {
+	method?: string;
+	path?: string;
+	options?: { name?: string };
+}
+
+type NodeLike = { type: string; webhookId?: string; parameters?: Record<string, unknown> };
+
+const HTTP_METHODS: UiHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
+function asMethod(value: unknown): UiHttpMethod | undefined {
+	const method = String(value ?? '').toUpperCase();
+	return HTTP_METHODS.find((known) => known === method);
+}
+
+function trimSlashes(value: string): string {
+	return value.replace(/^\/+/, '').replace(/\/+$/, '');
+}
+
+/**
+ * A Webhook trigger's own path, once per method it listens to — "multiple
+ * methods" mode stores them as a list.
+ */
+function webhookEndpoints(node: NodeLike): HostEndpoint[] {
+	const path = trimSlashes(String(node.parameters?.path ?? ''));
+	if (!path) return [];
+
+	const configured = node.parameters?.httpMethod;
+	const methods = (Array.isArray(configured) ? configured : [configured])
+		.map(asMethod)
+		.filter((method): method is UiHttpMethod => method !== undefined);
+
+	// The Webhook node's own default: an unset `httpMethod` means GET.
+	return (methods.length ? methods : (['GET'] as UiHttpMethod[])).map((method) => ({
+		path,
+		method,
+	}));
+}
+
+/**
+ * An API Router's endpoints, each under the router's base path — the same join
+ * the node itself does when it claims its webhook routes, so these are the URLs
+ * that actually answer. An empty base path means the node serves under its
+ * webhook id instead.
+ */
+function apiRouterEndpoints(node: NodeLike): HostEndpoint[] {
+	const base = trimSlashes(String(node.parameters?.basePath ?? '') || (node.webhookId ?? ''));
+	const collection = node.parameters?.endpoints;
+	const list =
+		collection && typeof collection === 'object' && 'endpoint' in collection
+			? (collection as { endpoint?: unknown }).endpoint
+			: undefined;
+
+	if (!Array.isArray(list)) return [];
+
+	return list.map((entry) => {
+		const endpoint = entry as RouterEndpoint;
+		const suffix = trimSlashes(String(endpoint.path ?? ''));
+
+		return {
+			path: [base, suffix].filter(Boolean).join('/'),
+			method: asMethod(endpoint.method) ?? 'GET',
+			name: endpoint.options?.name?.trim() || undefined,
+		};
+	});
+}
+
+/** Everything in a workflow that answers an HTTP request an action could call. */
+function endpointsOf(nodes: NodeLike[]): HostEndpoint[] {
+	return nodes.flatMap((node) => {
+		if (node.type === WEBHOOK_NODE_TYPE) return webhookEndpoints(node);
+		if (node.type === API_ROUTER_NODE_TYPE) return apiRouterEndpoints(node);
+
+		return [];
+	});
 }
 
 /**
@@ -86,9 +167,9 @@ const host: UiBuilderHost = {
 	// `isFullPath`, so the production URL is the path on its own.
 	webhookUrlFor: (path) => `${rootStore.webhookUrl}/${path}`,
 
-	// Read from the open canvas rather than the server, so a trigger added a
+	// Read from the open canvas rather than the server, so an endpoint added a
 	// moment ago and not yet saved is already offered.
-	localWebhookPaths: () => pathsOf(documentStore.value?.allNodes ?? []),
+	localEndpoints: () => endpointsOf(documentStore.value?.allNodes ?? []),
 
 	workflowId: () => documentStore.value?.workflowId,
 
@@ -178,11 +259,14 @@ const host: UiBuilderHost = {
 
 	/**
 	 * `with-node-types` returns workflow summaries without their nodes, so the
-	 * paths need a second fetch per workflow. Fine at PoC scale, and the panel
+	 * endpoints need a second fetch per workflow. Fine at PoC scale, and the panel
 	 * only asks when someone opens the cross-workflow picker.
 	 */
 	async listWebhookWorkflows(): Promise<HostWorkflow[]> {
-		const response = await workflowsListStore.fetchWorkflowsWithNodesIncluded([WEBHOOK_NODE_TYPE]);
+		const response = await workflowsListStore.fetchWorkflowsWithNodesIncluded([
+			WEBHOOK_NODE_TYPE,
+			API_ROUTER_NODE_TYPE,
+		]);
 		const summaries = response?.data ?? [];
 		const found: HostWorkflow[] = [];
 
@@ -197,7 +281,7 @@ const host: UiBuilderHost = {
 				id: workflow.id,
 				name: workflow.name,
 				active: Boolean(workflow.active),
-				paths: pathsOf(workflow.nodes ?? []),
+				endpoints: endpointsOf(workflow.nodes ?? []),
 			});
 		}
 

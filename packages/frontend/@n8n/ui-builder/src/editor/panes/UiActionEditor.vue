@@ -4,22 +4,30 @@ import {
 	N8nButton,
 	N8nIconButton,
 	N8nInput,
+	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { ACTION_KINDS, createStep } from '../../core/actions';
-import { pageLabel } from '../../core/pages';
+
+import UiValueField from './UiValueField.vue';
+import { ACTION_KINDS, createStep, replyKeyFor } from '../../core/actions';
 import type { UiActionKind } from '../../core/actions';
+import { pageLabel } from '../../core/pages';
 import type {
 	UiActionStep,
+	UiHttpMethod,
 	UiNavigateStep,
 	UiNotifyStep,
 	UiPageInfo,
+	UiProperty,
+	UiScope,
 	UiSetStep,
 	UiWebhookStep,
 } from '../../core/types';
+import { targetKey } from '../composables/useWebhookTargets';
+import type { WebhookTarget } from '../composables/useWebhookTargets';
 
 /**
  * One action prop, edited as the chain of steps it is.
@@ -37,20 +45,31 @@ defineOptions({ name: 'UiActionEditor' });
 
 const props = defineProps<{
 	steps: UiActionStep[];
-	/** Webhook triggers to offer, already labelled. */
-	targets: Array<{ label: string; url: string }>;
+	/**
+	 * What the selected node renders with, so a step's expressions preview and
+	 * complete against the same values the canvas shows.
+	 */
+	scope: UiScope;
+	/** What each call has answered in the canvas so far, by its reply key. */
+	responses: Record<string, unknown>;
+	/** Endpoints to offer, already labelled — one per method a path serves. */
+	targets: WebhookTarget[];
 	/** Pages a navigate step can go to. Empty in a single-page app. */
 	pages: UiPageInfo[];
 	disabled?: boolean;
-	/** How a URL that is not among `targets` should read. */
-	labelFor: (url: string) => string;
-	/** Opens the cross-workflow picker. Resolves with a URL, or nothing if dismissed. */
-	browse: () => Promise<string | undefined>;
-	/** Adds a Webhook and Respond pair to this workflow. Resolves with the new URL. */
-	create: () => Promise<string | undefined>;
-	/** Both take the whole step: a preview that ignored its binding would not be one. */
-	run: (step: UiWebhookStep) => void;
-	history: (step: UiWebhookStep) => void;
+	/** How an endpoint that is not among `targets` should read. */
+	labelFor: (url: string, method?: UiHttpMethod) => string;
+	/** Opens the cross-workflow picker. Resolves with an endpoint, or nothing if dismissed. */
+	browse: () => Promise<WebhookTarget | undefined>;
+	/** Adds a Webhook and Respond pair to this workflow. Resolves with the new endpoint. */
+	create: () => Promise<WebhookTarget | undefined>;
+	/**
+	 * Both take the steps that follow as well as the step itself: what a reply is
+	 * worth is decided by the `set` steps after it, and a preview that skipped
+	 * them would put nothing on the canvas.
+	 */
+	run: (step: UiWebhookStep, following: UiActionStep[]) => void;
+	history: (step: UiWebhookStep, following: UiActionStep[]) => void;
 }>();
 
 const emit = defineEmits<{ update: [steps: UiActionStep[]] }>();
@@ -105,43 +124,169 @@ const addItems = ACTION_KINDS.map((kind) => ({
 	icon: kind.icon,
 }));
 
-/** The step's own trigger stays in the list even when it lives in another workflow. */
-function optionsFor(url: string): Array<{ label: string; url: string }> {
-	if (!url || props.targets.some((target) => target.url === url)) return props.targets;
-	return [...props.targets, { label: props.labelFor(url), url }];
+/**
+ * The dropdown's value is method-and-URL rather than the URL alone: one path of
+ * an API Router is several endpoints, and `GET /orders` and `POST /orders` are
+ * not interchangeable.
+ */
+function keyOf(step: UiWebhookStep): string {
+	return step.url ? targetKey(step.url, step.method) : '';
 }
 
-async function onPick(index: number, value: string | undefined) {
+/** The step's own endpoint stays in the list even when it lives in another workflow. */
+function optionsFor(step: UiWebhookStep): WebhookTarget[] {
+	const key = keyOf(step);
+	if (!key || props.targets.some((target) => targetKey(target.url, target.method) === key)) {
+		return props.targets;
+	}
+
+	return [
+		...props.targets,
+		{
+			label: props.labelFor(step.url, step.method),
+			url: step.url,
+			method: step.method ?? 'POST',
+		},
+	];
+}
+
+function point(index: number, target: WebhookTarget | undefined) {
+	if (!target) return;
+
+	// A reply nothing can name is a reply nothing can use, so a step gets a key
+	// the moment it has something to call — named after what it calls.
+	const step = props.steps[index];
+	const key =
+		step?.kind === 'webhook' && step.key ? step.key : replyKeyFor(target.url, replyKeys(index));
+
+	patch(index, { url: target.url, method: target.method, key });
+}
+
+/** The keys the other calls in this chain already answer to. */
+function replyKeys(exceptIndex: number): string[] {
+	return props.steps
+		.filter((step, i): step is UiWebhookStep => i !== exceptIndex && step.kind === 'webhook')
+		.map((step) => step.key)
+		.filter((key): key is string => Boolean(key));
+}
+
+async function onPick(index: number, step: UiWebhookStep, value: string | undefined) {
 	if (value === BROWSE) {
-		const url = await props.browse();
-		if (url) patch(index, { url });
+		point(index, await props.browse());
 		return;
 	}
 
-	patch(index, { url: value ?? '' });
+	if (!value) {
+		patch(index, { url: '' });
+		return;
+	}
+
+	point(
+		index,
+		optionsFor(step).find((target) => targetKey(target.url, target.method) === value),
+	);
 }
 
 async function onCreate(index: number) {
-	const url = await props.create();
-	if (url) patch(index, { url });
-}
-
-/** Empty means "unset", which is what both defaults are; storing `''` would only read as configured. */
-function patchPath(index: number, field: 'request' | 'response', value: string) {
-	patch(index, { [field]: value || undefined });
+	point(index, await props.create());
 }
 
 /**
- * `response` also takes a map of several state paths, which is a document-level
- * thing rather than something worth a second control in here. The field shows
- * the simple form and steps aside for the other.
+ * Empty means "send all of state", so an empty box is unset rather than
+ * configured — including the bare `=` the editor leaves behind when the last
+ * character is deleted.
  */
-function responsePath(step: UiWebhookStep): string {
-	return typeof step.response === 'string' ? step.response : '';
+function patchRequest(index: number, value: unknown) {
+	const body = typeof value === 'string' ? value : '';
+	patch(index, { request: body && body !== '=' ? body : undefined });
 }
 
-function isMapped(step: UiWebhookStep): boolean {
-	return step.response !== undefined && typeof step.response !== 'string';
+/**
+ * A `set` step writes any JSON, and `{}` — emptying a form — is the one authors
+ * reach for most, so text that reads as an object or a list is stored as one.
+ * Anything else, expressions included, is the string it looks like.
+ */
+function patchSetValue(index: number, value: unknown) {
+	if (typeof value === 'string' && /^\s*[{[]/.test(value)) {
+		try {
+			patch(index, { value: JSON.parse(value) });
+			return;
+		} catch {
+			// Half-typed JSON. Keeping the text is what lets it be finished.
+		}
+	}
+
+	patch(index, { value });
+}
+
+/**
+ * The steps a reply reaches: everything after this one, up to the next call,
+ * which answers a different question and brings its own `$response`.
+ */
+function following(index: number): UiActionStep[] {
+	const rest = props.steps.slice(index + 1);
+	const next = rest.findIndex((step) => step.kind === 'webhook');
+
+	return next === -1 ? rest : rest.slice(0, next);
+}
+
+/**
+ * The step fields that hold a value rather than a choice, described the way a
+ * component's props are, so they get the same labelled expression editor —
+ * toggle, autocomplete and preview included.
+ */
+const REQUEST_FIELD: UiProperty = {
+	displayName: 'Body',
+	name: 'request',
+	type: 'string',
+	default: '',
+	placeholder: '{{ $state.form }}',
+	description:
+		'What this call sends, as an expression: {{ $state.form }} sends that part of app state, {{ { name: $state.form.name } }} sends a shape of its own. Empty sends all of app state.',
+};
+
+const SET_VALUE_FIELD: UiProperty = {
+	displayName: 'To',
+	name: 'value',
+	type: 'string',
+	default: '',
+	placeholder: 'a value, or an expression',
+	description:
+		'A literal, or an expression. $response is what the call before this step answered and $responses.<name> is any call in this chain, so ={{ $response.rows }} keeps part of the latest reply.',
+};
+
+const MESSAGE_FIELD: UiProperty = {
+	displayName: 'Says',
+	name: 'message',
+	type: 'string',
+	default: '',
+	placeholder: 'Saved',
+	description: 'Shown to whoever clicked. Can be an expression.',
+};
+
+/**
+ * What a step's expressions see: the node's own scope, plus the replies of
+ * every call before it in the chain. Previewing a call fills those in with what
+ * it really returned, which is what makes `$responses.orders.` complete with
+ * the keys the workflow actually answers with.
+ */
+function scopeFor(index: number): UiScope {
+	const before = props.steps
+		.slice(0, index)
+		.filter((step): step is UiWebhookStep => step.kind === 'webhook');
+
+	if (before.length === 0) return props.scope;
+
+	const byKey: Record<string, unknown> = {};
+	for (const call of before) if (call.key) byKey[call.key] = props.responses[call.key] ?? {};
+
+	const latest = before[before.length - 1].key;
+
+	return {
+		...props.scope,
+		$responses: byKey,
+		$response: (latest ? props.responses[latest] : undefined) ?? {},
+	};
 }
 </script>
 
@@ -192,23 +337,23 @@ function isMapped(step: UiWebhookStep): boolean {
 				/>
 			</div>
 
-			<!-- Webhook: the trigger this step posts the app's state to. -->
+			<!-- Webhook: the endpoint this step calls, and what it sends it. -->
 			<div v-if="step.kind === 'webhook'" :class="$style.row">
 				<N8nSelect
 					:class="$style.grow"
-					:model-value="(step as UiWebhookStep).url"
+					:model-value="keyOf(step as UiWebhookStep)"
 					:disabled="disabled"
 					size="small"
 					filterable
 					clearable
-					placeholder="Pick a webhook trigger"
-					@update:model-value="void onPick(index, $event)"
+					placeholder="Pick an endpoint"
+					@update:model-value="void onPick(index, step as UiWebhookStep, $event)"
 				>
 					<N8nOption
-						v-for="target in optionsFor((step as UiWebhookStep).url)"
-						:key="target.url"
+						v-for="target in optionsFor(step as UiWebhookStep)"
+						:key="targetKey(target.url, target.method)"
 						:label="target.label"
-						:value="target.url"
+						:value="targetKey(target.url, target.method)"
 					/>
 					<N8nOption :value="BROWSE" label="From another workflow…" :disabled="disabled" />
 				</N8nSelect>
@@ -231,7 +376,7 @@ function isMapped(step: UiWebhookStep): boolean {
 						icon="play"
 						aria-label="Run this step now"
 						:disabled="disabled || !(step as UiWebhookStep).url"
-						@click="run(step as UiWebhookStep)"
+						@click="run(step as UiWebhookStep, following(index))"
 					/>
 				</N8nTooltip>
 
@@ -242,114 +387,134 @@ function isMapped(step: UiWebhookStep): boolean {
 						icon="history"
 						aria-label="Load the last execution"
 						:disabled="disabled || !(step as UiWebhookStep).url"
-						@click="history(step as UiWebhookStep)"
+						@click="history(step as UiWebhookStep, following(index))"
 					/>
 				</N8nTooltip>
 			</div>
 
 			<!--
-				Both ends of the exchange, so the workflow needs to know nothing about
-				this app: which part of state it is sent, and where its reply is put.
+				What it sends, and what its reply is called. Where the reply goes is
+				not asked here: a `set` step after this one decides what to keep, which
+				is also how a chain that calls twice keeps both answers apart.
 			-->
-			<div v-if="step.kind === 'webhook'" :class="$style.row">
-				<N8nTooltip content="State to send as the request body. Empty sends all of it.">
-					<N8nInput
-						:class="$style.grow"
+			<template v-if="step.kind === 'webhook'">
+				<!-- A GET carries no body, so it has nothing to send. -->
+				<div v-if="(step as UiWebhookStep).method !== 'GET'" :class="$style.field">
+					<UiValueField
+						:descriptor="REQUEST_FIELD"
 						:model-value="(step as UiWebhookStep).request ?? ''"
+						:scope="scopeFor(index)"
 						:disabled="disabled"
-						size="small"
-						placeholder="Sends: all state"
-						@update:model-value="patchPath(index, 'request', $event)"
+						always-expression
+						@update="patchRequest(index, $event)"
 					/>
-				</N8nTooltip>
+				</div>
 
-				<N8nTooltip
-					:content="
-						isMapped(step as UiWebhookStep)
-							? 'This step maps several state paths; edit it in the document'
-							: 'Where to put the reply. Empty discards it.'
-					"
-				>
-					<N8nInput
-						:class="$style.grow"
-						:model-value="responsePath(step as UiWebhookStep)"
-						:disabled="disabled || isMapped(step as UiWebhookStep)"
+				<div :class="$style.field">
+					<N8nInputLabel
+						label="Reply name"
+						tooltip-text="What later steps call this reply: $responses.orders, and $response while it is the most recent"
+						show-tooltip
+						:bold="false"
 						size="small"
-						:placeholder="isMapped(step as UiWebhookStep) ? 'Mapped' : 'Writes to: nothing'"
-						@update:model-value="patchPath(index, 'response', $event)"
-					/>
-				</N8nTooltip>
-			</div>
+						color="text-dark"
+					>
+						<N8nInput
+							:model-value="(step as UiWebhookStep).key ?? ''"
+							:disabled="disabled"
+							size="small"
+							placeholder="orders"
+							@update:model-value="patch(index, { key: $event || undefined })"
+						/>
+					</N8nInputLabel>
+				</div>
+			</template>
 
 			<!--
 				Notify: the client's own message. The envelope's `toast` is the
 				workflow saying something; this is the app saying it, and it can read
 				state the workflow never sees.
 			-->
-			<div v-else-if="step.kind === 'notify'" :class="$style.row">
-				<N8nInput
-					:class="$style.grow"
-					:model-value="(step as UiNotifyStep).message"
-					:disabled="disabled"
-					size="small"
-					placeholder="Saved"
-					@update:model-value="patch(index, { message: $event })"
-				/>
+			<template v-else-if="step.kind === 'notify'">
+				<div :class="$style.field">
+					<UiValueField
+						:descriptor="MESSAGE_FIELD"
+						:model-value="(step as UiNotifyStep).message"
+						:scope="scopeFor(index)"
+						:disabled="disabled"
+						@update="patch(index, { message: $event })"
+					/>
+				</div>
 
-				<N8nSelect
-					:class="$style.narrow"
-					:model-value="(step as UiNotifyStep).type ?? 'success'"
-					:disabled="disabled"
-					size="small"
-					@update:model-value="patch(index, { type: $event })"
-				>
-					<N8nOption label="Success" value="success" />
-					<N8nOption label="Info" value="info" />
-					<N8nOption label="Error" value="error" />
-				</N8nSelect>
-			</div>
+				<div :class="$style.field">
+					<N8nInputLabel label="Style" :bold="false" size="small" color="text-dark">
+						<N8nSelect
+							:model-value="(step as UiNotifyStep).type ?? 'success'"
+							:disabled="disabled"
+							size="small"
+							@update:model-value="patch(index, { type: $event })"
+						>
+							<N8nOption label="Success" value="success" />
+							<N8nOption label="Info" value="info" />
+							<N8nOption label="Error" value="error" />
+						</N8nSelect>
+					</N8nInputLabel>
+				</div>
+			</template>
 
-			<!-- Set: the app writing its own state, with no workflow involved. -->
-			<div v-else-if="step.kind === 'set'" :class="$style.row">
-				<N8nInput
-					:class="$style.grow"
-					:model-value="(step as UiSetStep).path"
-					:disabled="disabled"
-					size="small"
-					placeholder="form.name"
-					@update:model-value="patch(index, { path: $event })"
-				/>
+			<!-- Set: the app writing its own state, from a literal or an expression. -->
+			<template v-else-if="step.kind === 'set'">
+				<div :class="$style.field">
+					<N8nInputLabel
+						label="Sets"
+						tooltip-text="The part of app state to write, as a dotted path"
+						show-tooltip
+						:bold="false"
+						size="small"
+						color="text-dark"
+					>
+						<N8nInput
+							:model-value="(step as UiSetStep).path"
+							:disabled="disabled"
+							size="small"
+							placeholder="orders"
+							@update:model-value="patch(index, { path: $event })"
+						/>
+					</N8nInputLabel>
+				</div>
 
-				<N8nInput
-					:class="$style.grow"
-					:model-value="String((step as UiSetStep).value ?? '')"
-					:disabled="disabled"
-					size="small"
-					placeholder="Value or expression"
-					@update:model-value="patch(index, { value: $event })"
-				/>
-			</div>
+				<div :class="$style.field">
+					<UiValueField
+						:descriptor="SET_VALUE_FIELD"
+						:model-value="(step as UiSetStep).value"
+						:scope="scopeFor(index)"
+						:disabled="disabled"
+						@update="patchSetValue(index, $event)"
+					/>
+				</div>
+			</template>
 
 			<!-- Navigate: a page of this app, or an expression producing a path. -->
-			<div v-else :class="$style.row">
-				<N8nSelect
-					:class="$style.grow"
-					:model-value="(step as UiNavigateStep).to"
-					:disabled="disabled"
-					size="small"
-					filterable
-					allow-create
-					default-first-option
-					:placeholder="pages.length ? 'Pick a page' : 'This app has no pages yet'"
-					@update:model-value="patch(index, { to: $event })"
-				>
-					<N8nOption
-						v-for="page in pages"
-						:key="page.id"
-						:label="pageLabel(page)"
-						:value="page.path"
-					/>
-				</N8nSelect>
+			<div v-else :class="$style.field">
+				<N8nInputLabel label="Go to" :bold="false" size="small" color="text-dark">
+					<N8nSelect
+						:model-value="(step as UiNavigateStep).to"
+						:disabled="disabled"
+						size="small"
+						filterable
+						allow-create
+						default-first-option
+						:placeholder="pages.length ? 'Pick a page' : 'This app has no pages yet'"
+						@update:model-value="patch(index, { to: $event })"
+					>
+						<N8nOption
+							v-for="page in pages"
+							:key="page.id"
+							:label="pageLabel(page)"
+							:value="page.path"
+						/>
+					</N8nSelect>
+				</N8nInputLabel>
 			</div>
 		</div>
 
@@ -410,6 +575,12 @@ function isMapped(step: UiWebhookStep): boolean {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--5xs);
+}
+
+// Every detail of every step kind is a labelled field of its own, so a box
+// holding `form` says which end of the exchange it is.
+.field {
+	padding: 0 var(--spacing--5xs);
 }
 
 .grow {

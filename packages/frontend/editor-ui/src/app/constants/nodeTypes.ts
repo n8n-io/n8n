@@ -2,6 +2,7 @@ import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
 import { MICROSOFT_AGENT365_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+export const API_ROUTER_NODE_TYPE = 'n8n-nodes-base.apiRouter';
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { get } from 'lodash';
 import { computed, inject, onBeforeUnmount, onMounted, watchEffect } from 'vue';
 
 import { UiScopeRegistryKey } from './scope-registry';
@@ -70,9 +71,19 @@ const busy = computed(
 	() => !props.edit && isActionInFlight(props.node.props, actionProps.value, props.scope.$loading),
 );
 
+/** The dotted place in state this node binds to, if it binds to one. */
+const statePath = computed(() => {
+	const descriptor = def.value?.props.find((entry) => entry.type === STATE_PATH_PROP_TYPE);
+	const path = descriptor ? props.node.props[descriptor.name] : undefined;
+
+	return typeof path === 'string' && path ? path : undefined;
+});
+
 /**
  * Value props only. Action and state-path props are instructions to the runtime,
- * not things to render, so they never reach the component.
+ * not things to render, so they never reach the component — except that a bound
+ * component is handed back what is at its path, which is the other half of the
+ * one binding its author wrote.
  */
 const resolvedProps = computed(() => {
 	const out: Record<string, unknown> = {};
@@ -82,6 +93,11 @@ const resolvedProps = computed(() => {
 
 		const raw = props.node.props[descriptor.name];
 		out[descriptor.name] = resolveValue(raw === undefined ? descriptor.default : raw, props.scope);
+	}
+
+	const bound = def.value?.bindsValueTo;
+	if (bound) {
+		out[bound] = statePath.value ? get(props.scope.$state, statePath.value) : undefined;
 	}
 
 	if (def.value?.wantsEditFlag) out.editing = props.edit;
@@ -145,16 +161,15 @@ function handleAct() {
 /**
  * The prop a component's input writes into, found by its descriptor type rather
  * than by being called `model`, so a component naming it anything else still
- * works. Gated on edit for the same reason actions are: the canvas is a
- * preview, and typing into it should not change what the app would do.
+ * works.
+ *
+ * Not gated on edit, unlike actions: a write goes into the state the scope is
+ * rendered against, and the canvas renders against a state of its own. Typing
+ * into it is how an author fills the state their expressions read — the
+ * inspector resolves against it, and so does a previewed request body.
  */
 function handleWrite(value: unknown) {
-	if (props.edit) return;
-
-	const descriptor = def.value?.props.find((entry) => entry.type === STATE_PATH_PROP_TYPE);
-	const path = descriptor ? props.node.props[descriptor.name] : undefined;
-
-	if (typeof path === 'string' && path) props.onWrite?.(path, value);
+	if (statePath.value) props.onWrite?.(statePath.value, value);
 }
 
 function handleSelect(event: MouseEvent) {

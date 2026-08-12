@@ -1,4 +1,5 @@
 import cloneDeep from 'lodash/cloneDeep';
+import isEqual from 'lodash/isEqual';
 import { computed, ref, toRaw, watch } from 'vue';
 import type { Ref } from 'vue';
 
@@ -69,7 +70,16 @@ export function useUiDocument(
 	watch(
 		value,
 		(incoming) => {
-			doc.value = parse(incoming);
+			const next = parse(incoming);
+
+			// What comes back from a `commit` is a new object every time the host
+			// stores it, so identity says nothing about whether the document
+			// changed. Re-seating it on an equal one would rebuild the whole tree
+			// under whatever wrote it — and an inspector field that re-emits as it
+			// re-renders would then write again, forever.
+			if (isEqual(next, toRaw(doc.value))) return;
+
+			doc.value = next;
 
 			// The document can be replaced from outside, by an undo or by another
 			// editor. A selection pointing into the old one leaves the inspector
@@ -131,6 +141,9 @@ export function useUiDocument(
 
 	function setProp(name: string, propValue: unknown) {
 		if (!selected.value || readOnly.value) return;
+		// The expression editor re-emits its current value whenever the preview
+		// re-resolves, which is not an edit and must not reach the workflow.
+		if (isEqual(toRaw(selected.value.props[name]), propValue)) return;
 
 		selected.value.props[name] = propValue;
 		commit();

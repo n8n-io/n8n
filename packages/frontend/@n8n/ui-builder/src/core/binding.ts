@@ -1,19 +1,17 @@
-import { get } from 'lodash';
-
+import { resolveValue } from './expressions';
 import { APP_STATE_KEY } from './pages';
 import { writePath } from './state';
-import type { UiResponseBinding, UiState, UiWebhookStep } from './types';
+import type { UiScope, UiState, UiWebhookStep } from './types';
 
 /**
- * The two ends of a webhook step: what state it sends, and where the reply
- * lands. Both live on the step rather than in the workflow, so the workflow
- * answers with whatever its nodes produce and the app does the adapting.
+ * What a webhook step sends. Where its reply goes is not here: the reply
+ * becomes `$response` for the rest of the chain, and a `set` step places it.
  */
 
 /**
  * `$app` is the client's account of its own context. A response writing into it
  * would be worse than not writing at all, so nothing may name it — not an
- * input's `model`, not a step's `response`.
+ * input's `model`, not a `set` step's path.
  */
 export function writeState(state: UiState, path: string, value: unknown): boolean {
 	if (!path) return false;
@@ -27,23 +25,7 @@ export function writeState(state: UiState, path: string, value: unknown): boolea
 	return true;
 }
 
-/** What a step posts: the part of state it names, or all of it. */
-export function requestBody(state: UiState, step: UiWebhookStep): unknown {
-	return step.request ? get(state, step.request) : state;
-}
-
-/** Puts a reply where the step says it goes. Returns the state paths written. */
-export function placeResponse(
-	state: UiState,
-	binding: UiResponseBinding | undefined,
-	body: unknown,
-): string[] {
-	if (!binding) return [];
-
-	const pairs: Array<[string, string]> =
-		typeof binding === 'string' ? [[binding, '']] : Object.entries(binding);
-
-	return pairs
-		.filter(([path, from]) => writeState(state, path, from ? get(body, from) : body))
-		.map(([path]) => path);
+/** What a step posts: whatever its body expression produces, or all of state. */
+export function requestBody(step: UiWebhookStep, scope: UiScope): unknown {
+	return step.request ? resolveValue(step.request, scope) : scope.$state;
 }

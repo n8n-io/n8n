@@ -1,5 +1,6 @@
+import cloneDeep from 'lodash/cloneDeep';
 import { describe, expect, it } from 'vitest';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 import { useUiDocument } from './useUiDocument';
 import type { UiNode } from '../../core/types';
@@ -12,7 +13,7 @@ function harness(doc?: UiNode) {
 
 	const api = useUiDocument(value, (definition) => writes.push(definition), readOnly);
 
-	return { ...api, writes };
+	return { ...api, value, writes };
 }
 
 function frameDoc(): UiNode {
@@ -56,6 +57,31 @@ describe('useUiDocument selection', () => {
 		selectRegion({ id: 'frame-1', region: 'header' });
 
 		expect(selectedPseudo.value).toEqual({ name: 'header', label: 'Header', icon: 'menu' });
+	});
+});
+
+describe('useUiDocument write round-trip', () => {
+	it('ignores its own commit handed back as a new object', async () => {
+		const { value, writes, doc, selectNode, setProp } = harness(frameDoc());
+
+		selectNode('page-1');
+		setProp('title', 'Home');
+		const before = doc.value;
+
+		value.value = cloneDeep(writes[writes.length - 1]);
+		await nextTick();
+
+		expect(doc.value).toBe(before);
+	});
+
+	it('does not write a prop that already holds that value', () => {
+		const { writes, selectNode, setProp } = harness(frameDoc());
+
+		selectNode('page-1');
+		setProp('title', 'Home');
+		setProp('title', 'Home');
+
+		expect(writes).toHaveLength(1);
 	});
 });
 

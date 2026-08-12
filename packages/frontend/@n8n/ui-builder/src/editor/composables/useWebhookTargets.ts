@@ -1,21 +1,41 @@
 import { computed, ref, watch } from 'vue';
 
-import type { HostWorkflow, UiBuilderHost } from '../host';
+import type { UiHttpMethod } from '../../core/types';
+import type { HostEndpoint, HostWorkflow, UiBuilderHost } from '../host';
 
-/** A Webhook trigger a step can point at, ready to show in a dropdown. */
+/** An endpoint a step can point at, ready to show in a dropdown. */
 export interface WebhookTarget {
 	label: string;
 	url: string;
+	method: UiHttpMethod;
 	workflowId?: string;
 }
 
-/** A workflow's triggers, for the cross-workflow picker. */
+/** A workflow's endpoints, for the cross-workflow picker. */
 export interface EligibleWorkflow extends HostWorkflow {
 	triggers: WebhookTarget[];
 }
 
 function lastSegment(url: string): string {
 	return url.split('/').filter(Boolean).pop() ?? url;
+}
+
+/**
+ * A step names one endpoint, and a path alone does not: an API Router serves
+ * `GET /orders` and `POST /orders` from the same URL. Everything that has to
+ * tell two targets apart — the dropdown's value, the lookup a preview does —
+ * goes through this.
+ */
+export function targetKey(url: string, method: UiHttpMethod | undefined): string {
+	return `${method ?? 'POST'} ${url}`;
+}
+
+/** `POST /orders-app/orders`, or the name the node gave it in front of that. */
+function endpointLabel(endpoint: HostEndpoint, suffix?: string): string {
+	const route = `${endpoint.method} /${endpoint.path}`;
+	const named = endpoint.name ? `${endpoint.name} — ${route}` : route;
+
+	return suffix ? `${named} — ${suffix}` : named;
 }
 
 /**
@@ -32,36 +52,43 @@ export function useWebhookTargets(host: UiBuilderHost) {
 	 * those few among strangers. Reaching further afield is the picker's job.
 	 */
 	const localTargets = computed<WebhookTarget[]>(() =>
-		host.localWebhookPaths().map((path) => ({
-			label: path,
-			url: host.webhookUrlFor(path),
+		host.localEndpoints().map((endpoint) => ({
+			label: endpointLabel(endpoint),
+			url: host.webhookUrlFor(endpoint.path),
+			method: endpoint.method,
 			workflowId: host.workflowId(),
 		})),
 	);
 
 	/**
-	 * Triggers picked out of another workflow, remembered for the session so that
+	 * Endpoints picked out of another workflow, remembered for the session so that
 	 * a URL the document already holds reads as a name rather than as itself.
 	 */
 	const knownTargets = ref<Record<string, WebhookTarget>>({});
 
-	function targetForUrl(url: string): WebhookTarget | undefined {
+	function targetFor(url: string, method?: UiHttpMethod): WebhookTarget | undefined {
 		if (!url) return undefined;
 
+		const key = targetKey(url, method);
+
 		return (
-			localTargets.value.find((target) => target.url === url) ??
-			knownTargets.value[url] ?? {
+			localTargets.value.find((target) => targetKey(target.url, target.method) === key) ??
+			knownTargets.value[key] ??
+			// Same URL, some other method: still this workflow, and saying so beats
+			// claiming it lives elsewhere.
+			localTargets.value.find((target) => target.url === url) ?? {
 				// Nothing has told us which workflow answers this URL yet. The path is
 				// still the useful half of the label, and opening the picker fills the
 				// rest in.
-				label: `${lastSegment(url)} — another workflow`,
+				label: `${method ?? 'POST'} ${lastSegment(url)} — another workflow`,
 				url,
+				method: method ?? 'POST',
 			}
 		);
 	}
 
-	function labelForUrl(url: string): string {
-		return targetForUrl(url)?.label ?? url;
+	function labelFor(url: string, method?: UiHttpMethod): string {
+		return targetFor(url, method)?.label ?? url;
 	}
 
 	const pickerOpen = ref(false);
@@ -69,7 +96,7 @@ export function useWebhookTargets(host: UiBuilderHost) {
 	const pickerLoading = ref(false);
 	const eligible = ref<EligibleWorkflow[]>([]);
 
-	let settle: ((url: string | undefined) => void) | undefined;
+	let settle: ((target: WebhookTarget | undefined) => void) | undefined;
 	let scanning: Promise<void> | undefined;
 
 	/**
@@ -99,9 +126,10 @@ export function useWebhookTargets(host: UiBuilderHost) {
 			const found = workflows
 				.map((workflow) => ({
 					...workflow,
-					triggers: workflow.paths.map((path) => ({
-						label: `${path} — ${workflow.name}`,
-						url: host.webhookUrlFor(path),
+					triggers: workflow.endpoints.map((endpoint) => ({
+						label: endpointLabel(endpoint, workflow.name),
+						url: host.webhookUrlFor(endpoint.path),
+						method: endpoint.method,
 						workflowId: workflow.id,
 					})),
 				}))
@@ -112,7 +140,9 @@ export function useWebhookTargets(host: UiBuilderHost) {
 			// Anything the document already points at now has a name to show, and a
 			// workflow id to read executions from.
 			for (const workflow of found) {
-				for (const trigger of workflow.triggers) knownTargets.value[trigger.url] = trigger;
+				for (const trigger of workflow.triggers) {
+					knownTargets.value[targetKey(trigger.url, trigger.method)] = trigger;
+				}
 			}
 		} catch (error) {
 			console.error('[ui-builder] could not list webhook triggers', error);
@@ -122,7 +152,10 @@ export function useWebhookTargets(host: UiBuilderHost) {
 		}
 	}
 
-	/** Matches on the workflow's name or on a trigger's path, since both are how you would look. */
+	/**
+	 * Matches on the workflow's name or on the endpoint's own label, which holds
+	 * its method, path and name — all three are how you would look for it.
+	 */
 	const pickerResults = computed<EligibleWorkflow[]>(() => {
 		const query = pickerQuery.value.trim().toLowerCase();
 		if (!query) return eligible.value;
@@ -132,9 +165,7 @@ export function useWebhookTargets(host: UiBuilderHost) {
 				...workflow,
 				triggers: workflow.name.toLowerCase().includes(query)
 					? workflow.triggers
-					: workflow.triggers.filter((trigger) =>
-							lastSegment(trigger.url).toLowerCase().includes(query),
-						),
+					: workflow.triggers.filter((trigger) => trigger.label.toLowerCase().includes(query)),
 			}))
 			.filter((workflow) => workflow.triggers.length > 0);
 	});
@@ -143,25 +174,25 @@ export function useWebhookTargets(host: UiBuilderHost) {
 	 * Resolves a promise rather than writing anywhere, so the step editor owns
 	 * its own steps and this stays a dialog the panel happens to host.
 	 */
-	async function pickExternal(): Promise<string | undefined> {
+	async function pickExternal(): Promise<WebhookTarget | undefined> {
 		pickerQuery.value = '';
 		pickerOpen.value = true;
 		void loadEligible();
 
-		return await new Promise<string | undefined>((resolve) => {
+		return await new Promise<WebhookTarget | undefined>((resolve) => {
 			settle = resolve;
 		});
 	}
 
-	function closePicker(url?: string) {
+	function closePicker(target?: WebhookTarget) {
 		pickerOpen.value = false;
-		settle?.(url);
+		settle?.(target);
 		settle = undefined;
 	}
 
 	function pickTarget(target: WebhookTarget) {
-		knownTargets.value[target.url] = target;
-		closePicker(target.url);
+		knownTargets.value[targetKey(target.url, target.method)] = target;
+		closePicker(target);
 	}
 
 	// Dismissing the dialog any other way (Escape, the close button, a click
@@ -172,8 +203,8 @@ export function useWebhookTargets(host: UiBuilderHost) {
 
 	return {
 		localTargets,
-		targetForUrl,
-		labelForUrl,
+		targetFor,
+		labelFor,
 		loadEligible,
 		pickerOpen,
 		pickerQuery,

@@ -1,5 +1,7 @@
+import { reactive } from 'vue';
+
 import { uiScopeResolver } from './scope-resolver';
-import type { UiScope } from '../../core/types';
+import type { UiScope, UiState } from '../../core/types';
 
 const scope: UiScope = {
 	$state: {
@@ -30,5 +32,16 @@ describe('uiScopeResolver', () => {
 
 	it('serialises dates as an ISO string', async () => {
 		expect((await resolve('{{ $state.at }}')).resolved).toBe('[Date: 2026-08-12T10:00:00.000Z]');
+	});
+
+	it('moves what the editor re-resolves on when state changes under a held scope', () => {
+		const state = reactive<UiState>({});
+		const held: UiScope = { $state: state };
+		const { watchImmediate } = uiScopeResolver(() => held);
+
+		const before = watchImmediate?.();
+		state.form = { qty: '8' };
+
+		expect(watchImmediate?.()).not.toBe(before);
 	});
 });

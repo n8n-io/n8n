@@ -39,6 +39,11 @@ const props = defineProps<{
 	modelValue: unknown;
 	scope: UiScope;
 	disabled?: boolean;
+	/**
+	 * For a value that is only ever an expression — a request body, say. The
+	 * mode switch goes, since there is no other mode to be in.
+	 */
+	alwaysExpression?: boolean;
 }>();
 
 const emit = defineEmits<{ update: [value: unknown] }>();
@@ -70,7 +75,15 @@ const raw = computed(() => {
 	return JSON.stringify(value) ?? '';
 });
 const mode = computed<ExpressionMode>(() =>
-	isExpression(props.modelValue) ? 'expression' : 'fixed',
+	props.alwaysExpression || isExpression(props.modelValue) ? 'expression' : 'fixed',
+);
+
+/**
+ * The editor holds what is inside the `=`, and a value forced into expression
+ * mode may not carry one yet.
+ */
+const expressionSource = computed(() =>
+	raw.value.startsWith('=') ? raw.value.slice(1) : raw.value,
 );
 
 const scope = computed(() => props.scope);
@@ -86,8 +99,10 @@ const parameterType = computed<NodePropertyTypes>(() => {
 		: type;
 });
 
-const placeholder = computed(() =>
-	parameterType.value === 'number' ? '={{ $state.count }}' : '={{ $state.title }}',
+const placeholder = computed(
+	() =>
+		props.descriptor.placeholder ??
+		(parameterType.value === 'number' ? '={{ $state.count }}' : '={{ $state.title }}'),
 );
 
 function onFixedInput(value: string) {
@@ -140,14 +155,14 @@ function onModeChange(next: ExpressionMode) {
 		:label="descriptor.displayName"
 		:tooltip-text="descriptor.description"
 		:show-tooltip="Boolean(descriptor.description)"
-		:show-options="areOptionsVisible"
+		:show-options="areOptionsVisible && !alwaysExpression"
 		:bold="false"
 		size="small"
 		color="text-dark"
 		@mouseenter="isFieldHovered = true"
 		@mouseleave="isFieldHovered = false"
 	>
-		<template #options>
+		<template v-if="!alwaysExpression" #options>
 			<ExpressionModeToggle
 				:model-value="mode"
 				:disabled="disabled"
@@ -176,7 +191,7 @@ function onModeChange(next: ExpressionMode) {
 					@focusout="onFocusOut"
 				>
 					<ExpressionEditorInput
-						:model-value="raw.slice(1)"
+						:model-value="expressionSource"
 						:resolver="resolver"
 						:completion-sources="completionSources"
 						:is-read-only="disabled"

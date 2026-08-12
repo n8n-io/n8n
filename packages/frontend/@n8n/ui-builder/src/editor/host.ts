@@ -1,5 +1,7 @@
 import type { InjectionKey } from 'vue';
 
+import type { UiHttpMethod } from '../core/types';
+
 /**
  * What the authoring panel needs from whatever is hosting it.
  *
@@ -15,13 +17,26 @@ import type { InjectionKey } from 'vue';
  * standalone playground would need.
  */
 
-/** A workflow that has at least one Webhook trigger in it. */
+/**
+ * One thing in a workflow that answers an HTTP request: a Webhook trigger, or
+ * one endpoint of an API Router. The method is part of it because a router
+ * serves several under the same path, and which one a step means is exactly the
+ * difference between listing orders and creating one.
+ */
+export interface HostEndpoint {
+	/** Path under the instance's webhook URL, without a leading slash. */
+	path: string;
+	method: UiHttpMethod;
+	/** What the node calls it, when it says. Shown instead of the bare path. */
+	name?: string;
+}
+
+/** A workflow that has at least one endpoint in it. */
 export interface HostWorkflow {
 	id: string;
 	name: string;
 	active: boolean;
-	/** Trigger paths, without a leading slash. */
-	paths: string[];
+	endpoints: HostEndpoint[];
 }
 
 /** What an action's last run returned, and which node returned it. */
@@ -35,10 +50,12 @@ export interface UiBuilderHost {
 	webhookUrlFor: (path: string) => string;
 
 	/**
+	 * Everything the workflow being edited answers requests on.
+	 *
 	 * Read inside a computed, so it must track its own reactive sources: the
 	 * panel expects a trigger added a moment ago to appear without a save.
 	 */
-	localWebhookPaths: () => string[];
+	localEndpoints: () => HostEndpoint[];
 
 	/** The workflow being edited, if it has been saved. */
 	workflowId: () => string | undefined;
@@ -63,7 +80,7 @@ export interface UiBuilderHost {
 	 */
 	createWebhookPair: (path: string) => Promise<boolean>;
 
-	/** Every other workflow with a trigger in it. Expected to be slow. */
+	/** Every other workflow with an endpoint in it. Expected to be slow. */
 	listWebhookWorkflows: () => Promise<HostWorkflow[]>;
 
 	/** The output of the last node to run in that workflow's most recent execution. */

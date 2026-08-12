@@ -1,19 +1,16 @@
 {
-	"id": "uiBuilderDemoApp",
-	"name": "UI Builder demo — Orders",
 	"nodes": [
 		{
 			"parameters": {
-				"content": "## Before you run this\n\nCreate a data table called **orders** with two columns:\n\n| column | type |\n| --- | --- |\n| `name` | String |\n| `qty` | Number |\n\nLeave it empty. The app writes every row itself.",
-				"height": 320,
-				"width": 300,
+				"content": "## Before you run this\n\nCreate a data table called **orders** with two columns:\n\n`name: string` and `qty: number`",
+				"width": 428,
 				"color": 4
 			},
-			"id": "6a1f0a10-0000-4000-8000-000000000009",
+			"id": "c0132eff-c698-4f88-af68-54f3fa42ca07",
 			"name": "Setup",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [520, -140]
+			"position": [-1568, 640]
 		},
 		{
 			"parameters": {
@@ -21,11 +18,9 @@
 				"endpoints": {
 					"endpoint": [
 						{
-							"method": "GET",
-							"path": "/"
+							"options": {}
 						},
 						{
-							"method": "GET",
 							"path": "/orders",
 							"options": {
 								"name": "List orders"
@@ -42,15 +37,15 @@
 					]
 				},
 				"options": {
-					"validateRequests": true,
-					"responseData": "allEntries"
+					"responseData": "allEntries",
+					"validateRequests": true
 				}
 			},
-			"id": "6a1f0a10-0000-4000-8000-000000000001",
+			"id": "1aecf9b0-6921-4122-b5ce-ca05ee8a9921",
 			"name": "API Router",
 			"type": "n8n-nodes-base.apiRouter",
 			"typeVersion": 1,
-			"position": [-240, 200],
+			"position": [-1088, 656],
 			"webhookId": "6a1f0a10-0000-4000-8000-000000000001"
 		},
 		{
@@ -126,7 +121,12 @@
 											"kind": "webhook",
 											"url": "http://localhost:5678/webhook/orders-app/orders",
 											"method": "GET",
-											"response": "orders"
+											"key": "orders"
+										},
+										{
+											"kind": "set",
+											"path": "orders",
+											"value": "={{ $response }}"
 										}
 									]
 								},
@@ -186,7 +186,6 @@
 														"id": "input-1",
 														"type": "input",
 														"props": {
-															"value": "={{ $state.form.name }}",
 															"model": "form.name",
 															"placeholder": "Order name"
 														},
@@ -196,7 +195,6 @@
 														"id": "input-qty",
 														"type": "input",
 														"props": {
-															"value": "={{ $state.form.qty }}",
 															"model": "form.qty",
 															"placeholder": "Qty"
 														},
@@ -213,7 +211,8 @@
 																	"kind": "webhook",
 																	"url": "http://localhost:5678/webhook/orders-app/orders",
 																	"method": "POST",
-																	"request": "form"
+																	"request": "={{ $state.form }}",
+																	"key": "created"
 																},
 																{
 																	"kind": "set",
@@ -253,15 +252,14 @@
 					}
 				}
 			},
-			"id": "6a1f0a10-0000-4000-8000-000000000002",
+			"id": "96411c42-45f9-464f-8bc3-0a5a8b9c4a86",
 			"name": "UI Builder",
 			"type": "n8n-nodes-base.uiBuilder",
 			"typeVersion": 1,
-			"position": [80, -60]
+			"position": [-864, 480]
 		},
 		{
 			"parameters": {
-				"resource": "row",
 				"operation": "get",
 				"dataTableId": {
 					"__rl": true,
@@ -269,20 +267,17 @@
 					"value": "orders"
 				},
 				"matchType": "allConditions",
-				"filters": {},
 				"returnAll": true
 			},
-			"id": "6a1f0a10-0000-4000-8000-000000000011",
+			"id": "73fb630e-99bd-4cf5-a969-c2fc42c7d8fe",
 			"name": "Get orders",
 			"type": "n8n-nodes-base.dataTable",
 			"typeVersion": 1.1,
-			"position": [80, 200],
+			"position": [-864, 672],
 			"notes": "The rows are the reply; the page says they belong in $state.orders"
 		},
 		{
 			"parameters": {
-				"resource": "row",
-				"operation": "insert",
 				"dataTableId": {
 					"__rl": true,
 					"mode": "name",
@@ -320,11 +315,11 @@
 				},
 				"options": {}
 			},
-			"id": "6a1f0a10-0000-4000-8000-000000000014",
+			"id": "51f2bfe2-b7a5-459c-b72a-cd191087bc6f",
 			"name": "Add order",
 			"type": "n8n-nodes-base.dataTable",
 			"typeVersion": 1.1,
-			"position": [80, 420],
+			"position": [-864, 864],
 			"notes": "The request schema has already refused an empty name, so this only ever inserts"
 		}
 	],
@@ -355,7 +350,8 @@
 			]
 		}
 	},
-	"settings": {
-		"executionOrder": "v1"
+	"pinData": {},
+	"meta": {
+		"instanceId": "84177bfd3e0c77bf03ce261fe55e93d1649e2bbd6a83ac4462413c576d1a0e52"
 	}
 }

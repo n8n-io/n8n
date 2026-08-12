@@ -3,15 +3,14 @@ import { N8nInput } from '@n8n/design-system';
 
 defineOptions({ name: 'UiInput' });
 
-// `value` has no default: it is `unknown` (an expression can resolve to
-// anything), and Vue would demand a factory for that. The template coerces.
+// `value` has no default: it is `unknown` (state holds anything), and Vue would
+// demand a factory for that. The template coerces.
 withDefaults(defineProps<{ value?: unknown; placeholder?: string }>(), {
 	placeholder: '',
 });
 
-// `value` is read from state through an expression; writes go back out through
-// this event, which the renderer routes to the component's `model` path. The
-// two directions are separate props by design, so nothing is inferred.
+// Both directions are the one binding the author wrote: the renderer reads
+// `value` out of the state path and routes this event back into the same place.
 const emit = defineEmits<{ write: [value: string] }>();
 </script>
 

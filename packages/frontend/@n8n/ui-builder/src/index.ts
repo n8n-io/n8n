@@ -7,13 +7,14 @@ export {
 export { KIT, getComponentDef } from './kit';
 export { evaluateExpression, resolveValue, isExpression } from './core/expressions';
 export { writePath } from './core/state';
-export { placeResponse, requestBody, writeState } from './core/binding';
+export { requestBody, writeState } from './core/binding';
 export { actionKey, createLoadingTracker } from './core/loading';
 export { readResponse } from './core/envelope';
 export {
 	ACTION_KINDS,
 	createStep,
 	normaliseAction,
+	replyKeyFor,
 	type UiActionKind,
 } from './core/actions';
 export {
@@ -43,6 +44,7 @@ export {
 } from './core/document';
 export { default as UiBuilderPanel } from './editor/UiBuilderPanel.vue';
 export type {
+	HostEndpoint,
 	HostExecutionOutput,
 	HostWorkflow,
 	UiBuilderHost,
@@ -57,6 +59,7 @@ export {
 	type UiActionRequest,
 	type UiActionStep,
 	type UiComponentDef,
+	type UiHttpMethod,
 	type UiNavigateStep,
 	type UiNode,
 	type UiNotifyStep,

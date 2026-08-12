@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createStep, normaliseAction } from './actions';
+import { createStep, normaliseAction, replyKeyFor } from './actions';
 
 describe('normaliseAction', () => {
 	it('reads an unset action prop as no steps', () => {
@@ -72,34 +72,59 @@ describe('normaliseAction', () => {
 		]);
 	});
 
-	it('reads both ends of a webhook step', () => {
+	it('reads what a webhook step sends, and what its reply is called', () => {
 		expect(
 			normaliseAction([
-				{ kind: 'webhook', url: 'http://x/y', request: 'form', response: 'orders' },
+				{ kind: 'webhook', url: 'http://x/y', request: '={{ $state.form }}', key: 'orders' },
 			]),
 		).toEqual([
-			{ kind: 'webhook', url: 'http://x/y', method: 'POST', request: 'form', response: 'orders' },
+			{
+				kind: 'webhook',
+				url: 'http://x/y',
+				method: 'POST',
+				request: '={{ $state.form }}',
+				key: 'orders',
+			},
 		]);
 	});
 
-	it('reads a response mapped across several state paths', () => {
+	it('reads a body saved as a bare state path as the expression it means', () => {
+		expect(
+			normaliseAction([{ kind: 'webhook', url: 'http://x/y', request: 'form' }]),
+		).toMatchObject([{ request: '={{ $state.form }}' }]);
+	});
+
+	it('turns a legacy response binding into the set step it stood for', () => {
+		expect(
+			normaliseAction([{ kind: 'webhook', url: 'http://x/y', response: 'orders' }]),
+		).toMatchObject([
+			{ kind: 'webhook', url: 'http://x/y' },
+			{ kind: 'set', path: 'orders', value: '={{ $response }}' },
+		]);
+	});
+
+	it('turns a legacy mapped binding into one set step per path', () => {
 		expect(
 			normaliseAction([
 				{ kind: 'webhook', url: 'http://x/y', response: { orders: 'data.items', total: 'count' } },
 			]),
-		).toMatchObject([{ response: { orders: 'data.items', total: 'count' } }]);
+		).toMatchObject([
+			{ kind: 'webhook' },
+			{ kind: 'set', path: 'orders', value: '={{ $response.data.items }}' },
+			{ kind: 'set', path: 'total', value: '={{ $response.count }}' },
+		]);
 	});
 
-	it('drops map entries that do not name a path', () => {
+	it('drops legacy map entries that do not name a path', () => {
 		expect(
 			normaliseAction([{ kind: 'webhook', url: 'http://x/y', response: { orders: 5 } }]),
-		).toMatchObject([{ response: undefined }]);
+		).toHaveLength(1);
 	});
 
-	it('reads an empty binding as no binding, so the defaults apply', () => {
+	it('reads an empty request as no request, so all of state is sent', () => {
 		expect(
-			normaliseAction([{ kind: 'webhook', url: 'http://x/y', request: '', response: '' }]),
-		).toMatchObject([{ request: undefined, response: undefined }]);
+			normaliseAction([{ kind: 'webhook', url: 'http://x/y', request: '', key: '' }]),
+		).toMatchObject([{ request: undefined, key: undefined }]);
 	});
 
 	it('reads a set step, keeping a value that is not a string', () => {
@@ -126,10 +151,14 @@ describe('createStep', () => {
 		expect(createStep('set')).toEqual({ kind: 'set', path: '', value: '' });
 	});
 
-	it('clamps a method the older shape smuggled in', () => {
-		// The two readers must agree: a hand-written PUT was surviving the legacy
-		// path and being coerced on the list path, against a type allowing neither.
+	it('keeps a method an API Router endpoint can actually be on', () => {
 		expect(normaliseAction({ url: 'http://x/y', method: 'PUT' })).toEqual([
+			{ kind: 'webhook', url: 'http://x/y', method: 'PUT' },
+		]);
+	});
+
+	it('falls back to POST for a method nothing serves', () => {
+		expect(normaliseAction({ url: 'http://x/y', method: 'TRACE' })).toEqual([
 			{ kind: 'webhook', url: 'http://x/y', method: 'POST' },
 		]);
 	});
@@ -145,5 +174,24 @@ describe('createStep', () => {
 		const second = createStep('notify');
 
 		expect(first).not.toBe(second);
+	});
+});
+
+describe('replyKeyFor', () => {
+	it('names a reply after the endpoint that answers it', () => {
+		expect(replyKeyFor('http://x/webhook/orders-app/orders', [])).toBe('orders');
+	});
+
+	it('keeps the keys of one chain apart', () => {
+		expect(replyKeyFor('http://x/webhook/orders', ['orders'])).toBe('orders2');
+		expect(replyKeyFor('http://x/webhook/orders', ['orders', 'orders2'])).toBe('orders3');
+	});
+
+	it('produces something an expression can name', () => {
+		expect(replyKeyFor('http://x/webhook/my-orders/2024', [])).toBe('reply_2024');
+	});
+
+	it('falls back when there is no path to name it after', () => {
+		expect(replyKeyFor('', [])).toBe('reply');
 	});
 });

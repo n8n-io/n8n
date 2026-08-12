@@ -9,7 +9,8 @@ import {
 } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, provide, reactive, ref, toRef } from 'vue';
 
-import type { UiNode, UiScope, UiWebhookStep } from '../core/types';
+import { writeState } from '../core/binding';
+import type { UiActionStep, UiNode, UiScope, UiWebhookStep } from '../core/types';
 import { createScopeRegistry, UiScopeRegistryKey } from '../renderer/scope-registry';
 import UiRenderer from '../renderer/UiRenderer.vue';
 import { useActionPreview } from './composables/useActionPreview';
@@ -18,6 +19,7 @@ import { usePages } from './composables/usePages';
 import { useUiBuilderLayout } from './composables/useUiBuilderLayout';
 import { useUiDocument } from './composables/useUiDocument';
 import { useWebhookTargets } from './composables/useWebhookTargets';
+import type { WebhookTarget } from './composables/useWebhookTargets';
 import { UiTooltipParentKey, type UiBuilderHost } from './host';
 import InspectorPane from './panes/InspectorPane.vue';
 import OutlinePane from './panes/OutlinePane.vue';
@@ -109,8 +111,8 @@ const {
 
 const {
 	localTargets,
-	targetForUrl,
-	labelForUrl,
+	targetFor,
+	labelFor,
 	loadEligible,
 	pickerOpen,
 	pickerQuery,
@@ -129,10 +131,20 @@ const canvasState = reactive<{
 	$loading: Record<string, boolean>;
 }>({ $state: {}, $loading: {} });
 
-const { previewStatus, runAction, loadLastExecution } = useActionPreview(
+/**
+ * An input on the canvas fills the canvas state, exactly as it would fill the
+ * running app's. It is the only way to put a form's own values there — a reply
+ * cannot — and without them a request body reading `{{ $state.form }}` has
+ * nothing to preview and the inspector shows the expression as unresolved.
+ */
+function writeCanvasState(path: string, value: unknown) {
+	writeState(canvasState.$state, path, value);
+}
+
+const { previewStatus, responses, runAction, runChain, loadLastExecution } = useActionPreview(
 	props.host,
 	canvasState.$state,
-	targetForUrl,
+	targetFor,
 	loadEligible,
 );
 
@@ -187,19 +199,20 @@ function openLiveWebhook() {
  * `button` + `onClick` gives `buttonOnClick`, then `buttonOnClick2`. The host
  * makes the pair; naming it after what points at it is this pane's business.
  */
-async function createTrigger(propName: string): Promise<string | undefined> {
+async function createTrigger(propName: string): Promise<WebhookTarget | undefined> {
 	if (!selected.value) return undefined;
 
 	const type = selected.value.type;
 	const base = `${type}${propName.charAt(0).toUpperCase()}${propName.slice(1)}`;
-	const taken = new Set(props.host.localWebhookPaths());
+	const taken = new Set(props.host.localEndpoints().map((endpoint) => endpoint.path));
 
 	let path = base;
 	let n = 2;
 	while (taken.has(path)) path = `${base}${n++}`;
 
 	const made = await props.host.createWebhookPair(path);
-	return made ? props.host.webhookUrlFor(path) : undefined;
+	// The host makes the pair as a POST, which is what a step wanting a body needs.
+	return made ? { label: path, url: props.host.webhookUrlFor(path), method: 'POST' } : undefined;
 }
 
 /**
@@ -377,6 +390,7 @@ function onEscape(event: KeyboardEvent) {
 							:hovered-id="hoveredId"
 							:on-select="selectNode"
 							:on-hover="(id?: string) => (hoveredId = id)"
+							:on-write="writeCanvasState"
 						/>
 					</div>
 				</section>
@@ -398,12 +412,16 @@ function onEscape(event: KeyboardEvent) {
 						:pages="pages"
 						:targets="localTargets"
 						:scope="inspectorScope"
+						:responses="responses"
 						:disabled="readOnly"
-						:label-for="labelForUrl"
+						:label-for="labelFor"
 						:browse="pickExternal"
 						:create-trigger="createTrigger"
-						:run="(step: UiWebhookStep) => void runAction(step)"
-						:history="(step: UiWebhookStep) => void loadLastExecution(step)"
+						:run="(step: UiWebhookStep, after: UiActionStep[]) => void runAction(step, after)"
+						:history="
+							(step: UiWebhookStep, after: UiActionStep[]) => void loadLastExecution(step, after)
+						"
+						:run-all="(steps: UiActionStep[]) => void runChain(steps)"
 						@set-prop="setProp"
 					/>
 				</N8nResizeWrapper>

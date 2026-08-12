@@ -5,7 +5,7 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 
 import UiRenderer from '../renderer/UiRenderer.vue';
 import { normaliseAction } from '../core/actions';
-import { placeResponse, requestBody, writeState } from '../core/binding';
+import { requestBody, writeState } from '../core/binding';
 import { readResponse } from '../core/envelope';
 import { resolveValue } from '../core/expressions';
 import { actionKey, createLoadingTracker } from '../core/loading';
@@ -113,8 +113,14 @@ function navigate(to: string) {
 	window.location.hash = `#${path}`;
 }
 
-/** Call a workflow and put the reply where the step says. `false` stops the rest of the chain. */
-async function callWebhook(step: UiWebhookStep): Promise<boolean> {
+/**
+ * Call a workflow. What it answers comes back as `$response` for the steps
+ * after it; `undefined` means the chain stops here.
+ */
+async function callWebhook(
+	step: UiWebhookStep,
+	scopeAt: UiScope,
+): Promise<{ body: unknown } | undefined> {
 	const key = actionKey(step.url);
 	const method = step.method ?? 'POST';
 	loading.begin(key);
@@ -130,19 +136,15 @@ async function callWebhook(step: UiWebhookStep): Promise<boolean> {
 				...(props.token ? { authorization: `Bearer ${props.token}` } : {}),
 			},
 			// A GET carrying a body is refused by the browser before it is sent.
-			...(method === 'GET' ? {} : { body: JSON.stringify(requestBody(state, step)) }),
+			...(method === 'GET' ? {} : { body: JSON.stringify(requestBody(step, scopeAt)) }),
 		});
 
-		// A step that discards its reply is free to answer with no body at all.
+		// A step whose reply nothing reads is free to answer with no body at all.
 		const result = readResponse(await response.json().catch(() => undefined));
 
 		// The HTTP status has the final say, so a workflow cannot report success by
 		// staying silent while n8n answers 500.
 		const ok = result.ok && response.ok;
-
-		// Only on success: a refusal's body is an explanation, and writing it where
-		// the rows go would replace the list with the reason it did not change.
-		if (ok) placeResponse(state, step.response, result.body);
 
 		if (result.toast) notify(result.toast);
 		else if (!ok) {
@@ -154,13 +156,15 @@ async function callWebhook(step: UiWebhookStep): Promise<boolean> {
 
 		if (!ok) console.warn('[ui-builder] action rejected', step.url, response.status, result.error);
 
-		return ok;
+		// A refusal's body is an explanation, not data: handing it on as `$response`
+		// would let the next step write the reason where the rows go.
+		return ok ? { body: result.body } : undefined;
 	} catch (error) {
 		// The transport itself failed, so there is nothing the workflow can say
 		// about it.
 		console.error('[ui-builder] action failed', step.url, error);
 		notify({ type: 'error', message: 'Action failed' });
-		return false;
+		return undefined;
 	} finally {
 		loading.end(key);
 	}
@@ -180,29 +184,46 @@ function text(value: unknown, scopeAt: UiScope): string {
  * after a webhook reads the merged state. The captured scope still supplies
  * `$item` and `$index`, which only the node that fired can know.
  */
-function scopeNow(captured: UiScope): UiScope {
+function scopeNow(captured: UiScope, replies: ChainReplies): UiScope {
 	return {
 		...captured,
 		$state: state,
 		$loading: loading.flags.value,
 		$route: route.value,
 		$pages: pages.value,
+		$response: replies.last,
+		$responses: replies.byKey,
 	};
+}
+
+/** What the chain has been answered so far: the latest, and each one by its key. */
+interface ChainReplies {
+	last: unknown;
+	byKey: Record<string, unknown>;
 }
 
 /**
  * Runs a chain, one step at a time, in order.
  *
  * Each step's expressions resolve as it runs rather than when the chain starts,
- * so a notification after a webhook sees the state that webhook merged. A
- * webhook reporting failure ends the chain, which is what stops a failed save
- * from navigating away from the form that failed.
+ * so a step after a webhook sees both the state it changed and, as `$response`,
+ * what it answered. A webhook reporting failure ends the chain, which is what
+ * stops a failed save from navigating away from the form that failed.
  */
 async function runSteps(steps: UiActionStep[], captured: UiScope) {
+	// `$response` is the latest reply and `$responses.<key>` each one by name, so
+	// a chain that calls twice can put either answer wherever it belongs.
+	const replies: ChainReplies = { last: undefined, byKey: {} };
+
 	for (const step of steps) {
+		const scope = scopeNow(captured, replies);
+
 		if (step.kind === 'webhook') {
-			const ok = await callWebhook(step);
-			if (!ok) return;
+			const result = await callWebhook(step, scope);
+			if (!result) return;
+
+			replies.last = result.body;
+			if (step.key) replies.byKey[step.key] = result.body;
 			continue;
 		}
 
@@ -210,18 +231,18 @@ async function runSteps(steps: UiActionStep[], captured: UiScope) {
 			// Copied: a literal written straight from the document would be the very
 			// object an input then types into, so the second run of a `set { }` would
 			// restore what the first run's edits left behind.
-			write(step.path, cloneDeep(resolveValue(step.value, scopeNow(captured))));
+			write(step.path, cloneDeep(resolveValue(step.value, scope)));
 			continue;
 		}
 
 		if (step.kind === 'notify') {
-			const message = text(step.message, scopeNow(captured));
+			const message = text(step.message, scope);
 			if (message) notify({ type: step.type ?? 'success', message });
 			continue;
 		}
 
 		if (step.kind === 'navigate') {
-			const to = text(step.to, scopeNow(captured));
+			const to = text(step.to, scope);
 			if (to) navigate(to);
 		}
 	}

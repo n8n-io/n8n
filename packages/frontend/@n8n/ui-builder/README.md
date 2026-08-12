@@ -32,16 +32,28 @@ one.
 
 ## Request and response
 
-A webhook step owns both ends of the exchange:
+A webhook step says what it sends and what its reply is called. Where the reply
+goes is a step of its own:
 
 | field | is | unset means |
 | --- | --- | --- |
-| `request` | a state path sent as the request body | send all of state; a GET sends none of it |
-| `response` | a state path the reply is written to, or `{ statePath: responsePath }` for several | discard the reply |
+| `request` | the request body, as an expression: `={{ $state.form }}` | send all of state; a GET sends none of it |
+| `key` | what the reply is called for the rest of the chain, as `$responses.<key>` | the reply is only `$response`, the latest one |
 
 Nothing is merged implicitly, so a node's own output can never scribble
-`createdAt` into app state, and a save that changes nothing on screen simply
-names no `response`.
+`createdAt` into app state, and a save that changes nothing on screen is simply
+a call with no `set` step after it.
+
+A `set` step is what keeps a reply: `$response` is the last call's, and
+`$responses.<key>` any call in the chain, so an action that calls twice can put
+each answer where it belongs — or neither.
+
+```json
+"onClick": [
+  { "kind": "webhook", "url": "…/orders", "method": "GET", "key": "orders" },
+  { "kind": "set", "path": "orders", "value": "={{ $response }}" }
+]
+```
 
 The workflow gets a say in only one thing — whether the action succeeded:
 
@@ -98,7 +110,7 @@ Props come in four kinds, decided by the component's descriptor, not by name:
 | --- | --- | --- |
 | value | `string`, `number`, `options`, `boolean` | literal, or an n8n expression (`={{ $state.x }}`) resolved per render |
 | action | `action` | a chain of steps, fired on its trigger (`onMount`, `onClick`, `onEnter`) |
-| model | `statePath` | a dotted path the component writes user input into |
+| binding | `statePath` | a dotted place in state the component reads and writes |
 | route | `route` | a page path, picked from the pages the document holds |
 
 ## Actions
@@ -109,7 +121,13 @@ the user on.
 
 ```json
 "onClick": [
-  { "kind": "webhook", "url": "…/webhook/orders-app/orders", "method": "POST", "request": "form" },
+  {
+    "kind": "webhook",
+    "url": "…/webhook/orders-app/orders",
+    "method": "POST",
+    "request": "={{ $state.form }}",
+    "key": "created"
+  },
   { "kind": "set", "path": "form", "value": {} },
   { "kind": "notify", "message": "Order added", "type": "success" },
   { "kind": "navigate", "to": "/" }
@@ -118,7 +136,7 @@ the user on.
 
 | kind | does |
 | --- | --- |
-| `webhook` | call a trigger; `request` and `response` say what goes and where the reply lands |
+| `webhook` | call an endpoint; `request` is the body it sends, `key` names its reply |
 | `set` | write `value` into state at `path`; `value` may be an expression |
 | `notify` | show a message; `message` may be an expression |
 | `navigate` | change the page; `to` may be an expression |
@@ -159,12 +177,22 @@ Three buttons sit beside a webhook step:
 | run | calls the step from the canvas, exactly as the running app would |
 | history | reads what that trigger returned when it last ran |
 
-The last two put the reply into the canvas's preview state through the step's own
-`response`, which is what turns the canvas from a wireframe of blank bound props
-into a preview of the running app — and shows a step whose binding is wrong or
-missing that it is. Running answers "what does this return now" and costs a real
+The last two run the reply through the `set` steps that follow the call, exactly
+as the running app would, which is what turns the canvas from a wireframe of
+blank bound props into a preview of the running app — and shows a step whose
+expression is wrong or missing that it is. What they fetch is also what the
+inspector's expressions complete against, so `$responses.orders.` offers the
+keys the workflow really answers with. Running answers "what does this return now" and costs a real
 execution against a live webhook; history answers "what did it return", costs
 nothing, and works on an unpublished workflow.
+
+A fourth play button sits beside the action's own name, in the subpanel header
+rather than on a step, and runs the chain itself: every call in order, each
+reply reaching the `set` steps after it, so the canvas ends up where the whole
+interaction leaves the app rather than where one call does — a save followed by a
+reload shows the saved row in the table. `notify` and `navigate` steps are passed
+over, since neither touches state and neither should move the canvas off the page
+being edited.
 
 A reply's `toast` and a `notify` step are both messages, and both are worth
 having: the workflow says something only it knows (a validation failure), the
@@ -184,7 +212,7 @@ client says something only it knows (that the whole chain got through).
 | `heading` | Display | — | `text`, `level` |
 | `text` | Display | — | `text` |
 | `table` | Display | — | `rows`, `columns`, `onMount` (every row, no pager; says so when empty) |
-| `input` | Input | — | `value`, `model`, `placeholder` |
+| `input` | Input | — | `model`, `placeholder` |
 | `button` | Input | — | `label`, `variant`, `disabled`, `active`, `onClick` |
 
 Worth knowing about three of them:
@@ -202,8 +230,11 @@ Worth knowing about three of them:
   than a constraint of the format, since regions arrived: an `if` declaring
   `then` and `else` regions would work, and nobody has written it.
 
-Reads and writes are deliberately separate props: `value` is an expression to
-display, `model` is a path to write. Nothing is inferred.
+An input is one binding, not two. `model` names the place in state it reads and
+writes, and the renderer hands the value back in; there is no second expression
+to keep in step with it. A component whose displayed value could differ from
+the one it writes would fight its own typing, reverting every keystroke on the
+next render.
 
 In the inspector a value field says which mode it is in, `fixed` or
 `expression`, and the label carries the descriptor's own description as a
@@ -240,7 +271,7 @@ has to fight it.
 `$state.$app` is the app's own corner of state, holding the current route and
 page. A step that names no `request` posts all of state, so route parameters
 reach a workflow with nothing wired: a page at `/orders/:id` gives
-`$json.body.$app.route.params.id`. It is client-owned, so a step's `response`
+`$json.body.$app.route.params.id`. It is client-owned, so a `set` step
 naming it is refused and warns, and so is a `model` prop pointing into it.
 
 In the builder, the **Pages** pane lists them: add, rename (double-click a row),
@@ -311,11 +342,13 @@ ancestor:
 
 | name | bound by | is |
 | --- | --- | --- |
-| `$state` | the runtime | app state, the thing actions merge into |
+| `$state` | the runtime | app state, the thing `set` steps write |
 | `$loading` | the runtime | `{ [action]: boolean, $any: boolean }`, keyed by the trigger's last path segment |
 | `$route` | the runtime | `{ path, params }`, the same route `$state.$app.route` holds |
 | `$pages` | the runtime | `[{ id, path, title }]`, every page the shell holds, in document order |
 | `$item`, `$index` | an enclosing `repeat` | the element being rendered |
+| `$response` | the chain a step runs in | what its last call answered |
+| `$responses` | the chain a step runs in | every reply so far, by its call's `key` |
 
 `$loading` is deliberately not part of `$state`: a step with no `request` posts
 all of state, so flags living in it would ride along as noise with one always
