@@ -185,49 +185,27 @@ describe('AgentSessionsListView', () => {
 		documentRemoveEventListenerSpy.mockRestore();
 	});
 
-	it('opens the conversation (preview chat) when a session row is clicked', async () => {
-		const wrapper = await mountView();
-
-		await wrapper.find('[data-test-id="agent-session-list-item"]').trigger('click');
-
-		expect(routerPush).toHaveBeenCalledTimes(1);
-		expect(routerPush).toHaveBeenCalledWith({
-			name: 'AgentPreviewView',
-			params: { projectId: 'project-1', agentId: 'agent-1' },
-			query: { continueSessionId: 'thread-1', section: '__executions' },
-		});
-	});
-
-	it('uses a native title button while leaving the table row out of the tab order', async () => {
+	it('opens the trace from a native title button while leaving the row non-interactive', async () => {
 		const wrapper = await mountView();
 		const row = wrapper.get('[data-test-id="agent-session-list-item"]');
 
+		expect(wrapper.find('[data-test-id="agent-session-new-chat"]').exists()).toBe(false);
+		expect(row.attributes('role')).toBeUndefined();
 		expect(row.attributes('tabindex')).toBeUndefined();
 
+		await row.trigger('click');
 		await row.trigger('keydown', { key: 'Enter' });
 		await row.trigger('keydown', { key: ' ' });
 
 		expect(routerPush).not.toHaveBeenCalled();
 
-		const openButton = wrapper.get('[data-test-id="agent-session-open"]');
+		const traceButton = wrapper.get('[data-test-id="agent-session-open"]');
 
-		expect(openButton.element.tagName).toBe('BUTTON');
-		expect(openButton.attributes('type')).toBe('button');
-		expect(openButton.text()).toBe('My session');
+		expect(traceButton.element.tagName).toBe('BUTTON');
+		expect(traceButton.attributes('type')).toBe('button');
+		expect(traceButton.text()).toBe('My session');
 
-		await openButton.trigger('click');
-
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
-			name: 'AgentPreviewView',
-			params: { projectId: 'project-1', agentId: 'agent-1' },
-			query: { continueSessionId: 'thread-1', section: '__executions' },
-		});
-	});
-
-	it('opens the trace timeline when the trace icon button is clicked', async () => {
-		const wrapper = await mountView();
-
-		await wrapper.get('[data-test-id="agent-session-view-trace"]').trigger('click');
+		await traceButton.trigger('click');
 
 		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
 			name: 'AgentSessionDetailView',
@@ -314,13 +292,6 @@ describe('AgentSessionsListView', () => {
 			'visibilitychange',
 			expect.any(Function),
 		);
-	});
-
-	it('renders the trace button with the view-trace aria label', async () => {
-		const wrapper = await mountView();
-		const traceButton = wrapper.get('[data-test-id="agent-session-view-trace"]');
-
-		expect(traceButton.attributes('aria-label')).toBe('View session trace');
 	});
 
 	it.each([

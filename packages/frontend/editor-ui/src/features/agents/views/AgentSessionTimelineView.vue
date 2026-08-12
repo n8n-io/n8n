@@ -18,9 +18,16 @@ import type {
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
+import AgentPreviewDock from '@/features/agents/components/AgentPreviewDock.vue';
+import { useAgentBuilderSession } from '@/features/agents/composables/useAgentBuilderSession';
+import { getAgent } from '@/features/agents/composables/useAgentApi';
+import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
+import type { AgentResource } from '@/features/agents/types';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import type { DropdownMenuItemProps, PathItem } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
+import { useStorage } from '@vueuse/core';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
@@ -34,6 +41,8 @@ const {
 	isExporting,
 	sendSession,
 } = useAgentSessionLangSmithExport();
+const rootStore = useRootStore();
+const { config: localConfig, fetchConfig } = useAgentConfig();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -43,6 +52,18 @@ const threadId = computed(() => route.params.threadId as string);
 // title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
+const agent = ref<AgentResource | null>(null);
+const isPreviewOpen = useStorage('N8N_AGENT_PREVIEW_OPEN', false);
+const previewInitialized = ref(false);
+const {
+	activeChatSessionId,
+	effectiveSessionId,
+	currentSessionHasMessages,
+	currentSessionTitle,
+	sessionMenu,
+	onSessionPick,
+	onNewChat,
+} = useAgentBuilderSession({ routeBacked: computed(() => false) });
 
 const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
@@ -144,11 +165,36 @@ function onPanelLoaded(detail: ThreadDetail | null) {
 	executions.value = detail?.executions ?? [];
 }
 
-// Keep the header's session-picker dropdown populated. The panel loads the
-// thread detail; the thread list is a header concern, so it's fetched here.
-watch([projectId, agentId], () => void sessionsStore.fetchThreads(projectId.value, agentId.value), {
-	immediate: true,
-});
+let previewLoadRequestId = 0;
+
+/** Load the agent data required by the shared preview dock. */
+watch(
+	[projectId, agentId],
+	async ([nextProjectId, nextAgentId]) => {
+		const requestId = ++previewLoadRequestId;
+		previewInitialized.value = false;
+		agent.value = null;
+		try {
+			const [loadedAgent] = await Promise.all([
+				getAgent(rootStore.restApiContext, nextProjectId, nextAgentId),
+				fetchConfig(nextProjectId, nextAgentId),
+				sessionsStore.fetchThreads(nextProjectId, nextAgentId),
+			]);
+			if (requestId === previewLoadRequestId) agent.value = loadedAgent;
+		} finally {
+			if (requestId === previewLoadRequestId) previewInitialized.value = true;
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	threadId,
+	(nextThreadId) => {
+		activeChatSessionId.value = nextThreadId;
+	},
+	{ immediate: true },
+);
 
 function formatDuration(ms: number): string {
 	if (!ms || ms <= 0) return '0ms';
@@ -194,6 +240,15 @@ function onSessionSelect(nextThreadId: string) {
 		params: { projectId: projectId.value, agentId: agentId.value, threadId: nextThreadId },
 	});
 }
+
+function togglePreview() {
+	isPreviewOpen.value = !isPreviewOpen.value;
+}
+
+function viewPreviewTrace() {
+	if (!effectiveSessionId.value) return;
+	onSessionSelect(effectiveSessionId.value);
+}
 </script>
 
 <template>
@@ -211,18 +266,40 @@ function onSessionSelect(nextThreadId: string) {
 			:duration-label="durationLabel"
 			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
 			:langsmith-export-loading="isExporting"
+			:is-preview-open="isPreviewOpen"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
+			@toggle-preview="togglePreview"
 			@close="closeTimeline"
 		/>
 
-		<AgentSessionTimelinePanel
-			:project-id="projectId"
-			:agent-id="agentId"
-			:thread-id="threadId"
-			@loaded="onPanelLoaded"
-		/>
+		<div :class="$style.content">
+			<AgentSessionTimelinePanel
+				:project-id="projectId"
+				:agent-id="agentId"
+				:thread-id="threadId"
+				@loaded="onPanelLoaded"
+			/>
+
+			<AgentPreviewDock
+				v-if="isPreviewOpen"
+				:session-title="currentSessionTitle"
+				:session-options="sessionMenu"
+				:has-session="currentSessionHasMessages"
+				:initialized="previewInitialized"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:agent="agent"
+				:local-config="localConfig"
+				:connected-triggers="[]"
+				:effective-session-id="effectiveSessionId"
+				@view-trace="viewPreviewTrace"
+				@new-session="onNewChat"
+				@session-select="onSessionPick"
+				@close="togglePreview"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -231,6 +308,13 @@ function onSessionSelect(nextThreadId: string) {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	overflow: hidden;
+}
+
+.content {
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow: hidden;
 }
 </style>

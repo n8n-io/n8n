@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
+import { useStorage } from '@vueuse/core';
 import { useRoute, useRouter, type LocationQueryRaw, type RouteLocationRaw } from 'vue-router';
 import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -147,8 +148,11 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 // be mounted at a time.
 const isArtifactMode = computed(() => props.artifactMode);
 const isArtifactPreviewDockOpen = ref(false);
+const persistedPreviewOpen = useStorage('N8N_AGENT_PREVIEW_OPEN', false);
 const isPreviewDockOpen = computed(() =>
-	isArtifactMode.value ? isArtifactPreviewDockOpen.value : route.name === AGENT_PREVIEW_VIEW,
+	isArtifactMode.value
+		? isArtifactPreviewDockOpen.value
+		: route.name === AGENT_PREVIEW_VIEW || persistedPreviewOpen.value,
 );
 const projectId = computed(
 	() =>
@@ -557,6 +561,7 @@ function previewRoute(sessionId?: string): RouteLocationRaw {
 async function openPreview(preferredSessionId?: string) {
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
 	activeChatSessionId.value = sessionId ?? null;
+	persistedPreviewOpen.value = true;
 	await router.push(previewRoute(sessionId));
 }
 
@@ -631,6 +636,7 @@ function closePreviewDock() {
 		return;
 	}
 
+	persistedPreviewOpen.value = false;
 	closePreviewRoute();
 }
 
@@ -1534,7 +1540,7 @@ onBeforeUnmount(() => {
 watch(
 	() => sessionsStore.loading,
 	(isLoading, wasLoading) => {
-		if (!wasLoading || isLoading) return;
+		if (!wasLoading || isLoading || !initialized.value) return;
 		if (!isPreviewDockOpen.value) return;
 		if (isArtifactMode.value && props.artifactPreviewSessionId) {
 			void ensureArtifactPreviewSessionAvailable(props.artifactPreviewSessionId);
@@ -1544,9 +1550,14 @@ watch(
 	},
 );
 
-watch(isPreviewDockOpen, (open) => {
-	if (open) bindPreviewSession();
-});
+watch(
+	[isPreviewDockOpen, initialized],
+	([open, isInitialized]) => {
+		if (!isArtifactMode.value && open) persistedPreviewOpen.value = true;
+		if (open && isInitialized && !sessionsStore.loading) bindPreviewSession();
+	},
+	{ immediate: true },
+);
 
 function isNotFoundError(error: unknown): boolean {
 	return (

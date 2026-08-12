@@ -46,11 +46,14 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('@n8n/design-system', () => ({
 	N8nButton: { template: '<button><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
+	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
 	N8nHeading: { template: '<div><slot /></div>' },
+	N8nIcon: { template: '<i />' },
 	N8nIconButton: {
 		emits: ['click'],
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
 	},
+	N8nText: { template: '<span><slot /></span>' },
 	N8nSendStopButton: {
 		name: 'N8nSendStopButton',
 		props: ['streaming', 'stopButtonTestId'],
@@ -501,6 +504,7 @@ describe('AgentChatPanel', () => {
 describe('AgentPreviewDock stream lifecycle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		localStorage.setItem('N8N_AGENT_PREVIEW_FLOATING', 'true');
 		messagesMock.value = [];
 		isStreamingMock.value = true;
 		isCancellingMock.value = false;
@@ -517,6 +521,7 @@ describe('AgentPreviewDock stream lifecycle', () => {
 						open.value
 							? h(AgentPreviewDock, {
 									sessionTitle: 'Session',
+									sessionOptions: [],
 									hasSession: true,
 									initialized: true,
 									projectId: 'p1',
