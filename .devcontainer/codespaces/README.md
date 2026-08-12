@@ -134,10 +134,15 @@ pnpm session          # window 1: attach the agent session
 pnpm session tunnel   # window 2: forward 5678 + 8080 to localhost
 ```
 
-Attaching lands you in the agent (Claude), not a shell — open a shell in a
-new tmux window with `Ctrl-b c` (or ask the agent). Run `pnpm dev:up` for the
-backend, or `pnpm dev:fe:editor` for the editor UI with hot reload. Then open
-http://localhost:8080.
+Attaching lands you in the agent (Claude), not a shell — open a shell in a new
+tmux window with `Ctrl-b c` (or ask the agent), then pick a dev server and open
+the matching port:
+
+- `pnpm dev:up` — backend on **5678** (editor served from the `dist` build).
+  Open http://localhost:5678.
+- `pnpm dev:fe:editor` — editor UI with hot reload on **8080**. Open
+  http://localhost:8080. It needs the backend on 5678 too, so run `pnpm dev:up`
+  alongside it.
 
 The tunnel prints nothing while forwarding — that's normal. `Connection
 refused` means nothing is listening on that port in the codespace yet; it
