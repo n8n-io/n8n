@@ -13,6 +13,7 @@ import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW } from '@/features/ai/mcpAccess/mc
 import type { WorkflowListItem } from '@/Interface';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import type { Agent } from '@/features/agents/agent.types';
 
 import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
 
@@ -258,6 +259,8 @@ describe('SettingsMCPView', () => {
 	describe('Workflows and agents loading state', () => {
 		beforeEach(() => {
 			enableMcpSettings();
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+			mcpStore.fetchAgentsAvailableForMCP.mockResolvedValue({ data: [], count: 0 });
 		});
 
 		it('should show placeholder while fetchWorkflowsAvailableForMCP is pending', async () => {
@@ -287,6 +290,48 @@ describe('SettingsMCPView', () => {
 				expect(getByTestId('mcp-workflows-exposed-row')).not.toHaveTextContent(UNKNOWN_COUNT_VALUE);
 				expect(getByTestId('mcp-workflows-exposed-row')).toHaveTextContent('0');
 			});
+		});
+
+		it('should keep — when fetchWorkflowsAvailableForMCP fails', async () => {
+			mcpStore.fetchWorkflowsAvailableForMCP.mockRejectedValue(new Error('network error'));
+
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalled();
+			});
+
+			expect(getByTestId('mcp-workflows-exposed-row')).toHaveTextContent(UNKNOWN_COUNT_VALUE);
+		});
+
+		it('should show placeholder while fetchAgentsAvailableForMCP is pending', async () => {
+			let resolveAgents!: (value: { data: Agent[]; count: number }) => void;
+			const agentsPromise = new Promise<{ data: Agent[]; count: number }>((res) => {
+				resolveAgents = res;
+			});
+
+			mcpStore.fetchAgentsAvailableForMCP.mockReturnValue(agentsPromise);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('mcp-agents-exposed-row')).toHaveTextContent(UNKNOWN_COUNT_VALUE);
+
+			resolveAgents({ data: [], count: 2 });
+			await waitFor(() => {
+				expect(getByTestId('mcp-agents-exposed-row')).toHaveTextContent('2');
+			});
+		});
+
+		it('should keep — when fetchAgentsAvailableForMCP fails', async () => {
+			mcpStore.fetchAgentsAvailableForMCP.mockRejectedValue(new Error('network error'));
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitFor(() => {
+				expect(mcpStore.fetchAgentsAvailableForMCP).toHaveBeenCalled();
+			});
+
+			expect(getByTestId('mcp-agents-exposed-row')).toHaveTextContent(UNKNOWN_COUNT_VALUE);
 		});
 	});
 
