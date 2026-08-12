@@ -44,12 +44,19 @@ function outlineLabel(node: UiNode): string {
 	return getComponentDef(node.type)?.label ?? node.type;
 }
 
-/** `among` is the node's place in its region, and absent for the root. */
+/**
+ * `activePageId` is the page the canvas is currently showing: a frame's paged
+ * region ("Pages") holds every page in the document, but only that one is on
+ * screen, and the outline should not lay out every other page's subtree
+ * underneath it to match. `among` is the node's place in its region, and
+ * absent for the root.
+ */
 function flatten(
 	node: UiNode,
 	depth: number,
 	rows: OutlineRow[],
 	collapsed: Set<string>,
+	activePageId: string | undefined,
 	among?: { index: number; count: number },
 ) {
 	// A document written by hand can hold children in a region its component
@@ -103,7 +110,19 @@ function flatten(
 	// even when the def (a plain Card, say) never bothered to pick one per slot.
 	for (const region of pseudoRegions) {
 		const pseudoKey = `${node.id}/${region.name}`;
-		const children = childrenIn(node, region.name);
+
+		// A frame's paged region holds every page, of which the canvas ever shows
+		// one; the outline follows suit rather than laying out every other page's
+		// subtree at once. Which page is active is the editor's own state, not the
+		// document's, so a document with no active page (nothing being edited yet)
+		// falls back to showing all of them rather than none.
+		const isPagedRegion = getComponentDef(node.type)?.pagedRegion === region.name;
+		const allChildren = childrenIn(node, region.name);
+		const children =
+			isPagedRegion && activePageId
+				? allChildren.filter((child) => child.id === activePageId)
+				: allChildren;
+
 		const pseudoCollapsed = collapsed.has(pseudoKey);
 
 		rows.push({
@@ -124,7 +143,7 @@ function flatten(
 		if (pseudoCollapsed) continue;
 
 		children.forEach((child, index) =>
-			flatten(child, depth + 2, rows, collapsed, { index, count: children.length }),
+			flatten(child, depth + 2, rows, collapsed, activePageId, { index, count: children.length }),
 		);
 	}
 
@@ -145,7 +164,7 @@ function flatten(
 		}
 
 		children.forEach((child, index) =>
-			flatten(child, depth + (headings ? 2 : 1), rows, collapsed, {
+			flatten(child, depth + (headings ? 2 : 1), rows, collapsed, activePageId, {
 				index,
 				count: children.length,
 			}),
@@ -153,7 +172,14 @@ function flatten(
 	}
 }
 
-export function useOutline(doc: Ref<UiNode>) {
+/**
+ * `activePageId` names the page the canvas is showing (the editor's
+ * `editingPage`, not anything the document itself stores) so the "Pages"
+ * pseudo-component only lays out that one page's subtree. Undefined falls
+ * back to showing every page, matching the outline's behaviour before there
+ * was a notion of an active page.
+ */
+export function useOutline(doc: Ref<UiNode>, activePageId?: Ref<string | undefined>) {
 	// Rows currently collapsed, keyed by their own `key`: a node's id, or a
 	// pseudo-component's `nodeId/region`. One set for both, since a node and a
 	// pseudo-component collapse the same way: hide what is under them, leave
@@ -163,7 +189,7 @@ export function useOutline(doc: Ref<UiNode>) {
 
 	const outlineRows = computed(() => {
 		const rows: OutlineRow[] = [];
-		flatten(doc.value, 0, rows, collapsedIds.value);
+		flatten(doc.value, 0, rows, collapsedIds.value, activePageId?.value);
 		return rows;
 	});
 

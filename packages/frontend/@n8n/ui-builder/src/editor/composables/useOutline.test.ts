@@ -291,5 +291,85 @@ describe('useOutline', () => {
 			expect(headerPseudo.depth).toBe(1);
 			expect(headingChild.depth).toBe(2);
 		});
+
+		describe('an active page', () => {
+			function page(id: string, children: UiNode[]): UiNode {
+				return { id, type: 'page', props: {}, tree: { default: children } };
+			}
+
+			it('shows only the active page under Pages, not the whole document', () => {
+				const doc = ref<UiNode>(
+					frame(
+						[],
+						[
+							page('page-1', [leaf('heading-1', 'heading'), leaf('table-1', 'table')]),
+							page('page-2', [leaf('heading-2', 'heading'), stack('stack-1', [leaf('input-1')])]),
+						],
+						[],
+					),
+				);
+				const activePageId = ref('page-2');
+
+				const { outlineRows } = useOutline(doc, activePageId);
+
+				// page-1's row and subtree are gone entirely; page-2's is flattened
+				// as normal, matching what the canvas has on screen. header/footer
+				// are still shown, empty as they are: they stay on screen regardless
+				// of which page is active.
+				expect(outlineRows.value.map((row) => row.key)).toEqual([
+					'frame-1',
+					'frame-1/header',
+					'frame-1/default',
+					'page-2',
+					'heading-2',
+					'stack-1',
+					'input-1',
+					'frame-1/footer',
+				]);
+			});
+
+			it('follows the active page when it changes', () => {
+				const doc = ref<UiNode>(
+					frame([], [page('page-1', [leaf('heading-1', 'heading')]), page('page-2', [])], []),
+				);
+				const activePageId = ref('page-1');
+
+				const { outlineRows } = useOutline(doc, activePageId);
+
+				expect(outlineRows.value.map((row) => row.key)).toEqual([
+					'frame-1',
+					'frame-1/header',
+					'frame-1/default',
+					'page-1',
+					'heading-1',
+					'frame-1/footer',
+				]);
+
+				activePageId.value = 'page-2';
+
+				expect(outlineRows.value.map((row) => row.key)).toEqual([
+					'frame-1',
+					'frame-1/header',
+					'frame-1/default',
+					'page-2',
+					'frame-1/footer',
+				]);
+			});
+
+			it('falls back to showing every page when there is no active page', () => {
+				const doc = ref<UiNode>(frame([], [page('page-1', []), page('page-2', [])], []));
+
+				const { outlineRows } = useOutline(doc, ref(undefined));
+
+				expect(outlineRows.value.map((row) => row.key)).toEqual([
+					'frame-1',
+					'frame-1/header',
+					'frame-1/default',
+					'page-1',
+					'page-2',
+					'frame-1/footer',
+				]);
+			});
+		});
 	});
 });

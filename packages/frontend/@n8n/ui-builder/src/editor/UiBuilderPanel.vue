@@ -92,7 +92,10 @@ const {
 	selectPage,
 } = usePages(doc, commit, selectedId, readOnly);
 
-const { outlineRows, indentOf, toggleCollapsed } = useOutline(doc);
+const { outlineRows, indentOf, toggleCollapsed } = useOutline(
+	doc,
+	computed(() => editingPage.value?.id),
+);
 
 const {
 	paletteWidth,
