@@ -58,6 +58,42 @@ export class ApiRouter extends Node {
 		defaults: {
 			name: 'API Router',
 		},
+		// The outputs are derived from `endpoints` at runtime, so a generated type
+		// cannot say how many there are or which is which. Connections land on the
+		// wrong branch without this.
+		builderHint: {
+			searchHint:
+				'One trigger serving several HTTP endpoints, each on its own output. Output index is the endpoint index in `endpoints.endpoint`, in declaration order; enabling the fallback appends one more output after them.',
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.uiBuilder',
+					relationHint: 'Serves an interactive app from one endpoint, with the rest as its actions',
+				},
+			],
+			extraTypeDefContent: [
+				{
+					content: `<patterns>
+<pattern title="Endpoint order is output order">
+Each entry of \`endpoints.endpoint\` gets one main output, in the order written.
+Connect endpoint N to output index N. With \`options.fallbackOutput\` enabled, an
+extra "Fallback" output is appended after the last endpoint.
+
+endpoints: { endpoint: [
+  { method: 'GET',  path: '/' },        // -> output 0
+  { method: 'GET',  path: '/orders' },  // -> output 1
+  { method: 'POST', path: '/orders' },  // -> output 2
+] }                                     // -> output 3 if fallbackOutput is on
+
+A branch's own output is \`{ route, params, query, body, headers }\`, so a POSTed
+body reaches the next node at \`$json.body\`, not \`$json\`.
+
+With the default "Respond: Automatically" a branch answers with its last node's
+JSON, so most branches need no Respond to Webhook node at all.
+</pattern>
+</patterns>`,
+				},
+			],
+		},
 		supportsCORS: true,
 		triggerPanel: {
 			header: '',

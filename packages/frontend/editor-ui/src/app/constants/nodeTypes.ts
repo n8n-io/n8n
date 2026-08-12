@@ -108,6 +108,7 @@ export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
 export const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
 export const TIME_SAVED_NODE_TYPE = 'n8n-nodes-base.timeSaved';
+export const UI_BUILDER_NODE_TYPE = 'n8n-nodes-base.uiBuilder';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 

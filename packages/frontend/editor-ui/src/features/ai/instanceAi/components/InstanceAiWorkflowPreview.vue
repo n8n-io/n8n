@@ -1,6 +1,9 @@
 <script lang="ts" setup>
-import { computed, provide, useTemplateRef } from 'vue';
+import { computed, provide, ref, useTemplateRef } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
+import { N8nRadioButtons } from '@n8n/design-system';
+import { UiAppPreview } from '@n8n/ui-builder';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import {
@@ -11,6 +14,7 @@ import {
 	InstanceAiEditorCapabilityKey,
 	type InstanceAiEditorCapability,
 } from '@/app/composables/useInstanceAiEditorCapability';
+import { UI_BUILDER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -45,6 +49,42 @@ const emit = defineEmits<{
 }>();
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
+const i18n = useI18n();
+
+// === App views ===
+// A UI Builder workflow's deliverable is the app, not the graph: on the canvas
+// an app is one node, and seeing it otherwise means opening that node and then
+// the builder. So each UI Builder node gets its own view here, named after the
+// node, and the first one opens. Read off the same document store the canvas
+// fills, which is why the canvas below is hidden rather than unmounted — and
+// why this needs no signal of its own: the refresh that reloads the canvas
+// reloads this too.
+const previewDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(props.workflowId));
+
+const CANVAS_VIEW = 'canvas';
+
+const appNodes = computed(() =>
+	previewDocumentStore.allNodes.filter((node) => node.type === UI_BUILDER_NODE_TYPE),
+);
+
+/** Unset means "the first app", so a workflow whose app arrives later still opens on it. */
+const chosenView = ref<string>();
+
+const view = computed(() => {
+	const chosen = chosenView.value;
+	if (chosen === CANVAS_VIEW) return CANVAS_VIEW;
+	// A node the agent renamed or removed mid-build should not leave the panel
+	// showing nothing.
+	if (chosen && appNodes.value.some((node) => node.name === chosen)) return chosen;
+	return appNodes.value[0]?.name ?? CANVAS_VIEW;
+});
+
+const viewOptions = computed(() => [
+	{ label: i18n.baseText('instanceAi.preview.canvas'), value: CANVAS_VIEW },
+	...appNodes.value.map((node) => ({ label: node.name, value: node.name })),
+]);
+
+const openApp = computed(() => appNodes.value.find((node) => node.name === view.value));
 
 function requestFitView() {
 	hostRef.value?.requestFitView();
@@ -174,8 +214,29 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 
 <template>
 	<div :class="$style.content">
+		<div v-if="appNodes.length > 0" :class="$style.viewToggle">
+			<N8nRadioButtons
+				:model-value="view"
+				:options="viewOptions"
+				size="small"
+				data-test-id="instance-ai-preview-view-toggle"
+				@update:model-value="chosenView = $event"
+			/>
+		</div>
+
+		<UiAppPreview
+			v-if="openApp"
+			:key="openApp.name"
+			:class="$style.app"
+			:value="openApp.parameters.definition"
+		/>
+
+		<!-- Hidden rather than unmounted: the canvas host is what loads the
+		     workflow into the document store the app view reads from. -->
 		<WorkflowCanvasHost
+			v-show="!openApp"
 			ref="host"
+			:class="$style.canvas"
 			:workflow-id="workflowId"
 			:refresh-key="refreshKey"
 			:initial-workflow="initialWorkflow"
@@ -191,5 +252,21 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 	min-height: 0;
 	position: relative;
 	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.viewToggle {
+	flex-shrink: 0;
+	display: flex;
+	justify-content: center;
+	padding: var(--spacing--3xs);
+	border-bottom: var(--border);
+}
+
+.app,
+.canvas {
+	flex: 1 1 auto;
+	min-height: 0;
 }
 </style>

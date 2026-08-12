@@ -1,10 +1,23 @@
 export { default as UiRenderer } from './renderer/UiRenderer.vue';
+export { default as UiAppPreview } from './renderer/UiAppPreview.vue';
 export {
 	createScopeRegistry,
 	UiScopeRegistryKey,
 	type UiScopeRegistry,
 } from './renderer/scope-registry';
 export { KIT, getComponentDef } from './kit';
+// The renderer-free half, for anyone holding a definition rather than drawing
+// one. Also published on its own as `@n8n/ui-builder/schema`, which is what the
+// node and the workflow SDK import.
+export {
+	UI_KIT_SPEC,
+	formatUiDefinitionIssues,
+	getComponentSpec,
+	uiDefinitionTypeSource,
+	validateUiDefinition,
+	type UiComponentSpec,
+	type UiDefinitionIssue,
+} from './schema';
 export { evaluateExpression, resolveValue, isExpression } from './core/expressions';
 export { writePath } from './core/state';
 export { placeResponse, requestBody, writeState } from './core/binding';

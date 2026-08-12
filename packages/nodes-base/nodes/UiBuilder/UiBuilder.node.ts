@@ -1,3 +1,4 @@
+import { formatUiDefinitionIssues, validateUiDefinition } from '@n8n/ui-builder/schema';
 import jwt from 'jsonwebtoken';
 import type {
 	IExecuteFunctions,
@@ -35,6 +36,117 @@ export class UiBuilder implements INodeType {
 		respondsToWebhook: true,
 		defaults: {
 			name: 'UI Builder',
+		},
+		// The shape of a definition is carried by the generated `UiDefinition` type,
+		// which the workflow SDK builds from the component kit itself. What is left
+		// for prose is what a type cannot say: that the expressions inside are not
+		// n8n's, and how an app is wired to the workflow serving it.
+		builderHint: {
+			searchHint:
+				'Serves an interactive web app defined in this node. Pair with an API Router trigger: one endpoint serves the page, the rest answer the app’s actions.',
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.apiRouter',
+					relationHint: 'Serves the page and gives each app action its own endpoint',
+				},
+				{
+					nodeType: 'n8n-nodes-base.dataTable',
+					relationHint: 'Backs an app action with storage',
+				},
+			],
+			extraTypeDefContent: [
+				{
+					// eslint-disable-next-line @n8n/community-nodes/no-builder-hint-leakage -- the `={{ }}` below is UI Builder's own expression language, not n8n's wire format, and telling the builder apart from n8n's is the whole point of this hint. `expr()` would be the wrong advice here.
+					content: `<patterns>
+<pattern title="Expressions inside a definition are the app's own, not n8n's">
+\`={{ ... }}\` in a definition is resolved in the browser, against the app's
+state — never by n8n, which passes the definition through untouched. The names
+in scope are the app's:
+
+  $state    everything an action has written into the app
+  $route    { path, params } of the page on screen
+  $pages    [{ id, path, title }] for every page, in document order
+  $loading  { [action]: boolean }, keyed by the trigger's last path segment
+  $item     bound by an enclosing repeat, with $index
+
+There is no $json, no $node, no $now. Writing one produces a blank prop, not an
+error. Conversely, an n8n expression belongs nowhere in this parameter.
+</pattern>
+
+<pattern title="Reads and writes are separate props">
+\`value\` is what a component displays; \`model\` is the state path it writes user
+input into. Nothing is inferred from one to the other, so an input that both
+shows and edits a value sets both:
+
+const nameInput = { id: 'name', type: 'input', props: {
+  value: '={{ $state.form.name }}',
+  model: 'form.name',
+  placeholder: 'Order name',
+}, tree: {} };
+</pattern>
+
+<pattern title="An action is a chain of steps, run in order">
+\`onClick\`, \`onEnter\` and \`onMount\` hold a list, not a single call. A webhook
+step owns both ends of the exchange: \`request\` is the state path to send as the
+body (unset sends all of state), \`response\` is where the reply lands (unset
+discards it). A webhook answering \`ok: false\` ends the chain, which is what
+stops a failed save from navigating away from the form that failed.
+
+onClick: [
+  { kind: 'webhook', url: '{webhookBaseUrl}/orders-app/orders', method: 'POST', request: 'form' },
+  { kind: 'set', path: 'form', value: {} },
+  { kind: 'notify', message: 'Order added', type: 'success' },
+  { kind: 'navigate', to: '/' },
+]
+
+A step's expressions resolve as that step runs, so a notify after a webhook sees
+what the webhook merged.
+</pattern>
+
+<pattern title="A whole app: API Router serves the page and the actions">
+One API Router trigger on a base path, one endpoint per thing the app does. Its
+outputs are its endpoints in order, so endpoint 0 goes to the UI Builder node
+and the rest go to whatever answers them.
+
+  [API Router  basePath: orders-app]
+    GET  /        -> [UI Builder]        the page itself
+    GET  /orders  -> [Data table: get]   answers the list
+    POST /orders  -> [Data table: insert]
+
+The UI Builder node answers its own request with the page, so that branch takes
+NO Respond to Webhook node. The data branches need none either: the router's
+default "Respond: Automatically" returns the last node's JSON.
+
+Action URLs are absolute production webhook URLs
+(\`{webhookBaseUrl}/<basePath>/<endpoint>\`), so the workflow has to be PUBLISHED
+before the app works — saving is not enough.
+
+const definition = {
+  id: 'app', type: 'frame', props: { defaultPage: '/' },
+  tree: {
+    header: [{ id: 'nav', type: 'repeat', props: { items: '={{ $pages }}', direction: 'horizontal' }, tree: {
+      default: [{ id: 'nav-btn', type: 'button', props: {
+        label: '={{ $item.title }}',
+        variant: 'tertiary',
+        active: '={{ $route.path === $item.path }}',
+        onClick: [{ kind: 'navigate', to: '={{ $item.path }}' }],
+      }, tree: {} }],
+    } }],
+    default: [{ id: 'list', type: 'page', props: {
+      path: '/', title: 'Orders',
+      onEnter: [{ kind: 'webhook', url: '{webhookBaseUrl}/orders-app/orders', method: 'GET', response: 'orders' }],
+    }, tree: {
+      default: [{ id: 'rows', type: 'table', props: { rows: '={{ $state.orders }}', columns: 'name,qty' }, tree: {} }],
+    } }],
+  },
+};
+
+A nav bar is a repeat over \`$pages\` with a button inside — the frame draws none
+of its own.
+</pattern>
+</patterns>`,
+				},
+			],
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -110,6 +222,20 @@ export class UiBuilder implements INodeType {
 				throw new NodeOperationError(
 					this.getNode(),
 					`Definition is not valid JSON: ${(error as Error).message}`,
+					{ itemIndex: i },
+				);
+			}
+
+			// A definition the renderer cannot make sense of would otherwise serve a
+			// blank page and say nothing about why, which is the one failure this
+			// node is in a position to explain. Every problem at once, since whoever
+			// is fixing it — a person or an agent reading this message — wants the
+			// list rather than the first entry of it.
+			const issues = validateUiDefinition(definition);
+			if (issues.length > 0) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Definition is not a valid UI: ${formatUiDefinitionIssues(issues)}`,
 					{ itemIndex: i },
 				);
 			}

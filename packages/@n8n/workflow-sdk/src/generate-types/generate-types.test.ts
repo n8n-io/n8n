@@ -2526,6 +2526,37 @@ describe('generate-types', () => {
 			expect(result).not.toContain('columns?: string;');
 		});
 
+		it('should emit the UI Builder definition union for uiBuilder properties', () => {
+			const uiBuilderNode: NodeTypeDescription = {
+				name: 'n8n-nodes-base.uiBuilder',
+				displayName: 'UI Builder',
+				description: 'Serve a UI defined in this node as a web app',
+				group: ['output'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'definition',
+						displayName: 'Definition',
+						type: 'uiBuilder',
+						default: { id: 'page', type: 'page', props: {}, tree: {} },
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(uiBuilderNode);
+
+			expect(result).toContain('definition?: UiDefinition;');
+			expect(result).toContain('type UiDefinition =');
+			expect(result).toContain('type UiActionStep = ');
+			// Generated from the kit, so a component and a prop stand in for the rest.
+			expect(result).toContain("type: 'button'");
+			expect(result).toContain("variant?: 'primary' | 'secondary' | 'tertiary' | UiExpr");
+			// Regions come from the component, so a leaf takes no children.
+			expect(result).toContain("type: 'text'; props?: { text?: string | UiExpr }");
+		});
+
 		// Regression: required string with default: '' used to emit
 		// `fieldToSplitOut?: ...` in the TS type, which dropped the required
 		// signal to LLMs consuming the type. Empty defaults don't satisfy

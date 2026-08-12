@@ -3993,6 +3993,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../constants
+      '@n8n/ui-builder':
+        specifier: workspace:*
+        version: link:../../frontend/@n8n/ui-builder
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -6503,6 +6506,9 @@ importers:
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
+      '@n8n/ui-builder':
+        specifier: workspace:*
+        version: link:../frontend/@n8n/ui-builder
       '@n8n/utils':
         specifier: workspace:*
         version: link:../@n8n/utils

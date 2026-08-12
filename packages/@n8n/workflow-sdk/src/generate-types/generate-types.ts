@@ -18,6 +18,7 @@
  * @generated - This file generates code, but is itself manually maintained.
  */
 
+import { uiDefinitionTypeSource } from '@n8n/ui-builder/schema';
 import * as fs from 'fs';
 import { deepCopy } from 'n8n-workflow';
 import * as path from 'path';
@@ -132,6 +133,28 @@ function generateResourceMapperTypeDeclaration(exported: boolean): string {
 	return `${prefix} ResourceMapperField = { id?: string; displayName?: string; required?: boolean; defaultMatch?: boolean; display?: boolean; type?: string; canBeUsedToMatch?: boolean; [key: string]: unknown };
 ${prefix} ResourceMapperCommon = { matchingColumns?: string[]; cachedResultName?: string; [key: string]: unknown };
 ${prefix} ResourceMapperValue = ResourceMapperCommon & { mappingMode: string; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] };`;
+}
+
+/**
+ * The helper declarations a set of properties needs, in one place: three call
+ * sites emit them, and a type reaching only two of the three would be a `.d.ts`
+ * that does not compile.
+ */
+function generateHelperTypeDeclarations(
+	props: Array<{ type: string }>,
+	exported: boolean,
+): string[] {
+	const needs = (type: string) => props.some((prop) => prop.type === type);
+	const lines: string[] = [];
+
+	if (needs('filter')) lines.push(generateFilterTypeDeclaration(exported));
+	if (needs('assignmentCollection')) lines.push(generateAssignmentTypeDeclarations(exported));
+	if (needs('resourceMapper')) lines.push(generateResourceMapperTypeDeclaration(exported));
+	if (needs('uiBuilder')) lines.push(uiDefinitionTypeSource(exported));
+
+	if (lines.length === 0) return [];
+
+	return ['// Helper types for special n8n fields', ...lines, ''];
 }
 
 function isCustomApiCall(operation: string): boolean {
@@ -1003,6 +1026,10 @@ function mapNestedPropertyTypeInner(
 			return 'string[]';
 		case 'json':
 			return 'IDataObject | string | Expression<string>';
+		case 'uiBuilder':
+			// A whole UI Builder app, as a tree. Not an n8n expression target: the
+			// `={{ }}` inside it is the app's own language, resolved in the browser.
+			return 'UiDefinition';
 		case 'resourceLocator':
 			return generateResourceLocatorType(prop);
 		case 'resourceMapper':
@@ -1698,6 +1725,11 @@ function mapPropertyTypeInner(
 
 		case 'json':
 			return 'IDataObject | string | Expression<string>';
+
+		case 'uiBuilder':
+			// A whole UI Builder app, as a tree. Not an n8n expression target: the
+			// `={{ }}` inside it is the app's own language, resolved in the browser.
+			return 'UiDefinition';
 
 		case 'resourceLocator':
 			return generateResourceLocatorType(prop);
@@ -2560,24 +2592,7 @@ export function generateSharedFile(
 	// Check properties
 	const outputProps = filteredProperties.filter((p) => !DISPLAY_ONLY_PROPERTY_TYPES.has(p.type));
 
-	// Helper types
-	const needsFilter = outputProps.some((p) => p.type === 'filter');
-	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
-	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
-
-	if (needsFilter || needsAssignment || needsResourceMapper) {
-		lines.push('// Helper types for special n8n fields');
-		if (needsFilter) {
-			lines.push(generateFilterTypeDeclaration(true));
-		}
-		if (needsAssignment) {
-			lines.push(generateAssignmentTypeDeclarations(true));
-		}
-		if (needsResourceMapper) {
-			lines.push(generateResourceMapperTypeDeclaration(true));
-		}
-		lines.push('');
-	}
+	lines.push(...generateHelperTypeDeclarations(outputProps, true));
 
 	const credTypeName =
 		node.credentials && node.credentials.length > 0
@@ -2679,25 +2694,7 @@ export function generateDiscriminatorFile(
 	lines.push('');
 	lines.push('');
 
-	// Check what helper types we need
-	const needsFilter = props.some((p) => p.type === 'filter');
-	const needsAssignment = props.some((p) => p.type === 'assignmentCollection');
-	const needsResourceMapper = props.some((p) => p.type === 'resourceMapper');
-
-	// Inline helper types (only the ones needed)
-	if (needsFilter || needsAssignment || needsResourceMapper) {
-		lines.push('// Helper types for special n8n fields');
-		if (needsFilter) {
-			lines.push(generateFilterTypeDeclaration(false));
-		}
-		if (needsAssignment) {
-			lines.push(generateAssignmentTypeDeclarations(false));
-		}
-		if (needsResourceMapper) {
-			lines.push(generateResourceMapperTypeDeclaration(false));
-		}
-		lines.push('');
-	}
+	lines.push(...generateHelperTypeDeclarations(props, false));
 
 	// Inline credentials interface (if node has credentials)
 	if (node.credentials && node.credentials.length > 0) {
@@ -3133,24 +3130,7 @@ export function generateSingleVersionTypeFile(
 	// Check filtered properties that will actually be output
 	const outputProps = filteredProperties.filter((p) => !DISPLAY_ONLY_PROPERTY_TYPES.has(p.type));
 
-	// Helper types (if needed) based on filtered properties
-	const needsFilter = outputProps.some((p) => p.type === 'filter');
-	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
-	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
-
-	if (needsFilter || needsAssignment || needsResourceMapper) {
-		lines.push('// Helper types for special n8n fields');
-		if (needsFilter) {
-			lines.push(generateFilterTypeDeclaration(false));
-		}
-		if (needsAssignment) {
-			lines.push(generateAssignmentTypeDeclarations(false));
-		}
-		if (needsResourceMapper) {
-			lines.push(generateResourceMapperTypeDeclaration(false));
-		}
-		lines.push('');
-	}
+	lines.push(...generateHelperTypeDeclarations(outputProps, false));
 
 	// Use filtered node for discriminated union generation
 	const unionResult = generateDiscriminatedUnionForEntry(filteredNode, nodeName, versionSuffix);
@@ -3400,24 +3380,7 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 		n.properties.filter((p) => !DISPLAY_ONLY_PROPERTY_TYPES.has(p.type)),
 	);
 
-	// Helper types (if needed) - only add if they'll actually be used in output
-	const needsFilter = outputProps.some((p) => p.type === 'filter');
-	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
-	const needsResourceMapper = outputProps.some((p) => p.type === 'resourceMapper');
-
-	if (needsFilter || needsAssignment || needsResourceMapper) {
-		lines.push('// Helper types for special n8n fields');
-		if (needsFilter) {
-			lines.push(generateFilterTypeDeclaration(false));
-		}
-		if (needsAssignment) {
-			lines.push(generateAssignmentTypeDeclarations(false));
-		}
-		if (needsResourceMapper) {
-			lines.push(generateResourceMapperTypeDeclaration(false));
-		}
-		lines.push('');
-	}
+	lines.push(...generateHelperTypeDeclarations(outputProps, false));
 
 	// Note: fixedCollection types are represented as Record<string, unknown>
 	// to avoid naming conflicts across nodes with different structures

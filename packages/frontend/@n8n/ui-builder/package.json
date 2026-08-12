@@ -5,8 +5,9 @@
   "description": "PoC: renders a declarative UI definition as a Vue app, in the editor and standalone",
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "build": "pnpm build:vite && pnpm build:bundle",
+    "build": "pnpm build:schema && pnpm build:vite && pnpm build:bundle",
     "build:unchecked": "pnpm run build",
+    "build:schema": "tsc -p tsconfig.schema.json",
     "build:vite": "cross-env vite build",
     "build:bundle": "cross-env INCLUDE_VUE=true vite build",
     "typecheck": "vue-tsc --noEmit",
@@ -23,6 +24,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/ui-builder.es.js",
       "require": "./dist/ui-builder.umd.js"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "import": "./dist/schema/index.js",
+      "require": "./dist/schema/index.js"
     },
     "./style.css": {
       "import": "./dist/style.css",

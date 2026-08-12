@@ -1,37 +1,45 @@
-// Props are declared as n8n node-property descriptors so the editor's inspector
-// can be n8n's own parameter inputs pointed at a component instead of a node.
-// `action`, `statePath` and `route` are descriptor types of this package's own:
-// the runtime treats them specially, and the inspector gives each its own
-// control.
+// What each component in the spec is drawn with. The spec itself — types,
+// props, regions — lives in `../schema/kit-spec`, where the node and the
+// workflow SDK can read it without loading Vue.
+import UiButton from './UiButton.vue';
+import UiCard from './UiCard.vue';
+import UiDebug from './UiDebug.vue';
+import UiFrame from './UiFrame.vue';
+import UiHeading from './UiHeading.vue';
+import UiIf from './UiIf.vue';
+import UiInput from './UiInput.vue';
+import UiPage from './UiPage.vue';
+import UiRepeat from './UiRepeat.vue';
+import UiStack from './UiStack.vue';
+import UiTable from './UiTable.vue';
+import UiText from './UiText.vue';
 import type { UiComponentDef } from '../core/types';
-import { BUTTON_DEF } from './UiButton.descriptor';
-import { CARD_DEF } from './UiCard.descriptor';
-import { DEBUG_DEF } from './UiDebug.descriptor';
-import { FRAME_DEF } from './UiFrame.descriptor';
-import { HEADING_DEF } from './UiHeading.descriptor';
-import { IF_DEF } from './UiIf.descriptor';
-import { INPUT_DEF } from './UiInput.descriptor';
-import { PAGE_DEF } from './UiPage.descriptor';
-import { REPEAT_DEF } from './UiRepeat.descriptor';
-import { STACK_DEF } from './UiStack.descriptor';
-import { TABLE_DEF } from './UiTable.descriptor';
-import { TEXT_DEF } from './UiText.descriptor';
+import { UI_KIT_SPEC, type UiComponentType } from '../schema/kit-spec';
 
-// The order here is the order the palette shows.
-export const KIT: UiComponentDef[] = [
-	FRAME_DEF,
-	PAGE_DEF,
-	STACK_DEF,
-	CARD_DEF,
-	REPEAT_DEF,
-	IF_DEF,
-	DEBUG_DEF,
-	HEADING_DEF,
-	TEXT_DEF,
-	TABLE_DEF,
-	INPUT_DEF,
-	BUTTON_DEF,
-];
+/**
+ * Keyed by every type the spec declares, so adding a component to the spec
+ * without drawing it is a build error rather than a blank in the palette.
+ */
+const COMPONENTS: Record<UiComponentType, UiComponentDef['component']> = {
+	frame: UiFrame,
+	page: UiPage,
+	stack: UiStack,
+	card: UiCard,
+	repeat: UiRepeat,
+	if: UiIf,
+	debug: UiDebug,
+	heading: UiHeading,
+	text: UiText,
+	table: UiTable,
+	input: UiInput,
+	button: UiButton,
+};
+
+/** In spec order, which is the order the palette shows. */
+export const KIT: UiComponentDef[] = UI_KIT_SPEC.map((spec) => ({
+	...spec,
+	component: COMPONENTS[spec.type],
+}));
 
 const BY_TYPE = new Map(KIT.map((def) => [def.type, def]));
 

@@ -1,0 +1,16 @@
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.build.go.json"
+	],
+	"compilerOptions": {
+		"rootDir": "src/schema",
+		"outDir": "dist/schema",
+		"types": [],
+		"lib": ["es2021"],
+		"removeComments": false,
+		"tsBuildInfoFile": "dist/schema.tsbuildinfo"
+	},
+	"include": ["src/schema/**/*.ts"],
+	"exclude": ["src/schema/**/*.test.ts"]
+}

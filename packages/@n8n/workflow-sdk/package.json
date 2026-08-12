@@ -104,6 +104,7 @@
   "dependencies": {
     "@dagrejs/dagre": "^1.1.4",
     "@n8n/constants": "workspace:*",
+    "@n8n/ui-builder": "workspace:*",
     "@n8n/utils": "workspace:*",
     "acorn": "8.14.0",
     "lodash": "catalog:",

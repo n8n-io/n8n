@@ -1,6 +1,10 @@
 import { Tournament } from '@n8n/tournament';
 
 import type { UiScope } from './types';
+import { isExpression } from '../schema/validate';
+
+// Defined in the schema half, where the node's validator also needs it.
+export { isExpression };
 
 // The same evaluator editor-ui uses in the browser. `@n8n/expression-runtime`
 // is not an option here: it depends on isolated-vm and editor-ui aliases the
@@ -12,11 +16,6 @@ import type { UiScope } from './types';
 const tournament = new Tournament((error) => {
 	console.warn('[ui-builder] expression error', error);
 });
-
-/** n8n stores expressions as a string with a leading `=`, `{{ }}` inside. */
-export function isExpression(value: unknown): value is string {
-	return typeof value === 'string' && value.startsWith('=');
-}
 
 /**
  * Resolves one prop value against the scope it is rendered in. Literals pass
