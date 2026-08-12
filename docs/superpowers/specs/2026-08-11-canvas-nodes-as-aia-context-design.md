@@ -85,6 +85,20 @@ A set is a **group chip** only when `resolveSetCanvasGroup` returned a
 belongs to the same canvas group. Mixed/partial/ungrouped → `undefined` → falls
 through to the named/bundled rules above.
 
+**Group selection → expanded member ids.** When the user selects a canvas group
+(e.g. `Prepare ticket`), the trigger passes the group's **member node ids**
+(not the synthetic canvas-group-node id) to the builder — via `Canvas.vue`'s
+existing `selectedNodeIdsWithGroupMembers` / `getGroupById(id).nodeIds`. The
+members then resolve to one set with `canvasGroupId` → a single group chip.
+
+**Sub-nodes are not auto-included.** Selecting an AI root (Agent/Chain) does
+**not** pull in its `ai_*` sub-nodes (model/tools) — the Phase-1 partitioner
+walks `'main'` connections only. Sub-nodes join a set only if the user also
+selects them. The agent resolves its own sub-nodes via its tools.
+
+**Trigger label:** always count-based — "Add node to chat" (1) / "Add N nodes to
+chat" (N). No node-kind-specific wording (no "agent" variant).
+
 Additional visuals from screenshots: every chip carries the node's **type icon**;
 a `⌘↵` keyboard shortcut adds the current selection ("Add N nodes to chat"); when
 many per-set chips overflow, a **Collapse / expand** toggle appears.

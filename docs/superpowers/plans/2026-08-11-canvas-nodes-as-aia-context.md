@@ -490,6 +490,26 @@ describe('buildNodesAttachment', () => {
 		expect(res!.attachment.sets.length).toBe(50);
 		expect(instanceAiNodesAttachmentSchema.safeParse(res!.attachment).success).toBe(true);
 	});
+
+	it('a fully-grouped selection resolves to one set carrying the group', () => {
+		// Caller passes EXPANDED member ids (n1, n2) — the group-chip case.
+		const w = wf({
+			nodes: [
+				{ id: 'n1', name: 'Extract Fields', type: 't' },
+				{ id: 'n2', name: 'Find Slack User', type: 't' },
+			],
+			connections: chain(['Extract Fields', 'Find Slack User']),
+			groupsById: new Map([
+				['g1', { id: 'g1', name: 'Prepare ticket', nodeIds: ['n1', 'n2'] }],
+			]),
+			nodeIdToGroupId: new Map([['n1', 'g1'], ['n2', 'g1']]),
+		});
+		const res = buildNodesAttachment('w1', ['n1', 'n2'], w);
+		expect(res!.attachment.sets).toHaveLength(1);
+		expect(res!.attachment.sets[0].canvasGroupId).toBe('g1');
+		expect(res!.attachment.sets[0].canvasGroupName).toBe('Prepare ticket');
+		expect(instanceAiNodesAttachmentSchema.safeParse(res!.attachment).success).toBe(true);
+	});
 });
 ```
 
@@ -554,7 +574,7 @@ export function buildNodesAttachment(
 - [ ] **Step 4: Run to verify pass**
 
 Run: `cd packages/frontend/editor-ui && pnpm test buildNodesAttachment -- --run`
-Expected: PASS (12 tests total).
+Expected: PASS (13 tests total).
 
 - [ ] **Step 5: typecheck + lint + commit**
 
@@ -1535,16 +1555,27 @@ function buildBuilderWorkflow() {
 }
 
 async function onAddNodesToChat(ids: string[]) {
+	// Expand any selected canvas GROUP into its member node ids, so a group
+	// resolves to one set with canvasGroupId (→ a single group chip). A raw
+	// selection of a collapsed group otherwise carries the synthetic group-node
+	// id, which the builder (real ids/names only) can't resolve. Prefer the
+	// existing `selectedNodeIdsWithGroupMembers` when the caller is the toolbar
+	// (its ids already exclude group-node ids); for the context menu, expand here.
+	const expanded = expandGroupMembers(ids); // see note
 	await addSelectedNodesToChat({
 		workflowId: workflowDocumentStore.value.workflowId, // confirm exact accessor
-		selectedNodeIds: ids,
+		selectedNodeIds: expanded,
 		workflow: buildBuilderWorkflow(),
 		isInsideThread: instanceAi.value,
+		onStaged: () => instanceAiStore.requestComposerFocus(), // Context A focus (see Notes)
 	});
 }
 ```
 
-> Implementer note: confirm the exact `workflowId` accessor on the doc store and the `allNodes`/`allGroups`/`connectionsBySourceNode`/`nodeIdToGroupId` names (they were verified to exist; double-check casing). For Context A focus, pass `onStaged` that the thread view exposes — if wiring that is non-trivial from Canvas, defer focus to the composer's existing autofocus and note it.
+> Implementer notes:
+> - **Group expansion:** `expandGroupMembers(ids)` maps each id: if it's a synthetic canvas-group-node id (`isCanvasGroupNode` / `parseCanvasGroupNodeId` from `canvas.types.ts`), replace it with `getGroupById(groupId).nodeIds`; otherwise keep it. `Canvas.vue` already has `selectedNodeIdsWithGroupMembers` (≈ line 588) doing this for the current selection — reuse it for the toolbar path (pass `selectedNodeIdsWithGroupMembers.value` as the emit payload instead of `selectedNodeIds`), and for the context-menu path apply the same mapping to the `nodeIds` the menu hands you. Net effect: the builder always receives real member ids.
+> - **Sub-nodes are NOT auto-included.** The Phase-1 partitioner walks `'main'` connections only, so an AI root's `ai_*` sub-nodes (model/tools) are part of a set only if the user also selected them. This is intended (confirmed) — the agent resolves its own sub-nodes via its tools; the backend prose describes only the selected chain.
+> - Confirm the exact `workflowId` accessor on the doc store and the `allNodes`/`allGroups`/`connectionsBySourceNode`/`nodeIdToGroupId` names (verified to exist; double-check casing).
 
 - [ ] **Step 5: Run + typecheck + lint** — `pnpm test CanvasSelectionToolbar.nodeContext -- --run` PASS; `pnpm typecheck`; `pnpm lint` the two files.
 
