@@ -10,7 +10,7 @@ import {
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, useTemplateRef } from 'vue';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
@@ -36,6 +36,11 @@ interface SessionOption {
 
 interface SessionOptionData {
 	when?: string;
+}
+
+enum PreviewLayout {
+	Docked = 'docked',
+	Floating = 'floating',
 }
 
 const props = defineProps<{
@@ -72,7 +77,9 @@ const {
 	isExporting,
 	sendSession,
 } = useAgentSessionLangSmithExport();
-const floating = useStorage('N8N_AGENT_PREVIEW_FLOATING', false);
+const previewChatPage =
+	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
+const layout = useStorage('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
 
 const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, SessionOptionData>>>(
 	() =>
@@ -86,15 +93,15 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 
 const layoutOptions = computed<Array<DropdownMenuItemProps<string>>>(() => [
 	{
-		id: 'floating',
+		id: PreviewLayout.Floating,
 		label: i18n.baseText('agents.builder.preview.layout.floating'),
-		checked: floating.value,
+		checked: layout.value === PreviewLayout.Floating,
 		icon: { type: 'icon', value: 'picture-in-picture-2' },
 	},
 	{
-		id: 'docked',
+		id: PreviewLayout.Docked,
 		label: i18n.baseText('agents.builder.preview.layout.docked'),
-		checked: !floating.value,
+		checked: layout.value === PreviewLayout.Docked,
 		icon: { type: 'icon', value: 'panel-right' },
 	},
 ]);
@@ -121,14 +128,29 @@ function close() {
 	emit('close');
 }
 
-function setLayout(layout: string) {
-	if (layout !== 'floating' && layout !== 'docked') return;
-	floating.value = layout === 'floating';
+function setLayout(nextLayout: string) {
+	if (nextLayout === PreviewLayout.Floating) {
+		layout.value = PreviewLayout.Floating;
+	} else if (nextLayout === PreviewLayout.Docked) {
+		layout.value = PreviewLayout.Docked;
+	}
 }
 
 function isFocusWithinDock() {
 	return dock.value?.contains(document.activeElement) === true;
 }
+
+watch(
+	[() => props.isOpen, () => props.initialized, () => props.effectiveSessionId],
+	async function focusPreviewInput([isOpen, initialized, sessionId]) {
+		if (!isOpen || !initialized || !sessionId) return;
+
+		await nextTick();
+		/** preventScroll makes sure that the content doesn't jump when transitioning */
+		previewChatPage.value?.focusInput({ preventScroll: true });
+	},
+	{ flush: 'post' },
+);
 
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
@@ -146,10 +168,10 @@ useKeybindings({
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
-		:data-preview-layout="floating ? 'floating' : 'docked'"
+		:data-preview-layout="layout"
 		data-testid="agent-preview-dock"
 	>
-		<div :class="[$style.dockInner, { [$style.floating]: floating }]">
+		<div :class="[$style.dockInner, { [$style.floating]: layout === PreviewLayout.Floating }]">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
 				<N8nDropdownMenu
 					:items="sessionDropdownOptions"
@@ -247,12 +269,12 @@ useKeybindings({
 						<N8nDropdownMenu :items="layoutOptions" placement="bottom-end" @select="setLayout">
 							<template #trigger>
 								<N8nIconButton
-									:icon="floating ? 'picture-in-picture-2' : 'panel-right'"
+									:icon="layout === PreviewLayout.Floating ? 'picture-in-picture-2' : 'panel-right'"
 									variant="ghost"
 									size="small"
 									icon-size="large"
 									:aria-label="
-										floating
+										layout === PreviewLayout.Floating
 											? i18n.baseText('agents.builder.preview.layout.floating.ariaLabel')
 											: i18n.baseText('agents.builder.preview.layout.docked.ariaLabel')
 									"
@@ -263,7 +285,7 @@ useKeybindings({
 					</N8nTooltip>
 
 					<KeyboardShortcutTooltip
-						v-if="floating"
+						v-if="layout === PreviewLayout.Floating"
 						placement="bottom"
 						:label="i18n.baseText('generic.close')"
 						:shortcut="{ keys: ['Esc'] }"
@@ -282,6 +304,7 @@ useKeybindings({
 			</header>
 
 			<AgentPreviewChatPage
+				ref="previewChatPage"
 				:initialized="props.initialized"
 				:project-id="props.projectId"
 				:agent-id="props.agentId"

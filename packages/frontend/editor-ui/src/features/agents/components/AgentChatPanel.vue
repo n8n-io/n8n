@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, toRef, watch, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import { N8nCallout, N8nIconButton, N8nSendStopButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -66,6 +66,11 @@ const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
 const attachedFiles = ref<File[]>([]);
+const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+
+function focusInput(options?: FocusOptions) {
+	chatInput.value?.focus(options);
+}
 
 const attachmentCapabilities = computed(() => {
 	const provider = props.agentConfig?.model?.split('/')[0];
@@ -310,7 +315,7 @@ function sendMessageFromOutside(message: string) {
 	void onSubmit();
 }
 
-defineExpose({ sendMessageFromOutside });
+defineExpose({ focusInput, sendMessageFromOutside });
 
 onMounted(() => {
 	void loadHistory();
@@ -391,9 +396,9 @@ onBeforeUnmount(() => {
 
 		<div :class="$style.inputArea">
 			<ChatInputBase
+				ref="chatInput"
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
-				:autofocus="true"
 				:is-streaming="showStopAsPrimaryAction"
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"

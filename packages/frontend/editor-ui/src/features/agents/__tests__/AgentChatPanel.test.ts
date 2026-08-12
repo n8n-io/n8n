@@ -92,6 +92,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="footer-start" /></form>',
 		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
 		emits: ['submit', 'stop', 'update:modelValue'],
+		methods: { focus: vi.fn() },
 	},
 }));
 

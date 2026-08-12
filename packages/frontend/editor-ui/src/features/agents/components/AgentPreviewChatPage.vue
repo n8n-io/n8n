@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, useTemplateRef } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
@@ -34,6 +34,13 @@ const emit = defineEmits<{
 }>();
 
 const inputDraft = ref('');
+const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
+
+function focusInput(options?: FocusOptions) {
+	chatPanel.value?.focusInput(options);
+}
+
+defineExpose({ focusInput });
 </script>
 
 <template>
@@ -46,6 +53,7 @@ const inputDraft = ref('');
 			<AgentChatPanel
 				v-if="initialized && effectiveSessionId"
 				:key="`preview-${effectiveSessionId}`"
+				ref="chatPanel"
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
