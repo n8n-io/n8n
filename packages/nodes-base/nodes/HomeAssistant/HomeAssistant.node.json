@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.homeAssistant",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Miscellaneous"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/homeassistant/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.homeassistant/"
+			}
+		]
+	}
+}

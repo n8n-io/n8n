@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "mimeType": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,165 @@
+import { createComponentRenderer } from '@/__tests__/render';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { createTestingPinia } from '@pinia/testing';
+import MainHeader from '@/app/components/MainHeader/MainHeader.vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { STORES } from '@n8n/stores';
+import { WorkflowIdKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { computed, shallowRef } from 'vue';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+
+vi.mock('@n8n/permissions', () => ({
+	getResourcePermissions: vi.fn(() => ({
+		workflow: {
+			update: true,
+			execute: true,
+		},
+	})),
+}));
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRoute: vi.fn().mockReturnValue({
+		params: { workflowId: 'test' },
+		query: {},
+		meta: {
+			nodeView: true,
+		},
+	}),
+	useRouter: vi.fn().mockReturnValue({
+		push: vi.fn(),
+		replace: vi.fn(),
+		currentRoute: {
+			value: {
+				params: { workflowId: 'test' },
+				query: {},
+			},
+		},
+	}),
+}));
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn().mockReturnValue({
+		isConnected: true,
+		addEventListener: vi.fn().mockReturnValue(() => {}),
+	}),
+}));
+
+vi.mock('@n8n/composables/useToast', () => {
+	const showError = vi.fn();
+	const showMessage = vi.fn();
+	const showToast = vi.fn();
+	return {
+		useToast: () => ({
+			showError,
+			showMessage,
+			showToast,
+		}),
+	};
+});
+
+const initialState = {
+	[STORES.SETTINGS]: {
+		settings: {
+			enterprise: {},
+		},
+	},
+};
+
+const pinia = createTestingPinia({ initialState, stubActions: false });
+const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('1'));
+
+const renderComponent = createComponentRenderer(MainHeader, {
+	pinia,
+	global: {
+		stubs: {
+			WorkflowDetails: {
+				props: ['id', 'tags', 'name', 'currentFolder', 'isArchived', 'description'],
+				template: '<div data-test-id="workflow-details-stub"></div>',
+			},
+			TabBar: { template: '<div></div>' },
+		},
+		provide: {
+			[WorkflowIdKey as symbol]: computed(() => 'test-workflow-id'),
+			[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
+		},
+	},
+});
+
+describe('MainHeader', () => {
+	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let sourceControlStore: MockedStore<typeof useSourceControlStore>;
+	let collaborationStore: MockedStore<typeof useCollaborationStore>;
+	let settingsStore: MockedStore<typeof useSettingsStore>;
+
+	beforeEach(() => {
+		workflowsStore = mockedStore(useWorkflowsStore);
+		sourceControlStore = mockedStore(useSourceControlStore);
+		collaborationStore = mockedStore(useCollaborationStore);
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings.canvasOnly = false;
+
+		workflowsStore.setWorkflowId('1');
+		workflowDocumentStore.hydrate({
+			id: '1',
+			name: 'Test Workflow',
+			active: false,
+			activeVersionId: null,
+			activeVersion: null,
+			versionId: 'version-1',
+			scopes: ['workflow:read', 'workflow:update'],
+			isArchived: false,
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+			nodes: [],
+			connections: {},
+			tags: [],
+			meta: {},
+		});
+
+		workflowDocumentStore.setName('Test Workflow');
+
+		sourceControlStore.preferences.branchReadOnly = false;
+		vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
+	});
+
+	it('should render WorkflowDetails component', () => {
+		const { getByTestId } = renderComponent();
+
+		const workflowDetails = getByTestId('workflow-details-stub');
+		expect(workflowDetails).toBeInTheDocument();
+	});
+
+	// Especially important because WorkflowHeaderDraftPublishActions.vue child component of MainHeader
+	// registers keyboard shortcuts like Cmd+S for saving, Cmd+U for unpublish and Cmd+P for publish.
+	it('should not mount WorkflowDetails when canvas-only mode is on', () => {
+		settingsStore.settings.canvasOnly = true;
+
+		const { queryByTestId } = renderComponent();
+
+		expect(queryByTestId('workflow-details-stub')).not.toBeInTheDocument();
+	});
+
+	// Regression: the header renders before the workflow document store is set
+	// (e.g. the blank-canvas boot window). It must not throw when no NDV store is
+	// available — it uses injectNDVStoreIfProvided() and guards the access.
+	// (WorkflowDetails is `v-if="workflowName"`, so it is absent with no workflow;
+	// the point is that rendering the header does not throw.)
+	it('renders without throwing when no workflow document is loaded', () => {
+		expect(() =>
+			renderComponent({
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: shallowRef(null),
+					},
+				},
+			}),
+		).not.toThrow();
+	});
+});

@@ -1,0 +1,90 @@
+{
+	"name": "Microsoft GraphSecurity SecureScore GetAll Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger-id",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "secureScore",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-id",
+			"name": "Microsoft Graph Security",
+			"type": "n8n-nodes-base.microsoftGraphSecurity",
+			"typeVersion": 1,
+			"position": [1040, 360],
+			"credentials": {
+				"microsoftGraphSecurityOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft Graph Security OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Graph Security": [
+			{
+				"json": {
+					"id": "test-secure-score-1",
+					"azureTenantId": "tenant-123",
+					"activeUserCount": 100,
+					"createdDateTime": "2023-01-01T00:00:00Z",
+					"currentScore": 85,
+					"maxScore": 100,
+					"averageComparativeScores": [
+						{
+							"basis": "AllTenants",
+							"averageScore": 75.5
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"id": "test-secure-score-2",
+					"azureTenantId": "tenant-456",
+					"activeUserCount": 200,
+					"createdDateTime": "2023-01-02T00:00:00Z",
+					"currentScore": 90,
+					"maxScore": 100,
+					"averageComparativeScores": [
+						{
+							"basis": "AllTenants",
+							"averageScore": 78.2
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Graph Security",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "test-version-id",
+	"id": "test-workflow-id",
+	"meta": {
+		"instanceId": "test-instance-id"
+	},
+	"tags": []
+}

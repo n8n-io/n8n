@@ -1,0 +1,28 @@
+post:
+  x-eov-operation-id: createTag
+  x-required-scope: tag:create
+  x-eov-operation-handler: v1/handlers/tags/tags.handler
+  tags:
+    - Tags
+  summary: Create a tag
+  description: Create a tag in your instance.
+  requestBody:
+    description: Created tag object.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/tag.yml'
+    required: true
+  responses:
+    '201':
+      description: A tag object
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/tag.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'

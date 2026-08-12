@@ -1,0 +1,373 @@
+{
+    "type": "object",
+    "properties": {
+        "contacts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "anonymized": {
+                        "type": "string"
+                    },
+                    "bounced_date": {
+                        "type": "null"
+                    },
+                    "bounced_hard": {
+                        "type": "string"
+                    },
+                    "bounced_soft": {
+                        "type": "string"
+                    },
+                    "cdate": {
+                        "type": "string"
+                    },
+                    "created_timestamp": {
+                        "type": "string"
+                    },
+                    "created_utc_timestamp": {
+                        "type": "string"
+                    },
+                    "deleted": {
+                        "type": "string"
+                    },
+                    "deleted_at": {
+                        "type": "null"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "email_domain": {
+                        "type": "string"
+                    },
+                    "email_local": {
+                        "type": "string"
+                    },
+                    "firstName": {
+                        "type": "string"
+                    },
+                    "gravatar": {
+                        "type": "string"
+                    },
+                    "hash": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "ip": {
+                        "type": "string"
+                    },
+                    "last_mpp_open_date": {
+                        "type": "null"
+                    },
+                    "lastName": {
+                        "type": "string"
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "accountContacts": {
+                                "type": "string"
+                            },
+                            "automationEntryCounts": {
+                                "type": "string"
+                            },
+                            "bounceLogs": {
+                                "type": "string"
+                            },
+                            "contactAutomations": {
+                                "type": "string"
+                            },
+                            "contactData": {
+                                "type": "string"
+                            },
+                            "contactDeals": {
+                                "type": "string"
+                            },
+                            "contactGoals": {
+                                "type": "string"
+                            },
+                            "contactLists": {
+                                "type": "string"
+                            },
+                            "contactLogs": {
+                                "type": "string"
+                            },
+                            "contactTags": {
+                                "type": "string"
+                            },
+                            "deals": {
+                                "type": "string"
+                            },
+                            "fieldValues": {
+                                "type": "string"
+                            },
+                            "geoIps": {
+                                "type": "string"
+                            },
+                            "notes": {
+                                "type": "string"
+                            },
+                            "organization": {
+                                "type": "string"
+                            },
+                            "plusAppend": {
+                                "type": "string"
+                            },
+                            "scoreValues": {
+                                "type": "string"
+                            },
+                            "trackingLogs": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "mpp_tracking": {
+                        "type": "string"
+                    },
+                    "organization": {
+                        "type": "null"
+                    },
+                    "orgid": {
+                        "type": "string"
+                    },
+                    "orgname": {
+                        "type": "string"
+                    },
+                    "phone": {
+                        "type": "string"
+                    },
+                    "segmentio_id": {
+                        "type": "string"
+                    },
+                    "sentcnt": {
+                        "type": "string"
+                    },
+                    "socialdata_lastcheck": {
+                        "type": "null"
+                    },
+                    "udate": {
+                        "type": "string"
+                    },
+                    "updated_timestamp": {
+                        "type": "string"
+                    },
+                    "updated_utc_timestamp": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "deal": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "null"
+                },
+                "cdate": {
+                    "type": "string"
+                },
+                "contact": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "customerAccount": {
+                    "type": "null"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "hash": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDisabled": {
+                    "type": "boolean"
+                },
+                "links": {
+                    "type": "object",
+                    "properties": {
+                        "account": {
+                            "type": "string"
+                        },
+                        "contact": {
+                            "type": "string"
+                        },
+                        "contactDeals": {
+                            "type": "string"
+                        },
+                        "customerAccount": {
+                            "type": "string"
+                        },
+                        "dealActivities": {
+                            "type": "string"
+                        },
+                        "dealCustomFieldData": {
+                            "type": "string"
+                        },
+                        "group": {
+                            "type": "string"
+                        },
+                        "nextTask": {
+                            "type": "string"
+                        },
+                        "notes": {
+                            "type": "string"
+                        },
+                        "organization": {
+                            "type": "string"
+                        },
+                        "owner": {
+                            "type": "string"
+                        },
+                        "scoreValues": {
+                            "type": "string"
+                        },
+                        "stage": {
+                            "type": "string"
+                        },
+                        "tasks": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "mdate": {
+                    "type": "string"
+                },
+                "nextdate": {
+                    "type": "null"
+                },
+                "nextdealid": {
+                    "type": "string"
+                },
+                "organization": {
+                    "type": "null"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "winProbability": {
+                    "type": "null"
+                },
+                "winProbabilityMdate": {
+                    "type": "null"
+                }
+            }
+        },
+        "dealGroups": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "allgroups": {
+                        "type": "string"
+                    },
+                    "allusers": {
+                        "type": "string"
+                    },
+                    "autoassign": {
+                        "type": "string"
+                    },
+                    "cdate": {
+                        "type": "string"
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "dealGroupGroups": {
+                                "type": "string"
+                            },
+                            "dealGroupUsers": {
+                                "type": "string"
+                            },
+                            "stages": {
+                                "type": "string"
+                            },
+                            "winProbabilityFeatures": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "udate": {
+                        "type": "string"
+                    },
+                    "win_probability_initialize_date": {
+                        "type": "null"
+                    }
+                }
+            }
+        },
+        "dealStages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "cardRegion1": {
+                        "type": "string"
+                    },
+                    "cardRegion2": {
+                        "type": "string"
+                    },
+                    "cardRegion3": {
+                        "type": "string"
+                    },
+                    "cardRegion4": {
+                        "type": "string"
+                    },
+                    "cardRegion5": {
+                        "type": "string"
+                    },
+                    "cdate": {
+                        "type": "null"
+                    },
+                    "color": {
+                        "type": "string"
+                    },
+                    "dealOrder": {
+                        "type": "string"
+                    },
+                    "group": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "group": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "order": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "width": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

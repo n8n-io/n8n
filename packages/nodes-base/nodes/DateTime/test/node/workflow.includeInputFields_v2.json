@@ -1,0 +1,420 @@
+{
+  "name": "My workflow 38",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f1242de8-11fc-4849-a4a2-c82fa75731a7",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        120,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "number": [
+            {
+              "name": "dateMilis",
+              "value": 1682918315906
+            },
+            {
+              "name": "dateMilisFloat",
+              "value": 1682918315.906
+            },
+            {
+              "name": "dateUnix",
+              "value": 1682918315
+            }
+          ],
+          "string": [
+            {
+              "name": "dateMilisStr",
+              "value": "1682918315906"
+            },
+            {
+              "name": "dateMilisFloatStr",
+              "value": "1682918315.906"
+            },
+            {
+              "name": "dateUnixStr",
+              "value": "1682918315"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7208910f-fd33-42b9-bcf2-14bb0b0d157d",
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        320,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $json.dateMilis }}",
+        "format": "yyyy/MM/dd",
+        "outputFieldName": "data",
+        "options": {}
+      },
+      "id": "fb66a2cc-95b9-4917-999b-847ab61a7938",
+      "name": "Date & Time6",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        700,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $json.dateMilisFloat }}",
+        "format": "yyyy/MM/dd",
+        "outputFieldName": "data",
+        "options": {}
+      },
+      "id": "b94eb54a-1952-4f33-816a-8ffa47c7bb42",
+      "name": "Date & Time",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        700,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $json.dateUnix }}",
+        "format": "yyyy/MM/dd",
+        "outputFieldName": "data",
+        "options": {}
+      },
+      "id": "7f0af92d-8064-4af0-8c2c-a21b70f69ac1",
+      "name": "Date & Time1",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        700,
+        1080
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1e90549e-f4d4-46a1-bc9b-617befff2319",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        360
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ec07d232-e513-4f09-8cb1-e8e4853bcebc",
+      "name": "No Operation, do nothing1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        720
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f9839c73-ed5e-4ae0-bc1e-5a1914ac8b55",
+      "name": "No Operation, do nothing2",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        1080
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $json.dateMilis }}",
+        "format": "yyyy/MM/dd",
+        "outputFieldName": "data",
+        "options": {
+          "includeInputFields": true
+        }
+      },
+      "id": "bfce6276-2de4-4783-bc7f-d82fab23c2af",
+      "name": "Date & Time7",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        700,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $json.dateMilisFloat }}",
+        "format": "yyyy/MM/dd",
+        "outputFieldName": "data",
+        "options": {
+          "includeInputFields": true
+        }
+      },
+      "id": "a7aad9c9-20ff-4353-9445-80366fad9431",
+      "name": "Date & Time2",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        700,
+        860
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $json.dateUnix }}",
+        "format": "yyyy/MM/dd",
+        "outputFieldName": "data",
+        "options": {
+          "includeInputFields": true
+        }
+      },
+      "id": "3b9e3ad7-0d00-4598-b796-23bb206e75db",
+      "name": "Date & Time3",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        700,
+        1240
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8a3cdde0-b1de-46dc-a8c6-74cc174fd4a1",
+      "name": "No Operation, do nothing3",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        1240
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "54b4d584-0874-411b-9c98-8194c0928588",
+      "name": "No Operation, do nothing4",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        860
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "4a4e7647-6c6e-4a24-9032-829e5f495337",
+      "name": "No Operation, do nothing5",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        500
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing2": [
+      {
+        "json": {
+          "data": "2023/05/01"
+        }
+      }
+    ],
+    "No Operation, do nothing1": [
+      {
+        "json": {
+          "data": "2023/05/01"
+        }
+      }
+    ],
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "data": "2023/05/01"
+        }
+      }
+    ],
+    "No Operation, do nothing5": [
+      {
+        "json": {
+          "dateMilis": 1682918315906,
+          "dateMilisFloat": 1682918315.906,
+          "dateUnix": 1682918315,
+          "dateMilisStr": "1682918315906",
+          "dateMilisFloatStr": "1682918315.906",
+          "dateUnixStr": "1682918315",
+          "data": "2023/05/01"
+        }
+      }
+    ],
+    "No Operation, do nothing4": [
+      {
+        "json": {
+          "dateMilis": 1682918315906,
+          "dateMilisFloat": 1682918315.906,
+          "dateUnix": 1682918315,
+          "dateMilisStr": "1682918315906",
+          "dateMilisFloatStr": "1682918315.906",
+          "dateUnixStr": "1682918315",
+          "data": "2023/05/01"
+        }
+      }
+    ],
+    "No Operation, do nothing3": [
+      {
+        "json": {
+          "dateMilis": 1682918315906,
+          "dateMilisFloat": 1682918315.906,
+          "dateUnix": 1682918315,
+          "dateMilisStr": "1682918315906",
+          "dateMilisFloatStr": "1682918315.906",
+          "dateUnixStr": "1682918315",
+          "data": "2023/05/01"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set": {
+      "main": [
+        [
+          {
+            "node": "Date & Time6",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Date & Time",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Date & Time1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Date & Time7",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Date & Time2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Date & Time3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time6": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time3": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time7": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "419a6926-5d06-4ba5-b261-410e124996de",
+  "id": "hW8KyOyaCN5fGQru",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

@@ -1,0 +1,12 @@
+{
+	"compilerOptions": {
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"rootDir": "src",
+		"outDir": "dist/types",
+		"strict": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true
+	},
+	"include": ["src"]
+}

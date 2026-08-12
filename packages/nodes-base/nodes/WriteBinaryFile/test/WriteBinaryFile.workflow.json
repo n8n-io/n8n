@@ -1,0 +1,76 @@
+{
+	"name": "Write Binary File unit test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "b319a78c-ff34-4888-b412-e08609bd84e4",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				1040,
+				640
+			]
+		},
+		{
+			"parameters": {
+				"fileName": "C:\\Test\\image-written.jpg",
+				"options": {}
+			},
+			"id": "804f7422-7414-4557-bf3b-0aa0e8f4885e",
+			"name": "Write Binary File",
+			"type": "n8n-nodes-base.writeBinaryFile",
+			"typeVersion": 1,
+			"position": [
+				1540,
+				640
+			]
+		},
+		{
+			"parameters": {
+				"filePath": "C:\\Test\\image.jpg"
+			},
+			"id": "7bed9527-c0a9-4b03-8f2f-d96d805f7fbc",
+			"name": "Read Binary File",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"position": [
+				1300,
+				640
+			]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Read Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Binary File": {
+			"main": [
+				[
+					{
+						"node": "Write Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "eb891093-ce90-44d8-9325-b2130e59819d",
+	"id": "185",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

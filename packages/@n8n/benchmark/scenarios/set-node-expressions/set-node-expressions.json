@@ -1,0 +1,91 @@
+{
+	"createdAt": "2024-09-03T11:30:26.333Z",
+	"updatedAt": "2024-09-03T11:42:52.000Z",
+	"name": "Set Node Expressions",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "set-expressions-benchmark",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [40, 0],
+			"id": "5babc228-2b89-48cb-8337-28416e867874",
+			"name": "Webhook",
+			"webhookId": "f6f1750d-b734-496f-afe8-26e8e393ca87"
+		},
+		{
+			"parameters": { "respondWith": "allIncomingItems", "options": {} },
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [640, 0],
+			"id": "4146a3fb-403c-4cfc-9d38-8af4d16a8440",
+			"name": "Respond to Webhook"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "48c46098-f411-41f7-8f0a-1da372340a4e",
+							"name": "oneToOneCopy",
+							"value": "={{ $json.headers.host }}",
+							"type": "string"
+						},
+						{
+							"id": "5d90808b-1c1a-4065-ac51-6d61bd03e564",
+							"name": "={{ $json.headers['user-agent'].slice(0, 4) }}",
+							"value": "Set key with expression",
+							"type": "string"
+						},
+						{
+							"id": "8a74ac24-1f43-43ba-969d-87bfd2f401ce",
+							"name": "Multiple variables",
+							"value": "={{ $json.executionMode + ' ' + $json.webhookUrl }}",
+							"type": "string"
+						},
+						{
+							"id": "93eba201-79d9-4305-a246-f9c8ec50ebab",
+							"name": "Static value",
+							"value": 42,
+							"type": "number"
+						},
+						{
+							"id": "0470a712-c795-44ab-9dcc-05a3f67698bb",
+							"name": "Object",
+							"value": "={{ $json.headers }}",
+							"type": "object"
+						},
+						{
+							"id": "eb671167-da14-4b55-8eea-31ab7bedae10",
+							"name": "Array",
+							"value": "={{ Object.values($json.headers) }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [360, 0],
+			"id": "0cb5e82d-f61e-4d91-8fa9-365e382a4d75",
+			"name": "Edit Fields"
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]] },
+		"Edit Fields": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" },
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": "04fd543e-3923-4092-8c2b-2b4262ccbb38",
+	"triggerCount": 0,
+	"tags": []
+}

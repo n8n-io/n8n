@@ -1,0 +1,266 @@
+{
+	"name": "Hubspot - Engagements",
+	"nodes": [
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "engagement",
+				"type": "task",
+				"dueDate": "2025-08-31T13:12:56",
+				"metadata": {
+					"body": "Hello world",
+					"subject": "Title"
+				},
+				"additionalFields": {
+					"associations": {
+						"ownerId": 123456789
+					}
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [0, 0],
+			"id": "942a05ef-f3ed-4511-a00f-0b1e5e1b8a49",
+			"name": "HubSpot - Engagement - Create with ownerId",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "vWZfuQawMAWdxKms",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "engagement",
+				"type": "task",
+				"dueDate": "2025-08-31T13:12:56",
+				"metadata": {
+					"body": "Hello world",
+					"subject": "Title"
+				},
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [0, 200],
+			"id": "7fb51d0d-28b5-450d-b910-f6d91e69e934",
+			"name": "HubSpot - Engagement - Create",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "vWZfuQawMAWdxKms",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "engagement",
+				"type": "task",
+				"metadata": {
+					"body": "Hello world",
+					"subject": "Title"
+				},
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 400],
+			"id": "7fb51d0d-28b5-450d-b910-f6d91e69e935",
+			"name": "HubSpot - Engagement - Create 2.1",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "vWZfuQawMAWdxKms",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-220, 600],
+			"id": "ec9e619e-c75a-41ea-8f54-16827bcd664b",
+			"name": "When clicking ‘Execute workflow’"
+		}
+	],
+	"pinData": {
+		"HubSpot - Engagement - Create with ownerId": [
+			{
+				"json": {
+					"associationCreateFailures": [],
+					"engagement": {
+						"id": 274361144556,
+						"portalId": 146787276,
+						"active": true,
+						"createdAt": 1756127696406,
+						"lastUpdated": 1756127696406,
+						"ownerId": 123456789,
+						"type": "TASK",
+						"timestamp": 1756645976000,
+						"allAccessibleTeamIds": [],
+						"bodyPreview": "Hello world",
+						"queueMembershipIds": [],
+						"bodyPreviewIsTruncated": false,
+						"bodyPreviewHtml": "<html>\n <head></head>\n <body>\n Hello world\n </body>\n</html>"
+					},
+					"associations": {
+						"contactIds": [],
+						"companyIds": [],
+						"dealIds": [],
+						"ownerIds": [],
+						"workflowIds": [],
+						"ticketIds": [],
+						"contentIds": [],
+						"quoteIds": [],
+						"marketingEventIds": [],
+						"partnerClientIds": [],
+						"orderIds": [],
+						"cartIds": []
+					},
+					"attachments": [],
+					"scheduledTasks": [],
+					"metadata": {
+						"body": "Hello world",
+						"status": "NOT_STARTED",
+						"forObjectType": "OWNER",
+						"subject": "Title",
+						"taskType": "TODO",
+						"reminders": [],
+						"priority": "NONE",
+						"isAllDay": false
+					}
+				}
+			}
+		],
+		"HubSpot - Engagement - Create": [
+			{
+				"json": {
+					"associationCreateFailures": [],
+					"engagement": {
+						"id": 274123775164,
+						"portalId": 146787276,
+						"active": true,
+						"createdAt": 1756127766844,
+						"lastUpdated": 1756127766844,
+						"type": "TASK",
+						"timestamp": 1756645976000,
+						"allAccessibleTeamIds": [],
+						"bodyPreview": "Hello world",
+						"queueMembershipIds": [],
+						"bodyPreviewIsTruncated": false,
+						"bodyPreviewHtml": "<html>\n <head></head>\n <body>\n Hello world\n </body>\n</html>"
+					},
+					"associations": {
+						"contactIds": [],
+						"companyIds": [],
+						"dealIds": [],
+						"ownerIds": [],
+						"workflowIds": [],
+						"ticketIds": [],
+						"contentIds": [],
+						"quoteIds": [],
+						"marketingEventIds": [],
+						"partnerClientIds": [],
+						"orderIds": [],
+						"cartIds": []
+					},
+					"attachments": [],
+					"scheduledTasks": [],
+					"metadata": {
+						"body": "Hello world",
+						"status": "NOT_STARTED",
+						"forObjectType": "OWNER",
+						"subject": "Title",
+						"taskType": "TODO",
+						"reminders": [],
+						"priority": "NONE",
+						"isAllDay": false
+					}
+				}
+			}
+		],
+		"HubSpot - Engagement - Create 2.1": [
+			{
+				"json": {
+					"associationCreateFailures": [],
+					"engagement": {
+						"id": 274123775164,
+						"portalId": 146787276,
+						"active": true,
+						"createdAt": 1756127766844,
+						"lastUpdated": 1756127766844,
+						"type": "TASK",
+						"timestamp": 1756645976000,
+						"allAccessibleTeamIds": [],
+						"bodyPreview": "Hello world",
+						"queueMembershipIds": [],
+						"bodyPreviewIsTruncated": false,
+						"bodyPreviewHtml": "<html>\n <head></head>\n <body>\n Hello world\n </body>\n</html>"
+					},
+					"associations": {
+						"contactIds": [],
+						"companyIds": [],
+						"dealIds": [],
+						"ownerIds": [],
+						"workflowIds": [],
+						"ticketIds": [],
+						"contentIds": [],
+						"quoteIds": [],
+						"marketingEventIds": [],
+						"partnerClientIds": [],
+						"orderIds": [],
+						"cartIds": []
+					},
+					"attachments": [],
+					"scheduledTasks": [],
+					"metadata": {
+						"body": "Hello world",
+						"status": "NOT_STARTED",
+						"forObjectType": "OWNER",
+						"subject": "Title",
+						"taskType": "TODO",
+						"reminders": [],
+						"priority": "NONE",
+						"isAllDay": false
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "HubSpot - Engagement - Create with ownerId",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Engagement - Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Engagement - Create 2.1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "7b4c4c50-0d21-4857-b36d-6392ee84ab18",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "653b28422b2af80d4de68237267b34fdf127ab92f8fb0887c6b0a2be7e7f27c7"
+	},
+	"id": "4TOsSL2vMvJQ86E2",
+	"tags": []
+}

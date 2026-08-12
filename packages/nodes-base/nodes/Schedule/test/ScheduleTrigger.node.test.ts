@@ -1,0 +1,340 @@
+import * as n8nWorkflow from 'n8n-workflow';
+
+import { testTriggerNode } from '@test/nodes/TriggerHelpers';
+
+import { ScheduleTrigger } from '../ScheduleTrigger.node';
+
+describe('ScheduleTrigger', () => {
+	const MINUTE = 60 * 1000;
+	const HOUR = 60 * 60 * 1000;
+	const mockDate = new Date('2023-12-28 12:34:56.789Z');
+	const timezone = 'Europe/Berlin';
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.useFakeTimers();
+		vi.setSystemTime(mockDate);
+	});
+
+	describe('trigger', () => {
+		it('should emit on defined schedule', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(HOUR);
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(2 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			// Filler second/minute are derived deterministically from
+			// `${workflowId ?? ''}:${nodeId}`. The default test helper uses
+			// `workflow-1:1`, which resolves to second=13 / minute=47.
+			const firstTriggerData = emit.mock.calls[0][0][0][0];
+			expect(firstTriggerData.json).toEqual({
+				'Day of month': '28',
+				'Day of week': 'Thursday',
+				Hour: '15',
+				Minute: '47',
+				Month: 'December',
+				'Readable date': 'December 28th 2023, 3:47:13 pm',
+				'Readable time': '3:47:13 pm',
+				Second: '13',
+				Timezone: 'Europe/Berlin (UTC+01:00)',
+				Year: '2023',
+				timestamp: '2023-12-28T15:47:13.000+01:00',
+			});
+
+			vi.setSystemTime(new Date(firstTriggerData.json.timestamp as string));
+
+			vi.advanceTimersByTime(2 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(2);
+		});
+
+		it('should re-arm a schedule whose stored recurrence state is stale', async () => {
+			// staticData carries a stale day-of-year value (200) and no signature, as if the
+			// interval was switched from "every N days" to "every 3 hours". Without re-arming,
+			// recurrenceCheck reads 200 as an hour and the trigger never fires again.
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
+				workflowStaticData: { recurrenceRules: [200] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(HOUR);
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(2 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+		});
+
+		it('should emit repeatedly for hourly intervals that do not divide evenly into a day', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 18 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(17 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(2);
+
+			vi.advanceTimersByTime(17 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(2);
+
+			vi.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(3);
+		});
+
+		it('should emit every 50 elapsed minutes instead of clock-aligned minute slots', async () => {
+			vi.setSystemTime(new Date('2023-12-28 12:49:56.789Z'));
+
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 50 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			// First fire at 12:50 — with `*/50` cron this would also fire at 13:00,
+			// only 10 minutes later.
+			vi.advanceTimersByTime(MINUTE);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(10 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(40 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(2);
+		});
+
+		it('should emit every 18 hours when triggerAtMinute is explicitly set to 0', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: {
+					parameters: {
+						rule: { interval: [{ field: 'hours', hoursInterval: 18, triggerAtMinute: 0 }] },
+					},
+				},
+				workflowStaticData: { recurrenceRules: [] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(17 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(HOUR);
+			expect(emit).toHaveBeenCalledTimes(2);
+		});
+
+		const DAY = 24 * HOUR;
+		it.each<[string, n8nWorkflow.INodeParameters, number, number]>([
+			[
+				'omits daysInterval',
+				{ rule: { interval: [{ field: 'days', triggerAtHour: 7 }] } },
+				3 * DAY,
+				3,
+			],
+			['omits the field', { rule: { interval: [{ triggerAtHour: 7 }] } }, 3 * DAY, 3],
+			['omits minutesInterval', { rule: { interval: [{ field: 'minutes' }] } }, HOUR, 12],
+			['omits the weekdays', { rule: { interval: [{ field: 'weeks' }] } }, 2 * 7 * DAY, 2],
+			['is missing entirely', {}, 3 * DAY, 3],
+		])(
+			'should emit on the declared default schedule when the stored rule %s',
+			async (_, parameters, elapsed, expected) => {
+				const { emit } = await testTriggerNode(ScheduleTrigger, {
+					timezone,
+					node: { parameters },
+					workflowStaticData: {},
+				});
+
+				vi.advanceTimersByTime(elapsed);
+				expect(emit).toHaveBeenCalledTimes(expected);
+			},
+		);
+
+		it('should emit on schedule defined as a cron expression', async () => {
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: {
+					parameters: {
+						rule: {
+							interval: [
+								{
+									field: 'cronExpression',
+									expression: '0 */2 * * *', // every 2 hours
+								},
+							],
+						},
+					},
+				},
+				workflowStaticData: {},
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(2 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(2 * HOUR);
+			expect(emit).toHaveBeenCalledTimes(2);
+		});
+
+		it('should throw on invalid cron expressions', async () => {
+			await expect(
+				testTriggerNode(ScheduleTrigger, {
+					timezone,
+					node: {
+						parameters: {
+							rule: {
+								interval: [
+									{
+										field: 'cronExpression',
+										expression: '100 * * * *', // minute should be 0-59 -> invalid
+									},
+								],
+							},
+						},
+					},
+					workflowStaticData: {},
+				}),
+			).rejects.toBeInstanceOf(n8nWorkflow.NodeOperationError);
+		});
+
+		it('should emit when manually executed', async () => {
+			const { emit, manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
+				mode: 'manual',
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+
+			await manualTriggerFunction?.();
+
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			const firstTriggerData = emit.mock.calls[0][0][0][0];
+			expect(firstTriggerData.json).toEqual({
+				'Day of month': '28',
+				'Day of week': 'Thursday',
+				Hour: '13',
+				Minute: '34',
+				Month: 'December',
+				'Readable date': 'December 28th 2023, 1:34:56 pm',
+				'Readable time': '1:34:56 pm',
+				Second: '56',
+				Timezone: 'Europe/Berlin (UTC+01:00)',
+				Year: '2023',
+				timestamp: '2023-12-28T13:34:56.789+01:00',
+			});
+		});
+
+		it('should emit when manually executed even with existing recurrence rules', async () => {
+			const { emit, manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
+				mode: 'manual',
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 2 }] } } },
+				workflowStaticData: { recurrenceRules: [5] },
+			});
+
+			await manualTriggerFunction?.();
+
+			expect(emit).toHaveBeenCalledTimes(1);
+		});
+
+		it('should throw on invalid cron expressions in manual mode', async () => {
+			const { manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
+				mode: 'manual',
+				timezone,
+				node: {
+					parameters: {
+						rule: {
+							interval: [
+								{
+									field: 'cronExpression',
+									expression: '@daily *', // adding extra fields to shorthand not allowed -> invalid
+								},
+							],
+						},
+					},
+				},
+				workflowStaticData: {},
+			});
+			await expect(manualTriggerFunction?.()).rejects.toBeInstanceOf(
+				n8nWorkflow.NodeOperationError,
+			);
+		});
+
+		describe('deduplication key', () => {
+			it('should emit a deduplication key for scheduled executions', async () => {
+				const workflowId = 'wf-123';
+				const nodeId = 'node-456';
+				const { emit } = await testTriggerNode(ScheduleTrigger, {
+					timezone,
+					node: {
+						id: nodeId,
+						parameters: {
+							rule: { interval: [{ field: 'cronExpression', expression: '0 */2 * * *' }] },
+						},
+					},
+					workflowStaticData: {},
+					workflow: { id: workflowId, active: true },
+				});
+
+				vi.advanceTimersByTime(2 * HOUR);
+
+				expect(emit).toHaveBeenCalledTimes(1);
+				const fourthArg = emit.mock.calls[0][3];
+				expect(typeof fourthArg).toBe('string');
+				// Deduplication key shape: `${workflowId}:${nodeId}:${scheduledT.toISOString()}`
+				expect(fourthArg).toMatch(
+					new RegExp(
+						`^${workflowId}:${nodeId}:\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$`,
+					),
+				);
+				// The ISO timestamp segment must match the cron-scheduled fire time exactly.
+				const iso = (fourthArg as string).slice(`${workflowId}:${nodeId}:`.length);
+				const scheduledT = new Date(iso);
+				expect(scheduledT.getUTCMinutes()).toBe(0);
+				expect(scheduledT.getUTCSeconds()).toBe(0);
+				expect(scheduledT.getUTCMilliseconds()).toBe(0);
+			});
+
+			it('should not emit a deduplication key for manual executions', async () => {
+				const { emit, manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
+					mode: 'manual',
+					timezone,
+					node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
+					workflowStaticData: { recurrenceRules: [] },
+				});
+
+				await manualTriggerFunction?.();
+
+				expect(emit).toHaveBeenCalledTimes(1);
+				expect(emit.mock.calls[0][3]).toBeUndefined();
+			});
+		});
+	});
+});

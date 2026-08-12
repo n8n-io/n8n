@@ -1,0 +1,163 @@
+{
+	"name": "My workflow 130",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-60, 100],
+			"id": "636b40bc-2c98-4b9a-8ce2-9d1322294518",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "create",
+				"name": "Test Label Name",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [220, -180],
+			"id": "45758452-3b5b-478d-aece-001e117ce69d",
+			"name": "Gmail - Labels - Create",
+			"webhookId": "3b8b38e0-2f4b-40bc-8b67-37e7ea95cb60",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "delete",
+				"labelId": "test-label-id"
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [220, 20],
+			"id": "ed979c3a-b2ea-413e-be63-0392cc1714a5",
+			"name": "Gmail - Labels - Delete",
+			"webhookId": "3b8b38e0-2f4b-40bc-8b67-37e7ea95cb60",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "get",
+				"labelId": "test-label-id"
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [220, 200],
+			"id": "8802fdb5-2741-407b-82a4-ccedc4055076",
+			"name": "Gmail - Labels - Get",
+			"webhookId": "3b8b38e0-2f4b-40bc-8b67-37e7ea95cb60",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"limit": 2
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [220, 400],
+			"id": "bae81586-7641-4fdc-81a4-0006b289bf9d",
+			"name": "Gmail - Labels - Get Many",
+			"webhookId": "3b8b38e0-2f4b-40bc-8b67-37e7ea95cb60",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Gmail - Labels - Create": [
+			{
+				"json": {
+					"id": "CHAT",
+					"name": "CHAT",
+					"messageListVisibility": "hide",
+					"labelListVisibility": "labelHide",
+					"type": "system"
+				}
+			}
+		],
+		"Gmail - Labels - Delete": [{ "json": { "success": true } }],
+		"Gmail - Labels - Get": [
+			{
+				"json": {
+					"id": "CHAT",
+					"name": "CHAT",
+					"messageListVisibility": "hide",
+					"labelListVisibility": "labelHide",
+					"type": "system"
+				}
+			}
+		],
+		"Gmail - Labels - Get Many": [
+			{
+				"json": {
+					"id": "CHAT",
+					"name": "CHAT",
+					"messageListVisibility": "hide",
+					"labelListVisibility": "labelHide",
+					"type": "system"
+				}
+			},
+			{ "json": { "id": "SENT", "name": "SENT", "type": "system" } }
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Gmail - Labels - Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Labels - Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Labels - Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Labels - Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"tags": []
+}

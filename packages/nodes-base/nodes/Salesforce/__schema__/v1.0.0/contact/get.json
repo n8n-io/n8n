@@ -1,0 +1,80 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "HomePhone": {
+            "type": "null"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "IsEmailBounced": {
+            "type": "boolean"
+        },
+        "IsPriorityRecord": {
+            "type": "boolean"
+        },
+        "Jigsaw": {
+            "type": "null"
+        },
+        "JigsawContactId": {
+            "type": "null"
+        },
+        "LastCURequestDate": {
+            "type": "null"
+        },
+        "LastCUUpdateDate": {
+            "type": "null"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "LastName": {
+            "type": "string"
+        },
+        "MasterRecordId": {
+            "type": "null"
+        },
+        "MiddleName": {
+            "type": "null"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "OtherPhone": {
+            "type": "null"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "Suffix": {
+            "type": "null"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

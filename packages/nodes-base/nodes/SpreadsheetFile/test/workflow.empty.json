@@ -1,0 +1,90 @@
+{
+  "meta": {},
+  "nodes": [
+    {
+      "parameters": {
+        "fileFormat": "csv",
+        "options": {
+          "includeEmptyCells": false
+        }
+      },
+      "id": "8aed098d-3c0b-43c9-b7e8-c4106c88b409",
+      "name": "Ignore Empty",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        500
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "649db2c5-27dc-4cec-b084-8982632311e7",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        720,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "includeempty.csv"
+      },
+      "id": "5056b8c4-fb6e-4ca1-9bc1-33f5db4027ad",
+      "name": "Read Binary File",
+      "type": "n8n-nodes-base.readBinaryFiles",
+      "typeVersion": 1,
+      "position": [
+        940,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "fileFormat": "csv",
+        "options": {
+          "includeEmptyCells": true
+        }
+      },
+      "id": "a4822e75-d638-45c8-887f-0487d5237267",
+      "name": "Include Empty",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Read Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Binary File": {
+      "main": [
+        [
+          {
+            "node": "Include Empty",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ignore Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

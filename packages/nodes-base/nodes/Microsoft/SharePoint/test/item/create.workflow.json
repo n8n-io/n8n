@@ -1,0 +1,291 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "37ab6212-d506-4b53-b63e-14b6a2a05907",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "create",
+				"site": {
+					"__rl": true,
+					"value": "site1",
+					"mode": "list",
+					"cachedResultName": "site1"
+				},
+				"list": {
+					"__rl": true,
+					"value": "list1",
+					"mode": "list",
+					"cachedResultName": "list1"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"bool": true,
+						"Title": "Title 1",
+						"choice": "Choice 1",
+						"datetime": "2025-03-24T00:00:00",
+						"number": 1,
+						"currency": 1,
+						"LikesCount": 1,
+						"RatingCount": 1,
+						"AverageRating": 1,
+						"person": "1",
+						"lookup": "1",
+						"image": "{\"type\":\"thumbnail\",\"fileName\":\"file.jpg\",\"nativeFile\":{},\"fieldName\":\"Picture\",\"serverUrl\":\"https://mydomain.sharepoint.com\",\"fieldId\":\"image\",\"serverRelativeUrl\":\"/sites/site1/SiteAssets/Lists/list1/file.jpg\",\"id\":\"image\"}"
+					},
+					"matchingColumns": [],
+					"schema": [
+						{
+							"id": "Title",
+							"canBeUsedToMatch": true,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "Title",
+							"readOnly": false,
+							"required": true,
+							"type": "string"
+						},
+						{
+							"id": "choice",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "choice",
+							"readOnly": false,
+							"required": false,
+							"type": "options",
+							"options": [
+								{
+									"name": "Choice 1",
+									"value": "Choice 1"
+								},
+								{
+									"name": "Choice 2",
+									"value": "Choice 2"
+								},
+								{
+									"name": "Choice 3",
+									"value": "Choice 3"
+								}
+							]
+						},
+						{
+							"id": "datetime",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "datetime",
+							"readOnly": false,
+							"required": false,
+							"type": "dateTime"
+						},
+						{
+							"id": "person",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "person",
+							"readOnly": false,
+							"required": false,
+							"type": "string",
+							"removed": false
+						},
+						{
+							"id": "number",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "number",
+							"readOnly": false,
+							"required": false,
+							"type": "number"
+						},
+						{
+							"id": "bool",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "bool",
+							"readOnly": false,
+							"required": false,
+							"type": "boolean"
+						},
+						{
+							"id": "currency",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "currency",
+							"readOnly": false,
+							"required": false,
+							"type": "number",
+							"removed": false
+						},
+						{
+							"id": "image",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "image",
+							"readOnly": false,
+							"required": false,
+							"type": "object",
+							"removed": false
+						},
+						{
+							"id": "lookup",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "lookup",
+							"readOnly": false,
+							"required": false,
+							"type": "string",
+							"removed": false
+						},
+						{
+							"id": "AverageRating",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "Rating (0-5)",
+							"readOnly": false,
+							"required": false,
+							"type": "number",
+							"removed": false
+						},
+						{
+							"id": "RatingCount",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "Number of Ratings",
+							"readOnly": false,
+							"required": false,
+							"type": "number",
+							"removed": false
+						},
+						{
+							"id": "LikesCount",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "Number of Likes",
+							"readOnly": false,
+							"required": false,
+							"type": "number",
+							"removed": false
+						}
+					],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "f9037af8-4f52-4f9f-b8ae-de860f890792",
+			"name": "Microsoft SharePoint",
+			"credentials": {
+				"microsoftSharePointOAuth2Api": {
+					"id": "cXXnMCWyk397M5qJ",
+					"name": "Microsoft SharePoint account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Microsoft SharePoint",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Microsoft SharePoint": [
+			{
+				"json": {
+					"@odata.context": "https://mydomain.sharepoint.com/sites/site1/_api/v2.0/$metadata#listItems/$entity",
+					"@odata.etag": "\"625d681e-2ce3-4c2b-a490-7c8404a31427,1\"",
+					"createdBy": {
+						"user": {
+							"displayName": "John Doe",
+							"email": "john@doe.onmicrosoft.com",
+							"id": "5f7afebb-121d-4664-882b-a09fe6584ce0"
+						}
+					},
+					"createdDateTime": "2025-03-25T20:07:23Z",
+					"eTag": "\"625d681e-2ce3-4c2b-a490-7c8404a31427,1\"",
+					"id": "1",
+					"lastModifiedBy": {
+						"application": {
+							"id": "b9c26603-3c9b-4050-b848-27dfab0a52fa",
+							"displayName": "sharepoint-n8n-test"
+						},
+						"user": {
+							"displayName": "John Doe",
+							"email": "john@doe.onmicrosoft.com",
+							"id": "5f7afebb-121d-4664-882b-a09fe6584ce0"
+						}
+					},
+					"lastModifiedDateTime": "2025-03-25T20:07:23Z",
+					"parentReference": {
+						"id": "0ead9135-9622-4b6d-b319-6b8810a6dc60",
+						"listId": "list1",
+						"siteId": "site1"
+					},
+					"webUrl": "https://mydomain.sharepoint.com/sites/n8ntest10/Lists/test/41_.000",
+					"contentType": {
+						"id": "0x0100362657F7588C5C438072A77E0EF184F4000272C0D1046D984B8097B3C00D199EDE",
+						"name": "Item"
+					},
+					"fields@odata.navigationLink": "sites/site1/lists/list1/items/1/fields",
+					"fields": {
+						"@odata.etag": "\"625d681e-2ce3-4c2b-a490-7c8404a31427,1\"",
+						"Title": "Title 1",
+						"choice": "Choice 1",
+						"datetime": "2025-03-24T07:00:00Z",
+						"number": 1,
+						"bool": true,
+						"currency": 1,
+						"image": "{\"type\":\"thumbnail\",\"fileName\":\"file.jpg\",\"nativeFile\":{},\"fieldName\":\"Picture\",\"serverUrl\":\"https://mydomain.sharepoint.com\",\"fieldId\":\"image\",\"serverRelativeUrl\":\"/sites/site1/SiteAssets/Lists/list1/file.jpg\",\"id\":\"image\"}",
+						"AverageRating": 1,
+						"ID": 1,
+						"ContentType": "Item",
+						"Modified": "2025-03-25T20:07:23Z",
+						"Created": "2025-03-25T20:07:23Z",
+						"AuthorLookupId": "1",
+						"EditorLookupId": "1",
+						"_UIVersionString": "1.0",
+						"Attachments": false,
+						"Edit": "",
+						"LinkTitleNoMenu": "Title 1",
+						"LinkTitle": "Title 1",
+						"ItemChildCount": "0",
+						"FolderChildCount": "0",
+						"_ComplianceFlags": "",
+						"_ComplianceTag": "",
+						"_ComplianceTagWrittenTime": "",
+						"_ComplianceTagUserId": "",
+						"AppAuthorLookupId": "1",
+						"AppEditorLookupId": "1"
+					}
+				}
+			}
+		]
+	}
+}

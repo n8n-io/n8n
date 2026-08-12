@@ -1,0 +1,1533 @@
+import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
+import { slackChannelModes } from './utils';
+
+export const messageOperations: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+			},
+		},
+		options: [
+			{
+				name: 'Delete',
+				value: 'delete',
+				action: 'Delete a message',
+			},
+			{
+				name: 'Delete Scheduled',
+				value: 'deleteScheduled',
+				action: 'Delete a scheduled message',
+			},
+			{
+				name: 'Get Many Scheduled',
+				value: 'getManyScheduled',
+				action: 'Get many scheduled messages',
+			},
+			{
+				name: 'Get Permalink',
+				value: 'getPermalink',
+				action: 'Get a message permalink',
+			},
+			{
+				name: 'Schedule',
+				value: 'schedule',
+				action: 'Schedule a message',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search for messages',
+			},
+			{
+				name: 'Send',
+				value: 'post',
+				action: 'Send a message',
+			},
+			{
+				name: 'Send and Wait for Response',
+				value: SEND_AND_WAIT_OPERATION,
+				action: 'Send message and wait for response',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				action: 'Update a message',
+			},
+		],
+		default: 'post',
+	},
+];
+
+export const sendToSelector: INodeProperties = {
+	displayName: 'Send Message To',
+	name: 'select',
+	type: 'options',
+	required: true,
+	displayOptions: {
+		show: {
+			resource: ['message'],
+			operation: ['post', 'schedule'],
+		},
+	},
+	options: [
+		{
+			name: 'Channel',
+			value: 'channel',
+		},
+		{
+			name: 'User',
+			value: 'user',
+		},
+	],
+	default: '',
+	placeholder: 'Select...',
+};
+
+export const channelRLC: INodeProperties = {
+	displayName: 'Channel',
+	name: 'channelId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	placeholder: 'Select a channel...',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a channel...',
+			typeOptions: {
+				searchListMethod: 'getChannels',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					// chat.postMessage accepts public channel names as well as IDs.
+					properties: {
+						regex: '^(?:[CGD][A-Z0-9]{2,}|#?[a-z0-9_\\-]{2,})$',
+						errorMessage: 'Not a valid Slack Channel ID or name',
+					},
+				},
+			],
+			placeholder: 'C0122KQ70S7E',
+		},
+		{
+			displayName: 'By Name',
+			name: 'name',
+			type: 'string',
+			placeholder: '#general',
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
+						errorMessage: 'Not a valid Slack Channel URL',
+					},
+				},
+			],
+			extractValue: {
+				type: 'regex',
+				regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
+			},
+		},
+	],
+	required: true,
+	description: 'The Slack channel to send to',
+};
+
+export const userRLC: INodeProperties = {
+	displayName: 'User',
+	name: 'user',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	placeholder: 'Select a user...',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a user...',
+			typeOptions: {
+				searchListMethod: 'getUsers',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9]{2,}',
+						errorMessage: 'Not a valid Slack User ID',
+					},
+				},
+			],
+			placeholder: 'U123AB45JGM',
+		},
+		{
+			displayName: 'By username',
+			name: 'username',
+			type: 'string',
+			placeholder: '@username',
+		},
+	],
+};
+
+export const advancedInteractivityNotice: INodeProperties = {
+	displayName: 'Advanced Interactivity',
+	name: 'advancedInteractivityNotice',
+	type: 'notice',
+	default: '',
+	// Renders as a section-header divider (like "Options"), not a notice box.
+	typeOptions: {
+		sectionHeader: true,
+	},
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+		},
+	},
+};
+
+export const captureResponderField: INodeProperties = {
+	displayName: 'Capture Who Responded',
+	name: 'captureResponder',
+	type: 'boolean',
+	default: false,
+	// Approval only: the form response types need the plain link button. Both auth modes
+	// carry a signing secret, so either works for the interactive callback.
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+		},
+	},
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+	description:
+		'Whether to return the responder\'s identity with the Slack response. Requires additional setup on the Slack app — <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/approvals#id-1.-create-a-slack-app-and-credential" target="_blank">see docs</a>.',
+};
+
+export const approversField: INodeProperties = {
+	displayName: 'Restrict Who Can Approve',
+	name: 'approvers',
+	type: 'multiOptions',
+	typeOptions: {
+		loadOptionsMethod: 'getUsers',
+	},
+	default: [],
+	// Only meaningful for the interactive-button flow (approval + capture responder).
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description:
+		'Restrict who can approve or decline: a click from anyone not listed is ignored and they get a private notice. Leave empty to let anyone respond. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+};
+
+export const unauthorizedReplyField: INodeProperties = {
+	displayName: 'Unauthorized Reply',
+	name: 'unauthorizedReplyText',
+	type: 'string',
+	default: 'You are not authorized to respond to this request.',
+	// Same gating as the approver list — only the interactive-button flow can reject a click.
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description:
+		'Private (ephemeral) message shown to someone who clicks a button but is not in the approver list',
+};
+
+export const postDecisionBehaviorField: INodeProperties = {
+	displayName: 'After Decision',
+	name: 'postDecisionBehavior',
+	type: 'options',
+	default: 'showOutcome',
+	options: [
+		{ name: 'Show Outcome and Remove Buttons', value: 'showOutcome' },
+		{ name: 'Remove Buttons Only', value: 'removeButtons' },
+		{ name: 'Keep Message Unchanged', value: 'keepMessage' },
+	],
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description: 'What happens to the original message once someone approves or declines',
+};
+
+export const replyToMessageField: INodeProperties = {
+	displayName: 'Reply to a Message',
+	name: 'thread_ts',
+	type: 'fixedCollection',
+	default: {},
+	placeholder: 'Reply to a Message',
+	description: "Provide another message's Timestamp value to make this message a reply",
+	options: [
+		{
+			displayName: 'Reply to a Message',
+			name: 'replyValues',
+			values: [
+				{
+					displayName: 'Message Timestamp to Reply To',
+					name: 'thread_ts',
+					type: 'number',
+					default: undefined,
+					placeholder: '1663233118.856619',
+					description:
+						'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
+				},
+				{
+					displayName: 'Also Send to Channel',
+					name: 'reply_broadcast',
+					type: 'boolean',
+					default: false,
+					description:
+						'Whether the reply should be made visible to everyone in the channel or conversation',
+				},
+			],
+		},
+	],
+};
+
+// Shared between the pre-2.6 (always shown) and 2.6+ (access-token only) variants below.
+const botProfileField: INodeProperties = {
+	displayName: 'Custom Bot Profile Photo',
+	name: 'botProfile',
+	type: 'fixedCollection',
+	default: {
+		imageValues: [
+			{
+				profilePhotoType: '',
+			},
+		],
+	},
+	description:
+		'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user.',
+	options: [
+		{
+			name: 'imageValues',
+			displayName: 'Add Bot Profile Photo',
+			values: [
+				{
+					displayName: 'Profile Photo Type',
+					name: 'profilePhotoType',
+					type: 'options',
+					options: [
+						{
+							name: 'Image URL',
+							value: 'image',
+						},
+						{
+							name: 'Emoji Code',
+							value: 'emoji',
+						},
+					],
+					default: '',
+					placeholder: 'Select a type…',
+				},
+				{
+					displayName: 'Emoji Code',
+					name: 'icon_emoji',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							profilePhotoType: ['emoji'],
+						},
+					},
+					description:
+						'Only used if sending message as a bot. Use emoji codes like +1, not an actual emoji like 👍. <a target="_blank" href=" https://www.webfx.com/tools/emoji-cheat-sheet/">List of common emoji codes</a>',
+				},
+				{
+					displayName: 'Image URL',
+					name: 'icon_url',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							profilePhotoType: ['image'],
+						},
+					},
+					description: 'Only used if sending message as a bot',
+				},
+			],
+		},
+	],
+};
+
+export const messageFields: INodeProperties[] = [
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:getPermalink
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a channel...',
+		description: 'The Slack channel to get the message permalink from',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getPermalink'],
+			},
+		},
+		modes: slackChannelModes,
+	},
+	{
+		displayName: 'Message Timestamp',
+		name: 'timestamp',
+		required: true,
+		type: 'number',
+		default: undefined,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getPermalink'],
+			},
+		},
+		description: 'Timestamp of the message to message',
+		placeholder: '1663233118.856619',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                          message:post                                      */
+	/* -------------------------------------------------------------------------- */
+	sendToSelector,
+	{
+		...channelRLC,
+		displayOptions: {
+			show: {
+				operation: ['post', 'schedule'],
+				resource: ['message'],
+				select: ['channel'],
+			},
+		},
+	},
+	{
+		...userRLC,
+		displayOptions: {
+			show: {
+				operation: ['post', 'schedule'],
+				resource: ['message'],
+				select: ['user'],
+			},
+		},
+	},
+	{
+		displayName: 'Message Type',
+		name: 'messageType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: ['post', 'schedule'],
+				resource: ['message'],
+			},
+		},
+		description:
+			'Whether to send a simple text message, or use Slack’s Blocks UI builder for more sophisticated messages that include form fields, sections and more',
+		options: [
+			{
+				name: 'Simple Text Message',
+				value: 'text',
+				description: 'Supports basic Markdown',
+			},
+			{
+				name: 'Blocks',
+				value: 'block',
+				description:
+					"Combine text, buttons, form elements, dividers and more in Slack 's visual builder",
+			},
+			{
+				name: 'Attachments',
+				value: 'attachment',
+			},
+		],
+		default: 'text',
+	},
+	{
+		displayName: 'Message Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['post', 'schedule'],
+				resource: ['message'],
+				messageType: ['text'],
+			},
+		},
+		description:
+			'The message text to post. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
+	},
+	{
+		displayName: 'Blocks',
+		name: 'blocksUi',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['post', 'schedule'],
+				resource: ['message'],
+				messageType: ['block'],
+			},
+		},
+		typeOptions: {
+			rows: 3,
+		},
+		description:
+			"Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+		hint: "To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+		default: '',
+	},
+	{
+		displayName: 'Notification Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['post', 'schedule'],
+				resource: ['message'],
+				messageType: ['block'],
+			},
+		},
+		description:
+			'Fallback text to display in slack notifications. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
+	},
+	{
+		displayName: 'This is a legacy Slack feature. Slack advises to instead use Blocks.',
+		name: 'noticeAttachments',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				operation: ['post', 'schedule'],
+				resource: ['message'],
+				messageType: ['attachment'],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Attachments',
+		name: 'attachments',
+		type: 'collection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add attachment',
+		},
+		displayOptions: {
+			show: {
+				operation: ['post', 'schedule'],
+				resource: ['message'],
+				messageType: ['attachment'],
+			},
+		},
+		default: {}, // TODO: Remove comment: has to make default array for the main property, check where that happens in UI
+		placeholder: 'Add attachment item',
+		options: [
+			{
+				displayName: 'Fallback Text',
+				name: 'fallback',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Required plain-text summary of the attachment',
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Title Link',
+				name: 'title_link',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Color',
+				name: 'color',
+				type: 'color',
+				default: '#ff0000',
+				description: 'Color of the line left of text',
+			},
+			{
+				displayName: 'Pretext',
+				name: 'pretext',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Text which appears before the message block',
+			},
+			{
+				displayName: 'Author Name',
+				name: 'author_name',
+				type: 'string',
+				default: '',
+				description: 'Name that should appear',
+			},
+			{
+				displayName: 'Author Link',
+				name: 'author_link',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Author Icon',
+				name: 'author_icon',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Icon which should appear for the user',
+			},
+			{
+				displayName: 'Image URL',
+				name: 'image_url',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Thumbnail URL',
+				name: 'thumb_url',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Footer',
+				name: 'footer',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Text of footer to add',
+			},
+			{
+				displayName: 'Footer Icon',
+				name: 'footer_icon',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Icon which should appear next to footer',
+			},
+			{
+				displayName: 'Message Timestamp',
+				name: 'ts',
+				type: 'number',
+				default: 0,
+				description: 'Timestamp of the message to post',
+				placeholder: '1663233118.856619',
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				placeholder: 'Add Fields',
+				description: 'Fields to add to message',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'item',
+						displayName: 'Item',
+						values: [
+							{
+								displayName: 'Title',
+								name: 'title',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Short',
+								name: 'short',
+								type: 'boolean',
+								default: true,
+								description: 'Whether items can be displayed next to each other',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Post At',
+		name: 'postAt',
+		type: 'dateTime',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['schedule'],
+			},
+		},
+		description:
+			'When the message should be sent. Must be in the future and within 120 days from now.',
+	},
+	{
+		displayName: 'Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: ['post', 'schedule'],
+				resource: ['message'],
+			},
+		},
+		default: {},
+		description: 'Other options to set',
+		placeholder: 'Add option',
+		options: [
+			{
+				displayName: 'Include Link to Workflow',
+				name: 'includeLinkToWorkflow',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending Slack messages.',
+			},
+			{
+				...botProfileField,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lte: 2.5 } }],
+					},
+				},
+			},
+			{
+				// Slack ignores icon_url/icon_emoji on user tokens, and the OAuth2 credential
+				// authenticates as the user, so from 2.6 this is only offered for token auth.
+				...botProfileField,
+				description:
+					'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user. Add chat:write.customize scope on Slack API',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.6 } }],
+						'/authentication': ['accessToken'],
+					},
+				},
+			},
+			{
+				displayName: 'Link User and Channel Names',
+				name: 'link_names',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to turn @users and #channels in message text into clickable links',
+			},
+			replyToMessageField,
+			{
+				displayName: 'Use Markdown?',
+				name: 'mrkdwn',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to use Slack Markdown to format the message',
+			},
+			{
+				displayName: 'Unfurl Links',
+				name: 'unfurl_links',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to unfurl primarily text-based content in the message',
+			},
+			{
+				displayName: 'Unfurl Media',
+				name: 'unfurl_media',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to unfurl media content in the message',
+			},
+			{
+				displayName: 'Send as Ephemeral Message',
+				name: 'ephemeral',
+				type: 'fixedCollection',
+				default: {},
+				displayOptions: {
+					show: {
+						'/select': ['channel'],
+					},
+				},
+				placeholder: 'Send as Ephemeral Message',
+				description: 'Whether to send a temporary, ephemeral message',
+				options: [
+					{
+						displayName: 'Send as Ephemeral Message',
+						name: 'ephemeralValues',
+						values: [
+							{
+								displayName: 'User to Send',
+								name: 'user',
+								type: 'resourceLocator',
+								default: { mode: 'list', value: '' },
+								placeholder: 'Select a user...',
+								modes: [
+									{
+										displayName: 'From List',
+										name: 'list',
+										type: 'list',
+										placeholder: 'Select a user...',
+										typeOptions: {
+											searchListMethod: 'getUsers',
+											searchable: true,
+										},
+									},
+									{
+										displayName: 'By ID',
+										name: 'id',
+										type: 'string',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '[a-zA-Z0-9]{2,}',
+													errorMessage: 'Not a valid Slack User ID',
+												},
+											},
+										],
+										placeholder: 'U123AB45JGM',
+									},
+								],
+							},
+							{
+								displayName: 'Send as Ephemeral Message',
+								name: 'ephemeral',
+								type: 'boolean',
+								default: true,
+								description: 'Whether to send a temporary, ephemeral message',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Send as Ephemeral Message',
+				name: 'ephemeral',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						'/select': ['user'],
+					},
+				},
+				default: true,
+				description: 'Whether to send a temporary, ephemeral message',
+			},
+			{
+				displayName: 'Send as User',
+				name: 'sendAsUser',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/authentication': ['accessToken'],
+					},
+				},
+				default: '',
+				description:
+					'The message will be sent from this username (i.e. as if this individual sent the message). Add chat:write.customize scope on Slack API',
+			},
+		],
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:deleteScheduled                 */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a channel...',
+		modes: slackChannelModes,
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['deleteScheduled'],
+			},
+		},
+		description: 'The channel the scheduled message was sent to',
+	},
+	{
+		displayName: 'Scheduled Message ID',
+		name: 'scheduledMessageId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['deleteScheduled'],
+			},
+		},
+		description: 'The ID returned when the message was originally scheduled',
+		placeholder: 'Q1298393284',
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:getManyScheduled                */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getManyScheduled'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getManyScheduled'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getManyScheduled'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Channel',
+				name: 'channelId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				placeholder: 'Select a channel...',
+				modes: slackChannelModes,
+				description: 'Only show scheduled messages in this channel',
+			},
+			{
+				displayName: 'Latest',
+				name: 'latest',
+				type: 'dateTime',
+				default: '',
+				description: 'A point in time before which scheduled messages should be returned',
+			},
+			{
+				displayName: 'Oldest',
+				name: 'oldest',
+				type: 'dateTime',
+				default: '',
+				description: 'A point in time after which scheduled messages should be returned',
+			},
+		],
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:update                          */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a channel...',
+		modes: slackChannelModes,
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['update'],
+			},
+		},
+		description: 'The Slack channel to update the message from',
+	},
+	{
+		displayName: 'Message Timestamp',
+		name: 'ts',
+		required: true,
+		type: 'number',
+		default: undefined,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['update'],
+			},
+		},
+		description: 'Timestamp of the message to update',
+		placeholder: '1663233118.856619',
+	},
+	{
+		displayName: 'Message Type',
+		name: 'messageType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['message'],
+			},
+		},
+		description:
+			'Whether to send a simple text message, or use Slack’s Blocks UI builder for more sophisticated messages that include form fields, sections and more',
+		options: [
+			{
+				name: 'Simple Text Message',
+				value: 'text',
+				description: 'Supports basic Markdown',
+			},
+			{
+				name: 'Blocks',
+				value: 'block',
+				description:
+					"Combine text, buttons, form elements, dividers and more in Slack 's visual builder",
+			},
+			{
+				name: 'Attachments',
+				value: 'attachment',
+			},
+		],
+		default: 'text',
+	},
+	{
+		displayName: 'Blocks',
+		name: 'blocksUi',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['message'],
+				messageType: ['block'],
+			},
+		},
+		typeOptions: {
+			rows: 3,
+		},
+		description:
+			"Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+		hint: "To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+		default: '',
+	},
+	{
+		displayName: 'Notification Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['message'],
+				messageType: ['block'],
+			},
+		},
+		description:
+			'Fallback text to display in slack notifications. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
+	},
+	{
+		displayName: 'Message Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['update'],
+				messageType: ['text'],
+			},
+		},
+		description:
+			'The message text to update. Supports <a href="https://api.slack.com/reference/surfaces/formatting/">markdown</a> by default - this can be disabled in "Options".',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['update'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Link User and Channel Names',
+				name: 'link_names',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to find and link channel names and usernames',
+			},
+			{
+				displayName: 'Parse',
+				name: 'parse',
+				type: 'options',
+				options: [
+					{
+						name: 'Client',
+						value: 'client',
+					},
+					{
+						name: 'Full',
+						value: 'full',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'client',
+				description: 'Change how messages are treated',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['message'],
+			},
+		},
+		default: {},
+		description: 'Other options to set',
+		placeholder: 'Add option',
+		options: [
+			{
+				displayName: 'Include Link to Workflow',
+				name: 'includeLinkToWorkflow',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending Slack messages.',
+			},
+		],
+	},
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:delete
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Delete Message From',
+		name: 'select',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['delete'],
+			},
+		},
+		options: [
+			{
+				name: 'Channel',
+				value: 'channel',
+			},
+			{
+				name: 'User',
+				value: 'user',
+			},
+		],
+		default: '',
+		placeholder: 'Select...',
+	},
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a channel...',
+		modes: slackChannelModes,
+		displayOptions: {
+			show: {
+				operation: ['delete'],
+				resource: ['message'],
+				select: ['channel'],
+			},
+		},
+		required: true,
+		description: 'The Slack channel to delete the message from',
+	},
+	{
+		displayName: 'User',
+		name: 'user',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a user...',
+		displayOptions: {
+			show: {
+				operation: ['delete'],
+				resource: ['message'],
+				select: ['user'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a user...',
+				typeOptions: {
+					searchListMethod: 'getUsers',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Not a valid Slack User ID',
+						},
+					},
+				],
+				placeholder: 'U123AB45JGM',
+			},
+		],
+	},
+	{
+		displayName: 'Message Timestamp',
+		name: 'timestamp',
+		required: true,
+		type: 'number',
+		default: undefined,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['delete'],
+			},
+		},
+		description: 'Timestamp of the message to delete',
+		placeholder: '1663233118.856619',
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:search
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Search Query',
+		name: 'query',
+		type: 'string',
+		description: 'The text to search for within messages',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+			},
+		},
+	},
+	{
+		displayName: 'Sort By',
+		name: 'sort',
+		description: 'How search results should be sorted. You can sort by.',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+			},
+		},
+		options: [
+			{
+				name: 'Newest',
+				value: 'desc',
+			},
+			{
+				name: 'Oldest',
+				value: 'asc',
+			},
+			{
+				name: 'Relevance Score',
+				value: 'relevance',
+			},
+		],
+		default: 'desc',
+	},
+	// Dropped from 2.7: the Real-time Search API caps how deep a search can be paged and
+	// warns that paginating past ~10 calls rate limits the whole workspace.
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+				'@version': [{ _cnd: { lte: 2.6 } }],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+				returnAll: [false],
+				'@version': [{ _cnd: { lte: 2.6 } }],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 50,
+		},
+		default: 25,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+				'@version': [{ _cnd: { gte: 2.7 } }],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 50,
+		},
+		default: 25,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName:
+			'Searches are rate limited by Slack. <a target="_blank" href="https://docs.slack.dev/reference/methods/assistant.search.context#rate-limiting">Check the Slack docs for the current limits</a>.',
+		name: 'searchRateLimitNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+				'@version': [{ _cnd: { gte: 2.7 } }],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+			},
+		},
+		options: [
+			{
+				displayName: 'After',
+				name: 'after',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return messages sent after this date',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Before',
+				name: 'before',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return messages sent before this date',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Channel Types',
+				name: 'channelTypes',
+				type: 'multiOptions',
+				default: ['public_channel', 'private_channel', 'mpim', 'im'],
+				description: 'Which kinds of conversation to search in',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+				options: [
+					{
+						name: 'Public Channel',
+						value: 'public_channel',
+					},
+					{
+						name: 'Private Channel',
+						value: 'private_channel',
+					},
+					{
+						name: 'Group DM',
+						value: 'mpim',
+					},
+					{
+						name: 'DM',
+						value: 'im',
+					},
+				],
+			},
+			{
+				displayName: 'Include Archived Channels',
+				name: 'includeArchivedChannels',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include archived channels in the results',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Include Bots',
+				name: 'includeBots',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include messages sent by bots',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Include Message Blocks',
+				name: 'includeMessageBlocks',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return the rich text blocks of each message alongside its text',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Keyword Search Only',
+				name: 'keywordSearchOnly',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to match keywords only. By default Slack also returns semantically similar messages.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Search in Channel',
+				name: 'searchChannel',
+				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getChannelsName',
+				},
+			},
+		],
+		default: {},
+		placeholder: 'Add option',
+	},
+];

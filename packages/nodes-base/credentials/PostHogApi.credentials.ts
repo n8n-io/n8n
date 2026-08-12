@@ -1,0 +1,50 @@
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
+
+export class PostHogApi implements ICredentialType {
+	name = 'postHogApi';
+
+	displayName = 'PostHog API';
+
+	documentationUrl = 'posthog';
+
+	properties: INodeProperties[] = [
+		{
+			displayName: 'URL',
+			name: 'url',
+			type: 'string',
+			default: 'https://app.posthog.com',
+		},
+		{
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+		},
+	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			body: {
+				api_key: '={{$credentials.apiKey}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.url}}',
+			url: '/decide/',
+			method: 'POST',
+			body: {
+				distinct_id: 'test',
+			},
+		},
+	};
+}

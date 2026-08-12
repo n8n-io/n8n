@@ -1,0 +1,23 @@
+{
+    "type": "object",
+    "properties": {
+        "$": {
+            "type": "object",
+            "properties": {
+                "xmlns": {
+                    "type": "string"
+                }
+            }
+        },
+        "ChecksumCRC64NVME": {
+            "type": "string"
+        },
+        "ETag": {
+            "type": "string"
+        },
+        "LastModified": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,70 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [520, -80],
+			"id": "9ff1d8e0-ebe8-4c52-931a-e482e14ac911",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"category": "randomData",
+				"randomDataSeed": "ria",
+				"randomDataCount": 5
+			},
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [700, -80],
+			"id": "50cea846-f8ed-4b5a-a14a-c11bf4ba0f5d",
+			"name": "DebugHelper2"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"field": "passwor"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [900, -80],
+			"id": "d39fedc9-62e1-45bc-8c9a-d20f2b63b543",
+			"name": "Summarize1"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "DebugHelper2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"DebugHelper2": {
+			"main": [
+				[
+					{
+						"node": "Summarize1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "ee90fdf8d57662f949e6c691dc07fa0fd2f66e1eee28ed82ef06658223e67255"
+	}
+}

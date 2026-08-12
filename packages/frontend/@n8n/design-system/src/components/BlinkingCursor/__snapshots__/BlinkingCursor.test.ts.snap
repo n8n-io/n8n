@@ -1,0 +1,9 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`BlinkingCursor > renders blinking cursor correctly 1`] = `
+<div>
+  <span
+    class="blinking-cursor"
+  />
+</div>
+`;

@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.cortex",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Analytics"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/cortex/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cortex/"
+			}
+		]
+	}
+}

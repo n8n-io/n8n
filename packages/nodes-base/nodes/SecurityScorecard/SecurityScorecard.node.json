@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.securityScorecard",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Analytics"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/securityscorecard/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.securityscorecard/"
+			}
+		]
+	}
+}

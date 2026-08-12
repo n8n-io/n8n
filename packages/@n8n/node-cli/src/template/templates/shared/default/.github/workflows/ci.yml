@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# Cancel in-progress runs for the same branch/PR to avoid wasting CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: '{{packageManager.name}}'
+
+      - name: Install dependencies
+        run: '{{packageManager.name}} {{packageManager.installCommand}}'
+
+      - name: Run lint
+        run: '{{packageManager.name}} run lint'
+
+      - name: Run build
+        run: '{{packageManager.name}} run build'

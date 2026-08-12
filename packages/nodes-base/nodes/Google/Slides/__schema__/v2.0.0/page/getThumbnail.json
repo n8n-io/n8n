@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "contentUrl": {
+            "type": "string"
+        },
+        "height": {
+            "type": "integer"
+        },
+        "width": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

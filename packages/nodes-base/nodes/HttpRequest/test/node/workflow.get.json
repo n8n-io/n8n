@@ -1,0 +1,188 @@
+{
+	"name": "HTTP Request test",
+	"nodes": [
+	  {
+		"parameters": {},
+		"id": "3db51d12-a71b-4d0d-84db-1d4c46454c40",
+		"name": "When clicking \"Execute Workflow\"",
+		"type": "n8n-nodes-base.manualTrigger",
+		"typeVersion": 1,
+		"position": [
+		  160,
+		  720
+		]
+	  },
+	  {
+		"parameters": {
+		  "url": "https://dummyjson.com/todos/1",
+		  "options": {}
+		},
+		"id": "96f38d87-0bdd-420c-b981-26fd55d11cb2",
+		"name": "HTTP Request",
+		"type": "n8n-nodes-base.httpRequest",
+		"typeVersion": 3,
+		"position": [
+		  460,
+		  460
+		]
+	  },
+	  {
+		"parameters": {
+		  "url": "https://dummyjson.com/todos/3",
+		  "sendHeaders": true,
+		  "headerParameters": {
+			"parameters": [
+			  {
+				"name": "Authorization",
+				"value": "Bearer 12345"
+			  }
+			]
+		  },
+		  "options": {}
+		},
+		"id": "85ca0a5b-3ff4-491d-ba51-990fdf2b757f",
+		"name": "HTTP Request fake header",
+		"type": "n8n-nodes-base.httpRequest",
+		"typeVersion": 3,
+		"position": [
+		  460,
+		  800
+		]
+	  },
+	  {
+		"parameters": {
+		  "url": "https://dummyjson.com/todos",
+		  "sendQuery": true,
+		  "queryParameters": {
+			"parameters": [
+			  {
+				"name": "limit",
+				"value": "2"
+			  },
+			  {
+				"name": "skip",
+				"value": "10"
+			  }
+			]
+		  },
+		  "options": {}
+		},
+		"id": "68d6e51a-66ea-45bf-928c-55efd2493cf0",
+		"name": "HTTP Request with query",
+		"type": "n8n-nodes-base.httpRequest",
+		"typeVersion": 3,
+		"position": [
+		  460,
+		  980
+		]
+	  },
+	  {
+		"parameters": {
+		  "url": "https://dummyjson.com/todos/1",
+		  "sendHeaders": true,
+		  "options": {}
+		},
+		"id": "38ec1a50-7f0e-4749-822d-f26370b00694",
+		"name": "HTTP Request empty header",
+		"type": "n8n-nodes-base.httpRequest",
+		"typeVersion": 3,
+		"position": [
+		  460,
+		  640
+		]
+	  }
+	],
+	"pinData": {
+	  "HTTP Request": [
+		{
+		  "json": {
+			"id": 1,
+			"todo": "Do something nice for someone I care about",
+			"completed": true,
+			"userId": 26
+		  }
+		}
+	  ],
+	  "HTTP Request with query": [
+		{
+		  "json": {
+			"todos": [
+			  {
+				"id": 11,
+				"todo": "Text a friend I haven't talked to in a long time",
+				"completed": false,
+				"userId": 39
+			  },
+			  {
+				"id": 12,
+				"todo": "Organize pantry",
+				"completed": true,
+				"userId": 39
+			  }
+			],
+			"total": 150,
+			"skip": 10,
+			"limit": 2
+		  }
+		}
+	  ],
+	  "HTTP Request fake header": [
+		{
+		  "json": {
+			"id": 3,
+			"todo": "Watch a classic movie",
+			"completed": false,
+			"userId": 4
+		  }
+		}
+	  ],
+	  "HTTP Request empty header": [
+		{
+		  "json": {
+			"id": 1,
+			"todo": "Do something nice for someone I care about",
+			"completed": true,
+			"userId": 26
+		  }
+		}
+	  ]
+	},
+	"connections": {
+	  "When clicking \"Execute Workflow\"": {
+		"main": [
+		  [
+			{
+			  "node": "HTTP Request",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "HTTP Request with query",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "HTTP Request fake header",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "HTTP Request empty header",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  }
+	},
+	"active": false,
+	"settings": {
+	  "executionOrder": "v1"
+	},
+	"versionId": "",
+	"meta": {
+	  "templateCredsSetupCompleted": true,
+	  "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"tags": []
+  }

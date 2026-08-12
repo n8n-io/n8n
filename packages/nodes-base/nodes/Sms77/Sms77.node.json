@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.sms77",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/sms77/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.sms77/"
+			}
+		]
+	},
+	"alias": ["SMS", "Sms77"]
+}

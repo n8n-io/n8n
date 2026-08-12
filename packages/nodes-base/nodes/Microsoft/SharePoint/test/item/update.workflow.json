@@ -1,0 +1,154 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "d8d29d0a-bb31-4094-a252-8008932f5425",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "update",
+				"site": {
+					"__rl": true,
+					"value": "site1",
+					"mode": "list",
+					"cachedResultName": "site1"
+				},
+				"list": {
+					"__rl": true,
+					"value": "list1",
+					"mode": "list",
+					"cachedResultName": "list1"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"Title": "Title 2",
+						"id": "item1"
+					},
+					"matchingColumns": ["id"],
+					"schema": [
+						{
+							"id": "Title",
+							"canBeUsedToMatch": false,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "Title",
+							"readOnly": false,
+							"required": false,
+							"type": "string"
+						},
+						{
+							"id": "id",
+							"canBeUsedToMatch": true,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "ID",
+							"readOnly": true,
+							"required": true,
+							"type": "string",
+							"removed": false
+						}
+					],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "0e19be10-9d94-4654-89e9-432daa8102cb",
+			"name": "Microsoft SharePoint",
+			"credentials": {
+				"microsoftSharePointOAuth2Api": {
+					"id": "cXXnMCWyk397M5qJ",
+					"name": "Microsoft SharePoint account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Microsoft SharePoint",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Microsoft SharePoint": [
+			{
+				"json": {
+					"@odata.context": "https://mydomain.sharepoint.com/sites/site1/_api/v2.0/$metadata#listItems/$entity",
+					"@odata.etag": "\"cc40561f-3d3b-4cfb-b8a9-8af9d71de3f0,2\"",
+					"createdBy": {
+						"user": {
+							"displayName": "John Doe",
+							"email": "john@doe.onmicrosoft.com",
+							"id": "5f7afebb-121d-4664-882b-a09fe6584ce0"
+						}
+					},
+					"createdDateTime": "2025-03-25T12:26:12Z",
+					"eTag": "\"cc40561f-3d3b-4cfb-b8a9-8af9d71de3f0,2\"",
+					"id": "item1",
+					"lastModifiedBy": {
+						"application": {
+							"id": "b9c26603-3c9b-4050-b848-27dfab0a52fa",
+							"displayName": "sharepoint-n8n-test"
+						},
+						"user": {
+							"displayName": "John Doe",
+							"email": "john@doe.onmicrosoft.com",
+							"id": "5f7afebb-121d-4664-882b-a09fe6584ce0"
+						}
+					},
+					"lastModifiedDateTime": "2025-03-25T12:26:46Z",
+					"parentReference": {
+						"id": "84070a73-ea24-463c-8eb2-0e9afa11c63f",
+						"listId": "list1",
+						"siteId": "site1"
+					},
+					"webUrl": "https://mydomain.sharepoint.com/sites/site1/Lists/name%20list/3_.000",
+					"contentType": {
+						"id": "0x010010D603DC4CF2DF4BB8A2D75DCB4BB1B30037A4993FB4DEB0439C3DC6DEC95A9DF8",
+						"name": "Item"
+					},
+					"fields@odata.navigationLink": "sites/site1/lists/list1/items/item1/fields",
+					"fields": {
+						"@odata.etag": "\"cc40561f-3d3b-4cfb-b8a9-8af9d71de3f0,2\"",
+						"Title": "Title 2",
+						"ID": "item1",
+						"ContentType": "Item",
+						"Modified": "2025-03-25T12:26:46Z",
+						"Created": "2025-03-25T12:26:12Z",
+						"AuthorLookupId": "7",
+						"EditorLookupId": "7",
+						"_UIVersionString": "2.0",
+						"Attachments": false,
+						"Edit": "",
+						"LinkTitleNoMenu": "Title 2",
+						"LinkTitle": "Title 2",
+						"ItemChildCount": "0",
+						"FolderChildCount": "0",
+						"_ComplianceFlags": "",
+						"_ComplianceTag": "",
+						"_ComplianceTagWrittenTime": "",
+						"_ComplianceTagUserId": "",
+						"AppAuthorLookupId": "5",
+						"AppEditorLookupId": "5"
+					}
+				}
+			}
+		]
+	}
+}

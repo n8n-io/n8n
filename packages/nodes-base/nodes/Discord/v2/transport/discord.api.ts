@@ -1,0 +1,86 @@
+import type FormData from 'form-data';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError, jsonParse } from 'n8n-workflow';
+
+import { getCredentialsType, handleRateLimitHeaders, requestApi } from './helpers';
+
+export async function discordApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body?: IDataObject,
+	qs?: IDataObject,
+	headers: IDataObject = {},
+) {
+	const authentication = this.getNodeParameter('authentication', 0, 'webhook') as string;
+
+	const credentialType = getCredentialsType(authentication);
+
+	const options: IRequestOptions = {
+		headers,
+		method,
+		qs,
+		body,
+		url: `https://discord.com/api/v10${endpoint}`,
+		json: true,
+	};
+
+	if (credentialType === 'discordWebhookApi') {
+		const credentials = await this.getCredentials('discordWebhookApi');
+		options.url = credentials.webhookUri as string;
+	}
+
+	try {
+		const response = await requestApi.call(this, options, credentialType, endpoint);
+
+		await handleRateLimitHeaders(response.headers as IDataObject);
+
+		return response.body || { success: true };
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
+}
+
+export async function discordApiMultiPartRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	formData: FormData,
+) {
+	const headers: IDataObject = {
+		'content-type': 'multipart/form-data; charset=utf-8',
+	};
+	const authentication = this.getNodeParameter('authentication', 0, 'webhook') as string;
+
+	const credentialType = getCredentialsType(authentication);
+
+	const options: IRequestOptions = {
+		headers,
+		method,
+		formData,
+		url: `https://discord.com/api/v10${endpoint}`,
+	};
+
+	if (credentialType === 'discordWebhookApi') {
+		const credentials = await this.getCredentials('discordWebhookApi');
+		options.url = credentials.webhookUri as string;
+	}
+
+	try {
+		const response = await requestApi.call(this, options, credentialType, endpoint);
+
+		await handleRateLimitHeaders(response.headers as IDataObject);
+
+		return jsonParse<IDataObject[]>(response.body);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
+}

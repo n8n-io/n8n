@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.convertKitTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Marketing", "Sales"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/convertkit/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.convertkittrigger/"
+			}
+		]
+	}
+}

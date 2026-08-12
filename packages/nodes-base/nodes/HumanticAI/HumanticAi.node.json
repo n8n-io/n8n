@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.humanticAi",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Analytics"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/humanticai/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.humanticai/"
+			}
+		],
+		"generic": [
+			{
+				"label": "5 tasks you can automate with the new Notion API ",
+				"icon": "⚡️",
+				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
+			}
+		]
+	}
+}

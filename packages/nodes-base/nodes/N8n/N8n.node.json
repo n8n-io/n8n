@@ -1,0 +1,22 @@
+{
+	"node": "n8n-nodes-base.n8n",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Core Nodes"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/api/authentication/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8n/"
+			}
+		]
+	},
+	"alias": ["Workflow", "Execution"],
+	"subcategories": {
+		"Core Nodes": ["Helpers", "Other Trigger Nodes"]
+	}
+}

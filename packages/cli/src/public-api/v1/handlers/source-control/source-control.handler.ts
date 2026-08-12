@@ -1,0 +1,56 @@
+import { PullWorkFolderRequestDto } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { Container } from '@n8n/di';
+
+import { EventService } from '@/events/event.service';
+import {
+	getTrackingInformationFromPullResult,
+	isSourceControlLicensed,
+} from '@/modules/source-control.ee/source-control-helper.ee';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
+
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
+
+type SourceControlHandlers = {
+	pull: PublicAPIEndpoint<AuthenticatedRequest>;
+};
+
+const sourceControlHandlers: SourceControlHandlers = {
+	pull: [
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:pull' }),
+		async (req, res) => {
+			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+			if (!isSourceControlLicensed()) {
+				return res
+					.status(401)
+					.json({ status: 'Error', message: 'Source Control feature is not licensed' });
+			}
+			if (!sourceControlPreferencesService.isSourceControlConnected()) {
+				return res
+					.status(400)
+					.json({ status: 'Error', message: 'Source Control is not connected to a repository' });
+			}
+			try {
+				const payload = PullWorkFolderRequestDto.parse(req.body);
+				const sourceControlService = Container.get(SourceControlService);
+				const result = await sourceControlService.pullWorkfolder(req.user, payload);
+
+				if (result.statusCode === 200) {
+					Container.get(EventService).emit('source-control-user-pulled-api', {
+						...getTrackingInformationFromPullResult(req.user.id, result.statusResult),
+						forced: payload.force ?? false,
+					});
+					return res.status(200).send(result.statusResult);
+				} else {
+					return res.status(409).send(result.statusResult);
+				}
+			} catch (error) {
+				return res.status(400).send((error as { message: string }).message);
+			}
+		},
+	],
+};
+
+export = sourceControlHandlers;

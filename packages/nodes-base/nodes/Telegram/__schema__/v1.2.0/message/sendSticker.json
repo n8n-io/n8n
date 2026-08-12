@@ -1,0 +1,132 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "object",
+            "properties": {
+                "chat": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "last_name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "date": {
+                    "type": "integer"
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "message_id": {
+                    "type": "integer"
+                },
+                "sticker": {
+                    "type": "object",
+                    "properties": {
+                        "emoji": {
+                            "type": "string"
+                        },
+                        "file_id": {
+                            "type": "string"
+                        },
+                        "file_size": {
+                            "type": "integer"
+                        },
+                        "file_unique_id": {
+                            "type": "string"
+                        },
+                        "height": {
+                            "type": "integer"
+                        },
+                        "is_animated": {
+                            "type": "boolean"
+                        },
+                        "is_video": {
+                            "type": "boolean"
+                        },
+                        "set_name": {
+                            "type": "string"
+                        },
+                        "thumb": {
+                            "type": "object",
+                            "properties": {
+                                "file_id": {
+                                    "type": "string"
+                                },
+                                "file_size": {
+                                    "type": "integer"
+                                },
+                                "file_unique_id": {
+                                    "type": "string"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "thumbnail": {
+                            "type": "object",
+                            "properties": {
+                                "file_id": {
+                                    "type": "string"
+                                },
+                                "file_size": {
+                                    "type": "integer"
+                                },
+                                "file_unique_id": {
+                                    "type": "string"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "width": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

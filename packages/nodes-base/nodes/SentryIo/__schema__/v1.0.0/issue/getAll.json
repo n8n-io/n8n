@@ -1,0 +1,146 @@
+{
+    "type": "object",
+    "properties": {
+        "count": {
+            "type": "string"
+        },
+        "culprit": {
+            "type": "string"
+        },
+        "firstSeen": {
+            "type": "string"
+        },
+        "hasSeen": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isBookmarked": {
+            "type": "boolean"
+        },
+        "isPublic": {
+            "type": "boolean"
+        },
+        "isSubscribed": {
+            "type": "boolean"
+        },
+        "issueCategory": {
+            "type": "string"
+        },
+        "issueType": {
+            "type": "string"
+        },
+        "isUnhandled": {
+            "type": "boolean"
+        },
+        "lastSeen": {
+            "type": "string"
+        },
+        "level": {
+            "type": "string"
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "filename": {
+                    "type": "string"
+                },
+                "function": {
+                    "type": "string"
+                },
+                "in_app_frame_mix": {
+                    "type": "string"
+                },
+                "initial_priority": {
+                    "type": "integer"
+                },
+                "sdk": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "name_normalized": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "severity_reason": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "numComments": {
+            "type": "integer"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "platform": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "string"
+        },
+        "project": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "shareId": {
+            "type": "null"
+        },
+        "shortId": {
+            "type": "string"
+        },
+        "stats": {
+            "type": "object",
+            "properties": {
+                "24h": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        },
+        "status": {
+            "type": "string"
+        },
+        "substatus": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "userCount": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

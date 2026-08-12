@@ -1,0 +1,146 @@
+{
+    "type": "object",
+    "properties": {
+        "objectDescribe": {
+            "type": "object",
+            "properties": {
+                "activateable": {
+                    "type": "boolean"
+                },
+                "associateEntityType": {
+                    "type": "null"
+                },
+                "associateParentEntity": {
+                    "type": "null"
+                },
+                "createable": {
+                    "type": "boolean"
+                },
+                "custom": {
+                    "type": "boolean"
+                },
+                "customSetting": {
+                    "type": "boolean"
+                },
+                "deepCloneable": {
+                    "type": "boolean"
+                },
+                "deletable": {
+                    "type": "boolean"
+                },
+                "deprecatedAndHidden": {
+                    "type": "boolean"
+                },
+                "feedEnabled": {
+                    "type": "boolean"
+                },
+                "hasSubtypes": {
+                    "type": "boolean"
+                },
+                "isInterface": {
+                    "type": "boolean"
+                },
+                "isSubtype": {
+                    "type": "boolean"
+                },
+                "keyPrefix": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "labelPlural": {
+                    "type": "string"
+                },
+                "layoutable": {
+                    "type": "boolean"
+                },
+                "mergeable": {
+                    "type": "boolean"
+                },
+                "mruEnabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "queryable": {
+                    "type": "boolean"
+                },
+                "replicateable": {
+                    "type": "boolean"
+                },
+                "retrieveable": {
+                    "type": "boolean"
+                },
+                "searchable": {
+                    "type": "boolean"
+                },
+                "triggerable": {
+                    "type": "boolean"
+                },
+                "undeletable": {
+                    "type": "boolean"
+                },
+                "updateable": {
+                    "type": "boolean"
+                },
+                "urls": {
+                    "type": "object",
+                    "properties": {
+                        "approvalLayouts": {
+                            "type": "string"
+                        },
+                        "compactLayouts": {
+                            "type": "string"
+                        },
+                        "describe": {
+                            "type": "string"
+                        },
+                        "layouts": {
+                            "type": "string"
+                        },
+                        "listviews": {
+                            "type": "string"
+                        },
+                        "quickActions": {
+                            "type": "string"
+                        },
+                        "rowTemplate": {
+                            "type": "string"
+                        },
+                        "sobject": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "recentItems": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "attributes": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "Id": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

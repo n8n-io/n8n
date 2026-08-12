@@ -1,0 +1,634 @@
+import crypto from 'crypto';
+import {
+	NodeHelpers,
+	NodeOperationError,
+	type INodeProperties,
+	type INodePropertyOptions,
+} from 'n8n-workflow';
+
+type VersionCnd = { lte?: number; gte?: number };
+type VersionedAuthParam = Omit<INodeProperties, 'options'> & {
+	displayOptions?: { show?: { '@version'?: Array<{ _cnd?: VersionCnd }> } };
+	options?: INodePropertyOptions[];
+};
+
+import { testVersionedWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
+
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
+import { FormTrigger } from '../FormTrigger.node';
+import { FormTriggerV2 } from '../v2/FormTriggerV2.node';
+
+const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
+	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";
+
+describe('FormTrigger', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should tell builders to keep inbound authentication disabled unless requested', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.5,
+		});
+
+		const authParams = formTriggerV2.description.properties.filter(
+			(property) => property.name === FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+		);
+
+		expect(authParams.length).toBeGreaterThan(0);
+		for (const param of authParams) {
+			expect(param).toMatchObject({
+				default: 'none',
+				builderHint: {
+					propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+				},
+			});
+		}
+	});
+
+	it('should expose n8nUserAuth option only on typeVersion >= 2.6', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.6,
+		});
+
+		const authParams = formTriggerV2.description.properties.filter(
+			(property) => property.name === FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+		) as VersionedAuthParam[];
+
+		expect(authParams).toHaveLength(2);
+
+		const versionCnd = (param: VersionedAuthParam) =>
+			param.displayOptions?.show?.['@version']?.[0]?._cnd;
+		const legacyAuth = authParams.find((p) => versionCnd(p)?.lte === 2.5);
+		const v26Auth = authParams.find((p) => versionCnd(p)?.gte === 2.6);
+
+		const legacyValues = (legacyAuth?.options ?? []).map((o) => o.value).sort();
+		const v26Values = (v26Auth?.options ?? []).map((o) => o.value).sort();
+
+		expect(legacyValues).toEqual(['basicAuth', 'none']);
+		expect(v26Values).toEqual(['basicAuth', 'n8nUserAuth', 'none']);
+	});
+
+	describe('requireExecuteAccess', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.6,
+		});
+
+		const requireExecuteAccess = formTriggerV2.description.properties.find(
+			(property) => property.name === 'requireExecuteAccess',
+		);
+
+		it('should not require workflow execute permission by default', () => {
+			expect(requireExecuteAccess).toMatchObject({
+				type: 'boolean',
+				default: false,
+				envFeatureFlag: 'FORM_TRIGGER_OAUTH2',
+			});
+		});
+
+		it.each<[string, number, boolean]>([
+			['n8nUserAuth', 2.6, true],
+			['none', 2.6, false],
+			['basicAuth', 2.6, false],
+			// The parameter did not exist below 2.6, so it stays hidden there.
+			['n8nUserAuth', 2.5, false],
+		])(
+			'should be shown for authentication %s on typeVersion %s: %s',
+			(authentication, typeVersion, shown) => {
+				expect(requireExecuteAccess).toBeDefined();
+				expect(
+					NodeHelpers.displayParameter(
+						{ [FORM_TRIGGER_AUTHENTICATION_PROPERTY]: authentication },
+						requireExecuteAccess as INodeProperties,
+						{ typeVersion },
+						formTriggerV2.description,
+					),
+				).toBe(shown);
+			},
+		);
+	});
+
+	it('should render a form template with correct fields', async () => {
+		const formFields = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
+			{ fieldLabel: 'Notes', fieldType: 'textarea', requiredField: false },
+			{
+				fieldLabel: 'Gender',
+				fieldType: 'select',
+				requiredField: true,
+				fieldOptions: { values: [{ option: 'Male' }, { option: 'Female' }] },
+			},
+			{
+				fieldLabel: 'Resume',
+				fieldType: 'file',
+				requiredField: true,
+				acceptFileTypes: '.pdf,.doc',
+				multipleFiles: false,
+			},
+		];
+
+		const { response, responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+			mode: 'manual',
+			node: {
+				parameters: {
+					formTitle: 'Test Form',
+					formDescription: 'Test Description',
+					responseMode: 'onReceived',
+					authentication: 'none',
+					formFields: { values: formFields },
+					options: {
+						appendAttribution: false,
+						respondWithOptions: { values: { respondWith: 'text' } },
+					},
+				},
+			},
+		});
+
+		expect(response.render).toHaveBeenCalledWith('form-trigger', {
+			appendAttribution: false,
+			buttonLabel: 'Submit',
+			formDescription: 'Test Description',
+			formDescriptionMetadata: 'Test Description',
+			formFields: [
+				{
+					defaultValue: '',
+					errorId: 'error-field-0',
+					id: 'field-0',
+					inputRequired: 'form-required',
+					isInput: true,
+					label: 'Name',
+					placeholder: undefined,
+					type: 'text',
+				},
+				{
+					defaultValue: '',
+					errorId: 'error-field-1',
+					id: 'field-1',
+					inputRequired: '',
+					isInput: true,
+					label: 'Age',
+					placeholder: undefined,
+					type: 'number',
+				},
+				{
+					defaultValue: '',
+					errorId: 'error-field-2',
+					id: 'field-2',
+					inputRequired: '',
+					label: 'Notes',
+					placeholder: undefined,
+					isTextarea: true,
+				},
+				{
+					defaultValue: '',
+					errorId: 'error-field-3',
+					id: 'field-3',
+					inputRequired: 'form-required',
+					isInput: true,
+					label: 'Gender',
+					placeholder: undefined,
+					type: 'select',
+				},
+				{
+					acceptFileTypes: '.pdf,.doc',
+					defaultValue: '',
+					errorId: 'error-field-4',
+					id: 'field-4',
+					inputRequired: 'form-required',
+					isFileInput: true,
+					label: 'Resume',
+					multipleFiles: '',
+					placeholder: undefined,
+				},
+			],
+			formSubmittedText: 'Your response has been recorded',
+			formTitle: 'Test Form',
+			n8nWebsiteLink:
+				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
+			testRun: true,
+			useResponseData: false,
+		});
+
+		expect(responseData).toEqual({ noWebhookResponse: true });
+	});
+
+	it('should return workflowData on POST request', async () => {
+		const formFields = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
+			{ fieldLabel: 'Date', fieldType: 'date', formatDate: 'dd MMM', requiredField: false },
+			{ fieldLabel: 'Empty', fieldType: 'number', requiredField: false },
+			{
+				fieldLabel: 'Tags',
+				fieldType: 'select',
+				multiselect: true,
+				requiredField: false,
+				fieldOptions: { values: [{ option: 'Popular' }, { option: 'Recent' }] },
+			},
+		];
+
+		const bodyData = {
+			data: {
+				'field-0': 'John Doe',
+				'field-1': '30',
+				'field-2': '2024-08-31',
+				'field-4': '{}',
+			},
+		};
+
+		const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+			mode: 'manual',
+			node: {
+				parameters: {
+					formTitle: 'Test Form',
+					formDescription: 'Test Description',
+					responseMode: 'onReceived',
+					authentication: 'none',
+					formFields: { values: formFields },
+				},
+			},
+			request: {
+				method: 'POST',
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
+			bodyData,
+		});
+
+		expect(responseData).toEqual({
+			webhookResponse: { status: 200 },
+			workflowData: [
+				[
+					{
+						json: {
+							Name: 'John Doe',
+							Age: 30,
+							Date: '31 Jan',
+							Empty: null,
+							Tags: {},
+							submittedAt: expect.any(String),
+							formMode: 'test',
+						},
+					},
+				],
+			],
+		});
+	});
+
+	describe('Respond to Webhook', () => {
+		it('should throw when misconfigured', async () => {
+			const missingRespondNode = testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				node: {
+					parameters: {
+						responseMode: 'responseNode',
+					},
+				},
+				request: { method: 'POST' },
+				childNodes: [],
+			});
+			await expect(missingRespondNode).rejects.toThrow(NodeOperationError);
+			await expect(missingRespondNode).rejects.toThrow(
+				'No Respond to Webhook node found in the workflow',
+			);
+
+			const unusedRespondNode = testVersionedWebhookTriggerNode(FormTrigger, 2.1, {
+				node: {
+					typeVersion: 2.1,
+					parameters: {
+						responseMode: 'onReceived',
+					},
+				},
+				request: { method: 'POST' },
+				childNodes: [
+					{
+						name: 'Test Respond To Webhook',
+						type: 'n8n-nodes-base.respondToWebhook',
+						typeVersion: 1,
+						disabled: false,
+					},
+				],
+			});
+			await expect(unusedRespondNode).rejects.toThrow(NodeOperationError);
+			await expect(unusedRespondNode).rejects.toThrow(
+				'Unused Respond to Webhook node found in the workflow',
+			);
+		});
+	});
+
+	it('webhook execution not successful when token is invalid', async () => {
+		const formFields = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
+		];
+
+		const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+			mode: 'manual',
+			node: {
+				parameters: {
+					formTitle: 'Test Form',
+					formDescription: 'Test Description',
+					responseMode: 'onReceived',
+					formFields: { values: formFields },
+					authentication: 'basicAuth',
+				},
+			},
+			request: { method: 'POST', query: {}, headers: {} },
+			credential: {
+				user: 'testuser',
+				password: 'testpass',
+			},
+		});
+
+		expect(responseData).toEqual({ noWebhookResponse: true });
+	});
+
+	it('should validate POST requests with correct authentication token', async () => {
+		const formFields = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
+		];
+
+		const nodeId = 'test-node-id';
+		const webhookId = 'test-webhook-id';
+		const credentials = { user: 'testuser', password: 'testpass' };
+
+		const token = crypto
+			.createHmac('sha256', `${credentials.user}:${credentials.password}`)
+			.update(`${nodeId}-${webhookId}`)
+			.digest('hex');
+
+		const bodyData = {
+			data: {
+				'field-0': 'John Doe',
+				'field-1': '30',
+			},
+		};
+
+		const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+			mode: 'manual',
+			node: {
+				id: nodeId,
+				webhookId,
+				parameters: {
+					formTitle: 'Test Form',
+					formDescription: 'Test Description',
+					responseMode: 'onReceived',
+					formFields: { values: formFields },
+					authentication: 'basicAuth',
+				},
+			},
+			request: {
+				method: 'POST',
+				contentType: 'multipart/form-data',
+				headers: { 'content-type': 'multipart/form-data', 'x-auth-token': token },
+			},
+			bodyData,
+			credential: credentials,
+		});
+
+		expect(responseData).toEqual({
+			webhookResponse: { status: 200 },
+			workflowData: [
+				[
+					{
+						json: {
+							Name: 'John Doe',
+							Age: 30,
+							submittedAt: expect.any(String),
+							formMode: 'test',
+						},
+					},
+				],
+			],
+		});
+	});
+
+	it('should apply customCss property to form render', async () => {
+		const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+		const { response } = await testVersionedWebhookTriggerNode(FormTrigger, 2.2, {
+			mode: 'manual',
+			node: {
+				typeVersion: 2.2,
+				parameters: {
+					formTitle: 'Custom CSS Test',
+					formDescription: 'Testing custom CSS',
+					responseMode: 'onReceived',
+					authentication: 'none',
+					formFields: { values: formFields },
+					options: {
+						customCss: '.form-input { border-color: red; }',
+					},
+				},
+			},
+		});
+
+		expect(response.render).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({
+				dangerousCustomCss: '.form-input { border-color: red; }',
+			}),
+		);
+	});
+
+	it('should handle files', async () => {
+		const formFields = [
+			{
+				fieldLabel: 'Resume',
+				fieldType: 'file',
+				requiredField: true,
+				acceptFileTypes: '.pdf,.doc',
+				multipleFiles: false,
+			},
+			{
+				fieldLabel: 'Attachments',
+				fieldType: 'file',
+				requiredField: true,
+				acceptFileTypes: '.pdf,.doc',
+				multipleFiles: true,
+			},
+		];
+
+		const bodyData = {
+			files: {
+				'field-0': {
+					originalFilename: 'resume.pdf',
+					mimetype: 'application/json',
+					filepath: '/resume.pdf',
+					size: 200,
+				},
+				'field-1': [
+					{
+						originalFilename: 'attachment1.pdf',
+						mimetype: 'application/json',
+						filepath: '/attachment1.pdf',
+						size: 201,
+					},
+				],
+			},
+		};
+
+		const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					formTitle: 'Test Form',
+					formDescription: 'Test Description',
+					responseMode: 'onReceived',
+					authentication: 'none',
+					formFields: { values: formFields },
+				},
+			},
+			request: {
+				method: 'POST',
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
+			bodyData,
+		});
+
+		expect(responseData?.webhookResponse).toEqual({ status: 200 });
+		expect(responseData?.workflowData).toEqual([
+			[
+				expect.objectContaining({
+					json: {
+						Resume: {
+							filename: 'resume.pdf',
+							mimetype: 'application/json',
+							size: 200,
+						},
+						Attachments: [
+							{
+								filename: 'attachment1.pdf',
+								mimetype: 'application/json',
+								size: 201,
+							},
+						],
+						formMode: 'production',
+						submittedAt: expect.any(String),
+					},
+				}),
+			],
+		]);
+	});
+
+	describe('showHeaders', () => {
+		it('should include headers in output when showHeaders is enabled', async () => {
+			const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+			const bodyData = {
+				data: {
+					'field-0': 'John Doe',
+				},
+			};
+
+			const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				mode: 'manual',
+				node: {
+					parameters: {
+						formTitle: 'Test Form',
+						formDescription: 'Test Description',
+						responseMode: 'onReceived',
+						authentication: 'none',
+						formFields: { values: formFields },
+						options: {
+							showHeaders: true,
+						},
+					},
+				},
+				request: {
+					method: 'POST',
+					headers: { 'content-type': 'multipart/form-data' },
+					contentType: 'multipart/form-data',
+				},
+				bodyData,
+				headerData: {
+					'content-type': 'multipart/form-data',
+					'user-agent': 'Mozilla/5.0',
+				},
+			});
+
+			expect(responseData?.workflowData?.[0]?.[0]?.json.headers).toEqual({
+				'content-type': 'multipart/form-data',
+				'user-agent': 'Mozilla/5.0',
+			});
+		});
+
+		it('should not include headers in output when showHeaders is disabled', async () => {
+			const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+			const bodyData = {
+				data: {
+					'field-0': 'John Doe',
+				},
+			};
+
+			const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				mode: 'manual',
+				node: {
+					parameters: {
+						formTitle: 'Test Form',
+						formDescription: 'Test Description',
+						responseMode: 'onReceived',
+						authentication: 'none',
+						formFields: { values: formFields },
+						options: {
+							showHeaders: false,
+						},
+					},
+				},
+				request: {
+					method: 'POST',
+					headers: { 'content-type': 'multipart/form-data' },
+					contentType: 'multipart/form-data',
+				},
+				bodyData,
+				headerData: {
+					'content-type': 'multipart/form-data',
+					'user-agent': 'Mozilla/5.0',
+				},
+			});
+
+			expect(responseData?.workflowData?.[0]?.[0]?.json.headers).toBeUndefined();
+		});
+	});
+
+	describe('sensitiveOutputFields', () => {
+		it('declares authorization and cookie headers as sensitive', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.authorization');
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.cookie');
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.x-auth-token');
+		});
+
+		it('does not mark other headers as sensitive', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			expect(formTriggerV2.description.sensitiveOutputFields).not.toContain('headers.content-type');
+		});
+	});
+});

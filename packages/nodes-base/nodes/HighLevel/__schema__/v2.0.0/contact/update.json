@@ -1,0 +1,99 @@
+{
+    "type": "object",
+    "properties": {
+        "additionalPhones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "phone": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "country": {
+            "type": "string"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "sourceId": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "customFields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dateAdded": {
+            "type": "string"
+        },
+        "dateUpdated": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailLowerCase": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "firstNameLowerCase": {
+            "type": "string"
+        },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "fullNameLowerCase": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "lastNameLowerCase": {
+            "type": "string"
+        },
+        "locationId": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

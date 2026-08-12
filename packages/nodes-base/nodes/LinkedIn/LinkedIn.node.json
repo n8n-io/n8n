@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.linkedIn",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Marketing", "Communication"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/linkedin/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.linkedin/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Why business process automation with n8n can change your daily life",
+				"icon": "🧬",
+				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
+			}
+		]
+	}
+}

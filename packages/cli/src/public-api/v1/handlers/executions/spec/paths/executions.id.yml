@@ -1,0 +1,52 @@
+get:
+  x-eov-operation-id: getExecution
+  x-required-scope: execution:read
+  x-eov-operation-handler: v1/handlers/executions/executions.handler
+  tags:
+    - Execution
+  summary: Retrieve an execution
+  description: Retrieve an execution from your instance.
+  parameters:
+    - $ref: '../schemas/parameters/executionId.yml'
+    - $ref: '../schemas/parameters/includeData.yml'
+    - name: ignoreDataSizeLimit
+      in: query
+      description: Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.
+      required: false
+      schema:
+        type: boolean
+    - $ref: '../schemas/parameters/redactExecutionData.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/execution.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+delete:
+  x-eov-operation-id: deleteExecution
+  x-required-scope: execution:delete
+  x-eov-operation-handler: v1/handlers/executions/executions.handler
+  tags:
+    - Execution
+  summary: Delete an execution
+  description: Deletes an execution from your instance.
+  parameters:
+    - $ref: '../schemas/parameters/executionId.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/execution.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

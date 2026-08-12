@@ -1,0 +1,98 @@
+{
+	"createdAt": "2024-08-06T12:19:51.268Z",
+	"updatedAt": "2024-08-06T12:20:45.000Z",
+	"name": "Python Code Node",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [1280, 460],
+			"id": "0067e317-09b8-478a-8c50-e19b4c9e294c",
+			"name": "Respond to Webhook"
+		},
+		{
+			"parameters": {
+				"language": "pythonNative",
+				"mode": "runOnceForEachItem",
+				"pythonCode": "def pseudo_random(seed_str, max_val):\n    return hash(seed_str) % max_val\n\n# Add new field\n_item['json']['age'] = 10 + pseudo_random(str(_item['json']['email']), 30)\n\n# Mutate existing field\n_item['json']['password'] = '*' * len(_item['json']['password'])\n\n# Remove field\nif 'lastname' in _item['json']:\n    del _item['json']['lastname']\n\n# New object field\nemail_parts = _item['json']['email'].split('@')\n_item['json']['emailData'] = {\n    'user': email_parts[0],\n    'domain': email_parts[1]\n}\n\nreturn _item"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1040, 460],
+			"id": "56d751c0-0d30-43c3-89fa-bebf3a9d436f",
+			"name": "OnceForEachItemPythonCode"
+		},
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "py-code-node-benchmark",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [580, 460],
+			"id": "417d749d-156c-4ffe-86ea-336f702dc5da",
+			"name": "Webhook",
+			"webhookId": "34ca1895-ccf4-4a4a-8bb8-a042f5edb567"
+		},
+		{
+			"parameters": {
+				"language": "pythonNative",
+				"pythonCode": "def pseudo_random_string(length):\n    characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'\n    result = ''\n    seed = hash(str(length)) % 1000\n    for i in range(length):\n        index = (hash(str(seed + i)) % len(characters))\n        result += characters[index]\n        seed = (seed * 31 + i) % 1000\n    return result\n\ndef random_uid():\n    lengths = [8, 4, 4, 4, 8]\n    parts = [pseudo_random_string(length) for length in lengths]\n    return '-'.join(parts)\n\ndef random_email():\n    return f\"{pseudo_random_string(8)}@{pseudo_random_string(10)}.com\"\n\ndef random_person():\n    return {\n        'uid': random_uid(),\n        'email': random_email(),\n        'firstname': pseudo_random_string(5),\n        'lastname': pseudo_random_string(12),\n        'password': pseudo_random_string(10)\n    }\n\nreturn [{'json': random_person()} for _ in range(100)]"
+			},
+			"id": "c30db155-73ca-48b9-8860-c3fe7a0926fb",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [820, 460]
+		}
+	],
+	"connections": {
+		"OnceForEachItemPythonCode": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "OnceForEachItemPythonCode",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": { "executionOrder": "v1" },
+	"staticData": null,
+	"meta": { "templateCredsSetupCompleted": true, "responseMode": "lastNode", "options": {} },
+	"pinData": {},
+	"versionId": "840a38a1-ba37-433d-9f20-de73f5131a2b",
+	"triggerCount": 1,
+	"tags": []
+}

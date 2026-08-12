@@ -1,0 +1,77 @@
+import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType } from 'n8n-workflow';
+
+import { GoogleSheetsV1 } from './v1/GoogleSheetsV1.node';
+import { GoogleSheetsV2 } from './v2/GoogleSheetsV2.node';
+
+export class GoogleSheets extends VersionedNodeType {
+	constructor() {
+		const baseDescription: INodeTypeBaseDescription = {
+			displayName: 'Google Sheets',
+			name: 'googleSheets',
+			icon: 'file:googleSheets.svg',
+			group: ['input', 'output'],
+			defaultVersion: 4.7,
+			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			description: 'Read, update and write data to Google Sheets',
+			builderHint: {
+				searchHint:
+					'For workflow data storage, DataTable with upsert avoids duplicates. Use Google Sheets when spreadsheet collaboration is specifically needed.',
+				relatedNodes: [
+					{
+						nodeType: 'n8n-nodes-base.dataTable',
+						relationHint: 'Prefer for workflow data storage with upsert',
+					},
+				],
+				extraTypeDefContent: [
+					{
+						displayOptions: {
+							show: {
+								resource: ['sheet'],
+								operation: ['append', 'appendOrUpdate', 'update'],
+							},
+						},
+						content: `<patterns>
+<pattern title="autoMapInputData — maps $json fields to sheet columns automatically">
+columns: {
+  mappingMode: 'autoMapInputData',
+  value: {},
+  schema: [
+    { id: 'Name', displayName: 'Name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
+    { id: 'Email', displayName: 'Email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: false }
+  ]
+}
+</pattern>
+<pattern title="defineBelow — explicit expression mapping">
+columns: {
+  mappingMode: 'defineBelow',
+  value: { name: expr('{{ $json.name }}'), email: expr('{{ $json.email }}') },
+  schema: [
+    { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
+    { id: 'email', displayName: 'email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }
+  ]
+}
+</pattern>
+</patterns>`,
+					},
+				],
+			},
+		};
+
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
+			1: new GoogleSheetsV1(baseDescription),
+			2: new GoogleSheetsV1(baseDescription),
+			3: new GoogleSheetsV2(baseDescription),
+			4: new GoogleSheetsV2(baseDescription),
+			4.1: new GoogleSheetsV2(baseDescription),
+			4.2: new GoogleSheetsV2(baseDescription),
+			4.3: new GoogleSheetsV2(baseDescription),
+			4.4: new GoogleSheetsV2(baseDescription),
+			4.5: new GoogleSheetsV2(baseDescription),
+			4.6: new GoogleSheetsV2(baseDescription),
+			4.7: new GoogleSheetsV2(baseDescription),
+		};
+
+		super(nodeVersions, baseDescription);
+	}
+}

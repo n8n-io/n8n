@@ -1,0 +1,366 @@
+import { inDevelopment, inTest, Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { DbConnection } from '@n8n/db';
+import { OnShutdown } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
+import compression from 'compression';
+import express from 'express';
+import { readFile } from 'fs/promises';
+import type { Server } from 'http';
+import isbot from 'isbot';
+import { SLACK_HITL_WEBHOOK_SUFFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
+
+import config from '@/config';
+import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { ExternalHooks } from '@/external-hooks';
+import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
+import { sendErrorResponse } from '@/response-helper';
+import { createHandlebarsEngine } from '@/utils/handlebars.util';
+import { LiveWebhooks } from '@/webhooks/live-webhooks';
+import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
+import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+import { WaitingForms } from '@/webhooks/waiting-forms';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+
+import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
+
+@Service()
+export abstract class AbstractServer {
+	/**
+	 * Path patterns that allow bot user agents through the bot filter.
+	 * Populated by ControllerRegistry when routes with { allowBots: true } are registered.
+	 */
+	static readonly botAllowedPaths: string[] = [];
+
+	protected logger: Logger;
+
+	protected server: Server;
+
+	readonly app: express.Application;
+
+	protected externalHooks: ExternalHooks;
+
+	protected globalConfig = Container.get(GlobalConfig);
+
+	protected dbConnection = Container.get(DbConnection);
+
+	protected sslKey: string;
+
+	protected sslCert: string;
+
+	protected restEndpoint: string;
+
+	protected endpointForm: string;
+
+	protected endpointFormTest: string;
+
+	protected endpointFormWaiting: string;
+
+	protected endpointWebhook: string;
+
+	protected endpointWebhookTest: string;
+
+	protected endpointWebhookWaiting: string;
+
+	protected endpointMcp: string;
+
+	protected endpointMcpTest: string;
+
+	protected endpointHealth: string;
+
+	protected webhooksEnabled = true;
+
+	protected testWebhooksEnabled = false;
+
+	private fullyReady = false;
+
+	constructor() {
+		this.app = express();
+		this.app.disable('x-powered-by');
+		this.app.set('query parser', 'extended');
+		this.app.engine('handlebars', createHandlebarsEngine());
+		this.app.set('view engine', 'handlebars');
+		this.app.set('views', TEMPLATES_DIR);
+
+		const proxyHops = this.globalConfig.proxy_hops;
+		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
+
+		this.sslKey = this.globalConfig.ssl_key;
+		this.sslCert = this.globalConfig.ssl_cert;
+
+		const { endpoints } = this.globalConfig;
+		this.restEndpoint = endpoints.rest;
+
+		this.endpointForm = endpoints.form;
+		this.endpointFormTest = endpoints.formTest;
+		this.endpointFormWaiting = endpoints.formWaiting;
+
+		this.endpointWebhook = endpoints.webhook;
+		this.endpointWebhookTest = endpoints.webhookTest;
+		this.endpointWebhookWaiting = endpoints.webhookWaiting;
+
+		this.endpointMcp = endpoints.mcp;
+		this.endpointMcpTest = endpoints.mcpTest;
+
+		this.endpointHealth = resolveBackendHealthEndpointPath(this.globalConfig);
+
+		this.logger = Container.get(Logger);
+	}
+
+	async configure(): Promise<void> {
+		// Additional configuration in derived classes
+	}
+
+	private async setupErrorHandlers() {
+		const { app } = this;
+
+		// Augment errors sent to Sentry
+		const { setupExpressErrorHandler } = await import('@sentry/node');
+		setupExpressErrorHandler(app);
+	}
+
+	private setupCommonMiddlewares() {
+		// Compress the response data
+		this.app.use(compression());
+
+		// Read incoming data into `rawBody`
+		this.app.use(rawBodyReader);
+	}
+
+	private setupDevMiddlewares() {
+		this.app.use(corsMiddleware);
+	}
+
+	protected setupPushServer() {}
+
+	/** Call once after all initialization is complete. Unblocks the /healthz/readiness endpoint. */
+	markAsReady() {
+		this.fullyReady = true;
+	}
+
+	private setupHealthCheck() {
+		const healthPath = this.endpointHealth;
+		const readinessPath = `${healthPath}/readiness`;
+
+		const healthMiddlewares = inDevelopment ? [corsMiddleware] : [];
+
+		// main health check should not care about DB connections
+		this.app.get(healthPath, ...healthMiddlewares, (_req, res) => {
+			res.send({ status: 'ok' });
+		});
+
+		const { connectionState } = this.dbConnection;
+
+		this.app.get(readinessPath, ...healthMiddlewares, (_req, res) => {
+			const { connected, migrated } = connectionState;
+			if (connected && migrated && this.fullyReady) {
+				res.status(200).send({ status: 'ok' });
+			} else {
+				res.status(503).send({ status: 'error' });
+			}
+		});
+
+		this.app.use((_req, res, next) => {
+			if (connectionState.connected) {
+				if (connectionState.migrated) next();
+				else res.send('n8n is starting up. Please wait');
+			} else sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
+		});
+	}
+
+	async init(): Promise<void> {
+		const { app, sslKey, sslCert } = this;
+		const { protocol } = this.globalConfig;
+
+		if (protocol === 'https' && sslKey && sslCert) {
+			const https = await import('https');
+			this.server = https.createServer(
+				{
+					key: await readFile(this.sslKey, 'utf8'),
+					cert: await readFile(this.sslCert, 'utf8'),
+				},
+				app,
+			);
+		} else {
+			const http = await import('http');
+			this.server = http.createServer(app);
+		}
+
+		const { port, listen_address: address } = Container.get(GlobalConfig);
+
+		this.server.on('error', (error: Error & { code: string }) => {
+			if (error.code === 'EADDRINUSE') {
+				// EADDRINUSE is thrown when the port is already in use
+				this.logger.error(
+					`n8n's port ${port} is already in use. Do you have another instance of n8n running already?`,
+				);
+			} else if (error.code === 'EACCES') {
+				// EACCES is thrown when the process is not allowed to use the port
+				// This can happen if the port is below 1024 and the process is not run as root
+				// or when the port is reserved by the system, for example Windows reserves random ports
+				// for NAT for Hyper-V and other virtualization software.
+				this.logger.error(
+					`n8n does not have permission to use port ${port}. Please run n8n with a different port.`,
+				);
+			} else if (error.code === 'EAFNOSUPPORT') {
+				// EAFNOSUPPORT is thrown when the address is not available
+				this.logger.error(
+					`n8n's address '${address}' is not available. Please run n8n with a different address, provide correct address in the environment variables N8N_LISTEN_ADDRESS and/or N8N_WORKER_SERVER_ADDRESS.`,
+				);
+			} else {
+				// Other errors are unexpected and should be logged
+				this.logger.error('n8n webserver failed, exiting', {
+					message: error.message,
+					code: error.code,
+				});
+			}
+			// we always exit on error, so that n8n does not run in an inconsistent state
+			process.exit(1);
+		});
+
+		await new Promise<void>((resolve) => this.server.listen(port, address, () => resolve()));
+
+		this.externalHooks = Container.get(ExternalHooks);
+
+		this.setupHealthCheck();
+
+		this.logger.info(`n8n ready on ${address}, port ${port}`);
+	}
+
+	async start(): Promise<void> {
+		if (!inTest) {
+			await this.setupErrorHandlers();
+			this.setupPushServer();
+		}
+
+		this.setupCommonMiddlewares();
+
+		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
+		if (this.webhooksEnabled) {
+			const liveWebhooks = Container.get(LiveWebhooks);
+
+			// Register a handler for live forms
+			this.app.all(`/${this.endpointForm}/*path`, createWebhookHandlerFor(liveWebhooks, 'form'));
+
+			// Register a handler for live webhooks
+			this.app.all(
+				`/${this.endpointWebhook}/*path`,
+				createWebhookHandlerFor(liveWebhooks, 'webhook'),
+			);
+
+			// Register a handler for waiting forms (excluded from metrics to avoid double-counting)
+			this.app.all(
+				`/${this.endpointFormWaiting}/:path{/:suffix}`,
+				createWebhookHandlerFor(Container.get(WaitingForms)),
+			);
+
+			// Register a handler for waiting webhooks (excluded from metrics to avoid double-counting)
+			this.app.all(
+				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
+				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
+			);
+
+			// Slack posts all button clicks to one fixed URL, so the ids travel in the button
+			// value instead of the path.
+			this.app.all(
+				`/${this.endpointWebhookWaiting}${SLACK_HITL_WEBHOOK_SUFFIX}`,
+				createWebhookHandlerFor(Container.get(SlackInteractionWebhooks)),
+			);
+
+			// Register a handler for Telegram HITL callback-button taps. Fixed path (no
+			// per-execution suffix): the reference travels inside the Telegram update body
+			// instead of the URL, since Telegram delivers every registered bot's updates to
+			// one fixed webhook URL.
+			this.app.all(
+				`/${this.endpointWebhookWaiting}${TELEGRAM_HITL_WEBHOOK_SUFFIX}`,
+				createWebhookHandlerFor(Container.get(TelegramInteractionWebhooks)),
+			);
+
+			// Register a handler for live MCP servers
+			this.app.all(`/${this.endpointMcp}/*path`, createWebhookHandlerFor(liveWebhooks, 'mcp'));
+		}
+
+		if (this.testWebhooksEnabled) {
+			const testWebhooks = Container.get(TestWebhooks);
+
+			this.app.all(
+				`/${this.endpointFormTest}/*path`,
+				createWebhookHandlerFor(testWebhooks, 'form'),
+			);
+			this.app.all(
+				`/${this.endpointWebhookTest}/*path`,
+				createWebhookHandlerFor(testWebhooks, 'webhook'),
+			);
+
+			// Register a handler for test MCP servers
+			this.app.all(`/${this.endpointMcpTest}/*path`, createWebhookHandlerFor(testWebhooks, 'mcp'));
+		}
+
+		// Block bots from scanning the application.
+		// Routes with { allowBots: true } are registered in botAllowedPaths
+		// by the ControllerRegistry and exempted from this filter.
+		const checkIfBot = isbot.spawn(['bot']);
+		this.app.use((req, res, next) => {
+			const userAgent = req.headers['user-agent'];
+			if (userAgent && checkIfBot(userAgent)) {
+				// Check if this path matches a route with { allowBots: true }
+				const allowed = AbstractServer.botAllowedPaths.some((pattern) =>
+					new RegExp(`^${pattern}$`).test(req.path),
+				);
+				if (allowed) {
+					next();
+					return;
+				}
+				this.logger.info(`Blocked ${req.method} ${req.url} for "${userAgent}"`);
+				res.status(204).end();
+			} else next();
+		});
+
+		if (inDevelopment) {
+			this.setupDevMiddlewares();
+		}
+
+		// Setup body parsing middleware after the webhook handlers are setup
+		this.app.use(bodyParser);
+
+		await this.configure();
+
+		if (!inTest) {
+			this.logger.info(`Version: ${N8N_VERSION}`);
+
+			const { defaultLocale } = this.globalConfig;
+			if (defaultLocale !== 'en') {
+				this.logger.info(`Locale: ${defaultLocale}`);
+			}
+
+			await this.externalHooks.run('n8n.ready', [this, config]);
+		}
+	}
+
+	/**
+	 * Stops the HTTP(S) server from accepting new connections. Gives all
+	 * connections configured amount of time to finish their work and
+	 * then closes them forcefully.
+	 */
+	@OnShutdown()
+	onShutdown(): void {
+		if (!this.server) {
+			return;
+		}
+
+		const { protocol } = this.globalConfig;
+
+		this.logger.debug(`Shutting down ${protocol} server`);
+
+		this.server.close((error) => {
+			if (error) {
+				this.logger.error(`Error while shutting down ${protocol} server`, { error });
+			}
+
+			this.logger.debug(`${protocol} server shut down`);
+		});
+	}
+}

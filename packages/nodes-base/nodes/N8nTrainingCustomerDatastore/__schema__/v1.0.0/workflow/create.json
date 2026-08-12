@@ -1,0 +1,96 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "activeVersionId": {
+            "type": "null"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "description": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
+        },
+        "meta": {
+            "type": "null"
+        },
+        "name": {
+            "type": "string"
+        },
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "operation": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "position": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "pinData": {
+            "type": "null"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "availableInMCP": {
+                    "type": "boolean"
+                },
+                "callerPolicy": {
+                    "type": "string"
+                },
+                "executionOrder": {
+                    "type": "string"
+                }
+            }
+        },
+        "staticData": {
+            "type": "null"
+        },
+        "triggerCount": {
+            "type": "integer"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "versionCounter": {
+            "type": "integer"
+        },
+        "versionId": {
+            "type": "string"
+        }
+    },
+    "version": 5
+}

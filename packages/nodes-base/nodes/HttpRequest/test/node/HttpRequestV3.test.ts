@@ -1,0 +1,1444 @@
+import FormData from 'form-data';
+import type {
+	IExecuteFunctions,
+	INodeTypeBaseDescription,
+	JsonObject,
+	JsonValue,
+} from 'n8n-workflow';
+
+import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
+import { createErrorDetails } from '../../V3/utils/error-details';
+import type { Mock } from 'vitest';
+
+describe('HttpRequestV3', () => {
+	let node: HttpRequestV3;
+	let executeFunctions: IExecuteFunctions;
+
+	const baseUrl = 'http://example.com';
+	const options = {
+		redirect: '',
+		batching: { batch: { batchSize: 1, batchInterval: 1 } },
+		proxy: '',
+		timeout: '',
+		allowUnauthoridCerts: '',
+		queryParameterArrays: '',
+		response: '',
+		lowercaseHeaders: '',
+	};
+
+	beforeEach(() => {
+		const baseDescription: INodeTypeBaseDescription = {
+			displayName: 'HTTP Request',
+			name: 'httpRequest',
+			description: 'Makes an HTTP request and returns the response data',
+			group: [],
+		};
+		node = new HttpRequestV3(baseDescription);
+		executeFunctions = {
+			getInputData: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getNode: vi.fn(() => {
+				return {
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 3,
+				};
+			}),
+			getCredentials: vi.fn(),
+			helpers: {
+				request: vi.fn(),
+				requestOAuth1: vi.fn(
+					async () =>
+						await Promise.resolve({
+							statusCode: 200,
+							headers: { 'content-type': 'application/json' },
+							body: Buffer.from(JSON.stringify({ success: true })),
+						}),
+				),
+				requestOAuth2: vi.fn(
+					async () =>
+						await Promise.resolve({
+							statusCode: 200,
+							headers: { 'content-type': 'application/json' },
+							body: Buffer.from(JSON.stringify({ success: true })),
+						}),
+				),
+				requestWithAuthentication: vi.fn(),
+				requestWithAuthenticationPaginated: vi.fn(),
+				assertBinaryData: vi.fn(),
+				getBinaryStream: vi.fn(),
+				getBinaryMetadata: vi.fn(),
+				binaryToString: vi.fn((buffer: Buffer) => {
+					return buffer.toString();
+				}),
+				prepareBinaryData: vi.fn(),
+			},
+			getContext: vi.fn(),
+			sendMessageToUI: vi.fn(),
+			continueOnFail: vi.fn(),
+			getMode: vi.fn(),
+		} as unknown as IExecuteFunctions;
+	});
+
+	it('should make a GET request', async () => {
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'GET';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'options':
+					return options;
+				default:
+					return undefined;
+			}
+		});
+		const response = {
+			headers: { 'content-type': 'application/json' },
+			body: Buffer.from(JSON.stringify({ success: true })),
+		};
+
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('should handle authentication', async () => {
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'GET';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'genericCredentialType';
+				case 'genericAuthType':
+					return 'httpBasicAuth';
+				case 'options':
+					return options;
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.getCredentials as Mock).mockResolvedValue({
+			user: 'username',
+			password: 'password',
+		});
+		const response = {
+			headers: { 'content-type': 'application/json' },
+			body: Buffer.from(JSON.stringify({ success: true })),
+		};
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+		expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				auth: {
+					user: 'username',
+					pass: 'password',
+				},
+			}),
+		);
+	});
+
+	it('should pass multipart binary uploads as FormData', async () => {
+		(executeFunctions.getNode as Mock).mockReturnValue({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+		});
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'POST';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'sendBody':
+					return true;
+				case 'contentType':
+					return 'multipart-form-data';
+				case 'specifyBody':
+					return 'keypair';
+				case 'bodyParameters.parameters':
+					return [
+						{
+							parameterType: 'formBinaryData',
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+							name: 'file',
+							value: '',
+							inputDataFieldName: 'data0',
+						},
+					];
+				case 'options':
+					return options;
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.helpers.assertBinaryData as Mock).mockReturnValue({
+			data: Buffer.from('test file').toString('base64'),
+			fileName: 'invoice.pdf',
+			mimeType: 'application/pdf',
+		});
+		const response = {
+			headers: { 'content-type': 'application/json' },
+			body: Buffer.from(JSON.stringify({ success: true })),
+		};
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+		await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				formData: expect.any(FormData),
+			}),
+		);
+	});
+
+	it('should include a fallback filename for multipart binary uploads without fileName', async () => {
+		(executeFunctions.getNode as Mock).mockReturnValue({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+		});
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'POST';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'sendBody':
+					return true;
+				case 'contentType':
+					return 'multipart-form-data';
+				case 'specifyBody':
+					return 'keypair';
+				case 'bodyParameters.parameters':
+					return [
+						{
+							parameterType: 'formBinaryData',
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+							name: 'file',
+							value: '',
+							inputDataFieldName: 'data0',
+						},
+					];
+				case 'options':
+					return options;
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.helpers.assertBinaryData as Mock).mockReturnValue({
+			data: Buffer.from('test file').toString('base64'),
+			mimeType: 'application/pdf',
+		});
+		const response = {
+			headers: { 'content-type': 'application/json' },
+			body: Buffer.from(JSON.stringify({ success: true })),
+		};
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+		await node.execute.call(executeFunctions);
+
+		const requestOptions = (executeFunctions.helpers.request as Mock).mock.calls[0][0];
+		const body = (requestOptions.formData as FormData).getBuffer().toString('utf8');
+
+		expect(body).toContain('filename="file"');
+	});
+
+	describe('Authentication Handling', () => {
+		const authenticationTypes = [
+			{
+				genericCredentialType: 'httpBasicAuth',
+				credentials: { user: 'username', password: 'password' },
+				authField: 'auth',
+				authValue: { user: 'username', pass: 'password' },
+			},
+			{
+				genericCredentialType: 'httpBearerAuth',
+				credentials: { token: 'bearerToken123' },
+				authField: 'headers',
+				authValue: { Authorization: 'Bearer bearerToken123' },
+			},
+			{
+				genericCredentialType: 'httpDigestAuth',
+				credentials: { user: 'username', password: 'password' },
+				authField: 'auth',
+				authValue: { user: 'username', pass: 'password', sendImmediately: false },
+			},
+			{
+				genericCredentialType: 'httpHeaderAuth',
+				credentials: { name: 'Authorization', value: 'Bearer token' },
+				authField: 'headers',
+				authValue: { Authorization: 'Bearer token' },
+			},
+			{
+				genericCredentialType: 'httpQueryAuth',
+				credentials: { name: 'Token', value: 'secretToken' },
+				authField: 'qs',
+				authValue: { Token: 'secretToken' },
+			},
+			{
+				genericCredentialType: 'oAuth1Api',
+				credentials: { oauth_token: 'token', oauth_token_secret: 'secret' },
+				authField: 'oauth',
+				authValue: { oauth_token: 'token', oauth_token_secret: 'secret' },
+			},
+			{
+				genericCredentialType: 'oAuth2Api',
+				credentials: { access_token: 'accessToken' },
+				authField: 'auth',
+				authValue: { bearer: 'accessToken' },
+			},
+		];
+
+		it.each(authenticationTypes)(
+			'should handle $genericCredentialType authentication',
+			async ({ genericCredentialType, credentials, authField, authValue }) => {
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'genericCredentialType';
+						case 'genericAuthType':
+							return genericCredentialType;
+						case 'options':
+							return options;
+						default:
+							return undefined;
+					}
+				});
+
+				(executeFunctions.getCredentials as Mock).mockResolvedValue(credentials);
+				const response = {
+					headers: { 'content-type': 'application/json' },
+					body: Buffer.from(JSON.stringify({ success: true })),
+				};
+				(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+				const result = await node.execute.call(executeFunctions);
+
+				expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+				if (genericCredentialType === 'oAuth1Api') {
+					expect(executeFunctions.helpers.requestOAuth1).toHaveBeenCalled();
+				} else if (genericCredentialType === 'oAuth2Api') {
+					expect(executeFunctions.helpers.requestOAuth2).toHaveBeenCalled();
+				} else {
+					expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+						expect.objectContaining({
+							[authField]: expect.objectContaining(authValue),
+						}),
+					);
+				}
+			},
+		);
+	});
+
+	describe('URL Parameter Validation', () => {
+		it('should throw error when URL is undefined', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return undefined;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter must be a string, got undefined',
+			);
+		});
+
+		it('should throw error when URL is null', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return null;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter must be a string, got null',
+			);
+		});
+
+		it('should throw error when URL is a number', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 42;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter must be a string, got number',
+			);
+		});
+		it('should throw error when URL is only whitespace', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return '   ';
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter cannot be empty',
+			);
+		});
+
+		it('should trim whitespace from valid URL', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return '  http://example.com  ';
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+			const requestArgs = (executeFunctions.helpers.request as Mock).mock.calls[0][0];
+			expect(requestArgs.uri ?? requestArgs.url).toBe('http://example.com');
+		});
+	});
+
+	describe('JSON Parameter Validation', () => {
+		it.each([
+			{
+				field: 'body',
+				params: {
+					sendBody: true,
+					specifyBody: 'json',
+					jsonBody: '{"valid": true}',
+					'bodyParameters.parameters': [],
+				},
+			},
+			{
+				field: 'query',
+				params: {
+					sendQuery: true,
+					specifyQuery: 'json',
+					jsonQuery: '{"key": "value"}',
+					'queryParameters.parameters': [],
+				},
+			},
+			{
+				field: 'headers',
+				params: {
+					sendHeaders: true,
+					specifyHeaders: 'json',
+					jsonHeaders: '{"X-Custom": "header"}',
+					'headerParameters.parameters': [],
+				},
+			},
+		])('should accept valid JSON in $field parameter', async ({ params }) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'POST';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return params[paramName as keyof typeof params] ?? undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toBeDefined();
+		});
+
+		it.each([
+			{
+				field: 'body',
+				fieldName: 'JSON Body',
+				params: {
+					sendBody: true,
+					specifyBody: 'json',
+					jsonBody: '{"invalid: json}',
+					'bodyParameters.parameters': [],
+				},
+			},
+			{
+				field: 'query',
+				fieldName: 'JSON Query Parameters',
+				params: {
+					sendQuery: true,
+					specifyQuery: 'json',
+					jsonQuery: '{not valid}',
+					'queryParameters.parameters': [],
+				},
+			},
+			{
+				field: 'headers',
+				fieldName: 'JSON Headers',
+				params: {
+					sendHeaders: true,
+					specifyHeaders: 'json',
+					jsonHeaders: 'not json at all',
+					'headerParameters.parameters': [],
+				},
+			},
+		])(
+			'should throw descriptive error for invalid JSON in $field parameter',
+			async ({ fieldName, params }) => {
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+					switch (paramName) {
+						case 'method':
+							return 'POST';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return options;
+						default:
+							return params[paramName as keyof typeof params] ?? undefined;
+					}
+				});
+				const response = {
+					headers: { 'content-type': 'application/json' },
+					body: Buffer.from(JSON.stringify({ success: true })),
+				};
+				(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+				await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+					`The value in the "${fieldName}" field is not valid JSON`,
+				);
+			},
+		);
+	});
+
+	describe('Response parsing', () => {
+		it('should return empty object for autodetect JSON response with empty body', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json', 'content-length': '0' },
+				body: Buffer.from(''),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should return empty object for JSON response format with empty body', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return {
+							...options,
+							response: {
+								response: {
+									responseFormat: 'json',
+								},
+							},
+						};
+					case 'options.response.response.responseFormat':
+						return 'json';
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json', 'content-length': '0' },
+				body: '',
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+	});
+
+	describe('Continued request errors', () => {
+		beforeEach(() => {
+			(executeFunctions.getNode as Mock).mockReturnValue({
+				typeVersion: 4.5,
+			});
+		});
+
+		it('should return null details if response parsing fails', () => {
+			const requestError: JsonObject = {};
+			Object.defineProperty(requestError, 'response', {
+				get: () => {
+					throw new Error('Unable to read response');
+				},
+			});
+
+			expect(createErrorDetails(executeFunctions.getNode(), requestError, 0)).toBeNull();
+		});
+
+		it('should use the body from a legacy request error', () => {
+			const responseBody = { error: 'Bad Request' };
+			const requestError: JsonObject = {
+				statusCode: 400,
+				error: responseBody,
+				response: {
+					headers: { 'x-request-id': 'request-1' },
+					status: 400,
+				},
+			};
+
+			expect(createErrorDetails(executeFunctions.getNode(), requestError, 0)).toMatchObject({
+				httpCode: '400',
+				body: responseBody,
+				context: { itemIndex: 0 },
+			});
+		});
+
+		const errorResponseBodies: Array<{
+			name: string;
+			body: JsonValue | Buffer;
+			expectedBody: JsonValue;
+		}> = [
+			{
+				name: 'an object response body',
+				body: { error: 'Bad Request' },
+				expectedBody: { error: 'Bad Request' },
+			},
+			{
+				name: 'a JSON response body encoded as text',
+				body: '{"error":"Bad Request"}',
+				expectedBody: { error: 'Bad Request' },
+			},
+			{
+				name: 'a plain-text response body',
+				body: 'The supplied value is invalid',
+				expectedBody: 'The supplied value is invalid',
+			},
+			{
+				name: 'a Buffer-backed response body',
+				body: Buffer.from('{"error":"Bad Request"}'),
+				expectedBody: { error: 'Bad Request' },
+			},
+			{
+				name: 'a null response body',
+				body: null,
+				expectedBody: null,
+			},
+			{
+				name: 'an array response body',
+				body: ['Bad Request'],
+				expectedBody: ['Bad Request'],
+			},
+			{
+				name: 'an invalid JSON response body',
+				body: '{"error":"Bad Request"',
+				expectedBody: '{"error":"Bad Request"',
+			},
+		];
+
+		it.each(errorResponseBodies)(
+			'should expose $name without changing the legacy error',
+			async ({ body, expectedBody }) => {
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return options;
+						default:
+							return undefined;
+					}
+				});
+
+				const requestError = {
+					message: 'Request failed with status code 400',
+					name: 'RequestError',
+					status: 400,
+					statusCode: 400,
+					response: {
+						headers: { 'x-request-id': 'request-1' },
+						data: body,
+					},
+				};
+				(executeFunctions.helpers.request as Mock).mockRejectedValue(requestError);
+
+				const result = await node.execute.call(executeFunctions);
+				const expectedContext = {
+					itemIndex: 0,
+					...(body !== null &&
+						!Buffer.isBuffer(body) &&
+						!Array.isArray(body) &&
+						typeof body === 'object' && {
+							data: body,
+						}),
+				};
+
+				expect(result[0][0]).toMatchObject({
+					json: {
+						error: requestError,
+						details: {
+							httpCode: '400',
+							body: expectedBody,
+							context: expectedContext,
+						},
+					},
+					pairedItem: { item: 0 },
+				});
+			},
+		);
+
+		it('should retain the matching response body when requests complete out of order', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }, { json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex: number) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return `${baseUrl}/${itemIndex}`;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return options;
+						default:
+							return undefined;
+					}
+				},
+			);
+
+			(executeFunctions.helpers.request as Mock).mockImplementation(
+				async (requestOptions: { uri: string }) =>
+					await new Promise((_, reject) => {
+						const delay = requestOptions.uri.endsWith('/0') ? 10 : 0;
+						setTimeout(() => {
+							reject({
+								message: 'Request failed',
+								statusCode: 400,
+								response: { data: { request: requestOptions.uri } },
+							});
+						}, delay);
+					}),
+			);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0][0].json.details).toMatchObject({
+				body: { request: `${baseUrl}/0` },
+			});
+			expect(result[0][1].json.details).toMatchObject({
+				body: { request: `${baseUrl}/1` },
+			});
+		});
+
+		it('should retain the matching sanitized request when requests complete out of order', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }, { json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(false);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex: number) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return `${baseUrl}/${itemIndex}`;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return {
+								...options,
+								batching: { batch: { batchSize: 1, batchInterval: 0 } },
+							};
+						default:
+							return undefined;
+					}
+				},
+			);
+
+			const rejectRequests: Array<(error: Error) => void> = [];
+			(executeFunctions.helpers.request as Mock).mockImplementation(
+				async () =>
+					await new Promise((_, reject) => {
+						rejectRequests.push(reject);
+					}),
+			);
+
+			const execution = node.execute.call(executeFunctions);
+			const requestError = Object.assign(new Error('Request failed'), { statusCode: 400 });
+			rejectRequests[1](requestError);
+			rejectRequests[0](requestError);
+
+			await expect(execution).rejects.toMatchObject({
+				context: {
+					itemIndex: 0,
+					request: {
+						uri: `${baseUrl}/0`,
+					},
+				},
+			});
+		});
+	});
+
+	describe('Cross-Origin Redirects', () => {
+		it('should pass sendCredentialsOnCrossOriginRedirect = true to the request by default for node versions < 4.4', async () => {
+			(executeFunctions.getNode as Mock).mockReturnValue({
+				typeVersion: 4.3,
+			});
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpBasicAuth';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				user: 'username',
+				password: 'password',
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sendCredentialsOnCrossOriginRedirect: true,
+				}),
+			);
+		});
+
+		it('should pass sendCredentialsOnCrossOriginRedirect = false to the request by default for node versions >= 4.4', async () => {
+			(executeFunctions.getNode as Mock).mockReturnValue({
+				typeVersion: 4.4,
+			});
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpBasicAuth';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				user: 'username',
+				password: 'password',
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sendCredentialsOnCrossOriginRedirect: false,
+				}),
+			);
+		});
+
+		it('should use the sendCredentialsOnCrossOriginRedirect parameter to the request if provided', async () => {
+			(executeFunctions.getNode as Mock).mockReturnValue({
+				typeVersion: 4.4,
+			});
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpBasicAuth';
+					case 'options':
+						return { ...options, sendCredentialsOnCrossOriginRedirect: true };
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				user: 'username',
+				password: 'password',
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sendCredentialsOnCrossOriginRedirect: true,
+				}),
+			);
+		});
+	});
+
+	describe('Pagination parameter validation', () => {
+		it('should keep valid pagination parameters and ignore invalid parameter names', async () => {
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'updateAParameterInEachRequest',
+								parameters: {
+									parameters: [
+										{
+											type: 'qs',
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											name: 'page',
+											value: '1',
+										},
+										{
+											type: 'qs',
+											name: 'constructor',
+											value: 'ignored',
+										},
+									],
+								},
+								paginationCompleteWhen: 'responseIsEmpty',
+								statusCodesWhenComplete: '',
+								completeExpression: '',
+								limitPagesFetched: false,
+								maxRequests: 10,
+								requestInterval: 0,
+							};
+						case 'options.response.response.responseFormat':
+							return 'json';
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: { success: true },
+					statusCode: 200,
+				},
+			]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(1);
+			const paginationData = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
+				.mock.calls[0][2] as {
+				request: {
+					qs: Record<string, unknown>;
+				};
+			};
+			expect(paginationData.request.qs).toEqual({ page: '1' });
+			expect(Object.prototype.hasOwnProperty.call(paginationData.request.qs, 'constructor')).toBe(
+				false,
+			);
+		});
+
+		it('should reject invalid pagination parameter type values', async () => {
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: { success: true },
+					statusCode: 200,
+				},
+			]);
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'updateAParameterInEachRequest',
+								parameters: {
+									parameters: [
+										{
+											type: '__proto__' as unknown as 'qs',
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											name: 'page',
+											value: '1',
+										},
+									],
+								},
+								paginationCompleteWhen: 'responseIsEmpty',
+								statusCodesWhenComplete: '',
+								completeExpression: '',
+								limitPagesFetched: false,
+								maxRequests: 10,
+								requestInterval: 0,
+							};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'Parameter type must be one of: body, headers, qs for parameter [1] in pagination settings',
+			);
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).not.toHaveBeenCalled();
+		});
+
+		it('should pass a redacted request snapshot to the paginated helper for a generic header credential', async () => {
+			const headerName = 'x-owner-domain-secret';
+			const headerValue = 'super-secret-value';
+
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'genericCredentialType';
+						case 'genericAuthType':
+							return 'httpHeaderAuth';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'responseContainsNextURL',
+								nextURL: `={{ $request.headers['${headerName}'] }}`,
+								paginationCompleteWhen: 'receiveSpecificStatusCodes',
+								statusCodesWhenComplete: '200',
+								completeExpression: '',
+								limitPagesFetched: true,
+								maxRequests: 1,
+								requestInterval: 0,
+							};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				name: headerName,
+				value: headerValue,
+			});
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: { success: true },
+					statusCode: 200,
+				},
+			]);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(1);
+
+			// The live request options (1st arg) keep the credential header so the
+			// actual outgoing requests stay authenticated.
+			const liveRequest = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mock
+				.calls[0][0] as { headers: Record<string, unknown> };
+			expect(liveRequest.headers[headerName]).toBe(headerValue);
+
+			// The sanitized snapshot (6th arg) exposed to pagination expressions has
+			// the credential-derived header redacted.
+			const sanitizedRequest = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
+				.mock.calls[0][5] as { headers: Record<string, unknown> };
+			expect(sanitizedRequest.headers[headerName]).toBe('**hidden**');
+		});
+	});
+
+	describe('Parallel item scoping fixes', () => {
+		// Build the nested options object the node reads via getNodeParameter('options', itemIndex)
+		const makeOptions = (item: Record<string, unknown>) => ({
+			batching: { batch: { batchSize: 1, batchInterval: 0 } },
+			redirect: '',
+			proxy: '',
+			timeout: '',
+			allowUnauthorizedCerts: false,
+			queryParameterArrays: '',
+			lowercaseHeaders: true,
+			response: {
+				response: {
+					responseFormat: item.responseFormat ?? 'autodetect',
+					outputPropertyName: item.outputPropertyName ?? 'data',
+					fullResponse: item.fullResponse ?? false,
+					neverError: item.neverError ?? false,
+				},
+			},
+		});
+
+		// Configures getInputData and getNodeParameter for multiple items.
+		// Per-item values (url, responseFormat, outputPropertyName, fullResponse, neverError)
+		// are stored in each item's json and returned based on itemIndex.
+		const setupItems = (items: Array<{ json: Record<string, unknown> }>) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue(items);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex: number, fallback: unknown) => {
+					const item = items[itemIndex]?.json ?? {};
+					switch (paramName) {
+						case 'url':
+							return item.url;
+						case 'method':
+							return 'GET';
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return makeOptions(item);
+						case 'options.response.response.responseFormat':
+							return item.responseFormat ?? fallback;
+						case 'options.response.response.fullResponse':
+							return item.fullResponse ?? fallback;
+						case 'options.response.response.neverError':
+							return item.neverError ?? fallback;
+						case 'options.response.response.outputPropertyName':
+							return item.outputPropertyName ?? fallback;
+						default:
+							return fallback;
+					}
+				},
+			);
+		};
+
+		// Mimics prepareBinaryData: derives fileExtension from mimeType but does NOT set fileName.
+		// This lets setFilename() derive the name from requestOptions.uri or responseFileName.
+		const mimeToExt: Record<string, string> = {
+			'image/png': 'png',
+			'text/plain': 'txt',
+			'application/pdf': 'pdf',
+		};
+
+		beforeEach(() => {
+			(executeFunctions.helpers.prepareBinaryData as Mock).mockImplementation(
+				async (buffer: Buffer, _filePath?: string, mimeType?: string) => {
+					const fileExtension = mimeType ? mimeToExt[mimeType] : undefined;
+					const bin: Record<string, unknown> = { data: buffer.toString('base64'), mimeType };
+					if (fileExtension) bin.fileExtension = fileExtension;
+					return bin;
+				},
+			);
+		});
+
+		it('should preserve a fileName already set by prepareBinaryData', async () => {
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/download',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+			]);
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/octet-stream' },
+				body: Buffer.from('data'),
+			});
+			// Simulate prepareBinaryData parsing Content-Disposition and setting fileName directly
+			(executeFunctions.helpers.prepareBinaryData as Mock).mockResolvedValueOnce({
+				data: 'ZGF0YQ==',
+				mimeType: 'application/octet-stream',
+				fileName: 'custom.txt',
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			// setFilename returns preparedBinaryData.fileName unchanged when already set
+			expect(result[0][0].binary?.data.fileName).toBe('custom.txt');
+		});
+
+		it('should derive filename from the original request URI when no Content-Disposition is present', async () => {
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/file1.png',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+				{
+					json: {
+						url: 'http://example.com/file2.png',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+			]);
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'image/png' },
+				body: Buffer.from('img'),
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			// setFilename: fileExtension='png', uri ends with 'png' → uri.split('/').pop()
+			expect(result[0][0].binary?.data.fileName).toBe('file1.png');
+			expect(result[0][1].binary?.data.fileName).toBe('file2.png');
+		});
+
+		it('should use per-item original request URI as filename fallback', async () => {
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/fileA.txt',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+				{
+					json: {
+						url: 'http://example.com/fileB.txt',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+			]);
+			// Both redirect to same URL; requests[itemIndex].options.uri stays as the original
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'text/plain' },
+				body: Buffer.from('txt'),
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			expect(result[0][0].binary?.data.fileName).toBe('fileA.txt');
+			expect(result[0][1].binary?.data.fileName).toBe('fileB.txt');
+		});
+
+		it('should not crash when an earlier item fails with continueOnFail (requests[] alignment)', async () => {
+			// Item 0 has an invalid URL → fails in request-build loop → continueOnFail
+			// Item 1 has a valid URL → must still be processed correctly
+			// Without the requests[] placeholder fix, requests[1] === undefined → TypeError
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }, { json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex: number, fallback: unknown) => {
+					if (paramName === 'url') {
+						// Item 0 → null URL (triggers NodeOperationError in build loop)
+						// Item 1 → valid URL
+						return itemIndex === 0 ? null : 'http://example.com/ok';
+					}
+					if (paramName === 'method') return 'GET';
+					if (paramName === 'authentication') return 'none';
+					if (paramName === 'options') {
+						return {
+							batching: { batch: { batchSize: 1, batchInterval: 0 } },
+							redirect: '',
+							proxy: '',
+							timeout: '',
+							allowUnauthorizedCerts: false,
+							queryParameterArrays: '',
+							lowercaseHeaders: true,
+							response: {
+								response: {
+									responseFormat: 'json',
+									outputPropertyName: 'data',
+									fullResponse: false,
+									neverError: false,
+								},
+							},
+						};
+					}
+					if (paramName === 'options.response.response.responseFormat') return 'json';
+					if (paramName === 'options.response.response.fullResponse') return false;
+					if (paramName === 'options.response.response.neverError') return false;
+					if (paramName === 'options.response.response.outputPropertyName') return 'data';
+					return fallback;
+				},
+			);
+
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/json' },
+				body: { ok: true },
+			});
+
+			const result = await node.execute.call(executeFunctions);
+
+			// Item 0 → error output (continueOnFail)
+			expect(result[0][0].json.error).toBeDefined();
+			// Item 1 → valid response, no crash
+			expect(result[0][1].json.ok).toBe(true);
+		});
+	});
+});

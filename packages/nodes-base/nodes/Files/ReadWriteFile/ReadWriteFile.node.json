@@ -1,0 +1,30 @@
+{
+	"node": "n8n-nodes-base.readWriteFile",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/"
+			}
+		]
+	},
+	"alias": [
+		"Binary",
+		"Binary File",
+		"File",
+		"Text",
+		"Open",
+		"Import",
+		"Save",
+		"Export",
+		"Disk",
+		"Transfer",
+		"Read Binary File",
+		"Write Binary File"
+	],
+	"subcategories": {
+		"Core Nodes": ["Files"]
+	}
+}

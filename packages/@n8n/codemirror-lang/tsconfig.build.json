@@ -1,0 +1,9 @@
+{
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.go.json"],
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist"
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["test/**"]
+}

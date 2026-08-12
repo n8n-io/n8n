@@ -1,0 +1,77 @@
+{
+	"name": "Microsoft Outlook Service Principal Folder Get All",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e524f588-b6a3-4849-8777-b32a8a755ae5",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftEntraServicePrincipalApi",
+				"mailbox": {
+					"__rl": true,
+					"mode": "id",
+					"value": "user@example.com"
+				},
+				"resource": "folder",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 50,
+				"filters": {},
+				"options": {}
+			},
+			"id": "baff6798-0304-4255-bdb0-dd3f2659373b",
+			"name": "Microsoft Outlook",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 2,
+			"position": [1040, 360],
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "spCredId1",
+					"name": "Microsoft Entra Service Principal Test"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Outlook": [
+			{
+				"json": {
+					"id": "folder-inbox",
+					"displayName": "Inbox",
+					"parentFolderId": "msgfolderroot",
+					"childFolderCount": 0,
+					"unreadItemCount": 3,
+					"totalItemCount": 10
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "fed8ec2e-8663-4dfc-8234-33eb83257264",
+	"id": "SP5CYHzBXQw1nfPG",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

@@ -1,0 +1,37 @@
+{
+	"node": "n8n-nodes-base.convertToFile",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+			}
+		]
+	},
+	"alias": [
+		"CSV",
+		"Spreadsheet",
+		"Excel",
+		"xls",
+		"xlsx",
+		"ods",
+		"tabular",
+		"encode",
+		"encoding",
+		"Move Binary Data",
+		"Binary",
+		"File",
+		"JSON",
+		"HTML",
+		"ICS",
+		"iCal",
+		"RTF",
+		"64",
+		"Base64"
+	],
+	"subcategories": {
+		"Core Nodes": ["Files", "Data Transformation"]
+	}
+}

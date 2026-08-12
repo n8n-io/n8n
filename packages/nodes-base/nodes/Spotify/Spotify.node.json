@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.spotify",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Miscellaneous"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/spotify/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.spotify/"
+			}
+		]
+	},
+	"alias": ["Music", "Song"]
+}

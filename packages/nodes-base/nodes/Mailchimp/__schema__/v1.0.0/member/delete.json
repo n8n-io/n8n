@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "error": {
+            "type": "string"
+        },
+        "success": {
+            "type": "boolean"
+        }
+    },
+    "version": 2
+}

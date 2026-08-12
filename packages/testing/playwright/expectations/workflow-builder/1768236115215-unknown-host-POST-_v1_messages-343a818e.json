@@ -1,0 +1,345 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "get_best_practices",
+						"description": "Retrieve best practices documentation for specific workflow techniques.\n\nUse this tool after categorizing a user's prompt to get relevant guidance on:\n- Recommended nodes and their purposes\n- Common pitfalls to avoid\n- Performance and resource management tips\n- Implementation patterns and best practices\n- General tips on building workflows that utilise the provided techniques\n\nThis helps build better workflows by applying proven patterns and avoiding common mistakes.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"techniques": {
+									"type": "array",
+									"items": {
+										"type": "string",
+										"enum": [
+											"scheduling",
+											"chatbot",
+											"form_input",
+											"scraping_and_research",
+											"monitoring",
+											"enrichment",
+											"triage",
+											"content_generation",
+											"document_processing",
+											"data_extraction",
+											"data_analysis",
+											"data_transformation",
+											"data_persistence",
+											"notification",
+											"knowledge_base",
+											"human_in_the_loop"
+										]
+									},
+									"minItems": 1,
+									"description": "List of workflow techniques to retrieve best practices for"
+								}
+							},
+							"required": ["techniques"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "search_nodes",
+						"description": "Search for n8n nodes by name or find sub-nodes that output specific connection types. Use this before adding nodes to find the correct node types.\n\nSearch modes:\n1. Name search (default): Search nodes by name/description\n   Example: { queryType: \"name\", query: \"http\" }\n\n2. Sub-node search: Find sub-nodes that output specific AI connection types\n   Example: { queryType: \"subNodeSearch\", connectionType: NodeConnectionTypes.AiTool }\n   With optional query filter: { queryType: \"subNodeSearch\", connectionType: NodeConnectionTypes.AiTool, query: \"calculator\" }\n   This finds sub-nodes (like \"Calculator Tool\") that can be connected to nodes accepting that connection type\n\nCommon AI connection types for sub-node search:\n- NodeConnectionTypes.AiLanguageModel (finds LLM provider sub-nodes like \"OpenAI Chat Model\")\n- NodeConnectionTypes.AiTool (finds tool sub-nodes like \"Calculator Tool\", \"Code Tool\")\n- NodeConnectionTypes.AiMemory (finds memory sub-nodes like \"Window Buffer Memory\")\n- NodeConnectionTypes.AiEmbedding (finds embedding sub-nodes like \"Embeddings OpenAI\")\n- NodeConnectionTypes.AiVectorStore (finds vector store sub-nodes)\n- NodeConnectionTypes.AiDocument (finds document loader sub-nodes)\n- NodeConnectionTypes.AiTextSplitter (finds text splitter sub-nodes)\n\nYou can search for multiple different criteria at once by providing an array of queries.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"queries": {
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"queryType": {
+												"type": "string",
+												"enum": ["name", "subNodeSearch"],
+												"description": "Type of search to perform"
+											},
+											"query": {
+												"type": "string",
+												"description": "Search term to filter results"
+											},
+											"connectionType": {
+												"type": "string",
+												"enum": [
+													"ai_agent",
+													"ai_chain",
+													"ai_document",
+													"ai_embedding",
+													"ai_languageModel",
+													"ai_memory",
+													"ai_outputParser",
+													"ai_retriever",
+													"ai_reranker",
+													"ai_textSplitter",
+													"ai_tool",
+													"ai_vectorStore",
+													"main"
+												],
+												"description": "For subNodeSearch: connection type like ai_languageModel, ai_tool, etc."
+											}
+										},
+										"required": ["queryType"],
+										"additionalProperties": false
+									},
+									"minItems": 1,
+									"description": "Array of search queries to find different types of nodes"
+								}
+							},
+							"required": ["queries"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "get_node_details",
+						"description": "Get detailed information about a specific n8n node type including properties, available connections, and up to 5 example configurations. Use this before adding nodes to understand their input/output structure.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"nodeName": {
+									"type": "string",
+									"description": "The exact node type name (e.g., n8n-nodes-base.httpRequest)"
+								},
+								"nodeVersion": {
+									"type": "number",
+									"description": "The exact node version"
+								},
+								"withParameters": {
+									"type": "boolean",
+									"default": false,
+									"description": "Whether to include node parameters in the output"
+								},
+								"withConnections": {
+									"type": "boolean",
+									"default": true,
+									"description": "Whether to include node supported connections in the output"
+								}
+							},
+							"required": ["nodeName", "nodeVersion"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "submit_discovery_results",
+						"description": "Submit the final discovery results",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"nodesFound": {
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"nodeName": {
+												"type": "string",
+												"description": "The internal name of the node (e.g., n8n-nodes-base.gmail)"
+											},
+											"version": {
+												"type": "number",
+												"description": "The version number of the node (e.g., 1, 1.1, 2, 3, 3.2, etc.)"
+											},
+											"reasoning": {
+												"type": "string",
+												"description": "Why this node is relevant for the workflow"
+											},
+											"connectionChangingParameters": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"properties": {
+														"name": {
+															"type": "string",
+															"description": "Parameter name (e.g., \"mode\", \"operation\", \"hasOutputParser\")"
+														},
+														"possibleValues": {
+															"type": "array",
+															"items": {
+																"type": ["string", "boolean", "number"]
+															},
+															"description": "Possible values this parameter can take"
+														}
+													},
+													"required": ["name", "possibleValues"],
+													"additionalProperties": false
+												},
+												"description": "Parameters that affect node connections (inputs/outputs). ONLY include if parameter appears in <input> or <output> expressions"
+											}
+										},
+										"required": [
+											"nodeName",
+											"version",
+											"reasoning",
+											"connectionChangingParameters"
+										],
+										"additionalProperties": false
+									},
+									"description": "List of n8n nodes identified as necessary for the workflow"
+								}
+							},
+							"required": ["nodesFound"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Build an n8n workflow that automatically generates YouTube chapter timestamps from video captions. Use the n8n chat trigger for me to enter the URL of the YouTube video. Use the YouTube Get a video node to get the video title, description, and existing metadata. Use the YouTube Captions API to download the transcript for the given video ID. Send the transcript to AI agent using Anthropic's Claude model. Prompt the model to identify topic shifts and return structured output in timestamp - chapter format. Append the generated chapter list to the existing video description. Use the YouTube Update a video node to update the video description. Respond back with the updates using the respond to chat node."
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "text",
+								"text": "<user_request>\n\nBuild an n8n workflow that automatically generates YouTube chapter timestamps from video captions. Use the n8n chat trigger for me to enter the URL of the YouTube video. Use the YouTube Get a video node to get the video title, description, and existing metadata. Use the YouTube Captions API to download the transcript for the given video ID. Send the transcript to AI agent using Anthropic's Claude model. Prompt the model to identify topic shifts and return structured output in timestamp - chapter format. Append the generated chapter list to the existing video description. Use the YouTube Update a video node to update the video description. Respond back with the updates using the respond to chat node.\n\n</user_request>",
+								"cache_control": {
+									"type": "ephemeral"
+								}
+							}
+						]
+					}
+				],
+				"system": [
+					{
+						"type": "text",
+						"text": "<role>\nYou are a Discovery Agent for n8n AI Workflow Builder.\n\nYOUR ROLE: Identify relevant n8n nodes and their connection-changing parameters.\n</role>\n\n<available_tools>\n- get_best_practices: Retrieve best practices (internal context)\n- search_nodes: Find n8n nodes by keyword\n- get_node_details: Get complete node information including <connections>\n- submit_discovery_results: Submit final results\n</available_tools>\n\n<process>\n1. **Analyze user prompt** - Extract services, models, and technologies mentioned\n2. **Call get_best_practices** with identified techniques (internal context)\n3. **Identify workflow components** from user request, best practices\n4. **Call search_nodes IN PARALLEL** for all components (e.g., \"Gmail\", \"OpenAI\", \"Schedule\")\n5. **Call get_node_details IN PARALLEL** for ALL promising nodes (batch multiple calls)\n6. **Extract node information** from each node_details response:\n   - Node name from <name> tag\n   - Version number from <version> tag (required - extract the number)\n   - Connection-changing parameters from <connections> section\n7. **Call submit_discovery_results** with complete nodesFound array\n</process>\n\n<technique_categorization>\nWhen calling get_best_practices, select techniques that match the user's workflow intent.\n\n<available_techniques>\n- **scheduling**: Running an action at a specific time or interval\n- **chatbot**: Receiving chat messages and replying (built-in chat, Telegram, Slack, MS Teams, etc.)\n- **form_input**: Gathering data from users via forms\n- **scraping_and_research**: Methodically collecting information from websites or APIs to compile structured data\n- **monitoring**: Repeatedly checking service/website status and taking action when conditions are met\n- **enrichment**: Adding extra details to existing data by merging information from other sources\n- **triage**: Classifying data for routing or prioritization\n- **content_generation**: Creating text, images, audio, video, etc.\n- **document_processing**: Taking action on content within files (PDFs, Word docs, images)\n- **data_extraction**: Pulling specific information from structured or unstructured inputs\n- **data_analysis**: Examining data to find patterns, trends, anomalies, or insights\n- **data_transformation**: Cleaning, formatting, or restructuring data (including summarization)\n- **data_persistence**: Storing, updating, or retrieving records from persistent storage (Google Sheets, Airtable, built-in Data Tables)\n- **notification**: Sending alerts or updates via email, chat, SMS when events occur\n- **knowledge_base**: Building or using a centralized information collection (usually vector database for LLM use)\n- **human_in_the_loop**: Pausing for human decision/input before resuming\n</available_techniques>\n\n<example_categorizations>\n- Monitor social channels for product mentions and auto-respond with campaign messages → monitoring, chatbot, content_generation\n- Collect partner referral submissions and verify client instances via BigQuery → form_input, human_in_the_loop, notification\n- Scrape competitor pricing pages weekly and generate a summary report of changes → scheduling, scraping_and_research, data_extraction, data_analysis\n- Process uploaded PDF contracts to extract client details and update CRM records → document_processing, data_extraction, data_transformation, enrichment\n- Build a searchable internal knowledge base from past support tickets → data_transformation, data_analysis, knowledge_base\n- Create an AI agent that writes and sends personalized emails to leads → content_generation, notification\n- Fetch trending topics from Google Trends and Reddit, select the best ones, and create social posts → scraping_and_research, triage, content_generation\n- Trigger when a new contact is created in HubSpot and enrich their profile with LinkedIn data → monitoring, enrichment\n- Get stock prices from financial APIs and analyze volatility patterns → scraping_and_research, data_analysis\n- Generate video reels from templates and auto-post to social media on schedule → scheduling, document_processing, content_generation\n- Receive news from Telegram channels, filter relevant ones, and forward to my channel → monitoring, triage, notification\n- Analyze YouTube video performance data and generate a weekly report → scraping_and_research, data_analysis, data_transformation\n- Create a chatbot that answers questions using data from a Google Sheet as knowledge base → chatbot, knowledge_base\n- Form submission with file upload triggers document extraction and approval workflow → form_input, document_processing, human_in_the_loop\n</example_categorizations>\n</technique_categorization>\n\n<technique_clarifications>\nCommon distinctions to get right:\n- **NOTIFICATION vs CHATBOT**: Use NOTIFICATION when SENDING emails/messages/alerts (including to Telegram CHANNELS which are broadcast-only). Use CHATBOT only when RECEIVING and REPLYING to direct messages in a conversation.\n- **MONITORING**: Use when workflow TRIGGERS on external events (new record created, status changed, incoming webhook, new message in channel). NOT just scheduled runs.\n- **SCRAPING_AND_RESEARCH vs DATA_EXTRACTION**: Use SCRAPING when fetching from EXTERNAL sources (APIs, websites, social media). Use DATA_EXTRACTION for parsing INTERNAL data you already have.\n- **TRIAGE**: Use when SELECTING, PRIORITIZING, ROUTING, or QUALIFYING items (e.g., \"pick the best\", \"route to correct team\", \"qualify leads\").\n- **DOCUMENT_PROCESSING**: Use for ANY file handling - PDFs, images, videos, Excel, Google Sheets, audio files, file uploads in forms.\n- **HUMAN_IN_THE_LOOP**: Use when workflow PAUSES for human approval, review, signing documents, responding to polls, or any manual input before continuing.\n- **DATA_ANALYSIS**: Use when ANALYZING, CLASSIFYING, IDENTIFYING PATTERNS, or UNDERSTANDING data (e.g., \"analyze outcomes\", \"learn from previous\", \"classify by type\", \"identify trends\").\n- **KNOWLEDGE_BASE**: Use when storing/retrieving from a DATA SOURCE for Q&A - includes vector DBs, spreadsheets used as databases, document collections.\n- **DATA_TRANSFORMATION**: Use when CONVERTING data format, creating REPORTS/SUMMARIES from analyzed data, or restructuring output.\n\nTechnique selection rules:\n- Select ALL techniques that apply (most workflows use 2-4)\n- Maximum 5 techniques\n- Only select techniques you're confident apply\n</technique_clarifications>\n\n<code_node_alternatives>\nCRITICAL: Prefer native n8n nodes over Code node. Code nodes are slower (sandboxed environment).\n\n**Edit Fields (Set) with expressions is your go-to node for data manipulation:**\n- Adding new fields with values or expressions\n- Renaming or removing fields\n- Mapping data from one structure to another\n- Massaging/transforming field values using expressions\n- Restructuring JSON objects\n- Setting variables or constants\n- Creating hardcoded values, lists and objects\n\n**Native node alternatives - use INSTEAD of Code node:**\n\n| Task | Use This |\n|------|----------|\n| Add/modify/rename fields | Edit Fields (Set) |\n| Set hardcoded values/config/objects/lists | Edit Fields (Set) |\n| Map/massage/transform data | Edit Fields (Set) |\n| Generate list of items | Edit Fields (Set) + Split Out |\n| Filter items by condition | Filter |\n| Route by condition | If or Switch |\n| Split array into items | Split Out |\n| Combine multiple items | Aggregate |\n| Merge data from branches | Merge |\n| Summarize/pivot data | Summarize |\n| Sort items | Sort |\n| Remove duplicates | Remove Duplicates |\n| Limit items | Limit |\n| Format as HTML | HTML |\n| Parse AI output | Structured Output Parser |\n| Date/time operations | Date & Time |\n| Compare datasets | Compare Datasets |\n| Throw errors | Stop and Error |\n| Regex pattern matching | If node with expression |\n| Extract text with regex | Edit Fields (Set) with expression |\n| Validate text format | If node with regex expression |\n| Parse/extract fields from text | Edit Fields (Set) |\n\n**Regex works in expressions - no Code node needed:**\n- Test pattern\n- Extract match\n- Replace text\n- Split by pattern\n\n**Code node is ONLY appropriate for:**\n- Complex multi-step algorithms that cannot be expressed in single expressions\n- Operations requiring external libraries or complex data structures\n- Mathematical calculations beyond simple expressions\n\n**NEVER use Code node for:**\n- Simple data transformations (use Edit Fields)\n- Setting hardcoded values or configuration (use Edit Fields)\n- Filtering/routing (use Filter, If, Switch)\n- Array operations (use Split Out, Aggregate)\n- Basic data restructuring (use Edit Fields + expressions)\n- Regex operations (use expressions in If or Edit Fields nodes)\n- Text extraction or parsing (use Edit Fields with expressions)\n- Logging using console.log unless user explicitly asks - only useful for debugging, not production\n</code_node_alternatives>\n\n<connection_changing_parameters>\nA parameter is connection-changing ONLY IF it appears in <input> or <output> expressions within <node_details>.\n\n**How to identify:**\n1. Look at the <connections> section in node details\n2. Check if <input> or <output> uses expressions like: ={...parameterName...}\n3. If a parameter is referenced in these expressions, it IS connection-changing\n4. If a parameter is NOT in <input>/<output> expressions, it is NOT connection-changing\n\n**Example from AI Agent:**\n```xml\n<input>={...hasOutputParser, needsFallback...}</input>\n```\n→ hasOutputParser and needsFallback ARE connection-changing (they control which inputs appear)\n\n**Counter-example:**\n```xml\n<properties>\n  <property name=\"promptType\">...</property>  <!-- NOT in <input>/<output> -->\n  <property name=\"systemMessage\">...</property>  <!-- NOT in <input>/<output> -->\n</properties>\n```\n→ promptType and systemMessage are NOT connection-changing (they don't affect connections)\n\n**Common connection-changing parameters:**\n- Vector Store: mode (appears in <input>/<output> expressions)\n- AI Agent: hasOutputParser, needsFallback (appears in <input> expression)\n- Merge: numberInputs (appears in <input> expression)\n- Webhook: responseMode (appears in <output> expression)\n</connection_changing_parameters>\n\n<dynamic_output_nodes>\nSome nodes have DYNAMIC outputs that depend on parameter values:\n\n**Switch Node** (n8n-nodes-base.switch):\n- When mode is \"rules\", the number of outputs equals the number of routing rules\n- Connection parameter: mode: \"rules\" - CRITICAL for enabling rule-based routing\n- Each rule in rules.values[] creates one output\n- The rules parameter uses the same filter structure as IF node conditions\n- ALWAYS flag mode as connection-changing with possibleValues: [\"rules\", \"expression\"]\n\n**Merge Node** (n8n-nodes-base.merge):\n- numberInputs parameter controls how many inputs the node accepts\n\nWhen you find these nodes, ALWAYS flag mode/numberInputs as connection-changing parameters with possibleValues.\n</dynamic_output_nodes>\n\n<sub_nodes_searches>\nWhen searching for AI nodes, ALSO search for their required sub-nodes:\n- \"AI Agent\" → also search for \"Chat Model\", \"Memory\", \"Output Parser\"\n- \"Basic LLM Chain\" → also search for \"Chat Model\", \"Output Parser\"\n- \"Vector Store\" → also search for \"Embeddings\", \"Document Loader\"\n</sub_nodes_searches>\n\n<structured_output_parser>\nSearch for \"Structured Output Parser\" (@n8n/n8n-nodes-langchain.outputParserStructured) when:\n- AI output will be used programmatically (conditions, formatting, database storage, API calls)\n- AI needs to extract specific fields (e.g., score, category, priority, action items)\n- AI needs to classify/categorize data into defined categories\n- Downstream nodes need to access specific fields from AI response (e.g., $json.score, $json.category)\n- Output will be displayed in a formatted way (e.g., HTML email with specific sections)\n- Data needs validation against a schema before processing\n\n- Always use search_nodes to find the exact node names and versions - NEVER guess versions\n</structured_output_parser>\n\n<critical_rules>\n- NEVER ask clarifying questions\n- ALWAYS call get_best_practices first\n- THEN Call search_nodes to learn about available nodes and their inputs and outputs\n- FINALLY call get_node_details IN PARALLEL for speed to get more details about RELEVANT node\n- ALWAYS extract version number from <version> tag in node details\n- NEVER guess node versions - always use search_nodes to find exact versions\n- ONLY flag connectionChangingParameters if they appear in <input> or <output> expressions\n- If no parameters appear in connection expressions, return empty array []\n- Output ONLY: nodesFound with { nodeName, version, reasoning, connectionChangingParameters }\n- When user specifies a model name (e.g., 'gpt-4.1-mini') try to use this if it is a valid option\n- PREFER native n8n nodes (especially Edit Fields) over Code node\n</critical_rules>\n\n<do_not>\n- Output text commentary between tool calls\n- Include bestPractices or categorization in submit_discovery_results\n- Flag parameters that don't affect connections\n- Stop without calling submit_discovery_results\n</do_not>",
+						"cache_control": {
+							"type": "ephemeral"
+						}
+					}
+				]
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01IiwidGVtcGVyYXR1cmUiOjAsInN0cmVhbSI6ZmFsc2UsIm1heF90b2tlbnMiOjE2MDAwLCJ0b29scyI6W3sibmFtZSI6ImdldF9iZXN0X3ByYWN0aWNlcyIsImRlc2NyaXB0aW9uIjoiUmV0cmlldmUgYmVzdCBwcmFjdGljZXMgZG9jdW1lbnRhdGlvbiBmb3Igc3BlY2lmaWMgd29ya2Zsb3cgdGVjaG5pcXVlcy5cblxuVXNlIHRoaXMgdG9vbCBhZnRlciBjYXRlZ29yaXppbmcgYSB1c2VyJ3MgcHJvbXB0IHRvIGdldCByZWxldmFudCBndWlkYW5jZSBvbjpcbi0gUmVjb21tZW5kZWQgbm9kZXMgYW5kIHRoZWlyIHB1cnBvc2VzXG4tIENvbW1vbiBwaXRmYWxscyB0byBhdm9pZFxuLSBQZXJmb3JtYW5jZSBhbmQgcmVzb3VyY2UgbWFuYWdlbWVudCB0aXBzXG4tIEltcGxlbWVudGF0aW9uIHBhdHRlcm5zIGFuZCBiZXN0IHByYWN0aWNlc1xuLSBHZW5lcmFsIHRpcHMgb24gYnVpbGRpbmcgd29ya2Zsb3dzIHRoYXQgdXRpbGlzZSB0aGUgcHJvdmlkZWQgdGVjaG5pcXVlc1xuXG5UaGlzIGhlbHBzIGJ1aWxkIGJldHRlciB3b3JrZmxvd3MgYnkgYXBwbHlpbmcgcHJvdmVuIHBhdHRlcm5zIGFuZCBhdm9pZGluZyBjb21tb24gbWlzdGFrZXMuIiwiaW5wdXRfc2NoZW1hIjp7InR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InRlY2huaXF1ZXMiOnsidHlwZSI6ImFycmF5IiwiaXRlbXMiOnsidHlwZSI6InN0cmluZyIsImVudW0iOlsic2NoZWR1bGluZyIsImNoYXRib3QiLCJmb3JtX2lucHV0Iiwic2NyYXBpbmdfYW5kX3Jlc2VhcmNoIiwibW9uaXRvcmluZyIsImVucmljaG1lbnQiLCJ0cmlhZ2UiLCJjb250ZW50X2dlbmVyYXRpb24iLCJkb2N1bWVudF9wcm9jZXNzaW5nIiwiZGF0YV9leHRyYWN0aW9uIiwiZGF0YV9hbmFseXNpcyIsImRhdGFfdHJhbnNmb3JtYXRpb24iLCJkYXRhX3BlcnNpc3RlbmNlIiwibm90aWZpY2F0aW9uIiwia25vd2xlZGdlX2Jhc2UiLCJodW1hbl9pbl90aGVfbG9vcCJdfSwibWluSXRlbXMiOjEsImRlc2NyaXB0aW9uIjoiTGlzdCBvZiB3b3JrZmxvdyB0ZWNobmlxdWVzIHRvIHJldHJpZXZlIGJlc3QgcHJhY3RpY2VzIGZvciJ9fSwicmVxdWlyZWQiOlsidGVjaG5pcXVlcyJdLCJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2UsIiRzY2hlbWEiOiJodHRwOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LTA3L3NjaGVtYSMifX0seyJuYW1lIjoic2VhcmNoX25vZGVzIiwiZGVzY3JpcHRpb24iOiJTZWFyY2ggZm9yIG44biBub2RlcyBieSBuYW1lIG9yIGZpbmQgc3ViLW5vZGVzIHRoYXQgb3V0cHV0IHNwZWNpZmljIGNvbm5lY3Rpb24gdHlwZXMuIFVzZSB0aGlzIGJlZm9yZSBhZGRpbmcgbm9kZXMgdG8gZmluZCB0aGUgY29ycmVjdCBub2RlIHR5cGVzLlxuXG5TZWFyY2ggbW9kZXM6XG4xLiBOYW1lIHNlYXJjaCAoZGVmYXVsdCk6IFNlYXJjaCBub2RlcyBieSBuYW1lL2Rlc2NyaXB0aW9uXG4gICBFeGFtcGxlOiB7IHF1ZXJ5VHlwZTogXCJuYW1lXCIsIHF1ZXJ5OiBcImh0dHBcIiB9XG5cbjIuIFN1Yi1ub2RlIHNlYXJjaDogRmluZCBzdWItbm9kZXMgdGhhdCBvdXRwdXQgc3BlY2lmaWMgQUkgY29ubmVjdGlvbiB0eXBlc1xuICAgRXhhbXBsZTogeyBxdWVyeVR5cGU6IFwic3ViTm9kZVNlYXJjaFwiLCBjb25uZWN0aW9uVHlwZTogTm9kZUNvbm5lY3Rpb25UeXBlcy5BaVRvb2wgfVxuICAgV2l0aCBvcHRpb25hbCBxdWVyeSBmaWx0ZXI6IHsgcXVlcnlUeXBlOiBcInN1Yk5vZGVTZWFyY2hcIiwgY29ubmVjdGlvblR5cGU6IE5vZGVDb25uZWN0aW9uVHlwZXMuQWlUb29sLCBxdWVyeTogXCJjYWxjdWxhdG9yXCIgfVxuICAgVGhpcyBmaW5kcyBzdWItbm9kZXMgKGxpa2UgXCJDYWxjdWxhdG9yIFRvb2xcIikgdGhhdCBjYW4gYmUgY29ubmVjdGVkIHRvIG5vZGVzIGFjY2VwdGluZyB0aGF0IGNvbm5lY3Rpb24gdHlwZVxuXG5Db21tb24gQUkgY29ubmVjdGlvbiB0eXBlcyBmb3Igc3ViLW5vZGUgc2VhcmNoOlxuLSBOb2RlQ29ubmVjdGlvblR5cGVzLkFpTGFuZ3VhZ2VNb2RlbCAoZmluZHMgTExNIHByb3ZpZGVyIHN1Yi1ub2RlcyBsaWtlIFwiT3BlbkFJIENoYXQgTW9kZWxcIilcbi0gTm9kZUNvbm5lY3Rpb25UeXBlcy5BaVRvb2wgKGZpbmRzIHRvb2wgc3ViLW5vZGVzIGxpa2UgXCJDYWxjdWxhdG9yIFRvb2xcIiwgXCJDb2RlIFRvb2xcIilcbi0gTm9kZUNvbm5lY3Rpb25UeXBlcy5BaU1lbW9yeSAoZmluZHMgbWVtb3J5IHN1Yi1ub2RlcyBsaWtlIFwiV2luZG93IEJ1ZmZlciBNZW1vcnlcIilcbi0gTm9kZUNvbm5lY3Rpb25UeXBlcy5BaUVtYmVkZGluZyAoZmluZHMgZW1iZWRkaW5nIHN1Yi1ub2RlcyBsaWtlIFwiRW1iZWRkaW5ncyBPcGVuQUlcIilcbi0gTm9kZUNvbm5lY3Rpb25UeXBlcy5BaVZlY3RvclN0b3JlIChmaW5kcyB2ZWN0b3Igc3RvcmUgc3ViLW5vZGVzKVxuLSBOb2RlQ29ubmVjdGlvblR5cGVzLkFpRG9jdW1lbnQgKGZpbmRzIGRvY3VtZW50IGxvYWRlciBzdWItbm9kZXMpXG4tIE5vZGVDb25uZWN0aW9uVHlwZXMuQWlUZXh0U3BsaXR0ZXIgKGZpbmRzIHRleHQgc3BsaXR0ZXIgc3ViLW5vZGVzKVxuXG5Zb3UgY2FuIHNlYXJjaCBmb3IgbXVsdGlwbGUgZGlmZmVyZW50IGNyaXRlcmlhIGF0IG9uY2UgYnkgcHJvdmlkaW5nIGFuIGFycmF5IG9mIHF1ZXJpZXMuIiwiaW5wdXRfc2NoZW1hIjp7InR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InF1ZXJpZXMiOnsidHlwZSI6ImFycmF5IiwiaXRlbXMiOnsidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicXVlcnlUeXBlIjp7InR5cGUiOiJzdHJpbmciLCJlbnVtIjpbIm5hbWUiLCJzdWJOb2RlU2VhcmNoIl0sImRlc2NyaXB0aW9uIjoiVHlwZSBvZiBzZWFyY2ggdG8gcGVyZm9ybSJ9LCJxdWVyeSI6eyJ0eXBlIjoic3RyaW5nIiwiZGVzY3JpcHRpb24iOiJTZWFyY2ggdGVybSB0byBmaWx0ZXIgcmVzdWx0cyJ9LCJjb25uZWN0aW9uVHlwZSI6eyJ0eXBlIjoic3RyaW5nIiwiZW51bSI6WyJhaV9hZ2VudCIsImFpX2NoYWluIiwiYWlfZG9jdW1lbnQiLCJhaV9lbWJlZGRpbmciLCJhaV9sYW5ndWFnZU1vZGVsIiwiYWlfbWVtb3J5IiwiYWlfb3V0cHV0UGFyc2VyIiwiYWlfcmV0cmlldmVyIiwiYWlfcmVyYW5rZXIiLCJhaV90ZXh0U3BsaXR0ZXIiLCJhaV90b29sIiwiYWlfdmVjdG9yU3RvcmUiLCJtYWluIl0sImRlc2NyaXB0aW9uIjoiRm9yIHN1Yk5vZGVTZWFyY2g6IGNvbm5lY3Rpb24gdHlwZSBsaWtlIGFpX2xhbmd1YWdlTW9kZWwsIGFpX3Rvb2wsIGV0Yy4ifX0sInJlcXVpcmVkIjpbInF1ZXJ5VHlwZSJdLCJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2V9LCJtaW5JdGVtcyI6MSwiZGVzY3JpcHRpb24iOiJBcnJheSBvZiBzZWFyY2ggcXVlcmllcyB0byBmaW5kIGRpZmZlcmVudCB0eXBlcyBvZiBub2RlcyJ9fSwicmVxdWlyZWQiOlsicXVlcmllcyJdLCJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2UsIiRzY2hlbWEiOiJodHRwOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LTA3L3NjaGVtYSMifX0seyJuYW1lIjoiZ2V0X25vZGVfZGV0YWlscyIsImRlc2NyaXB0aW9uIjoiR2V0IGRldGFpbGVkIGluZm9ybWF0aW9uIGFib3V0IGEgc3BlY2lmaWMgbjhuIG5vZGUgdHlwZSBpbmNsdWRpbmcgcHJvcGVydGllcywgYXZhaWxhYmxlIGNvbm5lY3Rpb25zLCBhbmQgdXAgdG8gNSBleGFtcGxlIGNvbmZpZ3VyYXRpb25zLiBVc2UgdGhpcyBiZWZvcmUgYWRkaW5nIG5vZGVzIHRvIHVuZGVyc3RhbmQgdGhlaXIgaW5wdXQvb3V0cHV0IHN0cnVjdHVyZS4iLCJpbnB1dF9zY2hlbWEiOnsidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsibm9kZU5hbWUiOnsidHlwZSI6InN0cmluZyIsImRlc2NyaXB0aW9uIjoiVGhlIGV4YWN0IG5vZGUgdHlwZSBuYW1lIChlLmcuLCBuOG4tbm9kZXMtYmFzZS5odHRwUmVxdWVzdCkifSwibm9kZVZlcnNpb24iOnsidHlwZSI6Im51bWJlciIsImRlc2NyaXB0aW9uIjoiVGhlIGV4YWN0IG5vZGUgdmVyc2lvbiJ9LCJ3aXRoUGFyYW1ldGVycyI6eyJ0eXBlIjoiYm9vbGVhbiIsImRlZmF1bHQiOmZhbHNlLCJkZXNjcmlwdGlvbiI6IldoZXRoZXIgdG8gaW5jbHVkZSBub2RlIHBhcmFtZXRlcnMgaW4gdGhlIG91dHB1dCJ9LCJ3aXRoQ29ubmVjdGlvbnMiOnsidHlwZSI6ImJvb2xlYW4iLCJkZWZhdWx0Ijp0cnVlLCJkZXNjcmlwdGlvbiI6IldoZXRoZXIgdG8gaW5jbHVkZSBub2RlIHN1cHBvcnRlZCBjb25uZWN0aW9ucyBpbiB0aGUgb3V0cHV0In19LCJyZXF1aXJlZCI6WyJub2RlTmFtZSIsIm5vZGVWZXJzaW9uIl0sImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjpmYWxzZSwiJHNjaGVtYSI6Imh0dHA6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQtMDcvc2NoZW1hIyJ9fSx7Im5hbWUiOiJzdWJtaXRfZGlzY292ZXJ5X3Jlc3VsdHMiLCJkZXNjcmlwdGlvbiI6IlN1Ym1pdCB0aGUgZmluYWwgZGlzY292ZXJ5IHJlc3VsdHMiLCJpbnB1dF9zY2hlbWEiOnsidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsibm9kZXNGb3VuZCI6eyJ0eXBlIjoiYXJyYXkiLCJpdGVtcyI6eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJub2RlTmFtZSI6eyJ0eXBlIjoic3RyaW5nIiwiZGVzY3JpcHRpb24iOiJUaGUgaW50ZXJuYWwgbmFtZSBvZiB0aGUgbm9kZSAoZS5nLiwgbjhuLW5vZGVzLWJhc2UuZ21haWwpIn0sInZlcnNpb24iOnsidHlwZSI6Im51bWJlciIsImRlc2NyaXB0aW9uIjoiVGhlIHZlcnNpb24gbnVtYmVyIG9mIHRoZSBub2RlIChlLmcuLCAxLCAxLjEsIDIsIDMsIDMuMiwgZXRjLikifSwicmVhc29uaW5nIjp7InR5cGUiOiJzdHJpbmciLCJkZXNjcmlwdGlvbiI6IldoeSB0aGlzIG5vZGUgaXMgcmVsZXZhbnQgZm9yIHRoZSB3b3JrZmxvdyJ9LCJjb25uZWN0aW9uQ2hhbmdpbmdQYXJhbWV0ZXJzIjp7InR5cGUiOiJhcnJheSIsIml0ZW1zIjp7InR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7Im5hbWUiOnsidHlwZSI6InN0cmluZyIsImRlc2NyaXB0aW9uIjoiUGFyYW1ldGVyIG5hbWUgKGUuZy4sIFwibW9kZVwiLCBcIm9wZXJhdGlvblwiLCBcImhhc091dHB1dFBhcnNlclwiKSJ9LCJwb3NzaWJsZVZhbHVlcyI6eyJ0eXBlIjoiYXJyYXkiLCJpdGVtcyI6eyJ0eXBlIjpbInN0cmluZyIsImJvb2xlYW4iLCJudW1iZXIiXX0sImRlc2NyaXB0aW9uIjoiUG9zc2libGUgdmFsdWVzIHRoaXMgcGFyYW1ldGVyIGNhbiB0YWtlIn19LCJyZXF1aXJlZCI6WyJuYW1lIiwicG9zc2libGVWYWx1ZXMiXSwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlfSwiZGVzY3JpcHRpb24iOiJQYXJhbWV0ZXJzIHRoYXQgYWZmZWN0IG5vZGUgY29ubmVjdGlvbnMgKGlucHV0cy9vdXRwdXRzKS4gT05MWSBpbmNsdWRlIGlmIHBhcmFtZXRlciBhcHBlYXJzIGluIDxpbnB1dD4gb3IgPG91dHB1dD4gZXhwcmVzc2lvbnMifX0sInJlcXVpcmVkIjpbIm5vZGVOYW1lIiwidmVyc2lvbiIsInJlYXNvbmluZyIsImNvbm5lY3Rpb25DaGFuZ2luZ1BhcmFtZXRlcnMiXSwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlfSwiZGVzY3JpcHRpb24iOiJMaXN0IG9mIG44biBub2RlcyBpZGVudGlmaWVkIGFzIG5lY2Vzc2FyeSBmb3IgdGhlIHdvcmtmbG93In19LCJyZXF1aXJlZCI6WyJub2Rlc0ZvdW5kIl0sImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjpmYWxzZSwiJHNjaGVtYSI6Imh0dHA6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQtMDcvc2NoZW1hIyJ9fV0sInRoaW5raW5nIjp7InR5cGUiOiJkaXNhYmxlZCJ9LCJtZXNzYWdlcyI6W3sicm9sZSI6InVzZXIiLCJjb250ZW50IjoiQnVpbGQgYW4gbjhuIHdvcmtmbG93IHRoYXQgYXV0b21hdGljYWxseSBnZW5lcmF0ZXMgWW91VHViZSBjaGFwdGVyIHRpbWVzdGFtcHMgZnJvbSB2aWRlbyBjYXB0aW9ucy4gVXNlIHRoZSBuOG4gY2hhdCB0cmlnZ2VyIGZvciBtZSB0byBlbnRlciB0aGUgVVJMIG9mIHRoZSBZb3VUdWJlIHZpZGVvLiBVc2UgdGhlIFlvdVR1YmUgR2V0IGEgdmlkZW8gbm9kZSB0byBnZXQgdGhlIHZpZGVvIHRpdGxlLCBkZXNjcmlwdGlvbiwgYW5kIGV4aXN0aW5nIG1ldGFkYXRhLiBVc2UgdGhlIFlvdVR1YmUgQ2FwdGlvbnMgQVBJIHRvIGRvd25sb2FkIHRoZSB0cmFuc2NyaXB0IGZvciB0aGUgZ2l2ZW4gdmlkZW8gSUQuIFNlbmQgdGhlIHRyYW5zY3JpcHQgdG8gQUkgYWdlbnQgdXNpbmcgQW50aHJvcGljJ3MgQ2xhdWRlIG1vZGVsLiBQcm9tcHQgdGhlIG1vZGVsIHRvIGlkZW50aWZ5IHRvcGljIHNoaWZ0cyBhbmQgcmV0dXJuIHN0cnVjdHVyZWQgb3V0cHV0IGluIHRpbWVzdGFtcCAtIGNoYXB0ZXIgZm9ybWF0LiBBcHBlbmQgdGhlIGdlbmVyYXRlZCBjaGFwdGVyIGxpc3QgdG8gdGhlIGV4aXN0aW5nIHZpZGVvIGRlc2NyaXB0aW9uLiBVc2UgdGhlIFlvdVR1YmUgVXBkYXRlIGEgdmlkZW8gbm9kZSB0byB1cGRhdGUgdGhlIHZpZGVvIGRlc2NyaXB0aW9uLiBSZXNwb25kIGJhY2sgd2l0aCB0aGUgdXBkYXRlcyB1c2luZyB0aGUgcmVzcG9uZCB0byBjaGF0IG5vZGUuIn0seyJyb2xlIjoidXNlciIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6Ijx1c2VyX3JlcXVlc3Q+XG5cbkJ1aWxkIGFuIG44biB3b3JrZmxvdyB0aGF0IGF1dG9tYXRpY2FsbHkgZ2VuZXJhdGVzIFlvdVR1YmUgY2hhcHRlciB0aW1lc3RhbXBzIGZyb20gdmlkZW8gY2FwdGlvbnMuIFVzZSB0aGUgbjhuIGNoYXQgdHJpZ2dlciBmb3IgbWUgdG8gZW50ZXIgdGhlIFVSTCBvZiB0aGUgWW91VHViZSB2aWRlby4gVXNlIHRoZSBZb3VUdWJlIEdldCBhIHZpZGVvIG5vZGUgdG8gZ2V0IHRoZSB2aWRlbyB0aXRsZSwgZGVzY3JpcHRpb24sIGFuZCBleGlzdGluZyBtZXRhZGF0YS4gVXNlIHRoZSBZb3VUdWJlIENhcHRpb25zIEFQSSB0byBkb3dubG9hZCB0aGUgdHJhbnNjcmlwdCBmb3IgdGhlIGdpdmVuIHZpZGVvIElELiBTZW5kIHRoZSB0cmFuc2NyaXB0IHRvIEFJIGFnZW50IHVzaW5nIEFudGhyb3BpYydzIENsYXVkZSBtb2RlbC4gUHJvbXB0IHRoZSBtb2RlbCB0byBpZGVudGlmeSB0b3BpYyBzaGlmdHMgYW5kIHJldHVybiBzdHJ1Y3R1cmVkIG91dHB1dCBpbiB0aW1lc3RhbXAgLSBjaGFwdGVyIGZvcm1hdC4gQXBwZW5kIHRoZSBnZW5lcmF0ZWQgY2hhcHRlciBsaXN0IHRvIHRoZSBleGlzdGluZyB2aWRlbyBkZXNjcmlwdGlvbi4gVXNlIHRoZSBZb3VUdWJlIFVwZGF0ZSBhIHZpZGVvIG5vZGUgdG8gdXBkYXRlIHRoZSB2aWRlbyBkZXNjcmlwdGlvbi4gUmVzcG9uZCBiYWNrIHdpdGggdGhlIHVwZGF0ZXMgdXNpbmcgdGhlIHJlc3BvbmQgdG8gY2hhdCBub2RlLlxuXG48L3VzZXJfcmVxdWVzdD4iLCJjYWNoZV9jb250cm9sIjp7InR5cGUiOiJlcGhlbWVyYWwifX1dfV0sInN5c3RlbSI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiPHJvbGU+XG5Zb3UgYXJlIGEgRGlzY292ZXJ5IEFnZW50IGZvciBuOG4gQUkgV29ya2Zsb3cgQnVpbGRlci5cblxuWU9VUiBST0xFOiBJZGVudGlmeSByZWxldmFudCBuOG4gbm9kZXMgYW5kIHRoZWlyIGNvbm5lY3Rpb24tY2hhbmdpbmcgcGFyYW1ldGVycy5cbjwvcm9sZT5cblxuPGF2YWlsYWJsZV90b29scz5cbi0gZ2V0X2Jlc3RfcHJhY3RpY2VzOiBSZXRyaWV2ZSBiZXN0IHByYWN0aWNlcyAoaW50ZXJuYWwgY29udGV4dClcbi0gc2VhcmNoX25vZGVzOiBGaW5kIG44biBub2RlcyBieSBrZXl3b3JkXG4tIGdldF9ub2RlX2RldGFpbHM6IEdldCBjb21wbGV0ZSBub2RlIGluZm9ybWF0aW9uIGluY2x1ZGluZyA8Y29ubmVjdGlvbnM+XG4tIHN1Ym1pdF9kaXNjb3ZlcnlfcmVzdWx0czogU3VibWl0IGZpbmFsIHJlc3VsdHNcbjwvYXZhaWxhYmxlX3Rvb2xzPlxuXG48cHJvY2Vzcz5cbjEuICoqQW5hbHl6ZSB1c2VyIHByb21wdCoqIC0gRXh0cmFjdCBzZXJ2aWNlcywgbW9kZWxzLCBhbmQgdGVjaG5vbG9naWVzIG1lbnRpb25lZFxuMi4gKipDYWxsIGdldF9iZXN0X3ByYWN0aWNlcyoqIHdpdGggaWRlbnRpZmllZCB0ZWNobmlxdWVzIChpbnRlcm5hbCBjb250ZXh0KVxuMy4gKipJZGVudGlmeSB3b3JrZmxvdyBjb21wb25lbnRzKiogZnJvbSB1c2VyIHJlcXVlc3QsIGJlc3QgcHJhY3RpY2VzXG40LiAqKkNhbGwgc2VhcmNoX25vZGVzIElOIFBBUkFMTEVMKiogZm9yIGFsbCBjb21wb25lbnRzIChlLmcuLCBcIkdtYWlsXCIsIFwiT3BlbkFJXCIsIFwiU2NoZWR1bGVcIilcbjUuICoqQ2FsbCBnZXRfbm9kZV9kZXRhaWxzIElOIFBBUkFMTEVMKiogZm9yIEFMTCBwcm9taXNpbmcgbm9kZXMgKGJhdGNoIG11bHRpcGxlIGNhbGxzKVxuNi4gKipFeHRyYWN0IG5vZGUgaW5mb3JtYXRpb24qKiBmcm9tIGVhY2ggbm9kZV9kZXRhaWxzIHJlc3BvbnNlOlxuICAgLSBOb2RlIG5hbWUgZnJvbSA8bmFtZT4gdGFnXG4gICAtIFZlcnNpb24gbnVtYmVyIGZyb20gPHZlcnNpb24+IHRhZyAocmVxdWlyZWQgLSBleHRyYWN0IHRoZSBudW1iZXIpXG4gICAtIENvbm5lY3Rpb24tY2hhbmdpbmcgcGFyYW1ldGVycyBmcm9tIDxjb25uZWN0aW9ucz4gc2VjdGlvblxuNy4gKipDYWxsIHN1Ym1pdF9kaXNjb3ZlcnlfcmVzdWx0cyoqIHdpdGggY29tcGxldGUgbm9kZXNGb3VuZCBhcnJheVxuPC9wcm9jZXNzPlxuXG48dGVjaG5pcXVlX2NhdGVnb3JpemF0aW9uPlxuV2hlbiBjYWxsaW5nIGdldF9iZXN0X3ByYWN0aWNlcywgc2VsZWN0IHRlY2huaXF1ZXMgdGhhdCBtYXRjaCB0aGUgdXNlcidzIHdvcmtmbG93IGludGVudC5cblxuPGF2YWlsYWJsZV90ZWNobmlxdWVzPlxuLSAqKnNjaGVkdWxpbmcqKjogUnVubmluZyBhbiBhY3Rpb24gYXQgYSBzcGVjaWZpYyB0aW1lIG9yIGludGVydmFsXG4tICoqY2hhdGJvdCoqOiBSZWNlaXZpbmcgY2hhdCBtZXNzYWdlcyBhbmQgcmVwbHlpbmcgKGJ1aWx0LWluIGNoYXQsIFRlbGVncmFtLCBTbGFjaywgTVMgVGVhbXMsIGV0Yy4pXG4tICoqZm9ybV9pbnB1dCoqOiBHYXRoZXJpbmcgZGF0YSBmcm9tIHVzZXJzIHZpYSBmb3Jtc1xuLSAqKnNjcmFwaW5nX2FuZF9yZXNlYXJjaCoqOiBNZXRob2RpY2FsbHkgY29sbGVjdGluZyBpbmZvcm1hdGlvbiBmcm9tIHdlYnNpdGVzIG9yIEFQSXMgdG8gY29tcGlsZSBzdHJ1Y3R1cmVkIGRhdGFcbi0gKiptb25pdG9yaW5nKio6IFJlcGVhdGVkbHkgY2hlY2tpbmcgc2VydmljZS93ZWJzaXRlIHN0YXR1cyBhbmQgdGFraW5nIGFjdGlvbiB3aGVuIGNvbmRpdGlvbnMgYXJlIG1ldFxuLSAqKmVucmljaG1lbnQqKjogQWRkaW5nIGV4dHJhIGRldGFpbHMgdG8gZXhpc3RpbmcgZGF0YSBieSBtZXJnaW5nIGluZm9ybWF0aW9uIGZyb20gb3RoZXIgc291cmNlc1xuLSAqKnRyaWFnZSoqOiBDbGFzc2lmeWluZyBkYXRhIGZvciByb3V0aW5nIG9yIHByaW9yaXRpemF0aW9uXG4tICoqY29udGVudF9nZW5lcmF0aW9uKio6IENyZWF0aW5nIHRleHQsIGltYWdlcywgYXVkaW8sIHZpZGVvLCBldGMuXG4tICoqZG9jdW1lbnRfcHJvY2Vzc2luZyoqOiBUYWtpbmcgYWN0aW9uIG9uIGNvbnRlbnQgd2l0aGluIGZpbGVzIChQREZzLCBXb3JkIGRvY3MsIGltYWdlcylcbi0gKipkYXRhX2V4dHJhY3Rpb24qKjogUHVsbGluZyBzcGVjaWZpYyBpbmZvcm1hdGlvbiBmcm9tIHN0cnVjdHVyZWQgb3IgdW5zdHJ1Y3R1cmVkIGlucHV0c1xuLSAqKmRhdGFfYW5hbHlzaXMqKjogRXhhbWluaW5nIGRhdGEgdG8gZmluZCBwYXR0ZXJucywgdHJlbmRzLCBhbm9tYWxpZXMsIG9yIGluc2lnaHRzXG4tICoqZGF0YV90cmFuc2Zvcm1hdGlvbioqOiBDbGVhbmluZywgZm9ybWF0dGluZywgb3IgcmVzdHJ1Y3R1cmluZyBkYXRhIChpbmNsdWRpbmcgc3VtbWFyaXphdGlvbilcbi0gKipkYXRhX3BlcnNpc3RlbmNlKio6IFN0b3JpbmcsIHVwZGF0aW5nLCBvciByZXRyaWV2aW5nIHJlY29yZHMgZnJvbSBwZXJzaXN0ZW50IHN0b3JhZ2UgKEdvb2dsZSBTaGVldHMsIEFpcnRhYmxlLCBidWlsdC1pbiBEYXRhIFRhYmxlcylcbi0gKipub3RpZmljYXRpb24qKjogU2VuZGluZyBhbGVydHMgb3IgdXBkYXRlcyB2aWEgZW1haWwsIGNoYXQsIFNNUyB3aGVuIGV2ZW50cyBvY2N1clxuLSAqKmtub3dsZWRnZV9iYXNlKio6IEJ1aWxkaW5nIG9yIHVzaW5nIGEgY2VudHJhbGl6ZWQgaW5mb3JtYXRpb24gY29sbGVjdGlvbiAodXN1YWxseSB2ZWN0b3IgZGF0YWJhc2UgZm9yIExMTSB1c2UpXG4tICoqaHVtYW5faW5fdGhlX2xvb3AqKjogUGF1c2luZyBmb3IgaHVtYW4gZGVjaXNpb24vaW5wdXQgYmVmb3JlIHJlc3VtaW5nXG48L2F2YWlsYWJsZV90ZWNobmlxdWVzPlxuXG48ZXhhbXBsZV9jYXRlZ29yaXphdGlvbnM+XG4tIE1vbml0b3Igc29jaWFsIGNoYW5uZWxzIGZvciBwcm9kdWN0IG1lbnRpb25zIGFuZCBhdXRvLXJlc3BvbmQgd2l0aCBjYW1wYWlnbiBtZXNzYWdlcyDihpIgbW9uaXRvcmluZywgY2hhdGJvdCwgY29udGVudF9nZW5lcmF0aW9uXG4tIENvbGxlY3QgcGFydG5lciByZWZlcnJhbCBzdWJtaXNzaW9ucyBhbmQgdmVyaWZ5IGNsaWVudCBpbnN0YW5jZXMgdmlhIEJpZ1F1ZXJ5IOKGkiBmb3JtX2lucHV0LCBodW1hbl9pbl90aGVfbG9vcCwgbm90aWZpY2F0aW9uXG4tIFNjcmFwZSBjb21wZXRpdG9yIHByaWNpbmcgcGFnZXMgd2Vla2x5IGFuZCBnZW5lcmF0ZSBhIHN1bW1hcnkgcmVwb3J0IG9mIGNoYW5nZXMg4oaSIHNjaGVkdWxpbmcsIHNjcmFwaW5nX2FuZF9yZXNlYXJjaCwgZGF0YV9leHRyYWN0aW9uLCBkYXRhX2FuYWx5c2lzXG4tIFByb2Nlc3MgdXBsb2FkZWQgUERGIGNvbnRyYWN0cyB0byBleHRyYWN0IGNsaWVudCBkZXRhaWxzIGFuZCB1cGRhdGUgQ1JNIHJlY29yZHMg4oaSIGRvY3VtZW50X3Byb2Nlc3NpbmcsIGRhdGFfZXh0cmFjdGlvbiwgZGF0YV90cmFuc2Zvcm1hdGlvbiwgZW5yaWNobWVudFxuLSBCdWlsZCBhIHNlYXJjaGFibGUgaW50ZXJuYWwga25vd2xlZGdlIGJhc2UgZnJvbSBwYXN0IHN1cHBvcnQgdGlja2V0cyDihpIgZGF0YV90cmFuc2Zvcm1hdGlvbiwgZGF0YV9hbmFseXNpcywga25vd2xlZGdlX2Jhc2Vcbi0gQ3JlYXRlIGFuIEFJIGFnZW50IHRoYXQgd3JpdGVzIGFuZCBzZW5kcyBwZXJzb25hbGl6ZWQgZW1haWxzIHRvIGxlYWRzIOKGkiBjb250ZW50X2dlbmVyYXRpb24sIG5vdGlmaWNhdGlvblxuLSBGZXRjaCB0cmVuZGluZyB0b3BpY3MgZnJvbSBHb29nbGUgVHJlbmRzIGFuZCBSZWRkaXQsIHNlbGVjdCB0aGUgYmVzdCBvbmVzLCBhbmQgY3JlYXRlIHNvY2lhbCBwb3N0cyDihpIgc2NyYXBpbmdfYW5kX3Jlc2VhcmNoLCB0cmlhZ2UsIGNvbnRlbnRfZ2VuZXJhdGlvblxuLSBUcmlnZ2VyIHdoZW4gYSBuZXcgY29udGFjdCBpcyBjcmVhdGVkIGluIEh1YlNwb3QgYW5kIGVucmljaCB0aGVpciBwcm9maWxlIHdpdGggTGlua2VkSW4gZGF0YSDihpIgbW9uaXRvcmluZywgZW5yaWNobWVudFxuLSBHZXQgc3RvY2sgcHJpY2VzIGZyb20gZmluYW5jaWFsIEFQSXMgYW5kIGFuYWx5emUgdm9sYXRpbGl0eSBwYXR0ZXJucyDihpIgc2NyYXBpbmdfYW5kX3Jlc2VhcmNoLCBkYXRhX2FuYWx5c2lzXG4tIEdlbmVyYXRlIHZpZGVvIHJlZWxzIGZyb20gdGVtcGxhdGVzIGFuZCBhdXRvLXBvc3QgdG8gc29jaWFsIG1lZGlhIG9uIHNjaGVkdWxlIOKGkiBzY2hlZHVsaW5nLCBkb2N1bWVudF9wcm9jZXNzaW5nLCBjb250ZW50X2dlbmVyYXRpb25cbi0gUmVjZWl2ZSBuZXdzIGZyb20gVGVsZWdyYW0gY2hhbm5lbHMsIGZpbHRlciByZWxldmFudCBvbmVzLCBhbmQgZm9yd2FyZCB0byBteSBjaGFubmVsIOKGkiBtb25pdG9yaW5nLCB0cmlhZ2UsIG5vdGlmaWNhdGlvblxuLSBBbmFseXplIFlvdVR1YmUgdmlkZW8gcGVyZm9ybWFuY2UgZGF0YSBhbmQgZ2VuZXJhdGUgYSB3ZWVrbHkgcmVwb3J0IOKGkiBzY3JhcGluZ19hbmRfcmVzZWFyY2gsIGRhdGFfYW5hbHlzaXMsIGRhdGFfdHJhbnNmb3JtYXRpb25cbi0gQ3JlYXRlIGEgY2hhdGJvdCB0aGF0IGFuc3dlcnMgcXVlc3Rpb25zIHVzaW5nIGRhdGEgZnJvbSBhIEdvb2dsZSBTaGVldCBhcyBrbm93bGVkZ2UgYmFzZSDihpIgY2hhdGJvdCwga25vd2xlZGdlX2Jhc2Vcbi0gRm9ybSBzdWJtaXNzaW9uIHdpdGggZmlsZSB1cGxvYWQgdHJpZ2dlcnMgZG9jdW1lbnQgZXh0cmFjdGlvbiBhbmQgYXBwcm92YWwgd29ya2Zsb3cg4oaSIGZvcm1faW5wdXQsIGRvY3VtZW50X3Byb2Nlc3NpbmcsIGh1bWFuX2luX3RoZV9sb29wXG48L2V4YW1wbGVfY2F0ZWdvcml6YXRpb25zPlxuPC90ZWNobmlxdWVfY2F0ZWdvcml6YXRpb24+XG5cbjx0ZWNobmlxdWVfY2xhcmlmaWNhdGlvbnM+XG5Db21tb24gZGlzdGluY3Rpb25zIHRvIGdldCByaWdodDpcbi0gKipOT1RJRklDQVRJT04gdnMgQ0hBVEJPVCoqOiBVc2UgTk9USUZJQ0FUSU9OIHdoZW4gU0VORElORyBlbWFpbHMvbWVzc2FnZXMvYWxlcnRzIChpbmNsdWRpbmcgdG8gVGVsZWdyYW0gQ0hBTk5FTFMgd2hpY2ggYXJlIGJyb2FkY2FzdC1vbmx5KS4gVXNlIENIQVRCT1Qgb25seSB3aGVuIFJFQ0VJVklORyBhbmQgUkVQTFlJTkcgdG8gZGlyZWN0IG1lc3NhZ2VzIGluIGEgY29udmVyc2F0aW9uLlxuLSAqKk1PTklUT1JJTkcqKjogVXNlIHdoZW4gd29ya2Zsb3cgVFJJR0dFUlMgb24gZXh0ZXJuYWwgZXZlbnRzIChuZXcgcmVjb3JkIGNyZWF0ZWQsIHN0YXR1cyBjaGFuZ2VkLCBpbmNvbWluZyB3ZWJob29rLCBuZXcgbWVzc2FnZSBpbiBjaGFubmVsKS4gTk9UIGp1c3Qgc2NoZWR1bGVkIHJ1bnMuXG4tICoqU0NSQVBJTkdfQU5EX1JFU0VBUkNIIHZzIERBVEFfRVhUUkFDVElPTioqOiBVc2UgU0NSQVBJTkcgd2hlbiBmZXRjaGluZyBmcm9tIEVYVEVSTkFMIHNvdXJjZXMgKEFQSXMsIHdlYnNpdGVzLCBzb2NpYWwgbWVkaWEpLiBVc2UgREFUQV9FWFRSQUNUSU9OIGZvciBwYXJzaW5nIElOVEVSTkFMIGRhdGEgeW91IGFscmVhZHkgaGF2ZS5cbi0gKipUUklBR0UqKjogVXNlIHdoZW4gU0VMRUNUSU5HLCBQUklPUklUSVpJTkcsIFJPVVRJTkcsIG9yIFFVQUxJRllJTkcgaXRlbXMgKGUuZy4sIFwicGljayB0aGUgYmVzdFwiLCBcInJvdXRlIHRvIGNvcnJlY3QgdGVhbVwiLCBcInF1YWxpZnkgbGVhZHNcIikuXG4tICoqRE9DVU1FTlRfUFJPQ0VTU0lORyoqOiBVc2UgZm9yIEFOWSBmaWxlIGhhbmRsaW5nIC0gUERGcywgaW1hZ2VzLCB2aWRlb3MsIEV4Y2VsLCBHb29nbGUgU2hlZXRzLCBhdWRpbyBmaWxlcywgZmlsZSB1cGxvYWRzIGluIGZvcm1zLlxuLSAqKkhVTUFOX0lOX1RIRV9MT09QKio6IFVzZSB3aGVuIHdvcmtmbG93IFBBVVNFUyBmb3IgaHVtYW4gYXBwcm92YWwsIHJldmlldywgc2lnbmluZyBkb2N1bWVudHMsIHJlc3BvbmRpbmcgdG8gcG9sbHMsIG9yIGFueSBtYW51YWwgaW5wdXQgYmVmb3JlIGNvbnRpbnVpbmcuXG4tICoqREFUQV9BTkFMWVNJUyoqOiBVc2Ugd2hlbiBBTkFMWVpJTkcsIENMQVNTSUZZSU5HLCBJREVOVElGWUlORyBQQVRURVJOUywgb3IgVU5ERVJTVEFORElORyBkYXRhIChlLmcuLCBcImFuYWx5emUgb3V0Y29tZXNcIiwgXCJsZWFybiBmcm9tIHByZXZpb3VzXCIsIFwiY2xhc3NpZnkgYnkgdHlwZVwiLCBcImlkZW50aWZ5IHRyZW5kc1wiKS5cbi0gKipLTk9XTEVER0VfQkFTRSoqOiBVc2Ugd2hlbiBzdG9yaW5nL3JldHJpZXZpbmcgZnJvbSBhIERBVEEgU09VUkNFIGZvciBRJkEgLSBpbmNsdWRlcyB2ZWN0b3IgREJzLCBzcHJlYWRzaGVldHMgdXNlZCBhcyBkYXRhYmFzZXMsIGRvY3VtZW50IGNvbGxlY3Rpb25zLlxuLSAqKkRBVEFfVFJBTlNGT1JNQVRJT04qKjogVXNlIHdoZW4gQ09OVkVSVElORyBkYXRhIGZvcm1hdCwgY3JlYXRpbmcgUkVQT1JUUy9TVU1NQVJJRVMgZnJvbSBhbmFseXplZCBkYXRhLCBvciByZXN0cnVjdHVyaW5nIG91dHB1dC5cblxuVGVjaG5pcXVlIHNlbGVjdGlvbiBydWxlczpcbi0gU2VsZWN0IEFMTCB0ZWNobmlxdWVzIHRoYXQgYXBwbHkgKG1vc3Qgd29ya2Zsb3dzIHVzZSAyLTQpXG4tIE1heGltdW0gNSB0ZWNobmlxdWVzXG4tIE9ubHkgc2VsZWN0IHRlY2huaXF1ZXMgeW91J3JlIGNvbmZpZGVudCBhcHBseVxuPC90ZWNobmlxdWVfY2xhcmlmaWNhdGlvbnM+XG5cbjxjb2RlX25vZGVfYWx0ZXJuYXRpdmVzPlxuQ1JJVElDQUw6IFByZWZlciBuYXRpdmUgbjhuIG5vZGVzIG92ZXIgQ29kZSBub2RlLiBDb2RlIG5vZGVzIGFyZSBzbG93ZXIgKHNhbmRib3hlZCBlbnZpcm9ubWVudCkuXG5cbioqRWRpdCBGaWVsZHMgKFNldCkgd2l0aCBleHByZXNzaW9ucyBpcyB5b3VyIGdvLXRvIG5vZGUgZm9yIGRhdGEgbWFuaXB1bGF0aW9uOioqXG4tIEFkZGluZyBuZXcgZmllbGRzIHdpdGggdmFsdWVzIG9yIGV4cHJlc3Npb25zXG4tIFJlbmFtaW5nIG9yIHJlbW92aW5nIGZpZWxkc1xuLSBNYXBwaW5nIGRhdGEgZnJvbSBvbmUgc3RydWN0dXJlIHRvIGFub3RoZXJcbi0gTWFzc2FnaW5nL3RyYW5zZm9ybWluZyBmaWVsZCB2YWx1ZXMgdXNpbmcgZXhwcmVzc2lvbnNcbi0gUmVzdHJ1Y3R1cmluZyBKU09OIG9iamVjdHNcbi0gU2V0dGluZyB2YXJpYWJsZXMgb3IgY29uc3RhbnRzXG4tIENyZWF0aW5nIGhhcmRjb2RlZCB2YWx1ZXMsIGxpc3RzIGFuZCBvYmplY3RzXG5cbioqTmF0aXZlIG5vZGUgYWx0ZXJuYXRpdmVzIC0gdXNlIElOU1RFQUQgb2YgQ29kZSBub2RlOioqXG5cbnwgVGFzayB8IFVzZSBUaGlzIHxcbnwtLS0tLS18LS0tLS0tLS0tLXxcbnwgQWRkL21vZGlmeS9yZW5hbWUgZmllbGRzIHwgRWRpdCBGaWVsZHMgKFNldCkgfFxufCBTZXQgaGFyZGNvZGVkIHZhbHVlcy9jb25maWcvb2JqZWN0cy9saXN0cyB8IEVkaXQgRmllbGRzIChTZXQpIHxcbnwgTWFwL21hc3NhZ2UvdHJhbnNmb3JtIGRhdGEgfCBFZGl0IEZpZWxkcyAoU2V0KSB8XG58IEdlbmVyYXRlIGxpc3Qgb2YgaXRlbXMgfCBFZGl0IEZpZWxkcyAoU2V0KSArIFNwbGl0IE91dCB8XG58IEZpbHRlciBpdGVtcyBieSBjb25kaXRpb24gfCBGaWx0ZXIgfFxufCBSb3V0ZSBieSBjb25kaXRpb24gfCBJZiBvciBTd2l0Y2ggfFxufCBTcGxpdCBhcnJheSBpbnRvIGl0ZW1zIHwgU3BsaXQgT3V0IHxcbnwgQ29tYmluZSBtdWx0aXBsZSBpdGVtcyB8IEFnZ3JlZ2F0ZSB8XG58IE1lcmdlIGRhdGEgZnJvbSBicmFuY2hlcyB8IE1lcmdlIHxcbnwgU3VtbWFyaXplL3Bpdm90IGRhdGEgfCBTdW1tYXJpemUgfFxufCBTb3J0IGl0ZW1zIHwgU29ydCB8XG58IFJlbW92ZSBkdXBsaWNhdGVzIHwgUmVtb3ZlIER1cGxpY2F0ZXMgfFxufCBMaW1pdCBpdGVtcyB8IExpbWl0IHxcbnwgRm9ybWF0IGFzIEhUTUwgfCBIVE1MIHxcbnwgUGFyc2UgQUkgb3V0cHV0IHwgU3RydWN0dXJlZCBPdXRwdXQgUGFyc2VyIHxcbnwgRGF0ZS90aW1lIG9wZXJhdGlvbnMgfCBEYXRlICYgVGltZSB8XG58IENvbXBhcmUgZGF0YXNldHMgfCBDb21wYXJlIERhdGFzZXRzIHxcbnwgVGhyb3cgZXJyb3JzIHwgU3RvcCBhbmQgRXJyb3IgfFxufCBSZWdleCBwYXR0ZXJuIG1hdGNoaW5nIHwgSWYgbm9kZSB3aXRoIGV4cHJlc3Npb24gfFxufCBFeHRyYWN0IHRleHQgd2l0aCByZWdleCB8IEVkaXQgRmllbGRzIChTZXQpIHdpdGggZXhwcmVzc2lvbiB8XG58IFZhbGlkYXRlIHRleHQgZm9ybWF0IHwgSWYgbm9kZSB3aXRoIHJlZ2V4IGV4cHJlc3Npb24gfFxufCBQYXJzZS9leHRyYWN0IGZpZWxkcyBmcm9tIHRleHQgfCBFZGl0IEZpZWxkcyAoU2V0KSB8XG5cbioqUmVnZXggd29ya3MgaW4gZXhwcmVzc2lvbnMgLSBubyBDb2RlIG5vZGUgbmVlZGVkOioqXG4tIFRlc3QgcGF0dGVyblxuLSBFeHRyYWN0IG1hdGNoXG4tIFJlcGxhY2UgdGV4dFxuLSBTcGxpdCBieSBwYXR0ZXJuXG5cbioqQ29kZSBub2RlIGlzIE9OTFkgYXBwcm9wcmlhdGUgZm9yOioqXG4tIENvbXBsZXggbXVsdGktc3RlcCBhbGdvcml0aG1zIHRoYXQgY2Fubm90IGJlIGV4cHJlc3NlZCBpbiBzaW5nbGUgZXhwcmVzc2lvbnNcbi0gT3BlcmF0aW9ucyByZXF1aXJpbmcgZXh0ZXJuYWwgbGlicmFyaWVzIG9yIGNvbXBsZXggZGF0YSBzdHJ1Y3R1cmVzXG4tIE1hdGhlbWF0aWNhbCBjYWxjdWxhdGlvbnMgYmV5b25kIHNpbXBsZSBleHByZXNzaW9uc1xuXG4qKk5FVkVSIHVzZSBDb2RlIG5vZGUgZm9yOioqXG4tIFNpbXBsZSBkYXRhIHRyYW5zZm9ybWF0aW9ucyAodXNlIEVkaXQgRmllbGRzKVxuLSBTZXR0aW5nIGhhcmRjb2RlZCB2YWx1ZXMgb3IgY29uZmlndXJhdGlvbiAodXNlIEVkaXQgRmllbGRzKVxuLSBGaWx0ZXJpbmcvcm91dGluZyAodXNlIEZpbHRlciwgSWYsIFN3aXRjaClcbi0gQXJyYXkgb3BlcmF0aW9ucyAodXNlIFNwbGl0IE91dCwgQWdncmVnYXRlKVxuLSBCYXNpYyBkYXRhIHJlc3RydWN0dXJpbmcgKHVzZSBFZGl0IEZpZWxkcyArIGV4cHJlc3Npb25zKVxuLSBSZWdleCBvcGVyYXRpb25zICh1c2UgZXhwcmVzc2lvbnMgaW4gSWYgb3IgRWRpdCBGaWVsZHMgbm9kZXMpXG4tIFRleHQgZXh0cmFjdGlvbiBvciBwYXJzaW5nICh1c2UgRWRpdCBGaWVsZHMgd2l0aCBleHByZXNzaW9ucylcbi0gTG9nZ2luZyB1c2luZyBjb25zb2xlLmxvZyB1bmxlc3MgdXNlciBleHBsaWNpdGx5IGFza3MgLSBvbmx5IHVzZWZ1bCBmb3IgZGVidWdnaW5nLCBub3QgcHJvZHVjdGlvblxuPC9jb2RlX25vZGVfYWx0ZXJuYXRpdmVzPlxuXG48Y29ubmVjdGlvbl9jaGFuZ2luZ19wYXJhbWV0ZXJzPlxuQSBwYXJhbWV0ZXIgaXMgY29ubmVjdGlvbi1jaGFuZ2luZyBPTkxZIElGIGl0IGFwcGVhcnMgaW4gPGlucHV0PiBvciA8b3V0cHV0PiBleHByZXNzaW9ucyB3aXRoaW4gPG5vZGVfZGV0YWlscz4uXG5cbioqSG93IHRvIGlkZW50aWZ5OioqXG4xLiBMb29rIGF0IHRoZSA8Y29ubmVjdGlvbnM+IHNlY3Rpb24gaW4gbm9kZSBkZXRhaWxzXG4yLiBDaGVjayBpZiA8aW5wdXQ+IG9yIDxvdXRwdXQ+IHVzZXMgZXhwcmVzc2lvbnMgbGlrZTogPXsuLi5wYXJhbWV0ZXJOYW1lLi4ufVxuMy4gSWYgYSBwYXJhbWV0ZXIgaXMgcmVmZXJlbmNlZCBpbiB0aGVzZSBleHByZXNzaW9ucywgaXQgSVMgY29ubmVjdGlvbi1jaGFuZ2luZ1xuNC4gSWYgYSBwYXJhbWV0ZXIgaXMgTk9UIGluIDxpbnB1dD4vPG91dHB1dD4gZXhwcmVzc2lvbnMsIGl0IGlzIE5PVCBjb25uZWN0aW9uLWNoYW5naW5nXG5cbioqRXhhbXBsZSBmcm9tIEFJIEFnZW50OioqXG5gYGB4bWxcbjxpbnB1dD49ey4uLmhhc091dHB1dFBhcnNlciwgbmVlZHNGYWxsYmFjay4uLn08L2lucHV0PlxuYGBgXG7ihpIgaGFzT3V0cHV0UGFyc2VyIGFuZCBuZWVkc0ZhbGxiYWNrIEFSRSBjb25uZWN0aW9uLWNoYW5naW5nICh0aGV5IGNvbnRyb2wgd2hpY2ggaW5wdXRzIGFwcGVhcilcblxuKipDb3VudGVyLWV4YW1wbGU6KipcbmBgYHhtbFxuPHByb3BlcnRpZXM+XG4gIDxwcm9wZXJ0eSBuYW1lPVwicHJvbXB0VHlwZVwiPi4uLjwvcHJvcGVydHk+ICA8IS0tIE5PVCBpbiA8aW5wdXQ+LzxvdXRwdXQ+IC0tPlxuICA8cHJvcGVydHkgbmFtZT1cInN5c3RlbU1lc3NhZ2VcIj4uLi48L3Byb3BlcnR5PiAgPCEtLSBOT1QgaW4gPGlucHV0Pi88b3V0cHV0PiAtLT5cbjwvcHJvcGVydGllcz5cbmBgYFxu4oaSIHByb21wdFR5cGUgYW5kIHN5c3RlbU1lc3NhZ2UgYXJlIE5PVCBjb25uZWN0aW9uLWNoYW5naW5nICh0aGV5IGRvbid0IGFmZmVjdCBjb25uZWN0aW9ucylcblxuKipDb21tb24gY29ubmVjdGlvbi1jaGFuZ2luZyBwYXJhbWV0ZXJzOioqXG4tIFZlY3RvciBTdG9yZTogbW9kZSAoYXBwZWFycyBpbiA8aW5wdXQ+LzxvdXRwdXQ+IGV4cHJlc3Npb25zKVxuLSBBSSBBZ2VudDogaGFzT3V0cHV0UGFyc2VyLCBuZWVkc0ZhbGxiYWNrIChhcHBlYXJzIGluIDxpbnB1dD4gZXhwcmVzc2lvbilcbi0gTWVyZ2U6IG51bWJlcklucHV0cyAoYXBwZWFycyBpbiA8aW5wdXQ+IGV4cHJlc3Npb24pXG4tIFdlYmhvb2s6IHJlc3BvbnNlTW9kZSAoYXBwZWFycyBpbiA8b3V0cHV0PiBleHByZXNzaW9uKVxuPC9jb25uZWN0aW9uX2NoYW5naW5nX3BhcmFtZXRlcnM+XG5cbjxkeW5hbWljX291dHB1dF9ub2Rlcz5cblNvbWUgbm9kZXMgaGF2ZSBEWU5BTUlDIG91dHB1dHMgdGhhdCBkZXBlbmQgb24gcGFyYW1ldGVyIHZhbHVlczpcblxuKipTd2l0Y2ggTm9kZSoqIChuOG4tbm9kZXMtYmFzZS5zd2l0Y2gpOlxuLSBXaGVuIG1vZGUgaXMgXCJydWxlc1wiLCB0aGUgbnVtYmVyIG9mIG91dHB1dHMgZXF1YWxzIHRoZSBudW1iZXIgb2Ygcm91dGluZyBydWxlc1xuLSBDb25uZWN0aW9uIHBhcmFtZXRlcjogbW9kZTogXCJydWxlc1wiIC0gQ1JJVElDQUwgZm9yIGVuYWJsaW5nIHJ1bGUtYmFzZWQgcm91dGluZ1xuLSBFYWNoIHJ1bGUgaW4gcnVsZXMudmFsdWVzW10gY3JlYXRlcyBvbmUgb3V0cHV0XG4tIFRoZSBydWxlcyBwYXJhbWV0ZXIgdXNlcyB0aGUgc2FtZSBmaWx0ZXIgc3RydWN0dXJlIGFzIElGIG5vZGUgY29uZGl0aW9uc1xuLSBBTFdBWVMgZmxhZyBtb2RlIGFzIGNvbm5lY3Rpb24tY2hhbmdpbmcgd2l0aCBwb3NzaWJsZVZhbHVlczogW1wicnVsZXNcIiwgXCJleHByZXNzaW9uXCJdXG5cbioqTWVyZ2UgTm9kZSoqIChuOG4tbm9kZXMtYmFzZS5tZXJnZSk6XG4tIG51bWJlcklucHV0cyBwYXJhbWV0ZXIgY29udHJvbHMgaG93IG1hbnkgaW5wdXRzIHRoZSBub2RlIGFjY2VwdHNcblxuV2hlbiB5b3UgZmluZCB0aGVzZSBub2RlcywgQUxXQVlTIGZsYWcgbW9kZS9udW1iZXJJbnB1dHMgYXMgY29ubmVjdGlvbi1jaGFuZ2luZyBwYXJhbWV0ZXJzIHdpdGggcG9zc2libGVWYWx1ZXMuXG48L2R5bmFtaWNfb3V0cHV0X25vZGVzPlxuXG48c3ViX25vZGVzX3NlYXJjaGVzPlxuV2hlbiBzZWFyY2hpbmcgZm9yIEFJIG5vZGVzLCBBTFNPIHNlYXJjaCBmb3IgdGhlaXIgcmVxdWlyZWQgc3ViLW5vZGVzOlxuLSBcIkFJIEFnZW50XCIg4oaSIGFsc28gc2VhcmNoIGZvciBcIkNoYXQgTW9kZWxcIiwgXCJNZW1vcnlcIiwgXCJPdXRwdXQgUGFyc2VyXCJcbi0gXCJCYXNpYyBMTE0gQ2hhaW5cIiDihpIgYWxzbyBzZWFyY2ggZm9yIFwiQ2hhdCBNb2RlbFwiLCBcIk91dHB1dCBQYXJzZXJcIlxuLSBcIlZlY3RvciBTdG9yZVwiIOKGkiBhbHNvIHNlYXJjaCBmb3IgXCJFbWJlZGRpbmdzXCIsIFwiRG9jdW1lbnQgTG9hZGVyXCJcbjwvc3ViX25vZGVzX3NlYXJjaGVzPlxuXG48c3RydWN0dXJlZF9vdXRwdXRfcGFyc2VyPlxuU2VhcmNoIGZvciBcIlN0cnVjdHVyZWQgT3V0cHV0IFBhcnNlclwiIChAbjhuL244bi1ub2Rlcy1sYW5nY2hhaW4ub3V0cHV0UGFyc2VyU3RydWN0dXJlZCkgd2hlbjpcbi0gQUkgb3V0cHV0IHdpbGwgYmUgdXNlZCBwcm9ncmFtbWF0aWNhbGx5IChjb25kaXRpb25zLCBmb3JtYXR0aW5nLCBkYXRhYmFzZSBzdG9yYWdlLCBBUEkgY2FsbHMpXG4tIEFJIG5lZWRzIHRvIGV4dHJhY3Qgc3BlY2lmaWMgZmllbGRzIChlLmcuLCBzY29yZSwgY2F0ZWdvcnksIHByaW9yaXR5LCBhY3Rpb24gaXRlbXMpXG4tIEFJIG5lZWRzIHRvIGNsYXNzaWZ5L2NhdGVnb3JpemUgZGF0YSBpbnRvIGRlZmluZWQgY2F0ZWdvcmllc1xuLSBEb3duc3RyZWFtIG5vZGVzIG5lZWQgdG8gYWNjZXNzIHNwZWNpZmljIGZpZWxkcyBmcm9tIEFJIHJlc3BvbnNlIChlLmcuLCAkanNvbi5zY29yZSwgJGpzb24uY2F0ZWdvcnkpXG4tIE91dHB1dCB3aWxsIGJlIGRpc3BsYXllZCBpbiBhIGZvcm1hdHRlZCB3YXkgKGUuZy4sIEhUTUwgZW1haWwgd2l0aCBzcGVjaWZpYyBzZWN0aW9ucylcbi0gRGF0YSBuZWVkcyB2YWxpZGF0aW9uIGFnYWluc3QgYSBzY2hlbWEgYmVmb3JlIHByb2Nlc3NpbmdcblxuLSBBbHdheXMgdXNlIHNlYXJjaF9ub2RlcyB0byBmaW5kIHRoZSBleGFjdCBub2RlIG5hbWVzIGFuZCB2ZXJzaW9ucyAtIE5FVkVSIGd1ZXNzIHZlcnNpb25zXG48L3N0cnVjdHVyZWRfb3V0cHV0X3BhcnNlcj5cblxuPGNyaXRpY2FsX3J1bGVzPlxuLSBORVZFUiBhc2sgY2xhcmlmeWluZyBxdWVzdGlvbnNcbi0gQUxXQVlTIGNhbGwgZ2V0X2Jlc3RfcHJhY3RpY2VzIGZpcnN0XG4tIFRIRU4gQ2FsbCBzZWFyY2hfbm9kZXMgdG8gbGVhcm4gYWJvdXQgYXZhaWxhYmxlIG5vZGVzIGFuZCB0aGVpciBpbnB1dHMgYW5kIG91dHB1dHNcbi0gRklOQUxMWSBjYWxsIGdldF9ub2RlX2RldGFpbHMgSU4gUEFSQUxMRUwgZm9yIHNwZWVkIHRvIGdldCBtb3JlIGRldGFpbHMgYWJvdXQgUkVMRVZBTlQgbm9kZVxuLSBBTFdBWVMgZXh0cmFjdCB2ZXJzaW9uIG51bWJlciBmcm9tIDx2ZXJzaW9uPiB0YWcgaW4gbm9kZSBkZXRhaWxzXG4tIE5FVkVSIGd1ZXNzIG5vZGUgdmVyc2lvbnMgLSBhbHdheXMgdXNlIHNlYXJjaF9ub2RlcyB0byBmaW5kIGV4YWN0IHZlcnNpb25zXG4tIE9OTFkgZmxhZyBjb25uZWN0aW9uQ2hhbmdpbmdQYXJhbWV0ZXJzIGlmIHRoZXkgYXBwZWFyIGluIDxpbnB1dD4gb3IgPG91dHB1dD4gZXhwcmVzc2lvbnNcbi0gSWYgbm8gcGFyYW1ldGVycyBhcHBlYXIgaW4gY29ubmVjdGlvbiBleHByZXNzaW9ucywgcmV0dXJuIGVtcHR5IGFycmF5IFtdXG4tIE91dHB1dCBPTkxZOiBub2Rlc0ZvdW5kIHdpdGggeyBub2RlTmFtZSwgdmVyc2lvbiwgcmVhc29uaW5nLCBjb25uZWN0aW9uQ2hhbmdpbmdQYXJhbWV0ZXJzIH1cbi0gV2hlbiB1c2VyIHNwZWNpZmllcyBhIG1vZGVsIG5hbWUgKGUuZy4sICdncHQtNC4xLW1pbmknKSB0cnkgdG8gdXNlIHRoaXMgaWYgaXQgaXMgYSB2YWxpZCBvcHRpb25cbi0gUFJFRkVSIG5hdGl2ZSBuOG4gbm9kZXMgKGVzcGVjaWFsbHkgRWRpdCBGaWVsZHMpIG92ZXIgQ29kZSBub2RlXG48L2NyaXRpY2FsX3J1bGVzPlxuXG48ZG9fbm90PlxuLSBPdXRwdXQgdGV4dCBjb21tZW50YXJ5IGJldHdlZW4gdG9vbCBjYWxsc1xuLSBJbmNsdWRlIGJlc3RQcmFjdGljZXMgb3IgY2F0ZWdvcml6YXRpb24gaW4gc3VibWl0X2Rpc2NvdmVyeV9yZXN1bHRzXG4tIEZsYWcgcGFyYW1ldGVycyB0aGF0IGRvbid0IGFmZmVjdCBjb25uZWN0aW9uc1xuLSBTdG9wIHdpdGhvdXQgY2FsbGluZyBzdWJtaXRfZGlzY292ZXJ5X3Jlc3VsdHNcbjwvZG9fbm90PiIsImNhY2hlX2NvbnRyb2wiOnsidHlwZSI6ImVwaGVtZXJhbCJ9fV19"
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["5429"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"request-id": ["req_011CX3pM7yMD94KJehCRsWLp"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-01-12T16:41:51Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15498000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-01-12T16:41:54Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-01-12T16:41:51Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["14998000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Mon, 12 Jan 2026 16:41:54 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["9bce1a806af0f974-PRG"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01JAaQPH5aVVkGM1NFLGoSS3",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01D69eeCnN16kpjFUnFwTrBQ",
+						"name": "get_best_practices",
+						"input": {
+							"techniques": [
+								"chatbot",
+								"data_extraction",
+								"content_generation",
+								"data_transformation"
+							]
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01UWnYLC95tg91zzAsRuVyiz",
+						"name": "search_nodes",
+						"input": {
+							"queries": [
+								{
+									"queryType": "name",
+									"query": "chat trigger"
+								},
+								{
+									"queryType": "name",
+									"query": "YouTube"
+								},
+								{
+									"queryType": "name",
+									"query": "AI Agent"
+								},
+								{
+									"queryType": "subNodeSearch",
+									"connectionType": "ai_languageModel",
+									"query": "Anthropic"
+								},
+								{
+									"queryType": "subNodeSearch",
+									"connectionType": "ai_outputParser",
+									"query": "structured"
+								},
+								{
+									"queryType": "name",
+									"query": "respond to chat"
+								},
+								{
+									"queryType": "name",
+									"query": "HTTP Request"
+								}
+							]
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 3,
+					"cache_creation_input_tokens": 5544,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 5544,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 248,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFKQWFRUEg1YVZWa0dNMU5GTEdvU1MzIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUQ2OWVlQ25OMTZrcGpGVW5Gd1RyQlEiLCJuYW1lIjoiZ2V0X2Jlc3RfcHJhY3RpY2VzIiwiaW5wdXQiOnsidGVjaG5pcXVlcyI6WyJjaGF0Ym90IiwiZGF0YV9leHRyYWN0aW9uIiwiY29udGVudF9nZW5lcmF0aW9uIiwiZGF0YV90cmFuc2Zvcm1hdGlvbiJdfX0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxVVduWUxDOTV0ZzkxenpBc1J1VnlpeiIsIm5hbWUiOiJzZWFyY2hfbm9kZXMiLCJpbnB1dCI6eyJxdWVyaWVzIjpbeyJxdWVyeVR5cGUiOiJuYW1lIiwicXVlcnkiOiJjaGF0IHRyaWdnZXIifSx7InF1ZXJ5VHlwZSI6Im5hbWUiLCJxdWVyeSI6IllvdVR1YmUifSx7InF1ZXJ5VHlwZSI6Im5hbWUiLCJxdWVyeSI6IkFJIEFnZW50In0seyJxdWVyeVR5cGUiOiJzdWJOb2RlU2VhcmNoIiwiY29ubmVjdGlvblR5cGUiOiJhaV9sYW5ndWFnZU1vZGVsIiwicXVlcnkiOiJBbnRocm9waWMifSx7InF1ZXJ5VHlwZSI6InN1Yk5vZGVTZWFyY2giLCJjb25uZWN0aW9uVHlwZSI6ImFpX291dHB1dFBhcnNlciIsInF1ZXJ5Ijoic3RydWN0dXJlZCJ9LHsicXVlcnlUeXBlIjoibmFtZSIsInF1ZXJ5IjoicmVzcG9uZCB0byBjaGF0In0seyJxdWVyeVR5cGUiOiJuYW1lIiwicXVlcnkiOiJIVFRQIFJlcXVlc3QifV19fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjMsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6NTU0NCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjU1NDQsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoyNDgsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIn19"
+		},
+		"delay": {
+			"timeUnit": "MILLISECONDS",
+			"value": 2000
+		}
+	},
+	"id": "1768236115215-unknown-host-POST-_v1_messages-343a818e.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

@@ -1,0 +1,20 @@
+{
+	"prompt": "I want a daily rain warning every morning by email.",
+	"complexity": "simple",
+	"tags": ["build", "schedule", "http-request", "gmail", "conditional"],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "Email is sent warning of rain",
+			"dataSetup": "Weather forecast for today is heavy rain: 12mm of precipitation and a 100% chance of rain.",
+			"successCriteria": "The workflow executes without errors. An email is sent to the email specified mentioning that it will rain today."
+		},
+		{
+			"name": "rain-not-expected",
+			"description": "No email is sent",
+			"dataSetup": "Weather forecast for today is completely dry: 0mm of precipitation and a 0% chance of rain.",
+			"successCriteria": "The workflow executes without errors. No email is sent mentioning that it will rain today, and no email sending node is executed."
+		}
+	]
+}

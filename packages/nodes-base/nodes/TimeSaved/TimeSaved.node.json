@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.timeSaved",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Track Saved Time",
+
+	"categories": ["Core Nodes", "Development"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.savedTime/"
+			}
+		]
+	},
+	"alias": ["time", "track", "saved"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}

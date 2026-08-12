@@ -1,0 +1,11 @@
+{
+	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
+		"composite": true,
+		"module": "umd",
+		"moduleResolution": "node",
+		"verbatimModuleSyntax": false,
+		"resolveJsonModule": false,
+		"tsBuildInfoFile": "${configDir}/dist/cjs/build.tsbuildinfo"
+	}
+}

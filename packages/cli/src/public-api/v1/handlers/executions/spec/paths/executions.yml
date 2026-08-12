@@ -1,0 +1,54 @@
+get:
+  x-eov-operation-id: getExecutions
+  x-required-scope: execution:list
+  x-eov-operation-handler: v1/handlers/executions/executions.handler
+  tags:
+    - Execution
+  summary: Retrieve all executions
+  description: Retrieve all executions from your instance.
+  parameters:
+    - $ref: '../schemas/parameters/includeData.yml'
+    - name: ignoreDataSizeLimit
+      in: query
+      description: Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.
+      required: false
+      schema:
+        type: boolean
+    - $ref: '../schemas/parameters/redactExecutionData.yml'
+    - name: status
+      in: query
+      description: Status to filter the executions by.
+      required: false
+      schema:
+        type: string
+        enum: ['canceled', 'crashed', 'error', 'new', 'running', 'success', 'unknown', 'waiting']
+    - name: workflowId
+      in: query
+      description: Workflow to filter the executions by.
+      required: false
+      schema:
+        type: string
+        example: '1000'
+    - name: projectId
+      in: query
+      required: false
+      explode: false
+      allowReserved: true
+      schema:
+        type: string
+        example: VmwOO9HeTEj20kxM
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/executionList.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

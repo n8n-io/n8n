@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "orderindex": {
+            "type": "integer"
+        },
+        "resolved": {
+            "type": "integer"
+        },
+        "task_id": {
+            "type": "string"
+        },
+        "unresolved": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

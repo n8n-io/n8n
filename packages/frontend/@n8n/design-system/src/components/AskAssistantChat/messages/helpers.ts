@@ -1,0 +1,31 @@
+import BlockMessage from './BlockMessage.vue';
+import CodeDiffMessage from './CodeDiffMessage.vue';
+import ErrorMessage from './ErrorMessage.vue';
+import EventMessage from './EventMessage.vue';
+import TextMessage from './TextMessage.vue';
+import ToolMessage from './ToolMessage.vue';
+import type { ChatUI } from '../../../types';
+
+export function getSupportedMessageComponent(type: ChatUI.AssistantMessage['type']) {
+	switch (type) {
+		case 'text':
+			return TextMessage;
+		case 'block':
+			return BlockMessage;
+		case 'code-diff':
+			return CodeDiffMessage;
+		case 'error':
+			return ErrorMessage;
+		case 'event':
+			return EventMessage;
+		case 'tool':
+			return ToolMessage;
+		case 'thinking-group': // Handled directly in AskAssistantChat.vue
+		case 'agent-suggestion':
+		case 'workflow-updated':
+		case 'custom':
+			return null;
+		default:
+			return null;
+	}
+}

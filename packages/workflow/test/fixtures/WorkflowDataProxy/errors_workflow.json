@@ -1,0 +1,747 @@
+{
+	"name": "WorkflowDataProxy errors",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "b5122d27-4bb5-4100-a69b-03b1dcac76c7",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [740, 1680]
+		},
+		{
+			"parameters": {
+				"operation": "getAllPeople"
+			},
+			"id": "bf471582-900d-47af-848c-2d4218798775",
+			"name": "Customer Datastore (n8n training)",
+			"type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+			"typeVersion": 1,
+			"position": [1180, 1680]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "name",
+							"stringValue": "={{ $json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "1de94b04-c87b-4ef1-b5d7-5078f9e33220",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1400, 1680]
+		},
+		{
+			"parameters": {
+				"content": "These expression should always be red — there is no way of getting the input data even if you execute. Text should be:",
+				"height": 349.2762683040461,
+				"width": 339
+			},
+			"id": "c277f7c6-8a7a-41e9-9484-78e90bd205bf",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [1020, 1040]
+		},
+		{
+			"parameters": {
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{
+							"fieldToAggregate": "name"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "f6606ff5-4d66-4efb-8dad-de7662f20867",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [1820, 860]
+		},
+		{
+			"parameters": {
+				"content": "This error should be\n\n[Can't determine which item to use]",
+				"height": 255,
+				"width": 177
+			},
+			"id": "71fbae4a-f5b3-4db1-9684-83c4d2037099",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [2000, 760]
+		},
+		{
+			"parameters": {
+				"content": "[No path back to node]",
+				"height": 209,
+				"width": 150
+			},
+			"id": "24e878cb-a681-4c00-bec1-83188aa20eb7",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [1020, 1132]
+		},
+		{
+			"parameters": {
+				"content": "[No input connected]",
+				"height": 201,
+				"width": 150
+			},
+			"id": "4bd26f55-87b5-4ad1-b3f1-ae2786941114",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [1200, 1132]
+		},
+		{
+			"parameters": {
+				"jsCode": "\nreturn [\n  {\n    \"field\": \"the same\"\n  }\n];"
+			},
+			"id": "6538818e-c5b3-422b-920c-d5d52533578b",
+			"name": "Break pairedItem chain",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1820, 1120]
+		},
+		{
+			"parameters": {
+				"content": "This error should be\n\n[Can't determine which item to use]",
+				"height": 255,
+				"width": 177
+			},
+			"id": "42641e54-60e1-46d7-bcb4-b55a83f89f6b",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [2000, 1020]
+		},
+		{
+			"parameters": {
+				"jsCode": "\nreturn [\n  {\n    \"json\": {\n      \"field\": \"the same\"\n    },\n    \"pairedItem\": 99\n  }\n];"
+			},
+			"id": "05583883-ab4a-42c2-9edb-8e8cf3c9d074",
+			"name": "Incorrect pairedItem info",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1820, 1680]
+		},
+		{
+			"parameters": {
+				"content": "This error should be\n\n[Can't determine which item to use]",
+				"height": 255,
+				"width": 177
+			},
+			"id": "aea58e9e-5a00-4a86-a0bc-b077a07cd1f4",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [2000, 1580]
+		},
+		{
+			"parameters": {
+				"content": "If the pinned node is executed, make grey and use text:\n[For preview, unpin node ‘<node_name>’ and execute]",
+				"height": 255,
+				"width": 237.63786881219818
+			},
+			"id": "3fdf6bdc-8065-421b-9ecf-6453946356a4",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [2000, 1840]
+		},
+		{
+			"parameters": {
+				"jsCode": "\nreturn [\n  {\n    \"json\": {\n      \"field\": \"the same\"\n    },\n    \"pairedItem\": [1, 2, 3, 4]\n  }\n];"
+			},
+			"id": "f8de7b0a-79c1-4b7a-a183-feb94f2f8625",
+			"name": "Multiple matching items",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1820, 2200]
+		},
+		{
+			"parameters": {
+				"content": "This error should be\n\n[Can't determine which item to use]",
+				"height": 255,
+				"width": 177
+			},
+			"id": "601c050a-7909-4708-be8d-4de248b68392",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [2000, 2100]
+		},
+		{
+			"parameters": {
+				"content": "This should be grey, with text\n\n[For preview, unpin node ‘<node_name>’ and execute]",
+				"height": 291.70186796527776,
+				"width": 177
+			},
+			"id": "dfdcfaf4-a76b-4307-97a6-3fd7772e9fa8",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [2000, 2360]
+		},
+		{
+			"parameters": {
+				"jsCode": "\nreturn [\n  {\n    \"json\": {\n      \"field\": \"the same\"\n    },\n    \"pairedItem\": [1, 2, 3, 4]\n  }\n];"
+			},
+			"id": "8f2a9642-68e7-4dc6-a6c2-2018919327a3",
+			"name": "Multiple matching items, pinned",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1820, 2500]
+		},
+		{
+			"parameters": {
+				"content": "If the pinned node isn't executed (e.g. if you execute one of the other code nodes in the same column), the expression is green!",
+				"height": 128.93706220621976,
+				"width": 177
+			},
+			"id": "65cf9b4c-a96d-46f5-b9bb-f6d88d1fbc44",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [2220, 1940]
+		},
+		{
+			"parameters": {
+				"jsCode": "\nreturn [\n  {\n    \"json\": {\n      \"field\": \"the same\"\n    },\n    \"pairedItem\": 99\n  }\n];"
+			},
+			"id": "0bdfe0d2-7de2-472d-bc0a-2d0eff0e08c7",
+			"name": "Incorrect pairedItem info, pinned1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1820, 1940]
+		},
+		{
+			"parameters": {
+				"jsCode": "\nreturn [\n  {\n    \"field\": \"the same\"\n  }\n];"
+			},
+			"id": "b080a98e-d983-414a-b925-bdfc7ab2c3b6",
+			"name": "Break pairedItem chain, pinned",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1820, 1420]
+		},
+		{
+			"parameters": {
+				"content": "This should be grey, with text\n\n[For preview, unpin node ‘<node_name>’ and execute]",
+				"height": 291.70186796527776,
+				"width": 177
+			},
+			"id": "ce083193-1944-4c6c-925d-9e23c5194d98",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [2000, 1280]
+		},
+		{
+			"parameters": {
+				"content": "We should also change the output pane error on execution in this case.\n\nERROR: No path back to '<node_name>' node\nDescription: Please make sure it is connected to this node (there can be other nodes in between)",
+				"height": 209,
+				"width": 301.59467203049536
+			},
+			"id": "755e07f0-3f18-4b08-ad30-79221a76507a",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [1080, 1360]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict"
+					},
+					"conditions": [
+						{
+							"id": "1fff886f-3d13-4fbf-b0fb-7e2f845937c0",
+							"leftValue": "={{ false }}",
+							"rightValue": "",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"id": "56dd65f0-d67a-42ce-a876-77434f621dc3",
+			"name": "Impossible if",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2,
+			"position": [1000, 2000]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "test",
+							"stringValue": "xzy"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "11eadfc8-d14d-407c-b6d5-6e59b2e427a1",
+			"name": "Impossible",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1180, 1980]
+		},
+		{
+			"parameters": {
+				"content": "Should be an error when using .item:\n\n[No path back to node]",
+				"height": 237.7232010163043,
+				"width": 150
+			},
+			"id": "c3a3fdc2-66fa-4562-a359-45bdece2f625",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [1400, 1880]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "name",
+							"stringValue": "={{ $('Impossible').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "4cbbee96-dd4c-4625-95b9-c68faef3e9a8",
+			"name": "Reference impossible with .item",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1420, 2000]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "name",
+							"stringValue": "={{ $('Impossible').first().json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "6d47bd08-810a-4ade-be57-635adc1df47f",
+			"name": "Reference impossible with .first()",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1420, 2320]
+		},
+		{
+			"parameters": {
+				"content": "When using .first(), .last() or .all() and the node isn't executed, show grey warning:\n\n[Execute ‘<node_name>’ for preview]",
+				"height": 330.27573762439613,
+				"width": 229.78666948973432
+			},
+			"id": "1fcf2562-0789-41ad-8c92-44bcdd5d44e6",
+			"name": "Sticky Note13",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [1400, 2180]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"stringValue": "={{ $('non existent') }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "327d7f7b-61a5-4d60-9542-d61f84e7c83a",
+			"name": "Reference non-existent node",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1000, 2320]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"stringValue": "={{ $('Customer Datastore (n8n training)').item.json.email }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "38e3a736-4e13-4c23-af16-e50e605c4fb5",
+			"name": "NoPathBack",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1040, 1184]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"stringValue": "={{ $json.email }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "2a7eaf81-6d64-488d-baf6-cc2f962908af",
+			"name": "NoInputConnection",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1220, 1180]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"stringValue": "={{ $('Edit Fields').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "166ee813-1db8-43a6-ace4-990c41dfeaea",
+			"name": "PairedItemInfoMissing",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [2040, 1120]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"stringValue": "={{ $('Edit Fields').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "a2dca54c-03ef-4a16-bf29-71eb0012cf0b",
+			"name": "PairedItemInfoMissingPinned",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [2040, 1420]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"stringValue": "={{ $('Edit Fields').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "0a1f566b-8dcf-4e28-81c4-faeadcdc02fb",
+			"name": "IncorrectPairedItem",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [2040, 1680]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"stringValue": "={{ $('Edit Fields').item.to }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "4d76b75f-5896-48ba-bb2f-8a2574ec1b8b",
+			"name": "IncorrectPairedItemPinned",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [2040, 1940]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"stringValue": "={{ $('Edit Fields').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "c4636b5c-c13a-441b-a59c-23962b2757b3",
+			"name": "PairedItemMultipleMatches2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [2040, 2200]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"stringValue": "={{ $('Edit Fields').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "6d687cf8-5309-4d44-aab3-aa023a42fa27",
+			"name": "PairedItemMultipleMatches",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [2040, 860]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"stringValue": "={{ $('Edit Fields').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "d87a7aa4-b4c7-4fad-897d-a7ce0657bef3",
+			"name": "IncorrectPairedItemPinned2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [2040, 2500]
+		}
+	],
+	"pinData": {
+		"Multiple matching items, pinned": [
+			{
+				"json": {
+					"field": "the same"
+				}
+			}
+		],
+		"Incorrect pairedItem info, pinned1": [
+			{
+				"json": {
+					"field": "the same"
+				}
+			}
+		],
+		"Break pairedItem chain, pinned": [
+			{
+				"json": {
+					"field": "the same"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Customer Datastore (n8n training)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Impossible if",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Reference non-existent node",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Customer Datastore (n8n training)": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Reference impossible with .item",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Reference impossible with .first()",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Break pairedItem chain",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Incorrect pairedItem info",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Multiple matching items",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Incorrect pairedItem info, pinned1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Multiple matching items, pinned",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Break pairedItem chain, pinned",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "PairedItemMultipleMatches",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Break pairedItem chain": {
+			"main": [
+				[
+					{
+						"node": "PairedItemInfoMissing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Incorrect pairedItem info": {
+			"main": [
+				[
+					{
+						"node": "IncorrectPairedItem",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Multiple matching items": {
+			"main": [
+				[
+					{
+						"node": "PairedItemMultipleMatches2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Multiple matching items, pinned": {
+			"main": [
+				[
+					{
+						"node": "IncorrectPairedItemPinned2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Incorrect pairedItem info, pinned1": {
+			"main": [
+				[
+					{
+						"node": "IncorrectPairedItemPinned",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Break pairedItem chain, pinned": {
+			"main": [
+				[
+					{
+						"node": "PairedItemInfoMissingPinned",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Impossible if": {
+			"main": [
+				[
+					{
+						"node": "Impossible",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "f6276c80-c1d1-485b-9d07-894868bcd701",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "2e88d456a76a9edc44cbcda082bb44ddef9555356ef691b0c6a45099d5095a45"
+	},
+	"id": "BmXv9neCtTggKXuG",
+	"tags": []
+}

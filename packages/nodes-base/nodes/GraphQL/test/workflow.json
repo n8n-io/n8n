@@ -1,0 +1,85 @@
+{
+	"meta": {
+		"templateId": "216",
+		"instanceId": "ee90fdf8d57662f949e6c691dc07fa0fd2f66e1eee28ed82ef06658223e67255"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5e2ef15b-2c6c-412f-a9da-515b5211386e",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [420, 100]
+		},
+		{
+			"parameters": {
+				"endpoint": "https://api.n8n.io/graphql",
+				"requestFormat": "json",
+				"query": "query {\n  nodes(pagination: { limit: 1 }) {\n    data {\n      id\n      attributes {\n        name\n        displayName\n        description\n        group\n        codex\n        createdAt\n      }\n    }\n  }\n}"
+			},
+			"name": "Fetch Request Format JSON",
+			"type": "n8n-nodes-base.graphql",
+			"typeVersion": 1,
+			"position": [700, 140],
+			"id": "e1c750a0-8d6c-4e81-8111-3218e1e6e69f"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Fetch Request Format JSON",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Fetch Request Format JSON": [
+			{
+				"json": {
+					"data": {
+						"nodes": {
+							"data": [
+								{
+									"id": "1",
+									"attributes": {
+										"name": "n8n-nodes-base.activeCampaign",
+										"displayName": "ActiveCampaign",
+										"description": "Create and edit data in ActiveCampaign",
+										"group": "[\"transform\"]",
+										"codex": {
+											"data": {
+												"details": "ActiveCampaign is a cloud software platform that allows customer experience automation, which combines email marketing, marketing automation, sales automation, and CRM categories. Use this node when you want to interact with your ActiveCampaign account.",
+												"resources": {
+													"primaryDocumentation": [
+														{
+															"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.activecampaign/"
+														}
+													],
+													"credentialDocumentation": [
+														{
+															"url": "https://docs.n8n.io/integrations/builtin/credentials/activecampaign/"
+														}
+													]
+												},
+												"categories": ["Marketing"],
+												"nodeVersion": "1.0",
+												"codexVersion": "1.0"
+											}
+										},
+										"createdAt": "2019-08-30T22:54:39.934Z"
+									}
+								}
+							]
+						}
+					}
+				}
+			}
+		]
+	}
+}

@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "email": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "mcr_id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "record_type_id": {
+            "type": "integer"
+        },
+        "stage_name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

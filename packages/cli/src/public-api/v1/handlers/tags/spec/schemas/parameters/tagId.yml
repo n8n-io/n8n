@@ -1,0 +1,6 @@
+name: id
+in: path
+description: The ID of the tag.
+required: true
+schema:
+  type: string

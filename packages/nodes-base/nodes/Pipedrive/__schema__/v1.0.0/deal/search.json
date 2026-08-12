@@ -1,0 +1,74 @@
+{
+    "type": "object",
+    "properties": {
+        "currency": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "notes": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "organization": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "person": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "result_score": {
+            "type": "number"
+        },
+        "stage": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,67 @@
+{
+	"name": "Simple Webhook Test",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "test-webhook",
+				"options": {}
+			},
+			"id": "webhook-trigger",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"webhookId": "test-webhook-id"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "result-field",
+							"name": "result",
+							"value": "=Webhook received: {{ $json.body }}",
+							"type": "string"
+						},
+						{
+							"id": "timestamp-field",
+							"name": "timestamp",
+							"value": "={{ new Date().toISOString() }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "set-response",
+			"name": "Set Response",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [500, 300]
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Set Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

@@ -1,0 +1,145 @@
+{
+  "name": "itemsList concatenate paired fix",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "37256a71-67fe-4643-b4c7-e670096b68fc",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        620,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "category": "randomData",
+        "randomDataSeed": "n8n",
+        "randomDataCount": 3
+      },
+      "id": "0518c1d3-2e6d-40c6-8225-d89ec28ed28d",
+      "name": "DebugHelper",
+      "type": "n8n-nodes-base.debugHelper",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "concatenateItems",
+        "aggregate": "aggregateAllItemData"
+      },
+      "id": "7866056b-a7c1-41e2-b3b7-301cb21d95d4",
+      "name": "Item Lists",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "foo",
+              "stringValue": "bar"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "191ec112-65b6-4e4a-bf11-b63ab7e96f68",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        800,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "customerId": "1",
+        "message": "={{ $('Edit Fields').item.json.foo }}"
+      },
+      "id": "4a3d6844-5044-4570-912a-af3f32efa871",
+      "name": "Customer Messenger (n8n training)",
+      "type": "n8n-nodes-base.n8nTrainingCustomerMessenger",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        540
+      ]
+    }
+  ],
+  "pinData": {
+    "Customer Messenger (n8n training)": [
+      {
+        "json": {
+          "output": "Sent message to customer 1:  bar"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DebugHelper": {
+      "main": [
+        [
+          {
+            "node": "Item Lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Item Lists": {
+      "main": [
+        [
+          {
+            "node": "Customer Messenger (n8n training)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "DebugHelper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d17719c9-c625-4419-8b3c-d4cfaeffc312",
+  "id": "vXdwDVBSRxZxMrcv",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

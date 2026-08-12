@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "pathway": {
+            "type": "string"
+        },
+        "promise": {
+            "type": "string"
+        },
+        "scope": {
+            "type": "string"
+        }
+    },
+    "version": 4
+}

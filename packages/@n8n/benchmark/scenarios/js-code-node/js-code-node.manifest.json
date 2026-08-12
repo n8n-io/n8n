@@ -1,0 +1,7 @@
+{
+	"$schema": "../scenario.schema.json",
+	"name": "CodeNodeJs",
+	"description": "A JS Code Node that first generates 100 items and then runs once for each item and adds, modifies and removes properties. The data is returned with RespondToWebhook Node.",
+	"scenarioData": { "workflowFiles": ["js-code-node.json"] },
+	"scriptPath": "js-code-node.script.js"
+}

@@ -1,0 +1,235 @@
+/* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
+import { NodesConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import {
+	NodeConnectionTypes,
+	UnexpectedError,
+	UserError,
+	type CodeExecutionMode,
+	type CodeNodeEditorLanguage,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
+
+type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
+
+import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
+import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
+import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
+import { PythonRunnerUnavailableError } from './python-runner-unavailable.error';
+import { PythonTaskRunnerSandbox } from './PythonTaskRunnerSandbox';
+
+class PythonDisabledError extends UserError {
+	constructor() {
+		super(
+			'This instance disallows Python execution because it has the environment variable `N8N_PYTHON_ENABLED` set to `false`. To restore Python execution, remove this environment variable or set it to `true` and restart the instance.',
+		);
+	}
+}
+
+export class Code implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Code',
+		name: 'code',
+		icon: 'node:code',
+		iconColor: 'amber',
+		group: ['transform'],
+		version: [1, 2],
+		defaultVersion: 2,
+		description: 'Run custom JavaScript or Python code',
+		defaults: {
+			name: 'Code',
+		},
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			searchHint:
+				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures. The sandbox has NO network access: fetch(), axios, XMLHttpRequest and require of http modules are unavailable and FAIL at runtime. NEVER make HTTP requests in a Code node — use the HTTP Request node and process its output instead.',
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.httpRequest',
+					relationHint:
+						'Use this instead for ANY HTTP/API call — the Code node sandbox cannot make network requests',
+				},
+				{
+					nodeType: 'n8n-nodes-base.set',
+					relationHint:
+						'Use this instead for data manipulation: add/modify/rename fields, set values, map data',
+				},
+				{
+					nodeType: 'n8n-nodes-base.filter',
+					relationHint: 'Use this instead for filtering items by condition',
+				},
+				{
+					nodeType: 'n8n-nodes-base.if',
+					relationHint: 'Use this instead for routing by condition',
+				},
+				{
+					nodeType: 'n8n-nodes-base.switch',
+					relationHint: 'Use this instead for multi-way routing by condition',
+				},
+				{
+					nodeType: 'n8n-nodes-base.splitOut',
+					relationHint: 'Use this instead for splitting arrays into separate items',
+				},
+				{
+					nodeType: 'n8n-nodes-base.aggregate',
+					relationHint: 'Use this instead for combining multiple items into one',
+				},
+				{
+					nodeType: 'n8n-nodes-base.summarize',
+					relationHint: 'Use this instead for summarizing or pivoting data',
+				},
+				{
+					nodeType: 'n8n-nodes-base.removeDuplicates',
+					relationHint: 'Use this instead for removing duplicates',
+				},
+				{
+					nodeType: 'n8n-nodes-base.limit',
+					relationHint: 'Use this instead to reduce the number of items returned',
+				},
+				{
+					nodeType: 'n8n-nodes-base.merge',
+					relationHint: 'Use this instead for merging data from multiple branches',
+				},
+				{
+					nodeType: 'n8n-nodes-base.dateTime',
+					relationHint: 'Use this instead for date time operations',
+				},
+				{
+					nodeType: 'n8n-nodes-base.html',
+					relationHint: 'Use this instead for creating html pages',
+				},
+			],
+			extraTypeDefContent: [
+				{
+					content: `<patterns>
+<pattern title="runOnceForAllItems with $input.all()">
+const codeNode = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: {
+    name: 'Process Data',
+    parameters: {
+      mode: 'runOnceForAllItems',
+      jsCode: \`
+const items = $input.all();
+return items.map(item => ({
+  json: { ...item.json, processed: true }
+}));
+\`.trim()
+    }
+  }
+});
+</pattern>
+</patterns>`,
+				},
+			],
+		},
+		parameterPane: 'wide',
+		properties: [
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Run Once for All Items',
+						value: 'runOnceForAllItems',
+						description: 'Run this code only once, no matter how many input items there are',
+					},
+					{
+						name: 'Run Once for Each Item',
+						value: 'runOnceForEachItem',
+						description: 'Run this code as many times as there are input items',
+					},
+				],
+				default: 'runOnceForAllItems',
+			},
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				options: [
+					{
+						name: 'JavaScript',
+						value: 'javaScript',
+						action: 'Code in JavaScript',
+					},
+					{
+						name: 'Python',
+						value: 'pythonNative',
+						action: 'Code in Python',
+					},
+				],
+				default: 'javaScript',
+			},
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'hidden',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+				default: 'javaScript',
+			},
+
+			...javascriptCodeDescription,
+			...pythonCodeDescription,
+		],
+	};
+
+	async execute(this: IExecuteFunctions) {
+		const node = this.getNode();
+		const language: CodeNodeLanguageOption =
+			node.typeVersion === 2
+				? (this.getNodeParameter('language', 0) as CodeNodeLanguageOption)
+				: 'javaScript';
+
+		const isJsLang = language === 'javaScript';
+		const isPyLang = language === 'python' || language === 'pythonNative'; // keep legacy `python` for backwards compatibility
+		if (isPyLang && !Container.get(NodesConfig).pythonEnabled) {
+			throw new PythonDisabledError();
+		}
+
+		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
+		const workflowMode = this.getMode();
+		const codeParameterName = isPyLang ? 'pythonCode' : 'jsCode';
+
+		if (isJsLang) {
+			const code = this.getNodeParameter(codeParameterName, 0) as string;
+			const sandbox = new JsTaskRunnerSandbox(workflowMode, this);
+			const numInputItems = this.getInputData().length;
+
+			return nodeMode === 'runOnceForAllItems'
+				? [await sandbox.runCodeAllItems(code)]
+				: [await sandbox.runCodeForEachItem(code, numInputItems)];
+		}
+
+		if (isPyLang) {
+			const runnerStatus = this.getRunnerStatus('python');
+			if (!runnerStatus.available) {
+				throw new PythonRunnerUnavailableError(
+					runnerStatus.reason as 'python' | 'venv' | undefined,
+				);
+			}
+
+			const code = this.getNodeParameter(codeParameterName, 0) as string;
+			const sandbox = new PythonTaskRunnerSandbox(code, nodeMode, workflowMode, this);
+
+			return [await sandbox.runUsingIncomingItems()];
+		}
+
+		throw new UnexpectedError(`Unsupported language: ${language}`);
+	}
+}

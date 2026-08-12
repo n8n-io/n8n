@@ -1,0 +1,114 @@
+{
+	"name": "My workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "1285fa02-e091-4bd3-89cf-c7e6c174ff49",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, -120]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Minimal valid PDF with extractable text \"Hello World\"\nconst pdfBase64 = 'JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQKL0YxIDEyIFRmCjEwMCA3MDAgVGQKKEhlbGxvIFdvcmxkKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyNjYgMDAwMDAgbiAKMDAwMDAwMDM1OSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDYgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjQ0MQolJUVPRgo=';\n\nconst pdfBuffer = Buffer.from(pdfBase64, 'base64');\nconst data = await this.helpers.prepareBinaryData(pdfBuffer, 'sample.pdf', 'application/pdf');\n\nreturn [{\n  json: {},\n  binary: {\n    data\n  }\n}];"
+			},
+			"id": "9c8b960d-e7c8-4116-97d4-4f5ca9872898",
+			"name": "Create PDF",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [680, -120]
+		},
+		{
+			"parameters": {
+				"operation": "pdf",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.extractFromFile",
+			"typeVersion": 1,
+			"position": [1340, -120],
+			"id": "5757782b-7029-44d6-b87e-5f9b5910f1b7",
+			"name": "Extract from File"
+		},
+		{
+			"parameters": {
+				"operation": "write",
+				"fileName": "/tmp/downloaded-sample.pdf",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.readWriteFile",
+			"typeVersion": 1,
+			"position": [900, -120],
+			"id": "2bc250b7-6f9f-4888-a229-beced5821b1b",
+			"name": "Write PDF"
+		},
+		{
+			"parameters": {
+				"fileSelector": "/tmp/downloaded-sample.pdf",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.readWriteFile",
+			"typeVersion": 1,
+			"position": [1120, -120],
+			"id": "e3402ffd-b322-4442-b0d1-18bb19a9a319",
+			"name": "Read PDF"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Create PDF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create PDF": {
+			"main": [
+				[
+					{
+						"node": "Write PDF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Write PDF": {
+			"main": [
+				[
+					{
+						"node": "Read PDF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read PDF": {
+			"main": [
+				[
+					{
+						"node": "Extract from File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "8a74a3e5-c170-4d21-9821-90a47f3b7987",
+	"meta": {
+		"instanceId": "1b71763328f359150fb2679ac09d77f666c592638a32a2dd7f058138ceaf177d"
+	},
+	"id": "1sTDcSTRKmMsFNn6",
+	"tags": []
+}

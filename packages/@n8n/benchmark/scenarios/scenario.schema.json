@@ -1,0 +1,51 @@
+{
+	"definitions": {
+		"ScenarioData": {
+			"type": "object",
+			"properties": {
+				"workflowFiles": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"credentialFiles": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"dataTableFile": {
+					"type": "string"
+				}
+			},
+			"required": [],
+			"additionalProperties": false
+		}
+	},
+	"type": "object",
+	"properties": {
+		"$schema": {
+			"type": "string",
+			"description": "The JSON schema to validate this file"
+		},
+		"name": {
+			"type": "string",
+			"description": "The name of the scenario"
+		},
+		"description": {
+			"type": "string",
+			"description": "A longer description of the scenario"
+		},
+		"scriptPath": {
+			"type": "string",
+			"description": "Relative path to the k6 test script"
+		},
+		"scenarioData": {
+			"$ref": "#/definitions/ScenarioData",
+			"description": "Data to import before running the scenario"
+		}
+	},
+	"required": ["name", "description", "scriptPath", "scenarioData"],
+	"additionalProperties": false
+}

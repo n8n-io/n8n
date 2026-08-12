@@ -1,0 +1,139 @@
+import * as LoggerProxy from './logger-proxy';
+import * as NodeHelpers from './node-helpers';
+import * as ObservableObject from './observable-object';
+import * as TelemetryHelpers from './telemetry-helpers';
+
+export * from './errors';
+export * from './constants';
+export * from './common';
+export * from './cron';
+export * from './data-table.types';
+export * from './execution-context';
+export * from './execution-context-establishment-hooks';
+export * from './redaction-channels';
+export * from './dynamic-credentials-helpers';
+export * from './safe-regex';
+export * from './global-state';
+export * from './interfaces';
+export {
+	fromFunction,
+	fromParameter,
+	nodeParametersAreStatic,
+	resolveWebhookDescriptionField,
+	webhookDescriptionFields,
+	webhookDescriptionIsNativelyResolvable,
+	type NativeResolution,
+	type WebhookDescriptionField,
+} from './webhook-description-fields';
+export * from './sub-workflow-output';
+export * from './run-execution-data-factory';
+export * from './message-event-bus';
+export * from './execution-status';
+export * from './trimmed-task-data';
+export * from './expression';
+export * from './expressions/expression-helpers';
+export * from './from-ai-parse-utils';
+export * from './node-helpers';
+export * from './node-validation';
+export * from './node-grouping-validation';
+export * from './mcp-helpers';
+export * from './tool-helpers';
+export * from './trigger-credential-gate';
+export * from './trigger-identity';
+export * from './n8n-oauth2-auth';
+export * from './node-reference-parser-utils';
+export * from './metadata-utils';
+export * from './highlighted-data';
+export * from './workflow';
+export * from './workflow-checksum';
+export * from './workflow-data-proxy';
+export * from './workflow-data-proxy-env-provider';
+export * from './workflow-validation';
+export * from './workflow-structure-validation';
+export * from './versioned-node-type';
+export * from './type-validation';
+export * from './credential-domain-restrictions';
+export * from './schemas';
+export * from './run-execution-data/run-execution-data';
+export { WorkflowExpression } from './workflow-expression';
+export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
+export {
+	isObjectEmpty,
+	deepCopy,
+	jsonParse,
+	base64DecodeUTF8,
+	jsonStringify,
+	replaceCircularReferences,
+	sleep,
+	fileTypeFromMimeType,
+	assert,
+	removeCircularRefs,
+	updateDisplayOptions,
+	randomInt,
+	randomString,
+	isSafeObjectProperty,
+	setSafeObjectProperty,
+	isCommunityPackageName,
+	dedupe,
+	sanitizeFilename,
+	sanitizeXmlName,
+	generateSecureToken,
+} from './utils';
+export {
+	isINodeProperties,
+	isINodePropertyOptions,
+	isINodePropertyCollection,
+	isINodePropertiesList,
+	isINodePropertyCollectionList,
+	isINodePropertyOptionsList,
+	isResourceMapperValue,
+	isResourceLocatorValue,
+	isFilterValue,
+	isNodeConnectionType,
+	isBinaryValue,
+} from './type-guards';
+
+export {
+	parseExtractableSubgraphSelection,
+	buildAdjacencyList,
+	type ExtractableErrorResult,
+	type ExtractableSubgraphData,
+	type IConnectionAdjacencyList as AdjacencyList,
+} from './graph/graph-utils';
+export { ExpressionExtensions, type Alias, type AliasCompletion } from './extensions';
+export * as ExpressionParser from './extensions/expression-parser';
+export { NativeMethods } from './native-methods';
+export * from './node-parameters/filter-parameter';
+export * from './node-parameters/parameter-type-validation';
+export * from './node-parameters/node-parameter-value-type-guard';
+export * from './node-parameters/path-utils';
+export * from './evaluation-helpers';
+export * from './workflow-diff';
+export * from './connections-diff';
+export * from './workflow-environments-helper';
+export { evaluateJmespathQuery, JmespathQueryError } from './jmespath-query';
+
+export type {
+	DocMetadata,
+	NativeDoc,
+	DocMetadataArgument,
+	DocMetadataExample,
+	Extension,
+} from './extensions';
+
+declare module 'http' {
+	export interface IncomingMessage {
+		contentType?: string;
+		encoding: BufferEncoding;
+		contentDisposition?: { type: string; filename?: string };
+		rawBody: Buffer;
+		readRawBody(): Promise<void>;
+		_body: boolean;
+
+		// This gets added by the `follow-redirects` package
+		responseUrl?: string;
+
+		// This is added to response objects for all outgoing requests
+		req?: ClientRequest;
+	}
+}

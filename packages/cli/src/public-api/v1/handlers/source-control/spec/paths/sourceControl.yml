@@ -1,0 +1,31 @@
+post:
+  x-eov-operation-id: pull
+  x-required-scope: sourceControl:pull
+  x-eov-operation-handler: v1/handlers/source-control/source-control.handler
+  tags:
+    - SourceControl
+  summary: Pull changes from the remote repository
+  description: Requires the Source Control feature to be licensed and connected to a repository.
+  requestBody:
+    description: Pull options
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/pull.yml'
+  responses:
+    '200':
+      description: Pull result containing the list of files that were pulled from the remote repository.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/pullResult.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '409':
+      description: |
+        Conflict due to uncommitted local changes or merge conflicts. The response body lists every file in the pull diff; files causing the conflict have `conflict: true` or `status: modified`. Retry with `force=true` to discard local changes.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/pullResult.yml'

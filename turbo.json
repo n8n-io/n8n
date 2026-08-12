@@ -1,0 +1,89 @@
+{
+	"globalEnv": ["CI", "BUILD_WITH_COVERAGE"],
+	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
+	"boundaries": {
+		// `~icons/*` is a vite virtual module injected by unplugin-icons (design-system
+		// icon barrel), not a real package — declare it so boundaries doesn't flag it.
+		"implicitDependencies": ["~icons"]
+	},
+	"tasks": {
+		"clean": { "cache": false },
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"]
+		},
+		"build:unchecked": {
+			"dependsOn": ["^build:unchecked"],
+			"outputs": ["dist/**"]
+		},
+		"n8n-editor-ui#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
+		"n8n-editor-ui#build:unchecked": {
+			"dependsOn": ["^build:unchecked"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
+		"typecheck": {
+			"dependsOn": ["^build"]
+		},
+		"format": {},
+		"format:check": {},
+		"lint": {
+			"dependsOn": ["^build", "@n8n/eslint-config#build"]
+		},
+		"lint:fix": {},
+		"lint:styles": {
+			"dependsOn": ["@n8n/stylelint-config#build"]
+		},
+		"lint:styles:fix": {
+			"dependsOn": ["@n8n/stylelint-config#build"]
+		},
+		"test": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED"]
+		},
+		"test:changed": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"cache": false
+		},
+		"test:unit": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED"]
+		},
+		"test:unit:changed": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"cache": false
+		},
+		"test:integration": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED"]
+		},
+		"test:integration:changed": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"cache": false
+		},
+		"watch": { "cache": false, "persistent": true },
+		"dev": { "cache": false, "persistent": true },
+		"install-browsers": {
+			"cache": true,
+			"inputs": [".playwright-version"],
+			"outputs": [".playwright-browsers/**"]
+		},
+		"test:container:standard": {
+			"env": ["E2E_TESTS"],
+			"cache": false
+		}
+	}
+}

@@ -1,0 +1,655 @@
+import type { Tool } from '@langchain/core/tools';
+import type { RunningJobSummary } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
+import {
+	WorkflowHasIssuesError,
+	InstanceSettings,
+	WorkflowExecute,
+	SupplyDataContext,
+} from 'n8n-core';
+import type {
+	ExecutionStatus,
+	IDataObject,
+	IExecuteData,
+	IExecuteFunctions,
+	IExecutionContext,
+	INodeExecutionData,
+	IRun,
+	IRunExecutionData,
+	IWorkflowExecutionDataProcess,
+	StructuredChunk,
+	CloseFunction,
+	GenericValue,
+} from 'n8n-workflow';
+import {
+	ManualExecutionCancelledError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	Workflow,
+	UnexpectedError,
+	createRunExecutionData,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
+} from 'n8n-workflow';
+import type PCancelable from 'p-cancelable';
+
+import { EventService } from '@/events/event.service';
+import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { prepareExecutionDataForDbUpdate } from '@/execution-lifecycle/shared/shared-hook-functions';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
+import { ManualExecutionService } from '@/manual-execution.service';
+import { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
+import type {
+	Job,
+	JobFinishedMessage,
+	JobFinishedProps,
+	JobId,
+	JobResult,
+	RespondToWebhookMessage,
+	McpResponseMessage,
+	RunningJob,
+	SendChunkMessage,
+} from './scaling.types';
+import { WebhookResponseRelay } from './webhook-response-relay';
+
+/**
+ * Responsible for processing jobs from the queue, i.e. running enqueued executions.
+ */
+@Service()
+export class JobProcessor {
+	private readonly runningJobs: Record<JobId, RunningJob> = {};
+
+	constructor(
+		private readonly logger: Logger,
+		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly nodeTypes: NodeTypes,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly manualExecutionService: ManualExecutionService,
+		private readonly executionsConfig: ExecutionsConfig,
+		private readonly eventService: EventService,
+		private readonly webhookResponseRelay: WebhookResponseRelay,
+	) {
+		this.logger = this.logger.scoped('scaling');
+	}
+
+	async processJob(job: Job): Promise<JobResult> {
+		const { executionId, loadStaticData } = job.data;
+
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		if (!execution) {
+			throw new UnexpectedError(
+				`Worker failed to find data for execution ${executionId} (job ${job.id})`,
+			);
+		}
+
+		/**
+		 * Bull's implicit retry mechanism and n8n's execution recovery mechanism may
+		 * cause a crashed execution to be enqueued. We refrain from processing it,
+		 * until we have reworked both mechanisms to prevent this scenario.
+		 */
+		if (execution.status === 'crashed') return { success: false };
+
+		// A correctly enqueued execution always carries a run-data payload. A missing
+		// one means the producer persisted no data, which would otherwise surface as an
+		// opaque `Cannot read properties of undefined` deref further down. Fail with a
+		// clear, attributable error instead.
+		if (!execution.data) {
+			throw new UnexpectedError(
+				`Worker received execution ${executionId} without run data (job ${job.id})`,
+			);
+		}
+
+		const workflowId = execution.workflowData.id;
+
+		this.logger.info(`Worker started execution ${executionId} (job ${job.id})`, {
+			executionId,
+			workflowId,
+			workflowName: execution.workflowData.name,
+			jobId: job.id,
+			...(job.data.projectId !== undefined && { projectId: job.data.projectId }),
+			...(job.data.projectName !== undefined && { projectName: job.data.projectName }),
+		});
+
+		const startedAt = await this.executionRepository.setRunning(executionId);
+
+		let { staticData } = execution.workflowData;
+
+		if (loadStaticData) {
+			const workflowData = await this.workflowRepository.findOne({
+				select: ['id', 'staticData'],
+				where: { id: workflowId },
+			});
+
+			if (workflowData === null) {
+				throw new UnexpectedError(
+					`Worker failed to find workflow ${workflowId} to run execution ${executionId} (job ${job.id})`,
+				);
+			}
+
+			staticData = workflowData.staticData;
+		}
+
+		const workflowSettings = execution.workflowData.settings ?? {};
+
+		let workflowTimeout = workflowSettings.executionTimeout ?? this.executionsConfig.timeout;
+
+		let executionTimeoutTimestamp: number | undefined;
+
+		if (workflowTimeout > 0) {
+			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
+			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
+		}
+
+		const workflow = new Workflow({
+			id: workflowId,
+			name: execution.workflowData.name,
+			nodes: execution.workflowData.nodes,
+			connections: execution.workflowData.connections,
+			active: getWorkflowActiveStatusFromWorkflowData(execution.workflowData),
+			nodeTypes: this.nodeTypes,
+			staticData,
+			settings: execution.workflowData.settings,
+		});
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId,
+			executionTimeoutTimestamp,
+			workflowSettings: execution.workflowData.settings,
+		});
+		additionalData.streamingEnabled = job.data.streamingEnabled;
+		additionalData.restartExecutionId = job.data.restartExecutionId;
+		additionalData.evaluationRunId = execution.data.manualData?.evaluationRunId;
+		// Rehydrate the manual-execution identity for private credential resolution.
+		additionalData.encryptedRunnerIdentity = job.data.encryptedRunnerIdentity;
+
+		const { pushRef } = job.data;
+
+		const lifecycleHooks = getLifecycleHooksForScalingWorker(
+			{
+				executionMode: execution.mode,
+				workflowData: execution.workflowData,
+				retryOf: execution.retryOf,
+				pushRef,
+				userId: execution.data.manualData?.userId,
+				source: execution.data.manualData?.source,
+				suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
+			},
+			executionId,
+		);
+		additionalData.hooks = lifecycleHooks;
+
+		if (pushRef) {
+			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
+				pushRef,
+			}) as (type: string, data: IDataObject | IDataObject[]) => void;
+		}
+
+		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
+			// An MCP Service call takes its result from the execution's stored data, so a
+			// response relayed to main has no reader. Relaying one would also reach main
+			// mid-execution, resolving the call on data the run has not finished writing.
+			if (job.data.isMcpExecution && job.data.mcpSessionId && job.data.mcpType !== 'trigger') {
+				return;
+			}
+
+			const relayed = await this.webhookResponseRelay.prepare(response, {
+				workflowId: job.data.workflowId,
+				executionId,
+			});
+
+			// Check if this is an MCP execution - broadcast response to all mains
+			if (job.data.isMcpExecution && job.data.mcpSessionId) {
+				const msg: McpResponseMessage = {
+					kind: 'mcp-response',
+					executionId,
+					mcpType: 'trigger',
+					sessionId: job.data.mcpSessionId,
+					messageId: job.data.mcpMessageId ?? '',
+					response: relayed,
+					workerId: this.instanceSettings.hostId,
+				};
+
+				await job.progress(msg);
+				return;
+			}
+
+			// Standard webhook response
+			const msg: RespondToWebhookMessage = {
+				kind: 'respond-to-webhook',
+				executionId,
+				response: relayed,
+				workerId: this.instanceSettings.hostId,
+			};
+
+			await job.progress(msg);
+		});
+
+		lifecycleHooks.addHandler('sendChunk', async (chunk: StructuredChunk): Promise<void> => {
+			const msg: SendChunkMessage = {
+				kind: 'send-chunk',
+				executionId,
+				chunkText: chunk,
+				workerId: this.instanceSettings.hostId,
+			};
+
+			await job.progress(msg);
+		});
+
+		additionalData.executionId = executionId;
+
+		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
+			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
+			this.logger.debug(
+				`Queued worker execution status for execution ${executionId} (job ${job.id}) is "${status}"`,
+				{
+					executionId,
+					workflowId,
+					workflowName: execution.workflowData.name,
+					jobId: job.id,
+					...(job.data.projectId && { projectId: job.data.projectId }),
+					...(job.data.projectName && { projectName: job.data.projectName }),
+				},
+			);
+		};
+
+		let workflowExecute: WorkflowExecute;
+		let workflowRun: PCancelable<IRun>;
+
+		const { startData, resultData, manualData } = execution.data;
+
+		if (execution.data?.executionData) {
+			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
+			workflowRun = workflowExecute.processRunExecutionData(workflow);
+		} else {
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: execution.mode,
+				workflowData: execution.workflowData,
+				destinationNode: startData?.destinationNode,
+				startNodes: startData?.startNodes,
+				runData: resultData.runData,
+				pinData: resultData.pinData,
+				dirtyNodeNames: manualData?.dirtyNodeNames,
+				triggerToStartFrom: manualData?.triggerToStartFrom,
+				userId: manualData?.userId,
+			};
+
+			try {
+				workflowRun = this.manualExecutionService.runManually(
+					data,
+					workflow,
+					additionalData,
+					executionId,
+					resultData.pinData,
+				);
+			} catch (error) {
+				if (error instanceof WorkflowHasIssuesError) {
+					// execution did not even start, but we call `workflowExecuteAfter` to notify main
+
+					const now = new Date();
+					const runData: IRun = {
+						mode: 'manual',
+						status: 'error',
+						finished: false,
+						startedAt: now,
+						stoppedAt: now,
+						data: createRunExecutionData({ resultData: { error, runData: {} } }),
+						storedAt: execution.storedAt,
+					};
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
+					return { success: false };
+				}
+				throw error;
+			}
+		}
+
+		const runningJob: RunningJob = {
+			run: workflowRun,
+			executionId,
+			workflowId: execution.workflowId,
+			workflowName: execution.workflowData.name,
+			mode: execution.mode,
+			startedAt,
+			retryOf: execution.retryOf ?? undefined,
+			status: execution.status,
+		};
+
+		this.runningJobs[job.id] = runningJob;
+
+		const run = await workflowRun;
+
+		delete this.runningJobs[job.id];
+
+		if (run?.status === 'canceled') {
+			throw new ManualExecutionCancelledError(executionId);
+		}
+
+		const props = this.deriveJobFinishedProps(run, startedAt);
+
+		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
+			executionId,
+			workflowId,
+			workflowName: execution.workflowData.name,
+			jobId: job.id,
+			success: props.success,
+			...(job.data.projectId && { projectId: job.data.projectId }),
+			...(job.data.projectName && { projectName: job.data.projectName }),
+		});
+
+		const msg: JobFinishedMessage = {
+			kind: 'job-finished',
+			version: 2,
+			executionId,
+			workerId: this.instanceSettings.hostId,
+			...props,
+		};
+
+		await job.progress(msg);
+
+		// For MCP Trigger executions with tool calls, execute the tool and send result
+		if (
+			job.data.isMcpExecution &&
+			job.data.mcpType === 'trigger' &&
+			job.data.mcpSessionId &&
+			job.data.mcpToolCall?.sourceNodeName
+		) {
+			const { toolName, arguments: toolArgs, sourceNodeName } = job.data.mcpToolCall;
+
+			let toolResult: unknown;
+			try {
+				// The execution's isolate window closed when the run finished, but the
+				// tool's parameters may still contain expressions (e.g. $fromAI), so
+				// the tool call needs its own isolate window.
+				toolResult = await withExpressionIsolate(
+					workflow,
+					async () =>
+						await this.invokeTool(
+							workflow,
+							sourceNodeName,
+							toolArgs,
+							additionalData,
+							run.data,
+							// The execution context (e.g. the OAuth identity for private credentials)
+							// is established on the main and loaded with the execution here; pass it
+							// through so the tool node can resolve dynamic credentials on the worker.
+							execution.data?.executionData?.runtimeData,
+						),
+				);
+
+				// A tool result is not a response, so it has no offload path: this limit
+				// is all that keeps it from travelling through the queue unbounded.
+				this.webhookResponseRelay.assertFitsInline(toolResult);
+			} catch (error) {
+				this.logger.error('Tool call failed for MCP Trigger', {
+					executionId,
+					toolName,
+					sourceNodeName,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				toolResult = {
+					error:
+						error instanceof Error
+							? { message: error.message, name: error.name }
+							: { message: String(error) },
+				};
+			}
+
+			// Persist the tool call's run data, since the save hook fired before it ran.
+			try {
+				const toolRunData = run.data.resultData?.runData;
+				await this.executionPersistence.updateExistingExecution(
+					executionId,
+					{
+						...prepareExecutionDataForDbUpdate({
+							runData: run,
+							workflowData: execution.workflowData,
+							workflowStatusFinal: run.status,
+							retryOf: execution.retryOf ?? undefined,
+						}),
+						// The save hook computed this marker before the tool ran, so recompute it now
+						// that the tool task may carry dynamic-credential flags.
+						usedPrivateCredentials:
+							runDataUsedDynamicCredentials(toolRunData) ||
+							runDataAttemptedDynamicCredentials(toolRunData),
+					},
+					// A cancel racing the tool call must keep its status; skip the tool-run persist
+					// entirely rather than write over `canceled` (matches the completion hook).
+					{ requireNotCanceled: true },
+				);
+			} catch (error) {
+				this.logger.error('Failed to persist tool call run data for MCP Trigger', {
+					executionId,
+					sourceNodeName,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+
+			const mcpMsg: McpResponseMessage = {
+				kind: 'mcp-response',
+				executionId,
+				mcpType: 'trigger',
+				sessionId: job.data.mcpSessionId,
+				messageId: job.data.mcpMessageId ?? '',
+				response: toolResult, // Actual tool result
+				workerId: this.instanceSettings.hostId,
+			};
+
+			await job.progress(mcpMsg);
+		} else if (job.data.isMcpExecution && job.data.mcpSessionId) {
+			// For MCP Service executions or MCP Trigger without tool call, send basic response
+			const mcpMsg: McpResponseMessage = {
+				kind: 'mcp-response',
+				executionId,
+				mcpType: job.data.mcpType ?? 'service',
+				sessionId: job.data.mcpSessionId,
+				messageId: job.data.mcpMessageId ?? '',
+				response: { success: props.success },
+				workerId: this.instanceSettings.hostId,
+			};
+
+			await job.progress(mcpMsg);
+		}
+
+		/**
+		 * @important Do NOT call `workflowExecuteAfter` hook here.
+		 * It is being called from processSuccessExecution() already.
+		 */
+
+		return { success: true };
+	}
+
+	private deriveJobFinishedProps(run: IRun, startedAt: Date): JobFinishedProps {
+		return {
+			success: run.status !== 'error' && run.data.resultData.error === undefined,
+			status: run.status,
+			error: run.data.resultData.error,
+			startedAt,
+			stoppedAt: run.stoppedAt!,
+			lastNodeExecuted: run.data.resultData.lastNodeExecuted,
+			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
+			metadata: run.data.resultData.metadata,
+			waitTill: run.waitTill ?? null,
+		};
+	}
+
+	stopJob(jobId: JobId) {
+		const runningJob = this.runningJobs[jobId];
+		if (!runningJob) return;
+
+		const { executionId, workflowId, workflowName } = runningJob;
+		this.eventService.emit('execution-cancelled', {
+			executionId,
+			workflowId,
+			workflowName,
+			reason: 'manual', // Job stops via scaling service are always user-initiated
+		});
+
+		runningJob.run.cancel();
+		delete this.runningJobs[jobId];
+	}
+
+	getRunningJobIds(): JobId[] {
+		return Object.keys(this.runningJobs);
+	}
+
+	getRunningJobsSummary(): RunningJobSummary[] {
+		return Object.values(this.runningJobs).map(({ run, ...summary }) => summary);
+	}
+
+	/**
+	 * Invoke a tool directly for MCP Trigger in queue mode.
+	 * For nodes with supplyData (e.g. native langchain tool nodes), creates a
+	 * SupplyDataContext, calls supplyData to get the Tool, and invokes it.
+	 * For tool wrapper nodes without supplyData (e.g. httpRequestTool), calls
+	 * execute directly — mirroring the fallback in get-input-connection-data.ts.
+	 */
+	private async invokeTool(
+		workflow: Workflow,
+		sourceNodeName: string,
+		toolArgs: Record<string, unknown>,
+		additionalData: ReturnType<typeof WorkflowExecuteAdditionalData.getBase> extends Promise<
+			infer T
+		>
+			? T
+			: never,
+		runExecutionData: IRunExecutionData,
+		executionContext?: IExecutionContext,
+	): Promise<unknown> {
+		const toolNode = workflow.getNode(sourceNodeName);
+		if (!toolNode) {
+			throw new UnexpectedError(`Tool node "${sourceNodeName}" not found in workflow`);
+		}
+
+		// Get the node type
+		const nodeType = this.nodeTypes.getByNameAndVersion(toolNode.type, toolNode.typeVersion);
+
+		// Validate toolArgs is a proper object (not null/array) before using as input data
+		const validatedToolArgs =
+			typeof toolArgs === 'object' && toolArgs !== null && !Array.isArray(toolArgs) ? toolArgs : {};
+
+		// Create input data for the tool node with the tool arguments
+		const inputData: INodeExecutionData[][] = [
+			[
+				{
+					json: validatedToolArgs as INodeExecutionData['json'],
+				},
+			],
+		];
+
+		// `executionData` must exist for output recording; init it if the run lacks it.
+		runExecutionData.executionData ??= {
+			contextData: {},
+			nodeExecutionStack: [],
+			metadata: {},
+			waitingExecution: {},
+			waitingExecutionSource: {},
+		};
+		if (executionContext) {
+			runExecutionData.executionData.runtimeData = executionContext;
+		}
+
+		// Create execute data for the tool node
+		const executeData: IExecuteData = {
+			node: toolNode,
+			data: {
+				main: inputData,
+			},
+			source: null,
+		};
+
+		const closeFunctions: CloseFunction[] = [];
+
+		// Parent = the node the tool feeds (the MCP trigger), so the recorded run
+		// data's `source` points back at it, as in direct mode.
+		const [parentNodeName] = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);
+		const parentNode = parentNodeName ? (workflow.getNode(parentNodeName) ?? undefined) : undefined;
+
+		// Create SupplyDataContext for the tool node
+		const context = new SupplyDataContext(
+			workflow,
+			toolNode,
+			additionalData,
+			'webhook',
+			runExecutionData,
+			0,
+			inputData[0],
+			{ main: inputData },
+			NodeConnectionTypes.AiTool,
+			executeData,
+			closeFunctions,
+			undefined,
+			parentNode,
+		);
+
+		try {
+			if (nodeType.supplyData) {
+				const supplyDataResult = await nodeType.supplyData.call(context, 0);
+				const tool = supplyDataResult.response as Tool;
+
+				if (!tool || typeof tool.invoke !== 'function') {
+					throw new UnexpectedError(`Tool node "${sourceNodeName}" did not return a valid Tool`);
+				}
+
+				return await tool.invoke(validatedToolArgs);
+			}
+
+			if (nodeType.execute && nodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
+				context.addInputData(NodeConnectionTypes.AiTool, [
+					[{ json: validatedToolArgs as INodeExecutionData['json'] }],
+				]);
+
+				let result: Awaited<ReturnType<NonNullable<typeof nodeType.execute>>>;
+				try {
+					result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
+				} catch (error) {
+					// Record the failure so the tool node shows as errored, not stuck
+					// "running"; rethrow so the caller returns an error to the client.
+					context.addOutputData(
+						NodeConnectionTypes.AiTool,
+						0,
+						error instanceof NodeOperationError
+							? error
+							: new NodeOperationError(toolNode, error as Error),
+					);
+					throw error;
+				}
+
+				let response: IDataObject | IDataObject[] | GenericValue | GenericValue[] = [];
+				if (Array.isArray(result)) {
+					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
+				}
+
+				context.addOutputData(NodeConnectionTypes.AiTool, 0, [
+					[{ json: { response } as INodeExecutionData['json'] }],
+				]);
+
+				return response;
+			}
+
+			throw new UnexpectedError(
+				`Tool node "${sourceNodeName}" does not have supplyData or execute method`,
+			);
+		} finally {
+			for (const closeFunction of closeFunctions) {
+				try {
+					await closeFunction();
+				} catch (error) {
+					this.logger.warn(`Error closing tool resource: ${error}`);
+				}
+			}
+		}
+	}
+}

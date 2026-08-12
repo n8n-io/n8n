@@ -1,0 +1,613 @@
+import { Request } from 'mssql';
+import type { IResult } from 'mssql';
+import type mssql from 'mssql';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+
+import type { MockInstance } from 'vitest';
+
+import {
+	configurePool,
+	copyInputItem,
+	createTableStruct,
+	deleteOperation,
+	escapeIdentifier,
+	escapeTableName,
+	executeSqlQueryAndPrepareResults,
+	insertOperation,
+	mssqlChunk,
+	updateOperation,
+} from '../GenericFunctions';
+
+describe('MSSQL tests', () => {
+	let querySpy: MockInstance;
+	let request: Request;
+
+	const assertParameters = (parameters: unknown[][] | IDataObject) => {
+		if (Array.isArray(parameters)) {
+			parameters.forEach((values, rowIndex) => {
+				values.forEach((value, index) => {
+					const received = (request.parameters[`r${rowIndex}v${index}`] as IDataObject).value;
+					expect(received).toEqual(value);
+				});
+			});
+		} else {
+			for (const key in parameters) {
+				expect((request.parameters[key] as IDataObject).value).toEqual(parameters[key]);
+			}
+		}
+	};
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		querySpy = vi.spyOn(Request.prototype, 'query').mockImplementation(async function (
+			this: Request,
+		) {
+			// eslint-disable-next-line @typescript-eslint/no-this-alias
+			request = this;
+			return {
+				recordsets: [],
+				recordset: [],
+				output: {},
+				rowsAffected: [0],
+			} as unknown as IResult<unknown>;
+		});
+	});
+
+	it('should perform insert operation', async () => {
+		const pool = configurePool({});
+		const tables = {
+			users: {
+				'id, name, age, active': [
+					{
+						id: 1,
+						name: 'Sam',
+						age: 31,
+						active: false,
+					},
+					{
+						id: 3,
+						name: 'Jon',
+						age: null,
+						active: true,
+					},
+					{
+						id: 4,
+						name: undefined,
+						age: 25,
+						active: false,
+					},
+				],
+			},
+		};
+
+		await insertOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			'INSERT INTO [users] ([id], [name], [age], [active]) VALUES (@r0v0, @r0v1, @r0v2, @r0v3), (@r1v0, @r1v1, @r1v2, @r1v3), (@r2v0, @r2v1, @r2v2, @r2v3);',
+		);
+		assertParameters([
+			[1, 'Sam', 31, false],
+			[3, 'Jon', null, true],
+			[4, null, 25, false],
+		]);
+	});
+
+	it('should perform insert operation with escaped identifiers', async () => {
+		const pool = configurePool({});
+		const tables = {
+			"users] set text='asdf' where id=1;": {
+				'id, name, age, active]': [
+					{
+						id: 1,
+						name: 'Sam',
+						age: 31,
+						active: false,
+					},
+				],
+			},
+		};
+
+		await insertOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			"INSERT INTO [users]] set text='asdf' where id=1;] ([id], [name], [age], [active]]]) VALUES (@r0v0, @r0v1, @r0v2, @r0v3);",
+		);
+		assertParameters([[1, 'Sam', 31, false]]);
+	});
+
+	it('should perform update operation', async () => {
+		const pool = configurePool({});
+		const tables = {
+			users: {
+				'name, age, active': [
+					{
+						name: 'Greg',
+						age: 43,
+						active: 0,
+						updateKey: 'id',
+						id: 2,
+					},
+				],
+			},
+		};
+
+		await updateOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			'UPDATE [users] SET [name] = @v0, [age] = @v1, [active] = @v2 WHERE [id] = @condition;',
+		);
+		assertParameters({
+			v0: 'Greg',
+			v1: 43,
+			v2: 0,
+			condition: 2,
+		});
+	});
+
+	it('should perform update operation with escaped identifiers', async () => {
+		const pool = configurePool({});
+		const tables = {
+			"users] set text='asdf' where id=1;": {
+				'name, age, active]': [
+					{
+						name: 'Greg',
+						age: 43,
+						active: 0,
+						updateKey: 'id] -- -',
+						id: 2,
+					},
+				],
+			},
+		};
+
+		await updateOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			"UPDATE [users]] set text='asdf' where id=1;] SET [name] = @v0, [age] = @v1, [active]]] = @v2 WHERE [id]] -- -] = @condition;",
+		);
+	});
+
+	it('should perform update operation with enclosed key', async () => {
+		const pool = configurePool({});
+		const tables = {
+			users: {
+				'name, age, active': [
+					{
+						name: 'Greg',
+						age: 43,
+						active: 0,
+						updateKey: '[id]',
+						id: 2,
+					},
+				],
+			},
+		};
+
+		await updateOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			'UPDATE [users] SET [name] = @v0, [age] = @v1, [active] = @v2 WHERE [id] = @condition;',
+		);
+	});
+
+	it('should perform delete operation', async () => {
+		const pool = configurePool({});
+		const tables = {
+			users: {
+				id: [
+					{
+						json: {
+							id: 2,
+						},
+						pairedItem: {
+							item: 0,
+							input: undefined,
+						},
+					},
+				],
+			},
+		};
+
+		await deleteOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith('DELETE FROM [users] WHERE [id] IN (@v0);');
+		assertParameters({ v0: 2 });
+	});
+
+	it('should perform delete operation with escaped identifiers', async () => {
+		const pool = configurePool({});
+		const tables = {
+			"users] set text='asdf' where id=1;": {
+				'id]': [
+					{
+						json: {
+							id: 2,
+						},
+						pairedItem: {
+							item: 0,
+							input: undefined,
+						},
+					},
+				],
+			},
+		};
+
+		await deleteOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			"DELETE FROM [users]] set text='asdf' where id=1;] WHERE [id]]] IN (@v0);",
+		);
+	});
+
+	describe('mssqlChunk', () => {
+		it('should chunk insert values correctly', () => {
+			const chunks = mssqlChunk(
+				new Array(3000)
+					.fill(null)
+					.map((_, index) => ({ id: index, name: 'John Doe', verified: true })),
+			);
+			expect(chunks.map((chunk) => chunk.length)).toEqual([699, 699, 699, 699, 204]);
+		});
+	});
+
+	describe('executeSqlQueryAndPrepareResults', () => {
+		const prepareBinaryData = vi.fn(async (buffer: Buffer, fileName?: string) => ({
+			data: buffer.toString('base64'),
+			fileName,
+			mimeType: 'application/octet-stream',
+		}));
+		const thisArg = {
+			helpers: { prepareBinaryData },
+		} as unknown as IExecuteFunctions;
+
+		it('should handle SELECT query with single record', async () => {
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1, name: 'Test' }]] as any,
+				recordset: [{ id: 1, name: 'Test', columns: [{ name: 'id' }, { name: 'name' }] }],
+				rowsAffected: [1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users',
+				0,
+			);
+
+			expect(result).toEqual([
+				{
+					json: { id: 1, name: 'Test' },
+					pairedItem: [{ item: 0 }],
+				},
+			]);
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users');
+		});
+
+		it('should return Date values as ISO strings on version 1.2', async () => {
+			const date = new Date('2020-01-01T12:00:00.000Z');
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1, created: date }]] as any,
+				rowsAffected: [1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users',
+				0,
+				[],
+				1.2,
+			);
+
+			expect(result).toEqual([
+				{
+					json: { id: 1, created: '2020-01-01T12:00:00.000Z' },
+					pairedItem: [{ item: 0 }],
+				},
+			]);
+		});
+
+		it('should keep Date objects on versions before 1.2', async () => {
+			const date = new Date('2020-01-01T12:00:00.000Z');
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1, created: date }]] as any,
+				rowsAffected: [1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users',
+				0,
+				[],
+				1.1,
+			);
+
+			expect(result[0].json.created).toBeInstanceOf(Date);
+		});
+
+		it('should move binary columns to the binary output and remove them from json on version 1.2', async () => {
+			const blob = Buffer.from('hello');
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1, name: 'Test', photo: blob }]] as any,
+				rowsAffected: [1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users',
+				0,
+				[],
+				1.2,
+			);
+
+			expect(result[0].json).toEqual({ id: 1, name: 'Test' });
+			expect(result[0].json).not.toHaveProperty('photo');
+			expect(prepareBinaryData).toHaveBeenCalledWith(blob, 'photo');
+			expect(result[0].binary?.photo).toBeDefined();
+		});
+
+		it('should keep binary columns in json on versions before 1.2', async () => {
+			const blob = Buffer.from('hello');
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1, photo: blob }]] as any,
+				rowsAffected: [1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users',
+				0,
+				[],
+				1.1,
+			);
+
+			expect(result[0].json.photo).toBe(blob);
+			expect(result[0].binary).toBeUndefined();
+		});
+
+		it('should handle SELECT query with multiple records', async () => {
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1 }], [{ name: 'Test' }]] as unknown,
+				rowsAffected: [1, 1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT id; SELECT name',
+				1,
+			);
+
+			expect(result).toEqual([
+				{ json: { id: 1 }, pairedItem: [{ item: 1 }] },
+				{ json: { name: 'Test' }, pairedItem: [{ item: 1 }] },
+			]);
+		});
+
+		it('should handle non-SELECT query', async () => {
+			querySpy.mockResolvedValueOnce({
+				recordsets: [],
+				recordset: [],
+				rowsAffected: [5],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'UPDATE users SET active = 1',
+				2,
+			);
+
+			expect(result).toEqual([
+				{
+					json: { message: 'Query 1 executed successfully', rowsAffected: 5 },
+					pairedItem: [{ item: 2 }],
+				},
+			]);
+		});
+
+		it('should handle query with no affected rows', async () => {
+			querySpy.mockResolvedValueOnce({
+				recordsets: [],
+				recordset: [],
+				rowsAffected: [],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'DELETE FROM users WHERE id = 999',
+				3,
+			);
+
+			expect(result).toEqual([
+				{
+					json: { message: 'Query executed successfully, but no rows were affected' },
+					pairedItem: [{ item: 3 }],
+				},
+			]);
+		});
+
+		it('should throw an error when query fails', async () => {
+			const errorMessage = 'Database error';
+			querySpy.mockRejectedValueOnce(new Error(errorMessage));
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await expect(
+				executeSqlQueryAndPrepareResults.call(thisArg, pool, 'INVALID SQL', 4),
+			).rejects.toThrow(errorMessage);
+		});
+
+		it('should replace $1 with @p1 and bind the value', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users WHERE id = $1',
+				0,
+				[42],
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users WHERE id = @p1');
+			assertParameters({ p1: 42 });
+		});
+
+		it('should replace multiple $N placeholders and bind all values', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM users WHERE age > $1 AND name = $2',
+				0,
+				[18, 'John'],
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users WHERE age > @p1 AND name = @p2');
+			assertParameters({ p1: 18, p2: 'John' });
+		});
+
+		it('should replace the same $N placeholder used multiple times', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM t WHERE id = $1 OR parent_id = $1',
+				0,
+				['abc'],
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM t WHERE id = @p1 OR parent_id = @p1');
+			assertParameters({ p1: 'abc' });
+		});
+
+		it('should not confuse $1 with $10 when replacing parameters', async () => {
+			const values = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'];
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults.call(
+				thisArg,
+				pool,
+				'SELECT * FROM t WHERE c1 = $1 AND c10 = $10',
+				0,
+				values,
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM t WHERE c1 = @p1 AND c10 = @p10');
+			assertParameters({ p1: 'v1', p10: 'v10' });
+		});
+
+		it('should execute query without parameters when queryValues is empty', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults.call(thisArg, pool, 'SELECT * FROM users', 0, []);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users');
+		});
+	});
+
+	describe('escapeIdentifier', () => {
+		it('keeps outer brackets', () => {
+			expect(escapeIdentifier('[test]')).toEqual('[test]');
+		});
+
+		it('escapes content while using outer brackets', () => {
+			expect(escapeIdentifier('[test.hello]]')).toEqual('[test.hello]]]');
+		});
+
+		it('escapes content while not using outer brackets', () => {
+			expect(escapeIdentifier('test.hello]]')).toEqual('[test.hello]]]]]');
+		});
+	});
+
+	describe('escapeTableName', () => {
+		it('should escape table name correctly', () => {
+			expect(escapeTableName('test')).toEqual('[test]');
+			expect(escapeTableName('[test]')).toEqual('[test]');
+			expect(escapeTableName('test.test')).toEqual('[test.test]');
+			expect(escapeTableName('[test].[test]')).toEqual('[test].[test]');
+			expect(escapeTableName('[test]--.ok].[[test]]')).toEqual('[test]]--.ok].[[test]]]');
+			expect(escapeTableName("test] SET mytext='1' where id=2; -- -")).toEqual(
+				"[test]] SET mytext='1' where id=2; -- -]",
+			);
+			expect(escapeTableName("[[test] (id,text) values(1,'123'); DROP TABLE users; -- ]")).toEqual(
+				"[[test]] (id,text) values(1,'123'); DROP TABLE users; -- ]",
+			);
+			expect(escapeTableName('schema.[table]')).toEqual('[schema.[table]]]');
+			expect(escapeTableName('[schema].table')).toEqual('[[schema]].table]');
+		});
+	});
+
+	describe('createTableStruct', () => {
+		const makeItem = (json: IDataObject): INodeExecutionData => ({
+			json,
+			pairedItem: { item: 0 },
+		});
+
+		const makeGetParam =
+			(table: string, columns: string) =>
+			(param: string, _index: number): string => {
+				if (param === 'table') return table;
+				if (param === 'columns') return columns;
+				return '';
+			};
+
+		it('should build the correct struct for standard inputs', () => {
+			const items = [makeItem({ id: 1, name: 'Alice' })];
+			const result = createTableStruct(makeGetParam('users', 'id, name'), items);
+
+			expect(result).toEqual({
+				users: {
+					'id, name': [{ id: 1, name: 'Alice' }],
+				},
+			});
+		});
+
+		it('should group multiple items with the same table and columns', () => {
+			const items = [makeItem({ id: 1 }), makeItem({ id: 2 })];
+			const result = createTableStruct(makeGetParam('orders', 'id'), items);
+
+			expect(result.orders['id']).toHaveLength(2);
+		});
+	});
+
+	describe('copyInputItem', () => {
+		const makeItem = (json: IDataObject): INodeExecutionData => ({
+			json,
+			pairedItem: { item: 0 },
+		});
+
+		it('should copy specified properties from item json', () => {
+			const item = makeItem({ id: 1, name: 'Bob', age: 30 });
+			expect(copyInputItem(item, ['id', 'name'])).toEqual({ id: 1, name: 'Bob' });
+		});
+
+		it('should set missing properties to null', () => {
+			const item = makeItem({ id: 1 });
+			expect(copyInputItem(item, ['id', 'name'])).toEqual({ id: 1, name: null });
+		});
+	});
+});

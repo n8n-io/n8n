@@ -1,0 +1,5 @@
+These files contain reusable logic for workflow inputs mapping used in these nodes:
+
+    - n8n-nodes-base.executeWorkflow
+    - n8n-nodes-base.executeWorkflowTrigger
+    - @n8n/n8n-nodes-langchain.toolWorkflow

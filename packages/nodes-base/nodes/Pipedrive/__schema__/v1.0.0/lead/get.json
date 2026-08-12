@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "properties": {
+        "add_time": {
+            "type": "string"
+        },
+        "archive_time": {
+            "type": "null"
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "creator_id": {
+            "type": "integer"
+        },
+        "db247a86f77b7a989f9c2834851c946b26718442": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_archived": {
+            "type": "boolean"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "origin": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "integer"
+        },
+        "source_name": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "was_seen": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

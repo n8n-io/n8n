@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "messageId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

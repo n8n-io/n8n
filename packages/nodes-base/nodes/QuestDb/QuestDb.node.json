@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.questDb",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Data & Storage", "Development"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/questdb/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.questdb/"
+			}
+		],
+		"generic": [
+			{
+				"label": "A low-code bitcoin ticker built with QuestDB and n8n.io",
+				"icon": "📈",
+				"url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/"
+			}
+		]
+	}
+}

@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.ldap",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Developer Tools"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/ldap/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ldap/"
+			}
+		]
+	},
+	"alias": ["ad", "active directory"]
+}

@@ -1,0 +1,22 @@
+{
+	"node": "n8n-nodes-base.googleChat",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication", "HITL"],
+	"subcategories": {
+		"HITL": ["Human in the Loop"]
+	},
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/google/service-account/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlechat/"
+			}
+		]
+	},
+	"alias": ["human", "form", "wait", "hitl", "approval"]
+}

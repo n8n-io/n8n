@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "integer"
+        },
+        "host_id": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "join_url": {
+            "type": "string"
+        },
+        "start_time": {
+            "type": "string"
+        },
+        "timezone": {
+            "type": "string"
+        },
+        "topic": {
+            "type": "string"
+        },
+        "type": {
+            "type": "integer"
+        },
+        "uuid": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

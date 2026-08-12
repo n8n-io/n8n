@@ -1,0 +1,87 @@
+{
+	"name": "Compression test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "abf9ed91-0b05-49df-82d3-1bafb6e6f698",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [400, 400]
+		},
+		{
+			"parameters": {
+				"operation": "compress",
+				"outputFormat": "zip",
+				"fileName": "data.zip"
+			},
+			"id": "a84b995a-bd44-42a0-b5e0-a8ff4e879814",
+			"name": "Compression",
+			"type": "n8n-nodes-base.compression",
+			"typeVersion": 1,
+			"position": [800, 400]
+		},
+		{
+			"parameters": {
+				"filePath": "/home/me/Desktop/lorem.txt"
+			},
+			"id": "2fdbf11d-e1ae-4091-b15f-e0eed69e87c3",
+			"name": "Read Binary File",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"position": [600, 400]
+		},
+		{
+			"parameters": {},
+			"id": "959fa107-f3e6-444e-8fd4-1c893b8942db",
+			"name": "Compression1",
+			"type": "n8n-nodes-base.compression",
+			"typeVersion": 1,
+			"position": [1000, 400]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Read Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Binary File": {
+			"main": [
+				[
+					{
+						"node": "Compression",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compression": {
+			"main": [
+				[
+					{
+						"node": "Compression1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "9868d72c-88bc-4bcc-a85b-586ae1b6b023",
+	"id": "112",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

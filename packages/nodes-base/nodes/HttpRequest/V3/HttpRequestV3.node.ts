@@ -1,0 +1,1219 @@
+import set from 'lodash/set';
+import type {
+	IBinaryKeyData,
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
+	IRequestOptionsSimplified,
+	PaginationOptions,
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
+	ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
+import {
+	BINARY_ENCODING,
+	NodeApiError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	jsonParse,
+	removeCircularRefs,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
+import type { Readable } from 'stream';
+
+import { applyTemplatedAuth } from '@utils/templated-auth';
+import { keysToLowercase } from '@utils/utilities';
+
+import { mainProperties } from './Description';
+import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
+import {
+	binaryContentTypes,
+	getAllowedDomains,
+	getOAuth2AdditionalParameters,
+	getSecrets,
+	prepareRequestBody,
+	reduceAsync,
+	replaceNullValues,
+	sanitizeUiMessage,
+	setAgentOptions,
+	updadeQueryParameterConfig,
+} from '../GenericFunctions';
+import { setFilename } from './utils/binaryData';
+import { mimeTypeFromResponse } from './utils/parse';
+import { configureResponseOptimizer } from '../shared/optimizeResponse';
+
+import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
+import { createErrorDetails } from './utils/error-details';
+
+function toText<T>(data: T) {
+	if (typeof data === 'object' && data !== null) {
+		return JSON.stringify(data);
+	}
+	return data;
+}
+
+function isEmptyResponseBody(body: unknown): body is string {
+	return typeof body === 'string' && body.trim().length === 0;
+}
+
+function isPaginationRequestType(value: string): value is 'body' | 'headers' | 'qs' {
+	return value === 'body' || value === 'headers' || value === 'qs';
+}
+
+export class HttpRequestV3 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
+			version: [3, 4, 4.1, 4.2, 4.3, 4.4, 4.5],
+			defaults: {
+				name: 'HTTP Request',
+				color: '#0004F5',
+			},
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'httpSslAuth',
+					required: true,
+					displayOptions: {
+						show: {
+							provideSslCertificates: [true],
+						},
+					},
+				},
+			],
+			usableAsTool: {
+				replacements: {
+					codex: {
+						subcategories: {
+							Tools: ['Recommended Tools'],
+						},
+					},
+				},
+			},
+			properties: mainProperties,
+		};
+	}
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const nodeVersion = this.getNode().typeVersion;
+
+		const fullResponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
+
+		let authentication;
+
+		try {
+			authentication = this.getNodeParameter('authentication', 0) as
+				| 'predefinedCredentialType'
+				| 'genericCredentialType'
+				| 'none';
+		} catch {}
+
+		let httpBasicAuth;
+		let httpBearerAuth;
+		let httpDigestAuth;
+		let httpHeaderAuth;
+		let httpQueryAuth;
+		let httpCustomAuth;
+		let httpTemplatedCustomAuth;
+		let oAuth1Api;
+		let oAuth2Api;
+		let sslCertificates;
+		let nodeCredentialType: string | undefined;
+		let genericCredentialType: string | undefined;
+
+		let requestOptions: IRequestOptions = {
+			uri: '',
+		};
+
+		let returnItems: INodeExecutionData[] = [];
+		const errorItems: { [key: string]: string } = {};
+		const requestPromises = [];
+
+		let fullResponse = false;
+
+		let autoDetectResponseFormat = false;
+
+		let responseFileName: string | undefined;
+
+		// Can not be defined on a per item level
+		const pagination = this.getNodeParameter('options.pagination.pagination', 0, null, {
+			rawExpressions: true,
+		}) as {
+			paginationMode: 'off' | 'updateAParameterInEachRequest' | 'responseContainsNextURL';
+			nextURL?: string;
+			parameters: {
+				parameters: Array<{
+					type: 'body' | 'headers' | 'qs';
+					name: string;
+					value: string;
+				}>;
+			};
+			paginationCompleteWhen: 'responseIsEmpty' | 'receiveSpecificStatusCodes' | 'other';
+			statusCodesWhenComplete: string;
+			completeExpression: string;
+			limitPagesFetched: boolean;
+			maxRequests: number;
+			requestInterval: number;
+		};
+
+		const requests: Array<{
+			options: IRequestOptions;
+			authKeys: IAuthDataSanitizeKeys;
+			credentialType?: string;
+			responseFileName?: string;
+		}> = [];
+
+		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
+
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			try {
+				let allowedDomains: string | undefined;
+				if (authentication === 'genericCredentialType') {
+					genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
+
+					if (genericCredentialType === 'httpBasicAuth') {
+						httpBasicAuth = await this.getCredentials('httpBasicAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpBasicAuth);
+					} else if (genericCredentialType === 'httpBearerAuth') {
+						httpBearerAuth = await this.getCredentials('httpBearerAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpBearerAuth);
+					} else if (genericCredentialType === 'httpDigestAuth') {
+						httpDigestAuth = await this.getCredentials('httpDigestAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpDigestAuth);
+					} else if (genericCredentialType === 'httpHeaderAuth') {
+						httpHeaderAuth = await this.getCredentials('httpHeaderAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpHeaderAuth);
+					} else if (genericCredentialType === 'httpQueryAuth') {
+						httpQueryAuth = await this.getCredentials('httpQueryAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpQueryAuth);
+					} else if (genericCredentialType === 'httpCustomAuth') {
+						httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpCustomAuth);
+					} else if (genericCredentialType === 'httpTemplatedCustomAuth') {
+						httpTemplatedCustomAuth = await this.getCredentials(
+							'httpTemplatedCustomAuth',
+							itemIndex,
+						);
+						allowedDomains = getAllowedDomains(this.getNode(), httpTemplatedCustomAuth);
+					} else if (genericCredentialType === 'oAuth1Api') {
+						oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), oAuth1Api);
+					} else if (genericCredentialType === 'oAuth2Api') {
+						oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), oAuth2Api);
+					}
+				} else if (authentication === 'predefinedCredentialType') {
+					nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
+					let nodeCredentialData: ICredentialDataDecryptedObject | undefined;
+					try {
+						nodeCredentialData = await this.getCredentials<ICredentialDataDecryptedObject>(
+							nodeCredentialType,
+							itemIndex,
+						);
+					} catch {}
+					if (nodeCredentialData) {
+						allowedDomains = getAllowedDomains(this.getNode(), nodeCredentialData);
+					}
+				}
+
+				let url = this.getNodeParameter('url', itemIndex);
+
+				if (typeof url !== 'string') {
+					const actualType = url === null ? 'null' : typeof url;
+					throw new NodeOperationError(
+						this.getNode(),
+						`URL parameter must be a string, got ${actualType}`,
+					);
+				}
+
+				url = url.trim();
+
+				if (!url) {
+					throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
+				}
+
+				if (!url.startsWith('http://') && !url.startsWith('https://')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Invalid URL: ${url}. URL must start with "http" or "https".`,
+					);
+				}
+
+				const provideSslCertificates = this.getNodeParameter(
+					'provideSslCertificates',
+					itemIndex,
+					false,
+				);
+
+				if (provideSslCertificates) {
+					sslCertificates = await this.getCredentials('httpSslAuth', itemIndex);
+				}
+
+				const requestMethod = this.getNodeParameter('method', itemIndex) as IHttpRequestMethods;
+
+				const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
+				const queryParameters = this.getNodeParameter(
+					'queryParameters.parameters',
+					itemIndex,
+					[],
+				) as [{ name: string; value: string }];
+				const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex, 'keypair') as string;
+				const jsonQueryParameter = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
+
+				const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
+				const bodyContentType = this.getNodeParameter('contentType', itemIndex, '') as string;
+				const specifyBody = this.getNodeParameter('specifyBody', itemIndex, '') as string;
+				const bodyParameters = this.getNodeParameter(
+					'bodyParameters.parameters',
+					itemIndex,
+					[],
+				) as BodyParameter[];
+				const jsonBodyParameter = this.getNodeParameter('jsonBody', itemIndex, '') as string;
+				const body = this.getNodeParameter('body', itemIndex, '') as string;
+
+				const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
+
+				const headerParameters = this.getNodeParameter(
+					'headerParameters.parameters',
+					itemIndex,
+					[],
+				) as [{ name: string; value: string }];
+
+				const specifyHeaders = this.getNodeParameter(
+					'specifyHeaders',
+					itemIndex,
+					'keypair',
+				) as string;
+
+				const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
+
+				const {
+					redirect,
+					batching,
+					proxy,
+					timeout,
+					allowUnauthorizedCerts,
+					queryParameterArrays,
+					response,
+					lowercaseHeaders,
+					sendCredentialsOnCrossOriginRedirect,
+				} = this.getNodeParameter('options', itemIndex, {}) as {
+					batching: { batch: { batchSize: number; batchInterval: number } };
+					proxy: string;
+					timeout: number;
+					allowUnauthorizedCerts: boolean;
+					queryParameterArrays: 'indices' | 'brackets' | 'repeat';
+					response: {
+						response: {
+							neverError: boolean;
+							responseFormat: string;
+							fullResponse: boolean;
+							outputPropertyName: string;
+						};
+					};
+					redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
+					lowercaseHeaders: boolean;
+					sendCredentialsOnCrossOriginRedirect?: boolean;
+				};
+
+				responseFileName = response?.response?.outputPropertyName;
+
+				const responseFormat = response?.response?.responseFormat || 'autodetect';
+
+				fullResponse = response?.response?.fullResponse || false;
+
+				autoDetectResponseFormat = responseFormat === 'autodetect';
+
+				// defaults batch size to 1 of it's set to 0
+				const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
+				const batchInterval = batching?.batch.batchInterval;
+
+				if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
+					if (itemIndex % batchSize === 0) {
+						await sleep(batchInterval);
+					}
+				}
+
+				const defaultSendCredentialsOnCrossOriginRedirect = nodeVersion < 4.4;
+				requestOptions = {
+					headers: {},
+					method: requestMethod,
+					uri: url,
+					gzip: true,
+					rejectUnauthorized: !allowUnauthorizedCerts || false,
+					followRedirect: false,
+					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect:
+						sendCredentialsOnCrossOriginRedirect ?? defaultSendCredentialsOnCrossOriginRedirect,
+					allowedDomains,
+				};
+
+				if (requestOptions.method !== 'GET' && nodeVersion >= 4.1) {
+					requestOptions = { ...requestOptions, followAllRedirects: false };
+				}
+
+				const defaultRedirect = nodeVersion >= 4 && redirect === undefined;
+
+				if (redirect?.redirect?.followRedirects || defaultRedirect) {
+					requestOptions.followRedirect = true;
+					requestOptions.followAllRedirects = true;
+				}
+
+				if (redirect?.redirect?.maxRedirects || defaultRedirect) {
+					requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
+				}
+
+				if (response?.response?.neverError) {
+					requestOptions.simple = false;
+				}
+
+				if (proxy) {
+					requestOptions.proxy = proxy;
+				}
+
+				if (timeout) {
+					requestOptions.timeout = timeout;
+				} else {
+					// set default timeout to 5 minutes
+					requestOptions.timeout = 300_000;
+				}
+				if (sendQuery && queryParameterArrays) {
+					Object.assign(requestOptions, {
+						qsStringifyOptions: { arrayFormat: queryParameterArrays },
+					});
+				}
+
+				const parametersToKeyValue = async (
+					accumulator: { [key: string]: any },
+					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
+				) => {
+					if (cur.parameterType === 'formBinaryData') {
+						if (!cur.inputDataFieldName) return accumulator;
+						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
+						let uploadData: Buffer | Readable;
+						let knownLength: number | undefined;
+
+						if (binaryData.id) {
+							uploadData = await this.helpers.getBinaryStream(binaryData.id);
+							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
+							knownLength = metadata.fileSize;
+						} else {
+							uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
+						}
+
+						accumulator[cur.name] = {
+							value: uploadData,
+							options: {
+								filename: binaryData.fileName ?? 'file',
+								contentType: binaryData.mimeType,
+								...(knownLength !== undefined && { knownLength }),
+							},
+						};
+						return accumulator;
+					}
+					updadeQueryParameter(accumulator, cur.name, cur.value);
+					return accumulator;
+				};
+
+				// Get parameters defined in the UI
+				if (sendBody && bodyParameters) {
+					if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
+						requestOptions.body = await prepareRequestBody(
+							bodyParameters,
+							bodyContentType,
+							nodeVersion,
+							parametersToKeyValue,
+						);
+					} else if (specifyBody === 'json') {
+						// body is specified using JSON
+						if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
+							requestOptions.body = parseJsonParameter(
+								this.getNode(),
+								jsonBodyParameter,
+								'JSON Body',
+								itemIndex,
+							);
+						} else {
+							requestOptions.body = jsonBodyParameter;
+						}
+					} else if (specifyBody === 'string') {
+						//form urlencoded
+						requestOptions.body = Object.fromEntries(new URLSearchParams(body));
+					}
+				}
+
+				// Change the way data get send in case a different content-type than JSON got selected
+				if (sendBody && ['PATCH', 'POST', 'PUT', 'GET'].includes(requestMethod)) {
+					if (bodyContentType === 'multipart-form-data') {
+						requestOptions.formData = requestOptions.body as IDataObject;
+						delete requestOptions.body;
+					} else if (bodyContentType === 'form-urlencoded') {
+						requestOptions.form = requestOptions.body as IDataObject;
+						delete requestOptions.body;
+					} else if (bodyContentType === 'binaryData') {
+						const inputDataFieldName = this.getNodeParameter(
+							'inputDataFieldName',
+							itemIndex,
+						) as string;
+
+						let uploadData: Buffer | Readable;
+						let contentLength: number;
+
+						const itemBinaryData = this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
+
+						if (itemBinaryData.id) {
+							uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
+							const metadata = await this.helpers.getBinaryMetadata(itemBinaryData.id);
+							contentLength = metadata.fileSize;
+						} else {
+							uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+							contentLength = uploadData.length;
+						}
+						requestOptions.body = uploadData;
+						requestOptions.headers = {
+							...requestOptions.headers,
+							'content-length': contentLength,
+							'content-type': itemBinaryData.mimeType ?? 'application/octet-stream',
+						};
+					} else if (bodyContentType === 'raw') {
+						requestOptions.body = body;
+					}
+				}
+
+				// Get parameters defined in the UI
+				if (sendQuery && queryParameters) {
+					if (specifyQuery === 'keypair') {
+						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
+					} else if (specifyQuery === 'json') {
+						// query is specified using JSON
+						requestOptions.qs = parseJsonParameter(
+							this.getNode(),
+							jsonQueryParameter,
+							'JSON Query Parameters',
+							itemIndex,
+						);
+					}
+				}
+
+				// Get parameters defined in the UI
+				if (sendHeaders && headerParameters) {
+					let additionalHeaders: IDataObject = {};
+					if (specifyHeaders === 'keypair') {
+						additionalHeaders = await reduceAsync(
+							headerParameters.filter((header) => header.name),
+							parametersToKeyValue,
+						);
+					} else if (specifyHeaders === 'json') {
+						additionalHeaders = parseJsonParameter(
+							this.getNode(),
+							jsonHeadersParameter,
+							'JSON Headers',
+							itemIndex,
+						);
+					}
+					requestOptions.headers = {
+						...requestOptions.headers,
+						...(lowercaseHeaders === undefined || lowercaseHeaders
+							? keysToLowercase(additionalHeaders)
+							: additionalHeaders),
+					};
+				}
+
+				if (autoDetectResponseFormat || responseFormat === 'file') {
+					requestOptions.encoding = null;
+					requestOptions.json = false;
+					requestOptions.useStream = true;
+				} else if (bodyContentType === 'raw') {
+					requestOptions.json = false;
+					requestOptions.useStream = true;
+				} else {
+					requestOptions.json = true;
+				}
+
+				// Add Content Type if any are set
+				if (bodyContentType === 'raw') {
+					if (requestOptions.headers === undefined) {
+						requestOptions.headers = {};
+					}
+					const rawContentType = this.getNodeParameter('rawContentType', itemIndex) as string;
+					requestOptions.headers['content-type'] = rawContentType;
+				}
+
+				const authDataKeys: IAuthDataSanitizeKeys = {};
+
+				// Add SSL certificates if any are set
+				setAgentOptions(requestOptions, sslCertificates);
+				if (requestOptions.agentOptions) {
+					authDataKeys.agentOptions = Object.keys(requestOptions.agentOptions);
+				}
+
+				// Add credentials if any are set
+				if (httpBasicAuth !== undefined) {
+					requestOptions.auth = {
+						user: httpBasicAuth.user as string,
+						pass: httpBasicAuth.password as string,
+					};
+					authDataKeys.auth = ['pass'];
+				}
+				if (httpBearerAuth !== undefined) {
+					requestOptions.headers = requestOptions.headers ?? {};
+					requestOptions.headers.Authorization = `Bearer ${String(httpBearerAuth.token)}`;
+					authDataKeys.headers = ['Authorization'];
+				}
+				if (httpHeaderAuth !== undefined) {
+					requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+					authDataKeys.headers = [httpHeaderAuth.name as string];
+				}
+				if (httpQueryAuth !== undefined) {
+					if (!requestOptions.qs) {
+						requestOptions.qs = {};
+					}
+					requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
+					authDataKeys.qs = [httpQueryAuth.name as string];
+				}
+
+				if (httpDigestAuth !== undefined) {
+					requestOptions.auth = {
+						user: httpDigestAuth.user as string,
+						pass: httpDigestAuth.password as string,
+						sendImmediately: false,
+					};
+					authDataKeys.auth = ['pass'];
+				}
+				if (httpCustomAuth !== undefined) {
+					const customAuth = jsonParse<IRequestOptionsSimplified>(
+						(httpCustomAuth.json as string) || '{}',
+						{ errorMessage: 'Invalid Custom Auth JSON' },
+					);
+					if (customAuth.headers) {
+						requestOptions.headers = { ...requestOptions.headers, ...customAuth.headers };
+						authDataKeys.headers = Object.keys(customAuth.headers);
+					}
+					if (customAuth.body) {
+						requestOptions.body = { ...(requestOptions.body as IDataObject), ...customAuth.body };
+						authDataKeys.body = Object.keys(customAuth.body);
+					}
+					if (customAuth.qs) {
+						requestOptions.qs = { ...requestOptions.qs, ...customAuth.qs };
+						authDataKeys.qs = Object.keys(customAuth.qs);
+					}
+				}
+				if (httpTemplatedCustomAuth !== undefined) {
+					const templatedAuth = applyTemplatedAuth(httpTemplatedCustomAuth, requestOptions);
+					if (templatedAuth.headers) {
+						authDataKeys.headers = Object.keys(templatedAuth.headers);
+					}
+					if (templatedAuth.body) {
+						authDataKeys.body = Object.keys(templatedAuth.body);
+					}
+					if (templatedAuth.qs) {
+						authDataKeys.qs = Object.keys(templatedAuth.qs);
+					}
+				}
+
+				if (requestOptions.headers!.accept === undefined) {
+					if (responseFormat === 'json') {
+						requestOptions.headers!.accept = 'application/json,text/*;q=0.99';
+					} else if (responseFormat === 'text') {
+						requestOptions.headers!.accept =
+							'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
+					} else {
+						requestOptions.headers!.accept =
+							'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+					}
+				}
+
+				requests.push({
+					options: requestOptions,
+					authKeys: authDataKeys,
+					credentialType: nodeCredentialType ?? genericCredentialType,
+					responseFileName,
+				});
+
+				if (pagination && pagination.paginationMode !== 'off') {
+					let continueExpression = '={{false}}';
+					if (pagination.paginationCompleteWhen === 'receiveSpecificStatusCodes') {
+						// Split out comma separated list of status codes into array
+						const statusCodesWhenCompleted = pagination.statusCodesWhenComplete
+							.split(',')
+							.map((item) => parseInt(item.trim()));
+
+						continueExpression = `={{ !${JSON.stringify(
+							statusCodesWhenCompleted,
+						)}.includes($response.statusCode) }}`;
+					} else if (pagination.paginationCompleteWhen === 'responseIsEmpty') {
+						continueExpression =
+							'={{ Array.isArray($response.body) ? $response.body.length : !!$response.body }}';
+					} else {
+						// Other
+						if (!pagination.completeExpression.length || pagination.completeExpression[0] !== '=') {
+							throw new NodeOperationError(this.getNode(), 'Invalid or empty Complete Expression');
+						}
+						const completionExpression = pagination.completeExpression.trim().slice(3, -2);
+						if (response?.response?.neverError) {
+							continueExpression = `={{ !(${completionExpression}) }}`;
+						} else {
+							// In paginated mode, non-2xx responses are surfaced as errors via the helper when
+							// another request is requested. For "other", force that error path unless Never Error is enabled.
+							continueExpression = `={{ !(${completionExpression}) || ($response.statusCode < 200 || $response.statusCode >= 300) }}`;
+						}
+					}
+
+					const paginationData: PaginationOptions = {
+						continue: continueExpression,
+						request: Object.create(null) as Record<string, unknown>,
+						requestInterval: pagination.requestInterval,
+					};
+
+					if (pagination.paginationMode === 'updateAParameterInEachRequest') {
+						// Iterate over all parameters and add them to the request
+						const { parameters } = pagination.parameters;
+						if (
+							parameters.length === 1 &&
+							parameters[0].name === '' &&
+							parameters[0].value === ''
+						) {
+							throw new NodeOperationError(
+								this.getNode(),
+								"At least one entry with 'Name' and 'Value' filled must be included in 'Parameters' to use 'Update a Parameter in Each Request' mode ",
+							);
+						}
+						pagination.parameters.parameters.forEach((parameter, index) => {
+							const parameterName = parameter.name;
+							if (parameterName === '') {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Parameter name must be set for parameter [${index + 1}] in pagination settings`,
+								);
+							}
+
+							if (!isPaginationRequestType(parameter.type)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Parameter type must be one of: body, headers, qs for parameter [${
+										index + 1
+									}] in pagination settings`,
+								);
+							}
+
+							paginationData.request[parameter.type] ??= Object.create(null);
+
+							const parameterValue = parameter.value;
+							if (parameterValue === '') {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Some value must be provided for parameter [${
+										index + 1
+									}] in pagination settings, omitting it will result in an infinite loop`,
+								);
+							}
+
+							setSafeObjectProperty(
+								paginationData.request[parameter.type]!,
+								parameterName,
+								parameterValue,
+							);
+						});
+					} else if (pagination.paginationMode === 'responseContainsNextURL') {
+						paginationData.request.url = pagination.nextURL;
+					}
+
+					if (pagination.limitPagesFetched) {
+						paginationData.maxRequests = pagination.maxRequests;
+					}
+
+					if (responseFormat === 'file') {
+						paginationData.binaryResult = true;
+					}
+
+					const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
+
+					const requestPromise = this.helpers.requestWithAuthenticationPaginated
+						.call(
+							this,
+							requestOptions,
+							itemIndex,
+							paginationData,
+							nodeCredentialType ?? genericCredentialType,
+							undefined,
+							sanitizedRequest,
+						)
+						.catch((error) => {
+							if (error instanceof NodeOperationError && error.type === 'invalid_url') {
+								const urlParameterName =
+									pagination.paginationMode === 'responseContainsNextURL' ? 'Next URL' : 'URL';
+								throw new NodeOperationError(this.getNode(), error.message, {
+									description: `Make sure the "${urlParameterName}" parameter evaluates to a valid URL.`,
+								});
+							}
+
+							throw error;
+						});
+					requestPromises.push(requestPromise);
+				} else if (authentication === 'genericCredentialType' || authentication === 'none') {
+					if (oAuth1Api) {
+						const requestOAuth1 = this.helpers.requestOAuth1.call(
+							this,
+							'oAuth1Api',
+							requestOptions,
+						);
+						requestOAuth1.catch(() => {});
+						requestPromises.push(requestOAuth1);
+					} else if (oAuth2Api) {
+						const requestOAuth2 = this.helpers.requestOAuth2.call(
+							this,
+							'oAuth2Api',
+							requestOptions,
+							{
+								tokenType: 'Bearer',
+							},
+						);
+						requestOAuth2.catch(() => {});
+						requestPromises.push(requestOAuth2);
+					} else {
+						// bearerAuth, queryAuth, headerAuth, digestAuth, none
+						const request = this.helpers.request(requestOptions);
+						request.catch(() => {});
+						requestPromises.push(request);
+					}
+				} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
+					const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
+
+					// service-specific cred: OAuth1, OAuth2, plain
+
+					const requestWithAuthentication = this.helpers.requestWithAuthentication.call(
+						this,
+						nodeCredentialType,
+						requestOptions,
+						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+						itemIndex,
+					);
+					requestWithAuthentication.catch(() => {});
+					requestPromises.push(requestWithAuthentication);
+				}
+			} catch (error) {
+				if (!this.continueOnFail()) throw error;
+
+				requestPromises.push(Promise.reject(error).catch(() => {}));
+
+				errorItems[itemIndex] = error.message;
+
+				// Ensure requests[] stays index-aligned with requestPromises[]/items[].
+				// If an item failed during request building, its slot may be empty.
+				// Assign a placeholder at the exact index so later items don't shift.
+				// Assign a placeholder with an empty options object to keep types happy.
+				// Error items are skipped before options is ever read.
+				if (!requests[itemIndex]) {
+					requests[itemIndex] = {
+						options: {} as IRequestOptions,
+						authKeys: {},
+					};
+				}
+
+				continue;
+			}
+		}
+
+		const sanitizedRequests: IDataObject[] = [];
+		const promisesResponses = await Promise.allSettled(
+			requestPromises.map(
+				async (requestPromise, itemIndex) =>
+					await requestPromise
+						.then((response) => response)
+						.finally(async () => {
+							if (errorItems[itemIndex]) return;
+							try {
+								// Secrets need to be read after the request because secrets could have changed
+								// For example: OAuth token refresh, preAuthentication
+								const { options, authKeys, credentialType } = requests[itemIndex];
+								let secrets: string[] = [];
+								if (credentialType) {
+									const credentials = await this.getCredentials(credentialType, itemIndex);
+									secrets = getSecrets(credentials);
+								}
+								const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
+								sanitizedRequests[itemIndex] = sanitizedRequestOptions;
+								this.sendMessageToUI(sanitizedRequestOptions);
+							} catch (e) {}
+						}),
+			),
+		);
+
+		let responseData: any;
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			try {
+				responseData = promisesResponses.shift();
+
+				if (errorItems[itemIndex]) {
+					returnItems.push({
+						json: { error: errorItems[itemIndex] },
+						pairedItem: { item: itemIndex },
+					});
+
+					continue;
+				}
+
+				const { responseFileName } = requests[itemIndex];
+
+				if (responseData!.status !== 'fulfilled') {
+					if (responseData.reason.statusCode === 429) {
+						responseData.reason.message =
+							"Try spacing your requests out using the batching settings under 'Options'";
+					}
+					if (!this.continueOnFail()) {
+						if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
+							responseData.reason.error = Buffer.from(
+								responseData.reason.error as Buffer,
+							).toString();
+						}
+
+						let error;
+						if (responseData?.reason instanceof NodeApiError) {
+							error = responseData.reason;
+							set(error, 'context.itemIndex', itemIndex);
+						} else {
+							const errorData = (
+								responseData.reason ? responseData.reason : responseData
+							) as JsonObject;
+							error = new NodeApiError(this.getNode(), errorData, { itemIndex });
+						}
+
+						set(error, 'context.request', sanitizedRequests[itemIndex]);
+
+						throw error;
+					} else {
+						removeCircularRefs(responseData.reason as JsonObject);
+						// Return the actual reason as error
+						returnItems.push({
+							json: {
+								error: responseData.reason,
+								...(nodeVersion >= 4.5
+									? {
+											details: createErrorDetails(
+												this.getNode(),
+												responseData.reason as JsonObject,
+												itemIndex,
+											),
+										}
+									: {}),
+							},
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
+						continue;
+					}
+				}
+
+				let responses: any[];
+				if (Array.isArray(responseData.value)) {
+					responses = responseData.value;
+				} else {
+					responses = [responseData.value];
+				}
+
+				let responseFormat = this.getNodeParameter(
+					'options.response.response.responseFormat',
+					0,
+					'autodetect',
+				) as string;
+
+				fullResponse = this.getNodeParameter(
+					'options.response.response.fullResponse',
+					0,
+					false,
+				) as boolean;
+
+				// eslint-disable-next-line prefer-const
+				for (let [index, response] of Object.entries(responses)) {
+					if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
+
+					if (this.getMode() === 'manual' && index === '0') {
+						// For manual executions save the first response in the context
+						// so that we can use it in the frontend and so make it easier for
+						// the users to create the required pagination expressions
+						const nodeContext = this.getContext('node');
+						if (pagination && pagination.paginationMode !== 'off') {
+							nodeContext.response = responseData.value[0];
+						} else {
+							nodeContext.response = responseData.value;
+						}
+					}
+
+					const responseContentType = response.headers['content-type'] ?? '';
+					if (autoDetectResponseFormat) {
+						if (responseContentType.includes('application/json')) {
+							responseFormat = 'json';
+							if (!response.__bodyResolved) {
+								const neverError = this.getNodeParameter(
+									'options.response.response.neverError',
+									0,
+									false,
+								) as boolean;
+
+								const data = await binaryToStringWithEncodingDetection(
+									response.body as Buffer | Readable,
+									responseContentType,
+									this.helpers,
+								);
+								response.body = isEmptyResponseBody(data)
+									? {}
+									: jsonParse(data, {
+											...(neverError
+												? { fallbackValue: {} }
+												: { errorMessage: 'Invalid JSON in response body' }),
+										});
+							}
+						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
+							responseFormat = 'file';
+						} else {
+							responseFormat = 'text';
+							if (!response.__bodyResolved) {
+								const data = await binaryToStringWithEncodingDetection(
+									response.body as Buffer | Readable,
+									responseContentType,
+									this.helpers,
+								);
+								response.body = !data ? undefined : data;
+							}
+						}
+					}
+					// This is a no-op outside of tool usage
+					const optimizeResponse = configureResponseOptimizer(this, itemIndex);
+
+					if (autoDetectResponseFormat && !fullResponse) {
+						delete response.headers;
+						delete response.statusCode;
+						delete response.statusMessage;
+					}
+					if (!fullResponse) {
+						response = optimizeResponse(response.body);
+					} else {
+						response.body = optimizeResponse(response.body);
+					}
+					if (responseFormat === 'file') {
+						const outputPropertyName = this.getNodeParameter(
+							'options.response.response.outputPropertyName',
+							0,
+							'data',
+						) as string;
+
+						const newItem: INodeExecutionData = {
+							json: {},
+							binary: {},
+							pairedItem: {
+								item: itemIndex,
+							},
+						};
+
+						if (items[itemIndex].binary !== undefined) {
+							// Create a shallow copy of the binary data so that the old
+							// data references which do not get changed still stay behind
+							// but the incoming data does not get changed.
+							Object.assign(newItem.binary as IBinaryKeyData, items[itemIndex].binary);
+						}
+
+						let binaryData: Buffer | Readable;
+						if (fullResponse) {
+							const returnItem: IDataObject = {};
+							for (const property of fullResponseProperties) {
+								if (property === 'body') {
+									continue;
+								}
+								returnItem[property] = response[property];
+							}
+
+							newItem.json = returnItem;
+							binaryData = response?.body;
+						} else {
+							newItem.json = items[itemIndex].json;
+							binaryData = response;
+						}
+						const preparedBinaryData = await this.helpers.prepareBinaryData(
+							binaryData,
+							undefined,
+							mimeTypeFromResponse(responseContentType),
+						);
+
+						preparedBinaryData.fileName = setFilename(
+							preparedBinaryData,
+							// options is always set here: error items are skipped before this branch
+							requests[itemIndex].options,
+							responseFileName,
+						);
+
+						newItem.binary![outputPropertyName] = preparedBinaryData;
+
+						returnItems.push(newItem);
+					} else if (responseFormat === 'text') {
+						const outputPropertyName = this.getNodeParameter(
+							'options.response.response.outputPropertyName',
+							0,
+							'data',
+						) as string;
+						if (fullResponse) {
+							const returnItem: IDataObject = {};
+							for (const property of fullResponseProperties) {
+								if (property === 'body') {
+									returnItem[outputPropertyName] = toText(response[property]);
+									continue;
+								}
+								returnItem[property] = response[property];
+							}
+							returnItems.push({
+								json: returnItem,
+								pairedItem: {
+									item: itemIndex,
+								},
+							});
+						} else {
+							returnItems.push({
+								json: {
+									[outputPropertyName]: toText(response),
+								},
+								pairedItem: {
+									item: itemIndex,
+								},
+							});
+						}
+					} else {
+						// responseFormat: 'json'
+						if (fullResponse) {
+							const returnItem: IDataObject = {};
+							for (const property of fullResponseProperties) {
+								returnItem[property] = response[property];
+							}
+
+							if (responseFormat === 'json' && typeof returnItem.body === 'string') {
+								if (isEmptyResponseBody(returnItem.body)) {
+									returnItem.body = {};
+								} else {
+									try {
+										returnItem.body = JSON.parse(returnItem.body);
+									} catch (error) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'Response body is not valid JSON. Change "Response Format" to "Text"',
+											{ itemIndex },
+										);
+									}
+								}
+							}
+
+							returnItems.push({
+								json: returnItem,
+								pairedItem: {
+									item: itemIndex,
+								},
+							});
+						} else {
+							if (responseFormat === 'json' && typeof response === 'string') {
+								if (isEmptyResponseBody(response)) {
+									response = {};
+								} else {
+									try {
+										if (typeof response !== 'object') {
+											response = JSON.parse(response);
+										}
+									} catch (error) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'Response body is not valid JSON. Change "Response Format" to "Text"',
+											{ itemIndex },
+										);
+									}
+								}
+							}
+
+							if (Array.isArray(response)) {
+								response.forEach((item) =>
+									returnItems.push({
+										json: item,
+										pairedItem: {
+											item: itemIndex,
+										},
+									}),
+								);
+							} else {
+								returnItems.push({
+									json: response,
+									pairedItem: {
+										item: itemIndex,
+									},
+								});
+							}
+						}
+					}
+				}
+			} catch (error) {
+				if (!this.continueOnFail()) throw error;
+
+				returnItems.push({
+					json: { error: error.message },
+					pairedItem: { item: itemIndex },
+				});
+
+				continue;
+			}
+		}
+
+		returnItems = returnItems.map(replaceNullValues);
+
+		// Only show the Split Out hint in regular workflow context, not when running as an AI Agent tool
+		// (users cannot add nodes after tools in an AI Agent context)
+		if (
+			returnItems.length === 1 &&
+			returnItems[0].json.data &&
+			Array.isArray(returnItems[0].json.data) &&
+			!this.isToolExecution()
+		) {
+			const message =
+				'To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one';
+
+			if (this.addExecutionHints) {
+				this.addExecutionHints({
+					message,
+					location: 'outputPane',
+				});
+			} else {
+				this.logger.info(message);
+			}
+		}
+
+		return [returnItems];
+	}
+}
+
+/**
+ * Parses a JSON string and returns the result.
+ *
+ * @throws {NodeOperationError} if the string is not valid JSON.
+ */
+function parseJsonParameter(
+	node: INode,
+	jsonString: string,
+	fieldName: string,
+	itemIndex: number,
+): IDataObject {
+	try {
+		return JSON.parse(jsonString) as IDataObject;
+	} catch (e) {
+		const error = ensureError(e);
+		throw new NodeOperationError(node, `The value in the "${fieldName}" field is not valid JSON`, {
+			itemIndex,
+			description: error.message,
+		});
+	}
+}

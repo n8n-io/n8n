@@ -1,0 +1,39 @@
+{
+	"node": "n8n-nodes-base.switch",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+			}
+		],
+		"generic": [
+			{
+				"label": "2021: The Year to Automate the New You with n8n",
+				"icon": "☀️",
+				"url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/"
+			},
+			{
+				"label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+				"icon": "👥",
+				"url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+			},
+			{
+				"label": "Build your own virtual assistant with n8n: A step by step guide",
+				"icon": "👦",
+				"url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/"
+			},
+			{
+				"label": "How to automatically manage contributions to open-source projects",
+				"icon": "🏷️",
+				"url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/"
+			}
+		]
+	},
+	"alias": ["Router", "If", "Path", "Filter", "Condition", "Logic", "Branch", "Case"],
+	"subcategories": {
+		"Core Nodes": ["Flow"]
+	}
+}

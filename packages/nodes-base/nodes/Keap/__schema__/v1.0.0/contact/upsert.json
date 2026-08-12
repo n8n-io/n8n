@@ -1,0 +1,87 @@
+{
+    "type": "object",
+    "properties": {
+        "addresses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "field": {
+                        "type": "string"
+                    },
+                    "locality": {
+                        "type": "string"
+                    },
+                    "postal_code": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "date_created": {
+            "type": "string"
+        },
+        "email_addresses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "field": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "email_opted_in": {
+            "type": "boolean"
+        },
+        "email_status": {
+            "type": "string"
+        },
+        "family_name": {
+            "type": "string"
+        },
+        "given_name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "last_updated": {
+            "type": "string"
+        },
+        "last_updated_utc_millis": {
+            "type": "integer"
+        },
+        "phone_numbers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "field": {
+                        "type": "string"
+                    },
+                    "number": {
+                        "type": "string"
+                    },
+                    "number_e164": {
+                        "type": "null"
+                    }
+                }
+            }
+        },
+        "ScoreValue": {
+            "type": "null"
+        },
+        "tag_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        }
+    },
+    "version": 1
+}

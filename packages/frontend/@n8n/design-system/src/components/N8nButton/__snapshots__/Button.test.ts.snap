@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`components > N8nButton > props > icon > should render icon button with icon name 1`] = `
+"<button type="button" class="button button solid medium" aria-live="polite">
+  <transition-stub name="n8n-button-fade" appear="false" persisted="false" css="true">
+    <!--v-if-->
+  </transition-stub>
+  <div class="button-inner">
+    <n8n-icon-stub icon="circle-plus" size="medium" spin="false"></n8n-icon-stub>Button
+  </div>
+</button>"
+`;

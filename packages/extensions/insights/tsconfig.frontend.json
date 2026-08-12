@@ -1,0 +1,7 @@
+{
+	"extends": "@vue/tsconfig/tsconfig.dom.json",
+	"compilerOptions": {
+		"tsBuildInfoFile": "dist/tsconfig.app.tsbuildinfo"
+	},
+	"include": ["src/frontend/**/*.ts", "src/frontend/**/*.vue"]
+}

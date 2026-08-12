@@ -1,0 +1,16 @@
+{
+	"node": "n8n-nodes-base.respondToWebhook",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes", "Utility"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+			}
+		]
+	},
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}
