@@ -4,6 +4,7 @@ import type {
 	WorkflowEntity,
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
+import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -11,7 +12,10 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { ProjectService } from '@/services/project.service.ee';
 import { WorkflowBulkActionService } from '@/workflows/workflow-bulk-action.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type {
+	AuthorizedWorkflow,
+	WorkflowFinderService,
+} from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -26,6 +30,8 @@ describe('WorkflowBulkActionService', () => {
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	let service: WorkflowBulkActionService;
+	const authorize = <S extends Scope>(workflow: WorkflowEntity, scope: S): AuthorizedWorkflow<S> =>
+		({ workflow, scope, userId: user.id }) as AuthorizedWorkflow<S>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -45,24 +51,26 @@ describe('WorkflowBulkActionService', () => {
 	});
 
 	it('rejects the whole request when one workflow is inaccessible', async () => {
-		workflowFinderService.findWorkflowsByIdsForUser.mockResolvedValue([
-			mock<WorkflowEntity>({ id: 'workflow-1', isArchived: false }),
+		workflowFinderService.findAuthorizedWorkflowsByIdsForUser.mockResolvedValue([
+			authorize(mock<WorkflowEntity>({ id: 'workflow-1', isArchived: false }), 'workflow:delete'),
 		]);
 
 		await expect(service.archive(user, ['workflow-1', 'workflow-2'])).rejects.toBeInstanceOf(
 			UnprocessableRequestError,
 		);
-		expect(workflowService.archive).not.toHaveBeenCalled();
+		expect(workflowService.archiveAuthorized).not.toHaveBeenCalled();
 	});
 
 	it('finishes the active parallel batch and stops before the next batch on failure', async () => {
 		const workflows = Array.from({ length: 6 }, (_, index) => `workflow-${index + 1}`).map((id) =>
 			mock<WorkflowEntity>({ id, isArchived: false }),
 		);
-		workflowFinderService.findWorkflowsByIdsForUser.mockResolvedValue(workflows);
-		workflowService.archive.mockImplementation(async (_user, workflowId) => {
-			if (workflowId === 'workflow-2') throw new Error('hook rejected');
-			return workflows.find(({ id }) => id === workflowId);
+		workflowFinderService.findAuthorizedWorkflowsByIdsForUser.mockResolvedValue(
+			workflows.map((workflow) => authorize(workflow, 'workflow:delete')),
+		);
+		workflowService.archiveAuthorized.mockImplementation(async (_user, authorized) => {
+			if (authorized.workflow.id === 'workflow-2') throw new Error('hook rejected');
+			return authorized.workflow;
 		});
 
 		await expect(
@@ -86,21 +94,29 @@ describe('WorkflowBulkActionService', () => {
 				{ workflowId: 'workflow-6', status: 'notAttempted' },
 			],
 		});
-		expect(workflowService.archive).toHaveBeenCalledTimes(5);
+		expect(workflowService.archiveAuthorized).toHaveBeenCalledTimes(5);
+		expect(workflowService.archive).not.toHaveBeenCalled();
+		expect(workflowFinderService.findAuthorizedWorkflowsByIdsForUser).toHaveBeenCalledTimes(1);
 	});
 
 	it('rejects permanent deletion unless every workflow is archived and fully unpublished', async () => {
-		workflowFinderService.findWorkflowsByIdsForUser.mockResolvedValue([
-			mock<WorkflowEntity>({
-				id: 'not-archived',
-				isArchived: false,
-				activeVersionId: null,
-			}),
-			mock<WorkflowEntity>({
-				id: 'pending-unpublish',
-				isArchived: true,
-				activeVersionId: null,
-			}),
+		workflowFinderService.findAuthorizedWorkflowsByIdsForUser.mockResolvedValue([
+			authorize(
+				mock<WorkflowEntity>({
+					id: 'not-archived',
+					isArchived: false,
+					activeVersionId: null,
+				}),
+				'workflow:delete',
+			),
+			authorize(
+				mock<WorkflowEntity>({
+					id: 'pending-unpublish',
+					isArchived: true,
+					activeVersionId: null,
+				}),
+				'workflow:delete',
+			),
 		]);
 		workflowPublishedVersionRepository.getWorkflowIdsWithPublishedVersion.mockResolvedValue(
 			new Set(['pending-unpublish']),
@@ -119,18 +135,23 @@ describe('WorkflowBulkActionService', () => {
 				},
 			},
 		);
+		expect(workflowService.deleteAuthorized).not.toHaveBeenCalled();
 		expect(workflowService.delete).not.toHaveBeenCalled();
 	});
 
 	it('reports already-unpublished workflows as unchanged', async () => {
-		workflowFinderService.findWorkflowsByIdsForUser.mockResolvedValue([
-			mock<WorkflowEntity>({ id: 'workflow-1', activeVersionId: null }),
+		workflowFinderService.findAuthorizedWorkflowsByIdsForUser.mockResolvedValue([
+			authorize(
+				mock<WorkflowEntity>({ id: 'workflow-1', activeVersionId: null }),
+				'workflow:unpublish',
+			),
 		]);
 
 		await expect(service.unpublish(user, ['workflow-1'])).resolves.toEqual({
 			status: 'completed',
 			results: [{ workflowId: 'workflow-1', status: 'unchanged' }],
 		});
+		expect(workflowService.deactivateAuthorized).not.toHaveBeenCalled();
 		expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
 	});
 });

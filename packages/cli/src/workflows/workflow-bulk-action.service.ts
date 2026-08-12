@@ -7,11 +7,10 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { ProjectService } from '@/services/project.service.ee';
 
-import { WorkflowFinderService } from './workflow-finder.service';
+import { type AuthorizedWorkflow, WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 
@@ -26,12 +25,9 @@ type PreflightOptions = {
 	clientId?: string;
 	includeParentFolder?: boolean;
 	includeShared?: boolean;
+	includeActiveVersion?: boolean;
 	validate?: (workflow: WorkflowEntity) => PreflightIssue | undefined;
 };
-
-type ExecuteItem = (
-	workflow: WorkflowEntity,
-) => Promise<Omit<BulkWorkflowActionResultItem, 'workflowId'>>;
 
 const LIFECYCLE_BATCH_SIZE = 5;
 
@@ -53,7 +49,7 @@ export class WorkflowBulkActionService {
 		workflowIds: string[],
 		clientId?: string,
 	): Promise<BulkWorkflowActionResult> {
-		const workflows = await this.preflight(user, workflowIds, ['workflow:delete'], {
+		const workflows = await this.preflight(user, workflowIds, 'workflow:delete', {
 			action: 'archive',
 			clientId,
 			validate: (workflow) =>
@@ -66,11 +62,9 @@ export class WorkflowBulkActionService {
 					: undefined,
 		});
 
-		return await this.execute(workflows, async (workflow) => {
-			const archived = await this.workflowService.archive(user, workflow.id);
-			if (!archived) throw new NotFoundError('Workflow is no longer accessible.');
-
-			await this.collaborationService.broadcastWorkflowUpdate(workflow.id, user.id);
+		return await this.execute(workflows, async (authorized) => {
+			const archived = await this.workflowService.archiveAuthorized(user, authorized);
+			await this.collaborationService.broadcastWorkflowUpdate(archived.id, user.id);
 			return { status: 'completed' };
 		});
 	}
@@ -83,7 +77,7 @@ export class WorkflowBulkActionService {
 		const uniqueIds = this.uniqueIds(workflowIds);
 		const pendingPublishedIds =
 			await this.workflowPublishedVersionRepository.getWorkflowIdsWithPublishedVersion(uniqueIds);
-		const workflows = await this.preflight(user, uniqueIds, ['workflow:delete'], {
+		const workflows = await this.preflight(user, uniqueIds, 'workflow:delete', {
 			action: 'delete',
 			clientId,
 			validate: (workflow) => {
@@ -112,9 +106,8 @@ export class WorkflowBulkActionService {
 			},
 		});
 
-		return await this.execute(workflows, async (workflow) => {
-			const deleted = await this.workflowService.delete(user, workflow.id);
-			if (!deleted) throw new NotFoundError('Workflow is no longer accessible.');
+		return await this.execute(workflows, async (authorized) => {
+			await this.workflowService.deleteAuthorized(user, authorized);
 			return { status: 'completed' };
 		});
 	}
@@ -124,15 +117,16 @@ export class WorkflowBulkActionService {
 		workflowIds: string[],
 		clientId?: string,
 	): Promise<BulkWorkflowActionResult> {
-		const workflows = await this.preflight(user, workflowIds, ['workflow:unpublish'], {
+		const workflows = await this.preflight(user, workflowIds, 'workflow:unpublish', {
 			action: 'unpublish',
 			clientId,
+			includeActiveVersion: true,
 		});
 
-		return await this.execute(workflows, async (workflow) => {
-			if (workflow.activeVersionId === null) return { status: 'unchanged' };
+		return await this.execute(workflows, async (authorized) => {
+			if (authorized.workflow.activeVersionId === null) return { status: 'unchanged' };
 
-			await this.workflowService.deactivateWorkflow(user, workflow.id);
+			const workflow = await this.workflowService.deactivateAuthorized(user, authorized);
 			await this.collaborationService.broadcastWorkflowUpdate(workflow.id, user.id);
 			return { status: 'completed' };
 		});
@@ -176,7 +170,7 @@ export class WorkflowBulkActionService {
 			}
 		}
 
-		const workflows = await this.preflight(user, workflowIds, ['workflow:move'], {
+		const workflows = await this.preflight(user, workflowIds, 'workflow:move', {
 			action: 'transfer',
 			clientId,
 			includeParentFolder: true,
@@ -211,7 +205,7 @@ export class WorkflowBulkActionService {
 			(id) => !shareableCredentialIdSet.has(id),
 		);
 
-		const result = await this.execute(workflows, async (workflow) => {
+		const result = await this.execute(workflows, async ({ workflow }) => {
 			const activationError = await this.enterpriseWorkflowService.transferWorkflow(
 				user,
 				workflow.id,
@@ -232,28 +226,27 @@ export class WorkflowBulkActionService {
 		return { ...result, unsharedCredentialIds };
 	}
 
-	private async preflight(
+	private async preflight<S extends Scope>(
 		user: User,
 		workflowIds: string[],
-		scopes: Scope[],
+		scope: S,
 		options: PreflightOptions,
-	): Promise<WorkflowEntity[]> {
+	): Promise<Array<AuthorizedWorkflow<S>>> {
 		const uniqueIds = this.uniqueIds(workflowIds);
-		const accessibleWorkflows = await this.workflowFinderService.findWorkflowsByIdsForUser(
-			uniqueIds,
-			user,
-			scopes,
-			{
+		const authorizedWorkflows =
+			await this.workflowFinderService.findAuthorizedWorkflowsByIdsForUser(uniqueIds, user, scope, {
 				includeParentFolder: options.includeParentFolder,
 				includeShared: options.includeShared,
-			},
+				includeActiveVersion: options.includeActiveVersion,
+			});
+		const workflowById = new Map(
+			authorizedWorkflows.map((authorized) => [authorized.workflow.id, authorized]),
 		);
-		const workflowById = new Map(accessibleWorkflows.map((workflow) => [workflow.id, workflow]));
 		const issues: PreflightIssue[] = [];
 
 		for (const workflowId of uniqueIds) {
-			const workflow = workflowById.get(workflowId);
-			if (!workflow) {
+			const authorized = workflowById.get(workflowId);
+			if (!authorized) {
 				issues.push({
 					workflowId,
 					reason: 'notFoundOrForbidden',
@@ -261,6 +254,7 @@ export class WorkflowBulkActionService {
 				});
 				continue;
 			}
+			const { workflow } = authorized;
 
 			try {
 				await this.collaborationService.validateWriteLock(
@@ -284,24 +278,31 @@ export class WorkflowBulkActionService {
 
 		if (issues.length > 0) throw this.preflightError(issues);
 
-		return uniqueIds.map((id) => workflowById.get(id)).filter((workflow) => workflow !== undefined);
+		return uniqueIds
+			.map((id) => workflowById.get(id))
+			.filter((authorized) => authorized !== undefined);
 	}
 
-	private async execute(
-		workflows: WorkflowEntity[],
-		executeItem: ExecuteItem,
+	private async execute<S extends Scope>(
+		workflows: Array<AuthorizedWorkflow<S>>,
+		executeItem: (
+			authorized: AuthorizedWorkflow<S>,
+		) => Promise<Omit<BulkWorkflowActionResultItem, 'workflowId'>>,
 	): Promise<BulkWorkflowActionResult> {
 		const results: BulkWorkflowActionResultItem[] = [];
 
 		for (let start = 0; start < workflows.length; start += LIFECYCLE_BATCH_SIZE) {
 			const batch = workflows.slice(start, start + LIFECYCLE_BATCH_SIZE);
 			const batchResults = await Promise.all(
-				batch.map(async (workflow): Promise<BulkWorkflowActionResultItem> => {
+				batch.map(async (authorized): Promise<BulkWorkflowActionResultItem> => {
 					try {
-						return { workflowId: workflow.id, ...(await executeItem(workflow)) };
+						return {
+							workflowId: authorized.workflow.id,
+							...(await executeItem(authorized)),
+						};
 					} catch (error) {
 						return {
-							workflowId: workflow.id,
+							workflowId: authorized.workflow.id,
 							status: 'failed',
 							reason: 'runtimeFailure',
 							message: ensureError(error).message,
@@ -313,8 +314,8 @@ export class WorkflowBulkActionService {
 
 			if (batchResults.some(({ status }) => status === 'failed')) {
 				results.push(
-					...workflows.slice(start + batch.length).map(({ id }) => ({
-						workflowId: id,
+					...workflows.slice(start + batch.length).map(({ workflow }) => ({
+						workflowId: workflow.id,
 						status: 'notAttempted' as const,
 					})),
 				);

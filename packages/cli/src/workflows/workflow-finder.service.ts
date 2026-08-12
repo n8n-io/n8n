@@ -8,6 +8,15 @@ import { In, IsNull } from '@n8n/typeorm';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { RoleService } from '@/services/role.service';
 
+const authorizedWorkflowBrand = Symbol('authorizedWorkflow');
+
+export type AuthorizedWorkflow<S extends Scope> = {
+	workflow: WorkflowEntity;
+	scope: S;
+	userId: string;
+	readonly [authorizedWorkflowBrand]: true;
+};
+
 export type FindWorkflowsForUserOptions = {
 	filters?: {
 		name?: string;
@@ -185,6 +194,7 @@ export class WorkflowFinderService {
 			includeParentFolder?: boolean;
 			includeTags?: boolean;
 			includeShared?: boolean;
+			includeActiveVersion?: boolean;
 		} = {},
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) return [];
@@ -197,6 +207,7 @@ export class WorkflowFinderService {
 					parentFolder: options.includeParentFolder,
 					tags: options.includeTags,
 					shared: options.includeShared ? { project: true } : false,
+					activeVersion: options.includeActiveVersion,
 				},
 			},
 		});
@@ -211,6 +222,26 @@ export class WorkflowFinderService {
 			workflows.push(workflow);
 		}
 		return workflows;
+	}
+
+	async findAuthorizedWorkflowsByIdsForUser<S extends Scope>(
+		workflowIds: string[],
+		user: User,
+		scope: S,
+		options: {
+			includeParentFolder?: boolean;
+			includeTags?: boolean;
+			includeShared?: boolean;
+			includeActiveVersion?: boolean;
+		} = {},
+	): Promise<Array<AuthorizedWorkflow<S>>> {
+		const workflows = await this.findWorkflowsByIdsForUser(workflowIds, user, [scope], options);
+		return workflows.map((workflow) => ({
+			workflow,
+			scope,
+			userId: user.id,
+			[authorizedWorkflowBrand]: true,
+		}));
 	}
 
 	async findWorkflowIdsByFolder(folderIds: string[]): Promise<Map<string, string[]>> {
