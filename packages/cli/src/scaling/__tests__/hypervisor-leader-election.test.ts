@@ -3,8 +3,8 @@ import type { GlobalConfig } from '@n8n/config';
 import { MultiMainMetadata } from '@n8n/decorators';
 import type { MultiMainEventHandler } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { HypervisorLeaderElection, LeaderElectionHost } from '../hypervisor-leader-election';
 import type { HypervisorWorker } from '../hypervisor-message-router';
@@ -57,8 +57,8 @@ describe('HypervisorLeaderElection', () => {
 		election = new HypervisorLeaderElection(logger, instanceSettings, metadata, globalConfig);
 	});
 
-	afterEach(async () => {
-		await election.shutdown();
+	afterEach(() => {
+		election.shutdown();
 		process.send = originalSend;
 	});
 

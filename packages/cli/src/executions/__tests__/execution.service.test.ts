@@ -31,7 +31,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import type { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { ScalingService } from '@/scaling/scaling.service';
-import type { Job } from '@/scaling/scaling.types';
+import type { QueueJob } from '@/scaling/queue/job-queue.interface';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -651,7 +651,7 @@ describe('ExecutionService', () => {
 					waitTracker.has.mockReturnValue(false);
 
 					const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
-					const job = mock<Job>({ data: { executionId: execution.id } });
+					const job = mock<QueueJob>({ data: { executionId: execution.id } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
 					// @ts-expect-error Private method
@@ -696,7 +696,7 @@ describe('ExecutionService', () => {
 					waitTracker.has.mockReturnValue(false);
 
 					const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
-					const job = mock<Job>({ data: { executionId: execution.id } });
+					const job = mock<QueueJob>({ data: { executionId: execution.id } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
 
@@ -729,7 +729,7 @@ describe('ExecutionService', () => {
 					waitTracker.has.mockReturnValue(true);
 
 					const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
-					const job = mock<Job>({ data: { executionId: execution.id } });
+					const job = mock<QueueJob>({ data: { executionId: execution.id } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
 

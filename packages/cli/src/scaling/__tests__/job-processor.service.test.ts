@@ -44,7 +44,7 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { JobProcessor } from '../job-processor';
-import type { Job } from '../scaling.types';
+import type { QueueJob } from '../queue/job-queue.interface';
 import { ENCODED_BUFFER_KEY, WebhookResponseRelay } from '../webhook-response-relay';
 
 mockInstance(WorkflowPublishHistoryRepository);
@@ -135,7 +135,7 @@ describe('JobProcessor', () => {
 			mock(),
 		);
 
-		const result = await jobProcessor.processJob(mock<Job>());
+		const result = await jobProcessor.processJob(mock<QueueJob>());
 
 		expect(result).toEqual({ success: false });
 	});
@@ -166,7 +166,7 @@ describe('JobProcessor', () => {
 			mock(),
 		);
 
-		const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+		const job = mock<QueueJob>({ data: { executionId: 'execution-id', loadStaticData: false } });
 
 		await expect(jobProcessor.processJob(job)).rejects.toThrow(/without run data/);
 		expect(manualExecutionService.runManually).not.toHaveBeenCalled();
@@ -201,13 +201,13 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 
 			await jobProcessor.processJob(job);
 
 			expect(manualExecutionService.runManually).toHaveBeenCalledTimes(1);
 
-			expect(job.progress).toHaveBeenCalledWith(
+			expect(job.sendMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					kind: 'job-finished',
 					success: true,
@@ -245,11 +245,11 @@ describe('JobProcessor', () => {
 			mock(),
 		);
 
-		const job = mock<Job>();
+		const job = mock<QueueJob>();
 
 		await jobProcessor.processJob(job);
 
-		expect(job.progress).toHaveBeenCalledWith(
+		expect(job.sendMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
 				kind: 'job-finished',
 				success: false,
@@ -295,7 +295,7 @@ describe('JobProcessor', () => {
 		);
 
 		const executionId = 'execution-id';
-		await jobProcessor.processJob(mock<Job>({ data: { executionId, loadStaticData: false } }));
+		await jobProcessor.processJob(mock<QueueJob>({ data: { executionId, loadStaticData: false } }));
 
 		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
 			workflowId: execution.workflowData.id,
@@ -347,7 +347,7 @@ describe('JobProcessor', () => {
 		const executionId = 'execution-id';
 		const restartExecutionId = 'restart-execution-id';
 		await jobProcessor.processJob(
-			mock<Job>({ data: { executionId, loadStaticData: false, restartExecutionId } }),
+			mock<QueueJob>({ data: { executionId, loadStaticData: false, restartExecutionId } }),
 		);
 
 		expect(additionalData.restartExecutionId).toBe(restartExecutionId);
@@ -386,7 +386,7 @@ describe('JobProcessor', () => {
 		const executionId = 'execution-id';
 		const encryptedRunnerIdentity = 'encrypted-identity-blob';
 		await jobProcessor.processJob(
-			mock<Job>({ data: { executionId, loadStaticData: false, encryptedRunnerIdentity } }),
+			mock<QueueJob>({ data: { executionId, loadStaticData: false, encryptedRunnerIdentity } }),
 		);
 
 		expect(additionalData.encryptedRunnerIdentity).toBe(encryptedRunnerIdentity);
@@ -437,7 +437,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			await jobProcessor.processJob(mock<Job>());
+			await jobProcessor.processJob(mock<QueueJob>());
 
 			// Assert the constructor and method were called
 			expect(MockedWorkflowExecute).toHaveBeenCalledWith(additionalData, mode, executionData);
@@ -485,7 +485,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-123',
@@ -498,8 +498,8 @@ describe('JobProcessor', () => {
 
 			await jobProcessor.processJob(job);
 
-			// Should have called progress with mcp-response
-			expect(job.progress).toHaveBeenCalledWith(
+			// Should have sent an mcp-response message
+			expect(job.sendMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					kind: 'mcp-response',
 					executionId: 'exec-mcp-123',
@@ -545,7 +545,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-regular-123',
@@ -556,8 +556,8 @@ describe('JobProcessor', () => {
 
 			await jobProcessor.processJob(job);
 
-			const progressCalls = (job.progress as Mock).mock.calls;
-			const mcpResponseCalls = progressCalls.filter(
+			const sentMessages = (job.sendMessage as Mock).mock.calls;
+			const mcpResponseCalls = sentMessages.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			expect(mcpResponseCalls).toHaveLength(0);
@@ -596,7 +596,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-error',
@@ -609,7 +609,7 @@ describe('JobProcessor', () => {
 
 			await jobProcessor.processJob(job);
 
-			expect(job.progress).toHaveBeenCalledWith(
+			expect(job.sendMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					kind: 'mcp-response',
 					response: expect.objectContaining({
@@ -658,7 +658,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-trigger',
@@ -673,7 +673,7 @@ describe('JobProcessor', () => {
 			await jobProcessor.processJob(job);
 
 			// Should send mcp-response even for trigger type without tool call
-			expect(job.progress).toHaveBeenCalledWith(
+			expect(job.sendMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					kind: 'mcp-response',
 					executionId: 'exec-mcp-trigger',
@@ -746,7 +746,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-tool',
@@ -765,7 +765,7 @@ describe('JobProcessor', () => {
 			await jobProcessor.processJob(job);
 
 			// Should send mcp-response with tool result
-			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
+			const mcpResponseCalls = (job.sendMessage as Mock).mock.calls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			expect(mcpResponseCalls.length).toBeGreaterThan(0);
@@ -821,7 +821,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-error',
@@ -840,7 +840,7 @@ describe('JobProcessor', () => {
 			await jobProcessor.processJob(job);
 
 			// Should send mcp-response with error (error object without stack trace)
-			expect(job.progress).toHaveBeenCalledWith(
+			expect(job.sendMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					kind: 'mcp-response',
 					response: expect.objectContaining({
@@ -852,7 +852,7 @@ describe('JobProcessor', () => {
 			);
 
 			// Verify no stack trace is exposed
-			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
+			const mcpResponseCalls = (job.sendMessage as Mock).mock.calls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			const lastResponse = mcpResponseCalls[mcpResponseCalls.length - 1][0] as {
@@ -924,7 +924,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-tool-wrapper',
@@ -946,7 +946,7 @@ describe('JobProcessor', () => {
 			expect(mockExecuteFn).toHaveBeenCalled();
 
 			// Should send mcp-response with tool result
-			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
+			const mcpResponseCalls = (job.sendMessage as Mock).mock.calls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			expect(mcpResponseCalls.length).toBeGreaterThan(0);
@@ -1019,7 +1019,7 @@ describe('JobProcessor', () => {
 				relay,
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-tool-oversized',
@@ -1039,7 +1039,7 @@ describe('JobProcessor', () => {
 
 			expect(relay.assertFitsInline).toHaveBeenCalledWith([{ blob: 'x'.repeat(64) }]);
 
-			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
+			const mcpResponseCalls = (job.sendMessage as Mock).mock.calls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			const lastResponse = mcpResponseCalls[mcpResponseCalls.length - 1][0] as {
@@ -1097,7 +1097,7 @@ describe('JobProcessor', () => {
 					mock(),
 				);
 
-				const job = mock<Job>();
+				const job = mock<QueueJob>();
 				job.data = {
 					workflowId: 'wf-1',
 					executionId: 'exec-mcp-isolate',
@@ -1233,7 +1233,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-supply-data',
@@ -1256,7 +1256,7 @@ describe('JobProcessor', () => {
 			expect(mockTool.invoke).toHaveBeenCalledWith({ query: 'test' });
 
 			// Should send mcp-response with tool result
-			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
+			const mcpResponseCalls = (job.sendMessage as Mock).mock.calls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			expect(mcpResponseCalls.length).toBeGreaterThan(0);
@@ -1341,7 +1341,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-ctx',
@@ -1436,7 +1436,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-record',
@@ -1526,7 +1526,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-error',
@@ -1626,7 +1626,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-supply',
@@ -1712,7 +1712,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-persist-fail',
@@ -1739,7 +1739,7 @@ describe('JobProcessor', () => {
 			);
 
 			// The mcp-response with the tool result must still reach the client.
-			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
+			const mcpResponseCalls = (job.sendMessage as Mock).mock.calls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			expect(mcpResponseCalls[mcpResponseCalls.length - 1][0]).toMatchObject({
@@ -1804,7 +1804,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-init-data',
@@ -1881,7 +1881,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-mcp-node-error',
@@ -2000,7 +2000,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-1',
@@ -2067,7 +2067,7 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			const job = mock<Job>();
+			const job = mock<QueueJob>();
 			job.data = {
 				workflowId: 'wf-1',
 				executionId: 'exec-1',
@@ -2112,7 +2112,7 @@ describe('JobProcessor', () => {
 		/** Runs a job and returns the hooks it registered, so `sendResponse` can be invoked. */
 		const processJobAndCaptureHooks = async (
 			webhookResponseRelaySizeMaxMiB: number,
-			jobData: Partial<Job['data']> = {},
+			jobData: Partial<QueueJob['data']> = {},
 			mode: BinaryDataConfig['mode'] = 'default',
 		) => {
 			const { relay, binaryDataService } = buildRelay(webhookResponseRelaySizeMaxMiB, mode);
@@ -2141,7 +2141,7 @@ describe('JobProcessor', () => {
 				relay,
 			);
 
-			const job = mock<Job>({
+			const job = mock<QueueJob>({
 				data: {
 					workflowId: 'wf-1',
 					executionId: 'exec-1',
@@ -2163,7 +2163,7 @@ describe('JobProcessor', () => {
 				{ body: Buffer.from('hello'), headers: {}, statusCode: 200 },
 			]);
 
-			expect(job.progress).toHaveBeenCalledWith(
+			expect(job.sendMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					kind: 'respond-to-webhook',
 					executionId: 'exec-1',
@@ -2180,7 +2180,7 @@ describe('JobProcessor', () => {
 			]);
 
 			expect(binaryDataService.store).toHaveBeenCalledTimes(1);
-			expect(job.progress).toHaveBeenCalledWith(
+			expect(job.sendMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					kind: 'respond-to-webhook',
 					response: expect.objectContaining({
@@ -2194,7 +2194,7 @@ describe('JobProcessor', () => {
 
 		it('should refuse to relay a response over the size limit without a store', async () => {
 			const { hooks, job } = await processJobAndCaptureHooks(1);
-			const relayedBefore = (job.progress as Mock).mock.calls.length;
+			const relayedBefore = (job.sendMessage as Mock).mock.calls.length;
 
 			await expect(
 				hooks.runHook('sendResponse', [
@@ -2202,7 +2202,7 @@ describe('JobProcessor', () => {
 				]),
 			).rejects.toThrow(WebhookResponseTooLargeError);
 
-			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
+			expect((job.sendMessage as Mock).mock.calls).toHaveLength(relayedBefore);
 		});
 
 		it('should offload an MCP response over the size limit and relay a reference', async () => {
@@ -2217,7 +2217,7 @@ describe('JobProcessor', () => {
 			]);
 
 			expect(binaryDataService.store).toHaveBeenCalledTimes(1);
-			expect(job.progress).toHaveBeenCalledWith(
+			expect(job.sendMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					kind: 'mcp-response',
 					sessionId: 'session-1',
@@ -2236,13 +2236,13 @@ describe('JobProcessor', () => {
 				mcpSessionId: 'session-1',
 				mcpType: 'service',
 			});
-			const relayedBefore = (job.progress as Mock).mock.calls.length;
+			const relayedBefore = (job.sendMessage as Mock).mock.calls.length;
 
 			await hooks.runHook('sendResponse', [
 				{ body: Buffer.from('hello'), headers: {}, statusCode: 200 },
 			]);
 
-			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
+			expect((job.sendMessage as Mock).mock.calls).toHaveLength(relayedBefore);
 		});
 
 		it('should not store an MCP Service response over the size limit', async () => {
@@ -2251,14 +2251,14 @@ describe('JobProcessor', () => {
 				{ isMcpExecution: true, mcpSessionId: 'session-1', mcpType: 'service' },
 				'database',
 			);
-			const relayedBefore = (job.progress as Mock).mock.calls.length;
+			const relayedBefore = (job.sendMessage as Mock).mock.calls.length;
 
 			await hooks.runHook('sendResponse', [
 				{ body: { blob: 'x'.repeat(2 * 1024 * 1024) }, headers: {}, statusCode: 200 },
 			]);
 
 			expect(binaryDataService.store).not.toHaveBeenCalled();
-			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
+			expect((job.sendMessage as Mock).mock.calls).toHaveLength(relayedBefore);
 		});
 
 		it('should refuse to relay an oversized MCP payload with no body to offload', async () => {
@@ -2267,13 +2267,13 @@ describe('JobProcessor', () => {
 				{ isMcpExecution: true, mcpSessionId: 'session-1', mcpType: 'trigger' },
 				'database',
 			);
-			const relayedBefore = (job.progress as Mock).mock.calls.length;
+			const relayedBefore = (job.sendMessage as Mock).mock.calls.length;
 
 			await expect(
 				hooks.runHook('sendResponse', [{ toolResult: 'x'.repeat(2 * 1024 * 1024) }]),
 			).rejects.toThrow(WebhookResponseTooLargeError);
 
-			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
+			expect((job.sendMessage as Mock).mock.calls).toHaveLength(relayedBefore);
 			expect(binaryDataService.store).not.toHaveBeenCalled();
 		});
 	});
