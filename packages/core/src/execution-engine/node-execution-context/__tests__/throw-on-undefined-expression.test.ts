@@ -19,6 +19,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ExecuteContext } from '../execute-context';
 import { LoadOptionsContext } from '../load-options-context';
+import { LoadWorkflowNodeContext } from '../workflow-node-context';
 
 /**
  * Covers the `throwOnUndefinedExpression` node setting for the programmatic
@@ -186,6 +187,34 @@ describe('throwOnUndefinedExpression', () => {
 			const context = new LoadOptionsContext(workflow, node, additionalData, '');
 
 			expect(context.getNodeParameter('recipient')).toBeUndefined();
+		});
+
+		// The opt-out is a subclass field, so it only takes effect after the base
+		// constructor has run. `LoadOptionsContext` above is the sibling case;
+		// this one had the field but no test.
+		it.each([
+			['a whole undefined value', "={{ $parameter['nothing'] }}", undefined],
+			['in-expression coercion', "={{ 'Hello, ' + $parameter['nothing'] }}", 'Hello, undefined'],
+		])('does not apply to sub-workflow node resolution — %s', (_label, expression, expected) => {
+			const node: INode = {
+				id: 'test-node',
+				name: 'Test Node',
+				type: 'test.node',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { recipient: expression },
+				throwOnUndefinedExpression: true,
+			};
+			const workflow = new Workflow({
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes: nodeTypes(),
+			});
+
+			const context = new LoadWorkflowNodeContext(workflow, node, additionalData);
+
+			expect(context.getNodeParameter('recipient', 0)).toBe(expected);
 		});
 	});
 
