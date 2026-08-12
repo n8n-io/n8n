@@ -116,9 +116,13 @@ size-1 set (named), a ≥4 set (bundled with list), and a group set (name-only).
   `{id, name, nodeIds[]}` structure), not a field on the node. Reverse index
   `nodeIdToGroupId` and `getGroupForNode(id)` exist on the workflow document
   store (`useWorkflowDocumentNodeGroups`).
-- **Feature flag** `CANVAS_NODE_CONTEXT_FLAG` (already on master) read via
-  `usePostHog().isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)`. The backend bakes
-  the env-var override into the delivered flag value — no special-casing needed.
+- **Feature flag** `CANVAS_NODE_CONTEXT_FLAG` — full plumbing merged to master
+  via PR #35986 (ADO-5771): the constant, the `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED`
+  env override, and the posthog `applyEnvOverrides` wiring. Read on the FE via
+  `usePostHog().isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)`. The backend bakes the
+  env override into the delivered flag value — no special-casing needed. **All
+  trigger entry points must gate on this flag** (backend re-checks per-user and
+  silently drops the attachment when off). Base this frontend work on master.
 
 ## Schema dependency
 

@@ -17,7 +17,8 @@
 - **All user-facing text via i18n** (`@n8n/i18n`) — no hardcoded strings in components.
 - **CSS: semantic tokens only** from `@n8n/design-system` (`--spacing--*`, `--color--*`, `--radius`, `--border`), never hardcoded px. Reuse the existing `.resourceChip` styles as the base.
 - **`data-testid` is a single value** (no spaces).
-- **Feature flag** is `CANVAS_NODE_CONTEXT_FLAG` (already exported from `@n8n/api-types`, value `'104_canvas_aia_node_context'`), read via `usePostHog().isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)`.
+- **Base branch:** current `master` (this branch is rebased onto it). The full feature-flag plumbing landed in master via PR #35986 (ADO-5771) — the `CANVAS_NODE_CONTEXT_FLAG` constant, the `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` env override, and the posthog `applyEnvOverrides` wiring are all present. Do not re-add any of it.
+- **Feature flag** is `CANVAS_NODE_CONTEXT_FLAG` (exported from `@n8n/api-types`, value `'104_canvas_aia_node_context'`), read via `usePostHog().isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)`. Every trigger entry point (toolbar button, context-menu item, ⌘↵) MUST gate on it. The backend re-checks the same flag per-user and silently drops the attachment if off, so an ungated trigger would produce chips that vanish server-side.
 - **Named constant `SINGLE_SET_NODE_EXPANSION_THRESHOLD = 4`** — define once (Phase 3), never inline the number. Do NOT reuse the legacy `CHIP_BUNDLE_THRESHOLD`.
 - **Schema caps:** max 50 sets; max 50 nodes per set. Never emit a payload that violates these.
 - **Do NOT touch** the legacy `focus_ai_on_selected` action, `focusedNodes.store.ts`, or `MessageFocusedNodesChips.vue` — different system, reference only.
