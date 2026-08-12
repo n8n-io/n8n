@@ -1,3 +1,6 @@
+import { Time } from '@n8n/constants';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
@@ -32,4 +35,27 @@ export class ProjectFilesConfig {
 	 */
 	@Env('N8N_PROJECT_FILES_PERSONAL_TOTAL_MAX_SIZE_BYTES')
 	personalTotalMaxSize: number = 1024 * 1024 * 1024;
+
+	/** Interval in milliseconds between sweeps of the temporary upload directory. Default: 1 minute. */
+	@Env('N8N_PROJECT_FILES_CLEANUP_INTERVAL_MS')
+	cleanupIntervalMs: number = 1 * Time.minutes.toMilliseconds;
+
+	/**
+	 * Age in milliseconds after which a staged upload is treated as abandoned and
+	 * deleted. Uploads are normally removed as soon as the request finishes; this
+	 * only catches files left behind by a crash mid-request.
+	 * Default: 10 minutes.
+	 */
+	@Env('N8N_PROJECT_FILES_FILE_MAX_AGE_MS')
+	fileMaxAgeMs: number = 10 * Time.minutes.toMilliseconds;
+
+	/**
+	 * Directory for staging multipart uploads before they are handed to
+	 * `BinaryDataService`. Resolved as `<system-tmp-dir>/n8nProjectFileUploads`.
+	 */
+	readonly uploadDir: string;
+
+	constructor() {
+		this.uploadDir = path.join(tmpdir(), 'n8nProjectFileUploads');
+	}
 }

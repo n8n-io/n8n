@@ -22,6 +22,8 @@ public API, source-control sync.
 | 4 | **Compare-and-swap overwrite, no row locks** | `SELECT … FOR UPDATE` throws `LockNotSupportedOnGivenDriverError` on sqlite. Every pessimistic lock in this repo is Postgres-guarded ([instance-ai-checkpoint.repository.ts:44-46](packages/cli/src/modules/instance-ai/repositories/instance-ai-checkpoint.repository.ts#L44-L46)). CAS is portable *and* leaves zero orphans |
 | 5 | Per-file cap · per-project quota · instance-wide personal-project quota | Personal projects are projects, so every user gets a file manager; the aggregate needs its own ceiling |
 | 6 | Download is always `Content-Disposition: attachment` | `?action=view` would drag in the `ViewableMimeTypes` allowlist, `getHtmlSandboxCSP`, and a stored-XSS test matrix for a code path no Phase 1 UI calls |
+| 8 | **No MIME or extension filtering on upload** | Nothing renders inline on the n8n origin (see #6), so no file type is dangerous to store. Drops the 415 path entirely and keeps the general-purpose framing intact |
+| 9 | **One file per upload request** | `multer.single('file')`; the UI fires N parallel requests for a multi-file drop, giving per-file progress and per-file errors, and keeping quota overshoot bounded at `concurrency × maxFileSize` |
 | 7 | Attribution columns defined now, written by the node PR later | Adding an **FK** later forces sqlite table recreation — more migration risk on a populated table than eight free lines in the `CREATE TABLE` |
 
 No new storage driver. No new read path: `getAsStream`, `getMetadata`, and
@@ -329,8 +331,8 @@ one, so users understand why they're blocked by someone else's usage.
 
 | Method | Path | Scope | Notes |
 |---|---|---|---|
-| `GET` | `/` | `projectFile:list` | `take`/`skip`, name search, fixed `updatedAt DESC`. Returns `{count, data, usage:{usedBytes, quotaBytes, scope}}` |
-| `POST` | `/` | `projectFile:create` | multipart `file`, optional `overwrite`. 201 · 409 · 413 · 415 |
+| `GET` | `/` | `projectFile:listProject` | `take`/`skip`, name search, `updatedAt DESC` with an `id` tiebreaker. Returns `{count, data, usage:{usedBytes, quotaBytes, scope}}` |
+| `POST` | `/` | `projectFile:create` | multipart `file` (one per request), `?overwrite=true`. 201 · 400 · 409 · 413 |
 | `GET` | `/:fileId/content` | `projectFile:read` | Streams as attachment |
 | `PATCH` | `/:fileId` | `projectFile:update` | `{ name }` rename. **DB row only** — the blob key is a uuid, so `binaryDataService.rename()` is neither needed nor appropriate |
 | `DELETE` | `/:fileId` | `projectFile:delete` | |
@@ -458,8 +460,9 @@ orphans.
 - One telemetry event via the `@n8n/telemetry` registry (use the `n8n:telemetry`
   skill)
 
-**Tests:** 200/201/403/404/409/413/415, viewer-vs-editor, branch-read-only,
-personal-project aggregate quota.
+**Tests:** 200/201/400/403/404/409/413, viewer-vs-editor, branch-read-only,
+personal-project aggregate quota, and a route-metadata guard asserting every
+route carries a project-scoped `projectFile:*` check.
 
 Upload lands here, not later: it's the riskiest code in the feature (multer,
 quota, cleanup-on-failure, CAS overwrite), and without it there is **no seeding

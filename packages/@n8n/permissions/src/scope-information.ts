@@ -128,4 +128,29 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage project roles',
 		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
+	'projectFile:create': {
+		displayName: 'Create Project File',
+		description:
+			'Allows uploading files to a project, including replacing the contents of an existing file.',
+	},
+	'projectFile:read': {
+		displayName: 'Read Project File',
+		description: 'Allows reading project file metadata and downloading file contents.',
+	},
+	'projectFile:update': {
+		displayName: 'Update Project File',
+		description: 'Allows renaming project files. Replacing contents requires the create scope.',
+	},
+	'projectFile:delete': {
+		displayName: 'Delete Project File',
+		description: 'Allows deleting project files and their stored contents.',
+	},
+	'projectFile:listProject': {
+		displayName: 'List Project Files',
+		description: 'Allows listing the files of a project.',
+	},
+	'projectFile:list': {
+		displayName: 'List Project Files Across Projects',
+		description: 'Allows listing project files instance-wide, across every project.',
+	},
 };

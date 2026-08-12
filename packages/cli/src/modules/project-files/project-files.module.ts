@@ -1,10 +1,15 @@
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule } from '@n8n/decorators';
+import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 @BackendModule({ name: 'project-files' })
 export class ProjectFilesModule implements ModuleInterface {
 	async init() {
+		await import('./project-files.controller.js');
+
+		const { ProjectFileCleanupService } = await import('./project-file-cleanup.service.js');
+		Container.get(ProjectFileCleanupService).start();
+
 		const { OwnershipTransferHandlerRegistry } = await import(
 			'@/services/ownership-transfer/ownership-transfer-handler.registry.js'
 		);
@@ -25,6 +30,12 @@ export class ProjectFilesModule implements ModuleInterface {
 				await Container.get(ProjectFileService).deleteAllByProjectId(projectId);
 			},
 		});
+	}
+
+	@OnShutdown()
+	async shutdown() {
+		const { ProjectFileCleanupService } = await import('./project-file-cleanup.service.js');
+		Container.get(ProjectFileCleanupService).shutdown();
 	}
 
 	async entities() {

@@ -34,6 +34,7 @@ describe('permissions', () => {
 			user: {},
 			variable: {},
 			projectVariable: {},
+			projectFile: {},
 			workersView: {},
 			workflow: {},
 			workflowTags: {},
@@ -146,6 +147,7 @@ describe('permissions', () => {
 				list: true,
 				read: true,
 			},
+			projectFile: {},
 			workersView: {},
 			workflow: {
 				create: true,

@@ -72,8 +72,7 @@ describe('project-files module', () => {
 
 	async function upload(name: string, content: string, options?: { overwrite?: boolean }) {
 		const buffer = Buffer.from(content);
-
-		return await service.store(
+		const { file } = await service.store(
 			project.id,
 			actor,
 			{
@@ -84,6 +83,8 @@ describe('project-files module', () => {
 			},
 			options,
 		);
+
+		return file;
 	}
 
 	beforeAll(async () => {
@@ -173,6 +174,22 @@ describe('project-files module', () => {
 
 			// The rejected upload must not leave bytes behind.
 			expect(await listStoredBlobs()).toHaveLength(1);
+		});
+
+		it('reports whether a store overwrote, and which budget it charged', async () => {
+			const buffer = Buffer.from('bytes');
+			const incoming = {
+				name: 'once.txt',
+				mimeType: 'text/plain',
+				sizeBytes: buffer.length,
+				source: { type: 'buffer' as const, buffer },
+			};
+
+			const fresh = await service.store(project.id, actor, incoming);
+			expect(fresh).toMatchObject({ overwritten: false, projectType: 'team' });
+
+			const replaced = await service.store(project.id, actor, incoming, { overwrite: true });
+			expect(replaced).toMatchObject({ overwritten: true, projectType: 'team' });
 		});
 
 		it('replaces content in place with overwrite, deleting the previous bytes', async () => {

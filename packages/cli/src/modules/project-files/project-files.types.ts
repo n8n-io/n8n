@@ -1,3 +1,5 @@
+import type { AuthenticatedRequest } from '@n8n/db';
+
 /**
  * Who performed an operation on a project file.
  *
@@ -28,6 +30,18 @@ export type ProjectFileUsage = {
 	usedBytes: number;
 	quotaBytes: number;
 	scope: ProjectFileQuotaScope;
+};
+
+export type MulterDestinationCallback = (error: Error | null, destination: string) => void;
+export type MulterFilenameCallback = (error: Error | null, filename: string) => void;
+
+export type ProjectFileRequestWithFile = AuthenticatedRequest<{
+	projectId: string;
+	fileId?: string;
+}> & {
+	file?: Express.Multer.File;
+	/** Set by the upload middleware; multer runs before the controller can catch. */
+	fileUploadError?: Error;
 };
 
 /** Column values for an actor, for `INSERT`/`UPDATE`. */

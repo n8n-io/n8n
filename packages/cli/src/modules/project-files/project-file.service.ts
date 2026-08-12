@@ -33,6 +33,14 @@ type IncomingFile = {
 
 type StoredBlob = { binaryDataId: string; fileSizeBytes: number };
 
+export type StoreResult = {
+	file: ProjectFile;
+	/** True when this replaced the content of an existing file of the same name. */
+	overwritten: boolean;
+	/** Which project owns the file — determines the budget the bytes were charged to. */
+	projectType: 'personal' | 'team';
+};
+
 @Service()
 export class ProjectFileService {
 	constructor(
@@ -72,11 +80,12 @@ export class ProjectFileService {
 		actor: ProjectFileActor,
 		file: IncomingFile,
 		{ overwrite = false }: { overwrite?: boolean } = {},
-	): Promise<ProjectFile> {
+	): Promise<StoreResult> {
 		const name = this.toStoredName(file.name);
+		const projectType = await this.projectType(projectId);
 
 		this.assertWithinFileSizeLimit(file.sizeBytes);
-		await this.assertWithinQuota(projectId, file.sizeBytes);
+		await this.assertWithinQuota(projectType, projectId, file.sizeBytes);
 
 		const existing = await this.repository.findByProjectIdAndName(projectId, name, {});
 		if (existing && !overwrite) throw new ProjectFileNameConflictError(name);
@@ -86,9 +95,11 @@ export class ProjectFileService {
 		const fileId = existing?.id ?? generateNanoId();
 		const blob = await this.writeBlob(projectId, fileId, name, file);
 
-		if (existing) return await this.replaceContent(existing, file.mimeType, blob, actor);
+		const stored = existing
+			? await this.replaceContent(existing, file.mimeType, blob, actor)
+			: await this.insertNew({ fileId, projectId, name, mimeType: file.mimeType, blob, actor });
 
-		return await this.insertNew({ fileId, projectId, name, mimeType: file.mimeType, blob, actor });
+		return { file: stored, overwritten: existing !== null, projectType };
 	}
 
 	async rename(
@@ -287,8 +298,12 @@ export class ProjectFileService {
 		}
 	}
 
-	private async assertWithinQuota(projectId: string, incomingBytes: number): Promise<void> {
-		const scope = await this.quotaScope(projectId);
+	private async assertWithinQuota(
+		projectType: 'personal' | 'team',
+		projectId: string,
+		incomingBytes: number,
+	): Promise<void> {
+		const scope = this.toQuotaScope(projectType);
 		const quotaBytes = this.quotaBytes(scope);
 		const usedBytes = await this.usedBytes(scope, projectId);
 
@@ -297,12 +312,20 @@ export class ProjectFileService {
 		}
 	}
 
-	/** Personal projects share one instance-wide budget; team projects get their own. */
-	private async quotaScope(projectId: string): Promise<ProjectFileQuotaScope> {
+	private async projectType(projectId: string): Promise<'personal' | 'team'> {
 		const project = await this.projectRepository.findOneBy({ id: projectId });
 		if (!project) throw new ProjectFileNotFoundError(projectId);
 
-		return project.type === 'personal' ? 'personal' : 'project';
+		return project.type;
+	}
+
+	/** Personal projects share one instance-wide budget; team projects get their own. */
+	private toQuotaScope(projectType: 'personal' | 'team'): ProjectFileQuotaScope {
+		return projectType === 'personal' ? 'personal' : 'project';
+	}
+
+	private async quotaScope(projectId: string): Promise<ProjectFileQuotaScope> {
+		return this.toQuotaScope(await this.projectType(projectId));
 	}
 
 	private quotaBytes(scope: ProjectFileQuotaScope): number {

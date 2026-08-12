@@ -50,6 +50,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'delete',
 	],
 	projectVariable: ['read', 'update', 'create', 'delete'],
+	projectFile: ['read', 'update', 'create', 'delete'],
 } as const satisfies {
 	[R in keyof typeof RESOURCES]?: ReadonlyArray<(typeof RESOURCES)[R][number]>;
 };
@@ -170,14 +171,18 @@ const projectBaseScopes = projectResources.flatMap((resource) =>
 
 /**
  * The project role editor auto-adds a companion "list" scope whenever a `:read`
- * scope is selected — `dataTable:read` pairs with `dataTable:listProject`, every
+ * scope is selected — project-scoped resources pair with `:listProject`, every
  * other `:read` with `:list` (see ProjectRoleView.toggleScope). These are never
  * shown as checkboxes but are sent on save, so the whitelist must accept them.
  */
+const PROJECT_SCOPED_LIST_RESOURCES = new Set(['dataTable', 'projectFile']);
+
 const projectAutoAddedListScopes = projectBaseScopes
 	.filter((scope) => scope.endsWith(':read'))
 	.map((scope) =>
-		scope === 'dataTable:read' ? 'dataTable:listProject' : scope.replace(/:read$/, ':list'),
+		PROJECT_SCOPED_LIST_RESOURCES.has(scope.replace(/:read$/, ''))
+			? scope.replace(/:read$/, ':listProject')
+			: scope.replace(/:read$/, ':list'),
 	) as Scope[];
 
 export const PROJECT_CUSTOM_ROLE_SCOPES: ReadonlySet<Scope> = new Set([
