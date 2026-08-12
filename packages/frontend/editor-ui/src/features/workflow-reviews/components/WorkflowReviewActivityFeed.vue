@@ -187,6 +187,8 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+	/* Entries sit inset; a boxed entry cancels this to reach the panel edge. */
+	padding-inline: var(--spacing--sm);
 }
 
 .errorRow {

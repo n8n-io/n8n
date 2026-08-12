@@ -59,7 +59,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 				<N8nText
 					v-else
 					size="medium"
-					color="text-base"
+					color="text-light"
 					:class="[$style.body, $style.line]"
 					data-test-id="workflow-review-activity-comment-body"
 				>

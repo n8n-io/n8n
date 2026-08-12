@@ -291,7 +291,7 @@ describe('WorkflowReviewActivityFeed', () => {
 					},
 					{
 						testId: 'workflow-review-activity-approved',
-						text: 'Approved this review',
+						text: 'Approved submission',
 						note: 'Ship it',
 					},
 				],
@@ -302,12 +302,12 @@ describe('WorkflowReviewActivityFeed', () => {
 						type: 'review.approved',
 						data: { workflowVersionIds: ['version-1'], note: null },
 					},
-					{ testId: 'workflow-review-activity-approved', text: 'Approved this review' },
+					{ testId: 'workflow-review-activity-approved', text: 'Approved submission' },
 				],
 				[
 					'an approval whose stored payload can no longer be read',
 					{ ...systemEntry, type: 'review.approved', data: null },
-					{ testId: 'workflow-review-activity-approved', text: 'Approved this review' },
+					{ testId: 'workflow-review-activity-approved', text: 'Approved submission' },
 				],
 				[
 					'the reviewed version being updated',
@@ -318,7 +318,7 @@ describe('WorkflowReviewActivityFeed', () => {
 					},
 					{
 						testId: 'workflow-review-activity-version-updated',
-						text: 'Updated the reviewed version',
+						text: 'New workflow version submitted',
 					},
 				],
 				[

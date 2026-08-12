@@ -87,7 +87,7 @@ const actorName = computed(() =>
 </script>
 
 <template>
-	<div v-if="content" :class="$style.entry">
+	<div v-if="content" :class="[$style.entry, content.note && $style.boxed]">
 		<N8nAvatar
 			v-if="hasActor"
 			size="xxsmall"
@@ -110,17 +110,17 @@ const actorName = computed(() =>
 						separator on the actorless entries. -->
 					<span aria-hidden="true" :class="$style.separator">|</span>
 				</N8nText>
-				<!-- The sentence and the time read as one phrase ("Requested changes 2 hours ago"),
-					so they share a size and sit a word apart. -->
+				<!-- One phrase in one colour ("Requested changes 2 hours ago"): the design keeps
+					the actor, the event and the time identical, and lightens only the note. -->
 				<N8nText
 					size="medium"
-					color="text-light"
+					color="text-base"
 					:class="$style.line"
 					:data-test-id="content.testId"
 				>
 					{{ content.text }}
 				</N8nText>
-				<N8nText size="medium" color="text-light" :class="$style.line">
+				<N8nText size="medium" color="text-base" :class="$style.line">
 					<time :datetime="entry.createdAt">
 						<TimeAgo :date="entry.createdAt" />
 					</time>
@@ -129,7 +129,7 @@ const actorName = computed(() =>
 			<N8nText
 				v-if="content.note"
 				size="medium"
-				color="text-base"
+				color="text-light"
 				:class="[$style.body, $style.line]"
 				data-test-id="workflow-review-activity-note"
 			>
@@ -165,6 +165,15 @@ const actorName = computed(() =>
 
 .separator {
 	margin-inline: var(--spacing--3xs);
+}
+
+/* A decision that carries a note sits in a card. Pulled out by the list's own inset so the
+	avatars stay in one column with the unboxed entries above and below. */
+.boxed {
+	margin-inline: calc(-1 * var(--spacing--sm));
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius);
 }
 
 /* Figma asks for 20px on 14px text; no line-height token gives that ratio. */
