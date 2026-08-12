@@ -1,8 +1,20 @@
-import type { OperatorLogFilter, OperatorLogHost, OperatorLogReadResult } from '@n8n/api-types';
+import type {
+	OperatorLogFilter,
+	OperatorLogHost,
+	OperatorLogLevel,
+	OperatorLogReadResult,
+} from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 const BASE = '/operator-console';
+
+export type OperatorLogMeta = {
+	scopes: string[];
+	levels: OperatorLogLevel[];
+	/** Server-side lease TTL, so the client can derive its own renewal margin. */
+	leaseTtlMs: number;
+};
 
 /**
  * Flattens a filter into query params. Array labels travel comma-separated so
@@ -23,6 +35,16 @@ function filterToQuery(filter: OperatorLogFilter): Record<string, string> {
 
 export async function fetchOperatorLogHosts(context: IRestApiContext): Promise<OperatorLogHost[]> {
 	return await makeRestApiRequest<OperatorLogHost[]>(context, 'GET', `${BASE}/hosts`);
+}
+
+/**
+ * Static facts the filter bar needs. `LOG_SCOPES` lives in `@n8n/config`, which
+ * the browser bundle cannot import, so the full scope list has to come from the
+ * server — otherwise the picker could only ever offer scopes already seen in
+ * the stream, which is nothing on a freshly opened console.
+ */
+export async function fetchOperatorLogMeta(context: IRestApiContext): Promise<OperatorLogMeta> {
+	return await makeRestApiRequest<OperatorLogMeta>(context, 'GET', `${BASE}/meta`);
 }
 
 export async function fetchOperatorLogs(
@@ -46,8 +68,10 @@ export async function fetchOperatorLogs(
 export async function startOperatorLogTail(
 	context: IRestApiContext,
 	filter: OperatorLogFilter,
-): Promise<void> {
-	await makeRestApiRequest(context, 'POST', `${BASE}/tail`, { ...filter });
+): Promise<{ leaseTtlMs: number }> {
+	return await makeRestApiRequest<{ leaseTtlMs: number }>(context, 'POST', `${BASE}/tail`, {
+		...filter,
+	});
 }
 
 export async function stopOperatorLogTail(context: IRestApiContext): Promise<void> {

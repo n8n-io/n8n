@@ -24,11 +24,12 @@ export const OPERATOR_CONSOLE_PAUSE_BUFFER_MAX = 10_000;
 export const OPERATOR_CONSOLE_HISTORY_LIMIT = 500;
 
 /**
- * How often the tail lease is renewed. Must stay well below the server's
- * `N8N_OPERATOR_CONSOLE_LEASE_TTL_MS` (default 30s) so producers never go quiet
- * between renewals.
+ * Assumed lease TTL until the server reports its own. The renewal interval is
+ * derived from the real value (half of it) rather than hardcoded, so raising
+ * `N8N_OPERATOR_CONSOLE_LEASE_TTL_MS` cannot silently shrink the client's
+ * safety margin.
  */
-export const OPERATOR_CONSOLE_LEASE_RENEW_MS = 10_000;
+export const OPERATOR_CONSOLE_LEASE_TTL_FALLBACK_MS = 30_000;
 
 /** Distance from the bottom (px) still treated as "at the bottom" for follow-tail. */
 export const OPERATOR_CONSOLE_FOLLOW_THRESHOLD_PX = 24;

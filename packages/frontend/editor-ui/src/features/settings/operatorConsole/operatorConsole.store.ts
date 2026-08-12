@@ -14,13 +14,14 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
 	fetchOperatorLogHosts,
+	fetchOperatorLogMeta,
 	fetchOperatorLogs,
 	startOperatorLogTail,
 	stopOperatorLogTail,
 } from './operatorConsole.api';
 import {
 	OPERATOR_CONSOLE_HISTORY_LIMIT,
-	OPERATOR_CONSOLE_LEASE_RENEW_MS,
+	OPERATOR_CONSOLE_LEASE_TTL_FALLBACK_MS,
 	OPERATOR_CONSOLE_MAX_ENTRIES,
 	OPERATOR_CONSOLE_PAUSE_BUFFER_MAX,
 	OPERATOR_CONSOLE_STORE,
@@ -68,6 +69,10 @@ export const useOperatorConsoleStore = defineStore(OPERATOR_CONSOLE_STORE, () =>
 	/** Hosts and scopes seen in the stream, used to widen the filter pickers. */
 	const observedHosts = ref<Record<string, OperatorLogRole>>({});
 	const observedScopes = ref<string[]>([]);
+	/** The full scope list from the server, so the picker is useful before any line arrives. */
+	const knownScopes = ref<string[]>([]);
+	/** Server lease TTL; the renewal interval is derived from it, never hardcoded. */
+	const leaseTtlMs = ref(OPERATOR_CONSOLE_LEASE_TTL_FALLBACK_MS);
 
 	let cursor: string | undefined;
 	let lastOrigin: OperatorLogOrigin | undefined;
@@ -96,7 +101,10 @@ export const useOperatorConsoleStore = defineStore(OPERATOR_CONSOLE_STORE, () =>
 
 	const scopeOptions = computed(() => {
 		const selected = filter.value.scopes ?? [];
-		return [...new Set([...observedScopes.value, ...selected])].sort();
+		// Observed scopes are still merged in: a scope the server does not know
+		// about (a community node, a renamed scope) should stay selectable rather
+		// than vanish from the picker.
+		return [...new Set([...knownScopes.value, ...observedScopes.value, ...selected])].sort();
 	});
 
 	function nextId(prefix: string): string {
@@ -249,6 +257,21 @@ export const useOperatorConsoleStore = defineStore(OPERATOR_CONSOLE_STORE, () =>
 		hosts.value = await fetchOperatorLogHosts(rootStore.restApiContext);
 	}
 
+	/**
+	 * Best-effort: a console that cannot read its metadata is still usable with a
+	 * stream-seeded scope picker and the fallback renewal interval, so a failure
+	 * here must not stop the tail from starting.
+	 */
+	async function fetchMeta(): Promise<void> {
+		try {
+			const meta = await fetchOperatorLogMeta(rootStore.restApiContext);
+			knownScopes.value = meta.scopes;
+			if (meta.leaseTtlMs > 0) leaseTtlMs.value = meta.leaseTtlMs;
+		} catch {
+			// Keep the defaults.
+		}
+	}
+
 	async function loadHistory(): Promise<void> {
 		isLoading.value = true;
 		try {
@@ -269,16 +292,27 @@ export const useOperatorConsoleStore = defineStore(OPERATOR_CONSOLE_STORE, () =>
 	 * already have.
 	 */
 	async function issueLease(): Promise<void> {
-		await startOperatorLogTail(rootStore.restApiContext, filter.value);
+		const response = await startOperatorLogTail(rootStore.restApiContext, filter.value);
+
+		// Tolerate a missing or malformed body — an older server or a proxy that
+		// strips it must not take the tail down; the fallback TTL still works.
+		const ttl = response?.leaseTtlMs;
+		if (typeof ttl === 'number' && ttl > 0) leaseTtlMs.value = ttl;
 	}
 
 	function startLeaseRenewal(): void {
 		stopLeaseRenewal();
-		leaseTimer = setInterval(() => {
-			void issueLease().catch((error: unknown) => {
-				lastError.value = errorMessage(error);
-			});
-		}, OPERATOR_CONSOLE_LEASE_RENEW_MS);
+		// Half the server's TTL, so a single failed renewal cannot lapse the lease.
+		// Derived rather than hardcoded: raising the TTL server-side used to
+		// silently shrink the client's safety margin.
+		leaseTimer = setInterval(
+			() => {
+				void issueLease().catch((error: unknown) => {
+					lastError.value = errorMessage(error);
+				});
+			},
+			Math.max(1000, Math.floor(leaseTtlMs.value / 2)),
+		);
 	}
 
 	function stopLeaseRenewal(): void {
@@ -295,7 +329,7 @@ export const useOperatorConsoleStore = defineStore(OPERATOR_CONSOLE_STORE, () =>
 		clearBuffer();
 
 		try {
-			await fetchHosts();
+			await Promise.all([fetchHosts(), fetchMeta()]);
 			await loadHistory();
 			await issueLease();
 			startLeaseRenewal();
@@ -360,6 +394,7 @@ export const useOperatorConsoleStore = defineStore(OPERATOR_CONSOLE_STORE, () =>
 		recordCount,
 		hostOptions,
 		scopeOptions,
+		leaseTtlMs,
 
 		// actions
 		ingestBatch,

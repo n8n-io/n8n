@@ -1,4 +1,9 @@
-import type { OperatorLogBatch, OperatorLogRecord, OperatorLogReadResult } from '@n8n/api-types';
+import type {
+	OperatorLogBatch,
+	OperatorLogFilter,
+	OperatorLogRecord,
+	OperatorLogReadResult,
+} from '@n8n/api-types';
 import { createPinia, setActivePinia } from 'pinia';
 
 import {
@@ -7,15 +12,20 @@ import {
 	OPERATOR_CONSOLE_PAUSE_BUFFER_MAX,
 } from './operatorConsole.constants';
 import { useOperatorConsoleStore } from './operatorConsole.store';
+
+/** `LogScope` itself lives in `@n8n/config`, which the browser bundle cannot import. */
+type LogScope = NonNullable<OperatorLogFilter['scopes']>[number];
 import type { OperatorConsoleEntry, OperatorConsoleMarkerKind } from './operatorConsole.types';
 
 const fetchHostsMock = vi.fn();
 const fetchLogsMock = vi.fn();
 const startTailMock = vi.fn();
 const stopTailMock = vi.fn();
+const fetchMetaMock = vi.fn();
 
 vi.mock('./operatorConsole.api', () => ({
 	fetchOperatorLogHosts: async (...args: unknown[]) => await fetchHostsMock(...args),
+	fetchOperatorLogMeta: async (...args: unknown[]) => await fetchMetaMock(...args),
 	fetchOperatorLogs: async (...args: unknown[]) => await fetchLogsMock(...args),
 	startOperatorLogTail: async (...args: unknown[]) => await startTailMock(...args),
 	stopOperatorLogTail: async (...args: unknown[]) => await stopTailMock(...args),
@@ -69,8 +79,13 @@ describe('operatorConsole.store', () => {
 		vi.clearAllMocks();
 		fetchHostsMock.mockResolvedValue([]);
 		fetchLogsMock.mockResolvedValue(makeReadResult());
-		startTailMock.mockResolvedValue(undefined);
+		startTailMock.mockResolvedValue({ leaseTtlMs: 30_000 });
 		stopTailMock.mockResolvedValue(undefined);
+		fetchMetaMock.mockResolvedValue({
+			scopes: ['scaling', 'push'],
+			levels: ['error', 'warn', 'info', 'debug'],
+			leaseTtlMs: 30_000,
+		});
 	});
 
 	afterEach(() => {
@@ -124,10 +139,66 @@ describe('operatorConsole.store', () => {
 			await store.start();
 			expect(startTailMock).toHaveBeenCalledTimes(1);
 
-			await vi.advanceTimersByTimeAsync(25_000);
+			// Half the 30s TTL reported above, so two renewals fall inside 40s.
+			await vi.advanceTimersByTimeAsync(40_000);
 
-			expect(startTailMock.mock.calls.length).toBeGreaterThan(1);
+			expect(startTailMock.mock.calls.length).toBeGreaterThan(2);
 			await store.stop();
+		});
+
+		it('derives the renewal interval from the TTL the server reports', async () => {
+			// Hardcoding the interval meant raising the server TTL silently shrank
+			// the client's safety margin — and lowering it lapsed the lease.
+			vi.useFakeTimers();
+			fetchMetaMock.mockResolvedValue({ scopes: [], levels: [], leaseTtlMs: 10_000 });
+			// The tail response is the fresher of the two and wins, so it has to
+			// agree or it would just overwrite what meta reported.
+			startTailMock.mockResolvedValue({ leaseTtlMs: 10_000 });
+			const store = useOperatorConsoleStore();
+			await store.start();
+
+			await vi.advanceTimersByTimeAsync(12_000);
+
+			// 5s interval from a 10s TTL: initial lease plus two renewals.
+			expect(startTailMock).toHaveBeenCalledTimes(3);
+			await store.stop();
+		});
+
+		it('keeps streaming when the tail response carries no body', async () => {
+			// An older server, or a proxy that strips the body, must not take the
+			// tail down — the fallback TTL is still perfectly usable.
+			startTailMock.mockResolvedValue(undefined);
+			const store = useOperatorConsoleStore();
+			await store.start();
+
+			expect(store.connectionState).toBe('streaming');
+		});
+
+		it('offers the server scope list before any line has arrived', async () => {
+			// `LOG_SCOPES` cannot be imported into the browser bundle, so without
+			// the meta call the picker would be empty on a fresh console.
+			const store = await startedStore();
+
+			expect(store.scopeOptions).toEqual(['push', 'scaling']);
+		});
+
+		it('still offers a scope outside the list the server reported', async () => {
+			// Version skew: a server newer than this bundle can emit a scope the
+			// compiled `LogScope` union has never heard of. It must stay selectable
+			// rather than silently disappear from the picker.
+			fetchMetaMock.mockResolvedValue({ scopes: ['scaling'], levels: [], leaseTtlMs: 30_000 });
+			const store = useOperatorConsoleStore();
+			await store.start({ scopes: ['brand-new-scope' as LogScope] });
+
+			expect(store.scopeOptions).toContain('brand-new-scope');
+		});
+
+		it('starts the tail even if reading metadata fails', async () => {
+			fetchMetaMock.mockRejectedValue(new Error('nope'));
+			const store = useOperatorConsoleStore();
+			await store.start();
+
+			expect(store.connectionState).toBe('streaming');
 		});
 	});
 
@@ -317,7 +388,8 @@ describe('operatorConsole.store', () => {
 			);
 
 			expect(store.hostOptions.map((host) => host.hostId)).toEqual(['worker-9']);
-			expect(store.scopeOptions).toEqual(['scaling']);
+			// Union of what the server knows and what the stream has shown.
+			expect(store.scopeOptions).toEqual(['push', 'scaling']);
 		});
 	});
 

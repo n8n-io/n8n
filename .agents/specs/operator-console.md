@@ -589,7 +589,7 @@ Supporting changes outside the module, both in `@n8n/backend-common/src/logging/
 - [x] Wrap worker `processJob()` and `WorkflowRunner.run()`
 - [x] Stamp `executionId` / `workflowId` on records, explicit metadata winning
 - [x] `?executionId=` deep link (console side)
-- [ ] **View logs** button on execution detail *(frontend, not yet wired)*
+- [x] **View logs** button on execution detail, gated on module + `orchestration:read`
 
 ### Slice 4 — AI tool
 - [x] `logs.tool.ts`: `search` / `context` / `snapshot`

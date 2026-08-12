@@ -12,8 +12,17 @@ import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/wo
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionSummaryWithScopes } from '../../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
+import { OPERATOR_CONSOLE_VIEW } from '@/features/settings/operatorConsole/operatorConsole.constants';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+
+// Only `hasPermission` is stubbed; the rest of the module is used by other
+// components rendered here.
+vi.mock('@/app/utils/rbac/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/app/utils/rbac/permissions')>()),
+	hasPermission: vi.fn(() => true),
+}));
 import type { FrontendSettings } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { nextTick, computed, ref } from 'vue';
@@ -47,6 +56,13 @@ const routes = [
 	{
 		path: '/workflow/:workflowId/history/:versionId?',
 		name: VIEWS.WORKFLOW_HISTORY,
+		component: { template: '<div></div>' },
+	},
+	// Registered dynamically by the module initializer in the real app; the link
+	// only renders when the module is active, so the route always exists with it.
+	{
+		path: '/settings/operator-console',
+		name: OPERATOR_CONSOLE_VIEW,
 		component: { template: '<div></div>' },
 	},
 ];
@@ -192,6 +208,49 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		});
 
 		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeDisabled();
+	});
+
+	describe('view logs link', () => {
+		const withConsole = ({ moduleActive = true, permitted = true }) => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isModuleActive.mockImplementation(
+				(name: string) => moduleActive && name === 'operator-console',
+			);
+			vi.mocked(hasPermission).mockReturnValue(permitted);
+		};
+
+		it('links to the console filtered to this execution', () => {
+			withConsole({});
+
+			const { getByTestId } = renderComponent({
+				props: { execution: { ...executionData, status: 'success' } },
+			});
+
+			const link = getByTestId('execution-preview-view-logs-button').closest('a');
+			expect(link?.getAttribute('href')).toContain(`executionId=${executionData.id}`);
+		});
+
+		it('is hidden when the operator-console module is not enabled', () => {
+			// The route does not exist at all in that case, so the link would 404.
+			withConsole({ moduleActive: false });
+
+			const { queryByTestId } = renderComponent({
+				props: { execution: { ...executionData, status: 'success' } },
+			});
+
+			expect(queryByTestId('execution-preview-view-logs-button')).not.toBeInTheDocument();
+		});
+
+		it('is hidden for a user without orchestration:read', () => {
+			// Raw logs are admin-only; the route guard would bounce them anyway.
+			withConsole({ permitted: false });
+
+			const { queryByTestId } = renderComponent({
+				props: { execution: { ...executionData, status: 'success' } },
+			});
+
+			expect(queryByTestId('execution-preview-view-logs-button')).not.toBeInTheDocument();
+		});
 	});
 
 	it('hides the add-to-dataset button for evaluation-mode executions', () => {

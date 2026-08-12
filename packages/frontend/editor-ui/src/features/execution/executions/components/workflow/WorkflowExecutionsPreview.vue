@@ -23,6 +23,11 @@ import { useExecutionsStore } from '../../executions.store';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useAddExecutionToDataset } from '@/features/ai/evaluation.ee/composables/useAddExecutionToDataset';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import {
+	OPERATOR_CONSOLE_MODULE_NAME,
+	OPERATOR_CONSOLE_VIEW,
+} from '@/features/settings/operatorConsole/operatorConsole.constants';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { N8nButton, N8nIconButton, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -103,6 +108,17 @@ async function onAddToDatasetClick() {
 		showError(error, locale.baseText('evaluations.tests.seedFromExecution.error'));
 	}
 }
+
+/**
+ * The console is opt-in and admin-only, so the link has to check both: the
+ * module being off means the route does not exist at all, and a member would
+ * be bounced by the route's own rbac guard.
+ */
+const canViewExecutionLogs = computed(
+	() =>
+		settingsStore.isModuleActive(OPERATOR_CONSOLE_MODULE_NAME) &&
+		hasPermission(['rbac'], { rbac: { scope: 'orchestration:read' } }),
+);
 
 const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
@@ -455,6 +471,22 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				>
 					{{ locale.baseText('evaluations.addToDataset.button.label') }}
 				</N8nButton>
+
+				<RouterLink
+					v-if="canViewExecutionLogs"
+					:to="{
+						name: OPERATOR_CONSOLE_VIEW,
+						query: { executionId: execution.id },
+					}"
+				>
+					<N8nIconButton
+						variant="subtle"
+						size="medium"
+						icon="terminal"
+						:title="locale.baseText('executionDetails.viewLogs')"
+						data-test-id="execution-preview-view-logs-button"
+					/>
+				</RouterLink>
 
 				<WorkflowExecutionAnnotationPanel
 					v-if="isAnnotationEnabled && activeExecution"
