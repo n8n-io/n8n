@@ -8,10 +8,17 @@ import { getComponentDef } from '../../kit';
 /**
  * A row of the outline: a node, the heading of one of its regions, or one of
  * that region's own fixed pseudo-components (each region of a component that
- * declares more than one, such as the app frame's header, pages and footer, or
- * a card's header, body and footer). Flat rather than a recursive component,
+ * declares more than one, such as the app frame's header and footer, or a
+ * card's header, body and footer). Flat rather than a recursive component,
  * because depth is only a padding and one array is easier to reason about than
  * a component that renders itself.
+ *
+ * A component's `pagedRegion` (the app frame's "Pages" region) never gets a
+ * pseudo row of its own, unlike its sibling regions: it structurally holds at
+ * most one visible child (the active page — see `flatten`), so a wrapper row
+ * naming the slot plus a node row naming the page inside it would be two rows
+ * for one thing. The page renders directly where the pseudo row would have
+ * sat, as an ordinary sibling of the other regions' pseudo rows.
  *
  * A pseudo row is a full peer of a node row, not a lesser variant of one: it
  * carries its own `hasChildren`/`collapsed` because a region's contents are its
@@ -48,8 +55,10 @@ function outlineLabel(node: UiNode): string {
  * `activePageId` is the page the canvas is currently showing: a frame's paged
  * region ("Pages") holds every page in the document, but only that one is on
  * screen, and the outline should not lay out every other page's subtree
- * underneath it to match. `among` is the node's place in its region, and
- * absent for the root.
+ * alongside it to match. That region also never gets a pseudo row (see
+ * `OutlineRow`): the active page renders directly at the depth the pseudo row
+ * would have occupied. `among` is the node's place in its region, and absent
+ * for the root.
  */
 function flatten(
 	node: UiNode,
@@ -67,7 +76,7 @@ function flatten(
 		.filter((name) => childrenIn(node, name).length > 0)
 		.map((name) => ({ name, label: name }));
 
-	// A component with more than one region (the app frame's header, pages and
+	// A component with more than one region (the app frame's header and
 	// footer; a card's header, body and footer) is a component whose regions
 	// are worth telling apart on their own: each shows up as a fixed
 	// pseudo-component, whether or not it holds anything yet, because it has to
@@ -123,6 +132,23 @@ function flatten(
 				? allChildren.filter((child) => child.id === activePageId)
 				: allChildren;
 
+		// The paged region always resolves to at most one visible child (the
+		// active page), so a pseudo row naming the slot plus a node row naming
+		// the page underneath it would just be two rows saying the same thing at
+		// two depths. No pseudo row is pushed for it at all: the active page (or,
+		// with no active page resolved, every page, the same fallback as before)
+		// renders directly at the depth the pseudo row would have occupied, as an
+		// ordinary sibling of the other regions' pseudo rows.
+		if (isPagedRegion) {
+			children.forEach((child, index) =>
+				flatten(child, depth + 1, rows, collapsed, activePageId, {
+					index,
+					count: children.length,
+				}),
+			);
+			continue;
+		}
+
 		const pseudoCollapsed = collapsed.has(pseudoKey);
 
 		rows.push({
@@ -174,10 +200,11 @@ function flatten(
 
 /**
  * `activePageId` names the page the canvas is showing (the editor's
- * `editingPage`, not anything the document itself stores) so the "Pages"
- * pseudo-component only lays out that one page's subtree. Undefined falls
- * back to showing every page, matching the outline's behaviour before there
- * was a notion of an active page.
+ * `editingPage`, not anything the document itself stores) so the frame's
+ * paged region lays out only that one page's subtree, directly in place of a
+ * pseudo row (see `flatten`). Undefined falls back to showing every page,
+ * matching the outline's behaviour before there was a notion of an active
+ * page.
  */
 export function useOutline(doc: Ref<UiNode>, activePageId?: Ref<string | undefined>) {
 	// Rows currently collapsed, keyed by their own `key`: a node's id, or a
