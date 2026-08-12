@@ -14,11 +14,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { useExecutionsStore } from '../executions.store';
 import type { ExecutionFilterType } from '../executions.types';
-import { resolveNlFilterPatch } from '../executions.utils';
-
-const props = defineProps<{
-	filters: ExecutionFilterType;
-}>();
+import { getDefaultExecutionFilters, resolveNlFilterPatch } from '../executions.utils';
 
 const emit = defineEmits<{
 	filterChanged: [value: ExecutionFilterType];
@@ -114,7 +110,10 @@ async function runTranslation() {
 			annotationFiltersEnabled: isAnnotationFiltersEnabled.value,
 		});
 
-		emit('filterChanged', { ...props.filters, ...patch });
+		// Each query is a complete, standalone description of what to show — reset to defaults
+		// first so a field the new query doesn't mention (e.g. a previous query's metadata)
+		// doesn't linger. This intentionally also clears any filters set manually via the popover.
+		emit('filterChanged', { ...getDefaultExecutionFilters(), ...patch });
 	} catch (error) {
 		if (currentRequestId !== requestId) return;
 		toast.showError(error, locale.baseText('executionsNlFilter.error.title'));

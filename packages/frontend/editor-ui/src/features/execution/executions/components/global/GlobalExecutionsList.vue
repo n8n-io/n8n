@@ -368,7 +368,6 @@ const goToUpgrade = () => {
 			<div :class="$style.execHeaderFilterRow">
 				<ExecutionsNlFilter
 					v-if="settingsStore.settings.executionsNlFilter?.enabled"
-					:filters="props.filters"
 					:class="$style.nlFilterInput"
 					@filter-changed="onFilterChanged"
 				/>
