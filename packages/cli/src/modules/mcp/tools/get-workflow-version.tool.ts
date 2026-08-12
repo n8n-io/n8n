@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { type IConnections } from 'n8n-workflow';
+import { type IConnections, type INodeTypes } from 'n8n-workflow';
 import z from 'zod';
 
 import type { Telemetry } from '@/telemetry';
@@ -10,10 +10,12 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { buildPreviewNodeTypes, type NodeIconResolver } from './preview-node-types.utils';
 import {
 	connectionsSchema,
 	nodeGroupSchema,
 	nodeSchema,
+	previewNodeTypeSchema,
 	sanitizeNodeCredentials,
 	toNodeGroupSummary,
 	type NodeGroupSummary,
@@ -24,6 +26,12 @@ import { getMcpWorkflow } from './workflow-validation.utils';
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow the version belongs to'),
 	versionId: z.string().describe('The version ID to retrieve, as returned by get_workflow_history'),
+	includeNodeTypes: z
+		.boolean()
+		.default(false)
+		.describe(
+			'Include trimmed node type descriptions (with inlined icons) for the node types used in this version. Intended for preview UIs rendering the workflow graph; adds no value for LLM reasoning.',
+		),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -41,6 +49,12 @@ const outputSchema = {
 	nodes: z.array(nodeSchema).describe('The workflow nodes captured in this version'),
 	connections: connectionsSchema.describe('The node connections captured in this version'),
 	nodeGroups: z.array(nodeGroupSchema).describe('The node groups captured in this version'),
+	nodeTypes: z
+		.array(previewNodeTypeSchema)
+		.optional()
+		.describe(
+			'Trimmed node type descriptions (with icons inlined as data URIs) for the node types used in this version. Only present when includeNodeTypes is true.',
+		),
 	error: z.string().optional(),
 } satisfies z.ZodRawShape;
 
@@ -78,6 +92,8 @@ export const createGetWorkflowVersionTool = (
 	workflowFinderService: WorkflowFinderService,
 	workflowHistoryService: WorkflowHistoryService,
 	telemetry: Telemetry,
+	nodeTypes?: INodeTypes,
+	iconResolver?: NodeIconResolver,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'get_workflow_version',
 	config: {
@@ -93,7 +109,7 @@ export const createGetWorkflowVersionTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId, versionId }) => {
+	handler: async ({ workflowId, versionId, includeNodeTypes }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'get_workflow_version',
@@ -110,6 +126,21 @@ export const createGetWorkflowVersionTool = (
 
 			const output: GetWorkflowVersionOutput = { success: true, ...payload };
 
+			// Node types (icons included) are preview-rendering data: expose them
+			// through structuredContent only, so the LLM-visible text content does
+			// not pay their token cost.
+			const previewNodeTypes =
+				includeNodeTypes && nodeTypes && iconResolver
+					? await buildPreviewNodeTypes(
+							payload.nodes.filter(
+								(node): node is { type: string } & Record<string, unknown> =>
+									typeof node.type === 'string',
+							),
+							nodeTypes,
+							iconResolver,
+						)
+					: undefined;
+
 			telemetryPayload.results = {
 				success: true,
 				data: { workflow_id: workflowId, version_id: versionId },
@@ -118,7 +149,7 @@ export const createGetWorkflowVersionTool = (
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
+				structuredContent: previewNodeTypes ? { ...output, nodeTypes: previewNodeTypes } : output,
 			};
 		} catch (er) {
 			const error = ensureError(er);

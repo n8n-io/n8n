@@ -368,6 +368,16 @@ const outputSchema = {
 	name: z.string().optional(),
 	nodeCount: z.number().optional(),
 	url: z.string().optional(),
+	versionId: z
+		.string()
+		.optional()
+		.describe(
+			'Workflow version ID after the update. Equal to previousVersionId when the update produced no new version (e.g. settings/tags-only changes).',
+		),
+	previousVersionId: z
+		.string()
+		.optional()
+		.describe('Workflow version ID before the update, usable with get_workflow_version.'),
 	appliedOperations: z
 		.number()
 		.optional()
@@ -1037,6 +1047,11 @@ export const createUpdateWorkflowTool = (
 				name: updatedWorkflow.name,
 				nodeCount: updatedWorkflow.nodes.length,
 				url: workflowUrl,
+				// Equal ids mean the update produced no new version (e.g. a
+				// settings/tags-only change). Preview UIs use these to fetch and
+				// diff the two versions via get_workflow_version.
+				versionId: updatedWorkflow.versionId,
+				previousVersionId: existingWorkflow.versionId,
 				appliedOperations: strictOperations.length - notAppliedCount,
 				autoAssignedCredentials: credentialAssignments,
 				validationWarnings,

@@ -173,7 +173,9 @@ export default defineConfig(({ mode }) => {
 		},
 		build: {
 			assetsInlineLimit: Number.MAX_SAFE_INTEGER,
-			emptyOutDir: true,
+			// Multiple apps build into the same outDir (one `vite build --mode
+			// <app>` each); `build:ui` cleans it up front instead.
+			emptyOutDir: false,
 			outDir,
 			rollupOptions: {
 				input: resolve(appRoot, 'index.html'),

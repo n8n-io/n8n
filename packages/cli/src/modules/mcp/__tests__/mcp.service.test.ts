@@ -46,7 +46,12 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
+import {
+	registerWorkflowDiffApp,
+	registerWorkflowPreviewApp,
+	WORKFLOW_DIFF_APP_URI,
+	WORKFLOW_PREVIEW_APP_URI,
+} from '@n8n/mcp-apps/server';
 
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
@@ -56,6 +61,7 @@ import { McpService, type McpFeatureFlags } from '../mcp.service';
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/mcp-apps/server')>()),
 	registerWorkflowPreviewApp: vi.fn(),
+	registerWorkflowDiffApp: vi.fn(),
 }));
 
 const mockAiGatewayService = () =>
@@ -1019,8 +1025,16 @@ describe('McpService', () => {
 					}
 				)._registeredTools.create_workflow_from_code;
 
+			const registeredUpdateTool = (server: unknown) =>
+				(
+					server as {
+						_registeredTools: Record<string, { _meta?: Record<string, unknown> } | undefined>;
+					}
+				)._registeredTools.update_workflow;
+
 			beforeEach(() => {
 				(registerWorkflowPreviewApp as Mock).mockClear();
+				(registerWorkflowDiffApp as Mock).mockClear();
 			});
 
 			it('registers the preview app and marks the create tool with the app resource when MCP Apps is enabled', async () => {
@@ -1117,6 +1131,40 @@ describe('McpService', () => {
 					user_id: 'user-1',
 					client_name: 'Claude Desktop',
 					client_version: '1.2.3',
+					app: 'workflow-preview',
+				});
+			});
+
+			it('registers the diff app and marks the update tool with the app resource when MCP Apps is enabled', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+
+				const service = buildService();
+				const server = await service.getServer(user, appsEnabled);
+
+				expect(registerWorkflowDiffApp).toHaveBeenCalledTimes(1);
+				expect(registeredUpdateTool(server)?._meta).toMatchObject({
+					ui: { resourceUri: WORKFLOW_DIFF_APP_URI },
+				});
+			});
+
+			it('tracks render requested when the diff resource is read', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const telemetry = mockInstance(Telemetry);
+
+				const service = buildService({ telemetry });
+				await service.getServer(user, appsEnabled, { name: 'Claude Desktop', version: '1.2.3' });
+
+				const [, appOptions] = (registerWorkflowDiffApp as Mock).mock.calls[0] as [
+					unknown,
+					{ onResourceRead: () => void },
+				];
+				appOptions.onResourceRead();
+
+				expect(telemetry.track).toHaveBeenCalledWith(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
+					user_id: 'user-1',
+					client_name: 'Claude Desktop',
+					client_version: '1.2.3',
+					app: 'workflow-diff',
 				});
 			});
 
@@ -1126,7 +1174,9 @@ describe('McpService', () => {
 				const server = await buildService().getServer(user, mcpFeatureFlags());
 
 				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
+				expect(registerWorkflowDiffApp).not.toHaveBeenCalled();
 				expect(registeredCreateTool(server)?._meta).toBeUndefined();
+				expect(registeredUpdateTool(server)?._meta).toBeUndefined();
 			});
 
 			it('does not register the preview app when builder is disabled, even if MCP Apps is enabled', async () => {

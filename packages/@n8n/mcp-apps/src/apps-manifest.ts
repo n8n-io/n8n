@@ -17,6 +17,10 @@ export const MCP_APPS = {
 		/** Output filename under `dist/apps/` produced by the Vite build. */
 		htmlFile: 'workflow-preview.html',
 	},
+	'workflow-diff': {
+		entry: 'workflow-diff',
+		htmlFile: 'workflow-diff.html',
+	},
 } as const;
 
 /**

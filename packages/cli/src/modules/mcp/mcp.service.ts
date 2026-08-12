@@ -17,7 +17,9 @@ import {
 import { Container, Service } from '@n8n/di';
 import {
 	mcpAppToolMeta,
+	registerWorkflowDiffApp,
 	registerWorkflowPreviewApp,
+	WORKFLOW_DIFF_APP_URI,
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
@@ -491,6 +493,8 @@ export class McpService {
 			this.workflowFinderService,
 			this.workflowHistoryService,
 			this.telemetry,
+			this.nodeTypes,
+			this.loadNodesAndCredentials,
 		);
 		registerIfAllowed(workflowVersionTool);
 
@@ -689,6 +693,7 @@ export class McpService {
 						user_id: user.id,
 						client_name: clientInfo?.name,
 						client_version: clientInfo?.version,
+						app: 'workflow-preview',
 					});
 				},
 			});
@@ -746,7 +751,35 @@ export class McpService {
 			this.aiGatewayService,
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 		);
-		registerIfAllowed(updateTool);
+
+		// Same pattern as the create tool + preview app above: the diff app
+		// accompanies the update tool, rendering a before/after view of the
+		// updated workflow.
+		const updateToolAllowed = !allowedToolNames || allowedToolNames.has(updateTool.name);
+		if (featureFlags.mcpApps.enabled && updateToolAllowed) {
+			const appTelemetry = this.buildMcpAppTelemetryConfig();
+			registerWorkflowDiffApp(server, {
+				instanceOrigin: appTelemetry.instanceOrigin,
+				telemetry: appTelemetry.telemetry,
+				onResourceRead: () => {
+					this.telemetry.track(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
+						user_id: user.id,
+						client_name: clientInfo?.name,
+						client_version: clientInfo?.version,
+						app: 'workflow-diff',
+					});
+				},
+			});
+			registerIfAllowed({
+				...updateTool,
+				config: {
+					...updateTool.config,
+					_meta: mcpAppToolMeta(WORKFLOW_DIFF_APP_URI),
+				},
+			});
+		} else {
+			registerIfAllowed(updateTool);
+		}
 
 		const restoreVersionTool = createRestoreWorkflowVersionTool(
 			user,

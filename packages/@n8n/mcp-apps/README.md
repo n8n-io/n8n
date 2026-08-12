@@ -17,13 +17,23 @@ helpers used by `packages/cli` to register them as MCP resources and tools.
 - **i18n plumbing** powered by `vue-i18n`, with locale negotiation driven by
   the host context the MCP client provides at runtime.
 
-Today the package ships a single app, `workflow-preview`, which is rendered
-after the `create_workflow_from_code` MCP tool returns. It loads the sanitized
-workflow graph (plus trimmed node type descriptions with inlined icons)
-through the existing `get_workflow_details` MCP tool, renders it with the
-editor-ui workflow canvas bundled directly into the app — no iframe, no
-external preview service — and keeps a button to open the freshly created
-workflow in n8n. New apps can be added alongside it (see
+Today the package ships two apps:
+
+- **`workflow-preview`** — rendered after the `create_workflow_from_code` MCP
+  tool returns. It loads the sanitized workflow graph (plus trimmed node type
+  descriptions with inlined icons) through the existing `get_workflow_details`
+  MCP tool, renders it with the editor-ui workflow canvas bundled directly
+  into the app — no iframe, no external preview service — and keeps a button
+  to open the freshly created workflow in n8n.
+- **`workflow-diff`** — rendered after the `update_workflow` MCP tool returns.
+  It reads the `previousVersionId`/`versionId` pair from the tool result,
+  fetches both versions in parallel via `get_workflow_version` (with
+  `includeNodeTypes: true`), and renders editor-ui's before/after diff view
+  (synced canvases, change badges, change navigator). Settings/tags-only
+  updates (same version id on both sides) short-circuit to a "no structural
+  changes" card without fetching anything.
+
+New apps can be added alongside these (see
 [Adding a new app](#adding-a-new-app)).
 
 ## Package layout

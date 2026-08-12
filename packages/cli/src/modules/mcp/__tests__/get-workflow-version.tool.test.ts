@@ -64,7 +64,10 @@ describe('get-workflow-version MCP tool', () => {
 			);
 
 			const tool = buildTool();
-			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', versionId: 'v1', includeNodeTypes: false },
+				callContext,
+			);
 
 			const content = result.structuredContent as {
 				nodes: Array<Record<string, unknown>>;
@@ -98,7 +101,10 @@ describe('get-workflow-version MCP tool', () => {
 			);
 
 			const tool = buildTool();
-			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', versionId: 'v1', includeNodeTypes: false },
+				callContext,
+			);
 
 			expect(result.structuredContent).toMatchObject({
 				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeNames: ['HTTP Request'] }],
@@ -112,7 +118,10 @@ describe('get-workflow-version MCP tool', () => {
 			);
 
 			const tool = buildTool();
-			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'missing' }, callContext);
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', versionId: 'missing', includeNodeTypes: false },
+				callContext,
+			);
 
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({
@@ -131,7 +140,10 @@ describe('get-workflow-version MCP tool', () => {
 			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
 
 			const tool = buildTool();
-			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', versionId: 'v1', includeNodeTypes: false },
+				callContext,
+			);
 
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({

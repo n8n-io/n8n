@@ -5,7 +5,7 @@
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"target": "ES2022",
-		"lib": ["ES2023", "DOM", "DOM.Iterable"],
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
 		"rootDirs": [".", "../../frontend/@n8n/design-system/src", "../../frontend/editor-ui/src"],
 		"types": [
 			"node",

@@ -25,6 +25,7 @@ export default defineConfig(
 		// never resolved at runtime.
 		files: [
 			'src/components/workflow-preview/workflow-canvas-host.vue',
+			'src/components/workflow-diff/workflow-diff-canvas-host.vue',
 			'src/apps/canvas-spike/**',
 			'src/telemetry/types.ts',
 		],
