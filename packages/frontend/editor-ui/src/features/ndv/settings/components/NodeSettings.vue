@@ -69,7 +69,7 @@ import {
 } from '../../shared/ndv.utils';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useResizeObserver } from '@vueuse/core';
+import { computedAsync, useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
@@ -353,14 +353,26 @@ function isParameterInitiallyVisible(parameter: INodeProperties, path = 'paramet
 	);
 }
 
-// `parametersByTab.params` is the node type's whole property list; the renderer
-// then drops anything whose displayOptions don't match. Counting the raw list
-// promises fields that will never appear, so gate on the same condition.
-const displayableParameters = computed(() =>
-	parametersByTab.value.params.filter((parameter) =>
-		nodeHelpers.displayParameter(nodeValues.value, parameter, 'parameters', node.value ?? null),
-	),
-);
+// `parametersByTab.params` is the node type's whole property list. The renderer drops
+// a lot of it — displayOptions that don't match, hidden types, the auth field the
+// credentials block owns — so counting the raw list promises fields that can never
+// appear. Use the renderer's own predicate rather than re-deriving its rules.
+const displayableParameters = computedAsync(async () => {
+	const params = parametersByTab.value.params;
+	const displayable = await Promise.all(
+		params.map(
+			async (parameter) =>
+				await nodeSettingsParameters.shouldDisplayNodeParameter(
+					nodeValues.value,
+					node.value ?? null,
+					parameter,
+					'parameters',
+				),
+		),
+	);
+
+	return params.filter((_, index) => displayable[index]);
+}, []);
 
 const visibleParameters = computed(() => {
 	const all = displayableParameters.value;
