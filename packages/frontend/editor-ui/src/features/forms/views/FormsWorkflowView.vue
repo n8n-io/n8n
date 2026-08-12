@@ -17,6 +17,13 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUIStore } from '@/app/stores/ui.store';
 
+// `workflowId` is optional so this view works both as a route (falls back to the
+// active workflow) and embedded in a host that provides its own doc store (e.g.
+// the Instance AI preview dock), where nav must target the host's workflow.
+const props = defineProps<{
+	workflowId?: string;
+}>();
+
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -57,7 +64,7 @@ function onNodeActivated(nodeId: string, event?: MouseEvent) {
 	if (event?.type === 'dblclick') {
 		void router.push({
 			name: VIEWS.WORKFLOW,
-			params: { workflowId: workflowsStore.workflowId, nodeId },
+			params: { workflowId: props.workflowId ?? workflowsStore.workflowId, nodeId },
 		});
 	} else {
 		uiStore.openModalWithData({ name: FORM_STEP_EDIT_MODAL_KEY, data: { nodeId } });

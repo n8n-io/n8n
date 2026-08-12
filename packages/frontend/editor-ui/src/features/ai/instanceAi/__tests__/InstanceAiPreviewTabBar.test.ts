@@ -40,8 +40,10 @@ const Wrapper = defineComponent({
 		isExpanded: { type: Boolean, default: false },
 		isExpandDisabled: { type: Boolean, default: false },
 		previewToggleLabel: { type: String, default: undefined },
+		formsToggleVisible: { type: Boolean, default: false },
+		formsToggleLabel: { type: String, default: undefined },
 	},
-	emits: ['togglePreview', 'toggleExpanded'],
+	emits: ['togglePreview', 'toggleExpanded', 'toggleFormsView'],
 	setup(props, { emit }) {
 		return () =>
 			h(TabsRoot, { modelValue: props.activeTabId }, () =>
@@ -51,8 +53,12 @@ const Wrapper = defineComponent({
 					isExpanded: props.isExpanded,
 					isExpandDisabled: props.isExpandDisabled,
 					previewToggleLabel: props.previewToggleLabel,
+					formsToggleVisible: props.formsToggleVisible,
+					formsToggleLabel: props.formsToggleLabel,
+					formsToggleIcon: 'layout-template',
 					onTogglePreview: () => emit('togglePreview'),
 					onToggleExpanded: () => emit('toggleExpanded'),
+					onToggleFormsView: () => emit('toggleFormsView'),
 				}),
 			);
 	},
@@ -147,6 +153,32 @@ describe('InstanceAiPreviewTabBar', () => {
 		expect(expandToggle).not.toHaveAttribute('title');
 		await fireEvent.click(expandToggle);
 		expect(emitted().toggleExpanded).toBeUndefined();
+	});
+
+	it('hides the forms view toggle by default', () => {
+		const { queryByTestId } = renderComponent({
+			props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+		});
+
+		expect(queryByTestId('instance-ai-preview-view-toggle')).toBeNull();
+	});
+
+	it('renders the forms view toggle and emits toggleFormsView when clicked', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				tabs: [workflowTab],
+				activeTabId: 'wf-1',
+				formsToggleVisible: true,
+				formsToggleLabel: 'Show forms preview',
+			},
+		});
+
+		const toggle = getByTestId('instance-ai-preview-view-toggle');
+		expect(toggle).toHaveTextContent('Show forms preview');
+
+		await fireEvent.click(toggle);
+
+		expect(emitted().toggleFormsView).toBeTruthy();
 	});
 
 	it('does not fade the left edge of artifact tabs', () => {

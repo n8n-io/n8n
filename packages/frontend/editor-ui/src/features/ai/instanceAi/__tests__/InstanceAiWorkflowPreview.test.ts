@@ -13,7 +13,11 @@ import {
 	disposeWorkflowExecutionStateStore,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -147,6 +151,7 @@ async function mountPreview(options: MountPreviewOptions = {}) {
 		global: {
 			stubs: {
 				WorkflowCanvasHost: WorkflowCanvasHostStub,
+				FormsWorkflowView: true,
 			},
 		},
 	});
@@ -187,6 +192,48 @@ describe('InstanceAiWorkflowPreview', () => {
 			await nextTick();
 
 			expect(readOnly(wrapper)).toBe('true');
+		});
+	});
+
+	describe('workflow / forms toggle', () => {
+		// The switch itself is rendered by the preview tab bar; the preview exposes
+		// the gating + state it binds to (hasFormTrigger / toggleLabel / viewMode /
+		// toggleViewMode), so we assert that exposed contract here.
+		const seedFormTrigger = () => {
+			useWorkflowDocumentStore(createWorkflowDocumentId('wf-1')).setNodes([
+				{
+					id: 'form-trigger',
+					name: 'On form submission',
+					type: FORM_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			]);
+		};
+
+		it('does not flag a Form Trigger when the workflow has none', async () => {
+			const { wrapper } = await mountPreview();
+
+			expect(wrapper.vm.hasFormTrigger).toBe(false);
+		});
+
+		it('flags a Form Trigger and flips the switch label + mode when toggled', async () => {
+			const { wrapper } = await mountPreview();
+
+			seedFormTrigger();
+			await nextTick();
+
+			expect(wrapper.vm.hasFormTrigger).toBe(true);
+			expect(wrapper.vm.viewMode).toBe('workflow');
+			expect(wrapper.vm.toggleLabel).toBe('instanceAi.preview.showFormsPreview');
+
+			wrapper.vm.toggleViewMode();
+			await nextTick();
+
+			expect(wrapper.vm.viewMode).toBe('forms');
+			expect(wrapper.vm.toggleLabel).toBe('instanceAi.preview.showWorkflow');
+			expect(wrapper.findComponent({ name: 'FormsWorkflowView' }).exists()).toBe(true);
 		});
 	});
 

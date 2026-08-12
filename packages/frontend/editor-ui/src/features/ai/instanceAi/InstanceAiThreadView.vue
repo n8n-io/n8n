@@ -1222,8 +1222,12 @@ async function dismissComposerContextChip() {
 							:is-expanded="isPreviewExpanded"
 							:is-expand-disabled="isAgentPreviewDockOpen"
 							:preview-toggle-label="artifactsPreviewToggleLabel"
+							:forms-toggle-visible="workflowPreviewRef?.hasFormTrigger ?? false"
+							:forms-toggle-label="workflowPreviewRef?.toggleLabel"
+							:forms-toggle-icon="workflowPreviewRef?.toggleIcon"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
+							@toggle-forms-view="workflowPreviewRef?.toggleViewMode()"
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
