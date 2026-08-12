@@ -1807,7 +1807,8 @@ export type NodePropertyTypes =
 	| 'assignmentCollection'
 	| 'credentials'
 	| 'workflowSelector'
-	| 'agentSelector';
+	| 'agentSelector'
+	| 'uiBuilder';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 

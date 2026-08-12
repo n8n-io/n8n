@@ -1,0 +1,21 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDirs": [".", "../design-system/src"],
+		"target": "esnext",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"allowJs": true,
+		"importHelpers": true,
+		"incremental": false,
+		"allowSyntheticDefaultImports": true,
+		"resolveJsonModule": true,
+		"paths": {
+			"@n8n/ui-builder/*": ["./src/*"],
+			"@n8n/design-system*": ["../design-system/src*"]
+		},
+		"lib": ["esnext", "dom", "dom.iterable", "scripthost"]
+	},
+	"include": ["**/*.ts", "**/*.vue"]
+}

@@ -36,6 +36,10 @@ const alias = [
 	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
 	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
 	{
+		find: '@n8n/ui-builder',
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'ui-builder', 'src'),
+	},
+	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
 	},
