@@ -42,6 +42,7 @@ describe('OperatorConsoleLogRow', () => {
 	it.each([
 		['error', 'message-error'],
 		['warn', 'message-warn'],
+		['info', 'message-info'],
 		['debug', 'message-debug'],
 	] as const)('tints a %s message', (level, expectedClass) => {
 		const { getByText } = renderWith(level);
@@ -51,15 +52,16 @@ describe('OperatorConsoleLogRow', () => {
 		expect(message.className).toContain(expectedClass);
 	});
 
-	it('leaves an info message at the default body colour', () => {
-		// `info` is the baseline level and the most read; winston's green would
-		// also collide with the success meaning it carries elsewhere.
-		const { getByText } = renderWith('info');
+	it('gives a level exactly one tint', () => {
+		// Guards against a record picking up two level classes, which would leave
+		// the colour down to stylesheet order.
+		const { getByText } = renderWith('warn');
 
-		const message = getByText('Skipped browserId check');
+		const classes = getByText('Skipped browserId check').className;
 
-		expect(message.className).not.toContain('message-error');
-		expect(message.className).not.toContain('message-warn');
-		expect(message.className).not.toContain('message-debug');
+		expect(classes).toContain('message-warn');
+		expect(classes).not.toContain('message-error');
+		expect(classes).not.toContain('message-info');
+		expect(classes).not.toContain('message-debug');
 	});
 });

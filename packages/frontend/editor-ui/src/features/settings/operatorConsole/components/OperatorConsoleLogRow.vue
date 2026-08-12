@@ -131,7 +131,53 @@ const detailJson = computed(() => JSON.stringify(detail.value, null, 2));
 </template>
 
 <style module lang="scss">
+/*
+ * Terminal palette, matching what `winston.format.colorize` prints in dev mode:
+ * error red, warn yellow, info green, debug blue.
+ *
+ * Deliberately palette primitives rather than the `--text-color--*` semantic
+ * tokens. Those are tuned for text on a *tinted* callout background, so in dark
+ * theme `--text-color--danger` resolves to `--color--red-50` — 97% lightness,
+ * near-white. Correct for a red-backed banner, invisible as a signal on a
+ * neutral log surface.
+ */
+@mixin level-colors($error, $warn, $info, $debug) {
+	--operator-console--level--error: var(#{$error});
+	--operator-console--level--warn: var(#{$warn});
+	--operator-console--level--info: var(#{$info});
+	--operator-console--level--debug: var(#{$debug});
+}
+
+/* Brighter on dark, where the surface can carry more saturation. */
+:global([data-theme='dark']) .row {
+	@include level-colors(
+		--color--red-400,
+		--color--yellow-400,
+		--color--green-400,
+		--color--blue-400
+	);
+}
+
+@media (prefers-color-scheme: dark) {
+	:global(body:not([data-theme])) .row {
+		@include level-colors(
+			--color--red-400,
+			--color--yellow-400,
+			--color--green-400,
+			--color--blue-400
+		);
+	}
+}
+
 .row {
+	/* Mid shades: legible on a light surface without going muddy. */
+	@include level-colors(
+		--color--red-600,
+		--color--yellow-700,
+		--color--green-600,
+		--color--blue-600
+	);
+
 	display: flex;
 	flex-direction: column;
 	width: 100%;
@@ -191,21 +237,25 @@ const detailJson = computed(() => JSON.stringify(detail.value, null, 2));
 	text-transform: uppercase;
 }
 
-.error {
-	color: var(--text-color--danger);
+.error,
+.message-error {
+	color: var(--operator-console--level--error);
 }
 
-.warn {
-	color: var(--text-color--warning);
+.warn,
+.message-warn {
+	color: var(--operator-console--level--warn);
 }
 
-.info {
-	color: var(--text-color--subtle);
+.info,
+.message-info {
+	color: var(--operator-console--level--info);
 }
 
-/* Matches the message tint so the level word and its line read as one unit. */
-.debug {
-	color: var(--text-color--info);
+/* Level word and its message share one colour so the line reads as a unit. */
+.debug,
+.message-debug {
+	color: var(--operator-console--level--debug);
 }
 
 .scope,
@@ -214,35 +264,14 @@ const detailJson = computed(() => JSON.stringify(detail.value, null, 2));
 	color: var(--text-color--subtler);
 }
 
-/*
- * Message tinted by level, the way `winston.format.colorize({ all: true })`
- * paints the dev-mode console, so a wall of debug reads as background noise and
- * a failure stands out without being hunted for.
- *
- * `info` deliberately keeps the default body colour rather than winston's green:
- * it is the baseline level here and by far the most read, and green would also
- * collide with the "success" meaning it carries everywhere else in the product.
- */
+/* Tinted by level via `.message-<level>`; the base rule is the fallback for a
+ * level we do not colour. */
 .message {
 	flex: 1 1 auto;
 	min-width: 0;
 	color: var(--text-color);
 	white-space: pre-wrap;
 	word-break: break-word;
-}
-
-.message-error {
-	color: var(--text-color--danger);
-}
-
-.message-warn {
-	color: var(--text-color--warning);
-}
-
-/* The blue of the dev console. `--text-color--info` is the semantic blue token —
- * named for the colour role, not for the `info` log level. */
-.message-debug {
-	color: var(--text-color--info);
 }
 
 .messageClamped {
