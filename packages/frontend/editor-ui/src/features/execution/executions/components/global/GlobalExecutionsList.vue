@@ -346,27 +346,30 @@ const goToUpgrade = () => {
 	<div :class="$style.execListWrapper">
 		<slot />
 		<div :class="$style.execListHeaderControls">
-			<ConcurrentExecutionsHeader
-				v-if="showConcurrencyHeader"
-				:running-executions-count="concurrentTotal"
-				:concurrency-cap="settingsStore.concurrency"
-				:is-cloud-deployment="settingsStore.isCloudDeployment"
-				:executions="props.executions"
-				:is-initial-load="!executionsStore.initialLoadComplete"
-				@go-to-upgrade="goToUpgrade"
-			/>
-			<N8nCheckbox
-				v-else
-				v-model="autoRefresh"
-				data-test-id="execution-auto-refresh-checkbox"
-				:label="i18n.baseText('executionsList.autoRefresh')"
-				@update:model-value="onAutoRefreshToggle"
-			/>
-			<div :class="$style.execHeaderRight">
+			<div :class="$style.execHeaderTopRow">
+				<ConcurrentExecutionsHeader
+					v-if="showConcurrencyHeader"
+					:running-executions-count="concurrentTotal"
+					:concurrency-cap="settingsStore.concurrency"
+					:is-cloud-deployment="settingsStore.isCloudDeployment"
+					:executions="props.executions"
+					:is-initial-load="!executionsStore.initialLoadComplete"
+					@go-to-upgrade="goToUpgrade"
+				/>
+				<N8nCheckbox
+					v-else
+					v-model="autoRefresh"
+					data-test-id="execution-auto-refresh-checkbox"
+					:label="i18n.baseText('executionsList.autoRefresh')"
+					@update:model-value="onAutoRefreshToggle"
+				/>
 				<ExecutionStopAllText :executions="props.executions" />
+			</div>
+			<div :class="$style.execHeaderFilterRow">
 				<ExecutionsNlFilter
 					v-if="settingsStore.settings.executionsNlFilter?.enabled"
 					:filters="props.filters"
+					:class="$style.nlFilterInput"
 					@filter-changed="onFilterChanged"
 				/>
 				<ExecutionsFilter
@@ -505,20 +508,30 @@ const goToUpgrade = () => {
 
 .execListHeaderControls {
 	display: flex;
-	align-items: center;
-	justify-content: flex-start;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 	margin-bottom: var(--spacing--sm);
+}
+
+.execHeaderTopRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.execHeaderFilterRow {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--sm);
+}
+
+.nlFilterInput {
+	flex: 1 1 auto;
 }
 
 .execTable {
 	height: 100%;
 	flex: 0 1 auto;
-}
-
-.execHeaderRight {
-	display: flex;
-	align-items: center;
-	margin-left: auto;
-	gap: var(--spacing--sm);
 }
 </style>
