@@ -76,7 +76,12 @@ const visibleWebhookUrls = computedAsync(async () => {
 		// Check visibility
 		let isVisible = !webhook.ndvHideUrl;
 		if (typeof webhook.ndvHideUrl === 'string') {
-			isVisible = !(await workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl'));
+			isVisible = !(await workflowHelpers.getWebhookExpressionValue(
+				webhook,
+				'ndvHideUrl',
+				true,
+				node?.name,
+			));
 		}
 		if (!isVisible) continue;
 
@@ -93,13 +98,20 @@ const visibleWebhookUrls = computedAsync(async () => {
 		// Check method visibility
 		let isMethodVisible = !webhook.ndvHideMethod;
 		try {
-			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+			const method = await workflowHelpers.getWebhookExpressionValue(
+				webhook,
+				'httpMethod',
+				false,
+				node?.name,
+			);
 			if (Array.isArray(method) && method.length !== 1) {
 				isMethodVisible = false;
 			} else if (typeof webhook.ndvHideMethod === 'string') {
 				isMethodVisible = !(await workflowHelpers.getWebhookExpressionValue(
 					webhook,
 					'ndvHideMethod',
+					true,
+					node?.name,
 				));
 			}
 		} catch {
@@ -109,7 +121,12 @@ const visibleWebhookUrls = computedAsync(async () => {
 		// Get HTTP method
 		let httpMethod = '';
 		try {
-			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+			const method = await workflowHelpers.getWebhookExpressionValue(
+				webhook,
+				'httpMethod',
+				false,
+				node?.name,
+			);
 			httpMethod = Array.isArray(method) ? method[0] : (method as string);
 		} catch {
 			// Keep empty
