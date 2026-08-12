@@ -52,6 +52,12 @@ watch(
 watch(
 	entries,
 	(next, previous) => {
+		// Good for this update only, and only while its element is still in the list: `loadMore`
+		// bails out on a cursor it has already spent, leaving an anchor behind, and a refetch
+		// drops the entries an older anchor points at.
+		const anchor = prependAnchor?.element.isConnected === true ? prependAnchor : null;
+		prependAnchor = null;
+
 		if (next.length === 0) return;
 		if (!previous || previous.length === 0) {
 			scrollToBottom();
@@ -59,11 +65,13 @@ watch(
 		}
 		if (next[0]?.id !== previous[0]?.id) {
 			const container = scrollContainer.value;
-			if (container && prependAnchor) {
-				container.scrollTop +=
-					prependAnchor.element.getBoundingClientRect().top - prependAnchor.top;
+			// With no anchor the list was replaced rather than prepended to — a refetch keeps
+			// only what is newer than the page it got — so the newest entry is what to show.
+			if (!container || !anchor) {
+				scrollToBottom();
+				return;
 			}
-			prependAnchor = null;
+			container.scrollTop += anchor.element.getBoundingClientRect().top - anchor.top;
 			return;
 		}
 		if (next.at(-1)?.id !== previous.at(-1)?.id) scrollToBottom();

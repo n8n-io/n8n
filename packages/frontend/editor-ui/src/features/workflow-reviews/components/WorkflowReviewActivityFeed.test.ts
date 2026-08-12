@@ -8,10 +8,11 @@ import { useReviewActivityStore } from '../reviewActivity.store';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 
 /**
- * Scroll anchoring and the first-load scroll to bottom are deliberately untested:
- * jsdom has no layout, so `scrollHeight` is always 0 and `getBoundingClientRect()`
- * all zeroes. A test would have to stub those getters and then re-compute the
- * production arithmetic from its own constants. Do not backfill a fake one.
+ * The scroll anchoring arithmetic is deliberately untested: jsdom has no layout, so
+ * `getBoundingClientRect()` is all zeroes and a test would have to stub those getters and then
+ * re-compute the production arithmetic from its own constants. Do not backfill a fake one.
+ * Which of the two behaviours a changed list picks — hold the reading position, or jump to the
+ * newest entry — is testable, and is what the reload cases below assert.
  */
 const observer = vi.hoisted(() => ({
 	observe: vi.fn(),
@@ -207,6 +208,45 @@ describe('WorkflowReviewActivityFeed', () => {
 		await nextTick();
 
 		expect(observer.observe).not.toHaveBeenCalled();
+	});
+
+	/**
+	 * A reload keeps only the entries newer than the page it fetched, so its first entry
+	 * differs without anything having been prepended. `scrollHeight` is stubbed because jsdom
+	 * has no layout; the assertion is on the feed landing at the bottom, not on any arithmetic.
+	 */
+	async function reloadFeedAndReturnContainer(getByTestId: (id: string) => HTMLElement) {
+		const container = getByTestId('workflow-review-activity-feed');
+		Object.defineProperty(container, 'scrollHeight', { value: 500, configurable: true });
+		container.scrollTop = 120;
+
+		store.entries = [makeComment({ id: '2' }), makeComment({ id: '3' })];
+		await nextTick();
+
+		return container;
+	}
+
+	it('shows the entry a decision just added to a feed the viewer had paged back through', async () => {
+		store.entries = [makeComment({ id: '1' }), makeComment({ id: '2' })];
+
+		const { getByTestId } = renderComponent();
+		await nextTick();
+
+		expect((await reloadFeedAndReturnContainer(getByTestId)).scrollTop).toBe(500);
+	});
+
+	// `loadMore` returns early while another page is in flight, leaving behind the anchor it
+	// captured — which by the next reload points at an entry no longer on screen.
+	it('shows the newest entry after a reload that followed a load-more that never ran', async () => {
+		store.entries = [makeComment({ id: '1' }), makeComment({ id: '2' })];
+		store.hasMore = true;
+		store.loadingMore = true;
+
+		const { getByTestId } = renderComponent();
+		await nextTick();
+		observer.onIntersect();
+
+		expect((await reloadFeedAndReturnContainer(getByTestId)).scrollTop).toBe(500);
 	});
 
 	it('does not request the same older page twice', async () => {
