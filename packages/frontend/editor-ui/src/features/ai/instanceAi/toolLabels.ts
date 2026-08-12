@@ -118,6 +118,7 @@ export function getToolIcon(toolName: string): IconName {
 		toolName === 'get_node_types'
 	)
 		return 'workflow';
+	if (toolName === 'logs') return 'terminal';
 	if (toolName === 'research') return 'search';
 	if (toolName === 'credentials') return 'key-round';
 	if (toolName === 'task-control' || toolName === 'updateWorkingMemory') return 'brain';

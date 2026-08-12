@@ -14,6 +14,9 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.list_workflows': 'Listing workflows',
 				'instanceAi.tools.nodes': 'Search nodes',
 				'instanceAi.tools.executions': 'Run workflow',
+				'instanceAi.tools.logs': 'Checking logs',
+				'instanceAi.tools.logs.search': 'Searching logs',
+				'instanceAi.tools.logs.snapshot': 'Collecting logs',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
 				'instanceAi.tools.workspace_execute_command.skill': 'Running skill script',
 				'instanceAi.tools.workspace_execute_command.skillScript': 'Running',
@@ -54,9 +57,31 @@ function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): Instanc
 	};
 }
 
+describe('logs tool labels', () => {
+	test('names the logs tool instead of showing the raw id', () => {
+		const { getToolLabel } = useToolLabel();
+
+		expect(getToolLabel('logs')).toBe('Checking logs');
+	});
+
+	test('names the specific action when the model picked one', () => {
+		const { getToolLabel } = useToolLabel();
+
+		expect(getToolLabel('logs', { action: 'search' })).toBe('Searching logs');
+		expect(getToolLabel('logs', { action: 'snapshot' })).toBe('Collecting logs');
+	});
+
+	test('falls back to the tool label for an action with no string of its own', () => {
+		const { getToolLabel } = useToolLabel();
+
+		expect(getToolLabel('logs', { action: 'context' })).toBe('Checking logs');
+	});
+});
+
 describe('getToolIcon', () => {
 	test('returns circle-check for complete-checkpoint', () => {
 		expect(getToolIcon('complete-checkpoint')).toBe('circle-check');
+		expect(getToolIcon('logs')).toBe('terminal');
 	});
 
 	test('returns default icon for removed delegate tool', () => {
