@@ -1,6 +1,7 @@
 import { AgentEvent, type AgentEventData, type BuiltTool, type ToolContext } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 import type { JSONSchema7 } from 'json-schema';
+import { z } from 'zod';
 
 import type { GoalGraphStateService } from '../goal-graph-state.service';
 import type { GoalGraphDefinition, SlotValues } from '../types';
@@ -8,9 +9,9 @@ import { wrapGoalTool } from '../wrap-tool';
 
 const definition: GoalGraphDefinition = {
 	slots: [
-		{ name: 'customerEmail', type: 'string', source: 'agent' },
-		{ name: 'customerSalesforceId', type: 'string', source: 'tool' },
-		{ name: 'trialExtendedUntil', type: 'string', source: 'tool' },
+		{ name: 'customerEmail', type: 'string', access: 'standard' },
+		{ name: 'customerSalesforceId', type: 'string', access: 'protected' },
+		{ name: 'trialExtendedUntil', type: 'string', access: 'protected' },
 	],
 	goals: [
 		{
@@ -158,6 +159,75 @@ describe('wrapGoalTool', () => {
 				changes: [{ goalId: 'extend_trial', from: 'active', to: 'achieved' }],
 			},
 		);
+	});
+
+	it('coerces an injected string to number when a zod input schema demands it', async () => {
+		const handler = vi.fn().mockResolvedValue({ newTrialEnd: '2026-07-01' });
+		// The lookup wrote a string id into state, but the tool declares a number.
+		const { stateService } = makeStateService({ customerSalesforceId: '100500' });
+		const wrapped = wrapGoalTool({
+			tool: {
+				name: 'extend_trial',
+				description: 'Extend a trial',
+				inputSchema: z.object({ customerId: z.number(), days: z.number() }),
+				handler: handler as unknown as BuiltTool['handler'],
+			},
+			attachments: [extendTrialAttachment],
+			definition,
+			agentId: 'agent-1',
+			stateService,
+		});
+
+		await wrapped.handler!({ days: 14 }, makeCtx([]));
+
+		expect(handler).toHaveBeenCalledWith({ days: 14, customerId: 100500 }, expect.anything());
+	});
+
+	it('coerces an injected string to number when a JSON input schema demands it', async () => {
+		const handler = vi.fn().mockResolvedValue({ newTrialEnd: '2026-07-01' });
+		const { stateService } = makeStateService({ customerSalesforceId: '100500' });
+		const numberSchema: JSONSchema7 = {
+			type: 'object',
+			properties: { customerId: { type: 'number' }, days: { type: 'number' } },
+			required: ['customerId', 'days'],
+		};
+		const wrapped = wrapGoalTool({
+			tool: {
+				name: 'extend_trial',
+				description: 'Extend a trial',
+				inputSchema: numberSchema,
+				handler: handler as unknown as BuiltTool['handler'],
+			},
+			attachments: [extendTrialAttachment],
+			definition,
+			agentId: 'agent-1',
+			stateService,
+		});
+
+		await wrapped.handler!({ days: 14 }, makeCtx([]));
+
+		expect(handler).toHaveBeenCalledWith({ days: 14, customerId: 100500 }, expect.anything());
+	});
+
+	it('keeps the injected value untouched when it already fits the schema', async () => {
+		const handler = vi.fn().mockResolvedValue({ newTrialEnd: '2026-07-01' });
+		const { stateService } = makeStateService({ customerSalesforceId: 'SF-1' });
+		const wrapped = wrapGoalTool({
+			tool: {
+				name: 'extend_trial',
+				description: 'Extend a trial',
+				inputSchema: z.object({ customerId: z.string(), days: z.number() }),
+				handler: handler as unknown as BuiltTool['handler'],
+			},
+			attachments: [extendTrialAttachment],
+			definition,
+			agentId: 'agent-1',
+			stateService,
+		});
+
+		await wrapped.handler!({ days: 14 }, makeCtx([]));
+
+		expect(handler).toHaveBeenCalledWith({ days: 14, customerId: 'SF-1' }, expect.anything());
 	});
 
 	it('respects availableWhen on the attachment', async () => {
