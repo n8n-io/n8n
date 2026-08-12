@@ -206,9 +206,11 @@ onMounted(() => {
 .item:not(:first-child)::before {
 	content: '';
 	position: absolute;
-	bottom: 100%;
+	/* Floats clear of both neighbours instead of butting into them, as the design does. The
+		row is taller than its avatar, so the same inset reads as a wider gap at the top. */
+	bottom: calc(100% + var(--spacing--5xs));
+	height: calc(var(--spacing--md) - 2 * var(--spacing--5xs));
 	left: calc(var(--activity-avatar-size) / 2);
-	height: var(--spacing--md);
 	border-left: var(--border);
 }
 
