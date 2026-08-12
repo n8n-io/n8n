@@ -125,6 +125,7 @@ const emit = defineEmits<{
 const slots = defineSlots<{
 	header(): unknown;
 	empty(): unknown;
+	'list-controls'(props: { resources: ResourceType[] }): unknown;
 	preamble(props: { resources: ResourceType[] }): unknown;
 	postamble(): unknown;
 	postdata(): unknown;
@@ -621,6 +622,9 @@ defineExpose({
 			<PageViewLayoutList v-else>
 				<template #header>
 					<div :class="$style['filters-row']">
+						<div v-if="$slots['list-controls']" :class="$style['list-controls']">
+							<slot name="list-controls" :resources="filteredAndSortedResources" />
+						</div>
 						<div :class="$style.filters">
 							<slot name="breadcrumbs"></slot>
 							<N8nInput
@@ -794,6 +798,13 @@ defineExpose({
 	gap: var(--spacing--2xs);
 }
 
+.list-controls {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	white-space: nowrap;
+}
+
 .filters {
 	display: grid;
 	grid-auto-flow: column;
@@ -801,7 +812,8 @@ defineExpose({
 	gap: var(--spacing--4xs);
 	align-items: center;
 	justify-content: end;
-	width: 100%;
+	flex: 1 1 auto;
+	min-width: 0;
 
 	.sort-and-filter {
 		display: flex;

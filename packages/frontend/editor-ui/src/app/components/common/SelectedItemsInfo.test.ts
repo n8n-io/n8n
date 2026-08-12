@@ -59,8 +59,8 @@ describe('SelectedItemsInfo', () => {
 		expect(emitted().clearSelection).toHaveLength(1);
 	});
 
-	it('should keep destructive actions in the overflow menu', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
+	it('should render all actions inside a single "Bulk actions" dropdown', () => {
+		const { getByTestId, getByText, queryByTestId } = renderComponent({
 			props: {
 				selectedCount: 2,
 				actions: [
@@ -68,13 +68,26 @@ describe('SelectedItemsInfo', () => {
 					{ id: 'archive', label: 'Archive' },
 					{ id: 'delete', label: 'Delete', destructive: true },
 				],
-				maxVisibleActions: 3,
 			},
 		});
 
-		expect(getByTestId('selection-action-move')).toBeInTheDocument();
-		expect(getByTestId('selection-action-archive')).toBeInTheDocument();
-		expect(queryByTestId('selection-action-delete')).not.toBeInTheDocument();
-		expect(getByTestId('selection-overflow')).toBeInTheDocument();
+		expect(getByTestId('selection-bulk-actions')).toBeInTheDocument();
+		expect(getByText('generic.list.bulkActions')).toBeInTheDocument();
+		// Actions API replaces the default delete button with the dropdown.
+		expect(queryByTestId('delete-selected-button')).not.toBeInTheDocument();
+		expect(getByTestId('clear-selection-button')).toBeInTheDocument();
+	});
+
+	it('should show the no-actions message when the actions list is empty', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				selectedCount: 2,
+				actions: [],
+				noActionsText: 'No actions available',
+			},
+		});
+
+		expect(getByTestId('selection-no-actions')).toBeInTheDocument();
+		expect(queryByTestId('selection-bulk-actions')).not.toBeInTheDocument();
 	});
 });

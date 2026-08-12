@@ -2456,48 +2456,48 @@ const onNameSubmit = async (name: string) => {
 			</N8nCallout>
 		</template>
 		<template #breadcrumbs>
-			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
-				<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
-			</div>
-			<div
-				v-else-if="showMainBreadcrumbs"
-				:class="$style['breadcrumbs-container']"
-				data-test-id="main-breadcrumbs"
-			>
-				<FolderBreadcrumbs
-					:current-folder="currentFolderParent"
-					:actions="breadcrumbsActions"
-					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
-					:current-folder-as-link="true"
-					@item-selected="onBreadcrumbItemClick"
-					@action="onBreadCrumbsAction"
-					@item-drop="onBreadCrumbsItemDrop"
-					@project-drop="moveFolderToProjectRoot"
+			<div :class="$style['breadcrumbs-and-selection']">
+				<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
+					<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
+				</div>
+				<div
+					v-else-if="showMainBreadcrumbs"
+					:class="$style['breadcrumbs-container']"
+					data-test-id="main-breadcrumbs"
 				>
-					<template v-if="currentFolder" #append>
-						<span :class="$style['path-separator']">/</span>
-						<N8nInlineTextEdit
-							ref="renameInput"
-							:key="currentFolder?.id"
-							data-test-id="breadcrumbs-item-current"
-							:placeholder="i18n.baseText('folders.rename.placeholder')"
-							:model-value="currentFolder.name"
-							:max-length="30"
-							:read-only="readOnlyEnv || !hasPermissionToUpdateFolders"
-							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
-							@update:model-value="onNameSubmit"
-						/>
-					</template>
-				</FolderBreadcrumbs>
-			</div>
-		</template>
-		<template #preamble>
-			<div v-if="pageResources.length" :class="$style['selection-header']">
+					<FolderBreadcrumbs
+						:current-folder="currentFolderParent"
+						:actions="breadcrumbsActions"
+						:hidden-items-trigger="isDragging ? 'hover' : 'click'"
+						:current-folder-as-link="true"
+						@item-selected="onBreadcrumbItemClick"
+						@action="onBreadCrumbsAction"
+						@item-drop="onBreadCrumbsItemDrop"
+						@project-drop="moveFolderToProjectRoot"
+					>
+						<template v-if="currentFolder" #append>
+							<span :class="$style['path-separator']">/</span>
+							<N8nInlineTextEdit
+								ref="renameInput"
+								:key="currentFolder?.id"
+								data-test-id="breadcrumbs-item-current"
+								:placeholder="i18n.baseText('folders.rename.placeholder')"
+								:model-value="currentFolder.name"
+								:max-length="30"
+								:read-only="readOnlyEnv || !hasPermissionToUpdateFolders"
+								:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
+								@update:model-value="onNameSubmit"
+							/>
+						</template>
+					</FolderBreadcrumbs>
+				</div>
 				<N8nCheckbox
+					v-if="pageResources.length"
 					:model-value="isPageSelected"
 					:indeterminate="isPageIndeterminate"
 					:disabled="isPageSelectionDisabled"
 					:label="i18n.baseText('workflows.bulkActions.selectAll')"
+					:class="$style['select-all-checkbox']"
 					data-test-id="select-all-checkbox"
 					@update:model-value="onSelectAllPage"
 				/>
@@ -2770,10 +2770,18 @@ const onNameSubmit = async (name: string) => {
 	}
 }
 
-.selection-header {
+.breadcrumbs-and-selection {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--2xs) var(--spacing--sm);
+	gap: var(--spacing--sm);
+	min-width: 0;
+}
+
+.select-all-checkbox {
+	// Push to the right edge of the breadcrumbs column so it sits next to the
+	// search/sort controls rather than crowding the breadcrumb + folder actions.
+	margin: 0 var(--spacing--xs) 0 auto;
+	flex-shrink: 0;
 }
 
 .breadcrumbs-container {

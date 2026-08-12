@@ -437,23 +437,23 @@ onMounted(() => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template #preamble="{ resources }">
-			<div v-if="resources.length" :class="$style.selectionHeader">
-				<N8nCheckbox
-					:model-value="selection.isPageChecked(resources)"
-					:indeterminate="selection.isPageIndeterminate(resources)"
-					:label="
-						i18n.baseText(
-							resources.length > MAX_SELECTED_CREDENTIALS
-								? 'credentials.bulkActions.selectUpToLimit'
-								: 'credentials.bulkActions.selectAllShown',
-							{ interpolate: { limit: String(MAX_SELECTED_CREDENTIALS) } },
-						)
-					"
-					data-test-id="select-all-credentials-checkbox"
-					@update:model-value="selection.togglePage(resources, $event)"
-				/>
-			</div>
+		<template #list-controls="{ resources }">
+			<N8nCheckbox
+				v-if="resources.length"
+				:model-value="selection.isPageChecked(resources)"
+				:indeterminate="selection.isPageIndeterminate(resources)"
+				:label="
+					i18n.baseText(
+						resources.length > MAX_SELECTED_CREDENTIALS
+							? 'credentials.bulkActions.selectUpToLimit'
+							: 'credentials.bulkActions.selectAllShown',
+						{ interpolate: { limit: String(MAX_SELECTED_CREDENTIALS) } },
+					)
+				"
+				:class="$style.selectAllCheckbox"
+				data-test-id="select-all-credentials-checkbox"
+				@update:model-value="selection.togglePage(resources, $event)"
+			/>
 		</template>
 		<template #default="{ data }">
 			<CredentialCard
@@ -591,10 +591,8 @@ onMounted(() => {
 	--select--dropdown--max-width: 265px;
 }
 
-.selectionHeader {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing--2xs) var(--spacing--sm);
+.selectAllCheckbox {
+	margin: 0;
 }
 
 .sidebarContainer ul {

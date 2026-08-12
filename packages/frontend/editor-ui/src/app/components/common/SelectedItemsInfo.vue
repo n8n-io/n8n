@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nActionDropdown, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 
 export type SelectionBarAction = {
@@ -13,13 +13,11 @@ export type SelectionBarAction = {
 interface Props {
 	selectedCount: number;
 	/**
-	 * When provided, the component renders these as bulk actions (first
-	 * `maxVisibleActions` as buttons, the rest in an overflow menu) and emits
-	 * `action` with the chosen id. When omitted, the legacy `actions` slot /
-	 * default Delete button is used instead.
+	 * When provided, the component renders a single "Bulk actions" dropdown
+	 * listing all actions and emits `action` with the chosen id. When omitted,
+	 * the legacy `actions` slot / default Delete button is used instead.
 	 */
 	actions?: SelectionBarAction[];
-	maxVisibleActions?: number;
 	selectedText?: string;
 	noActionsText?: string;
 	noActionsTooltip?: string;
@@ -27,7 +25,6 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: undefined,
-	maxVisibleActions: 2,
 	selectedText: undefined,
 	noActionsText: undefined,
 	noActionsTooltip: undefined,
@@ -54,23 +51,15 @@ const selectedText = computed(
 
 const clearSelectionText = computed(() => i18n.baseText('generic.list.clearSelection'));
 
-const nonDestructiveActions = computed(() => (props.actions ?? []).filter((a) => !a.destructive));
-
-const visibleActions = computed(() =>
-	nonDestructiveActions.value.slice(0, props.maxVisibleActions),
-);
-
-const overflowActions = computed(() => [
-	...nonDestructiveActions.value.slice(props.maxVisibleActions),
-	...(props.actions ?? []).filter((a) => a.destructive),
-]);
+const bulkActionsText = computed(() => i18n.baseText('generic.list.bulkActions'));
 
 const hasNoActions = computed(() => usesActionsApi.value && (props.actions ?? []).length === 0);
 
-// Overflow items: non-destructive first, then a divider before the danger group.
-const overflowItems = computed<Array<ActionDropdownItem<string>>>(() => {
-	const nonDestructive = overflowActions.value.filter((a) => !a.destructive);
-	const destructive = overflowActions.value.filter((a) => a.destructive);
+// Every action lives in the "Bulk actions" dropdown: non-destructive first,
+// then a divider before the danger group.
+const actionItems = computed<Array<ActionDropdownItem<string>>>(() => {
+	const nonDestructive = (props.actions ?? []).filter((a) => !a.destructive);
+	const destructive = (props.actions ?? []).filter((a) => a.destructive);
 	return [
 		...nonDestructive.map((a) => ({ id: a.id, label: a.label })),
 		...destructive.map((a, index) => ({
@@ -103,25 +92,20 @@ const handleAction = (id: string) => emit('action', id);
 					{{ noActionsText }}
 				</N8nText>
 			</N8nTooltip>
-			<template v-else>
-				<N8nButton
-					v-for="action in visibleActions"
-					:key="action.id"
-					variant="subtle"
-					:class="$style.button"
-					:data-test-id="`selection-action-${action.id}`"
-					@click="handleAction(action.id)"
-				>
-					{{ action.label }}
-				</N8nButton>
-				<N8nActionDropdown
-					v-if="overflowItems.length"
-					:items="overflowItems"
-					placement="top-end"
-					data-test-id="selection-overflow"
-					@select="handleAction"
-				/>
-			</template>
+			<N8nActionDropdown
+				v-else
+				:items="actionItems"
+				placement="top-start"
+				data-test-id="selection-bulk-actions"
+				@select="handleAction"
+			>
+				<template #activator>
+					<N8nButton variant="subtle" :class="$style.button">
+						{{ bulkActionsText }}
+						<N8nIcon icon="chevron-down" :class="$style.caret" />
+					</N8nButton>
+				</template>
+			</N8nActionDropdown>
 		</template>
 
 		<!-- Legacy: custom slot, defaults to Delete button -->
@@ -165,5 +149,9 @@ const handleAction = (id: string) => emit('action', id);
 .button {
 	display: flex;
 	align-items: center;
+}
+
+.caret {
+	margin-left: var(--spacing--4xs);
 }
 </style>

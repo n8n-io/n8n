@@ -185,8 +185,7 @@ describe('CredentialsView', () => {
 			await flushPromises();
 
 			expect(getByTestId('selected-items-info')).toHaveTextContent('2 selected');
-			expect(getByTestId('selection-action-move')).toBeInTheDocument();
-			expect(getByTestId('selection-overflow')).toBeInTheDocument();
+			expect(getByTestId('selection-bulk-actions')).toBeInTheDocument();
 		});
 
 		it('shows no actions when selected credentials share no permitted action', async () => {
