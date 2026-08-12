@@ -292,6 +292,15 @@ export function useWorkflowTour(deps: UseWorkflowTourDeps) {
 		tourStore.setCurrentStepIndex(tourStore.currentStepIndex - 1);
 	}
 
+	/** Jump directly to the step for a node, e.g. when it is clicked mid-tour. */
+	function goToNode(nodeId: string) {
+		if (!tourStore.isActive) return false;
+		const index = steps.value.findIndex((step) => step.nodeId === nodeId);
+		if (index === -1) return false;
+		tourStore.setCurrentStepIndex(index);
+		return true;
+	}
+
 	const cardPlacement = computed<WorkflowTourCardPlacement | null>(() => {
 		const step = currentStep.value;
 		if (!tourStore.isActive || !step) return null;
@@ -368,6 +377,7 @@ export function useWorkflowTour(deps: UseWorkflowTourDeps) {
 		start,
 		next,
 		prev,
+		goToNode,
 		exit,
 	};
 }
