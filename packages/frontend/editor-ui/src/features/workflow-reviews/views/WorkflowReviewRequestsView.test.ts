@@ -76,7 +76,11 @@ const renderComponent = createComponentRenderer(WorkflowReviewRequestsView, {
 			WorkflowReviewDecisionPopover: {
 				props: ['deciding', 'viewerCanDecide', 'viewerCanComment', 'ineligibilityHint'],
 				template: `
-					<div data-test-id="workflow-review-decision-popover" :data-deciding="deciding">
+					<div
+						data-test-id="workflow-review-decision-popover"
+						:data-deciding="deciding"
+						:data-ineligibility-hint="ineligibilityHint"
+					>
 						<button data-test-id="approve-review" @click="$emit('decide', { decision: 'approved' })" />
 						<button
 							data-test-id="request-changes"
@@ -776,6 +780,21 @@ describe('WorkflowReviewRequestsView', () => {
 			await waitAllPromises();
 
 			expect(router.currentRoute.value.fullPath).toBe('/settings/roles?tab=roles');
+		});
+
+		it('falls back to the generic permission hint for any other reason', async () => {
+			store.detail = createDetail({
+				viewerCanDecide: false,
+				viewerDecisionIneligibilityReason: 'missing_reviewer_permission',
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-decision-popover')).toHaveAttribute(
+				'data-ineligibility-hint',
+				'Missing permissions to perform this action',
+			);
 		});
 
 		it('locks the decision actions while a decision is in flight', async () => {

@@ -60,6 +60,19 @@ export class WorkflowReviewRequestReviewerRepository extends BaseRepository<Work
 		});
 	}
 
+	async isReviewer(
+		input: {
+			workflowReviewRequestId: string;
+			userId: string;
+		},
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(WorkflowReviewRequestReviewer, {
+			workflowReviewRequestId: input.workflowReviewRequestId,
+			userId: input.userId,
+		});
+	}
+
 	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestReviewer[]> {
 		return await this.find({
 			where: { workflowReviewRequestId: requestId },
