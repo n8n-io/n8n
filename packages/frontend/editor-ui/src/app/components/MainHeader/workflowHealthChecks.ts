@@ -1,6 +1,10 @@
 import type { INodeConnections } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants';
+import {
+	ERROR_TRIGGER_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
+} from '@/app/constants';
 
 const ERROR_PRONE_NODE_TYPES = new Set<string>([
 	HTTP_REQUEST_NODE_TYPE,
@@ -17,7 +21,10 @@ export function findNodesMissingErrorHandling(deps: {
 }): INodeUi[] {
 	// 'DEFAULT' is the "No Workflow" sentinel from the settings modal, not a workflow id.
 	const hasErrorWorkflow = Boolean(deps.errorWorkflow) && deps.errorWorkflow !== 'DEFAULT';
-	if (hasErrorWorkflow) return [];
+	// An Error Trigger node makes the workflow its own error handler (even disabled) — mirrors
+	// the backend gate in packages/cli/src/execution-lifecycle/execute-error-workflow.ts.
+	const hasErrorTrigger = deps.nodes.some((node) => node.type === ERROR_TRIGGER_NODE_TYPE);
+	if (hasErrorWorkflow || hasErrorTrigger) return [];
 
 	return deps.nodes.filter((node) => {
 		if (!ERROR_PRONE_NODE_TYPES.has(node.type) || node.disabled) return false;

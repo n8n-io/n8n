@@ -2,15 +2,19 @@ import { describe, it, expect } from 'vitest';
 import type { INodeConnections } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { createTestNode } from '@/__tests__/mocks';
-import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants';
+import {
+	ERROR_TRIGGER_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
+} from '@/app/constants';
 import { findNodesMissingErrorHandling } from './workflowHealthChecks';
 
 const httpNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
-	createTestNode({ name: 'HTTP Request', type: HTTP_REQUEST_NODE_TYPE, ...overrides }) as INodeUi;
+	createTestNode({ name: 'HTTP Request', type: HTTP_REQUEST_NODE_TYPE, ...overrides });
 
-const incomingMain: () => INodeConnections = () => ({
-	main: [[{ node: 'X', type: 'main' as const, index: 0 }]],
-});
+// Name-sensitive so an implementation looking up by node.id or a constant fails
+const incomingMain = (nodeName: string): INodeConnections =>
+	nodeName === 'HTTP Request' ? { main: [[{ node: 'X', type: 'main' as const, index: 0 }]] } : {};
 const outgoingAiTool: () => INodeConnections = () => ({
 	ai_tool: [[{ node: 'Agent', type: 'ai_tool' as const, index: 0 }]],
 });
@@ -55,6 +59,12 @@ describe('findNodesMissingErrorHandling', () => {
 
 	it('flags nothing when a real error workflow is configured', () => {
 		expect(findIssues([httpNode()], { errorWorkflow: 'wf-123' })).toEqual([]);
+	});
+
+	it('flags nothing when the workflow contains an Error Trigger node', () => {
+		const errorTrigger = createTestNode({ name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE });
+
+		expect(findIssues([httpNode(), errorTrigger])).toEqual([]);
 	});
 
 	it('skips non-HTTP node types', () => {
