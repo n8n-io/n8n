@@ -1,0 +1,24 @@
+packages/@n8n/api-types/src/dto/roles/role-public.dto.ts
+  s_56c01a41783ce1::t_d84096cc51ba91 20
+packages/cli/test/integration/public-api/roles.test.ts
+  s_56c01a41783ce1::t_8b77206e436f76 85
+  s_56c01a41783ce1::t_a64bd4c8450f2e 56
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getAllRoles.generated.yml
+  s_56c01a41783ce1::t_328de7d1675a1d 56-57,71,100-101,115,144-145,159,188-189,203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "78ed43e407c7ef5fd846eb6903b70c47982309ab",
+  "prompts": {},
+  "sessions": {
+    "s_56c01a41783ce1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e732907-7277-4e4a-acda-b16d3f4678db",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
