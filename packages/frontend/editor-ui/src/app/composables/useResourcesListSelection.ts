@@ -7,15 +7,25 @@ import { computed, shallowRef } from 'vue';
  */
 export type SelectableResource = { resourceType: string; id: string };
 
+export const DEFAULT_RESOURCE_SELECTION_LIMIT = 100;
+
+type ResourcesListSelectionOptions<T> = {
+	maxSelected?: number;
+	getItemWeight?: (item: T) => number;
+};
+
 const selectionKey = (item: SelectableResource) => `${item.resourceType}:${item.id}`;
 
 /**
- * Generic, page-scoped multi-selection for resource lists. Selection is keyed by
- * `resourceType:id` and lives only for the current list projection - callers are
- * expected to `clear()` whenever the underlying page changes (search, filters,
- * pagination, project/tab, folder route, refresh, ...).
+ * Generic multi-selection for resource lists. Selection is keyed by
+ * `resourceType:id`, so it can span paginated pages. Callers should `clear()`
+ * whenever the underlying list projection changes (search, filters, project/tab,
+ * folder route, refresh, ...).
  */
-export function useResourcesListSelection<T extends SelectableResource>() {
+export function useResourcesListSelection<T extends SelectableResource>(
+	options: ResourcesListSelectionOptions<T> = {},
+) {
+	const { maxSelected = DEFAULT_RESOURCE_SELECTION_LIMIT, getItemWeight = () => 1 } = options;
 	// A Map keeps the full item around (not just its key) so consumers can act on
 	// the selection without re-resolving items from the list. shallowRef avoids
 	// deep-unwrapping the generic item type; reassigning the map drives reactivity.
@@ -29,10 +39,15 @@ export function useResourcesListSelection<T extends SelectableResource>() {
 
 	const selectedItems = computed<T[]>(() => Array.from(selected.value.values()) as T[]);
 	const selectedKeys = computed(() => new Set(selected.value.keys()));
-	const selectedCount = computed(() => selected.value.size);
+	const selectedCount = computed(() =>
+		Array.from(selected.value.values()).reduce((count, item) => count + getItemWeight(item), 0),
+	);
 	const hasSelection = computed(() => selected.value.size > 0);
+	const isLimitReached = computed(() => selectedCount.value >= maxSelected);
 
 	const isSelected = (item: SelectableResource) => selected.value.has(selectionKey(item));
+	const canSelect = (item: T) =>
+		isSelected(item) || selectedCount.value + getItemWeight(item) <= maxSelected;
 
 	/** Add or remove a single item. When `value` is omitted the state is flipped. */
 	const toggleItem = (item: T, value?: boolean) => {
@@ -40,6 +55,7 @@ export function useResourcesListSelection<T extends SelectableResource>() {
 		const shouldSelect = value ?? !selected.value.has(key);
 		const next = new Map(selected.value);
 		if (shouldSelect) {
+			if (!next.has(key) && !canSelect(item)) return;
 			next.set(key, item);
 		} else {
 			next.delete(key);
@@ -66,9 +82,15 @@ export function useResourcesListSelection<T extends SelectableResource>() {
 	const togglePage = (pageItems: T[], value?: boolean) => {
 		const shouldSelect = value ?? !isPageChecked(pageItems);
 		const next = new Map(selected.value);
+		let nextCount = selectedCount.value;
 		for (const item of pageItems) {
 			const key = selectionKey(item);
 			if (shouldSelect) {
+				if (!next.has(key)) {
+					const itemWeight = getItemWeight(item);
+					if (nextCount + itemWeight > maxSelected) continue;
+					nextCount += itemWeight;
+				}
 				next.set(key, item);
 			} else {
 				next.delete(key);
@@ -88,7 +110,9 @@ export function useResourcesListSelection<T extends SelectableResource>() {
 		selectedKeys,
 		selectedCount,
 		hasSelection,
+		isLimitReached,
 		isSelected,
+		canSelect,
 		toggleItem,
 		isPageChecked,
 		isPageIndeterminate,

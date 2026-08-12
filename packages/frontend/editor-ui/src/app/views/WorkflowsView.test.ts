@@ -539,6 +539,84 @@ describe('Folders', () => {
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
 	});
 
+	it('should keep all card checkboxes visible after selecting a card', async () => {
+		foldersStore.totalWorkflowCount = 2;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			TEST_WORKFLOW_RESOURCE,
+			TEST_FOLDER_RESOURCE,
+		]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getAllByTestId, getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		const selectionControls = getAllByTestId('card-selection-checkbox');
+		expect(selectionControls).toHaveLength(2);
+		expect(
+			selectionControls.every(
+				(control) => control.getAttribute('data-selection-visible') === 'false',
+			),
+		).toBe(true);
+
+		await userEvent.click(getByTestId('workflow-card-checkbox'));
+
+		await waitFor(() => {
+			expect(
+				selectionControls.every(
+					(control) => control.getAttribute('data-selection-visible') === 'true',
+				),
+			).toBe(true);
+		});
+	});
+
+	it('should count the workflows in a selected folder', async () => {
+		const folder = {
+			...TEST_FOLDER_RESOURCE,
+			workflowCount: 5,
+		} satisfies WorkflowListResource;
+		foldersStore.totalWorkflowCount = 5;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([folder]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('folder-card-checkbox'));
+
+		expect(getByTestId('selected-items-info')).toHaveTextContent('5');
+	});
+
+	it('should preserve selected cards across pages', async () => {
+		const secondWorkflow = {
+			...TEST_WORKFLOW_RESOURCE,
+			id: '3',
+			name: 'Workflow 3',
+		} satisfies WorkflowListResource;
+		foldersStore.totalWorkflowCount = 100;
+		workflowsListStore.totalWorkflowCount = 100;
+		workflowsListStore.fetchWorkflowsPage.mockImplementation(async (_projectId, page) =>
+			page === 1 ? [TEST_WORKFLOW_RESOURCE] : [secondWorkflow],
+		);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('workflow-card-checkbox'));
+		await userEvent.click(
+			within(getByTestId('resources-list-pagination')).getByLabelText('page 2'),
+		);
+
+		await waitFor(() => {
+			expect(getByTestId('workflow-card-name')).toHaveTextContent(secondWorkflow.name);
+		});
+		expect(getByTestId('card-selection-checkbox')).toHaveAttribute(
+			'data-selection-visible',
+			'true',
+		);
+
+		await userEvent.click(getByTestId('workflow-card-checkbox'));
+
+		expect(getByTestId('selected-items-info')).toHaveTextContent('2');
+	});
+
 	it('should show folder actions menu when not in the overview or sharing pages', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);

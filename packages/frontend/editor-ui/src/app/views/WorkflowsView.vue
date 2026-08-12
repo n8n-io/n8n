@@ -87,6 +87,7 @@ import type {
 	BulkActionConfig,
 	BulkActionId,
 } from '@/features/workflows/bulkActions/bulkActions.types';
+import { getBulkSelectionWeight } from '@/features/workflows/bulkActions/bulkActions.utils';
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
@@ -567,14 +568,17 @@ const pageResources = computed(() =>
 	),
 );
 
-const selection = useResourcesListSelection<WorkflowResource | FolderResource>();
+const selection = useResourcesListSelection<WorkflowResource | FolderResource>({
+	getItemWeight: getBulkSelectionWeight,
+});
 
-const selectedResources = computed(() =>
-	pageResources.value.filter((r) => selection.isSelected(r)),
-);
+const selectedResources = selection.selectedItems;
 
 const isPageSelected = computed(() => selection.isPageChecked(pageResources.value));
 const isPageIndeterminate = computed(() => selection.isPageIndeterminate(pageResources.value));
+const isPageSelectionDisabled = computed(
+	() => selection.isLimitReached.value && !isPageSelected.value && !isPageIndeterminate.value,
+);
 
 const bulkActions = useBulkWorkflowActions({
 	selectedItems: selectedResources,
@@ -853,6 +857,8 @@ const showTemplateRecommendationV3 = computed(() => {
 	return personalizedTemplatesV3Store.isFeatureEnabled() && !loading.value;
 });
 
+const onResourceMovedRefresh = () => fetchWorkflows();
+
 /**
  * LIFE-CYCLE HOOKS
  */
@@ -868,7 +874,7 @@ onMounted(async () => {
 		void initialize();
 	}
 
-	workflowListEventBus.on('resource-moved', fetchWorkflows);
+	workflowListEventBus.on('resource-moved', onResourceMovedRefresh);
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
 	workflowListEventBus.on('folder-moved', moveFolder);
@@ -878,7 +884,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-	workflowListEventBus.off('resource-moved', fetchWorkflows);
+	workflowListEventBus.off('resource-moved', onResourceMovedRefresh);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
 	workflowListEventBus.off('folder-moved', moveFolder);
@@ -968,12 +974,12 @@ const initialize = async () => {
  * - Total count of workflows and folders in the current project
  * - Path to the current folder (if not cached)
  */
-const fetchWorkflows = async () => {
+const fetchWorkflows = async ({ preserveSelection = false } = {}) => {
 	const isCurrent = nextFetch();
 
-	// Selection is page-scoped: any refetch (search, filter, sort, pagination,
-	// folder/route change, explicit or source-control refresh) drops it.
-	selection.clear();
+	if (!preserveSelection) {
+		selection.clear();
+	}
 
 	// We debounce here so that fast enough fetches don't trigger
 	// the placeholder graphics for a few milliseconds, which would cause a flicker
@@ -1114,6 +1120,7 @@ const onSearchUpdated = async (search: string) => {
 };
 
 const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
+	const isPageChange = payload.page !== undefined;
 	if (payload.page) {
 		currentPage.value = payload.page;
 	}
@@ -1128,7 +1135,10 @@ const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
 	// This will prevent unnecessary API calls when changing sort and pagination from url/local storage
 	// when switching between projects
 	if (!loading.value) {
-		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+		await callDebounced(() => fetchWorkflows({ preserveSelection: isPageChange }), {
+			debounceTime: FILTERS_DEBOUNCE_TIME,
+			trailing: true,
+		});
 	}
 };
 
@@ -2486,6 +2496,7 @@ const onNameSubmit = async (name: string) => {
 				<N8nCheckbox
 					:model-value="isPageSelected"
 					:indeterminate="isPageIndeterminate"
+					:disabled="isPageSelectionDisabled"
 					:label="i18n.baseText('workflows.bulkActions.selectAll')"
 					data-test-id="select-all-checkbox"
 					@update:model-value="onSelectAllPage"
@@ -2531,6 +2542,8 @@ const onNameSubmit = async (name: string) => {
 					:show-mcp-access-actions="showMcpAccessActions"
 					:selectable="true"
 					:selected="selection.isSelected(data as FolderResource)"
+					:selection-active="selectedCount > 0"
+					:selection-disabled="!selection.canSelect(data as FolderResource)"
 					data-target="folder"
 					data-droppable
 					class="mb-2xs"
@@ -2580,6 +2593,8 @@ const onNameSubmit = async (name: string) => {
 					:is-workflow-card-mcp-toggle-enabled="isWorkflowCardMcpToggleEnabled"
 					:selectable="true"
 					:selected="selection.isSelected(data as WorkflowResource)"
+					:selection-active="selectedCount > 0"
+					:selection-disabled="!selection.canSelect(data as WorkflowResource)"
 					@update:selected="selection.toggleItem(data as WorkflowResource, $event)"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"

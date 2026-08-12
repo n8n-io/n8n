@@ -18,7 +18,6 @@ import {
 	N8nBadge,
 	N8nBreadcrumbs,
 	N8nCard,
-	N8nCheckbox,
 	N8nDropdownMenu,
 	N8nHeading,
 	N8nIcon,
@@ -27,6 +26,7 @@ import {
 	N8nTooltip,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
+import SelectableCard from '@/app/components/common/SelectableCard.vue';
 
 type FolderCardAction = UserAction<IUser> & {
 	children?: FolderCardAction[];
@@ -46,6 +46,8 @@ type Props = {
 	showMcpAccessActions?: boolean;
 	selectable?: boolean;
 	selected?: boolean;
+	selectionActive?: boolean;
+	selectionDisabled?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -55,6 +57,8 @@ const props = withDefaults(defineProps<Props>(), {
 	showMcpAccessActions: false,
 	selectable: false,
 	selected: false,
+	selectionActive: false,
+	selectionDisabled: false,
 });
 
 const i18n = useI18n();
@@ -221,29 +225,24 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 </script>
 
 <template>
-	<div data-test-id="folder-card">
+	<SelectableCard
+		:model-value="selected"
+		:selectable="selectable"
+		:selection-active="selectionActive"
+		:selection-disabled="selectionDisabled"
+		:checkbox-aria-label="
+			i18n.baseText('workflows.bulkActions.selectRow', {
+				interpolate: { name: data.name },
+			})
+		"
+		checkbox-test-id="folder-card-checkbox"
+		data-test-id="folder-card"
+		@update:model-value="emit('update:selected', $event)"
+	>
 		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
 			<N8nCard :class="$style.card">
 				<template #prepend>
 					<div :class="$style['prepend']">
-						<div
-							v-if="selectable"
-							:class="$style['selection-checkbox']"
-							@click.stop.prevent
-							@mousedown.stop
-							@dragstart.stop.prevent
-						>
-							<N8nCheckbox
-								:model-value="selected"
-								:aria-label="
-									i18n.baseText('workflows.bulkActions.selectRow', {
-										interpolate: { name: data.name },
-									})
-								"
-								data-test-id="folder-card-checkbox"
-								@update:model-value="emit('update:selected', $event)"
-							/>
-						</div>
 						<N8nIcon
 							data-test-id="folder-card-icon"
 							:class="$style['folder-icon']"
@@ -393,7 +392,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				</template>
 			</N8nCard>
 		</RouterLink>
-	</div>
+	</SelectableCard>
 </template>
 
 <style lang="scss" module>
@@ -410,16 +409,6 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-}
-
-.selection-checkbox {
-	display: flex;
-	align-items: center;
-	cursor: default;
-
-	:global(.el-checkbox) {
-		margin-right: 0;
-	}
 }
 
 .folder-icon {

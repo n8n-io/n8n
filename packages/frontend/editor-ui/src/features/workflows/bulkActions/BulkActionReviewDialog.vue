@@ -26,6 +26,7 @@ import type {
 	BulkMoveDestination,
 	ResolvedBulkAction,
 } from './bulkActions.types';
+import { getBulkSelectionCount } from './bulkActions.utils';
 
 const props = defineProps<{
 	open: boolean;
@@ -65,7 +66,9 @@ watch(
 const actionId = computed(() => props.action?.id ?? null);
 const affected = computed(() => props.action?.affected ?? []);
 const unchanged = computed(() => props.action?.unchanged ?? []);
-const selectedCount = computed(() => affected.value.length + unchanged.value.length);
+const affectedCount = computed(() => getBulkSelectionCount(affected.value));
+const unchangedCount = computed(() => getBulkSelectionCount(unchanged.value));
+const selectedCount = computed(() => affectedCount.value + unchangedCount.value);
 
 const isShare = computed(() => actionId.value === 'share');
 const isMove = computed(() => actionId.value === 'move');
@@ -84,8 +87,8 @@ const summary = computed(() =>
 		adjustToNumber: selectedCount.value,
 		interpolate: {
 			selected: String(selectedCount.value),
-			affected: String(affected.value.length),
-			unchanged: String(unchanged.value.length),
+			affected: String(affectedCount.value),
+			unchanged: String(unchangedCount.value),
 		},
 	}),
 );
@@ -199,8 +202,8 @@ const onConfirm = () => {
 				<N8nLink theme="text" @click="showAffected = !showAffected">
 					{{
 						i18n.baseText('workflows.bulkActions.review.affectedHeading', {
-							adjustToNumber: affected.length,
-							interpolate: { count: String(affected.length) },
+							adjustToNumber: affectedCount,
+							interpolate: { count: String(affectedCount) },
 						})
 					}}
 				</N8nLink>
@@ -216,8 +219,8 @@ const onConfirm = () => {
 				<N8nLink theme="text" @click="showUnchanged = !showUnchanged">
 					{{
 						i18n.baseText('workflows.bulkActions.review.unchangedHeading', {
-							adjustToNumber: unchanged.length,
-							interpolate: { count: String(unchanged.length) },
+							adjustToNumber: unchangedCount,
+							interpolate: { count: String(unchangedCount) },
 						})
 					}}
 				</N8nLink>
