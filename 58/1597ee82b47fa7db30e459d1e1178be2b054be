@@ -11,6 +11,7 @@ packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiProactive.ts
 packages/frontend/@n8n/i18n/src/locales/en.json
   s_f076c670c90238::t_6cf713e4b391fe 6964-6965
   s_f076c670c90238::t_f0c182fce38cae 6980-6981
+  h_21437a83314767 6979
 packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
   s_f076c670c90238::t_b0574695348055 128
   s_f076c670c90238::t_7ca5a650beccf7 423-451
@@ -25,6 +26,11 @@ packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiProac
   "git_ai_version": "1.6.22",
   "base_commit_sha": "581597ee82b47fa7db30e459d1e1178be2b054be",
   "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
   "sessions": {
     "s_f076c670c90238": {
       "agent_id": {
