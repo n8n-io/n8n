@@ -34,25 +34,25 @@ demo it as a two-test vitest suite run locally.
 ## Task List
 
 ### Phase 1: Foundation
-- [ ] Task 1: Scaffold `packages/n8n-test` (builds; empty vitest suite runs)
+- [x] Task 1: Scaffold `packages/n8n-test` (builds; empty vitest suite runs)
 
 ### Checkpoint: Foundation
-- [ ] `pnpm --filter n8n-test build` and `pnpm --filter n8n-test demo` both exit 0
+- [x] `pnpm --filter n8n-test build` and `pnpm --filter n8n-test demo` both exit 0
 
 ### Phase 2: Feasibility core (highest risk first)
-- [ ] Task 2: `runWorkflow` happy path through the real engine; demo happy-day test green
-- [ ] Task 3: Throw-mode errors + network lockdown; demo unhappy-day test green
+- [x] Task 2: `runWorkflow` happy path through the real engine; demo happy-day test green
+- [x] Task 3: Throw-mode errors + network lockdown; demo unhappy-day test green
 
 ### Checkpoint: Feasibility proven (the go/no-go moment)
-- [ ] Both demo tests green via real `WorkflowExecute` + real node types
-- [ ] Un-mocked HTTP fails loudly (`nock.disableNetConnect`)
-- [ ] Review with James before polish
+- [x] Both demo tests green via real `WorkflowExecute` + real node types
+- [x] Un-mocked HTTP fails loudly (`nock.disableNetConnect`)
+- [x] Review with James before polish
 
 ### Phase 3: Demo polish
-- [ ] Task 4: `input` parameter, demo-day tidy-up, gotchas write-up
+- [x] Task 4: `input` parameter, demo-day tidy-up, gotchas write-up
 
 ### Checkpoint: Complete
-- [ ] Demo dry-run from a clean checkout of the spike branch matches the spec's success criteria
+- [x] Demo dry-run from a clean checkout of the spike branch matches the spec's success criteria
 
 ## Risks and Mitigations
 

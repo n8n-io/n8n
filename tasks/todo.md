@@ -10,13 +10,13 @@ vitest suite. Wires the `@nodes-testing/*` tsconfig path alias (copied from
 `n8n-workflow`, `n8n-nodes-base`, `nock`, `vitest`.
 
 **Acceptance criteria:**
-- [ ] `pnpm --filter n8n-test build` exits 0
-- [ ] `pnpm --filter n8n-test demo` runs a placeholder test green
-- [ ] No other package is modified
+- [x] `pnpm --filter n8n-test build` exits 0
+- [x] `pnpm --filter n8n-test demo` runs a placeholder test green
+- [x] No other package is modified
 
 **Verification:**
-- [ ] Build succeeds: `pnpm --filter n8n-test build`
-- [ ] Tests pass: `pnpm --filter n8n-test demo`
+- [x] Build succeeds: `pnpm --filter n8n-test build`
+- [x] Tests pass: `pnpm --filter n8n-test demo`
 
 **Dependencies:** None
 
@@ -41,13 +41,13 @@ await the `workflowExecuteAfter` hook, and return
 `https://test-endpoint.com/test`) and the happy-day demo test.
 
 **Acceptance criteria:**
-- [ ] Happy-day demo test green: nock 200 `{ data: 'Hello world' }` →
+- [x] Happy-day demo test green: nock 200 `{ data: 'Hello world' }` →
       `output['test-output'] === 'Hello world'` via the real Set-node expression
-- [ ] No mocked execution: real `WorkflowExecute`, real `nodes-base` node types
+- [x] No mocked execution: real `WorkflowExecute`, real `nodes-base` node types
 
 **Verification:**
-- [ ] Tests pass: `pnpm --filter n8n-test demo`
-- [ ] Manual check: temporarily change the nock reply body and watch the
+- [x] Tests pass: `pnpm --filter n8n-test demo`
+- [x] Manual check: temporarily change the nock reply body and watch the
       assertion fail (proves the engine, not a canned value, produced output)
 
 **Dependencies:** Task 1
@@ -69,14 +69,14 @@ Add a vitest setup file calling `nock.disableNetConnect()` (mirroring
 demo test (500 → `await expect(...).rejects.toThrowError()`).
 
 **Acceptance criteria:**
-- [ ] Unhappy-day demo test green: nock 500 → `runWorkflow` rejects with the
+- [x] Unhappy-day demo test green: nock 500 → `runWorkflow` rejects with the
       HTTP Request node's error
-- [ ] Removing a nock intercept makes the test fail with a blocked-connection
+- [x] Removing a nock intercept makes the test fail with a blocked-connection
       error, not a real network call
 
 **Verification:**
-- [ ] Tests pass: `pnpm --filter n8n-test demo` (both tests)
-- [ ] Manual check: comment out a nock intercept → loud failure
+- [x] Tests pass: `pnpm --filter n8n-test demo` (both tests)
+- [x] Manual check: comment out a nock intercept → loud failure
 
 **Dependencies:** Task 2
 
@@ -89,9 +89,9 @@ demo test (500 → `await expect(...).rejects.toThrowError()`).
 
 ## Checkpoint: Feasibility proven — review with James before Task 4
 
-- [ ] Both demo tests green through the real engine
-- [ ] Un-mocked network blocked
-- [ ] Go/no-go on polish
+- [x] Both demo tests green through the real engine
+- [x] Un-mocked network blocked
+- [x] Go/no-go on polish
 
 ## Task 4: `input` parameter, demo tidy-up, gotchas write-up
 
@@ -103,13 +103,13 @@ requirement, error-mode semantics, SSRF-helper seam as production direction)
 into the spike branch/PR description.
 
 **Acceptance criteria:**
-- [ ] `runWorkflow(workflowJson, { some: 'field' })` demonstrably influences output
-- [ ] README documents: build prerequisite, `pnpm --filter n8n-test demo`
-- [ ] Gotchas list exists (branch/PR description)
+- [x] `runWorkflow(workflowJson, { some: 'field' })` demonstrably influences output
+- [x] README documents: build prerequisite, `pnpm --filter n8n-test demo`
+- [x] Gotchas list exists (branch/PR description)
 
 **Verification:**
-- [ ] Tests pass: `pnpm --filter n8n-test demo`
-- [ ] Manual check: demo dry-run from clean checkout following only the README
+- [x] Tests pass: `pnpm --filter n8n-test demo`
+- [x] Manual check: demo dry-run from clean checkout following only the README
 
 **Dependencies:** Task 3
 
