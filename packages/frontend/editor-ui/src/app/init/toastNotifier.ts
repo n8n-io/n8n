@@ -1,6 +1,7 @@
 import { setNotify } from '@n8n/composables/useToast';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { ElNotification } from 'element-plus';
+import type { AppContext } from 'vue';
 
 /**
  * The single bootstrap registration for the package-side `useToast`
@@ -16,7 +17,9 @@ import { ElNotification } from 'element-plus';
  * startup-error toast. The store resolves inside the closure, not here, so
  * registration does not require an active pinia yet.
  */
-export function registerToastNotifier(): void {
+export function registerToastNotifier(appContext?: AppContext): void {
+	if (appContext) ElNotification._context = appContext;
+
 	setNotify((options) => {
 		const notifications = useNotificationsStore();
 		const suppressed = notifications.areNotificationsSuppressed;

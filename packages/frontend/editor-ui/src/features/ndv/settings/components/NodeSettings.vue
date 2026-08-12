@@ -197,6 +197,7 @@ const initiallyVisibleParameterNames = ref<Set<string>>(new Set());
 
 const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
+const moreSettingsExpanded = ref(false);
 
 const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
 const settingsStore = useSettingsStore();
@@ -365,6 +366,9 @@ const showExecutionSettings = computed(
 	() =>
 		props.progressiveDisclosure &&
 		(displayedNodeTypeSettings.value.length > 0 || displayedCommonSettings.value.length > 0),
+);
+const shouldInitiallyExpandMoreSettings = computed(
+	() => visibleNodeTypeSettings.value.length > 0 || visibleCommonSettings.value.length > 0,
 );
 
 const isDisplayingCredentials = computed(
@@ -739,6 +743,7 @@ onMounted(async () => {
 	populateHiddenIssuesSet();
 	setNodeValues();
 	captureInitiallyVisibleParameters();
+	moreSettingsExpanded.value = shouldInitiallyExpandMoreSettings.value;
 	await nextTick();
 	if (nodeParameterWrapper.value) {
 		nodeParameterWrapper.value.scrollTop = props.initialScrollTop;
@@ -888,6 +893,7 @@ function handleSelectAction(params: INodeParameters) {
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					:flatten-single-value-collections="flattenSingleValueCollections"
 					:notice-theme="progressiveDisclosure ? 'info' : undefined"
+					:field-layout="progressiveDisclosure ? 'auto' : 'stacked'"
 					path="parameters"
 					:node="props.activeNode"
 					@value-changed="valueChanged"
@@ -958,34 +964,52 @@ function handleSelectAction(params: INodeParameters) {
 						@update:model-value="emit('alwaysShowAllSettingsChanged', Boolean($event))"
 					/>
 				</div>
-				<section v-if="showExecutionSettings" :class="$style.executionSettings">
-					<N8nText tag="h3" size="small" bold>
-						{{ i18n.baseText('nodePanel.executionSettings') }}
-					</N8nText>
-					<ParameterInputList
-						:parameters="displayedNodeTypeSettings"
-						:node-values="nodeValues"
-						:is-read-only="isReadOnly"
-						:hide-delete="true"
-						:hidden-issues-inputs="hiddenIssuesInputs"
-						:flatten-single-value-collections="flattenSingleValueCollections"
-						:notice-theme="progressiveDisclosure ? 'info' : undefined"
-						path="parameters"
-						@value-changed="valueChanged"
-						@parameter-blur="onParameterBlur"
+				<section v-if="showExecutionSettings" :class="$style.moreSettings">
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:icon="moreSettingsExpanded ? 'chevron-up' : 'chevron-down'"
+						:label="i18n.baseText('generic.showMore')"
+						:aria-expanded="moreSettingsExpanded"
+						:aria-controls="`node-more-settings-${node?.id}`"
+						:class="$style.moreSettingsToggle"
+						@click="moreSettingsExpanded = !moreSettingsExpanded"
 					/>
-					<ParameterInputList
-						:parameters="displayedCommonSettings"
-						:hide-delete="true"
-						:node-values="nodeValues"
-						:is-read-only="isReadOnly"
-						:hidden-issues-inputs="hiddenIssuesInputs"
-						:flatten-single-value-collections="flattenSingleValueCollections"
-						:notice-theme="progressiveDisclosure ? 'info' : undefined"
-						path=""
-						@value-changed="valueChanged"
-						@parameter-blur="onParameterBlur"
-					/>
+					<div
+						v-if="moreSettingsExpanded"
+						:id="`node-more-settings-${node?.id}`"
+						:class="$style.executionSettings"
+					>
+						<N8nText tag="h3" size="small" bold>
+							{{ i18n.baseText('nodePanel.executionSettings') }}
+						</N8nText>
+						<ParameterInputList
+							:parameters="displayedNodeTypeSettings"
+							:node-values="nodeValues"
+							:is-read-only="isReadOnly"
+							:hide-delete="true"
+							:hidden-issues-inputs="hiddenIssuesInputs"
+							:flatten-single-value-collections="flattenSingleValueCollections"
+							:notice-theme="progressiveDisclosure ? 'info' : undefined"
+							:field-layout="progressiveDisclosure ? 'auto' : 'stacked'"
+							path="parameters"
+							@value-changed="valueChanged"
+							@parameter-blur="onParameterBlur"
+						/>
+						<ParameterInputList
+							:parameters="displayedCommonSettings"
+							:hide-delete="true"
+							:node-values="nodeValues"
+							:is-read-only="isReadOnly"
+							:hidden-issues-inputs="hiddenIssuesInputs"
+							:flatten-single-value-collections="flattenSingleValueCollections"
+							:notice-theme="progressiveDisclosure ? 'info' : undefined"
+							:field-layout="progressiveDisclosure ? 'auto' : 'stacked'"
+							path=""
+							@value-changed="valueChanged"
+							@parameter-blur="onParameterBlur"
+						/>
+					</div>
 				</section>
 				<div v-if="showNoParametersNotice" class="no-parameters">
 					<N8nText>
@@ -1107,13 +1131,24 @@ function handleSelectAction(params: INodeParameters) {
 	}
 }
 
+.moreSettings {
+	display: flex;
+	flex-direction: column;
+	margin-top: var(--spacing--sm);
+	padding-top: var(--spacing--sm);
+	border-top: 1px solid var(--border-color--subtle);
+}
+
+.moreSettingsToggle {
+	width: 100%;
+	justify-content: flex-start;
+}
+
 .executionSettings {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--sm);
-	padding-top: var(--spacing--sm);
-	border-top: 1px solid var(--border-color--subtle);
+	padding-top: var(--spacing--xs);
 }
 
 .uiBlocker {

@@ -40,6 +40,7 @@ import { N8nInputLabel } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { ParameterFieldLayout } from './parameterFieldLayout';
 
 type Props = {
 	parameter: INodeProperties;
@@ -58,6 +59,7 @@ type Props = {
 	showDelete?: boolean;
 	onDelete?: () => void;
 	optionsOverrides?: ParameterOptionsOverrides;
+	fieldLayout?: ParameterFieldLayout;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -70,6 +72,7 @@ const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
 	showDelete: false,
 	onDelete: undefined,
+	fieldLayout: 'stacked',
 });
 const emit = defineEmits<{
 	blur: [];
@@ -139,6 +142,14 @@ const useInlineSwitchLayout = computed(
 	() =>
 		props.parameter.type === 'boolean' && isCollectionOverhaulEnabled.value && !isExpression.value,
 );
+
+const useHorizontalFieldLayout = computed(() => {
+	if (useInlineSwitchLayout.value) return false;
+	if (props.fieldLayout === 'horizontal') return true;
+	if (props.fieldLayout !== 'auto' || isExpression.value) return false;
+
+	return props.parameter.type === 'options' || props.parameter.type === 'number';
+});
 
 const parameterTooltipText = computed(() =>
 	i18n.nodeText(activeNode.value?.type).inputLabelDescription(props.parameter, props.path),
@@ -361,6 +372,34 @@ function removeOverride(clearField = false) {
 		@mouseenter="onWrapperMouseEnter"
 		@mouseleave="onWrapperMouseLeave"
 	>
+		<N8nInputLabel
+			:class="$style.inlineSwitchLabel"
+			:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+			:tooltip-text="parameterTooltipText"
+			:show-tooltip="focused"
+			:show-options="menuExpanded || focused || wrapperHovered"
+			:bold="false"
+			:size="label.size"
+			:input-name="parameter.name"
+			color="text-dark"
+		>
+			<template #options>
+				<ParameterOptions
+					v-if="displayOptions"
+					:parameter="parameter"
+					:value="value"
+					:is-read-only="isReadOnly"
+					:show-options="displayOptions"
+					:show-expression-selector="showExpressionSelector"
+					:is-content-overridden="isContentOverride"
+					:show-delete="showDelete"
+					:on-delete="onDelete"
+					@update:model-value="optionSelected"
+					@menu-expanded="onMenuExpanded"
+				/>
+			</template>
+		</N8nInputLabel>
+		<FromAiOverrideButton v-if="showOverrideButton" @click="applyOverride" />
 		<DraggableTarget
 			type="mapping"
 			:disabled="isDropDisabled"
@@ -392,39 +431,11 @@ function removeOverride(clearField = false) {
 				/>
 			</template>
 		</DraggableTarget>
-		<N8nInputLabel
-			:class="$style.inlineSwitchLabel"
-			:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
-			:tooltip-text="parameterTooltipText"
-			:show-tooltip="focused"
-			:show-options="menuExpanded || focused || wrapperHovered"
-			:bold="false"
-			:size="label.size"
-			:input-name="parameter.name"
-			color="text-dark"
-		>
-			<template #options>
-				<ParameterOptions
-					v-if="displayOptions"
-					:parameter="parameter"
-					:value="value"
-					:is-read-only="isReadOnly"
-					:show-options="displayOptions"
-					:show-expression-selector="showExpressionSelector"
-					:is-content-overridden="isContentOverride"
-					:show-delete="showDelete"
-					:on-delete="onDelete"
-					@update:model-value="optionSelected"
-					@menu-expanded="onMenuExpanded"
-				/>
-			</template>
-		</N8nInputLabel>
-		<FromAiOverrideButton v-if="showOverrideButton" @click="applyOverride" />
 	</div>
 	<N8nInputLabel
 		v-else
 		ref="inputLabel"
-		:class="[$style.wrapper]"
+		:class="[$style.wrapper, { [$style.horizontalField]: useHorizontalFieldLayout }]"
 		:label="hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 		:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
 		:show-tooltip="focused"
@@ -578,6 +589,27 @@ function removeOverride(clearField = false) {
 	}
 }
 
+.horizontalField {
+	display: grid;
+	grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+	column-gap: var(--spacing--xs);
+	align-items: center;
+
+	> :first-child,
+	> :nth-child(2) {
+		min-width: 0;
+	}
+
+	> :first-child > label {
+		position: relative;
+
+		> :last-child {
+			position: absolute;
+			right: 0;
+		}
+	}
+}
+
 .inlineSwitchWrapper {
 	display: flex;
 	align-items: center;
@@ -585,6 +617,10 @@ function removeOverride(clearField = false) {
 	min-height: 30px;
 	gap: 0;
 	line-height: 0;
+}
+
+.inlineSwitchToggle {
+	flex: 0 0 auto;
 }
 
 .inlineSwitchWrapper:has(:global(.switch-droppable-input)) {
@@ -600,7 +636,7 @@ function removeOverride(clearField = false) {
 .inlineSwitchLabel {
 	flex: 1;
 	min-width: 0;
-	padding-left: var(--spacing--2xs);
+	padding-right: var(--spacing--2xs);
 
 	:global(label.n8n-input-label) {
 		padding-bottom: 0;
