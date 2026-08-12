@@ -65,6 +65,7 @@ import {
 	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	WorkflowPublicationReason,
 } from './workflow-publication-outbox';
 import {
 	WorkflowPublicationTriggerStatus,
@@ -146,6 +147,7 @@ export {
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	WorkflowPublicationReason,
 	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,

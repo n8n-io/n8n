@@ -244,10 +244,11 @@ export class WorkflowTriggerActivator {
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
+		activationMode: WorkflowActivateMode,
 	): Promise<TriggerActivationOutcome> {
 		const startedAt = Date.now();
 		try {
-			const outcome = await this.activateInternal(dbWorkflow, version, nodeIds);
+			const outcome = await this.activateInternal(dbWorkflow, version, nodeIds, activationMode);
 			this.emitTriggerOperation(
 				'activate',
 				outcome.failures.length === 0 ? 'success' : 'failure',
@@ -265,6 +266,7 @@ export class WorkflowTriggerActivator {
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
+		activationMode: WorkflowActivateMode,
 	): Promise<TriggerActivationOutcome> {
 		return await this.tracing.startSpan(
 			{
@@ -294,7 +296,13 @@ export class WorkflowTriggerActivator {
 					// The two phases share the single isolate acquired here and mutate
 					// `outcome` via synchronous pushes, so overlapping them is safe.
 					const phaseResults = await Promise.allSettled([
-						this.registerWebhookTriggers(workflow, additionalData, nodeIds, outcome),
+						this.registerWebhookTriggers(
+							workflow,
+							additionalData,
+							nodeIds,
+							outcome,
+							activationMode,
+						),
 						this.registerNonWebhookTriggers(
 							dbWorkflow,
 							workflow,
@@ -302,6 +310,7 @@ export class WorkflowTriggerActivator {
 							resolveWorkflowData,
 							nodeIds,
 							outcome,
+							activationMode,
 						),
 					]);
 					this.throwRejectedPhaseError(phaseResults);
@@ -495,12 +504,19 @@ export class WorkflowTriggerActivator {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeIds: Set<INode['id']>,
 		outcome: TriggerActivationOutcome,
+		activationMode: WorkflowActivateMode,
 	) {
 		const webhooksByNode = this.groupWebhookTriggersByNode(workflow, additionalData, nodeIds);
 
 		const tasks = [...webhooksByNode].map(
 			async ([nodeId, { nodeName, webhooks }]) =>
-				await this.registerWebhookTriggersForNode(workflow, nodeId, nodeName, webhooks),
+				await this.registerWebhookTriggersForNode(
+					workflow,
+					nodeId,
+					nodeName,
+					webhooks,
+					activationMode,
+				),
 		);
 
 		for (const result of await Promise.all(tasks)) {
@@ -519,6 +535,7 @@ export class WorkflowTriggerActivator {
 		nodeId: INode['id'],
 		nodeName: string,
 		webhooks: IWebhookData[],
+		activationMode: WorkflowActivateMode,
 	): Promise<Result<{ nodeId: INode['id'] }, TriggerActivationFailure>> {
 		try {
 			for (const webhookData of webhooks) {
@@ -528,7 +545,7 @@ export class WorkflowTriggerActivator {
 							workflow,
 							webhookData,
 							mode: 'trigger',
-							activation: 'update',
+							activation: activationMode,
 						}),
 					TRIGGER_ACTIVATION_MAX_ATTEMPTS,
 				);
@@ -622,12 +639,13 @@ export class WorkflowTriggerActivator {
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 		nodeIds: Set<INode['id']>,
 		outcome: TriggerActivationOutcome,
+		activationMode: WorkflowActivateMode,
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 		if (triggerNodeIds.length === 0) return;
 
 		const registration = this.nonWebhookTriggerRegistrar.createRegistrationContext(dbWorkflow, {
-			activationMode: 'update',
+			activationMode,
 			executionMode: 'trigger',
 			additionalData,
 			resolveWorkflowData,

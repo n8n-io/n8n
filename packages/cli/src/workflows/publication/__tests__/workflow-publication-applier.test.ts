@@ -283,11 +283,45 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['b']),
+			'update',
 		);
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
 		);
+	});
+
+	describe('activation mode from the record reason', () => {
+		test.each([
+			['publish', 'update'],
+			['startup', 'init'],
+			['leadership-takeover', 'leadershipChange'],
+			['reconcile', 'update'],
+		] as const)('reason %s activates with mode %s', async (reason, expectedMode) => {
+			setTriggerSets([], [triggerNode('a')]);
+
+			await applier.apply(makeRecord({ reason }));
+
+			expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				newVersion,
+				new Set(['a']),
+				expectedMode,
+			);
+		});
+
+		test('a record without a reason (pre-migration row) activates with update', async () => {
+			setTriggerSets([], [triggerNode('a')]);
+
+			await applier.apply(makeRecord({ reason: undefined }));
+
+			expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				newVersion,
+				new Set(['a']),
+				'update',
+			);
+		});
 	});
 
 	test('reconciles by registering desired non-webhook triggers missing from memory', async () => {
@@ -316,6 +350,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['a']),
+			'update',
 		);
 	});
 
@@ -365,6 +400,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['a']),
+			'update',
 		);
 	});
 
@@ -386,6 +422,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['b', 'c']),
+			'update',
 		);
 	});
 
@@ -453,6 +490,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['a']),
+			'update',
 		);
 		// The cache is invalidated before the version is advanced and repopulated
 		// straight after, so the empty window never serves a stale version, all
@@ -664,6 +702,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['a']),
+			'update',
 		);
 	});
 });
