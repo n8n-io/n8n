@@ -497,3 +497,22 @@ export function addExecutionHints(
 		});
 	}
 }
+
+/**
+ * Groups execution items by the value of a node parameter, e.g. to batch rows
+ * per target table before writing.
+ */
+export function groupItemsByParameter(
+	items: INodeExecutionData[],
+	getNodeParam: (itemIndex: number) => string,
+): IDataObject {
+	const groups: IDataObject = {};
+	for (let i = 0; i < items.length; i++) {
+		const key = getNodeParam(i);
+		if (groups[key] === undefined) {
+			groups[key] = [];
+		}
+		(groups[key] as INodeExecutionData[]).push(items[i]);
+	}
+	return groups;
+}
