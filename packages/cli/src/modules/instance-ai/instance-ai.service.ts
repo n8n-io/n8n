@@ -1,4 +1,4 @@
-import { AgentEvent, filterRuntimeSkillSource } from '@n8n/agents';
+import { AgentEvent, createScopedWorkspace, filterRuntimeSkillSource } from '@n8n/agents';
 import type {
 	Message,
 	Workspace,
@@ -35,7 +35,6 @@ import {
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
-	createScopedWorkspace,
 	getPromptWorkspaceRoot,
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,

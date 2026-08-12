@@ -140,7 +140,6 @@ export interface WorkspaceSandbox {
 	readonly provider: string;
 	status: ProviderStatus;
 	getInstructions?(): string;
-	getDefaultCommandEnv?(): NodeJS.ProcessEnv;
 	executeCommand?(
 		command: string,
 		args?: string[],

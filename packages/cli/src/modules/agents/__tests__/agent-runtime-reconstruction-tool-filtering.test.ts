@@ -23,8 +23,9 @@ import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
@@ -135,7 +136,8 @@ function makeService(overrides: {
 		{ modules: [] } as unknown as AgentsConfig,
 		mock<AiService>(),
 		outboundHttp,
-		mock<AgentKnowledgeSandboxService>(),
+		mock<AgentWorkspaceService>(),
+		mock<AgentKnowledgeMirrorService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
 		credentialsFinderService,
