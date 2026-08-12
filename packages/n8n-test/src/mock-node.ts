@@ -79,7 +79,7 @@ export function createMockNodeType(mocks: Map<string, MockEntry>): INodeType {
 			const entry = mocks.get(nodeName);
 			if (!entry) throw new UnexpectedError(`No mock registered for node "${nodeName}"`);
 			entry.capturedInput = this.getInputData()[0]?.json;
-			return [[{ json: entry.output }]];
+			return await Promise.resolve([[{ json: entry.output }]]);
 		},
 	};
 }
