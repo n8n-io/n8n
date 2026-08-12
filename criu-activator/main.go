@@ -262,7 +262,7 @@ func supervisor() {
 			servePassive(w, r)
 			return
 		}
-		if err := ensureRunningAndTrack(); err != nil {
+		if err := ensureRunningAndTrack(r); err != nil {
 			logf("wake failed for %s %s: %v\n--- restore.log tail ---\n%s", r.Method, r.URL.Path, err, tail(imgDir+"/restore.log", 4000))
 			http.Error(w, "restore failed: "+err.Error(), http.StatusServiceUnavailable)
 			return
@@ -280,7 +280,7 @@ func supervisor() {
 // ensureRunningAndTrack restores n8n if dumped and registers an in-flight
 // request. Concurrent requests during a restore queue on the mutex; the
 // first one pays the restore, the rest see state==running.
-func ensureRunningAndTrack() error {
+func ensureRunningAndTrack(r *http.Request) error {
 	sup.mu.Lock()
 	defer sup.mu.Unlock()
 	if sup.state == dumped {
@@ -289,7 +289,7 @@ func ensureRunningAndTrack() error {
 			return err
 		}
 		refreshCacheLocked()
-		logf("restored on demand in %v", time.Since(t).Round(time.Millisecond))
+		logf("restored on demand in %v (woken by %s %s)", time.Since(t).Round(time.Millisecond), r.Method, r.URL.Path)
 	}
 	sup.inflight++
 	sup.lastActivity = time.Now()
