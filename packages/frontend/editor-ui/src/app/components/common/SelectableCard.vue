@@ -53,6 +53,9 @@ const emit = defineEmits<{
 <style lang="scss" module>
 .wrapper {
 	position: relative;
+	// Fill the list row: list items are flex containers, so the wrapper must
+	// stretch rather than shrink to its content width.
+	width: 100%;
 }
 
 .selectable {

@@ -457,6 +457,7 @@ onMounted(() => {
 				:needs-setup="data.needsSetup"
 				:selectable="true"
 				:selected="selection.isSelected(data)"
+				:selection-active="selectedCount > 0"
 				:selection-disabled="!selection.canSelect(data)"
 				@click="setRouteCredentialId"
 				@connected="refreshCredentials"
@@ -586,6 +587,9 @@ onMounted(() => {
 
 .selectAllCheckbox {
 	margin: 0;
+	// Align the checkbox square with the per-card selection checkboxes, which are
+	// centered in a --spacing--xl (32px) gutter: (32px - 16px square) / 2 = 8px.
+	padding-left: var(--spacing--2xs);
 }
 
 .sidebarContainer ul {

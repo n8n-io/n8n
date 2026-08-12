@@ -310,9 +310,11 @@ describe('CredentialsView', () => {
 			const { getByTestId } = renderComponent();
 
 			/**
-			 * userEvent DOES NOT work here
+			 * userEvent DOES NOT work here.
+			 * Click the card heading rather than the item root: the root is the
+			 * selection wrapper, and the open handler lives on the inner card.
 			 */
-			await fireEvent.click(getByTestId('resources-list-item'));
+			await fireEvent.click(within(getByTestId('resources-list-item')).getByRole('heading'));
 			await waitFor(() =>
 				expect(replaceSpy).toHaveBeenCalledWith(
 					expect.objectContaining({ params: { credentialId: '1' } }),
