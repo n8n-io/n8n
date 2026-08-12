@@ -130,7 +130,7 @@ function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
 					uses.
 				-->
 				<N8nCollapsiblePanel
-					v-if="descriptor.type === 'action'"
+					v-else-if="descriptor.type === 'action'"
 					:title="descriptor.displayName"
 					:model-value="isActionPanelOpen(descriptor.name)"
 					@update:model-value="actionPanelsOpen[descriptor.name] = $event"
