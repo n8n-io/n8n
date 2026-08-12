@@ -6961,6 +6961,8 @@
 	"instanceAi.message.retry": "Retry",
 	"instanceAi.input.amendPlaceholder": "Amend the {role} agent...",
 	"instanceAi.proactiveOffer.dismiss": "Dismiss",
+	"instanceAi.proactiveOffer.cta": "Need help?",
+	"instanceAi.proactiveOffer.executionError.title": "I can help explain, debug or fix this with a simple click. Context will be added automatically.",
 	"instanceAi.proactiveOffer.credentialError.title": "I can explain what this error means and what to change. Context will be added automatically.",
 	"instanceAi.proactiveOffer.demo.title": "I can help with that",
 	"instanceAi.proactiveOffer.demo.detail": "Something looks stuck. I can walk you through what happened.",
