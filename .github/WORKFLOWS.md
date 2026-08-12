@@ -503,6 +503,12 @@ Scripts in `.github/scripts/`:
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 
+### AI Review Scripts
+
+| Script                                    | Purpose                                                                                          | Called By                          |
+|-------------------------------------------|--------------------------------------------------------------------------------------------------|------------------------------------|
+| `ai-review/validate-review-output.mjs`    | Validates the JSON emitted by the `ai-pr-review` skill and verifies finding line anchors against the PR diff | `ai-pr-review` skill (locally); AI review runner workflow (planned) |
+
 ### Slack Scripts
 
 See [Slack Notifications](#slack-notifications) for the calling pattern.
