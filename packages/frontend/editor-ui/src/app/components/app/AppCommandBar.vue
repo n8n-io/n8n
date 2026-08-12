@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nCommandBar } from '@n8n/design-system';
-import { computed, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useStyles } from '@n8n/composables/useStyles';
@@ -35,16 +35,26 @@ watch(showCommandBar, (newVal) => {
 	}
 });
 
-function onCommandBarOpenChange(open: boolean) {
+const isCommandBarOpen = ref(false);
+
+watch(isCommandBarOpen, (open) => {
 	if (open) {
 		commandBarEventBus.emit('open');
 	}
+});
+
+function onOpenRequest() {
+	isCommandBarOpen.value = true;
 }
+
+onMounted(() => commandBarEventBus.on('open:request', onOpenRequest));
+onBeforeUnmount(() => commandBarEventBus.off('open:request', onOpenRequest));
 </script>
 
 <template>
 	<N8nCommandBar
 		v-if="showCommandBar"
+		v-model:open="isCommandBarOpen"
 		:items="items"
 		:placeholder="placeholder"
 		:context="context"
@@ -52,6 +62,5 @@ function onCommandBarOpenChange(open: boolean) {
 		:z-index="APP_Z_INDEXES.COMMAND_BAR"
 		@input-change="onCommandBarChange"
 		@navigate-to="onCommandBarNavigateTo"
-		@update:open="onCommandBarOpenChange"
 	/>
 </template>

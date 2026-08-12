@@ -99,6 +99,7 @@ import { type ContextMenuAction } from '@/features/shared/contextMenu/composable
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
 
 const $style = useCssModule();
@@ -499,6 +500,11 @@ const keyMap = computed(() => {
 		i: () => emit('update:logs:input-open'),
 		o: () => emit('update:logs:output-open'),
 		z: onToggleZoomMode,
+		// override browser find; the command bar searches the workflow
+		ctrl_f: {
+			disabled: () => settingsStore.isCanvasOnly,
+			run: () => commandBarEventBus.emit('open:request'),
+		},
 	};
 
 	// Group collapse state is a view preference, so expanding/collapsing
