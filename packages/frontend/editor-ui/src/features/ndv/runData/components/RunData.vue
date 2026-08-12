@@ -660,6 +660,12 @@ const showGenerateSampleDataButton = computed(
 );
 
 /**
+ * Sample data generation takes seconds; editing or pinning underneath it would
+ * race the result, so it blocks the pane like any other in-flight pane work.
+ */
+const isPaneBlocked = computed(() => props.blockUI || isGeneratingSampleData.value);
+
+/**
  * Fills the editor rather than pinning: the point of edit mode is that the user
  * reviews and saves the data themselves, so generating must not pin behind them.
  * `clearJsonKey` strips the `json` envelope to match what the editor displays.
@@ -1635,6 +1641,7 @@ defineExpose({ enterEditMode });
 						v-if="canGenerateSampleData"
 						variant="subtle"
 						size="small"
+						class="mr-2xs"
 						:title="i18n.baseText('ndv.output.generateSampleData.editor.tooltip')"
 						:circle="false"
 						:loading="isGeneratingSampleData"
@@ -1645,7 +1652,6 @@ defineExpose({ enterEditMode });
 					/>
 					<N8nButton
 						variant="subtle"
-						class="ml-2xs"
 						:label="i18n.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>
@@ -2273,9 +2279,7 @@ defineExpose({ enterEditMode });
 			@update:current-page="onCurrentPageChange"
 			@update:page-size="onPageSizeChange"
 		/>
-		<!-- Also blocks while sample data is generating: the request takes seconds, and
-		     editing or pinning underneath it would race the result. -->
-		<N8nBlockUi :show="blockUI || isGeneratingSampleData" :class="$style.uiBlocker" />
+		<N8nBlockUi :show="isPaneBlocked" :class="$style.uiBlocker" />
 	</div>
 </template>
 
