@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
@@ -27,7 +28,7 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 });
 
 vi.mock('../workflow-validation-warnings', () => ({
-	partitionWarnings: vi.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
+	partitionWarnings: vi.fn((warnings: unknown[]) => ({ blocking: [], informational: warnings })),
 }));
 
 const generatedWorkflow = {
@@ -114,6 +115,7 @@ type BuildToolOutput = {
 		category: string;
 		shouldEdit: boolean;
 		reason?: string;
+		guidance?: string;
 	};
 };
 
@@ -200,7 +202,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx',
 		});
 		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
-			errors: [],
+			blocking: [],
 			informational: warnings,
 		}));
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
@@ -485,6 +487,164 @@ describe('createBuildWorkflowTool', () => {
 				save_operation: 'update',
 			}),
 		);
+	});
+
+	it('updates a workflow created earlier in the run without requesting approval', async () => {
+		const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				grantSessionToolApproval,
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+		const tool = createBuildWorkflowTool(context);
+		const suspend = vi.fn();
+
+		const created = await executeTool<BuildToolOutput>(tool, { filePath });
+		// INS-1044: follow-up builds reuse the workflow created by the first build.
+		const updated = await executeTool<BuildToolOutput>(tool, { filePath }, { suspend });
+
+		expect(created).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(updated).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(context.aiCreatedWorkflowIds).toEqual(new Set(['wf-1']));
+		expect(grantSessionToolApproval).toHaveBeenCalledWith('workflows:update:wf-1');
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('updates a workflow with a session ownership grant without requesting approval', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				sessionApprovedToolKeys: new Set(['workflows:update:wf-session']),
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+		const suspend = vi.fn();
+
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-session' },
+			{ suspend },
+		);
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-session' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('requests approval before updating a pre-existing workflow', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+		const suspend = vi.fn();
+
+		await executeTool(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-existing' },
+			{ suspend },
+		);
+
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Edit Target workflow (ID: wf-existing)?',
+				severity: 'warning',
+				workflowId: 'wf-existing',
+			}),
+		);
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('persists a session update grant when edit approval resumes with scope=session', async () => {
+		const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				grantSessionToolApproval,
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-existing' },
+			{ resumeData: { approved: true, scope: 'session' } },
+		);
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-existing' });
+		expect(grantSessionToolApproval).toHaveBeenCalledWith('workflows:update:wf-existing');
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not persist a grant for a one-time edit approval', async () => {
+		const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				grantSessionToolApproval,
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+
+		await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-existing' },
+			{ resumeData: { approved: true } },
+		);
+
+		expect(grantSessionToolApproval).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('blocks updates to workflows created earlier in the run when admin policy denies them', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				aiCreatedWorkflowIds: new Set(['wf-created']),
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'blocked',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-created',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			workflowId: 'wf-created',
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'permission_blocked',
+			},
+			errors: ['Action blocked by admin'],
+		});
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
 	it('returns conflict remediation when the workflow changed outside the conversation', async () => {
@@ -819,22 +979,68 @@ describe('createBuildWorkflowTool', () => {
 		).toBe(false);
 	});
 
-	it('rejects source paths outside the runtime workspace', () => {
+	it('rejects structurally invalid source paths at the schema layer', () => {
 		expect(buildWorkflowInputSchema.safeParse({ filePath: '../main.workflow.ts' }).success).toBe(
-			false,
-		);
-		expect(buildWorkflowInputSchema.safeParse({ filePath: '/tmp/main.workflow.ts' }).success).toBe(
 			false,
 		);
 		expect(buildWorkflowInputSchema.safeParse({ filePath: '~/main.workflow.ts' }).success).toBe(
 			false,
 		);
+		expect(
+			buildWorkflowInputSchema.safeParse({ filePath: '/src/../../../etc/passwd' }).success,
+		).toBe(false);
+		expect(buildWorkflowInputSchema.safeParse({ filePath: 'src\\main.workflow.ts' }).success).toBe(
+			false,
+		);
+	});
+
+	it('accepts absolute paths at the schema layer so the handler can resolve them', () => {
+		// Root membership is only checkable at handler time; a schema rejection
+		// would surface as a hard AI_InvalidToolInputError instead of a
+		// recoverable tool result.
+		expect(buildWorkflowInputSchema.safeParse({ filePath: '/tmp/main.workflow.ts' }).success).toBe(
+			true,
+		);
+	});
+
+	it('builds from an absolute path under the workspace root', async () => {
+		const source = 'workflow source from workspace';
+		const { context, filePath } = makeContext({
+			source,
+			overrides: { workspaceRoot: '/home/user/workspace' },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath: `/home/user/workspace/${filePath}`,
+			name: 'Daily Weather to Slack',
+		});
+
+		// Normalized to the workspace-relative path throughout (binding + output).
+		expect(result).toMatchObject({ success: true, filePath, workflowId: 'wf-1' });
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+	});
+
+	it('returns a recoverable error for absolute paths outside the workspace root', async () => {
+		const { context } = makeContext({
+			overrides: { workspaceRoot: '/home/user/workspace' },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath: '/tmp/main.workflow.ts',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			filePath: '/tmp/main.workflow.ts',
+			remediation: { category: 'code_fixable', reason: 'invalid_file_path' },
+		});
+		expect((result.errors ?? []).join('\n')).toContain('workspace-relative path');
 	});
 
 	it('returns blocked remediation when the bound workflow no longer exists', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockRejectedValue(
-			new Error('Workflow not found'),
+			new WorkflowNotFoundError('wf-deleted'),
 		);
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
@@ -858,9 +1064,9 @@ describe('createBuildWorkflowTool', () => {
 	it('returns a structured save failure when preserving existing webhook IDs fails', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		vi.mocked(ensureWebhookIds).mockRejectedValueOnce(
-			new Error(
-				'Failed to load existing workflow wf-bound to preserve webhook IDs: Workflow not found',
-			),
+			new Error('Failed to load existing workflow wf-bound to preserve webhook IDs', {
+				cause: new WorkflowNotFoundError('wf-bound'),
+			}),
 		);
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
@@ -880,6 +1086,34 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(result.errors?.[0]).toContain('preserve webhook IDs');
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('returns blocked remediation when binding to a missing workflow id fails', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		vi.mocked(context.workflowService.get).mockRejectedValue(
+			new WorkflowNotFoundError('wf-deleted'),
+		);
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-deleted',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			filePath,
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'workflow_id_not_found',
+			},
+		});
+		expect(result.errors?.[0]).toContain('Failed to bind source file');
+		expect(result.remediation?.guidance).toContain(
+			'Call build-workflow again with the same filePath and omit workflowId',
+		);
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
 	it('returns blocked remediation when create permission is blocked', async () => {
@@ -1087,7 +1321,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx',
 		});
 		vi.mocked(partitionWarnings).mockReturnValueOnce({
-			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			blocking: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
 			informational: [],
 		});
 
@@ -1117,7 +1351,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx' as const,
 		};
 		const partitionedWarnings = {
-			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			blocking: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
 			informational: [],
 		};
 		vi.mocked(compileWorkflowSource)
@@ -1153,7 +1387,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx' as const,
 		};
 		const partitionedWarnings = {
-			errors: validationResult.warnings,
+			blocking: validationResult.warnings,
 			informational: [],
 		};
 		vi.mocked(compileWorkflowSource)

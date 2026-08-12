@@ -44,13 +44,6 @@ export function useSurfaceMcpEmptyState({
 		() => showOpportunity.value && surfaceMcpStore.isTileVariant && suppressedBy.value === null,
 	);
 
-	const showReminder = computed(
-		() =>
-			isEligible.value &&
-			surfaceMcpStore.isFirstOpenModalVariant &&
-			surfaceMcpStore.hasDismissedFirstOpenModal,
-	);
-
 	watch(
 		showOpportunity,
 		(value) => {
@@ -87,6 +80,5 @@ export function useSurfaceMcpEmptyState({
 		showOpportunity,
 		suppressedBy,
 		showTile,
-		showReminder,
 	};
 }

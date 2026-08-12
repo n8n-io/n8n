@@ -61,6 +61,14 @@ describe('isQuotaExhaustedError', () => {
 		expect(isQuotaExhaustedError(sdkError('rate limited', 429, 'rate_limit'))).toBe(false);
 		expect(isQuotaExhaustedError(undefined)).toBe(false);
 	});
+
+	it('stops walking a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(isQuotaExhaustedError(outer)).toBe(false);
+	});
 });
 
 describe('mapAgentChunkToEvent', () => {
@@ -424,6 +432,68 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps target approval details without replacing the outer routing fields', () => {
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'build-agent-call',
+				toolName: 'build-agent',
+				input: { agentRef: 'support-agent' },
+				suspendPayload: {
+					type: 'approval',
+					requestId: 'approval-1',
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+					builderCheckpoint: { runId: 'builder-run', toolCallId: 'call-agent' },
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'approval-1',
+				toolCallId: 'build-agent-call',
+				toolName: 'build-agent',
+				args: { agentRef: 'support-agent' },
+				severity: 'warning',
+				message: 'Confirmation required',
+				targetApproval: {
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+				},
+			},
+		});
+	});
+
+	it('keeps direct SDK approvals as ordinary Instance AI confirmations', () => {
+		const result = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'direct-tool-call',
+			toolName: 'delete_record',
+			input: { id: 'record-1' },
+			suspendPayload: {
+				type: 'approval',
+				requestId: 'approval-1',
+				toolName: 'delete_record',
+				args: { id: 'record-1' },
+			},
+		});
+
+		expect(result).toMatchObject({
+			type: 'confirmation-request',
+			payload: {
+				toolCallId: 'direct-tool-call',
+				toolName: 'delete_record',
+				args: { id: 'record-1' },
+			},
+		});
+		if (result?.type !== 'confirmation-request') throw new Error('Expected confirmation request');
+		expect(result.payload).not.toHaveProperty('targetApproval');
+	});
+
 	it('maps pause-for-user continue confirmations and web search metadata', () => {
 		expect(
 			map({
@@ -514,6 +584,70 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps overloaded error records to an actionable message', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'overloaded_error', message: 'Overloaded' },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content: 'The model is overloaded. Try again in a few minutes.',
+			},
+		});
+	});
+
+	it('maps plain error records with a non-empty message', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'api_error', message: 'Provider failed' },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Provider failed' },
+		});
+	});
+
+	it('falls back to an unknown error for malformed error records', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'api_error', message: 42 },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
+
+		expect(map({ type: 'error', error: null })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
+	});
+
+	it('maps an error with a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(map({ type: 'error', error: outer })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'stream failed' },
+		});
+	});
+
 	it('tags quota-exhausted error chunks with a quota_exhausted code', () => {
 		const responseBody = JSON.stringify({
 			error: { type: 'quota_exhausted', message: 'Have reached end of quota' },
@@ -529,6 +663,33 @@ describe('mapAgentChunkToEvent', () => {
 				statusCode: 403,
 				code: 'quota_exhausted',
 				technicalDetails: responseBody,
+			},
+		});
+	});
+
+	it('surfaces the gateway error message from an ai-sdk error wrapped in error.cause', () => {
+		// The n8n Connect gateway returns an actionable message; the ai-sdk APICallError
+		// reaches the stream wrapped, so the details live on error.cause.
+		const responseBody = JSON.stringify({
+			error: {
+				message:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				type: 'ai_gateway_request_error',
+			},
+		});
+		const wrapped = new Error('Bad Request') as Error & { cause?: unknown };
+		wrapped.cause = apiError('Bad Request', 400, responseBody);
+
+		expect(map({ type: 'error', error: wrapped })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				technicalDetails: responseBody,
+				// Unwrapped from the same cause as the body — a wrapped error must not lose it.
+				statusCode: 400,
 			},
 		});
 	});

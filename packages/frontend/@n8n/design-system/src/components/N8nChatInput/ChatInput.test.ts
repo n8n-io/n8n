@@ -1,12 +1,10 @@
-/* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { mount } from '@vue/test-utils';
 import { vi } from 'vitest';
 
-import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
-
 import N8nChatInput from './ChatInput.vue';
+import { createComponentRenderer } from '../../__tests__/render';
 
 const renderComponent = createComponentRenderer(N8nChatInput);
 

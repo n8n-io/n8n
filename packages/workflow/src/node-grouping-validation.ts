@@ -338,7 +338,7 @@ function groupRuleViolationMessage(
 	result: Extract<NodeGroupValidationResult, { valid: false }>,
 	nodeLabel: (nodeId: string) => string,
 ): string {
-	const label = `Node group "${group.name}" (${group.id})`;
+	const label = `Node group "${group.name}"`;
 	switch (result.reason) {
 		case 'trigger-selected':
 			return `${label} ${NODE_GROUPING_RULES.triggerSelected.violation}: ${result.triggers.join(', ')}.`;

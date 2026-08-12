@@ -22,6 +22,7 @@ import {
 	distributeShards,
 	selectTests,
 	changedRuntimeDepsFromManifests,
+	changedOverrideTargets,
 } from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -78,7 +79,7 @@ import {
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
-import { readLockfileImporters } from './core/read-lockfile-importers.js';
+import { readLockfileImporters, readRuntimeClosure } from './core/read-lockfile-importers.js';
 import { readManifestDiffs, readTsconfigDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
@@ -620,6 +621,33 @@ function readChangedFiles(options: CliOptions): string[] | null {
 	return files.length > 0 ? files : null;
 }
 
+/** Read a package's own name from its package.json, or undefined if unreadable. */
+function readPackageName(packageDir: string): string | undefined {
+	try {
+		const pkg = JSON.parse(fs.readFileSync(path.join(packageDir, 'package.json'), 'utf-8')) as {
+			name?: unknown;
+		};
+		return typeof pkg.name === 'string' ? pkg.name : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Resolve the affected-package set for scoping by recomputing from
+ * CHANGED_FILES. Never let a graph-analysis failure break scoping for every
+ * package — degrade to "no signal" (skip on no local changes).
+ */
+function resolveAffectedPackages(rootDir: string, changedFiles: string[] | null): string[] | null {
+	if (changedFiles === null) return null;
+	try {
+		return affectedPackages({ rootDir, changedFiles });
+	} catch (error) {
+		console.warn(`[janitor] Could not compute affected packages: ${(error as Error).message}`);
+		return null;
+	}
+}
+
 function runAffectedPackages(options: CliOptions): void {
 	const result = affectedPackages({
 		rootDir: findWorkspaceRoot(process.cwd()),
@@ -630,21 +658,29 @@ function runAffectedPackages(options: CliOptions): void {
 
 function runTestScopedCmd(options: CliOptions): void {
 	const packageDir = options.packageDir ?? process.cwd();
+	const rootDir = findWorkspaceRoot(process.cwd());
 	const changedFiles = readChangedFiles(options);
 	const exitCode = runTestScoped({
 		packageDir,
-		rootDir: findWorkspaceRoot(process.cwd()),
+		rootDir,
 		changedFiles,
+		packageName: readPackageName(packageDir),
+		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
 		passthroughArgs: options.passthroughArgs,
 	});
 	process.exit(exitCode);
 }
 
 function runScope(options: CliOptions): void {
+	const packageDir = options.packageDir ?? process.cwd();
+	const rootDir = findWorkspaceRoot(process.cwd());
+	const changedFiles = readChangedFiles(options);
 	const result = computeScope({
-		packageDir: options.packageDir ?? process.cwd(),
-		changedFiles: readChangedFiles(options),
-		rootDir: findWorkspaceRoot(process.cwd()),
+		packageDir,
+		changedFiles,
+		rootDir,
+		packageName: readPackageName(packageDir),
+		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
 	});
 	console.log(formatScope(result));
 }
@@ -691,10 +727,18 @@ function runSelect(options: CliOptions): void {
 	// Only parse the (large) lockfile when a RUNTIME dependency actually changed —
 	// the only case the dep-graph selector (389) acts on. A devDep-only manifest
 	// change would parse it for nothing.
-	const lockfileImporters =
-		manifests && changedRuntimeDepsFromManifests(manifests).length > 0
-			? readLockfileImporters()
-			: undefined;
+	const runtimeDepsChanged = manifests
+		? changedRuntimeDepsFromManifests(manifests).length > 0
+		: false;
+	const lockfileImporters = runtimeDepsChanged ? readLockfileImporters() : undefined;
+	// The closure classifies override pins; a runtime-dep change already forces
+	// broad, so don't compute it then.
+	const overridesChanged =
+		!runtimeDepsChanged &&
+		Object.values(manifests ?? {}).some(({ before, after }) => {
+			const targets = changedOverrideTargets(before, after);
+			return targets === null || targets.length > 0;
+		});
 	const result = selectTests({
 		changedFiles,
 		mapFile: options.mapFile,
@@ -702,6 +746,7 @@ function runSelect(options: CliOptions): void {
 		manifests,
 		tsconfigs,
 		lockfileImporters,
+		runtimeClosure: overridesChanged ? readRuntimeClosure() : undefined,
 	});
 	console.log(JSON.stringify(result));
 }

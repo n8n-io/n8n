@@ -1,8 +1,20 @@
 import type { ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
+
+export type AgentSummary = Pick<
+	Agent,
+	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
+>;
+
+export type AgentSummaryFilters = {
+	query?: string;
+	publishedOnly?: boolean;
+	excludeAgentId?: string;
+	limit?: number;
+};
 
 @Service()
 export class AgentRepository extends Repository<Agent> {
@@ -18,16 +30,68 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
-	async findByProjectIdsPaginated(
-		projectIds: string[],
-		options: ListAgentsQueryDto,
-	): Promise<{ count: number; data: Agent[] }> {
-		if (projectIds.length === 0) return { count: 0, data: [] };
+	/**
+	 * Lean listing for search surfaces: selects only summary columns, skipping
+	 * the JSON config columns and the activeVersion join, and pushes all
+	 * filters and the limit into the query.
+	 */
+	async findSummariesByProjectIds(
+		projectIds: string[] | null,
+		options: AgentSummaryFilters = {},
+	): Promise<AgentSummary[]> {
+		if (projectIds?.length === 0) return [];
 
 		const query = this.createQueryBuilder('agent')
-			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
-			.where('agent.projectId IN (:...projectIds)', { projectIds });
+			.select([
+				'agent.id',
+				'agent.name',
+				'agent.projectId',
+				'agent.activeVersionId',
+				'agent.availableInMCP',
+				'agent.updatedAt',
+			])
+			.orderBy('agent.updatedAt', 'DESC');
 
+		if (projectIds !== null) {
+			query.where('agent.projectId IN (:...projectIds)', { projectIds });
+		}
+		if (options.query) {
+			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${options.query}%` });
+		}
+		if (options.publishedOnly) {
+			query.andWhere('agent.activeVersionId IS NOT NULL');
+		}
+		if (options.excludeAgentId) {
+			query.andWhere('agent.id != :excludeAgentId', { excludeAgentId: options.excludeAgentId });
+		}
+		if (options.limit !== undefined) {
+			query.take(options.limit);
+		}
+
+		return await query.getMany();
+	}
+
+	async findByProjectIdsPaginated(
+		projectIds: string[] | null,
+		options: ListAgentsQueryDto,
+		{ withProject = false }: { withProject?: boolean } = {},
+	): Promise<{ count: number; data: Agent[] }> {
+		if (projectIds?.length === 0) return { count: 0, data: [] };
+
+		const query = this.createQueryBuilder('agent').leftJoinAndSelect(
+			'agent.activeVersion',
+			'activeVersion',
+		);
+
+		// Only cross-project consumers (MCP settings) label each agent by its home
+		// project; the overview lists don't read it, so they skip the extra join.
+		if (withProject) {
+			query.leftJoinAndSelect('agent.project', 'project');
+		}
+
+		if (projectIds !== null) {
+			query.where('agent.projectId IN (:...projectIds)', { projectIds });
+		}
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy);
 		query.skip(options.skip).take(options.take);
@@ -42,6 +106,11 @@ export class AgentRepository extends Repository<Agent> {
 	): void {
 		if (filter?.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
+		}
+		if (filter?.availableInMCP !== undefined) {
+			query.andWhere('agent.availableInMCP = :availableInMCP', {
+				availableInMCP: filter.availableInMCP,
+			});
 		}
 	}
 
@@ -78,6 +147,58 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
+	/**
+	 * Finds an agent by ID alone. Agent IDs are globally unique, so this is safe
+	 * for callers whose access check does not hinge on a specific project (e.g.
+	 * users with global agent scopes).
+	 */
+	async findById(id: string): Promise<Agent | null> {
+		return await this.findOne({
+			where: { id },
+			relations: { activeVersion: true },
+		});
+	}
+
+	async findCredentialIndexAgentIdsBatch(
+		afterId: string | null,
+		batchSize: number,
+	): Promise<Array<Pick<Agent, 'id'>>> {
+		const query = this.createQueryBuilder('agent')
+			.select(['agent.id'])
+			.orderBy('agent.id', 'ASC')
+			.take(batchSize);
+
+		if (afterId !== null) {
+			query.where('agent.id > :afterId', { afterId });
+		}
+
+		return await query.getMany();
+	}
+
+	async findSummariesByIds(
+		ids: string[],
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'projectId'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			select: ['id', 'name', 'projectId'],
+			where: { id: In(ids) },
+		});
+	}
+
+	async findByIdInProjects(id: string, projectIds: string[]): Promise<Agent | null> {
+		if (projectIds.length === 0) return null;
+		return await this.findOne({
+			where: { id, projectId: In(projectIds) },
+			relations: { activeVersion: true },
+		});
+	}
+
+	/** Ownership check only — skips `findByIdAndProjectId`'s `activeVersion` load. */
+	async existsByIdAndProjectId(id: string, projectId: string): Promise<boolean> {
+		return await this.exists({ where: { id, projectId } });
+	}
+
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,
@@ -87,6 +208,44 @@ export class AgentRepository extends Repository<Agent> {
 			select: ['id', 'activeVersionId'],
 			where: { id: In(ids), projectId },
 		});
+	}
+
+	async findMcpAvailabilityCandidates(
+		where: { ids: string[] } | { projectIds: string[] } | { all: true },
+	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>> {
+		if ('ids' in where && where.ids.length === 0) return [];
+		if ('projectIds' in where && where.projectIds.length === 0) return [];
+
+		const criteria =
+			'ids' in where
+				? { id: In(where.ids) }
+				: 'projectIds' in where
+					? { projectId: In(where.projectIds) }
+					: undefined;
+
+		return await this.find({
+			select: ['id', 'projectId', 'availableInMCP'],
+			where: criteria,
+		});
+	}
+
+	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
+		if (agentIds.length === 0) return;
+		await this.update({ id: In(agentIds) }, { availableInMCP });
+	}
+
+	/**
+	 * Claims the once-per-agent setup-completion marker. Returns true only for
+	 * the caller that actually set it, so concurrent writers that all saw the
+	 * marker unset cannot each report the milestone.
+	 */
+	async claimSetupCompleted(id: string, completedAt: Date): Promise<boolean> {
+		const result = await this.update(
+			{ id, setupCompletedAt: IsNull() },
+			{ setupCompletedAt: completedAt },
+		);
+
+		return (result.affected ?? 0) > 0;
 	}
 
 	async findPublished(): Promise<Agent[]> {

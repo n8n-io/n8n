@@ -2,25 +2,32 @@
 import { computed, ref, useTemplateRef } from 'vue';
 import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
+import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { onMounted } from 'vue';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		workflowId: string;
+		workflowName?: string;
 		workflowDescription?: string | null;
+		/** When provided (and tags are enabled), the modal also edits the workflow's tags. */
+		workflowTags?: string[];
+		/** New workflows are not persisted yet: edits are staged on the document and saved with the workflow. */
+		isNewWorkflow?: boolean;
 		onSave?: (description: string | null) => void;
 	};
 }>();
@@ -32,6 +39,7 @@ const toast = useToast();
 const telemetry = useTelemetry();
 
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 
@@ -39,10 +47,25 @@ const descriptionValue = ref(props.data.workflowDescription ?? '');
 const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
 const isSaving = ref(false);
 
+const tagIds = ref<string[]>([...(props.data.workflowTags ?? [])]);
+const showTags = computed(
+	() => props.data.workflowTags !== undefined && settingsStore.areTagsEnabled,
+);
+
+const modalTitle = computed(() => props.data.workflowName || i18n.baseText('generic.description'));
+
 const normalizedCurrentValue = computed(() => (descriptionValue.value ?? '').trim());
 const normalizedLastSaved = computed(() => (props.data.workflowDescription ?? '').trim());
 
-const canSave = computed(() => normalizedCurrentValue.value !== normalizedLastSaved.value);
+const tagsChanged = computed(() => {
+	if (!showTags.value) return false;
+	const initial = props.data.workflowTags ?? [];
+	return tagIds.value.length !== initial.length || tagIds.value.some((id) => !initial.includes(id));
+});
+
+const canSave = computed(
+	() => normalizedCurrentValue.value !== normalizedLastSaved.value || tagsChanged.value,
+);
 
 const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
@@ -57,6 +80,19 @@ const textareaTip = computed(() =>
 );
 
 async function saveWorkflowDescription(id: string, description: string | null) {
+	// A workflow that is not persisted yet cannot be updated through the API:
+	// stage the edits on the document instead, so its first save carries them.
+	// Re-checked live because an autosave may have persisted it mid-edit.
+	if (props.data.isNewWorkflow && !workflowsStore.isWorkflowSaved[id]) {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+		workflowDocumentStore.setDescription(description ?? '');
+		if (showTags.value) {
+			workflowDocumentStore.setTags(tagIds.value);
+		}
+		uiStore.markStateDirty('metadata');
+		return;
+	}
+
 	let currentVersionId = '';
 	let currentChecksum = '';
 	const isCurrentWorkflow = id === workflowsStore.workflowId;
@@ -78,6 +114,7 @@ async function saveWorkflowDescription(id: string, description: string | null) {
 	const updated = await workflowsStore.updateWorkflow(id, {
 		versionId: currentVersionId,
 		description,
+		...(showTags.value ? { tags: tagIds.value } : {}),
 		...(currentChecksum ? { expectedChecksum: currentChecksum } : {}),
 	});
 
@@ -85,12 +122,16 @@ async function saveWorkflowDescription(id: string, description: string | null) {
 		workflowsListStore.updateWorkflowInCache(id, {
 			description: updated.description,
 			versionId: updated.versionId,
+			...(showTags.value ? { tags: updated.tags } : {}),
 		});
 	}
 
 	if (isCurrentWorkflow) {
 		const workflowDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 		workflowDocStore.setDescription(updated.description ?? '');
+		if (showTags.value) {
+			workflowDocStore.setTags(tagIds.value);
+		}
 	}
 }
 
@@ -101,6 +142,8 @@ const saveDescription = async () => {
 		const id = props.data.workflowId;
 		const description = normalizedCurrentValue.value ?? null;
 
+		const tagsWereChanged = tagsChanged.value;
+
 		await saveWorkflowDescription(id, description);
 
 		props.data.onSave?.(description);
@@ -109,6 +152,13 @@ const saveDescription = async () => {
 			workflow_id: id,
 			description,
 		});
+
+		if (tagsWereChanged) {
+			telemetry.track('User edited workflow tags', {
+				workflow_id: id,
+				new_tag_count: tagIds.value.length,
+			});
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflow.description.error.title'));
 	} finally {
@@ -155,7 +205,7 @@ onMounted(() => {
 <template>
 	<Modal
 		:name="WORKFLOW_DESCRIPTION_MODAL_KEY"
-		:title="i18n.baseText('generic.description')"
+		:title="modalTitle"
 		width="500"
 		:class="$style.container"
 		:event-bus="modalBus"
@@ -166,15 +216,28 @@ onMounted(() => {
 				:class="$style['description-edit-content']"
 				data-test-id="workflow-description-edit-content"
 			>
-				<N8nText color="text-base" data-test-id="descriptionTooltip">{{ textareaTip }}</N8nText>
-				<N8nInput
-					ref="descriptionInput"
-					v-model="descriptionValue"
-					:rows="6"
-					data-test-id="workflow-description-input"
-					type="textarea"
-					@keydown="handleKeyDown"
-				/>
+				<div :class="$style.field">
+					<N8nText tag="label" :bold="true">{{ i18n.baseText('generic.description') }}</N8nText>
+					<N8nInput
+						ref="descriptionInput"
+						v-model="descriptionValue"
+						:rows="6"
+						data-test-id="workflow-description-input"
+						type="textarea"
+						@keydown="handleKeyDown"
+					/>
+					<N8nText size="small" color="text-base" data-test-id="descriptionTooltip">
+						{{ textareaTip }}
+					</N8nText>
+				</div>
+				<div v-if="showTags" :class="$style.field">
+					<N8nText tag="label" :bold="true">{{ i18n.baseText('generic.tag_plural') }}</N8nText>
+					<WorkflowTagsDropdown
+						v-model="tagIds"
+						:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
+						data-test-id="workflow-tags-dropdown"
+					/>
+				</div>
 			</div>
 		</template>
 		<template #footer>
@@ -204,8 +267,14 @@ onMounted(() => {
 .description-edit-content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	padding: var(--spacing--s);
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
 }
 
 .popover-footer {

@@ -3,8 +3,16 @@ import { Container } from '@n8n/di';
 import type { DataSource } from '@n8n/typeorm';
 
 import { AllowAllAdmittance } from './admittance';
-import { createDataSource } from './database';
+import { createDataSource, createStores } from './database';
+import {
+	ExecutionStartHandler,
+	OrchestrationWorker,
+	StepCompletedHandler,
+	StepReadyHandler,
+	StepWorker,
+} from './execution';
 import { InMemoryWorkQueue } from './queue';
+import type { OrchestrationMessage, StepMessage } from './queue';
 import { createEngineServer } from './server';
 
 async function main(): Promise<void> {
@@ -21,13 +29,32 @@ async function main(): Promise<void> {
 		);
 	}
 
+	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
+	const stepQueue = new InMemoryWorkQueue<StepMessage>();
+
+	let orchestrationWorker: OrchestrationWorker | undefined;
+	let stepWorker: StepWorker | undefined;
+	if (dataSource) {
+		const { executionStore, stepStore } = createStores(dataSource);
+		orchestrationWorker = new OrchestrationWorker(
+			orchestrationQueue,
+			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
+			new StepCompletedHandler(executionStore, stepStore, stepQueue),
+		);
+		// No executors here: the v1 one lives in `@n8n/node-engine-compatibility`,
+		// which depends on this package, so only an integrated host can supply it.
+		// `v1-node` steps therefore fail as unimplemented in standalone mode.
+		stepWorker = new StepWorker(
+			stepQueue,
+			new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {}),
+		);
+		orchestrationWorker.start();
+		stepWorker.start();
+	}
+
 	const { app } = createEngineServer(
 		dataSource
-			? {
-					dataSource,
-					admittance: new AllowAllAdmittance(),
-					workQueue: new InMemoryWorkQueue(),
-				}
+			? { dataSource, admittance: new AllowAllAdmittance(), workQueue: orchestrationQueue }
 			: undefined,
 	);
 
@@ -43,6 +70,11 @@ async function main(): Promise<void> {
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});
+		// TODO(CAT-3882): drain in-flight work instead. Stopping the workers waits
+		// only for whatever each is mid-handling; anything queued behind it is
+		// dropped, since the in-memory queues die with the process.
+		if (orchestrationWorker) await orchestrationWorker.stop();
+		if (stepWorker) await stepWorker.stop();
 		if (dataSource?.isInitialized) await dataSource.destroy();
 		process.exit(0);
 	};

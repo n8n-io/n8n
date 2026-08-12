@@ -5,6 +5,7 @@ import {
 	IExecuteData,
 	IExecutionContext,
 	INodeExecutionData,
+	OAuthResourceGrant,
 	PlaintextExecutionContext,
 	toCredentialContext,
 	toExecutionContextEstablishmentHookParameter,
@@ -25,12 +26,16 @@ export class ExecutionContextService {
 		private readonly cipher: Cipher,
 	) {}
 
+	async decryptCredentialContext(encrypted: string): Promise<ICredentialContext> {
+		const decrypted = await this.cipher.decryptV2(encrypted);
+		return toCredentialContext(decrypted);
+	}
+
 	async decryptExecutionContext(context: IExecutionContext): Promise<PlaintextExecutionContext> {
 		const { credentials: encCredentials, secureArtifacts: encSecureArtifacts, ...rest } = context;
 		const result: PlaintextExecutionContext = { ...rest };
 		if (encCredentials) {
-			const decrypted = await this.cipher.decryptV2(encCredentials);
-			result.credentials = toCredentialContext(decrypted);
+			result.credentials = await this.decryptCredentialContext(encCredentials);
 		}
 		if (encSecureArtifacts) {
 			const decrypted = await this.cipher.decryptV2(encSecureArtifacts);
@@ -50,6 +55,24 @@ export class ExecutionContextService {
 			version: 1,
 			identity: n8nAuthCookie,
 			metadata: { source: 'manual-execution' },
+		};
+		return await this.cipher.encryptV2(payload);
+	}
+
+	/**
+	 * Seals the token a trigger authenticated its caller with, plus the grant it was
+	 * accepted under, so the run can re-verify itself for as long as it lasts. See
+	 * {@link OAuthResourceGrant}.
+	 */
+	async buildTriggerIdentityCredentials(
+		token: string,
+		resource: string,
+		grant?: OAuthResourceGrant,
+	): Promise<string> {
+		const payload: ICredentialContext = {
+			version: 1,
+			identity: token,
+			metadata: { source: 'n8n-oauth', resource, ...(grant ? { grant } : {}) },
 		};
 		return await this.cipher.encryptV2(payload);
 	}

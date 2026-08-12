@@ -24,12 +24,31 @@ describe('packageRequirementsSchema', () => {
 		expect(() => packageRequirementsSchema.parse(requirements)).not.toThrow();
 	});
 
+	it('accepts a workflow requirement without a name', () => {
+		const requirements = { workflows: [{ id: 'wf-dep', usedByWorkflows: ['wf-1'] }] };
+
+		expect(() => packageRequirementsSchema.parse(requirements)).not.toThrow();
+	});
+
+	it('rejects a workflow requirement with an empty name', () => {
+		const requirements = { workflows: [{ id: 'wf-dep', name: '', usedByWorkflows: ['wf-1'] }] };
+
+		expect(() => packageRequirementsSchema.parse(requirements)).toThrow();
+	});
+
 	it('rejects duplicate credential ids', () => {
 		const requirements = { credentials: [credential('cred-1'), credential('cred-1')] };
 
 		expect(() => packageRequirementsSchema.parse(requirements)).toThrow(
 			/Duplicate credential id: cred-1/,
 		);
+	});
+
+	it('rejects duplicate tag ids', () => {
+		const tag = (id: string) => ({ id, name: 'production', usedByWorkflows: ['wf-1'] });
+		const requirements = { tags: [tag('tag-1'), tag('tag-1')] };
+
+		expect(() => packageRequirementsSchema.parse(requirements)).toThrow(/Duplicate tag id: tag-1/);
 	});
 
 	it('rejects duplicate variable names', () => {

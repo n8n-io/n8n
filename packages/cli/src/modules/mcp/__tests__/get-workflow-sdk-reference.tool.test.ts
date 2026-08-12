@@ -11,10 +11,14 @@ import { Telemetry } from '@/telemetry';
 import { createGetWorkflowSdkReferenceTool } from '../tools/workflow-builder/get-workflow-sdk-reference.tool';
 import { getSdkReferenceContent } from '../tools/workflow-builder/sdk-reference-content';
 
+// v2 SDK types structuredContent as an arbitrary JSON value; narrow for assertions.
+const structuredOf = (result: { structuredContent?: unknown }) =>
+	result.structuredContent as Record<string, unknown> | undefined;
+
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	SDK_IMPORT_STATEMENT: "import { workflow } from '@n8n/workflow-sdk';",
 	MCP_GET_SDK_REFERENCE_TOOL: {
-		toolName: 'get_sdk_reference',
+		toolName: 'get_workflow_sdk_reference',
 		displayTitle: 'Get SDK Reference',
 	},
 }));
@@ -50,6 +54,25 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 		expect(content).toContain('<zero_item_safety>');
 		expect(content).toContain('## Workflow Patterns Detailed');
 		expect(content).toContain('output: [{}]');
+	});
+
+	describe('SDK language rules in the full reference', () => {
+		test('includes the language reference', () => {
+			const content = getSdkReferenceContent('all');
+
+			expect(content).toContain('restricted subset of TypeScript');
+			expect(content).toContain('## Forbidden constructs');
+			expect(content).toContain('## Global objects are unavailable');
+			expect(content).toContain('## Where to put runtime logic');
+		});
+
+		test('embeds the groups docs exactly once when the flag is on, never when off', () => {
+			const withGroups = getSdkReferenceContent(undefined, { includeGroups: true });
+			expect(withGroups.split('## Node groups')).toHaveLength(2);
+
+			const withoutGroups = getSdkReferenceContent(undefined, { includeGroups: false });
+			expect(withoutGroups).not.toContain('## Node groups');
+		});
 	});
 
 	test('accepts patterns_detailed as a tool section', async () => {
@@ -118,7 +141,7 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 					});
 
 					const enabledResult = await enabled.handler({ section: 'groups' }, {} as never);
-					expect(enabledResult.structuredContent?.reference).toContain(NODE_GROUPS_REFERENCE);
+					expect(structuredOf(enabledResult)?.reference).toContain(NODE_GROUPS_REFERENCE);
 				});
 			});
 
@@ -137,7 +160,7 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 					});
 
 					const disabledResult = await disabled.handler({ section: undefined }, {} as never);
-					expect(disabledResult.structuredContent?.reference).not.toContain(NODE_GROUPS_REFERENCE);
+					expect(structuredOf(disabledResult)?.reference).not.toContain(NODE_GROUPS_REFERENCE);
 				});
 			});
 		});

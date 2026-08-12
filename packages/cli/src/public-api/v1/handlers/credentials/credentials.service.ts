@@ -273,7 +273,7 @@ export async function encryptCredential(credential: CredentialsEntity): Promise<
 	// Encrypt the data
 	const coreCredential = new Credentials({ id: null, name: credential.name }, credential.type);
 
-	// @ts-ignore
+	// @ts-expect-error entity data typed as string
 	await coreCredential.setData(credential.data);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;

@@ -74,15 +74,18 @@ export class InsightsService {
 		startDate,
 		endDate,
 		projectId,
+		timeZone,
 	}: {
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}): Promise<InsightsSummary> {
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
 			startDate,
 			endDate,
 			projectId,
+			timeZone,
 		});
 
 		// Initialize data structures for both periods
@@ -172,6 +175,7 @@ export class InsightsService {
 		projectId,
 		startDate,
 		endDate,
+		timeZone,
 	}: {
 		user: User;
 		skip?: number;
@@ -180,6 +184,7 @@ export class InsightsService {
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}) {
 		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
 			startDate,
@@ -188,6 +193,7 @@ export class InsightsService {
 			take,
 			sortBy,
 			projectId,
+			timeZone,
 		});
 
 		const accessibleWorkflowIds = new Set(
@@ -214,11 +220,13 @@ export class InsightsService {
 		projectId,
 		startDate,
 		endDate,
+		timeZone,
 	}: {
 		insightTypes?: TypeUnit[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}) {
 		const periodUnit = this.getDateFiltersGranularity({ startDate, endDate });
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
@@ -227,6 +235,7 @@ export class InsightsService {
 			projectId,
 			startDate,
 			endDate,
+			timeZone,
 		});
 
 		return rows.map((r) => {

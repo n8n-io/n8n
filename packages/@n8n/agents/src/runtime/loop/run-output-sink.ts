@@ -1,9 +1,10 @@
 import type {
 	LanguageModel,
+	LanguageModelCallOptions,
 	ModelMessage,
 	Output,
 	SystemModelMessage,
-	TelemetrySettings,
+	TelemetryOptions,
 	ToolCallRepairFunction,
 	ToolSet,
 } from 'ai';
@@ -65,11 +66,12 @@ export interface ModelCallContext {
 	abortSignal: AbortSignal;
 	hasTools: boolean;
 	aiTools: ToolSet;
+	reasoning?: LanguageModelCallOptions['reasoning'];
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
 	aiSdkOptions: {
-		experimental_telemetry?: TelemetrySettings;
-		experimental_repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
+		telemetry?: TelemetryOptions;
+		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 	};
 }
 

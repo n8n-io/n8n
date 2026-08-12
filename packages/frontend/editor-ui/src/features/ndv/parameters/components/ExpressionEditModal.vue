@@ -8,7 +8,7 @@ import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { Segment } from '@/app/types/expressions';
 import type { INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -28,7 +28,7 @@ import { ElDialog } from 'element-plus';
 import {
 	N8nIcon,
 	N8nInput,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nResizeWrapper,
 	N8nText,
 	type ResizeData,
@@ -244,7 +244,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						</N8nText>
 						<div :class="$style.headerControls">
 							<OutputItemSelect />
-							<N8nRadioButtons
+							<N8nSegmentControl
 								v-model="outputRenderMode"
 								size="small"
 								:options="[

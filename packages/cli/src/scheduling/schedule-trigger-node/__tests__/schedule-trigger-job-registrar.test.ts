@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -153,7 +154,29 @@ describe('ScheduleTriggerJobRegistrar', () => {
 						firstRunAt: NEXT_NINE,
 					},
 				],
+				ScheduledJobMisfirePolicy.Coalesce,
 			);
+		});
+
+		it('provisions a 5-field custom cron (no seconds) and plans its first fire', async () => {
+			const session = makeRegistrar().createSession();
+			const collector = session.createCollector(workflow, scheduleNode);
+			collector.registerCron(
+				{ expression: '0 9 * * 1-5' as CronExpression, recurrence: { activated: false } },
+				vi.fn(),
+			);
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			expect(desired).toHaveLength(1);
+			expect(desired[0].schedule).toEqual({
+				kind: 'cron',
+				cronExpression: '0 9 * * 1-5',
+				timezone: null,
+			});
+			// NOW is Monday 00:00 UTC; a weekday 09:00 cron fires the same day.
+			expect(desired[0].firstRunAt).toEqual(NEXT_NINE);
 		});
 
 		it('a rule keeps its name when rules are inserted before it or reordered', async () => {
@@ -332,6 +355,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				SCHEDULE_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[],
+				ScheduledJobMisfirePolicy.Coalesce,
 			);
 		});
 

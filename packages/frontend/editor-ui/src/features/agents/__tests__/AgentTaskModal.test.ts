@@ -44,7 +44,7 @@ vi.mock('../composables/useAgentApi', () => ({
 
 const showMessageSpy = vi.fn();
 const showErrorSpy = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: showMessageSpy, showError: showErrorSpy }),
 }));
 

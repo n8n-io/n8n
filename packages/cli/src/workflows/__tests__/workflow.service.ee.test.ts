@@ -1,14 +1,18 @@
 import type {
 	CredentialsEntity,
+	Project,
+	SharedWorkflow,
+	WorkflowEntity,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { UpdateResult } from '@n8n/typeorm';
+import type { EntityManager, UpdateResult } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 describe('EnterpriseWorkflowService', () => {
@@ -16,6 +20,7 @@ describe('EnterpriseWorkflowService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const workflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
+	const workflowMutationHooks = mock<WorkflowMutationHooksProxy>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -31,9 +36,9 @@ describe('EnterpriseWorkflowService', () => {
 			mock(), // credentialsFinderService
 			mock(), // enterpriseCredentialsService
 			mock(), // workflowFinderService
-			mock(), // folderService
 			mock(), // folderRepository
 			workflowPublishHistoryRepository,
+			workflowMutationHooks,
 		);
 	});
 
@@ -161,6 +166,52 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result).toBeUndefined();
 			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 			expect(workflowRepository.updateActiveState).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('transferWorkflowOwnership', () => {
+		const destinationProject = mock<Project>({ id: 'proj-dest' });
+
+		const makeWorkflow = (id: string, ownerProjectId: string) =>
+			mock<WorkflowEntity>({
+				id,
+				shared: [
+					mock<SharedWorkflow>({
+						role: 'workflow:owner',
+						project: mock<Project>({ id: ownerProjectId }),
+					}),
+				],
+			});
+
+		beforeEach(() => {
+			const entityManager = mock<EntityManager>();
+			entityManager.transaction.mockImplementation(
+				// @ts-expect-error transaction() has multiple overloads; tests use the single-callback one
+				async (cb: (trx: EntityManager) => Promise<void>) => await cb(mock<EntityManager>()),
+			);
+			Object.defineProperty(workflowRepository, 'manager', {
+				value: entityManager,
+				configurable: true,
+			});
+		});
+
+		it('notifies the mutation hook only for workflows whose owning project changed', async () => {
+			const moved = makeWorkflow('wf-moved', 'proj-source');
+			const folderMoveOnly = makeWorkflow('wf-same-project', 'proj-dest');
+
+			await service['transferWorkflowOwnership']([moved, folderMoveOnly], destinationProject);
+
+			expect(workflowMutationHooks.afterWorkflowsTransferred).toHaveBeenCalledExactlyOnceWith([
+				'wf-moved',
+			]);
+		});
+
+		it('does not notify the mutation hook for a same-project folder move', async () => {
+			const folderMoveOnly = makeWorkflow('wf-same-project', 'proj-dest');
+
+			await service['transferWorkflowOwnership']([folderMoveOnly], destinationProject);
+
+			expect(workflowMutationHooks.afterWorkflowsTransferred).not.toHaveBeenCalled();
 		});
 	});
 });

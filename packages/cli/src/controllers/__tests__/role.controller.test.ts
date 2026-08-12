@@ -12,8 +12,6 @@ describe('RoleController', () => {
 	const roleService = mock<RoleService>();
 	const controller = new RoleController(roleService, eventService);
 
-	// A user whose global role grants role:manage, so the controller's
-	// authorization guard short-circuits and these tests can focus on events.
 	const managerRequest = () =>
 		mock<AuthenticatedRequest>({
 			user: { id: '123', role: { scopes: [{ slug: 'role:manage' }] } },
@@ -77,16 +75,105 @@ describe('RoleController', () => {
 				});
 			});
 
-			it('should pass the reassignment role through to the service', async () => {
-				const request = managerRequest();
-				roleService.getRole.mockResolvedValue({ roleType: 'global' } as Role);
-				roleService.removeCustomRole.mockResolvedValue({ slug: 'custom-editor' } as Role);
+			it('should pass the reassignment role through to the service for an entitled caller', async () => {
+				const request = mock<AuthenticatedRequest>({
+					user: {
+						id: '123',
+						role: {
+							slug: 'global:admin',
+							scopes: [{ slug: 'role:manage' }, { slug: 'user:changeRole' }],
+						},
+					},
+				});
+				roleService.getRole.mockResolvedValue({
+					slug: 'global:custom-editor',
+					roleType: 'global',
+				} as Role);
+				roleService.removeCustomRole.mockResolvedValue({ slug: 'global:custom-editor' } as Role);
 
-				await controller.deleteRole(request, mock(), 'custom-editor', {
+				await controller.deleteRole(request, mock(), 'global:custom-editor', {
 					reassignRoleSlug: 'global:member',
 				});
 
-				expect(roleService.removeCustomRole).toHaveBeenCalledWith('custom-editor', 'global:member');
+				expect(roleService.removeCustomRole).toHaveBeenCalledWith(
+					'global:custom-editor',
+					'global:member',
+				);
+			});
+
+			it('should ignore the reassignment role when the caller lacks user:changeRole', async () => {
+				const request = mock<AuthenticatedRequest>({
+					user: {
+						id: '123',
+						role: { slug: 'global:admin', scopes: [{ slug: 'role:manage' }] },
+					},
+				});
+				roleService.getRole.mockResolvedValue({
+					slug: 'global:custom-editor',
+					roleType: 'global',
+				} as Role);
+				roleService.removeCustomRole.mockResolvedValue({ slug: 'global:custom-editor' } as Role);
+
+				await controller.deleteRole(request, mock(), 'global:custom-editor', {
+					reassignRoleSlug: 'global:member',
+				});
+
+				expect(roleService.removeCustomRole).toHaveBeenCalledWith(
+					'global:custom-editor',
+					undefined,
+				);
+			});
+
+			it('should ignore the reassignment role when the caller holds the role being deleted', async () => {
+				const request = mock<AuthenticatedRequest>({
+					user: {
+						id: '123',
+						role: {
+							slug: 'global:custom-editor',
+							scopes: [{ slug: 'role:manage' }, { slug: 'user:changeRole' }],
+						},
+					},
+				});
+				roleService.getRole.mockResolvedValue({
+					slug: 'global:custom-editor',
+					roleType: 'global',
+				} as Role);
+				roleService.removeCustomRole.mockResolvedValue({ slug: 'global:custom-editor' } as Role);
+
+				await controller.deleteRole(request, mock(), 'global:custom-editor', {
+					reassignRoleSlug: 'global:member',
+				});
+
+				expect(roleService.removeCustomRole).toHaveBeenCalledWith(
+					'global:custom-editor',
+					undefined,
+				);
+			});
+
+			it('should ignore the reassignment role for project roles', async () => {
+				const request = mock<AuthenticatedRequest>({
+					user: {
+						id: '123',
+						role: {
+							slug: 'global:admin',
+							scopes: [{ slug: 'role:manage' }, { slug: 'user:changeRole' }],
+						},
+					},
+				});
+				roleService.getRole.mockResolvedValue({
+					slug: 'project:custom-editor',
+					roleType: 'project',
+				} as Role);
+				roleService.removeCustomRole.mockResolvedValue({ slug: 'project:custom-editor' } as Role);
+
+				await controller.deleteRole(request, mock(), 'project:custom-editor', {
+					reassignRoleSlug: 'project:admin',
+				});
+
+				expect(roleService.removeCustomRole).toHaveBeenCalledWith(
+					'project:custom-editor',
+					undefined,
+				);
 			});
 		});
 	});

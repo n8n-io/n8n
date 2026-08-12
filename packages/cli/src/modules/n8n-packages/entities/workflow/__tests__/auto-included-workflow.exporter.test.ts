@@ -9,6 +9,7 @@ import { CredentialRequirementsExtractor } from '../../credential/credential-req
 import { DataTableRequirementsExtractor } from '../../data-table/data-table-requirements.extractor';
 import { FolderSerializer } from '../../folder/folder.serializer';
 import { ProjectSerializer } from '../../project/project.serializer';
+import { TagRequirementsExtractor } from '../../tag/tag-requirements.extractor';
 import { VariableRequirementsExtractor } from '../../variable/variable-requirements.extractor';
 import type { AutoIncludedWorkflow } from '../auto-included-workflow-resolver';
 import { AutoIncludedWorkflowExporter } from '../auto-included-workflow.exporter';
@@ -59,6 +60,7 @@ function makeExporter(
 		credentialExtractor ?? new CredentialRequirementsExtractor(),
 		dataTableExtractor ?? new DataTableRequirementsExtractor(),
 		variableExtractor ?? new VariableRequirementsExtractor(),
+		new TagRequirementsExtractor(),
 	);
 }
 
@@ -69,6 +71,7 @@ function emptyRequest(writer: CapturingWriter, workflows: AutoIncludedWorkflow[]
 		existingWorkflowEntries: [] as ManifestEntry[],
 		existingFolderEntries: [] as ManifestEntry[],
 		existingProjectEntries: [] as ManifestEntry[],
+		includeTags: true,
 	};
 }
 

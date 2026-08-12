@@ -20,6 +20,8 @@
  * data before the normalizer falls back to a minimal envelope.
  */
 
+import { evalCanvasPng } from 'n8n-core';
+
 /** The subset of the mock response spec these normalizers read/mutate. */
 interface NormalizableSpec {
 	type: 'json' | 'text' | 'binary' | 'error';
@@ -33,10 +35,16 @@ export interface ProviderRequestInfo {
 	hostname?: string;
 }
 
-// A short, non-decodable base64 placeholder. The eval harness never decodes the
-// image bytes — it only needs `Buffer.from(b64_json, 'base64')` to receive a
-// string. Same literal the OpenAI quirk guidance suggests.
-const PLACEHOLDER_B64 = 'iVBORw0KGgo';
+// Generated image bytes must be REAL: workflows routinely pipe them into
+// image-processing nodes (Edit Image → GraphicsMagick), which crash on a
+// truncated or 1×1 placeholder ("Insufficient image data"). The model cannot
+// author valid image bytes, so every b64_json is substituted with a decodable
+// drawable canvas.
+let canvasPngB64: string | undefined;
+function placeholderImageB64(): string {
+	canvasPngB64 ??= evalCanvasPng().toString('base64');
+	return canvasPngB64;
+}
 
 // A deterministic numeric HubSpot contact id used when the model didn't supply
 // one — the node interpolates it into a follow-up `/contact/vid/{vid}/profile`
@@ -59,6 +67,13 @@ function isOpenAiImagesGeneration(path: string): boolean {
 	return path.endsWith('/images/generations');
 }
 
+function isOpenAiCompletion(path: string): 'responses' | 'chat' | null {
+	// Tolerate trailing slashes and any /v{n}/ — endsWith misses "/v1/responses/".
+	if (/\/v\d+\/responses\/?$/.test(path)) return 'responses';
+	if (/\/chat\/completions\/?$/.test(path)) return 'chat';
+	return null;
+}
+
 function isGeminiGenerate(host: string, path: string): boolean {
 	return host === 'generativelanguage.googleapis.com' && path.includes('generatecontent');
 }
@@ -77,6 +92,14 @@ function isHubspotUpsert(host: string, path: string): boolean {
 function isGoogleDocsBatchUpdate(host: string, path: string): boolean {
 	return (
 		host === 'docs.googleapis.com' && path.includes('/documents/') && path.includes(':batchupdate')
+	);
+}
+
+function isGmailMessagesList(host: string, path: string, method: string): boolean {
+	return (
+		method.toUpperCase() === 'GET' &&
+		host.endsWith('googleapis.com') &&
+		/\/gmail\/v1\/users\/[^/]+\/messages\/?$/.test(path)
 	);
 }
 
@@ -133,10 +156,56 @@ function normalizeOpenAiImages(spec: NormalizableSpec): void {
 }
 
 function coerceImageEntry(entry: unknown): Record<string, unknown> {
-	if (typeof entry === 'string') return { b64_json: entry };
-	if (!isPlainObject(entry)) return { b64_json: PLACEHOLDER_B64 };
-	if (typeof entry.b64_json === 'string' && entry.b64_json.length > 0) return entry;
-	return { ...entry, b64_json: PLACEHOLDER_B64 };
+	// Every entry gets real bytes (the node's default b64_json mode crashes on a
+	// missing field even when the model answered url-style); `url` is preserved.
+	const base = isPlainObject(entry) ? entry : {};
+	return { ...base, b64_json: placeholderImageB64() };
+}
+
+// ---------------------------------------------------------------------------
+// OpenAI completions — /v1/responses, /chat/completions
+// ---------------------------------------------------------------------------
+
+/**
+ * The real OpenAI envelopes carry the model's answer as a STRING —
+ * `output[].content[].text` on /v1/responses, `choices[].message.content` on
+ * chat/completions — even when the answer is JSON (`json_object` format returns
+ * a JSON-encoded string). The generator sometimes embeds the parsed object
+ * instead; downstream code then runs `JSON.parse` on `"[object Object]"` and
+ * yields 0 items. Serialize any non-string payload at those paths; everything
+ * else (tool_call items, null content, content-part arrays) is left untouched.
+ */
+function normalizeOpenAiCompletionText(spec: NormalizableSpec, kind: 'responses' | 'chat'): void {
+	const body = spec.body;
+	if (!isPlainObject(body)) return;
+
+	if (kind === 'responses') {
+		if (Array.isArray(body.output)) {
+			for (const item of body.output) {
+				if (!isPlainObject(item) || !Array.isArray(item.content)) continue;
+				for (const part of item.content) {
+					if (isPlainObject(part) && 'text' in part && typeof part.text !== 'string') {
+						part.text = JSON.stringify(part.text);
+					}
+				}
+			}
+		}
+		if (body.output_text !== undefined && typeof body.output_text !== 'string') {
+			body.output_text = JSON.stringify(body.output_text);
+		}
+		return;
+	}
+
+	if (Array.isArray(body.choices)) {
+		for (const choice of body.choices) {
+			if (!isPlainObject(choice) || !isPlainObject(choice.message)) continue;
+			const content = choice.message.content;
+			// null (tool-calls-only turn) and content-part arrays are valid shapes.
+			if (content !== null && content !== undefined && typeof content !== 'string') {
+				if (!Array.isArray(content)) choice.message.content = JSON.stringify(content);
+			}
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -235,6 +304,21 @@ function resolveHubspotVid(body: Record<string, unknown>): number {
 }
 
 // ---------------------------------------------------------------------------
+// Gmail — messages.list
+// ---------------------------------------------------------------------------
+
+/**
+ * The Gmail node's list operation reads `responseData.messages`. A recurring
+ * model slip (despite quirk guidance) is answering with a bare ARRAY of
+ * message objects — the node then sees zero messages and the workflow's list
+ * branch silently does nothing. Wrap a bare array into the real envelope.
+ */
+function normalizeGmailMessagesList(spec: NormalizableSpec): void {
+	if (!Array.isArray(spec.body)) return;
+	spec.body = { messages: spec.body, resultSizeEstimate: spec.body.length };
+}
+
+// ---------------------------------------------------------------------------
 // Google Docs — /documents/{id}:batchUpdate
 // ---------------------------------------------------------------------------
 
@@ -268,11 +352,14 @@ export function applyProviderShapeNormalizers(
 	const host = (info.hostname ?? '').toLowerCase();
 
 	if (isOpenAiImagesGeneration(path)) return normalizeOpenAiImages(spec);
+	const completionKind = isOpenAiCompletion(path);
+	if (completionKind) return normalizeOpenAiCompletionText(spec, completionKind);
 	if (isGeminiGenerate(host, path)) return normalizeGemini(spec);
 	const redditKind = isRedditWrite(host, path, info.method);
 	if (redditKind) return normalizeReddit(spec, redditKind);
 	if (isHubspotUpsert(host, path)) return normalizeHubspotUpsert(spec);
 	if (isGoogleDocsBatchUpdate(host, path)) return normalizeGoogleDocsBatchUpdate(spec);
+	if (isGmailMessagesList(host, path, info.method)) return normalizeGmailMessagesList(spec);
 }
 
 /**
@@ -288,13 +375,21 @@ export function findProviderShapeViolation(
 	const host = (info.hostname ?? '').toLowerCase();
 
 	if (isOpenAiImagesGeneration(path)) return openAiImagesViolation(body);
+	const completionKind = isOpenAiCompletion(path);
+	if (completionKind) return openAiCompletionTextViolation(body, completionKind);
 	if (isGeminiGenerate(host, path)) return geminiViolation(body);
 	const redditKind = isRedditWrite(host, path, info.method);
 	if (redditKind) return redditViolation(body, redditKind);
 	if (isHubspotUpsert(host, path)) return hubspotViolation(body);
 	if (isGoogleDocsBatchUpdate(host, path)) return googleDocsViolation(body);
+	if (isGmailMessagesList(host, path, info.method)) return gmailMessagesListViolation(body);
 
 	return undefined;
+}
+
+function gmailMessagesListViolation(body: unknown): string | undefined {
+	if (!Array.isArray(body)) return undefined;
+	return 'Invalid: Gmail messages.list returns an OBJECT envelope `{ "messages": [{ "id", "threadId" }, ...], "resultSizeEstimate": <n> }` — the node reads response.messages, so a bare array yields zero messages. Resubmit wrapped in that envelope.';
 }
 
 function openAiImagesViolation(body: unknown): string | undefined {
@@ -309,6 +404,35 @@ function openAiImagesViolation(body: unknown): string | undefined {
 	);
 	if (brokenEntry) {
 		return 'Invalid: every OpenAI image `data[]` entry must carry a `b64_json` (base64 string) — the node decodes it. Resubmit with `data: [{ "b64_json": "..." }]`.';
+	}
+	return undefined;
+}
+
+function openAiCompletionTextViolation(
+	body: unknown,
+	kind: 'responses' | 'chat',
+): string | undefined {
+	if (!isPlainObject(body)) return undefined;
+	if (kind === 'responses' && Array.isArray(body.output)) {
+		for (const item of body.output) {
+			if (!isPlainObject(item) || !Array.isArray(item.content)) continue;
+			for (const part of item.content) {
+				if (isPlainObject(part) && 'text' in part && typeof part.text !== 'string') {
+					return 'Invalid: OpenAI /v1/responses `output[].content[].text` must be a STRING — when the answer is JSON, JSON-encode it into the string (e.g. "{\\"quotes\\":[...]}"), never embed the parsed object. Resubmit with `text` as a string.';
+				}
+			}
+		}
+	}
+	if (kind === 'chat' && Array.isArray(body.choices)) {
+		for (const choice of body.choices) {
+			if (!isPlainObject(choice) || !isPlainObject(choice.message)) continue;
+			const content = choice.message.content;
+			if (content !== null && content !== undefined && typeof content !== 'string') {
+				if (!Array.isArray(content)) {
+					return 'Invalid: chat/completions `choices[].message.content` must be a STRING (or null with tool_calls) — when the answer is JSON, JSON-encode it into the string, never embed the parsed object. Resubmit with `content` as a string.';
+				}
+			}
+		}
 	}
 	return undefined;
 }

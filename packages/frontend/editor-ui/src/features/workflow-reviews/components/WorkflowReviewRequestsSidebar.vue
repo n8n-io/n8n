@@ -13,10 +13,11 @@ import {
 } from '@n8n/design-system';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
 const props = defineProps<{
 	items: WorkflowReviewInboxItem[];
-	activeState: WorkflowReviewRequestState;
+	activeTab: WorkflowReviewRequestState;
 	openCount: number;
 	closedCount: number;
 	selectedId: string | null;
@@ -29,7 +30,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	select: [id: string];
 	clear: [];
-	'update:activeState': [state: WorkflowReviewRequestState];
+	'update:activeTab': [tab: WorkflowReviewRequestState];
 	loadMore: [];
 }>();
 
@@ -67,7 +68,7 @@ watch(
 );
 
 function onTabChange(value: string | number | boolean) {
-	emit('update:activeState', String(value) as WorkflowReviewRequestState);
+	emit('update:activeTab', String(value) as WorkflowReviewRequestState);
 }
 
 function onListBackgroundClick() {
@@ -86,8 +87,9 @@ function onListBackgroundClick() {
 		</div>
 		<div :class="$style.header">
 			<N8nTabs
-				:model-value="activeState"
+				:model-value="activeTab"
 				:options="tabOptions"
+				variant="modern"
 				data-test-id="workflow-reviews-tabs"
 				@update:model-value="onTabChange"
 			/>
@@ -108,7 +110,7 @@ function onListBackgroundClick() {
 					size="small"
 					data-test-id="workflow-reviews-empty"
 				>
-					{{ i18n.baseText(`workflowReviews.sidebar.empty.${activeState}`) }}
+					{{ i18n.baseText(`workflowReviews.sidebar.empty.${activeTab}`) }}
 				</N8nText>
 				<N8nCard
 					v-for="item in items"
@@ -123,9 +125,12 @@ function onListBackgroundClick() {
 					@keydown.space.prevent="emit('select', item.id)"
 				>
 					<div :class="$style.cardContent">
-						<N8nText bold tag="h3" :class="$style.cardTitle">
-							{{ item.title }}
-						</N8nText>
+						<div :class="$style.cardHeader">
+							<N8nText bold tag="h3" :class="$style.cardTitle">
+								{{ item.title }}
+							</N8nText>
+							<WorkflowReviewStatusDot :state="item.state" :decision="item.decision" />
+						</div>
 						<div :class="$style.cardMeta">
 							<N8nBadge
 								v-if="item.workflowName"
@@ -139,14 +144,16 @@ function onListBackgroundClick() {
 									<span>{{ item.workflowName }}</span>
 								</span>
 							</N8nBadge>
-							<N8nText
-								size="xsmall"
-								color="text-light"
-								:class="$style.cardMetaTime"
-								data-test-id="workflow-review-request-created-at"
-							>
-								<TimeAgo :date="item.createdAt" />
-							</N8nText>
+							<div :class="$style.cardMetaActions">
+								<N8nText
+									size="xsmall"
+									color="text-light"
+									:class="$style.cardMetaTime"
+									data-test-id="workflow-review-request-created-at"
+								>
+									<TimeAgo :date="item.createdAt" />
+								</N8nText>
+							</div>
 						</div>
 					</div>
 				</N8nCard>
@@ -161,10 +168,13 @@ function onListBackgroundClick() {
 
 <style lang="scss" module>
 .sidebar {
+	--review-sidebar--width: 22rem;
+
 	display: flex;
 	flex-direction: column;
-	flex: 0 0 35%;
-	min-width: 12rem;
+	flex: 0 0 var(--review-sidebar--width);
+	min-width: 0;
+	max-width: var(--review-sidebar--width);
 	height: 100%;
 	border-right: var(--border-width) solid var(--color--foreground--tint-1);
 }
@@ -178,9 +188,10 @@ function onListBackgroundClick() {
 
 .header {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: 0 var(--spacing--md) var(--spacing--md) 0;
+	align-items: center;
+	height: var(--review-tab-bar--height, var(--height--sm));
+	padding-right: var(--spacing--md);
+	margin-bottom: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
 }
 
 .list {
@@ -188,6 +199,7 @@ function onListBackgroundClick() {
 	flex: 1;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	min-width: 0;
 	overflow-y: auto;
 	padding: 0 var(--spacing--md) var(--spacing--md) 0;
 }
@@ -196,7 +208,7 @@ function onListBackgroundClick() {
 	cursor: pointer;
 	padding: var(--spacing--xs);
 	align-items: stretch;
-	border: var(--border-width) solid var(--color--foreground--tint-1);
+	border: var(--border-width) solid var(--border-color);
 	transition: background-color 0.3s ease;
 
 	&:hover:not(.cardSelected) {
@@ -223,17 +235,8 @@ function onListBackgroundClick() {
 	width: 100%;
 }
 
-.cardTitle {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	width: 100%;
-	font-size: var(--font-size--sm);
-}
-
-.cardMeta {
+.cardHeader {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
@@ -241,20 +244,42 @@ function onListBackgroundClick() {
 	min-width: 0;
 }
 
-.cardMetaTime {
-	flex-shrink: 0;
+.cardTitle {
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
+	min-width: 0;
+	font-size: var(--font-size--sm);
+}
+
+.cardMeta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	width: 100%;
+	min-width: 0;
+}
+
+.cardMetaActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
 	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.cardMetaTime {
+	white-space: nowrap;
 }
 
 .workflowBadge {
 	flex: 0 1 auto;
-	max-width: 100%;
+	min-width: 0;
 	border: var(--border);
 	border-radius: var(--radius);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	color: var(--color--text);
-	max-width: 12rem;
 
 	> span {
 		max-width: 100%;
@@ -267,7 +292,7 @@ function onListBackgroundClick() {
 	gap: var(--spacing--3xs);
 	max-width: 100%;
 	min-width: 0;
-	line-height: calc(var(--font-size--sm) + 1px);
+	line-height: calc(var(--font-size--sm) + var(--border-width));
 
 	> span {
 		overflow: hidden;
@@ -282,6 +307,6 @@ function onListBackgroundClick() {
 }
 
 .sentinel {
-	height: 1px;
+	height: var(--border-width);
 }
 </style>

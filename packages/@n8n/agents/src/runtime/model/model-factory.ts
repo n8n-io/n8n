@@ -74,12 +74,15 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	openai: {
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
-			const provider = createOpenAI({ ...creds, fetch });
-			// A custom baseURL means an OpenAI-COMPATIBLE server (LM Studio, vLLM,
-			// Ollama, gateways), which speaks /chat/completions; the provider's
-			// default model targets OpenAI's own Responses API (/responses) that
-			// those servers do not implement.
-			return creds.baseURL ? provider.chat(model) : provider(model);
+			const { apiStyle, ...providerCreds } = creds;
+			const provider = createOpenAI({ ...providerCreds, fetch });
+			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
+			// vLLM, Ollama), which speaks /chat/completions; the provider's default
+			// model targets OpenAI's own Responses API (/responses) that those
+			// servers do not implement. A proxy in front of real OpenAI also sets a
+			// baseURL but does serve /responses, so `apiStyle` overrides the guess.
+			const useChat = apiStyle ? apiStyle === 'chat' : Boolean(providerCreds.baseURL);
+			return useChat ? provider.chat(model) : provider(model);
 		},
 	},
 	custom: {
@@ -115,15 +118,14 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	},
 	google: {
 		build: (creds, model, fetch) => {
-			const { createGoogleGenerativeAI } =
-				require('@ai-sdk/google') as typeof import('@ai-sdk/google');
-			return createGoogleGenerativeAI({ ...creds, fetch })(model);
+			const { createGoogle } = require('@ai-sdk/google') as typeof import('@ai-sdk/google');
+			return createGoogle({ ...creds, fetch })(model);
 		},
 	},
 	xai: {
 		build: (creds, model, fetch) => {
 			const { createXai } = require('@ai-sdk/xai') as typeof import('@ai-sdk/xai');
-			return createXai({ ...creds, fetch })(model);
+			return createXai({ ...creds, fetch }).chat(model);
 		},
 	},
 	groq: {
@@ -283,7 +285,7 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
  */
 const EMBEDDING_PROVIDERS = {
 	openai: { pkg: '@ai-sdk/openai', factory: 'createOpenAI' },
-	google: { pkg: '@ai-sdk/google', factory: 'createGoogleGenerativeAI' },
+	google: { pkg: '@ai-sdk/google', factory: 'createGoogle' },
 	mistral: { pkg: '@ai-sdk/mistral', factory: 'createMistral' },
 	cohere: { pkg: '@ai-sdk/cohere', factory: 'createCohere' },
 	amazon: { pkg: '@ai-sdk/amazon-bedrock', factory: 'createAmazonBedrock' },

@@ -1,4 +1,5 @@
 name: 'Instance AI Evals: Experiments'
+run-name: "Instance AI Evals: ${{ inputs.branch || 'master' }} (tier=${{ inputs.tier || 'all' }}, iterations=${{ inputs.iterations }}, model=${{ inputs.model || 'default' }}, experiment=${{ inputs['experiment-name'] || '-' }})"
 
 on:
   workflow_call:
@@ -140,10 +141,15 @@ jobs:
 
       # Host OOMs and disk exhaustion leave no application trace — sample host
       # + container telemetry every 60s and ship it with the results artifact.
+      #
+      # `docker stats` names a hot lane but not the process inside it, and `comm`
+      # can't (Node reports `MainThread`). Sorted in the shell — `docker top` parses
+      # the ps output it asks for and the runner's ps rejects `--sort`.
       - name: Start host telemetry sampler
         run: |
           mkdir -p eval-diag
           { echo "=== disk at job start ==="; df -h /; docker system df; } > eval-diag/df-at-start.log
+          # shellcheck disable=SC2016 # deferred on purpose: the sampler expands these
           nohup bash -c 'while true; do
             {
               date -u +%FT%TZ
@@ -151,6 +157,10 @@ jobs:
               df -h / | tail -1
               docker stats --no-stream --format "{{.Name}} cpu={{.CPUPerc}} mem={{.MemUsage}}"
               ps -eo rss=,pid=,comm= --sort=-rss | head -5
+              for c in $(docker ps --format "{{.Names}}" --filter name=n8n-eval-); do
+                docker top "$c" -o pid,pcpu,args 2>&1 |
+                  tail -n +2 | sort -k2 -rn | head -2 | sed "s|^|$c |" | cut -c1-150
+              done
               echo
             } >> eval-diag/host-samples.log 2>&1
             sleep 60
@@ -164,6 +174,7 @@ jobs:
       - name: Start n8n containers
         env:
           EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          INSTANCE_AI_BRAVE_SEARCH_API_KEY: ${{ secrets.INSTANCE_AI_BRAVE_SEARCH_API_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
@@ -212,18 +223,27 @@ jobs:
             # Bounded and self-healing: a lane that exhausts its capped heap is
             # restarted by docker instead of staying dead; pruning + log caps
             # keep per-lane disk and memory flat over a multi-hour run.
+            #
+            # Arms Node's diagnostic report on SIGUSR2 (requested in the log-capture
+            # step). Keep flag and signal in sync — unarmed, SIGUSR2 kills the process.
+            # --report-exclude-env is REQUIRED: the report embeds
+            # `environmentVariables` by default, and this container's env holds the
+            # Anthropic, LangSmith and licence secrets. `::add-mask::` only redacts
+            # log output, never an uploaded artifact, so without this the report
+            # would carry them into the run's artifacts verbatim.
             docker run -d --name "n8n-eval-$((i+1))" \
               "${NETWORK_ARGS[@]}" \
               --memory 2.5g --memory-swap 2.5g \
               --restart on-failure \
               --log-opt max-size=50m --log-opt max-file=2 \
-              -e NODE_OPTIONS=--max-old-space-size=2048 \
+              -e NODE_OPTIONS="--max-old-space-size=2048 --report-on-signal --report-signal=SIGUSR2 --report-directory=/tmp --report-exclude-env" \
               -e EXECUTIONS_DATA_PRUNE=true \
               -e EXECUTIONS_DATA_MAX_AGE=1 \
               -e E2E_TESTS=true \
               -e N8N_ENABLED_MODULES=instance-ai \
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
+              -e INSTANCE_AI_BRAVE_SEARCH_API_KEY="$INSTANCE_AI_BRAVE_SEARCH_API_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
               "${SANDBOX_ARGS[@]}" \
@@ -419,6 +439,25 @@ jobs:
             done <<< "$v"
           done
 
+          # A spin leaves no log line, so snapshot the processes and ask for a JS
+          # stack. Report is collected at the end of the step, once Node can write it.
+          HOT_LANES=""
+          while read -r name cpu; do
+            [ -n "$name" ] || continue
+            pct="${cpu%\%}"
+            pct="${pct%.*}"
+            # `docker stats` can emit a non-numeric CPUPerc (e.g. mid restart). With
+            # `-e`/pipefail an arithmetic compare on that aborts the whole step — and
+            # this step exists precisely to report on adverse conditions.
+            case "$pct" in ''|*[!0-9]*) continue ;; esac
+            [ "$pct" -ge 70 ] || continue
+            HOT_LANES="$HOT_LANES $name"
+            echo ""
+            echo "=== $name at $cpu — per-process snapshot ==="
+            docker top "$name" -o pid,ppid,pcpu,etime,args 2>&1 | cut -c1-200 || true
+            docker kill -s SIGUSR2 "$name" >/dev/null 2>&1 || true
+          done <<< "$(docker stats --no-stream --format '{{.Name}} {{.CPUPerc}}' 2>/dev/null | grep '^n8n-eval-' || true)"
+
           # Layer 1 — accuracy filter: only surface diagnostic signals.
           # `tail -1000` after the filter so we get the LATEST matching lines
           # (post-eval failure signal), not the earliest startup-time ones.
@@ -447,6 +486,17 @@ jobs:
             echo "=== $name (last 100 lines) ==="
             echo "============================================================"
             docker logs "$c" 2>&1 | tail -100 || true
+          done
+
+          for name in $HOT_LANES; do
+            docker exec "$name" sh -c 'cat /tmp/report.*.json 2>/dev/null' \
+              > "eval-diag/node-report-$name.json" 2>/dev/null || true
+            if [ -s "eval-diag/node-report-$name.json" ]; then
+              echo "captured Node diagnostic report for $name"
+            else
+              rm -f "eval-diag/node-report-$name.json"
+              echo "no Node diagnostic report from $name (loop never freed up)"
+            fi
           done
 
       - name: Stop n8n containers

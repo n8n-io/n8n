@@ -1,22 +1,26 @@
-import type { AgentCatalogModel, AgentProviderModelsResponse } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	getAgentModelProviderCredentialTypes,
+	type AgentCatalogModel,
+	type AgentProviderModelsResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 
-import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
-import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
+import {
+	BuilderModelLiveLookupService,
+	type LiveModelLookupResult,
+} from './builder/builder-model-live-lookup.service';
 
 /** Google's models API returns ids as `models/<id>`; the AI SDK expects the bare id. */
 const GOOGLE_MODEL_ID_PREFIX = 'models/';
 
 function getProviderCredentialType(provider: string): string | undefined {
 	if (!isModelDiscoveryProvider(provider)) return undefined;
-	for (const [credentialType, entry] of Object.entries(LLM_PROVIDER_DEFAULTS)) {
-		if (entry.provider === provider) return credentialType;
-	}
-	return undefined;
+	return getAgentModelProviderCredentialTypes(provider)[0];
 }
 
 function normalizeLiveModelValue(provider: string, value: string): string {
@@ -44,15 +48,11 @@ function liveModelIdVariants(id: string): string[] {
 /**
  * Builds the model list offered in the agent model picker for one provider.
  *
- * The curated models.dev catalog is the display list — it is the up-to-date set
- * of chat models with names, cost, and limits. But it lags provider
- * retirements, so a listed model can 404 at call time. When a credential is
- * available we verify the catalog against the provider's own model API (via the
- * shared `@n8n/ai-utilities/model-discovery` functions) and prune any catalog
- * entry the provider no longer reports. We never add live-only
- * models: provider `/models` endpoints return every variant/snapshot and would
- * overload the picker. Without a credential, or when the provider has no list
- * API wired up, the catalog list is returned unpruned with `verified: false`.
+ * For curated providers, models.dev is the display list and live discovery
+ * verifies/prunes it. Custom OpenAI-compatible endpoints are the exception:
+ * their live `/models` response is authoritative and models.dev is never read.
+ * The managed gateway also uses exact live ids, enriched from models.dev when
+ * available. Without live discovery, curated catalog models remain unverified.
  */
 @Service()
 export class AgentModelCatalogService {
@@ -61,22 +61,23 @@ export class AgentModelCatalogService {
 		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 	) {}
 
+	/** Returns the provider's models according to the live lookup's catalog policy. */
 	async getProviderModels(
 		user: User,
 		projectId: string,
 		provider: string,
 		credentialId?: string,
 	): Promise<AgentProviderModelsResponse> {
-		const catalogModels = await this.getCatalogModels(provider);
 		const credentialType = getProviderCredentialType(provider);
 
 		if (!credentialId || !credentialType) {
+			const catalogModels = await this.getCatalogModels(provider);
 			return { provider, verified: false, models: Object.values(catalogModels) };
 		}
 
-		let liveModels: Array<{ name: string; value: string }>;
+		let lookup: LiveModelLookupResult;
 		try {
-			liveModels = await this.builderModelLiveLookupService.list(
+			lookup = await this.builderModelLiveLookupService.lookup(
 				user,
 				projectId,
 				credentialId,
@@ -84,11 +85,70 @@ export class AgentModelCatalogService {
 				provider,
 			);
 		} catch (error) {
-			this.logger.warn('Live model list failed — falling back to the static catalog', {
-				provider,
-				error: error instanceof Error ? error.message : String(error),
-			});
+			this.logLiveLookupFailure(provider, error);
+			// Managed slot: the gateway allowlist is the contract, so don't fall back
+			// to the static catalog (it may list models the gateway won't serve).
+			// Flagged unavailable so the picker distinguishes a failed lookup from a
+			// gateway that genuinely allows nothing.
+			if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+				return { provider, verified: true, unavailable: true, models: [] };
+			}
+			const catalogModels = await this.getCatalogModels(provider);
 			return { provider, verified: false, models: Object.values(catalogModels) };
+		}
+
+		// A custom endpoint can expose any OpenAI-compatible model id. Its live
+		// response is authoritative, so keep exact ids and attach no inferred or
+		// models.dev metadata.
+		if (lookup.policy === 'endpoint-only') {
+			if (lookup.status === 'unavailable') {
+				this.logLiveLookupFailure(provider, lookup.error);
+				return { provider, verified: true, unavailable: true, models: [] };
+			}
+
+			return {
+				provider,
+				verified: true,
+				models: lookup.models.map((live) => ({
+					id: live.value,
+					name: live.name || live.value,
+					toolCall: true,
+				})),
+			};
+		}
+
+		if (lookup.status === 'unavailable') {
+			this.logLiveLookupFailure(provider, lookup.error);
+			if (lookup.policy === 'managed' || credentialId === AI_GATEWAY_MANAGED_TAG) {
+				return { provider, verified: true, unavailable: true, models: [] };
+			}
+			const catalogModels = await this.getCatalogModels(provider);
+			return { provider, verified: false, models: Object.values(catalogModels) };
+		}
+
+		const liveModels = lookup.models;
+		const catalogModels = await this.getCatalogModels(provider);
+
+		// n8n Connect managed slot: the gateway's `/models` is the authoritative,
+		// allowlist-filtered set, and its exact ids are what the gateway's model
+		// allowlist matches (e.g. a dated snapshot, not the catalog's versionless
+		// alias). Use those ids verbatim, enriched with catalog display/metadata.
+		if (lookup.policy === 'managed') {
+			return {
+				provider,
+				verified: true,
+				models: liveModels.map((live) => {
+					const id = normalizeLiveModelValue(provider, live.value);
+					const catalogMatch = catalogModels[id] ?? catalogModels[id.replace(SNAPSHOT_SUFFIX, '')];
+					return catalogMatch
+						? { ...catalogMatch, id }
+						: {
+								id,
+								name: normalizeLiveModelValue(provider, live.name) || id,
+								toolCall: true,
+							};
+				}),
+			};
 		}
 
 		const liveModelIds = new Set(
@@ -121,11 +181,17 @@ export class AgentModelCatalogService {
 				return {
 					id,
 					name: normalizeLiveModelValue(provider, live.name) || id,
-					reasoning: false,
 					toolCall: true,
 				};
 			}),
 		};
+	}
+
+	private logLiveLookupFailure(provider: string, error: unknown): void {
+		this.logger.warn('Live model list failed', {
+			provider,
+			error: error instanceof Error ? error.message : String(error),
+		});
 	}
 
 	private async getCatalogModels(provider: string): Promise<Record<string, AgentCatalogModel>> {

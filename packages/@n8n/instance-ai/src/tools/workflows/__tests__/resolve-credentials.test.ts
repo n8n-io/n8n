@@ -141,6 +141,174 @@ describe('resolveCredentials', () => {
 			expect(result.mockedCredentialTypes).toEqual([]);
 		});
 
+		it('switches the node auth to the attached n8n credits credential type', async () => {
+			// The LLM wrote the API-key credential slot but left auth at the OAuth2
+			// default; attaching n8n credits must switch auth so the slot is active.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: { authentication: 'oAuth2' },
+						credentials: { pdfcoApi: undefined as unknown as { id: string; name: string } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					credentials: [
+						{ name: 'pdfcoOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+						{ name: 'pdfcoApi', displayOptions: { show: { authentication: ['apiKey'] } } },
+					],
+				});
+
+			await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+		});
+
+		it('falls back to a supported sibling type when the written slot type is not gateway-supported', async () => {
+			// The LLM wrote the slot matching the node's default auth (OAuth2), which
+			// n8n credits doesn't cover — the sibling API-key type is attached instead
+			// and auth is switched to it, rather than mocking the node into a setup card.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: { authentication: 'oAuth2' },
+						credentials: { pdfcoOAuth2Api: undefined as unknown as { id: string; name: string } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn(
+				async (type: string) => await Promise.resolve(type === 'pdfcoApi'),
+			);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					credentials: [
+						{ name: 'pdfcoOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+						{ name: 'pdfcoApi', displayOptions: { show: { authentication: ['apiKey'] } } },
+					],
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+			expect(result.resolvedCredentialsByNode).toEqual({
+				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+			});
+			// Simulated during verification, but NOT flagged as needing a real credential.
+			expect(result.mockedNodeNames).toEqual(['PDF.co']);
+			expect(result.mockedCredentialsByNode).toEqual({});
+		});
+
+		it('attaches n8n credits to a supported sibling type for a credential-less node whose auth type is unsupported', async () => {
+			// No `credentials` key at all and auth left at the unsupported OAuth2
+			// default — the second pass switches auth to the supported sibling.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: { authentication: 'oAuth2' },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn(
+				async (type: string) => await Promise.resolve(type === 'pdfcoApi'),
+			);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					credentials: [
+						{ name: 'pdfcoOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+						{ name: 'pdfcoApi', displayOptions: { show: { authentication: ['apiKey'] } } },
+					],
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+			expect(result.resolvedCredentialsByNode).toEqual({
+				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+			});
+			expect(result.mockedNodeNames).toEqual(['PDF.co']);
+		});
+
+		it('does not rewrite a parameter that already activates the attached credential type', async () => {
+			// The credential is shown for several auth values and the node already
+			// uses the second one — attaching n8n credits must not flip it to the first.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: { authentication: 'apiKeyLegacy' },
+						credentials: { pdfcoApi: undefined as unknown as { id: string; name: string } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					credentials: [
+						{
+							name: 'pdfcoApi',
+							displayOptions: { show: { authentication: ['apiKey', 'apiKeyLegacy'] } },
+						},
+					],
+				});
+
+			await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKeyLegacy' });
+		});
+
 		it('attaches n8n credits to a credential-less node requiring a gateway-supported type', async () => {
 			// The LLM omitted the credential slot entirely — no `credentials` key at all.
 			const json = makeWorkflow({
@@ -342,6 +510,157 @@ describe('resolveCredentials', () => {
 			expect(json.nodes[0].credentials).toEqual({
 				slackApi: { id: 'existing-id', name: 'Existing Slack' },
 			});
+		});
+	});
+
+	describe('sibling node credential reuse', () => {
+		function makeNotionNode(name: string, credentials: Record<string, unknown>) {
+			return {
+				id: name,
+				name,
+				type: 'n8n-nodes-base.notion',
+				typeVersion: 2,
+				position: [0, 0] as [number, number],
+				credentials: credentials as unknown as { [key: string]: { id: string; name: string } },
+			};
+		}
+
+		const twoNotionCreds = makeCredentialMap([
+			{ id: 'cred-1', name: 'Notion main', type: 'notionApi' },
+			{ id: 'cred-2', name: 'Notion other', type: 'notionApi' },
+		]);
+
+		it('reuses the credential bound to a sibling node of the same type', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', { notionApi: { id: 'cred-1', name: 'Notion main' } }),
+					makeNotionNode('Notion 2', { notionApi: undefined }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[1].credentials).toEqual({
+				notionApi: { id: 'cred-1', name: 'Notion main' },
+			});
+			expect(result.resolvedCredentialsByNode['Notion 2']).toEqual([
+				{ type: 'notionApi', id: 'cred-1', name: 'Notion main' },
+			]);
+		});
+
+		it('reuses a saved-workflow binding for a node the build added', async () => {
+			const json = makeWorkflow({
+				nodes: [makeNotionNode('Notion 2', { notionApi: undefined })],
+			});
+			const existingWorkflow = makeWorkflow({
+				nodes: [makeNotionNode('Notion', { notionApi: { id: 'cred-1', name: 'Notion main' } })],
+			});
+
+			const result = await resolveCredentials(
+				json,
+				'wf-123',
+				createMockContext(existingWorkflow),
+				twoNotionCreds,
+			);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[0].credentials).toEqual({
+				notionApi: { id: 'cred-1', name: 'Notion main' },
+			});
+		});
+
+		it('rebinds an unknown raw id to the sibling credential instead of mocking', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', { notionApi: { id: 'cred-1', name: 'Notion main' } }),
+					makeNotionNode('Notion 2', { notionApi: { id: 'fake-id', name: 'Made up' } }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[1].credentials).toEqual({
+				notionApi: { id: 'cred-1', name: 'Notion main' },
+			});
+		});
+
+		it('does not reuse a sibling binding whose id is not stored', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', { notionApi: { id: 'cred-gone', name: 'Stale' } }),
+					makeNotionNode('Notion 2', { notionApi: undefined }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toContain('Notion 2');
+			expect(json.nodes[1].credentials).toEqual({});
+		});
+
+		it('does not reuse a sibling Templated Custom Auth credential across nodes', async () => {
+			// One shared type serves every service — the sibling's key may belong to
+			// a different service, so the slot must route to setup instead.
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Call Pexels', {
+						httpTemplatedCustomAuth: { id: 'cred-pexels', name: 'Pexels API' },
+					}),
+					makeNotionNode('Call fal.ai', { httpTemplatedCustomAuth: undefined }),
+				],
+			});
+			const credentials = makeCredentialMap([
+				{ id: 'cred-pexels', name: 'Pexels API', type: 'httpTemplatedCustomAuth' },
+				{ id: 'cred-fal', name: 'fal.ai API', type: 'httpTemplatedCustomAuth' },
+			]);
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), credentials);
+
+			expect(result.mockedNodeNames).toContain('Call fal.ai');
+			expect(json.nodes[1].credentials).toEqual({});
+		});
+
+		it.each(['httpBearerAuth', 'oAuth2Api'])(
+			'does not reuse a sibling %s credential across nodes',
+			async (credentialType) => {
+				// Same shared-type rule as Templated Custom Auth: the binding on one
+				// node may belong to a different service than the new node calls.
+				const json = makeWorkflow({
+					nodes: [
+						makeNotionNode('Call service A', {
+							[credentialType]: { id: 'cred-a', name: 'Service A auth' },
+						}),
+						makeNotionNode('Call service B', { [credentialType]: undefined }),
+					],
+				});
+				const credentials = makeCredentialMap([
+					{ id: 'cred-a', name: 'Service A auth', type: credentialType },
+					{ id: 'cred-b', name: 'Service B auth', type: credentialType },
+				]);
+
+				const result = await resolveCredentials(json, undefined, createMockContext(), credentials);
+
+				expect(result.mockedNodeNames).toContain('Call service B');
+				expect(json.nodes[1].credentials).toEqual({});
+			},
+		);
+
+		it('ignores gateway-managed sibling markers', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', {
+						notionApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					}),
+					makeNotionNode('Notion 2', { notionApi: undefined }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toContain('Notion 2');
+			expect(json.nodes[1].credentials).toEqual({});
 		});
 	});
 
@@ -909,6 +1228,132 @@ describe('resolveCredentials', () => {
 
 			expect(result.mockedNodeNames).toEqual([]);
 			expect(result.resolvedCredentialsByNode).toEqual({});
+		});
+	});
+
+	// Templated Custom Auth ids are service-agnostic at the type level, so the
+	// resolver must never silently wire one the way it does dedicated types: a
+	// supplied id is trusted only when it matches the node's own prior wiring,
+	// and the sole-candidate fallback is skipped. Otherwise a Pexels key could
+	// land on fal.ai nodes.
+	describe('Templated Custom Auth', () => {
+		const templatedNode = (credential: unknown) => ({
+			id: '1',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4,
+			position: [0, 0] as [number, number],
+			parameters: { url: 'https://fal.run/v1/models' },
+			credentials: { httpTemplatedCustomAuth: credential as { id: string; name: string } },
+		});
+
+		it("keeps a supplied id that matches the node's prior wiring", async () => {
+			const wired = { id: 'cred-fal', name: 'fal.ai API Key' };
+			const json = makeWorkflow({ nodes: [templatedNode(wired)] });
+			// Prior wiring is read from the persisted workflow, so pass its id.
+			const ctx = createMockContext(makeWorkflow({ nodes: [templatedNode(wired)] }));
+
+			await resolveCredentials(json, 'wf-1', ctx, makeCredentialMap([]));
+
+			expect(json.nodes[0].credentials).toEqual({ httpTemplatedCustomAuth: wired });
+		});
+
+		it('routes a fresh supplied id to setup instead of trusting it', async () => {
+			// The model attached a stored templated credential the node was never
+			// wired to — could be another service's key, so mock and let setup ask.
+			const json = makeWorkflow({
+				nodes: [templatedNode({ id: 'cred-pexels', name: 'Pexels API' })],
+			});
+			const ctx = createMockContext();
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				ctx,
+				makeCredentialMap([
+					{ id: 'cred-pexels', name: 'Pexels API', type: 'httpTemplatedCustomAuth' },
+				]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedNodeNames).toContain('HTTP Request');
+		});
+
+		it('skips the sole-candidate fallback', async () => {
+			// One stored templated credential exists, but the node has no prior
+			// wiring — a dedicated type would auto-attach it; the shared type must not.
+			const json = makeWorkflow({ nodes: [templatedNode(null)] });
+			const ctx = createMockContext();
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				ctx,
+				makeCredentialMap([
+					{ id: 'cred-1', name: 'Some API Key', type: 'httpTemplatedCustomAuth' },
+				]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedNodeNames).toContain('HTTP Request');
+		});
+	});
+
+	// Bearer/header/query/basic/digest/custom/OAuth all share one type across
+	// every service, so the sole-candidate fallback must not wire them either —
+	// otherwise a build silently sends the user's only key to the node's URL.
+	describe('generic auth types', () => {
+		const bearerNode = () => ({
+			id: '1',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: { endpointUrl: 'http://localhost:5678/mcp-server/http' },
+			credentials: { httpBearerAuth: null as unknown as { id: string; name: string } },
+		});
+
+		it('skips the sole-candidate fallback for a bearer auth credential', async () => {
+			const json = makeWorkflow({ nodes: [bearerNode()] });
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				makeCredentialMap([
+					{ id: 'cred-bearer', name: 'Bearer Auth account', type: 'httpBearerAuth' },
+				]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedNodeNames).toContain('MCP Client');
+			expect(result.resolvedCredentialsByNode).toEqual({});
+		});
+
+		it('still auto-binds the sole candidate of a service-scoped type', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: null as unknown as { id: string; name: string } },
+					},
+				],
+			});
+
+			await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				makeCredentialMap([{ id: 'cred-slack', name: 'My Slack', type: 'slackApi' }]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: 'cred-slack', name: 'My Slack' },
+			});
 		});
 	});
 });

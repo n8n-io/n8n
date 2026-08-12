@@ -329,6 +329,57 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('buildTriggerIdentityCredentials()', () => {
+		it('should encrypt the credential context with the token as identity and resource in metadata', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const result = await service.buildTriggerIdentityCredentials(
+				'oauth-token-jwt',
+				'https://api.example.com/resource',
+			);
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'oauth-token-jwt',
+				metadata: { source: 'n8n-oauth', resource: 'https://api.example.com/resource' },
+			});
+			expect(result).toBe('encrypted-credential-blob');
+		});
+
+		it('should seal the resource grant so the run can verify itself after the trigger is gone', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const grant = {
+				audiences: ['https://api.example.com/resource?method=POST'],
+				executeAccessWorkflowId: 'workflow-1',
+			};
+
+			await service.buildTriggerIdentityCredentials(
+				'oauth-token-jwt',
+				'https://api.example.com/resource',
+				grant,
+			);
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'oauth-token-jwt',
+				metadata: {
+					source: 'n8n-oauth',
+					resource: 'https://api.example.com/resource',
+					grant,
+				},
+			});
+		});
+
+		it('should propagate errors raised by the cipher', async () => {
+			mockCipher.encryptV2.mockRejectedValue(new Error('encryption key missing'));
+
+			await expect(service.buildTriggerIdentityCredentials('token', 'resource')).rejects.toThrow(
+				'encryption key missing',
+			);
+		});
+	});
+
 	describe('encrypt → decrypt round-trip', () => {
 		it('should preserve secureArtifacts through a full round-trip', async () => {
 			// JSON-stringify on encrypt, identity on decrypt — simulates a symmetric cipher

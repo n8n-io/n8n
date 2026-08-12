@@ -194,6 +194,7 @@ describe('SSO store', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			vi.mocked(ssoApi.getOidcConfig).mockResolvedValue(oidcConfig);
@@ -226,6 +227,7 @@ describe('SSO store', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 
 			await ssoStore.getOidcConfig();

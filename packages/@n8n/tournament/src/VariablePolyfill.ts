@@ -14,8 +14,7 @@ function assertNever(_value: never): _value is never {
 }
 
 export const globalIdentifier = b.identifier(
-	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-	// @ts-ignore
+	// @ts-expect-error window not in lib target
 	typeof window !== 'object' ? 'global' : 'window',
 );
 

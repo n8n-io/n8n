@@ -4,7 +4,7 @@ import { useInstanceAiBrowserUseTelemetry } from '../instanceAiBrowserUse.teleme
 
 const track = vi.fn();
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
 

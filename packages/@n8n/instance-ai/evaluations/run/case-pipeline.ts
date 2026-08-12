@@ -16,6 +16,7 @@ import type { BuildOrchestrator } from './build-orchestrator';
 import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
 import type { CliArgs } from '../cli/args';
 import { findAgentArtifactRef } from '../harness/agent-execution';
+import { buildFailedOnInfra } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
 import {
@@ -27,6 +28,7 @@ import {
 	classifyScenarioExecutionError,
 	extractErrorMessage,
 	MAX_EXEC_ATTEMPTS,
+	PROVIDER_OUTAGE_ROOT_CAUSE,
 	shouldRetryScenarioExecution,
 } from '../harness/transient-error';
 import { BUILD_ONLY_SCENARIO_NAME, type DatasetExampleInputs } from '../langsmith/dataset-sync';
@@ -141,6 +143,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				score: 0,
 				reasoning: classified.reasoning,
 				failureCategory: classified.failureCategory,
+				attribution: classified.attribution,
 				rootCause: classified.rootCause,
 				execErrors: [message],
 				buildDurationMs: 0,
@@ -192,6 +195,8 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// Awaited only after each branch's own work is done, keeping the judge off
 		// the scenario critical path while persisting verdicts to run outputs.
 		const verdictsPromise = buildExpectationsByKey.get(cacheKey);
+		// Verdicts arrive already attributed (the orchestrator stamps them where it
+		// still knows why the build ended) — attach them as-is.
 		const attachExpectations = async (output: TargetOutput): Promise<TargetOutput> => {
 			const verdicts = await verdictsPromise;
 			return verdicts && verdicts.length > 0 ? { ...output, expectationResults: verdicts } : output;
@@ -214,6 +219,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				score: outcome.score,
 				reasoning: outcome.reasoning,
 				failureCategory: outcome.failureCategory,
+				attribution: outcome.attribution,
 				...(outcome.incomplete ? { incomplete: true } : {}),
 				execErrors: [],
 				buildDurationMs,
@@ -234,10 +240,19 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				passed: false,
 				score: 0,
 				reasoning: `Build failed: ${build.error ?? 'unknown'}`,
-				// Seeding and transport failures are harness problems, not agent build
-				// failures — keep them out of the agent's build_failure bucket.
+				// Seeding, transport and provider failures are harness/infra problems,
+				// not agent build failures — keep them out of the build_failure bucket,
+				// which lang-tracer's legacy map reads straight as `builder_issue`.
 				failureCategory:
 					build.seedingFailed || build.transportFailure ? 'framework_issue' : 'build_failure',
+				// The verdict lang-tracer actually stores. A provider outage is infra
+				// at the source (TRUST-374/375) — it no longer has to be inferred from
+				// the rootCause below.
+				attribution: buildFailedOnInfra(build) ? 'framework_issue' : 'builder_issue',
+				// Pinned marker kept as the fallback for readers on the legacy contract.
+				...(build.providerOutage
+					? { rootCause: `${PROVIDER_OUTAGE_ROOT_CAUSE}: ${build.providerOutage}` }
+					: {}),
 				execErrors: build.error ? [build.error] : [],
 				buildDurationMs,
 				...buildSpendFields,
@@ -297,6 +312,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 						score: 0,
 						reasoning: `Agent scenario execution error: ${errorMessage}`,
 						failureCategory: 'framework_issue',
+						attribution: 'framework_issue',
 						execErrors: [errorMessage],
 						buildDurationMs,
 						...buildSpendFields,
@@ -311,6 +327,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 
 			const agentFailureCategory = agentResult.success ? undefined : agentResult.failureCategory;
 			const agentRootCause = agentResult.success ? undefined : agentResult.rootCause;
+			const agentAttribution = agentResult.success ? undefined : agentResult.attribution;
 			return await attachExpectations({
 				buildSuccess: true,
 				agentId: agentRef.id,
@@ -320,6 +337,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				score: agentResult.score,
 				reasoning: agentResult.reasoning,
 				failureCategory: agentFailureCategory,
+				attribution: agentAttribution,
 				rootCause: agentRootCause,
 				...(agentResult.incomplete ? { incomplete: true } : {}),
 				execErrors: agentResult.agentEvalResult?.errors ?? [],
@@ -360,6 +378,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				score: 0,
 				reasoning: reason,
 				failureCategory: 'framework_issue',
+				attribution: 'framework_issue',
 				execErrors: [reason],
 				buildDurationMs,
 				...buildSpendFields,
@@ -412,6 +431,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 						score: 0,
 						reasoning: classified.reasoning,
 						failureCategory: classified.failureCategory,
+						attribution: classified.attribution,
 						rootCause: classified.rootCause,
 						execErrors: [errorMessage],
 						buildDurationMs,
@@ -432,6 +452,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			// placeholders instead of omitting them.
 			const failureCategory = result.success ? undefined : result.failureCategory;
 			const rootCause = result.success ? undefined : result.rootCause;
+			const attribution = result.success ? undefined : result.attribution;
 
 			return await attachExpectations({
 				buildSuccess: true,
@@ -441,6 +462,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				score: result.score,
 				reasoning: result.reasoning,
 				failureCategory,
+				attribution,
 				rootCause,
 				...(result.incomplete ? { incomplete: true } : {}),
 				execErrors: result.evalResult?.errors ?? [],

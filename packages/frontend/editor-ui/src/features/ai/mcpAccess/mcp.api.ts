@@ -7,6 +7,7 @@ import type {
 	McpClientTypeFilter,
 } from '@n8n/api-types';
 import type { WorkflowListItem } from '@/Interface';
+import type { Agent } from '@/features/agents/agent.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, getFullApiResponse } from '@n8n/rest-api-client';
 
@@ -25,6 +26,17 @@ export type ToggleWorkflowsMcpAccessResponse = {
 	unchangedCount: number;
 	skippedCount: number;
 	failedCount: number;
+	updatedIds?: string[];
+	unchangedIds?: string[];
+};
+
+export type ToggleAgentsMcpAccessTarget =
+	| { agentIds: string[] }
+	| { projectId: string }
+	| { allAgents: true };
+
+export type ToggleAgentsMcpAccessResponse = {
+	updatedCount: number;
 	updatedIds?: string[];
 	unchangedIds?: string[];
 };
@@ -140,4 +152,43 @@ export async function fetchMcpEligibleWorkflows(
 	}
 
 	return await getFullApiResponse<WorkflowListItem[]>(context, 'GET', '/mcp/workflows', params);
+}
+
+/**
+ * Bulk-toggles MCP availability for a set of agents scoped by either an
+ * explicit id list, a project, or all agents the user can update.
+ */
+export async function toggleAgentsMcpAccessApi(
+	context: IRestApiContext,
+	target: ToggleAgentsMcpAccessTarget,
+	availableInMCP: boolean,
+): Promise<ToggleAgentsMcpAccessResponse> {
+	return await makeRestApiRequest(context, 'PATCH', '/mcp/agents/toggle-access', {
+		availableInMCP,
+		...target,
+	});
+}
+
+export async function fetchMcpAgents(
+	context: IRestApiContext,
+	options?: { take?: number; skip?: number; query?: string; availableInMCP?: boolean },
+): Promise<{ count: number; data: Agent[] }> {
+	const params: Record<string, string | number> = {};
+	const query = options?.query?.trim();
+	const filter = {
+		...(query ? { query } : {}),
+		...(options?.availableInMCP !== undefined ? { availableInMCP: options.availableInMCP } : {}),
+	};
+
+	if (options?.take !== undefined) {
+		params.take = options.take;
+	}
+	if (options?.skip !== undefined) {
+		params.skip = options.skip;
+	}
+	if (Object.keys(filter).length > 0) {
+		params.filter = JSON.stringify(filter);
+	}
+
+	return await getFullApiResponse<Agent[]>(context, 'GET', '/mcp/agents', params);
 }

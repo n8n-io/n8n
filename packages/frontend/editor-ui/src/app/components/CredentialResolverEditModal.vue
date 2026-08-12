@@ -11,7 +11,7 @@ import {
 	type IMenuItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY } from '../constants';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';

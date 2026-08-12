@@ -57,8 +57,8 @@ function flattenRunsForReport(evaluation: MultiRunEvaluation): WorkflowTestCaseR
 	}
 	return evaluation.testCases.flatMap((tc) =>
 		tc.runs.map((run, iter) => {
-			// seedThread cases carry no authored conversation (the live turn comes
-			// from the trace) — nothing to relabel.
+			// A `replay`-seeded case carries no authored conversation (the live turn
+			// comes from the trace) — nothing to relabel.
 			if (!run.testCase.conversation?.length) return run;
 			const [opening, ...rest] = run.testCase.conversation;
 			return {
@@ -84,18 +84,30 @@ export function emitRunReports(config: {
 	gate: GateResult | undefined;
 	slugByTestCase: Map<WorkflowTestCase, string> | undefined;
 	commitSha: string | undefined;
+	/** --output-dir; the HTML reports land here alongside the data artifacts.
+	 *  Undefined leaves each writer on its `.data` default. */
+	outputDir: string | undefined;
 	jsonPath: string;
 	prCommentPath: string;
 	/** --experiment-name; baseline-prefixed names trigger the noise advisory. */
 	experimentName?: string;
 }): void {
-	const { evaluation, outcome, gate, slugByTestCase, commitSha, jsonPath, prCommentPath } = config;
+	const {
+		evaluation,
+		outcome,
+		gate,
+		slugByTestCase,
+		commitSha,
+		outputDir,
+		jsonPath,
+		prCommentPath,
+	} = config;
 	console.log(`Results:    ${jsonPath}`);
 	console.log(`PR comment: ${prCommentPath}`);
 	const reportResults = flattenRunsForReport(evaluation);
-	const htmlPath = writeWorkflowReport(reportResults);
+	const htmlPath = writeWorkflowReport(reportResults, outputDir);
 	console.log(`Report:     ${htmlPath}`);
-	const debugHtmlPath = writeRunDebugReport(reportResults);
+	const debugHtmlPath = writeRunDebugReport(reportResults, outputDir);
 	console.log(`LLM debug:  ${debugHtmlPath}`);
 	console.log(
 		'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),

@@ -1,6 +1,7 @@
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from './credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
@@ -9,7 +10,6 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 import axios from 'axios';
-import { sleep } from 'n8n-workflow';
 import type { CreateCredentialDto } from '@n8n/api-types';
 
 async function fetchCredentialTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
@@ -155,4 +155,16 @@ export async function testCredential(
 		'/credentials/test',
 		data as unknown as IDataObject,
 	);
+}
+
+/**
+ * Auth-probe a stored credential against the test URL persisted in the
+ * credential itself (Templated Custom Auth) — for types `/credentials/test`
+ * can't cover because they declare no test. Only the id travels.
+ */
+export async function probeCredential(
+	context: IRestApiContext,
+	credentialId: string,
+): Promise<INodeCredentialTestResult> {
+	return await makeRestApiRequest(context, 'POST', `/credentials/${credentialId}/probe`);
 }

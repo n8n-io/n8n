@@ -1,11 +1,67 @@
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 import { Binary, ObjectId } from 'mongodb';
 
-import { prepareItems, serializeMongoItems } from './GenericFunctions';
+import {
+	parseAndResolveQueryParameters,
+	prepareItems,
+	serializeMongoItems,
+} from './GenericFunctions';
 
 const mockNode = { name: 'MongoDB', type: 'n8n-nodes-base.mongoDb' } as INode;
 
 describe('MongoDB Node: Generic Functions', () => {
+	describe('parseAndResolveQueryParameters', () => {
+		it('replaces placeholders with scalars and scalar arrays', () => {
+			const query = JSON.stringify({
+				name: '$1',
+				age: { $gte: '$2' },
+				tags: { $in: '$3' },
+			});
+
+			const result = parseAndResolveQueryParameters(
+				query,
+				'["Alice", 30, ["active", "admin"]]',
+				mockNode,
+				0,
+			);
+
+			expect(result).toEqual({
+				name: 'Alice',
+				age: { $gte: 30 },
+				tags: { $in: ['active', 'admin'] },
+			});
+		});
+
+		it('only replaces complete values, not keys or parts of strings', () => {
+			const query = JSON.stringify({ $1: 'key', exact: '$1', partial: 'user-$1' });
+
+			const result = parseAndResolveQueryParameters(query, ['Alice'], mockNode, 0);
+
+			expect(result).toEqual({ $1: 'key', exact: 'Alice', partial: 'user-$1' });
+		});
+
+		it('does not replace placeholders when parameters are empty', () => {
+			const result = parseAndResolveQueryParameters('{ "name": "$1" }', [], mockNode, 0);
+
+			expect(result).toEqual({ name: '$1' });
+		});
+
+		it.each([{ parameters: [{ name: 'Alice' }] }, { parameters: [[['nested']]] }])(
+			'throws for unsupported parameter value $parameters',
+			({ parameters }) => {
+				expect(() =>
+					parseAndResolveQueryParameters('{ "name": "$1" }', parameters, mockNode, 0),
+				).toThrow(/must be a scalar or an array of scalars/);
+			},
+		);
+
+		it('throws when a parameter is not used', () => {
+			expect(() =>
+				parseAndResolveQueryParameters('{ "name": "$1" }', ['Alice', 30], mockNode, 0),
+			).toThrow('Query parameter 2 is not used');
+		});
+	});
+
 	describe('prepareItems', () => {
 		it('should select fields', () => {
 			const items = [{ json: { name: 'John', age: 30 } }, { json: { name: 'Jane', age: 25 } }];

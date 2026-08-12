@@ -16,7 +16,10 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'securityAudit:generate',
 	'securitySettings:manage',
 	'saml:manage',
+	'oidc:manage',
 	'otel:manage',
+	'ldap:manage',
+	'ldap:sync',
 	'eventBusDestination:list',
 	'eventBusDestination:read',
 	'eventBusDestination:create',
@@ -85,6 +88,8 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
 	'insights:read',
+	'role:manage',
+	'role:list',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;

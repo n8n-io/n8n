@@ -9,6 +9,7 @@ import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.v
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '@/app/constants/modals';
 
@@ -36,7 +37,7 @@ vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mockTelemetryTrack }),
 }));
 
@@ -110,7 +111,36 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	},
 }));
 
+const instanceAiHandoffMock = vi.hoisted(() => ({
+	startThread: vi.fn(),
+}));
+
+vi.mock('../composables/useInstanceAiAvailability', async () => {
+	const { computed } = await import('vue');
+	return { useInstanceAiAvailable: () => computed(() => true) };
+});
+
+vi.mock('../composables/useInstanceAiHandoff', async (importOriginal) => {
+	const original = await importOriginal<typeof import('../composables/useInstanceAiHandoff')>();
+	return {
+		...original,
+		useInstanceAiHandoff: () => ({ startThread: instanceAiHandoffMock.startThread }),
+	};
+});
+
 const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
+
+// getUsableCredentialByType is a computed returning a function — vi.spyOn's accessor
+// overloads can't type a getter whose value is a function, so override it directly.
+function stubUsableCredentials(
+	store: ReturnType<typeof useCredentialsStore>,
+	getCredentials: (type: string) => ICredentialsResponse[],
+) {
+	Object.defineProperty(store, 'getUsableCredentialByType', {
+		configurable: true,
+		get: () => getCredentials,
+	});
+}
 
 /** Creates requests with no existing credentials (shows setup button) */
 function makeCredentialRequests(count: number): InstanceAiCredentialRequest[] {
@@ -155,6 +185,11 @@ describe('InstanceAiCredentialSetup', () => {
 		const credentialsStore = useCredentialsStore();
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
+		// The card renders the NodeCredentials picker when the store has a usable
+		// credential of the type; default to one so the picker-based tests render it.
+		stubUsableCredentials(credentialsStore, () => [
+			{ id: 'existing-1', name: 'Existing Cred' } as ICredentialsResponse,
+		]);
 	});
 
 	describe('credential list', () => {
@@ -199,7 +234,10 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getAllByTestId('credential-picker')).toHaveLength(1);
 		});
 
-		it('renders a setup button when no existing credentials', () => {
+		it('renders the setup button (modal path) for a plain type with no usable credentials', () => {
+			const credentialsStore = useCredentialsStore();
+			stubUsableCredentials(credentialsStore, () => []);
+
 			const requests = makeCredentialRequests(1);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
@@ -213,11 +251,23 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(queryByTestId('credential-picker')).toBeNull();
 		});
 
-		it('opens credential modal when setup button is clicked', async () => {
-			const requests = makeCredentialRequests(1);
-			const uiStore = useUIStore();
-			const openNewCredSpy = vi.spyOn(uiStore, 'openNewCredential');
+		it('opens the credential modal pre-filled with the recipe for a Templated Custom Auth request', async () => {
+			const credentialsStore = useCredentialsStore();
+			stubUsableCredentials(credentialsStore, () => []);
 
+			const setupHint = {
+				template: { headers: { Authorization: 'Key {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+				suggestedName: 'fal.ai API Key',
+			};
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'httpTemplatedCustomAuth',
+					reason: 'For calling the fal.ai API',
+					existingCredentials: [],
+					setupHint,
+				},
+			];
 			const { getByTestId } = renderComponent({
 				props: {
 					requestId: 'req-1',
@@ -227,15 +277,72 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 
 			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
-			expect(openNewCredSpy).toHaveBeenCalledWith(
-				'type1',
+
+			expect(useUIStore().openNewCredential).toHaveBeenCalledWith(
+				'httpTemplatedCustomAuth',
 				false,
 				false,
 				undefined,
 				undefined,
 				undefined,
 				undefined,
-				{ closeOnSave: true },
+				{
+					closeOnSave: true,
+					credentialSetupHint: setupHint,
+					instanceAiCredentialHelp: expect.any(Function),
+				},
+			);
+		});
+
+		it('hands the modal a help handler that opens a new thread named after the recipe service', async () => {
+			instanceAiHandoffMock.startThread.mockClear();
+			stubUsableCredentials(useCredentialsStore(), () => []);
+
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'httpTemplatedCustomAuth',
+					reason: 'For calling the fal.ai API',
+					existingCredentials: [],
+					setupHint: {
+						template: { headers: { Authorization: 'Key {{api_key}}' } },
+						placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+						suggestedName: 'fal.ai API Key',
+					},
+				},
+			];
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+					projectId: 'project-1',
+				},
+			});
+
+			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
+
+			const options = vi.mocked(useUIStore().openNewCredential).mock.calls[0][7];
+			// The modal reports the generic type name; the recipe's service name replaces it.
+			const shouldCloseModal = await options?.instanceAiCredentialHelp?.({
+				credentialType: 'httpTemplatedCustomAuth',
+				displayName: 'Simplified Custom Auth',
+			});
+
+			// New tab → the credential modal stays open.
+			expect(shouldCloseModal).toBe(false);
+			expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
+				'project-1',
+				expect.stringContaining('fal.ai API Key'),
+				{ source: 'credential_edit', origin: 'internal' },
+				undefined,
+				undefined,
+				expect.objectContaining({
+					newTab: true,
+					context: expect.objectContaining({
+						source: 'credential-modal',
+						credential: expect.objectContaining({ displayName: 'fal.ai API Key' }),
+					}),
+				}),
 			);
 		});
 
@@ -409,6 +516,104 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 
+		it('keeps a sole generic auth credential preselected but does not auto-submit', async () => {
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'httpBearerAuth',
+					reason: 'Authenticate the MCP server',
+					existingCredentials: [{ id: 'existing-bearer', name: 'Bearer Auth account' }],
+				},
+			];
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			// Give the immediate watcher a tick — it must not resolve the card.
+			await nextTick();
+			await nextTick();
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			// User confirms the preselected credential explicitly.
+			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { httpBearerAuth: 'existing-bearer' },
+			});
+		});
+
+		it('does not auto-submit a generic auth credential picked after the initial render', async () => {
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'httpBearerAuth',
+					reason: 'Authenticate the MCP server',
+					existingCredentials: [
+						{ id: 'existing-bearer', name: 'Bearer Auth account' },
+						{ id: 'existing-bearer-b', name: 'Other Bearer account' },
+					],
+				},
+			];
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			// Two candidates, so nothing is preselected — picking one must not submit.
+			await userEvent.click(getByTestId('credential-picker'));
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { httpBearerAuth: 'cred-123' },
+			});
+		});
+
+		it('does not submit a preselected generic auth credential when the other step is skipped', async () => {
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'slackApi',
+					reason: 'Post the message',
+					existingCredentials: [],
+				},
+				{
+					credentialType: 'httpBearerAuth',
+					reason: 'Authenticate the MCP server',
+					existingCredentials: [{ id: 'existing-bearer', name: 'Bearer Auth account' }],
+				},
+			];
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByText, getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			// Skipping the only open step leaves the bearer credential selected — it
+			// must still wait for Continue rather than being submitted here.
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { httpBearerAuth: 'existing-bearer' },
+			});
+		});
+
 		it('shows deferred state after skip', async () => {
 			const requests = makeCredentialRequests(1);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
@@ -523,6 +728,10 @@ describe('InstanceAiCredentialSetup', () => {
 			settingsStore = useInstanceAiSettingsStore();
 			vi.spyOn(settingsStore, 'fetchBrowserStatus').mockResolvedValue(undefined);
 			settingsStore.browserConnected = false;
+
+			// The choice only shows with no usable credentials in the store —
+			// override the suite-level default of one.
+			stubUsableCredentials(useCredentialsStore(), () => []);
 		});
 
 		function renderCard(requests: InstanceAiCredentialRequest[]) {
@@ -563,20 +772,31 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('does not show the choice when credentials already exist', () => {
 			experiment.enabled = true;
+			stubUsableCredentials(useCredentialsStore(), () => [
+				{ id: 'existing-1', name: 'Existing Cred' } as ICredentialsResponse,
+			]);
 			const { queryByTestId } = renderCard(makeCredentialRequestsWithExisting(1));
 
 			expect(queryByTestId('setup-choice-ai')).toBeNull();
 		});
 
-		it('tracks and opens the manual credential modal on manual choice', async () => {
+		it('tracks and opens the credential modal on manual choice', async () => {
 			experiment.enabled = true;
-			const uiStore = useUIStore();
-			const openNewCredSpy = vi.spyOn(uiStore, 'openNewCredential');
 
 			const { getByTestId } = renderCard(makeCredentialRequests(1));
+
 			await userEvent.click(getByTestId('setup-choice-manual'));
 
-			expect(openNewCredSpy).toHaveBeenCalled();
+			expect(useUIStore().openNewCredential).toHaveBeenCalledWith(
+				'type1',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ closeOnSave: true, instanceAiCredentialHelp: expect.any(Function) },
+			);
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'Instance AI Browser Use User clicked credential setup option',
 				expect.objectContaining({ credential_type: 'type1', choice: 'manual' }),
@@ -595,11 +815,19 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
 				kind: 'credentialAutoSetup',
 				credentialType: 'type1',
+				attemptId: expect.any(String),
 			});
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
+			const confirmedAttemptId = (
+				confirmSpy.mock.calls[0][1] as { kind: string; attemptId: string }
+			).attemptId;
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'Instance AI Browser Use User clicked credential setup option',
-				expect.objectContaining({ credential_type: 'type1', choice: 'ai' }),
+				expect.objectContaining({
+					credential_type: 'type1',
+					choice: 'ai',
+					credential_setup_attempt_id: confirmedAttemptId,
+				}),
 			);
 		});
 
@@ -624,6 +852,7 @@ describe('InstanceAiCredentialSetup', () => {
 				expect(confirmSpy).toHaveBeenCalledWith('req-1', {
 					kind: 'credentialAutoSetup',
 					credentialType: 'type1',
+					attemptId: expect.any(String),
 				});
 			});
 			expect(closeModalSpy).toHaveBeenCalledWith(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
