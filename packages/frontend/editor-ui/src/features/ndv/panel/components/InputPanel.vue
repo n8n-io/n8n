@@ -36,7 +36,6 @@ import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
 import { N8nSegmentControl, N8nText } from '@n8n/design-system';
-import { N8nText } from '@n8n/design-system';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
