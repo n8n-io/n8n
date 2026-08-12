@@ -11,47 +11,51 @@ A UI Builder node holds a definition. A stock workflow serves it, and the same
 workflow holds the actions it calls, one chain per action:
 
 ```
-[API Router /orders-app]  GET  /           -> [UI Builder]
-                          POST /loadOrders -> [Code: Load]
-                          POST /saveOrder  -> [Code: Save]
+[API Router /orders-app]  GET  /       -> [UI Builder]
+                          GET  /orders -> [Data table: get]
+                          POST /orders -> [Data table: insert]
 ```
 
 No Respond to Webhook nodes: the UI Builder node answers with the page itself
 (`text/html`), and the router's default **Respond: Automatically** returns the
-last node's JSON on the branches that end in a Code node.
+last node's JSON on the other branches.
 
 The page loads this package's bundle, which walks the definition and renders it.
-Interactions POST the app's whole state to a webhook; whatever partial comes back
-is deep-merged into state and the view re-renders. One primitive covers both
-fetching and mutating.
+An interaction calls a workflow and puts the reply into state, and the view
+re-renders. One primitive covers both fetching and mutating.
 
-On the workflow side the state arrives as the request body, so the trigger hands
-it to the next node at `$json.body`, not `$json`: an API Router's own output is
-`{ route, params, query, body, headers }`.
+The workflow is left alone: it answers with whatever its nodes produce, and the
+step that called it says where that goes. So no node in the diagram above knows
+this app exists, and the same two endpoints are a REST API anything else can
+call — with a request schema, and an OpenAPI document if the router is asked for
+one.
 
-## Response envelope
+## Request and response
 
-A workflow replies with an envelope:
+A webhook step owns both ends of the exchange:
+
+| field | is | unset means |
+| --- | --- | --- |
+| `request` | a state path sent as the request body | send all of state; a GET sends none of it |
+| `response` | a state path the reply is written to, or `{ statePath: responsePath }` for several | discard the reply |
+
+Nothing is merged implicitly, so a node's own output can never scribble
+`createdAt` into app state, and a save that changes nothing on screen simply
+names no `response`.
+
+The workflow gets a say in only one thing — whether the action succeeded:
 
 ```json
-{
-  "ok": true,
-  "state": { "orders": [] },
-  "toast": { "type": "success", "message": "Added Widget" },
-  "error": { "code": "VALIDATION_ERROR", "message": "Enter an order name" }
-}
+{ "ok": false, "error": { "code": "VALIDATION_ERROR", "message": "Enter a name" } }
 ```
 
-Only `state` is merged; `toast` shows for five seconds, or until it is closed;
-`error` accompanies `ok: false` and raises an error toast of its own if no
-explicit toast is given, so an action never fails silently. A rejected action
-still merges its `state`, so saying no and correcting the client's view are not
-exclusive. Three messages show at once, the oldest dropping off past that, since
-beyond that the stack covers the app it is reporting on.
-
-`ok` is the only discriminator. A body without it is taken to be the state
-partial itself, which is what the last node of the simplest possible action chain
-returns, so the envelope is opt-in per action.
+`ok: false` ends the chain, which is what stops a failed save from navigating
+away from the form that failed, and raises an error toast from `error.message`.
+A non-2xx status does the same without any of this, so an endpoint whose request
+schema refuses a body needs no error branch at all. A body may also carry an
+explicit `toast: { type, message }`. Everything else about a reply is data. Three
+messages show at once, the oldest dropping off past that, since beyond that the
+stack covers the app it is reporting on.
 
 ## Definition format
 
@@ -105,7 +109,8 @@ the user on.
 
 ```json
 "onClick": [
-  { "kind": "webhook", "url": "…/webhook/saveOrder", "method": "POST" },
+  { "kind": "webhook", "url": "…/webhook/orders-app/orders", "method": "POST", "request": "form" },
+  { "kind": "set", "path": "form", "value": {} },
   { "kind": "notify", "message": "Order added", "type": "success" },
   { "kind": "navigate", "to": "/" }
 ]
@@ -113,12 +118,16 @@ the user on.
 
 | kind | does |
 | --- | --- |
-| `webhook` | POST the whole state to a trigger, merge the envelope's `state` |
+| `webhook` | call a trigger; `request` and `response` say what goes and where the reply lands |
+| `set` | write `value` into state at `path`; `value` may be an expression |
 | `notify` | show a message; `message` may be an expression |
 | `navigate` | change the page; `to` may be an expression |
 
+`set` is what keeps client-only concerns off the wire: clearing a form after a
+save is not something a workflow should have to know about, or answer for.
+
 A step's expressions resolve as that step runs, not when the chain starts, so a
-notification after a webhook sees what the webhook merged and a step after a
+notification after a webhook sees what the webhook wrote and a step after a
 navigate sees the new route. Only `$item` and `$index` are fixed at the moment
 the chain fired, since only the node that fired can know them. A webhook reporting
 `ok: false` ends the chain, which is what stops a failed save from navigating
@@ -147,16 +156,17 @@ Three buttons sit beside a webhook step:
 | button | does |
 | --- | --- |
 | plus | drops a Webhook and a Respond to Webhook into the workflow being edited, on a path named after the component and prop (`button` + `onClick` gives `buttonOnClick`), and points the step at it |
-| run | posts the canvas's state to the step, exactly as the running app would |
+| run | calls the step from the canvas, exactly as the running app would |
 | history | reads what that trigger returned when it last ran |
 
-The last two merge the response into the canvas's preview state, which is what
-turns the canvas from a wireframe of blank bound props into a preview of the
-running app. Running answers "what does this return now" and costs a real
+The last two put the reply into the canvas's preview state through the step's own
+`response`, which is what turns the canvas from a wireframe of blank bound props
+into a preview of the running app — and shows a step whose binding is wrong or
+missing that it is. Running answers "what does this return now" and costs a real
 execution against a live webhook; history answers "what did it return", costs
 nothing, and works on an unpublished workflow.
 
-The envelope's `toast` and a `notify` step are both messages, and both are worth
+A reply's `toast` and a `notify` step are both messages, and both are worth
 having: the workflow says something only it knows (a validation failure), the
 client says something only it knows (that the whole chain got through).
 
@@ -228,10 +238,10 @@ tabs it owns their styling and placement, and every app wanting something else
 has to fight it.
 
 `$state.$app` is the app's own corner of state, holding the current route and
-page. Since an action posts the whole state, route parameters reach a workflow
-with nothing wired: a page at `/orders/:id` gives
-`$json.body.$app.route.params.id`. It is client-owned, so a response trying to
-write it is refused and warns, and so is a `model` prop pointing into it.
+page. A step that names no `request` posts all of state, so route parameters
+reach a workflow with nothing wired: a page at `/orders/:id` gives
+`$json.body.$app.route.params.id`. It is client-owned, so a step's `response`
+naming it is refused and warns, and so is a `model` prop pointing into it.
 
 In the builder, the **Pages** pane lists them: add, rename (double-click a row),
 star to make default, delete, and click to choose which one the canvas is
@@ -241,11 +251,15 @@ shell rather than replacing it, so nothing composed is lost.
 ## Running the demo
 
 `demo/orders.json` is a whole workflow: import it, publish it, and open
-`/webhook/orders-app`. Two things have to be true first.
+`/webhook/orders-app`. Three things have to be true first.
 
 ```sh
 pnpm --filter @n8n/ui-builder build   # writes the runtime into editor-ui/public/static
 ```
+
+Orders live in a data table, so create one called `orders` with a `name`
+(String) column and a `qty` (Number) column, and leave it empty. The imported
+workflow says the same thing on a sticky note.
 
 The action URLs in the imported workflow are absolute and assume the default
 port. If your instance is elsewhere, rewrite them before importing:
@@ -256,12 +270,15 @@ sed 's|http://localhost:5678|http://localhost:<your-port>|g' \
 ```
 
 Then open `/webhook/orders-app`. It is two pages with a nav bar built out of a
-repeat over `$pages`. Entering **Orders** fires the page's `onEnter`, which
-fills the table from `loadOrders`. On **New order**, typing a name and pressing
-Add runs a three-step chain: post to `saveOrder`, show "Order added", go back to
-the list, which reloads and has the row. Pressing Add on an empty input takes
-the failure path: the workflow answers `ok: false`, an error toast appears from
-its message, and the chain stops there, so the page does not change.
+repeat over `$pages`. Entering **Orders** fires the page's `onEnter`, a
+`GET /orders` whose rows the step writes to `$state.orders`. On **New order**,
+typing a name and pressing Add sends the form to `POST /orders`, clears it,
+says "Order added" and goes back to the list.
+
+Add with an empty name never reaches the insert: it fails the endpoint's request
+schema, and the 400 raises an error toast and stops the chain, so the page does
+not change. The workflow holds four nodes, none of them written in JavaScript,
+and mentions neither `orders` nor `form`.
 
 To see the authoring side, open the *Orders* workflow in the editor and click
 the UI Builder node.
@@ -300,8 +317,8 @@ ancestor:
 | `$pages` | the runtime | `[{ id, path, title }]`, every page the shell holds, in document order |
 | `$item`, `$index` | an enclosing `repeat` | the element being rendered |
 
-`$loading` is deliberately not part of `$state`: the whole state is POSTed on
-every action, so flags living in it would ride along as noise with one always
+`$loading` is deliberately not part of `$state`: a step with no `request` posts
+all of state, so flags living in it would ride along as noise with one always
 true for the request carrying it, and a workflow could write something only the
 client can know. `@n8n/expression-runtime` is not usable here: it
 depends on isolated-vm and editor-ui aliases it to throwing stubs for browser
@@ -314,11 +331,11 @@ in their own browser.
 ## What this PoC does not do
 
 No user authentication (see below), no CORS story, no drag and drop, no undo, no
-test-URL preview mode. Error handling stops at the envelope: a transport failure
-logs and shows a generic toast, and there is no retry. Only the node that owns
-an action goes busy on its own, and only the button does anything with it;
-anything else showing progress binds `$loading` by hand. A workflow can
-set a state key, never delete one. Concurrent responses merge in arrival order
+test-URL preview mode. Error handling stops at `ok: false` and the status code: a
+transport failure logs and shows a generic toast, and there is no retry. Only the
+node that owns an action goes busy on its own, and only the button does anything
+with it; anything else showing progress binds `$loading` by hand. A step can
+write a state path, never delete one. Concurrent responses land in arrival order
 with no last-write protection. Any component can go in any region: regions
 accept anything, unlike props, which are typed by their descriptors, so nothing
 stops a `page` being dropped into a card's footer or a shell inside a shell,

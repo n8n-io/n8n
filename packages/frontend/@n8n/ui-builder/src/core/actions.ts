@@ -1,7 +1,7 @@
 import { isPlainObject } from 'lodash';
 
 import { actionKey } from './loading';
-import type { UiAction, UiActionStep, UiWebhookStep } from './types';
+import type { UiAction, UiActionStep, UiResponseBinding, UiWebhookStep } from './types';
 
 /**
  * What an action prop holds, and how to read the shapes that came before it.
@@ -16,6 +16,7 @@ export const ACTION_KINDS = [
 	{ kind: 'webhook', label: 'Call the workflow', short: 'Workflow', icon: 'workflow' },
 	{ kind: 'notify', label: 'Show a notification', short: 'Notify', icon: 'bell' },
 	{ kind: 'navigate', label: 'Go to a page', short: 'Go to page', icon: 'arrow-right' },
+	{ kind: 'set', label: 'Set app state', short: 'Set state', icon: 'equal' },
 ] as const;
 
 export type UiActionKind = (typeof ACTION_KINDS)[number]['kind'];
@@ -23,7 +24,20 @@ export type UiActionKind = (typeof ACTION_KINDS)[number]['kind'];
 export function createStep(kind: UiActionKind): UiActionStep {
 	if (kind === 'notify') return { kind, message: '', type: 'success' };
 	if (kind === 'navigate') return { kind, to: '' };
+	if (kind === 'set') return { kind, path: '', value: '' };
 	return { kind: 'webhook', url: '', method: 'POST' };
+}
+
+/** A path per state key, or one path for the whole body. Anything else is no binding. */
+function readResponseBinding(value: unknown): UiResponseBinding | undefined {
+	if (typeof value === 'string') return value || undefined;
+	if (!isPlainObject(value)) return undefined;
+
+	const pairs = Object.entries(value as Record<string, unknown>).filter(
+		(pair): pair is [string, string] => typeof pair[1] === 'string',
+	);
+
+	return pairs.length ? Object.fromEntries(pairs) : undefined;
 }
 
 function readStep(value: unknown): UiActionStep | undefined {
@@ -45,6 +59,8 @@ function readStep(value: unknown): UiActionStep | undefined {
 			kind,
 			url: typeof step.url === 'string' ? step.url : '',
 			method: step.method === 'GET' ? 'GET' : 'POST',
+			request: typeof step.request === 'string' && step.request ? step.request : undefined,
+			response: readResponseBinding(step.response),
 		};
 	}
 
@@ -54,6 +70,10 @@ function readStep(value: unknown): UiActionStep | undefined {
 
 	if (kind === 'navigate') {
 		return { kind, to: String(step.to ?? '') };
+	}
+
+	if (kind === 'set') {
+		return { kind, path: String(step.path ?? ''), value: step.value };
 	}
 
 	return undefined;

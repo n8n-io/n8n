@@ -65,13 +65,35 @@ export interface UiAction {
  * definition stays one tree with nothing beside it, and the same list works for
  * any component's action prop.
  */
-export type UiActionStep = UiWebhookStep | UiNotifyStep | UiNavigateStep;
+export type UiActionStep = UiWebhookStep | UiNotifyStep | UiNavigateStep | UiSetStep;
 
-/** POST the app's whole state to a workflow and merge what comes back. */
+/**
+ * Where a reply lands. A state path takes the whole body; an object maps state
+ * paths to paths within the body, so one call can fill several keys and a
+ * workflow is free to answer in whatever shape it likes.
+ */
+export type UiResponseBinding = string | Record<string, string>;
+
+/**
+ * Call a workflow. The step owns both ends of the exchange, so the workflow
+ * never has to know an app's state keys and can return its nodes' own output.
+ */
 export interface UiWebhookStep {
 	kind: 'webhook';
 	url: string;
 	method?: 'GET' | 'POST';
+	/** State path to send as the body. Unset sends all of it; a GET sends none of it. */
+	request?: string;
+	/** Unset discards the reply, which is what a save that changes nothing on screen wants. */
+	response?: UiResponseBinding;
+}
+
+/** Write into state without asking a workflow: reset a form, flip a flag. */
+export interface UiSetStep {
+	kind: 'set';
+	path: string;
+	/** Literal or expression, resolved when the step runs. */
+	value?: unknown;
 }
 
 /** Show a message. The client's own, unlike the envelope's `toast`. */

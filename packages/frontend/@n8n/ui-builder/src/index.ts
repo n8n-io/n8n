@@ -6,7 +6,8 @@ export {
 } from './renderer/scope-registry';
 export { KIT, getComponentDef } from './kit';
 export { evaluateExpression, resolveValue, isExpression } from './core/expressions';
-export { deepMerge, writePath } from './core/state';
+export { writePath } from './core/state';
+export { placeResponse, requestBody, writeState } from './core/binding';
 export { actionKey, createLoadingTracker } from './core/loading';
 export { readResponse } from './core/envelope';
 export {
@@ -61,8 +62,10 @@ export {
 	type UiNotifyStep,
 	type UiPageInfo,
 	type UiRegion,
+	type UiResponseBinding,
 	type UiRoute,
 	type UiScope,
+	type UiSetStep,
 	type UiState,
 	type UiToast,
 	type UiWebhookStep,

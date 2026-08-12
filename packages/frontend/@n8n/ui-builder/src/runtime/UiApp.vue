@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { N8nCallout, N8nIconButton } from '@n8n/design-system';
-import { isPlainObject } from 'lodash';
+import { cloneDeep } from 'lodash';
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 
 import UiRenderer from '../renderer/UiRenderer.vue';
 import { normaliseAction } from '../core/actions';
+import { placeResponse, requestBody, writeState } from '../core/binding';
 import { readResponse } from '../core/envelope';
 import { resolveValue } from '../core/expressions';
 import { actionKey, createLoadingTracker } from '../core/loading';
@@ -16,7 +17,6 @@ import {
 	resolveRoute,
 	routeFromHash,
 } from '../core/pages';
-import { deepMerge, writePath } from '../core/state';
 import type {
 	UiActionRequest,
 	UiActionStep,
@@ -24,6 +24,7 @@ import type {
 	UiScope,
 	UiState,
 	UiToast,
+	UiWebhookStep,
 } from '../core/types';
 
 /**
@@ -100,14 +101,7 @@ function dismiss(id: number) {
 }
 
 function write(path: string, value: unknown) {
-	// `$app` is the client's account of its own context. An input half-writing
-	// into it would be worse than not writing at all.
-	if (path.split('.')[0] === APP_STATE_KEY) {
-		console.warn('[ui-builder] refusing to write into', APP_STATE_KEY, path);
-		return;
-	}
-
-	writePath(state, path, value);
+	writeState(state, path, value);
 }
 
 function navigate(to: string) {
@@ -119,13 +113,14 @@ function navigate(to: string) {
 	window.location.hash = `#${path}`;
 }
 
-/** POST the whole state, merge what comes back. `false` stops the rest of the chain. */
-async function callWebhook(url: string, method: string): Promise<boolean> {
-	const key = actionKey(url);
+/** Call a workflow and put the reply where the step says. `false` stops the rest of the chain. */
+async function callWebhook(step: UiWebhookStep): Promise<boolean> {
+	const key = actionKey(step.url);
+	const method = step.method ?? 'POST';
 	loading.begin(key);
 
 	try {
-		const response = await fetch(url, {
+		const response = await fetch(step.url, {
 			method,
 			headers: {
 				'content-type': 'application/json',
@@ -135,45 +130,40 @@ async function callWebhook(url: string, method: string): Promise<boolean> {
 				...(props.token ? { authorization: `Bearer ${props.token}` } : {}),
 			},
 			// A GET carrying a body is refused by the browser before it is sent.
-			...(method === 'GET' ? {} : { body: JSON.stringify(state) }),
+			...(method === 'GET' ? {} : { body: JSON.stringify(requestBody(state, step)) }),
 		});
 
-		const result = readResponse(await response.json());
+		// A step that discards its reply is free to answer with no body at all.
+		const result = readResponse(await response.json().catch(() => undefined));
 
-		// The HTTP status has the final say. A body without `ok` reads as a bare
-		// state partial, so a 500 returning one would otherwise merge an error
-		// page into state and report success.
+		// The HTTP status has the final say, so a workflow cannot report success by
+		// staying silent while n8n answers 500.
 		const ok = result.ok && response.ok;
 
-		// A workflow that reports a failure still gets its state partial merged:
-		// rejecting an action and correcting the client's view are not exclusive.
-		deepMerge(state, withoutAppKey(result.state));
+		// Only on success: a refusal's body is an explanation, and writing it where
+		// the rows go would replace the list with the reason it did not change.
+		if (ok) placeResponse(state, step.response, result.body);
 
 		if (result.toast) notify(result.toast);
-		else if (!ok) notify({ type: 'error', message: `Action failed (${response.status})` });
+		else if (!ok) {
+			notify({
+				type: 'error',
+				message: result.error?.message ?? `Action failed (${response.status})`,
+			});
+		}
 
-		if (!ok) console.warn('[ui-builder] action rejected', url, response.status, result.error);
+		if (!ok) console.warn('[ui-builder] action rejected', step.url, response.status, result.error);
 
 		return ok;
 	} catch (error) {
-		// The transport itself failed, so there is no state to merge and nothing
-		// the workflow can say about it.
-		console.error('[ui-builder] action failed', url, error);
+		// The transport itself failed, so there is nothing the workflow can say
+		// about it.
+		console.error('[ui-builder] action failed', step.url, error);
 		notify({ type: 'error', message: 'Action failed' });
 		return false;
 	} finally {
 		loading.end(key);
 	}
-}
-
-/** The client's own view of where it is. A workflow returning it is confused, or worse. */
-function withoutAppKey(partial: unknown): unknown {
-	if (!isPlainObject(partial) || !(APP_STATE_KEY in (partial as object))) return partial;
-
-	console.warn('[ui-builder] ignoring', APP_STATE_KEY, 'in a response: it is the client’s');
-	const rest = { ...(partial as Record<string, unknown>) };
-	delete rest[APP_STATE_KEY];
-	return rest;
 }
 
 function text(value: unknown, scopeAt: UiScope): string {
@@ -211,8 +201,16 @@ function scopeNow(captured: UiScope): UiScope {
 async function runSteps(steps: UiActionStep[], captured: UiScope) {
 	for (const step of steps) {
 		if (step.kind === 'webhook') {
-			const ok = await callWebhook(step.url, step.method ?? 'POST');
+			const ok = await callWebhook(step);
 			if (!ok) return;
+			continue;
+		}
+
+		if (step.kind === 'set') {
+			// Copied: a literal written straight from the document would be the very
+			// object an input then types into, so the second run of a `set { }` would
+			// restore what the first run's edits left behind.
+			write(step.path, cloneDeep(resolveValue(step.value, scopeNow(captured))));
 			continue;
 		}
 

@@ -71,6 +71,42 @@ describe('normaliseAction', () => {
 			{ kind: 'webhook', url: 'https://example.test/hook', method: 'POST' },
 		]);
 	});
+
+	it('reads both ends of a webhook step', () => {
+		expect(
+			normaliseAction([
+				{ kind: 'webhook', url: 'http://x/y', request: 'form', response: 'orders' },
+			]),
+		).toEqual([
+			{ kind: 'webhook', url: 'http://x/y', method: 'POST', request: 'form', response: 'orders' },
+		]);
+	});
+
+	it('reads a response mapped across several state paths', () => {
+		expect(
+			normaliseAction([
+				{ kind: 'webhook', url: 'http://x/y', response: { orders: 'data.items', total: 'count' } },
+			]),
+		).toMatchObject([{ response: { orders: 'data.items', total: 'count' } }]);
+	});
+
+	it('drops map entries that do not name a path', () => {
+		expect(
+			normaliseAction([{ kind: 'webhook', url: 'http://x/y', response: { orders: 5 } }]),
+		).toMatchObject([{ response: undefined }]);
+	});
+
+	it('reads an empty binding as no binding, so the defaults apply', () => {
+		expect(
+			normaliseAction([{ kind: 'webhook', url: 'http://x/y', request: '', response: '' }]),
+		).toMatchObject([{ request: undefined, response: undefined }]);
+	});
+
+	it('reads a set step, keeping a value that is not a string', () => {
+		expect(normaliseAction([{ kind: 'set', path: 'form', value: {} }])).toEqual([
+			{ kind: 'set', path: 'form', value: {} },
+		]);
+	});
 });
 
 describe('createStep', () => {
@@ -84,6 +120,10 @@ describe('createStep', () => {
 
 	it('starts a navigate step with an empty destination', () => {
 		expect(createStep('navigate')).toEqual({ kind: 'navigate', to: '' });
+	});
+
+	it('starts a set step with an empty path and value', () => {
+		expect(createStep('set')).toEqual({ kind: 'set', path: '', value: '' });
 	});
 
 	it('clamps a method the older shape smuggled in', () => {

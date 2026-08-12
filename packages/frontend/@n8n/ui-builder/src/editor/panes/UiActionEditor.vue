@@ -17,6 +17,7 @@ import type {
 	UiNavigateStep,
 	UiNotifyStep,
 	UiPageInfo,
+	UiSetStep,
 	UiWebhookStep,
 } from '../../core/types';
 
@@ -47,8 +48,9 @@ const props = defineProps<{
 	browse: () => Promise<string | undefined>;
 	/** Adds a Webhook and Respond pair to this workflow. Resolves with the new URL. */
 	create: () => Promise<string | undefined>;
-	run: (url: string) => void;
-	history: (url: string) => void;
+	/** Both take the whole step: a preview that ignored its binding would not be one. */
+	run: (step: UiWebhookStep) => void;
+	history: (step: UiWebhookStep) => void;
 }>();
 
 const emit = defineEmits<{ update: [steps: UiActionStep[]] }>();
@@ -122,6 +124,24 @@ async function onPick(index: number, value: string | undefined) {
 async function onCreate(index: number) {
 	const url = await props.create();
 	if (url) patch(index, { url });
+}
+
+/** Empty means "unset", which is what both defaults are; storing `''` would only read as configured. */
+function patchPath(index: number, field: 'request' | 'response', value: string) {
+	patch(index, { [field]: value || undefined });
+}
+
+/**
+ * `response` also takes a map of several state paths, which is a document-level
+ * thing rather than something worth a second control in here. The field shows
+ * the simple form and steps aside for the other.
+ */
+function responsePath(step: UiWebhookStep): string {
+	return typeof step.response === 'string' ? step.response : '';
+}
+
+function isMapped(step: UiWebhookStep): boolean {
+	return step.response !== undefined && typeof step.response !== 'string';
 }
 </script>
 
@@ -211,7 +231,7 @@ async function onCreate(index: number) {
 						icon="play"
 						aria-label="Run this step now"
 						:disabled="disabled || !(step as UiWebhookStep).url"
-						@click="run((step as UiWebhookStep).url)"
+						@click="run(step as UiWebhookStep)"
 					/>
 				</N8nTooltip>
 
@@ -222,7 +242,41 @@ async function onCreate(index: number) {
 						icon="history"
 						aria-label="Load the last execution"
 						:disabled="disabled || !(step as UiWebhookStep).url"
-						@click="history((step as UiWebhookStep).url)"
+						@click="history(step as UiWebhookStep)"
+					/>
+				</N8nTooltip>
+			</div>
+
+			<!--
+				Both ends of the exchange, so the workflow needs to know nothing about
+				this app: which part of state it is sent, and where its reply is put.
+			-->
+			<div v-if="step.kind === 'webhook'" :class="$style.row">
+				<N8nTooltip content="State to send as the request body. Empty sends all of it.">
+					<N8nInput
+						:class="$style.grow"
+						:model-value="(step as UiWebhookStep).request ?? ''"
+						:disabled="disabled"
+						size="small"
+						placeholder="Sends: all state"
+						@update:model-value="patchPath(index, 'request', $event)"
+					/>
+				</N8nTooltip>
+
+				<N8nTooltip
+					:content="
+						isMapped(step as UiWebhookStep)
+							? 'This step maps several state paths; edit it in the document'
+							: 'Where to put the reply. Empty discards it.'
+					"
+				>
+					<N8nInput
+						:class="$style.grow"
+						:model-value="responsePath(step as UiWebhookStep)"
+						:disabled="disabled || isMapped(step as UiWebhookStep)"
+						size="small"
+						:placeholder="isMapped(step as UiWebhookStep) ? 'Mapped' : 'Writes to: nothing'"
+						@update:model-value="patchPath(index, 'response', $event)"
 					/>
 				</N8nTooltip>
 			</div>
@@ -253,6 +307,27 @@ async function onCreate(index: number) {
 					<N8nOption label="Info" value="info" />
 					<N8nOption label="Error" value="error" />
 				</N8nSelect>
+			</div>
+
+			<!-- Set: the app writing its own state, with no workflow involved. -->
+			<div v-else-if="step.kind === 'set'" :class="$style.row">
+				<N8nInput
+					:class="$style.grow"
+					:model-value="(step as UiSetStep).path"
+					:disabled="disabled"
+					size="small"
+					placeholder="form.name"
+					@update:model-value="patch(index, { path: $event })"
+				/>
+
+				<N8nInput
+					:class="$style.grow"
+					:model-value="String((step as UiSetStep).value ?? '')"
+					:disabled="disabled"
+					size="small"
+					placeholder="Value or expression"
+					@update:model-value="patch(index, { value: $event })"
+				/>
 			</div>
 
 			<!-- Navigate: a page of this app, or an expression producing a path. -->

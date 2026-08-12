@@ -1,15 +1,10 @@
-import { isPlainObject } from 'lodash';
 import { ref } from 'vue';
 
+import { placeResponse, requestBody } from '../../core/binding';
 import { readResponse } from '../../core/envelope';
-import { deepMerge } from '../../core/state';
-import type { UiState } from '../../core/types';
+import type { UiState, UiWebhookStep } from '../../core/types';
 import type { UiBuilderHost } from '../host';
 import type { WebhookTarget } from './useWebhookTargets';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return isPlainObject(value);
-}
 
 /**
  * Filling the canvas with real data.
@@ -32,40 +27,38 @@ export function useActionPreview(
 ) {
 	const previewStatus = ref('');
 
-	function apply(payload: unknown, source: string) {
-		const merged = readResponse(payload).state;
+	/** Placed exactly where the running app would place it, binding and all. */
+	function apply(step: UiWebhookStep, payload: unknown, source: string) {
+		const written = placeResponse(state, step.response, readResponse(payload).body);
 
-		// lodash's `isPlainObject` is typed as a plain boolean, so it narrows nothing.
-		if (!isRecord(merged)) {
-			previewStatus.value = `${source}: nothing to preview`;
-			return;
-		}
-
-		deepMerge(state, merged);
-		previewStatus.value = `${source}: ${Object.keys(merged).join(', ')}`;
+		previewStatus.value = written.length
+			? `${source}: ${written.join(', ')}`
+			: `${source}: this step discards its reply`;
 	}
 
-	/** POST the canvas's state to the step's trigger, exactly as the running app would. */
-	async function runAction(url: string) {
-		if (!url) return;
+	/** Call the step's trigger from the canvas, exactly as the running app would. */
+	async function runAction(step: UiWebhookStep) {
+		if (!step.url) return;
 
 		previewStatus.value = 'running…';
+		const method = step.method ?? 'POST';
 
 		try {
-			const response = await fetch(url, {
-				method: 'POST',
+			const response = await fetch(step.url, {
+				method,
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(state),
+				...(method === 'GET' ? {} : { body: JSON.stringify(requestBody(state, step)) }),
 			});
 
-			apply(await response.json(), 'ran');
+			apply(step, await response.json().catch(() => undefined), 'ran');
 		} catch (error) {
-			console.error('[ui-builder] could not run the action', url, error);
+			console.error('[ui-builder] could not run the action', step.url, error);
 			previewStatus.value = 'the action did not respond';
 		}
 	}
 
-	async function loadLastExecution(url: string) {
+	async function loadLastExecution(step: UiWebhookStep) {
+		const url = step.url;
 		let target = targetForUrl(url);
 
 		// A URL the document was saved with says nothing about which workflow
@@ -96,7 +89,7 @@ export function useActionPreview(
 				return;
 			}
 
-			apply(output.json, output.node ?? 'execution');
+			apply(step, output.json, output.node ?? 'execution');
 		} catch (error) {
 			console.error('[ui-builder] could not read the last execution', target.workflowId, error);
 			previewStatus.value = 'could not read the execution';

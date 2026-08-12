@@ -12,7 +12,7 @@ import {
 } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, provide, reactive, ref, toRef } from 'vue';
 
-import type { UiScope } from '../core/types';
+import type { UiScope, UiWebhookStep } from '../core/types';
 import { createScopeRegistry, UiScopeRegistryKey } from '../renderer/scope-registry';
 import UiRenderer from '../renderer/UiRenderer.vue';
 import { useActionPreview } from './composables/useActionPreview';
@@ -386,8 +386,8 @@ function onEscape(event: KeyboardEvent) {
 						:label-for="labelForUrl"
 						:browse="pickExternal"
 						:create-trigger="createTrigger"
-						:run="(url: string) => void runAction(url)"
-						:history="(url: string) => void loadLastExecution(url)"
+						:run="(step: UiWebhookStep) => void runAction(step)"
+						:history="(step: UiWebhookStep) => void loadLastExecution(step)"
 						@set-prop="setProp"
 					/>
 				</N8nResizeWrapper>

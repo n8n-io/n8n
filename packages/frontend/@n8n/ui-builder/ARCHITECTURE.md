@@ -32,6 +32,7 @@ src/
     pages.ts        finding the shell, listing pages, matching a route
     expressions.ts  one function: resolve a prop against a scope
     state.ts        deep merge, and writing a dotted path
+    binding.ts      what a step sends, and where its reply goes
     envelope.ts     read an action's response
     loading.ts      which actions are in flight
   renderer/       renders one node and recurses; the canvas and the app share it
@@ -84,8 +85,8 @@ Authoring, and then serving, are two separate passes over the same document.
                                     UiRenderer, the same one the canvas uses
 ```
 
-An action closes the loop: POST the whole state to a webhook, read the envelope,
-deep-merge `state` into the app's state, re-render.
+An action closes the loop: call a webhook with the state the step names, write
+the reply where the step says it goes, re-render.
 
 ## The format
 

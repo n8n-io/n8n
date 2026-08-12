@@ -27,6 +27,7 @@ import {
 	type UiProperty,
 	type UiRegion,
 	type UiScope,
+	type UiWebhookStep,
 } from '../../core/types';
 import { getComponentDef } from '../../kit';
 import type { WebhookTarget } from '../composables/useWebhookTargets';
@@ -54,8 +55,8 @@ const props = defineProps<{
 	labelFor: (url: string) => string;
 	browse: () => Promise<string | undefined>;
 	createTrigger: (propName: string) => Promise<string | undefined>;
-	run: (url: string) => void;
-	history: (url: string) => void;
+	run: (step: UiWebhookStep) => void;
+	history: (step: UiWebhookStep) => void;
 }>();
 
 const emit = defineEmits<{

@@ -4,10 +4,10 @@ import type { UiActionError, UiToast } from './types';
 
 /** What an action's response amounted to, once the shapes are sorted out. */
 export interface UiActionResult {
+	/** The body's own verdict. Only an explicit `ok: false` is a refusal. */
 	ok: boolean;
-	/** The partial to deep-merge. Present on failures too: a workflow can reject
-	 * an action and still correct the client's view of the world. */
-	state: unknown;
+	/** The reply as it arrived. Where any of it goes is the step's business, not the body's. */
+	body: unknown;
 	toast?: UiToast;
 	error?: UiActionError;
 }
@@ -21,53 +21,56 @@ function readToast(value: unknown): UiToast | undefined {
 	if (typeof message !== 'string' || !message) return undefined;
 
 	return {
-		type: typeof type === 'string' && TOAST_TYPES.includes(type) ? (type as UiToast['type']) : 'info',
+		type:
+			typeof type === 'string' && TOAST_TYPES.includes(type) ? (type as UiToast['type']) : 'info',
 		message,
 	};
 }
 
-function readError(value: unknown): UiActionError | undefined {
-	if (!isPlainObject(value)) return undefined;
+/**
+ * What the body says went wrong. Three shapes, because the two that are not
+ * ours are the ones an app meets most: `{ error: { code, message } }` is the
+ * envelope, `{ error: 'Bad Request' }` is what n8n answers a failed request
+ * schema with, and `{ message }` is what several nodes report a failure as.
+ */
+function readError(body: Record<string, unknown> | undefined): UiActionError | undefined {
+	if (!body) return undefined;
 
-	const { code, message } = value as Record<string, unknown>;
+	const { error, message } = body;
 
-	return {
-		code: typeof code === 'string' ? code : undefined,
-		message: typeof message === 'string' && message ? message : 'Action failed',
-	};
+	if (isPlainObject(error)) {
+		const detail = error as Record<string, unknown>;
+		return {
+			code: typeof detail.code === 'string' ? detail.code : undefined,
+			message:
+				typeof detail.message === 'string' && detail.message ? detail.message : 'Action failed',
+		};
+	}
+
+	if (typeof error === 'string' && error) return { message: error };
+	if (typeof message === 'string' && message) return { message };
+
+	return undefined;
 }
 
 /**
- * Reads an action's response body.
+ * Reads an action's response body for what it says about the outcome — and
+ * nothing else. The body is handed back untouched: an array of rows is an array
+ * of rows, and the step's `response` binding decides what happens to it.
  *
- * Two shapes are accepted. The envelope carries the outcome alongside the data:
- *
- *     { ok: true, state: {…}, toast?: { type, message }, error?: { code, message } }
- *
- * Anything else is taken to be the state partial itself, which is what the
- * simplest possible Respond to Webhook returns. The `ok` key is the only
- * discriminator, so a workflow opts in by including it.
+ * A workflow that wants to refuse an action says so with `ok: false`, optionally
+ * with an `error` or a `toast`. Everything else is data, so the ordinary case
+ * needs no envelope at all.
  */
 export function readResponse(payload: unknown): UiActionResult {
-	// A Respond to Webhook node often hands back the node's item array rather
-	// than a bare object. Take the first item so the author does not have to
-	// think about it.
-	const body: unknown = Array.isArray(payload) ? payload[0] : payload;
-
-	if (!isPlainObject(body) || !('ok' in (body as object))) {
-		return { ok: true, state: body };
-	}
-
-	const envelope = body as Record<string, unknown>;
-	const ok = envelope.ok !== false;
-	const error = ok ? undefined : (readError(envelope.error) ?? { message: 'Action failed' });
+	const body = isPlainObject(payload) ? (payload as Record<string, unknown>) : undefined;
+	const ok = body?.ok !== false;
 
 	return {
 		ok,
-		state: envelope.state,
-		// An explicit toast wins; a failure with none gets one from the error, so
-		// a workflow never fails silently.
-		toast: readToast(envelope.toast) ?? (error ? { type: 'error', message: error.message } : undefined),
-		error,
+		body: payload,
+		toast: readToast(body?.toast),
+		// A refusal always carries something to say, so a workflow cannot fail silently.
+		error: readError(body) ?? (ok ? undefined : { message: 'Action failed' }),
 	};
 }
