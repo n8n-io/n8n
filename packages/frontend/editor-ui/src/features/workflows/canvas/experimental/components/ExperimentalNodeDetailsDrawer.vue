@@ -325,6 +325,7 @@ onBeforeUnmount(() => {
 						size="small"
 						square
 						hide-label
+						icon="play"
 						@execute="handleExecute"
 					/>
 				</N8nTooltip>
