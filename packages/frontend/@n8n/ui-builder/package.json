@@ -1,0 +1,65 @@
+{
+  "name": "@n8n/ui-builder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PoC: renders a declarative UI definition as a Vue app, in the editor and standalone",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "build": "pnpm build:vite && pnpm build:bundle",
+    "build:unchecked": "pnpm run build",
+    "build:vite": "cross-env vite build",
+    "build:bundle": "cross-env INCLUDE_VUE=true vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:dev": "vitest --silent=false",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix"
+  },
+  "types": "./dist/index.d.ts",
+  "main": "./dist/ui-builder.umd.js",
+  "module": "./dist/ui-builder.es.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/ui-builder.es.js",
+      "require": "./dist/ui-builder.umd.js"
+    },
+    "./style.css": {
+      "import": "./dist/style.css",
+      "require": "./dist/style.css"
+    },
+    "./*": {
+      "import": "./*",
+      "require": "./*"
+    }
+  },
+  "dependencies": {
+    "@n8n/design-system": "workspace:*",
+    "@n8n/tournament": "workspace:*",
+    "lodash": "catalog:",
+    "vue": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "catalog:",
+    "@iconify-json/mdi": "catalog:",
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/lodash": "catalog:",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "cross-env": "catalog:",
+    "n8n-workflow": "workspace:*",
+    "rimraf": "catalog:",
+    "sass-embedded": "catalog:",
+    "typescript": "catalog:",
+    "unplugin-icons": "^0.19.0",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:frontend"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "LicenseRef-n8n-sustainable-use"
+}

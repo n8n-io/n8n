@@ -1,0 +1,184 @@
+import type { INodeProperties } from 'n8n-workflow';
+import type { Component } from 'vue';
+
+/**
+ * Where a component puts children. A component declares its regions; the
+ * renderer feeds each one into the Vue slot of the same name, so a component
+ * with several regions is a component with several drop points.
+ *
+ * The conventional single region is called `default`, which is also Vue's
+ * default slot, so a component that just writes `<slot />` needs to know
+ * nothing about any of this.
+ */
+export const DEFAULT_REGION = 'default';
+
+export interface UiRegion {
+	name: string;
+	label: string;
+}
+
+/** A node's children, split by the region they sit in. */
+export type UiTree = Record<string, UiNode[]>;
+
+/**
+ * Every node in a UI definition is this same record, all the way down. The
+ * renderer maps `type` to a kit component, resolves `props`, and renders each
+ * region of `tree` into the matching slot.
+ *
+ * Children stay inline in the node that owns them rather than in a flat table
+ * keyed by region id. A subtree is therefore a document: it can be rendered,
+ * moved or copied on its own, and nothing has to be looked up elsewhere.
+ */
+export interface UiNode {
+	id: string;
+	type: string;
+	props: Record<string, unknown>;
+	tree: UiTree;
+}
+
+/**
+ * The older shape of an interaction prop: one webhook call and nothing else.
+ * Still read, never written. `normaliseAction` turns it into a one-step chain.
+ */
+export interface UiAction {
+	url: string;
+	method?: 'GET' | 'POST';
+}
+
+/**
+ * What an interaction prop holds now: a list of steps run in order.
+ *
+ * Steps are inline rather than named entries in a registry, so the whole
+ * definition stays one tree with nothing beside it, and the same list works for
+ * any component's action prop.
+ */
+export type UiActionStep = UiWebhookStep | UiNotifyStep | UiNavigateStep;
+
+/** POST the app's whole state to a workflow and merge what comes back. */
+export interface UiWebhookStep {
+	kind: 'webhook';
+	url: string;
+	method?: 'GET' | 'POST';
+}
+
+/** Show a message. The client's own, unlike the envelope's `toast`. */
+export interface UiNotifyStep {
+	kind: 'notify';
+	/** Literal or expression, resolved when the step runs rather than when the chain starts. */
+	message: string;
+	type?: UiToast['type'];
+}
+
+/** Change the current page. Only means anything inside a shell. */
+export interface UiNavigateStep {
+	kind: 'navigate';
+	/** A page path, or an expression producing one. */
+	to: string;
+}
+
+/**
+ * A chain, and the scope it was fired in. The scope travels with it because a
+ * step's expressions are resolved as that step runs: a notify after a webhook
+ * should see the state the webhook just merged, and a button inside a repeat
+ * needs its own `$item`.
+ */
+export interface UiActionRequest {
+	steps: UiActionStep[];
+	scope: UiScope;
+}
+
+/** A transient message an action asked the app to show. */
+export interface UiToast {
+	type?: 'success' | 'error' | 'info';
+	message: string;
+}
+
+/** Why an action failed, as reported by the workflow itself. */
+export interface UiActionError {
+	code?: string;
+	message: string;
+}
+
+/** App state. Plain object; the runtime wraps it in `reactive`. */
+export type UiState = Record<string, unknown>;
+
+/** Which page is on screen. `pageId` is the node's, so the renderer need not match paths itself. */
+export interface UiRoute {
+	path: string;
+	params: Record<string, string>;
+	pageId?: string;
+}
+
+/** One entry of `$pages`: enough to build a navigation control out of components. */
+export interface UiPageInfo {
+	id: string;
+	path: string;
+	title: string;
+}
+
+/**
+ * What an expression can see. `$state` is always there; `$loading`, `$route` and
+ * `$pages` are written by the runtime; `$item` and `$index` are bound by an
+ * enclosing repeat and absent everywhere else.
+ */
+export interface UiScope {
+	$state: UiState;
+	$loading?: Record<string, boolean>;
+	$route?: UiRoute;
+	$pages?: UiPageInfo[];
+	$item?: unknown;
+	$index?: number;
+}
+
+/**
+ * A kit entry. `props` are n8n node-property descriptors so the editor's
+ * inspector can be n8n's own parameter inputs pointed at a component instead of
+ * a node.
+ *
+ * Two descriptor types carry meaning for the runtime:
+ *   - `action`    the value is a `UiAction`, fired rather than rendered
+ *   - `statePath` the value is a dotted path the component writes into
+ * Everything else is a value prop: literal, or an n8n expression to resolve.
+ */
+export interface UiComponentDef {
+	type: string;
+	label: string;
+	component: Component;
+	props: INodeProperties[];
+	/**
+	 * The drop points this component offers, in the order the editor should show
+	 * them. Absent means the component takes no children at all.
+	 */
+	regions?: UiRegion[];
+	/**
+	 * Render the children once per element of this prop, with `$item` and
+	 * `$index` bound. The component itself is rendered once, around the lot.
+	 * Applies to every region the component has.
+	 */
+	repeatOver?: string;
+	/**
+	 * The children of this region are pages, of which exactly one renders: the
+	 * one `$route` names. Every other region renders as usual, which is what
+	 * keeps a header and a footer on screen while the content swaps.
+	 */
+	pagedRegion?: string;
+	/** Palette section. Cosmetic grouping only. */
+	group?: string;
+	/**
+	 * Pass the renderer's `edit` state in as an `editing` prop. Only components
+	 * that decide whether to render at all need this: hiding a subtree in the
+	 * canvas would make it unselectable.
+	 */
+	wantsEditFlag?: boolean;
+	/**
+	 * Pass a computed `busy` prop: true while a webhook in one of this node's own
+	 * action props is in flight. Only components with a loading state of their
+	 * own need it, and only they should have to know that `$loading` exists.
+	 */
+	wantsBusyFlag?: boolean;
+}
+
+export const ACTION_PROP_TYPE = 'action';
+export const STATE_PATH_PROP_TYPE = 'statePath';
+/** A page path, picked from the pages the document holds rather than typed. */
+export const ROUTE_PROP_TYPE = 'route';

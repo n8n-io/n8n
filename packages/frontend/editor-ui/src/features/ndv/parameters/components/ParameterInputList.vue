@@ -41,6 +41,7 @@ import ImportCurlParameter from './ImportCurlParameter.vue';
 import MultipleParameter from './MultipleParameter.vue';
 import ParameterInputFull from './ParameterInputFull.vue';
 import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
+import UiBuilderParameter from './UiBuilderParameter.vue';
 
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
@@ -1037,6 +1038,13 @@ watch(
 				:disable-type="item.parameter.typeOptions?.assignment?.disableType"
 				:options-overrides="optionsOverrides"
 				:editable-value-indices="assignmentCollectionEditableValueIndices?.[item.parameter.name]"
+				@value-changed="valueChanged"
+			/>
+			<UiBuilderParameter
+				v-else-if="item.parameter.type === 'uiBuilder'"
+				:value="getParameterValue(item.parameter.name)"
+				:path="item.path"
+				:is-read-only="isReadOnly"
 				@value-changed="valueChanged"
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
