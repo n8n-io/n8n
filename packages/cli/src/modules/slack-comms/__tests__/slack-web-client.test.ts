@@ -130,6 +130,39 @@ describe('SlackWebClient', () => {
 		});
 	});
 
+	describe('getUserInfo', () => {
+		it('reads the email and timezone off the user', async () => {
+			const { client } = createClient([
+				{
+					method: 'POST',
+					pathname: '/api/users.info',
+					body: { ok: true, user: { tz: 'Europe/Lisbon', profile: { email: 'ada@example.com' } } },
+				},
+			]);
+
+			await expect(client.getUserInfo(TOKEN, 'U1')).resolves.toEqual({
+				email: 'ada@example.com',
+				tz: 'Europe/Lisbon',
+			});
+		});
+
+		it('returns null email and null tz when the user has neither', async () => {
+			const { client } = createClient([
+				{ method: 'POST', pathname: '/api/users.info', body: { ok: true, user: { profile: {} } } },
+			]);
+
+			await expect(client.getUserInfo(TOKEN, 'U1')).resolves.toEqual({ email: null, tz: null });
+		});
+
+		it('returns null email and null tz when there is no user at all', async () => {
+			const { client } = createClient([
+				{ method: 'POST', pathname: '/api/users.info', body: { ok: true } },
+			]);
+
+			await expect(client.getUserInfo(TOKEN, 'U1')).resolves.toEqual({ email: null, tz: null });
+		});
+	});
+
 	describe('getUserEmail', () => {
 		it('reads the email off the user profile', async () => {
 			const { client } = createClient([
@@ -149,6 +182,84 @@ describe('SlackWebClient', () => {
 			]);
 
 			await expect(client.getUserEmail(TOKEN, 'U1')).resolves.toBeNull();
+		});
+	});
+
+	describe('lookupUserByEmail', () => {
+		it('resolves the Slack user id for a known email', async () => {
+			const { client, httpRequest } = createClient([
+				{
+					method: 'POST',
+					pathname: '/api/users.lookupByEmail',
+					body: { ok: true, user: { id: 'U9' } },
+				},
+			]);
+
+			await expect(client.lookupUserByEmail(TOKEN, 'ada@example.com')).resolves.toBe('U9');
+			const [options] = httpRequest.mock.calls[0];
+			expect(options.body).toMatchObject({ email: 'ada@example.com' });
+		});
+
+		it('returns null when no Slack account matches the email', async () => {
+			const { client } = createClient([
+				{
+					method: 'POST',
+					pathname: '/api/users.lookupByEmail',
+					body: { ok: false, error: 'users_not_found' },
+				},
+			]);
+
+			await expect(client.lookupUserByEmail(TOKEN, 'nobody@example.com')).resolves.toBeNull();
+		});
+
+		it('throws on an unrelated Slack error', async () => {
+			const { client } = createClient([
+				{
+					method: 'POST',
+					pathname: '/api/users.lookupByEmail',
+					body: { ok: false, error: 'invalid_auth' },
+				},
+			]);
+
+			await expect(client.lookupUserByEmail(TOKEN, 'ada@example.com')).rejects.toThrow(
+				/invalid_auth/,
+			);
+		});
+	});
+
+	describe('openDm', () => {
+		it('opens a DM and returns the channel id', async () => {
+			const { client, httpRequest } = createClient([
+				{
+					method: 'POST',
+					pathname: '/api/conversations.open',
+					body: { ok: true, channel: { id: 'D1' } },
+				},
+			]);
+
+			await expect(client.openDm(TOKEN, 'U9')).resolves.toBe('D1');
+			const [options] = httpRequest.mock.calls[0];
+			expect(options.body).toMatchObject({ users: 'U9' });
+		});
+
+		it('throws when Slack cannot open the DM', async () => {
+			const { client } = createClient([
+				{
+					method: 'POST',
+					pathname: '/api/conversations.open',
+					body: { ok: false, error: 'cannot_dm_bot' },
+				},
+			]);
+
+			await expect(client.openDm(TOKEN, 'U9')).rejects.toThrow(/cannot_dm_bot/);
+		});
+
+		it('throws when Slack omits the channel id', async () => {
+			const { client } = createClient([
+				{ method: 'POST', pathname: '/api/conversations.open', body: { ok: true, channel: {} } },
+			]);
+
+			await expect(client.openDm(TOKEN, 'U9')).rejects.toThrow(/channel id/);
 		});
 	});
 

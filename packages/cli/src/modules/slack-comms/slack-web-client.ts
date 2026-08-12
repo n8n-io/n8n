@@ -93,6 +93,11 @@ export interface SlackThreadMessage {
 	botId?: string;
 }
 
+export interface SlackUserInfo {
+	email: string | null;
+	tz: string | null;
+}
+
 export interface SlackSetStatusArgs {
 	channelId: string;
 	threadTs: string;
@@ -359,11 +364,48 @@ export class SlackWebClient {
 		return userId;
 	}
 
-	async getUserEmail(token: string, userId: string): Promise<string | null> {
+	async getUserInfo(token: string, userId: string): Promise<SlackUserInfo> {
 		const result = await this.callChecked(token, 'users.info', { user: userId });
-		if (!isRecord(result.user) || !isRecord(result.user.profile)) return null;
-		const email = readString(result.user.profile.email);
-		return email && email.length > 0 ? email : null;
+		if (!isRecord(result.user)) return { email: null, tz: null };
+
+		const profile = isRecord(result.user.profile) ? result.user.profile : undefined;
+		const email = profile ? readString(profile.email) : undefined;
+		const tz = readString(result.user.tz);
+
+		return {
+			email: email && email.length > 0 ? email : null,
+			tz: tz && tz.length > 0 ? tz : null,
+		};
+	}
+
+	async getUserEmail(token: string, userId: string): Promise<string | null> {
+		const { email } = await this.getUserInfo(token, userId);
+		return email;
+	}
+
+	async lookupUserByEmail(token: string, email: string): Promise<string | null> {
+		const result = await this.call(token, 'users.lookupByEmail', { email });
+		if (!result.ok) {
+			if (result.error === 'users_not_found') return null;
+			throw new OperationalError(
+				`Slack API call to "users.lookupByEmail" failed: ${result.error ?? 'unknown_error'}`,
+				{ tags: { slackErrorCode: result.error ?? 'unknown_error' } },
+			);
+		}
+		if (!isRecord(result.user)) return null;
+		return readString(result.user.id) ?? null;
+	}
+
+	async openDm(token: string, slackUserId: string): Promise<string> {
+		const result = await this.callChecked(token, 'conversations.open', { users: slackUserId });
+		if (!isRecord(result.channel)) {
+			throw new OperationalError('Slack conversations.open did not return a channel');
+		}
+		const id = readString(result.channel.id);
+		if (!id) {
+			throw new OperationalError('Slack conversations.open did not return a channel id');
+		}
+		return id;
 	}
 
 	async postMessage(token: string, args: SlackPostMessageArgs): Promise<{ ts: string }> {
