@@ -466,8 +466,8 @@ catalogs:
       specifier: 3.23.1
       version: 3.23.1
     nanoid:
-      specifier: 3.3.8
-      version: 3.3.8
+      specifier: 3.3.17
+      version: 3.3.17
     nock:
       specifier: 14.0.14
       version: 14.0.14
@@ -747,7 +747,7 @@ overrides:
   nodemailer: 8.0.10
   validator: 13.15.26
   zod: 3.25.76
-  js-yaml: 4.3.0
+  js-yaml: 4.3.1
   body-parser: 2.3.0
   glob@10: 10.5.0
   glob@7: 7.2.3
@@ -814,6 +814,7 @@ overrides:
   '@babel/traverse': ^7.23.2
   '@vitest/browser@<4.1.10': 4.1.10
   immutable: 5.1.8
+  nanoid@<3.3.17: 3.3.17
 
 patchedDependencies:
   '@langchain/google-common@2.1.24':
@@ -1641,7 +1642,7 @@ importers:
         version: 17.2.3
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       zx:
         specifier: ^8.8.5
         version: 8.8.5
@@ -2145,7 +2146,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       p-lazy:
         specifier: 3.1.0
         version: 3.1.0
@@ -2722,7 +2723,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       p-limit:
         specifier: ^3.1.0
         version: 3.1.0
@@ -2956,7 +2957,7 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       picocolors:
         specifier: 'catalog:'
         version: 1.0.1
@@ -3755,7 +3756,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       ws:
         specifier: '>=8.21.1'
         version: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -3998,7 +3999,7 @@ importers:
         version: link:../constants
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -4468,7 +4469,7 @@ importers:
         version: link:../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       nodemailer:
         specifier: 8.0.10
         version: 8.0.10
@@ -4853,7 +4854,7 @@ importers:
         version: link:../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -6058,7 +6059,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -6982,7 +6983,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       otplib:
         specifier: ^12.0.1
         version: 12.0.1
@@ -17788,8 +17789,8 @@ packages:
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
 
-  js-yaml@4.3.0:
-    resolution: {integrity: sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q==}
+  js-yaml@4.3.1:
+    resolution: {integrity: sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ==}
     hasBin: true
 
   jsbi@4.3.0:
@@ -19168,13 +19169,8 @@ packages:
   nanoclone@0.2.1:
     resolution: {integrity: sha512-wynEP02LmIbLpcYw8uBKpcfF6dmg2vcpKqxeH5UcoKEYdExslsdUA4ugFauuaeYdTB76ez6gJW8XAZ6CgkXYxA==}
 
-  nanoid@3.3.11:
-    resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
-    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
-  nanoid@3.3.8:
-    resolution: {integrity: sha512-WNLf5Sd8oZxOm+TzppcYk8gVOgP+l58xNy58D0nbUnOxOWRWvlcCV4kUF7ltmI6PsrLl/BgKEyS4mqsGChFN0w==}
+  nanoid@3.3.17:
+    resolution: {integrity: sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -23517,7 +23513,7 @@ snapshots:
     dependencies:
       '@jsdevtools/ono': 7.1.3
       '@types/json-schema': 7.0.15
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
 
   '@assemblyscript/loader@0.19.23': {}
 
@@ -25993,7 +25989,7 @@ snapshots:
       json-stringify-safe: 5.0.1
       lil-http-terminator: 1.2.3
       lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
-      nanoid: 3.3.11
+      nanoid: 3.3.17
       object-sizeof: 2.6.5
       p-debounce: 2.1.0
       p-map: 4.0.0
@@ -26408,7 +26404,7 @@ snapshots:
       globals: 13.24.0
       ignore: 5.3.2
       import-fresh: 3.3.0
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       minimatch: 5.1.8
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
@@ -26422,7 +26418,7 @@ snapshots:
       globals: 14.0.0
       ignore: 5.3.2
       import-fresh: 3.3.0
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       minimatch: 5.1.8
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
@@ -26936,7 +26932,7 @@ snapshots:
       '@langchain/openai': 1.4.1(@langchain/core@1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/textsplitters': 1.0.1(@langchain/core@1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
       handlebars: 4.7.9
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       jsonpointer: 5.0.1
       openapi-types: 12.1.3
       uuid: 13.0.1
@@ -26974,7 +26970,7 @@ snapshots:
       binary-extensions: 2.2.0
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.5.0
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       langsmith: 0.6.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       math-expression-evaluator: 2.0.7
       openai: 6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76)
@@ -27041,7 +27037,7 @@ snapshots:
       binary-extensions: 2.2.0
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.5.0
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       langsmith: 0.6.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       math-expression-evaluator: 2.0.7
       openai: 6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76)
@@ -28774,7 +28770,7 @@ snapshots:
       colorette: 1.4.0
       https-proxy-agent: 7.0.6
       js-levenshtein: 1.1.6
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       minimatch: 5.1.8
       pluralize: 8.0.0
       yaml-ast-parser: 0.0.43
@@ -32160,7 +32156,7 @@ snapshots:
       hosted-git-info: 4.1.0
       isbinaryfile: 5.0.7
       jiti: 2.6.1
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       json5: 2.2.3
       lazy-val: 1.0.5
       minimatch: 10.2.3
@@ -32744,7 +32740,7 @@ snapshots:
       fs-extra: 10.1.0
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       sanitize-filename: 1.6.4
       source-map-support: 0.5.21
       stat-mode: 1.0.0
@@ -33356,7 +33352,7 @@ snapshots:
     dependencies:
       env-paths: 2.2.1
       import-fresh: 3.3.0
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       parse-json: 5.2.0
     optionalDependencies:
       typescript: '@typescript/typescript6@6.0.2'
@@ -33365,7 +33361,7 @@ snapshots:
     dependencies:
       env-paths: 2.2.1
       import-fresh: 3.3.0
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 6.0.2
@@ -33374,7 +33370,7 @@ snapshots:
     dependencies:
       env-paths: 2.2.1
       import-fresh: 3.3.0
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 7.0.2
@@ -33954,7 +33950,7 @@ snapshots:
       builder-util: 26.9.0
       fs-extra: 10.1.0
       iconv-lite: 0.6.3
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
     optionalDependencies:
       dmg-license: 1.0.11
     transitivePeerDependencies:
@@ -34748,7 +34744,7 @@ snapshots:
       imurmurhash: 0.1.4
       is-glob: 4.0.3
       is-path-inside: 3.0.3
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       json-stable-stringify-without-jsonify: 1.0.1
       levn: 0.4.1
       lodash.merge: 4.6.2
@@ -36059,7 +36055,7 @@ snapshots:
 
   ics@2.40.0(patch_hash=163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d):
     dependencies:
-      nanoid: 3.3.11
+      nanoid: 3.3.17
       yup: 0.32.11
 
   ieee754@1.2.1: {}
@@ -36501,7 +36497,7 @@ snapshots:
 
   js-tokens@9.0.1: {}
 
-  js-yaml@4.3.0:
+  js-yaml@4.3.1:
     dependencies:
       argparse: 2.0.1
 
@@ -37621,7 +37617,7 @@ snapshots:
   minifaker@1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33):
     dependencies:
       '@types/uuid': 8.3.4
-      nanoid: 3.3.11
+      nanoid: 3.3.17
       uuid: 13.0.1
 
   minimalistic-assert@1.0.1: {}
@@ -38054,7 +38050,7 @@ snapshots:
       find-up: 5.0.0
       glob: 8.1.0
       he: 1.2.0
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       log-symbols: 4.1.0
       minimatch: 5.1.8
       ms: 2.1.3
@@ -38259,9 +38255,7 @@ snapshots:
 
   nanoclone@0.2.1: {}
 
-  nanoid@3.3.11: {}
-
-  nanoid@3.3.8: {}
+  nanoid@3.3.17: {}
 
   napi-build-utils@2.0.0: {}
 
@@ -39263,7 +39257,7 @@ snapshots:
 
   postcss@8.5.10:
     dependencies:
-      nanoid: 3.3.11
+      nanoid: 3.3.17
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -42906,7 +42900,7 @@ snapshots:
       https-proxy-agent: 4.0.0
       json5: 2.2.3
       loglevel: 1.9.2
-      nanoid: 3.3.11
+      nanoid: 3.3.17
     transitivePeerDependencies:
       - encoding
       - supports-color

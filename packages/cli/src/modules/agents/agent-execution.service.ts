@@ -13,6 +13,7 @@ import {
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentWorkspaceService } from './agent-workspace.service';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
@@ -105,6 +106,7 @@ export class AgentExecutionService {
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
 		private readonly harnessSessionCleanupService: N8nHarnessSessionCleanupService,
+		private readonly agentWorkspaceService: AgentWorkspaceService,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
@@ -446,6 +448,7 @@ export class AgentExecutionService {
 		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await this.harnessSessionCleanupService.destroyByAgentAndThread(agentId, threadId);
 		await Promise.all([
+			this.agentWorkspaceService.cleanupThreadWorkspace(projectId, agentId, threadId),
 			this.agentExecutionThreadRepository.delete({ id: threadId }),
 			this.agentExecutionLogStore.delete(
 				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),

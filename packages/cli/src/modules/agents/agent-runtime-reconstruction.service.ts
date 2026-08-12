@@ -50,7 +50,9 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
-import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
+import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import { sanitizeSandboxErrorDetail } from './agent-sandbox-runtime.service';
+import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -182,7 +184,8 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
+		private readonly agentWorkspaceService: AgentWorkspaceService,
+		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly credentialsFinderService: CredentialsFinderService,
@@ -611,7 +614,7 @@ export class AgentRuntimeReconstructionService {
 								timeout: this.agentsConfig.sandboxTimeout,
 								createTimeoutSeconds: Math.ceil(this.agentsConfig.sandboxTimeout / 1000),
 								image: this.agentsConfig.sandboxImage,
-								ephemeral: this.agentsConfig.sandboxEphemeral,
+								ephemeral: false,
 								logger: this.logger,
 							})
 						: createN8nHarnessSandboxProvider({
@@ -768,21 +771,29 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createGetEnvironmentTool());
 
-		if (
-			runtimeProfile !== 'inline' &&
-			this.agentsConfig.sandboxEnabled &&
-			(await this.agentFileRepository.hasFilesForAgent(agentId))
-		) {
-			const { createKnowledgeRetrievalTools } = await import(
-				'./tools/knowledge/search-knowledge.tool.js'
-			);
-			agent.tool(
-				createKnowledgeRetrievalTools({
+		if (runtimeProfile !== 'inline' && this.agentsConfig.sandboxEnabled) {
+			try {
+				agent.workspace(await this.agentWorkspaceService.getAgentWorkspace(projectId, agentId));
+			} catch (error) {
+				this.logger.warn('Failed to attach agent workspace', {
 					projectId,
 					agentId,
-					sandboxService: this.agentKnowledgeSandboxService,
-				}),
-			);
+					error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
+				});
+			}
+
+			if (await this.agentFileRepository.hasFilesForAgent(agentId)) {
+				const { createKnowledgeRetrievalTools } = await import(
+					'./tools/knowledge/search-knowledge.tool.js'
+				);
+				agent.tool(
+					createKnowledgeRetrievalTools({
+						projectId,
+						agentId,
+						knowledgeMirrorService: this.agentKnowledgeMirrorService,
+					}),
+				);
+			}
 		}
 
 		if (runtimeProfile === 'top-level') {

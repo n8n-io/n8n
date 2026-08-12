@@ -8,6 +8,7 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from '../execution-recorder';
@@ -68,6 +69,7 @@ describe('AgentExecutionService', () => {
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
 	let harnessSessionCleanupService: Mocked<N8nHarnessSessionCleanupService>;
+	let agentWorkspaceService: Mocked<AgentWorkspaceService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -86,6 +88,8 @@ describe('AgentExecutionService', () => {
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
 		harnessSessionCleanupService = mock<N8nHarnessSessionCleanupService>();
+		agentWorkspaceService = mock<AgentWorkspaceService>();
+		agentWorkspaceService.cleanupThreadWorkspace.mockResolvedValue();
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -99,6 +103,7 @@ describe('AgentExecutionService', () => {
 			errorReporter,
 			executionUpdateBroadcaster,
 			harnessSessionCleanupService,
+			agentWorkspaceService,
 		);
 	});
 
@@ -286,6 +291,7 @@ describe('AgentExecutionService', () => {
 				errorReporter,
 				executionUpdateBroadcaster,
 				harnessSessionCleanupService,
+				agentWorkspaceService,
 			);
 
 			const record = makeMessageRecord({
@@ -351,6 +357,7 @@ describe('AgentExecutionService', () => {
 				errorReporter,
 				executionUpdateBroadcaster,
 				harnessSessionCleanupService,
+				agentWorkspaceService,
 			);
 
 			const record = makeMessageRecord({
@@ -765,6 +772,7 @@ describe('AgentExecutionService', () => {
 				errorReporter,
 				executionUpdateBroadcaster,
 				harnessSessionCleanupService,
+				agentWorkspaceService,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
@@ -925,7 +933,7 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('deleteThread', () => {
-		it('cleans SDK memory before deleting the execution thread', async () => {
+		it('performs workspace cleanup when deleting an execution thread', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
 				agentId: 'agent-1',
@@ -946,6 +954,11 @@ describe('AgentExecutionService', () => {
 			expect(agentChatAttachmentService.deleteByThread).toHaveBeenCalledWith('thread-1', {
 				projectId: 'project-1',
 			});
+			expect(agentWorkspaceService.cleanupThreadWorkspace).toHaveBeenCalledWith(
+				'project-1',
+				'agent-1',
+				'thread-1',
+			);
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 			expect(harnessSessionCleanupService.destroyByAgentAndThread).toHaveBeenCalledWith(
 				'agent-1',

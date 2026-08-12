@@ -2,6 +2,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentTestChatService, chatThreadId } from '../agent-test-chat.service';
+import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { N8nHarnessSessionCleanupService } from '../integrations/n8n-harness-session-cleanup.service';
 import type { N8nMemory } from '../integrations/n8n-memory';
 
@@ -14,14 +15,21 @@ function makeService() {
 	const memory = mock<MemoryImplementation>();
 	const attachmentService = mock<AgentChatAttachmentService>();
 	const harnessSessionCleanupService = mock<N8nHarnessSessionCleanupService>();
+	const workspaceService = mock<AgentWorkspaceService>();
 	n8nMemory.getImplementation.mockReturnValue(memory);
 
 	return {
-		service: new AgentTestChatService(n8nMemory, attachmentService, harnessSessionCleanupService),
+		service: new AgentTestChatService(
+			n8nMemory,
+			attachmentService,
+			harnessSessionCleanupService,
+			workspaceService,
+		),
 		n8nMemory,
 		memory,
 		attachmentService,
 		harnessSessionCleanupService,
+		workspaceService,
 	};
 }
 
@@ -42,12 +50,17 @@ describe('AgentTestChatService', () => {
 		});
 	});
 
-	it('clears one user thread or every test-chat thread for an agent', async () => {
-		const { service, memory, harnessSessionCleanupService } = makeService();
+	it('cleans up one user thread or every test-chat thread for an agent', async () => {
+		const { service, memory, harnessSessionCleanupService, workspaceService } = makeService();
 
-		await service.clearTestChatMessages(agentId, userId);
+		await service.clearTestChatMessages('project-1', agentId, userId);
 		expect(memory.deleteThread).toHaveBeenCalledWith(`test-${agentId}:${userId}`);
 		expect(harnessSessionCleanupService.destroyByAgentAndThread).toHaveBeenCalledWith(
+			agentId,
+			`test-${agentId}:${userId}`,
+		);
+		expect(workspaceService.cleanupThreadWorkspace).toHaveBeenCalledWith(
+			'project-1',
 			agentId,
 			`test-${agentId}:${userId}`,
 		);
