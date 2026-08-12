@@ -34,12 +34,14 @@ export async function getProjectFileProxy(
  * file by its per-project unique name, which is what a workflow usually knows.
  */
 export function toFileRef(this: IExecuteFunctions, itemIndex: number): ProjectFileRef {
-	const mode = this.getNodeParameter('file.mode', itemIndex) as string;
-	const value = this.getNodeParameter('file.value', itemIndex) as string;
+	const locator = this.getNodeParameter('file', itemIndex) as {
+		mode: 'list' | 'name' | 'id';
+		value: string;
+	};
 
-	if (mode === 'name') {
-		return { by: 'name', name: value };
+	if (locator.mode === 'name') {
+		return { by: 'name', name: locator.value };
 	}
 
-	return { by: 'id', id: value };
+	return { by: 'id', id: locator.value };
 }

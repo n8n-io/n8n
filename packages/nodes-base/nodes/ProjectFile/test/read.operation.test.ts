@@ -55,7 +55,7 @@ describe('Project file node · read', () => {
 	it('addresses the file by id when the selector is a list or id', async () => {
 		const { context, proxy } = setup({
 			operation: 'read',
-			parameters: { 'file.mode': 'list', 'file.value': 'file-id' },
+			parameters: { file: { mode: 'list', value: 'file-id' } },
 		});
 
 		await new ProjectFile().execute.call(context);
@@ -66,7 +66,7 @@ describe('Project file node · read', () => {
 	it('addresses the file by name when the selector is a name', async () => {
 		const { context, proxy } = setup({
 			operation: 'read',
-			parameters: { 'file.mode': 'name', 'file.value': 'rates-latest.csv' },
+			parameters: { file: { mode: 'name', value: 'rates-latest.csv' } },
 		});
 
 		await new ProjectFile().execute.call(context);

@@ -16,7 +16,7 @@ describe('Project file node · delete', () => {
 	it('deletes by name', async () => {
 		const { context, proxy } = setup({
 			operation: 'delete',
-			parameters: { 'file.mode': 'name', 'file.value': 'rates-latest.csv' },
+			parameters: { file: { mode: 'name', value: 'rates-latest.csv' } },
 		});
 
 		await new ProjectFile().execute.call(context);

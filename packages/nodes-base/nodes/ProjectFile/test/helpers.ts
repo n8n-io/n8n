@@ -80,8 +80,7 @@ export function setup({
 		fileName: 'report.csv',
 		overwrite: true,
 		outputFieldName: 'data',
-		'file.mode': 'list',
-		'file.value': 'file-id',
+		file: { mode: 'list', value: 'file-id' },
 		...parameters,
 	};
 
