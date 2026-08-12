@@ -61,7 +61,7 @@ import {
 	isOpenAiResponsesUrl,
 	normalizeOpenAiResponsesMockResponse,
 } from './openai-responses-envelope';
-import { generatePinData } from './pin-data-generator';
+import { generatePinData } from '../pin-data-generator';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,

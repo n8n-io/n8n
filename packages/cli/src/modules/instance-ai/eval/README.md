@@ -22,7 +22,7 @@ executes; the data is pinned onto it.
   resolved through n8n-core's `resolveOutputSchemaPath`/`loadOutputSchema` and
   `LoadNodesAndCredentials.createOutputSchemaLookup()`. Prompt building and
   parsing live in `@n8n/workflow-sdk` (`mock-data/`).
-- Used by: Phase 1.5 bypass pin data (`pin-data-generator.ts`) and in-product
+- Used by: Phase 1.5 bypass pin data (`../pin-data-generator.ts`) and in-product
   simulated verification (`@n8n/instance-ai`
   `generate-simulation-fixtures.service.ts`).
 

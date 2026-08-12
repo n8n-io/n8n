@@ -31,7 +31,7 @@ vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(),
 	extractText: vi.fn(),
 }));
-vi.mock('../pin-data-generator', () => ({
+vi.mock('../../pin-data-generator', () => ({
 	generatePinData: vi.fn(),
 }));
 vi.mock('../mock-handler', () => ({
@@ -100,7 +100,7 @@ vi.mock('n8n-workflow', async () => {
 
 import { EvalExecutionService } from '../execution.service';
 import { createLlmMockHandler } from '../mock-handler';
-import { generatePinData } from '../pin-data-generator';
+import { generatePinData } from '../../pin-data-generator';
 import {
 	detectBinaryDependencies,
 	emitsDataTableRows,
