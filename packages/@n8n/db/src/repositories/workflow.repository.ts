@@ -11,6 +11,7 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import type { INode } from 'n8n-workflow';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -30,6 +31,7 @@ import type {
 	ListQueryDb,
 	FolderWithWorkflowAndSubFolderCount,
 	ListQuery,
+	SlimProject,
 } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
@@ -53,6 +55,15 @@ export type WorkflowFolderUnionFull = (
 	| FolderWithWorkflowAndSubFolderCount
 ) & {
 	resource: ResourceType;
+};
+
+/** A workflow that passed the coarse node-content pre-filter, with display context. */
+export type NodeSearchCandidate = {
+	id: string;
+	name: string;
+	nodes: INode[];
+	homeProject: SlimProject | null;
+	parentFolder: { id: string; name: string } | null;
 };
 
 type WorkflowListResult = {
@@ -852,9 +863,92 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
-	 * Get workflows with sharing permissions using a subquery instead of pre-fetched IDs.
-	 * This combines the workflow and sharing queries into a single database query.
+	 * Workflow-level pre-filter for node content search.
+	 *
+	 * Returns non-archived workflows the user can read whose serialized `nodes`
+	 * contain `query` as a substring, most recently updated first. The match is
+	 * intentionally coarse — JSON structure and node keys are part of the haystack
+	 * here, so callers must re-match each node in memory to discard false
+	 * positives (see `findNodeSearchMatch` in `n8n-workflow`).
+	 *
+	 * Only draft `nodes` are searched: that is what the user edits and what they
+	 * navigate back to. Published versions are deliberately out of scope.
 	 */
+	async findNodeSearchCandidates(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+		},
+		query: string,
+		limit: number,
+	): Promise<NodeSearchCandidate[]> {
+		const qb = this.createQueryBuilder('workflow').select([
+			'workflow.id',
+			'workflow.name',
+			'workflow.nodes',
+			'workflow.updatedAt',
+		]);
+
+		const sharedWorkflowSubquery = this.buildSharedWorkflowIdsSubquery(user, sharingOptions);
+		qb.where(`workflow.id IN (${sharedWorkflowSubquery.getQuery()})`);
+		qb.setParameters(sharedWorkflowSubquery.getParameters());
+
+		qb.andWhere('workflow.isArchived = :isArchived', { isArchived: false });
+
+		// Postgres stores `nodes` as json and needs an explicit text cast for LIKE;
+		// sqlite already stores it as text. Mirrors `applyTriggerNodeTypesFilter`.
+		const nodesAsText =
+			this.globalConfig.database.type === 'postgresdb'
+				? '"workflow"."nodes"::text'
+				: 'workflow.nodes';
+		qb.andWhere(`LOWER(${nodesAsText}) LIKE :nodeSearchQuery ESCAPE '\\'`, {
+			nodeSearchQuery: `%${this.escapeLike(query.toLowerCase())}%`,
+		});
+
+		// Relation joins (not ad-hoc ones) so TypeORM hydrates `shared[0].project`.
+		qb.leftJoin('workflow.shared', 'ownerShared', "ownerShared.role = 'workflow:owner'")
+			.addSelect(['ownerShared.role', 'ownerShared.workflowId', 'ownerShared.projectId'])
+			.leftJoin('ownerShared.project', 'ownerProject')
+			.addSelect([
+				'ownerProject.id',
+				'ownerProject.name',
+				'ownerProject.type',
+				'ownerProject.icon',
+			]);
+
+		qb.leftJoin('workflow.parentFolder', 'parentFolder').addSelect([
+			'parentFolder.id',
+			'parentFolder.name',
+		]);
+
+		qb.orderBy('workflow.updatedAt', 'DESC').limit(limit);
+
+		const workflows = await qb.getMany();
+
+		return workflows.map((workflow) => {
+			const ownerProject = workflow.shared?.[0]?.project ?? null;
+
+			return {
+				id: workflow.id,
+				name: workflow.name,
+				nodes: workflow.nodes ?? [],
+				homeProject: ownerProject
+					? {
+							id: ownerProject.id,
+							name: ownerProject.name,
+							type: ownerProject.type,
+							icon: ownerProject.icon,
+						}
+					: null,
+				parentFolder: workflow.parentFolder
+					? { id: workflow.parentFolder.id, name: workflow.parentFolder.name }
+					: null,
+			};
+		});
+	}
+
 	async getManyAndCountWithSharingSubquery(
 		user: User,
 		sharingOptions: {

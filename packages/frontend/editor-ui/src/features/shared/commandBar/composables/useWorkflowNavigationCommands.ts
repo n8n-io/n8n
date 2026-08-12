@@ -2,7 +2,6 @@ import { computed, ref, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
@@ -15,10 +14,9 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { CommandGroup, CommandBarItem } from '../types';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useFoldersStore } from '@/features/core/folders/folders.store';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useWorkflowLocationSuffix } from './useWorkflowLocationSuffix';
 import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
@@ -40,7 +38,7 @@ export function useWorkflowNavigationCommands(options: {
 	const projectsStore = useProjectsStore();
 	const tagsStore = useTagsStore();
 	const sourceControlStore = useSourceControlStore();
-	const foldersStore = useFoldersStore();
+	const { getSuffix, getProjectIcon, cacheParentFolders } = useWorkflowLocationSuffix();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -163,19 +161,7 @@ export function useWorkflowNavigationCommands(options: {
 			workflowResults.value = orderResultByCurrentProjectFirst(nonArchivedWorkflows);
 
 			// Cache parent folders for breadcrumb building
-			const parentFolders = nonArchivedWorkflows
-				.map((w) => w.parentFolder)
-				.filter((pf) => pf !== undefined && pf !== null);
-
-			if (parentFolders.length > 0) {
-				foldersStore.cacheFolders(
-					parentFolders.map((pf) => ({
-						id: pf.id,
-						name: pf.name,
-						parentFolder: undefined, // We don't have the parent's parent info yet
-					})),
-				);
-			}
+			cacheParentFolders(nonArchivedWorkflows);
 		} catch {
 			workflowResults.value = [];
 			workflowKeywords.value.clear();
@@ -186,58 +172,6 @@ export function useWorkflowNavigationCommands(options: {
 	};
 
 	const fetchWorkflowsDebounced = debounce(fetchWorkflowsImpl, 300);
-
-	const buildFolderPath = (folderId: string): string[] => {
-		const path: string[] = [];
-		let currentFolderId: string | undefined = folderId;
-
-		// Traverse up the folder hierarchy using the cache
-		while (currentFolderId) {
-			const folder = foldersStore.getCachedFolder(currentFolderId);
-			if (!folder) break;
-
-			path.unshift(folder.name);
-			currentFolderId = folder.parentFolder;
-		}
-
-		return path;
-	};
-
-	const getProjectIcon = (workflow: IWorkflowDb): IconOrEmoji => {
-		if (workflow.homeProject?.type === ProjectTypes.Personal) {
-			return { type: 'icon', value: 'user' };
-		}
-
-		if (workflow.homeProject?.name) {
-			return isIconOrEmoji(workflow.homeProject.icon)
-				? workflow.homeProject.icon
-				: { type: 'icon', value: 'layers' };
-		}
-
-		return { type: 'icon', value: 'house' };
-	};
-
-	const getWorkflowProjectSuffix = (workflow: IWorkflowDb) => {
-		const parts: string[] = [];
-
-		if (workflow.homeProject && workflow.homeProject.type === ProjectTypes.Personal) {
-			parts.push(i18n.baseText('projects.menu.personal'));
-		} else if (workflow.homeProject?.name) {
-			parts.push(workflow.homeProject.name);
-		}
-
-		if (workflow.parentFolder?.id) {
-			const folderPath = buildFolderPath(workflow.parentFolder.id);
-			// If there are more than 2 folders, show first, "...", and last
-			if (folderPath.length > 2) {
-				parts.push(folderPath[0], '...', folderPath[folderPath.length - 1]);
-			} else {
-				parts.push(...folderPath);
-			}
-		}
-
-		return parts.join(' / ');
-	};
 
 	const openWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
 		let keywords = workflowKeywords.value.get(workflow.id) ?? [];
@@ -273,7 +207,7 @@ export function useWorkflowNavigationCommands(options: {
 			];
 		}
 
-		const suffix = getWorkflowProjectSuffix(workflow);
+		const suffix = getSuffix(workflow);
 
 		const name = workflow.name || i18n.baseText('commandBar.workflows.unnamed');
 		const title = isRoot

@@ -16,6 +16,10 @@ import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
 import { useChatHubCommands } from './useChatHubCommands';
 import { useInstanceAiCommands } from './useInstanceAiCommands';
+import {
+	useGlobalNodeSearchCommands,
+	GLOBAL_NODE_SEARCH_COMMAND_ID,
+} from './useGlobalNodeSearchCommands';
 import type { CommandGroup } from '../types';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
@@ -86,12 +90,17 @@ export function useCommandBar() {
 	const instanceAiCommandGroup = useInstanceAiCommands({
 		lastQuery,
 	});
+	const globalNodeSearchGroup = useGlobalNodeSearchCommands({
+		lastQuery,
+		activeNodeId,
+	});
 
 	const canvasViewGroups: CommandGroup[] = [
 		recentResourcesGroup,
 		nodeCommandGroup,
 		workflowCommandGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
@@ -101,6 +110,7 @@ export function useCommandBar() {
 		executionCommandGroup,
 		instanceAiCommandGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
@@ -112,6 +122,7 @@ export function useCommandBar() {
 		recentResourcesGroup,
 		instanceAiCommandGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
@@ -125,6 +136,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
 		genericCommandGroup,
@@ -134,6 +146,7 @@ export function useCommandBar() {
 		recentResourcesGroup,
 		instanceAiCommandGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
@@ -146,6 +159,7 @@ export function useCommandBar() {
 		dataTableNavigationGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		credentialNavigationGroup,
 		executionNavigationGroup,
 		genericCommandGroup,
@@ -155,6 +169,7 @@ export function useCommandBar() {
 		recentResourcesGroup,
 		instanceAiCommandGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
@@ -169,6 +184,7 @@ export function useCommandBar() {
 		genericCommandGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
@@ -179,6 +195,7 @@ export function useCommandBar() {
 		instanceAiCommandGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
+		globalNodeSearchGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
@@ -241,9 +258,17 @@ export function useCommandBar() {
 		}
 	});
 
+	/**
+	 * Node search results embed workflow and node ids in their item id to stay
+	 * unique in the list. Collapse them to the section prefix so telemetry keeps a
+	 * bounded set of `command_id` values and no resource ids leak into analytics.
+	 */
+	const telemetryCommandId = (id: string) =>
+		id.startsWith(GLOBAL_NODE_SEARCH_COMMAND_ID) ? GLOBAL_NODE_SEARCH_COMMAND_ID : id;
+
 	const trackCommand = (item: CommandBarItem, view: string, parentItem?: CommandBarItem) => {
 		telemetry.track('User executed command bar command', {
-			command_id: item.id,
+			command_id: telemetryCommandId(item.id),
 			command_section: item.section,
 			view,
 			parent_command_id: parentItem?.id,

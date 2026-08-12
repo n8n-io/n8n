@@ -6,8 +6,10 @@ import {
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
 	ManualRunDto,
+	SearchWorkflowNodesQueryDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type SearchWorkflowNodesResponse,
 	type WorkflowPublicationStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -64,6 +66,7 @@ import { WorkflowCreationService } from './workflow-creation.service';
 import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowNodeSearchService } from './workflow-node-search.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
@@ -94,6 +97,7 @@ export class WorkflowsController {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowNodeSearchService: WorkflowNodeSearchService,
 	) {}
 
 	@Post('/')
@@ -151,6 +155,23 @@ export class WorkflowsController {
 			ResponseHelper.reportError(error);
 			ResponseHelper.sendErrorResponse(res, error);
 		}
+	}
+
+	/**
+	 * Search the nodes of every workflow the user can read.
+	 *
+	 * @note We cannot use `@ProjectScope` or `@GlobalScope` here: the search spans
+	 * every project the caller has access to, so there is no single scope to check.
+	 * Access is enforced inside the query itself, via the shared-workflow subquery
+	 * restricted to `workflow:read`.
+	 */
+	@Get('/search-nodes')
+	async searchNodes(
+		req: AuthenticatedRequest,
+		_res: express.Response,
+		@Query query: SearchWorkflowNodesQueryDto,
+	): Promise<SearchWorkflowNodesResponse> {
+		return await this.workflowNodeSearchService.search(req.user, query.query);
 	}
 
 	@Get('/new')
