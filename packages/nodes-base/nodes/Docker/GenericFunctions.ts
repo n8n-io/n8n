@@ -171,6 +171,31 @@ const reduceEvent = (state: JobState, event: JobEvent): JobState => {
 	}
 };
 
+const LOG_PAYLOAD_MAX_CHARS = 4000;
+
+const truncateForLog = (payload: string): string =>
+	payload.length > LOG_PAYLOAD_MAX_CHARS
+		? `${payload.slice(0, LOG_PAYLOAD_MAX_CHARS)}… (${payload.length} chars total)`
+		: payload;
+
+/** Renders a payload for logging without ever throwing on circular structures. */
+const describePayload = (payload: unknown): string => {
+	if (payload === undefined) {
+		return '<empty>';
+	}
+	if (Buffer.isBuffer(payload)) {
+		return `<binary ${payload.length} bytes>`;
+	}
+	if (typeof payload === 'object' && payload !== null && 'pipe' in payload) {
+		return '<stream>';
+	}
+	try {
+		return truncateForLog(JSON.stringify(payload));
+	} catch {
+		return '<unserializable payload>';
+	}
+};
+
 const extractStatusCode = (error: unknown): number | undefined => {
 	if (typeof error !== 'object' || error === null) {
 		return undefined;
@@ -228,19 +253,26 @@ const consumeStream = async (
 	stream: Readable,
 	initial: JobState,
 	abortSignal?: AbortSignal,
+	onLine?: (line: string) => void,
 ): Promise<JobState> => {
 	let state = initial;
 	let rest = '';
+	const reduceLoggedLine = (current: JobState, line: string): JobState => {
+		if (line.trim() !== '') {
+			onLine?.(line);
+		}
+		return reduceLine(current, line);
+	};
 	try {
 		for await (const chunk of stream) {
 			const split = splitLines(rest + String(chunk));
 			rest = split.rest;
-			state = split.lines.reduce(reduceLine, state);
+			state = split.lines.reduce(reduceLoggedLine, state);
 			if (state.terminal !== 'none') {
 				return state;
 			}
 		}
-		return reduceLine(state, rest);
+		return reduceLoggedLine(state, rest);
 	} catch (error) {
 		if (abortSignal?.aborted === true) {
 			throw error;
@@ -260,8 +292,15 @@ async function sandboxRequest<T>(
 	this: IExecuteFunctions,
 	options: IHttpRequestOptions,
 ): Promise<T> {
+	const qs = options.qs === undefined ? '' : ` qs=${describePayload(options.qs)}`;
+	this.logger.info(
+		`Docker node: → ${options.method ?? 'GET'} ${options.url}${qs} body=${describePayload(options.body)}`,
+	);
 	try {
-		return (await this.helpers.httpRequest(options)) as T;
+		const response = (await this.helpers.httpRequest(options)) as T;
+		const rendered = options.encoding === 'stream' ? '<stream>' : describePayload(response);
+		this.logger.info(`Docker node: ← ${options.method ?? 'GET'} ${options.url} ${rendered}`);
+		return response;
 	} catch (error) {
 		const statusCode = extractStatusCode(error);
 		const message = ensureError(error).message;
@@ -360,7 +399,11 @@ async function trackJob(this: IExecuteFunctions, ctx: SandboxContext): Promise<J
 		timeout: ctx.timeoutMs + HTTP_TIMEOUT_MARGIN_MS,
 	})) as Readable;
 
-	let state = await consumeStream(startStream, initialJobState(), ctx.abortSignal);
+	const logEventLine = (line: string) => {
+		this.logger.info(`Docker node: ← event ${truncateForLog(line)}`);
+	};
+
+	let state = await consumeStream(startStream, initialJobState(), ctx.abortSignal, logEventLine);
 
 	for (let attempt = 0; state.terminal === 'none' && attempt < RESUME_MAX_ATTEMPTS; attempt++) {
 		this.logger.warn('Docker node: event stream interrupted, resuming', {
@@ -396,7 +439,7 @@ async function trackJob(this: IExecuteFunctions, ctx: SandboxContext): Promise<J
 			});
 			continue;
 		}
-		state = await consumeStream(response.body, state, ctx.abortSignal);
+		state = await consumeStream(response.body, state, ctx.abortSignal, logEventLine);
 	}
 
 	if (state.terminal === 'none') {
