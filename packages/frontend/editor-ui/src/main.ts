@@ -32,7 +32,6 @@ import { SentryPlugin } from '@/app/plugins/sentry';
 import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
 import { installRenderTracker } from '@/app/dev/render-tracker';
-import { registerToastNotifier } from '@/app/init/toastNotifier';
 
 import type { VueScanOptions } from 'z-vue-scan';
 
@@ -55,9 +54,8 @@ app.use(PiniaVuePlugin);
 app.use(GlobalComponentsPlugin);
 app.use(GlobalDirectivesPlugin);
 app.use(pinia);
-app.use(i18nInstance);
-registerToastNotifier(app._context);
 app.use(router);
+app.use(i18nInstance);
 app.use(ChartJSPlugin);
 
 // Opt-in component re-render counter for the canvas performance benchmark.
