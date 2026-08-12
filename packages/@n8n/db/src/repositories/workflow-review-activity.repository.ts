@@ -6,7 +6,7 @@ import type { IDataObject } from 'n8n-workflow';
 import { BaseRepository } from './base-repository';
 import { WorkflowReviewActivityComment } from '../entities/workflow-review-activity-comment.ee';
 import { WorkflowReviewActivity } from '../entities/workflow-review-activity.ee';
-import type { OperationContext } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type WorkflowReviewActivityFeedEntry = {
 	activity: WorkflowReviewActivity;
@@ -15,8 +15,8 @@ export type WorkflowReviewActivityFeedEntry = {
 
 @Service()
 export class WorkflowReviewActivityRepository extends BaseRepository<WorkflowReviewActivity> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowReviewActivity, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowReviewActivity, dataSource.manager, transactionRunner);
 	}
 
 	async createActivity(

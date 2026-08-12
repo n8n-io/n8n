@@ -19,7 +19,8 @@ import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
-import { MfaRequiredError } from '@n8n/rest-api-client';
+import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
+import { handleSessionExpired } from '@/app/utils/handleSessionExpired';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
@@ -1186,6 +1187,10 @@ const router = createRouter({
 		}
 	},
 	routes: routes.map(withCanvasReadOnlyMeta),
+});
+
+setUnauthorizedHandler((baseURL) => {
+	void handleSessionExpired(router, baseURL);
 });
 
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {

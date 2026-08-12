@@ -26,3 +26,5 @@ services:
       DB_POSTGRESDB_HOST: postgres
       DB_TYPE: postgresdb
       DB_POSTGRESDB_PASSWORD: password
+      # Prompt-cache TTL in seconds. 1 hour keeps the cache warm between broker turns.
+      ANTHROPIC_PROMPT_CACHE_TTL: "3600"
