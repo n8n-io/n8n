@@ -8,6 +8,7 @@ import type { ContainerRunRequest, ContainerRunResult } from './SandboxContract'
 import {
 	MAX_OUTPUT_SIZE,
 	buildCmd,
+	describeFiles,
 	describePayload,
 	getSandboxConfig,
 	truncateForLog,
@@ -420,6 +421,22 @@ export async function runContainerViaHttp(
 
 	try {
 		for (const file of request.files) {
+			if (file.source === 'url') {
+				this.logger.info('Docker node: staging input file from URL', {
+					jobId: job.id,
+					path: file.path,
+					url: file.url,
+				});
+				await sandboxRequest.call(this, {
+					method: 'POST',
+					url: `${baseUrl}/jobs/${job.id}/files/fetch`,
+					headers,
+					body: { path: file.path, url: file.url },
+					json: true,
+					abortSignal,
+				});
+				continue;
+			}
 			this.logger.info('Docker node: staging input file', {
 				jobId: job.id,
 				path: file.path,
@@ -473,7 +490,7 @@ export async function runContainerViaHttp(
 			image: request.image,
 			cmd: cmd.length > 0 ? cmd : null,
 			envNames: request.env.map(({ name }) => name),
-			files: request.files.map(({ path, size }) => ({ path, size })),
+			files: describeFiles(request.files),
 			pulledImage: state.pulledImage,
 			exitCode: state.exitCode,
 			success: state.success,

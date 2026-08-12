@@ -10,6 +10,20 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { ContainerFile } from './GenericFunctions';
 import { isValidJobFilePath, runContainer } from './GenericFunctions';
 
+const parseHttpUrl = (value: string): URL | undefined => {
+	try {
+		const parsed = new URL(value);
+		return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed : undefined;
+	} catch {
+		return undefined;
+	}
+};
+
+const fileNameFromUrl = (url: URL): string => {
+	const segments = url.pathname.split('/').filter((segment) => segment !== '');
+	return segments[segments.length - 1] ?? '';
+};
+
 export class Docker implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Docker',
@@ -127,12 +141,31 @@ export class Docker implements INodeType {
 				},
 				placeholder: 'Add File',
 				default: {},
-				description: 'Files from the input item copied into the container before it starts',
+				description: 'Files copied into the container before it starts',
 				options: [
 					{
 						displayName: 'File',
 						name: 'values',
 						values: [
+							{
+								displayName: 'Source',
+								name: 'source',
+								type: 'options',
+								options: [
+									{
+										name: 'Input Binary Field',
+										value: 'binary',
+										description: 'Send a file from the input item binary data',
+									},
+									{
+										name: 'URL',
+										value: 'url',
+										description: 'The sandbox downloads the file from a URL',
+									},
+								],
+								default: 'binary',
+								description: 'Where the file comes from',
+							},
 							{
 								displayName: 'Input Binary Field',
 								name: 'binaryProperty',
@@ -141,6 +174,25 @@ export class Docker implements INodeType {
 								placeholder: 'e.g. data',
 								hint: 'The name of the input item field that contains the file',
 								description: 'Name of the binary property holding the file to send',
+								displayOptions: {
+									show: {
+										source: ['binary'],
+									},
+								},
+							},
+							{
+								displayName: 'URL',
+								name: 'url',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. https://example.com/photo.png',
+								hint: 'The sandbox downloads the URL server-side, no need to fetch it in the workflow first',
+								description: 'HTTP(S) URL of the file to download into the container',
+								displayOptions: {
+									show: {
+										source: ['url'],
+									},
+								},
 							},
 							{
 								displayName: 'Container Path',
@@ -148,7 +200,7 @@ export class Docker implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'e.g. input.csv',
-								hint: 'Relative path: the file appears at /n8n/&lt;path&gt; in the container. Leave empty to use the file name.',
+								hint: 'Relative path: the file appears at /n8n/&lt;path&gt; in the container. Leave empty to use the file name (from the binary data or the URL).',
 								description: 'Path of the file inside the container, relative to /n8n',
 							},
 						],
@@ -211,31 +263,58 @@ export class Docker implements INodeType {
 					value: string;
 				}>;
 				const fileEntries = this.getNodeParameter('files.values', itemIndex, []) as Array<{
-					binaryProperty: string;
-					containerPath: string;
+					source?: 'binary' | 'url';
+					binaryProperty?: string;
+					containerPath?: string;
+					url?: string;
 				}>;
 
+				const assertValidJobFilePath = (path: string) => {
+					if (isValidJobFilePath(path)) {
+						return;
+					}
+					this.logger.error('Docker node: invalid container path for input file', {
+						itemIndex,
+						path,
+					});
+					throw new NodeOperationError(this.getNode(), 'The container path is invalid', {
+						itemIndex,
+						description: `"${path}" must be relative (no leading /), contain only letters, digits, dots, dashes, underscores and slashes, and have no ".." segments`,
+					});
+				};
+
 				const files: ContainerFile[] = [];
-				for (const { binaryProperty, containerPath } of fileEntries) {
-					const propertyName = binaryProperty.trim();
+				for (const entry of fileEntries) {
+					const containerPath = (entry.containerPath ?? '').trim();
+					if ((entry.source ?? 'binary') === 'url') {
+						const url = (entry.url ?? '').trim();
+						if (url === '') {
+							continue;
+						}
+						const parsedUrl = parseHttpUrl(url);
+						if (parsedUrl === undefined) {
+							this.logger.error('Docker node: invalid file URL', { itemIndex, url });
+							throw new NodeOperationError(this.getNode(), 'The file URL is invalid', {
+								itemIndex,
+								description: `"${url}" must be a valid http(s) URL`,
+							});
+						}
+						const path = containerPath || fileNameFromUrl(parsedUrl);
+						assertValidJobFilePath(path);
+						files.push({ source: 'url', path, url });
+						continue;
+					}
+					const propertyName = (entry.binaryProperty ?? '').trim();
 					if (propertyName === '') {
 						continue;
 					}
 					const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
 					const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, propertyName);
 					const fileName = binaryData.fileName ?? propertyName;
-					const path = containerPath.trim() || fileName;
-					if (!isValidJobFilePath(path)) {
-						this.logger.error('Docker node: invalid container path for input file', {
-							itemIndex,
-							path,
-						});
-						throw new NodeOperationError(this.getNode(), 'The container path is invalid', {
-							itemIndex,
-							description: `"${path}" must be relative (no leading /), contain only letters, digits, dots, dashes, underscores and slashes, and have no ".." segments`,
-						});
-					}
+					const path = containerPath || fileName;
+					assertValidJobFilePath(path);
 					files.push({
+						source: 'binary',
 						path,
 						fileName,
 						mimeType: binaryData.mimeType,

@@ -3,10 +3,11 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { ContainerRunRequest, ContainerRunResult } from './SandboxContract';
+import type { ContainerRunRequest, ContainerRunResult, ContainerUrlFile } from './SandboxContract';
 import {
 	MAX_OUTPUT_SIZE,
 	buildCmd,
+	describeFiles,
 	describePayload,
 	getSandboxConfig,
 	truncateForLog,
@@ -18,6 +19,54 @@ const describeSdkError = (error: unknown): string => {
 		return `${error.message} (status ${error.status}${code})`;
 	}
 	return ensureError(error).message;
+};
+
+const parseErrorBody = (body: string): { message?: string; code?: string } => {
+	try {
+		const parsed: unknown = JSON.parse(body);
+		if (typeof parsed === 'object' && parsed !== null) {
+			return {
+				message: 'error' in parsed && typeof parsed.error === 'string' ? parsed.error : undefined,
+				code: 'code' in parsed && typeof parsed.code === 'string' ? parsed.code : undefined,
+			};
+		}
+	} catch {
+		// Not JSON: fall through to the generic message
+	}
+	return {};
+};
+
+/**
+ * `POST /jobs/{id}/files/fetch` (contract v1.1). The vendored
+ * `@n8n/sandbox-client@0.1.0` predates this endpoint, so it is called
+ * directly until the SDK ships `stageJobFileFromURL`.
+ */
+const stageJobFileFromUrl = async (
+	baseUrl: string,
+	apiKey: string,
+	jobId: string,
+	file: ContainerUrlFile,
+	abortSignal?: AbortSignal,
+): Promise<void> => {
+	const response = await fetch(`${baseUrl}/jobs/${jobId}/files/fetch`, {
+		method: 'POST',
+		headers: {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			'content-type': 'application/json',
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			'x-api-key': apiKey,
+		},
+		body: JSON.stringify({ path: file.path, url: file.url }),
+		signal: abortSignal,
+	});
+	if (!response.ok) {
+		const { message, code } = parseErrorBody(await response.text());
+		throw new SandboxServiceError(
+			message ?? `Sandbox service request failed with status ${response.status}`,
+			response.status,
+			code,
+		);
+	}
 };
 
 /**
@@ -97,6 +146,22 @@ export async function runContainerViaSdk(
 
 	try {
 		for (const file of request.files) {
+			if (file.source === 'url') {
+				this.logger.info('Docker node: staging input file from URL', {
+					jobId: job.id,
+					path: file.path,
+					url: file.url,
+				});
+				await sdkCall(
+					this,
+					`stageJobFileFromURL ${file.path}`,
+					{ path: file.path, url: file.url },
+					'The sandbox API request failed',
+					async () => await stageJobFileFromUrl(baseUrl, apiKey, job.id, file, abortSignal),
+					abortSignal,
+				);
+				continue;
+			}
 			this.logger.info('Docker node: staging input file', {
 				jobId: job.id,
 				path: file.path,
@@ -153,7 +218,7 @@ export async function runContainerViaSdk(
 			image: request.image,
 			cmd: cmd.length > 0 ? cmd : null,
 			envNames: request.env.map(({ name }) => name),
-			files: request.files.map(({ path, size }) => ({ path, size })),
+			files: describeFiles(request.files),
 			// The SDK does not surface 'pulling' events, so this is unknown
 			pulledImage: false,
 			exitCode: result.exitCode,

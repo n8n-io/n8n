@@ -8,13 +8,24 @@ export interface EnvironmentVariable {
 	value: string;
 }
 
-export interface ContainerFile {
+/** File staged from the input item's binary data (`PUT /jobs/{id}/files`). */
+export interface ContainerBinaryFile {
+	source: 'binary';
 	path: string;
 	fileName: string;
 	mimeType?: string;
 	size: number;
 	content: Buffer;
 }
+
+/** File downloaded server-side by the sandbox (`POST /jobs/{id}/files/fetch`, contract v1.1). */
+export interface ContainerUrlFile {
+	source: 'url';
+	path: string;
+	url: string;
+}
+
+export type ContainerFile = ContainerBinaryFile | ContainerUrlFile;
 
 export interface ContainerRunRequest {
 	image: string;
@@ -30,7 +41,7 @@ export interface ContainerRunResult {
 	image: string;
 	cmd: string[] | null;
 	envNames: string[];
-	files: Array<{ path: string; size: number }>;
+	files: Array<{ path: string; size?: number; url?: string }>;
 	pulledImage: boolean;
 	exitCode: number;
 	success: boolean;
@@ -85,6 +96,16 @@ export const buildCmd = (request: ContainerRunRequest): string[] => [
 	...(request.command === undefined ? [] : [request.command]),
 	...request.args,
 ];
+
+/** The staged files as reported in the run result. */
+export const describeFiles = (
+	files: ContainerFile[],
+): Array<{ path: string; size?: number; url?: string }> =>
+	files.map((file) =>
+		file.source === 'binary'
+			? { path: file.path, size: file.size }
+			: { path: file.path, url: file.url },
+	);
 
 export function getSandboxConfig(this: IExecuteFunctions): { baseUrl: string; apiKey: string } {
 	const { n8nSandboxServiceUrl, n8nSandboxServiceApiKey } = Container.get(GlobalConfig).instanceAi;
