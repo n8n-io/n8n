@@ -346,22 +346,24 @@ export class WorkflowReviewRequestService {
 			throw new NotFoundError('Could not find workflow');
 		}
 
-		const reviewerUserIds = [...new Set(dto.reviewerUserIds ?? [])];
-		if (reviewerUserIds.length > 0) {
-			if (reviewerUserIds.includes(user.id)) {
-				throw new BadRequestError('You cannot assign yourself as a reviewer');
-			}
+		const reviewerUserIds = [...new Set(dto.reviewerUserIds)];
+		if (reviewerUserIds.length === 0) {
+			throw new BadRequestError('You must assign at least one reviewer');
+		}
 
-			const eligibleIds = new Set(
-				(await this.findEligibleReviewers(project.id, user.id)).map((reviewer) => reviewer.id),
+		if (reviewerUserIds.includes(user.id)) {
+			throw new BadRequestError('You cannot assign yourself as a reviewer');
+		}
+
+		const eligibleIds = new Set(
+			(await this.findEligibleReviewers(project.id, user.id)).map((reviewer) => reviewer.id),
+		);
+		// The requester can already enumerate the eligible set, so listing ids leaks nothing
+		const ineligibleIds = reviewerUserIds.filter((id) => !eligibleIds.has(id));
+		if (ineligibleIds.length > 0) {
+			throw new BadRequestError(
+				`These users are not eligible to review this workflow: ${ineligibleIds.join(', ')}`,
 			);
-			// The requester can already enumerate the eligible set, so listing ids leaks nothing
-			const ineligibleIds = reviewerUserIds.filter((id) => !eligibleIds.has(id));
-			if (ineligibleIds.length > 0) {
-				throw new BadRequestError(
-					`These users are not eligible to review this workflow: ${ineligibleIds.join(', ')}`,
-				);
-			}
 		}
 
 		const request = await this.dbLockService.withLockContext(
@@ -410,12 +412,10 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
-				if (reviewerUserIds.length > 0) {
-					await this.workflowReviewRequestReviewerRepository.addReviewers(
-						{ workflowReviewRequestId: created.id, userIds: reviewerUserIds },
-						ctx,
-					);
-				}
+				await this.workflowReviewRequestReviewerRepository.addReviewers(
+					{ workflowReviewRequestId: created.id, userIds: reviewerUserIds },
+					ctx,
+				);
 
 				return created;
 			},

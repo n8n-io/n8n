@@ -69,8 +69,17 @@ const renderDialog = async (
 		);
 	};
 
+	const selectReviewer = async () => {
+		await userEvent.click(result.getByRole('combobox'));
+		await waitFor(() => expect(result.getByRole('listbox')).toBeInTheDocument());
+		const option = result.baseElement.querySelector('#user-select-option-id-reviewer-1');
+		expect(option).not.toBeNull();
+		await userEvent.click(option as HTMLElement);
+	};
+
 	return {
 		...result,
+		selectReviewer,
 		flushSave,
 		documentStore,
 		reviewRequiredStore,
@@ -197,12 +206,20 @@ describe('WorkflowSubmitForReviewDialog', () => {
 	});
 
 	it('submits the flushed version and resets review required after success', async () => {
-		const { getByTestId, flushSave, reviewRequiredStore, reviewStatusStore, emitted, goToStep2 } =
-			await renderDialog();
+		const {
+			getByTestId,
+			flushSave,
+			reviewRequiredStore,
+			reviewStatusStore,
+			emitted,
+			selectReviewer,
+			goToStep2,
+		} = await renderDialog();
 		await goToStep2();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), '  Review payments  ');
 		await userEvent.type(getByTestId('workflow-review-description-input'), '  Check retries  ');
+		await selectReviewer();
 		await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 		await waitFor(() => {
@@ -218,6 +235,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 						workflowVersionDescription: undefined,
 					},
 				],
+				reviewerUserIds: ['reviewer-1'],
 			});
 		});
 		expect(flushSave).toHaveBeenCalledOnce();
@@ -272,7 +290,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		});
 
 		it('submits the trimmed name and description and mirrors them into the editor', async () => {
-			const { getByTestId, documentStore, goToStep2 } = await renderDialog();
+			const { getByTestId, documentStore, selectReviewer, goToStep2 } = await renderDialog();
 
 			await userEvent.clear(getByTestId('workflow-review-version-name-input'));
 			await userEvent.type(getByTestId('workflow-review-version-name-input'), '  Release 3  ');
@@ -282,6 +300,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 			);
 			await goToStep2();
 			await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+			await selectReviewer();
 			await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 			await waitFor(() => {
@@ -316,7 +335,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 					resolveSave = resolve;
 				}),
 			);
-			const { getByTestId, goToStep2 } = await renderDialog(flushSave);
+			const { getByTestId, selectReviewer, goToStep2 } = await renderDialog(flushSave);
 
 			const versionNameInput = getByTestId('workflow-review-version-name-input');
 			await userEvent.clear(versionNameInput);
@@ -324,6 +343,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 			await goToStep2();
 			const titleInput = getByTestId('workflow-review-title-input');
 			await userEvent.type(titleInput, 'Review payments');
+			await selectReviewer();
 			await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 			await waitFor(() => expect(titleInput).toBeDisabled());
@@ -351,15 +371,19 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		});
 
 		it('sends an empty description only when the user clears it, not when it is untouched', async () => {
-			const { getByTestId, documentStore, goToStep2 } = await renderDialog(undefined, {
-				versionId: SAVED_VERSION_ID,
-				name: 'Release candidate',
-				description: 'Existing description',
-			});
+			const { getByTestId, documentStore, selectReviewer, goToStep2 } = await renderDialog(
+				undefined,
+				{
+					versionId: SAVED_VERSION_ID,
+					name: 'Release candidate',
+					description: 'Existing description',
+				},
+			);
 
 			await userEvent.clear(getByTestId('workflow-review-version-description-input'));
 			await goToStep2();
 			await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+			await selectReviewer();
 			await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 			await waitFor(() => {
@@ -374,14 +398,18 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		});
 
 		it('keeps the stored description in the editor when it was left untouched', async () => {
-			const { getByTestId, documentStore, goToStep2 } = await renderDialog(undefined, {
-				versionId: SAVED_VERSION_ID,
-				name: 'Release candidate',
-				description: 'Existing description',
-			});
+			const { getByTestId, documentStore, selectReviewer, goToStep2 } = await renderDialog(
+				undefined,
+				{
+					versionId: SAVED_VERSION_ID,
+					name: 'Release candidate',
+					description: 'Existing description',
+				},
+			);
 
 			await goToStep2();
 			await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+			await selectReviewer();
 			await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 			await waitFor(() => expect(createWorkflowReviewRequest).toHaveBeenCalledOnce());
@@ -389,13 +417,14 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		});
 
 		it('leaves the editor version untouched when the canvas moved on to another version', async () => {
-			const { getByTestId, documentStore, goToStep2 } = await renderDialog();
+			const { getByTestId, documentStore, selectReviewer, goToStep2 } = await renderDialog();
 			// A save landed while the review was in flight, so the named version is
 			// no longer the one on the canvas.
 			documentStore.setVersionData({ versionId: 'later-version', name: null, description: null });
 
 			await goToStep2();
 			await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+			await selectReviewer();
 			await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 			await waitFor(() => expect(createWorkflowReviewRequest).toHaveBeenCalledOnce());
@@ -416,16 +445,11 @@ describe('WorkflowSubmitForReviewDialog', () => {
 	});
 
 	it('sends the selected reviewer with the submission', async () => {
-		const { getByTestId, getByRole, baseElement, goToStep2 } = await renderDialog();
+		const { getByTestId, selectReviewer, goToStep2 } = await renderDialog();
 		await goToStep2();
 
-		await userEvent.click(getByRole('combobox'));
-		await waitFor(() => expect(getByRole('listbox')).toBeInTheDocument());
-		const option = baseElement.querySelector('#user-select-option-id-reviewer-1');
-		expect(option).not.toBeNull();
-		await userEvent.click(option as HTMLElement);
-
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+		await selectReviewer();
 		await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 		await waitFor(() => {
@@ -436,27 +460,35 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		});
 	});
 
-	it('omits the reviewer list from the submission when none is selected', async () => {
+	it('marks the reviewer field as required', async () => {
+		const { getByText, goToStep2 } = await renderDialog();
+		await goToStep2();
+
+		// `N8nInputLabel` renders the asterisk only for a required field.
+		expect(getByText('Reviewer').parentElement).toHaveTextContent('*');
+	});
+
+	it('blocks submission until a reviewer is selected', async () => {
+		const { getByTestId, selectReviewer, goToStep2 } = await renderDialog();
+		await goToStep2();
+
+		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+		expect(getByTestId('workflow-review-submit-button')).toBeDisabled();
+
+		await selectReviewer();
+
+		expect(getByTestId('workflow-review-submit-button')).toBeEnabled();
+	});
+
+	it('keeps submission blocked when loading the reviewers fails', async () => {
+		vi.mocked(fetchEligibleReviewers).mockRejectedValue(new Error('nope'));
 		const { getByTestId, goToStep2 } = await renderDialog();
 		await goToStep2();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
-		await userEvent.click(getByTestId('workflow-review-submit-button'));
 
-		await waitFor(() => expect(createWorkflowReviewRequest).toHaveBeenCalledOnce());
-		expect(vi.mocked(createWorkflowReviewRequest).mock.calls[0][1].reviewerUserIds).toBeUndefined();
-	});
-
-	it('still allows submission when loading the reviewers fails', async () => {
-		vi.mocked(fetchEligibleReviewers).mockRejectedValue(new Error('nope'));
-		const { getByTestId, emitted, goToStep2 } = await renderDialog();
-		await goToStep2();
-
-		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
-		await userEvent.click(getByTestId('workflow-review-submit-button'));
-
-		await waitFor(() => expect(createWorkflowReviewRequest).toHaveBeenCalledOnce());
-		expect(emitted('submitted')).toHaveLength(1);
+		expect(getByTestId('workflow-review-submit-button')).toBeDisabled();
+		expect(createWorkflowReviewRequest).not.toHaveBeenCalled();
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
 
@@ -467,11 +499,12 @@ describe('WorkflowSubmitForReviewDialog', () => {
 				meta: { workflowReviewRequestId: 'existing-review' },
 			}),
 		);
-		const { getByTestId, reviewRequiredStore, fetchStatusSpy, emitted, goToStep2 } =
+		const { getByTestId, reviewRequiredStore, fetchStatusSpy, emitted, selectReviewer, goToStep2 } =
 			await renderDialog();
 		await goToStep2();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+		await selectReviewer();
 		await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 		await waitFor(() => expect(emitted('conflict')).toHaveLength(1));
@@ -490,10 +523,12 @@ describe('WorkflowSubmitForReviewDialog', () => {
 				resolveSave = resolve;
 			}),
 		);
-		const { getByTestId, rerender, emitted, goToStep2 } = await renderDialog(flushSave);
+		const { getByTestId, rerender, emitted, selectReviewer, goToStep2 } =
+			await renderDialog(flushSave);
 		await goToStep2();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+		await selectReviewer();
 		await userEvent.click(getByTestId('workflow-review-submit-button'));
 		await waitFor(() => expect(flushSave).toHaveBeenCalledOnce());
 
@@ -517,11 +552,12 @@ describe('WorkflowSubmitForReviewDialog', () => {
 				}),
 		);
 		const flushSave = vi.fn().mockResolvedValue('version-1');
-		const { getByTestId, rerender, fetchStatusSpy, emitted, goToStep2 } =
+		const { getByTestId, rerender, fetchStatusSpy, emitted, selectReviewer, goToStep2 } =
 			await renderDialog(flushSave);
 		await goToStep2();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+		await selectReviewer();
 		await userEvent.click(getByTestId('workflow-review-submit-button'));
 		await waitFor(() => expect(createWorkflowReviewRequest).toHaveBeenCalledOnce());
 
@@ -542,10 +578,12 @@ describe('WorkflowSubmitForReviewDialog', () => {
 
 	it('shows an error and preserves the preference when saving fails', async () => {
 		const flushSave = vi.fn().mockResolvedValue(undefined);
-		const { getByTestId, reviewRequiredStore, emitted, goToStep2 } = await renderDialog(flushSave);
+		const { getByTestId, reviewRequiredStore, emitted, selectReviewer, goToStep2 } =
+			await renderDialog(flushSave);
 		await goToStep2();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+		await selectReviewer();
 		await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 		await waitFor(() => expect(mockShowError).toHaveBeenCalledOnce());
@@ -557,10 +595,12 @@ describe('WorkflowSubmitForReviewDialog', () => {
 	it('shows unexpected API errors and preserves the preference', async () => {
 		const error = new Error('Request failed');
 		vi.mocked(createWorkflowReviewRequest).mockRejectedValue(error);
-		const { getByTestId, reviewRequiredStore, emitted, goToStep2 } = await renderDialog();
+		const { getByTestId, reviewRequiredStore, emitted, selectReviewer, goToStep2 } =
+			await renderDialog();
 		await goToStep2();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+		await selectReviewer();
 		await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 		await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String)));
