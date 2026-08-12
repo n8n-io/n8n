@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, reactive, ref, type PropType } from 'vue';
 import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -11,6 +12,7 @@ import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
+import { NEW_CONVERSATION_TITLE } from '../constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import type {
 	FrontendModuleSettings,
@@ -27,11 +29,16 @@ const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
 }));
 
+const mockThreadAreaSizeState = vi.hoisted(() => ({
+	width: { value: 1600 },
+}));
+
 const planEditSubmitState = vi.hoisted(() => ({
 	message: 'Make the plan simpler',
 }));
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
+const routerPushSpy = vi.hoisted(() => vi.fn());
 const localStorageState = vi.hoisted(() => ({
 	store: new Map<string, string>(),
 }));
@@ -106,7 +113,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 		meta: {},
 	}),
 	useRouter: () => ({
-		push: vi.fn(),
+		push: routerPushSpy,
 		replace: vi.fn(),
 		currentRoute: {
 			get value() {
@@ -120,9 +127,11 @@ vi.mock('@vueuse/core', async (importOriginal) => ({
 	...(await importOriginal()),
 	useScroll: () => ({ arrivedState: { bottom: true } }),
 	useWindowSize: () => ({ width: mockWindowSizeState.width }),
+	useElementSize: () => ({ width: mockThreadAreaSizeState.width }),
 }));
 
 const inputFocusSpy = vi.fn();
+const mockSidebarCollapsed = ref(false);
 
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
@@ -216,13 +225,35 @@ const InstanceAiAgentPreviewStub = defineComponent({
 		agentId: { type: String, required: true },
 		projectId: { type: String, required: true },
 	},
-	setup(props) {
+	emits: ['preview-open-change'],
+	setup(props, { emit }) {
 		return () =>
-			h('div', {
-				'data-test-id': 'instance-ai-agent-preview-stub',
-				'data-agent-id': props.agentId,
-				'data-project-id': props.projectId,
-			});
+			h(
+				'div',
+				{
+					'data-test-id': 'instance-ai-agent-preview-stub',
+					'data-agent-id': props.agentId,
+					'data-project-id': props.projectId,
+				},
+				[
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-preview-open-dock',
+							onClick: () => emit('preview-open-change', true),
+						},
+						'Open preview dock',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-preview-close-dock',
+							onClick: () => emit('preview-open-change', false),
+						},
+						'Close preview dock',
+					),
+				],
+			);
 	},
 });
 
@@ -257,7 +288,7 @@ const AgentSectionStub = defineComponent({
 const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
 		provide: {
-			[SidebarStateKey as symbol]: { collapsed: ref(false), toggle: vi.fn() },
+			[SidebarStateKey as symbol]: { collapsed: mockSidebarCollapsed, toggle: vi.fn() },
 		},
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
@@ -355,6 +386,7 @@ describe('InstanceAiThreadView', () => {
 			isStreaming: false,
 			isSendingMessage: false,
 			isAwaitingConfirmation: false,
+			isHydratingThread: false,
 			amendContext: null,
 			activePlanEdit: null,
 			updatingPlanRequestIds: new Set<string>(),
@@ -405,6 +437,7 @@ describe('InstanceAiThreadView', () => {
 			(threadId) => store.threads.find((item) => item.id === threadId)?.metadata ?? undefined,
 		);
 		mockWindowSizeState.width.value = 1200;
+		mockThreadAreaSizeState.width.value = 1600;
 
 		// Auto-stubbed push-store actions return undefined by default; addEventListener's
 		// caller expects a removeListener function, so return a no-op.
@@ -412,9 +445,11 @@ describe('InstanceAiThreadView', () => {
 		pushStore.addEventListener.mockReturnValue(() => {});
 		inputFocusSpy.mockClear();
 		telemetryTrackSpy.mockClear();
+		routerPushSpy.mockClear();
 		planEditSubmitState.message = 'Make the plan simpler';
 		mockRouteState.params = { threadId: 'thread-1' };
 		localStorageState.store.clear();
+		mockSidebarCollapsed.value = false;
 		testAgentOfferState.evalsFlagEnabled = false;
 		testAgentOfferState.capabilitySummary = null;
 	});
@@ -423,9 +458,76 @@ describe('InstanceAiThreadView', () => {
 		vi.clearAllMocks();
 	});
 
+	async function renderAgentArtifact({
+		threadAreaWidth = 1600,
+		includeWorkflow = false,
+	}: { threadAreaWidth?: number; includeWorkflow?: boolean } = {}) {
+		mockThreadAreaSizeState.width.value = threadAreaWidth;
+		thread.producedArtifacts = new Map([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+		]) as typeof thread.producedArtifacts;
+		if (includeWorkflow) {
+			thread.producedArtifacts.set('workflow-1', {
+				type: 'workflow',
+				id: 'workflow-1',
+				name: 'SEO Workflow',
+			});
+		}
+		thread.messages = [
+			{
+				id: 'msg-agent',
+				role: 'user',
+				content: 'Update this agent',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				attachments: [
+					{
+						type: 'agent',
+						id: 'agent-1',
+						projectId: 'proj-1',
+						name: 'SEO Auditor',
+					},
+				],
+			},
+		] as typeof thread.messages;
+
+		const user = userEvent.setup();
+		const rendered = renderView({ props: { threadId: 'thread-1' } });
+		await rendered.findByTestId('instance-ai-agent-preview-stub');
+
+		return { ...rendered, user };
+	}
+
 	it('does not pass suggestions to its composer', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
+	});
+
+	describe('browser tab title', () => {
+		it('names the tab after the thread it opens', () => {
+			renderView({ props: { threadId: 'thread-1' } });
+			expect(document.title).toBe('Test thread - n8n');
+		});
+
+		it('falls back to the feature title for a thread without a title', () => {
+			store.threads = [
+				{ ...store.threads[0], title: NEW_CONVERSATION_TITLE },
+			] as typeof store.threads;
+
+			renderView({ props: { threadId: 'thread-1' } });
+
+			expect(document.title).toBe('AI Assistant - n8n');
+		});
+
+		it('renames the tab when the thread gets a title', async () => {
+			renderView({ props: { threadId: 'thread-1' } });
+
+			store.threads = [{ ...store.threads[0], title: 'Renamed thread' }] as typeof store.threads;
+
+			await vi.waitFor(() => {
+				expect(document.title).toBe('Renamed thread - n8n');
+			});
+		});
 	});
 
 	it('reconnects on same-thread re-entry when SSE is disconnected', async () => {
@@ -1142,6 +1244,131 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
 	});
 
+	it('preserves the artifact width while splitting the remaining width between both chats', async () => {
+		const { getByTestId, queryByTestId, user } = await renderAgentArtifact({
+			threadAreaWidth: 1200,
+		});
+
+		expect(queryByTestId('resize-handle')).toBeInTheDocument();
+		const previewPanel = getByTestId('instance-ai-preview-panel');
+		const threadArea = getByTestId('instance-ai-thread-area');
+		const header = getByTestId('instance-ai-builder-chat-header');
+		const content = getByTestId('instance-ai-content-area');
+		expect(previewPanel.style.width).toBe('600px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('300px');
+		await vi.waitFor(() => {
+			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
+		});
+
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+
+		expect(threadArea).toHaveClass('agentPreviewDockOpen');
+		expect(previewPanel.style.width).toBe('900px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('300px');
+		expect(queryByTestId('resize-handle')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
+
+		expect(threadArea).not.toHaveClass('agentPreviewDockOpen');
+		expect(previewPanel.style.width).toBe('600px');
+		expect(queryByTestId('resize-handle')).toBeInTheDocument();
+
+		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
+
+		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
+		await fireEvent.mouseMove(window, { clientX: 120 });
+		expect(previewPanel.style.width).toBe('480px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('360px');
+
+		await fireEvent.mouseUp(window);
+
+		await vi.waitFor(() => {
+			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
+		});
+
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+
+		expect(threadArea).toHaveClass('agentPreviewDockOpen');
+		expect(header).not.toHaveAttribute('hidden');
+		expect(header).not.toHaveAttribute('inert');
+		expect(header).not.toHaveAttribute('aria-hidden');
+		expect(content).not.toHaveAttribute('hidden');
+		expect(content).not.toHaveAttribute('inert');
+		expect(content).not.toHaveAttribute('aria-hidden');
+		expect(previewPanel).toBeVisible();
+		expect(previewPanel.style.width).toBe('840px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('360px');
+		expect(queryByTestId('resize-handle')).not.toBeInTheDocument();
+		expect(routerPushSpy).not.toHaveBeenCalled();
+	});
+
+	it('restores and protects three-column layout when the dock opens from expanded preview', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		const previewPanel = getByTestId('instance-ai-preview-panel');
+		const expandToggle = getByTestId('instance-ai-preview-expand-toggle');
+
+		await user.click(expandToggle);
+		expect(previewPanel).toHaveAttribute('data-expanded', 'true');
+
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+
+		expect(previewPanel).toHaveAttribute('data-expanded', 'false');
+		expect(expandToggle).toBeDisabled();
+		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
+
+		await user.click(expandToggle);
+		expect(previewPanel).toHaveAttribute('data-expanded', 'false');
+
+		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
+		expect(expandToggle).toBeEnabled();
+
+		await user.click(expandToggle);
+		expect(previewPanel).toHaveAttribute('data-expanded', 'true');
+	});
+
+	it('clears the agent dock layout when switching artifacts', async () => {
+		const { container, getByTestId, user } = await renderAgentArtifact({
+			includeWorkflow: true,
+		});
+
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+		expect(getByTestId('instance-ai-thread-area').className).toContain('agentPreviewDockOpen');
+
+		const workflowTab = container.querySelector<HTMLElement>('[data-tab-id="workflow-1"]');
+		expect(workflowTab).not.toBeNull();
+		await user.click(workflowTab!);
+
+		expect(getByTestId('instance-ai-thread-area').className).not.toContain('agentPreviewDockOpen');
+	});
+
+	it('clears the agent dock layout when switching threads', async () => {
+		const { getByTestId, rerender, user } = await renderAgentArtifact();
+
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+		expect(getByTestId('instance-ai-thread-area').className).toContain('agentPreviewDockOpen');
+
+		await rerender({ threadId: 'thread-2' });
+
+		expect(getByTestId('instance-ai-thread-area').className).not.toContain('agentPreviewDockOpen');
+	});
+
+	it('does not animate the agent dock layout during initial thread hydration', async () => {
+		Reflect.set(thread, 'isHydratingThread', true);
+		const { getByTestId, user } = await renderAgentArtifact({ threadAreaWidth: 1200 });
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+		const builderChat = getByTestId('instance-ai-builder-chat');
+
+		expect(builderChat).toHaveAttribute('data-layout-animated', 'false');
+		expect(builderChat).not.toHaveClass('agentPreviewLayoutTransition');
+
+		Reflect.set(thread, 'isHydratingThread', false);
+
+		await vi.waitFor(() => {
+			expect(builderChat).toHaveAttribute('data-layout-animated', 'true');
+		});
+		expect(builderChat).toHaveClass('agentPreviewLayoutTransition');
+	});
+
 	it('hoists an active builder section without leaving an empty assistant shell', async () => {
 		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -1198,6 +1425,23 @@ describe('InstanceAiThreadView', () => {
 		expect(builderSection).toHaveAttribute('data-agent-id', 'agent-builder-child');
 		expect(builderSection).toHaveTextContent('Building agent');
 		expect(queryByTestId('instance-ai-assistant-message')).not.toBeInTheDocument();
+	});
+
+	it('closes the agent artifact preview from the wrapper toggle', async () => {
+		const { getByTestId, queryByTestId, user } = await renderAgentArtifact();
+		const previewPanel = getByTestId('instance-ai-preview-panel');
+		expect(previewPanel).toBeVisible();
+
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
+
+		await user.click(getByTestId('instance-ai-artifacts-preview-toggle'));
+
+		await vi.waitFor(() => {
+			expect(previewPanel).not.toBeVisible();
+		});
+		expect(queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-thread-area')).not.toHaveClass('agentPreviewDockOpen');
 	});
 
 	it('keeps the new-agent artifact accessible when closed and restores it after refresh', async () => {

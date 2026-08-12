@@ -360,6 +360,8 @@ describe('GlobalConfig', () => {
 			durableLog: true,
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
+			activationCapped: false,
+			activationLockMessageThreshold: 1,
 		},
 		queue: {
 			health: {
@@ -471,6 +473,9 @@ describe('GlobalConfig', () => {
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
 			misfireGraceSeconds: 60,
+		},
+		poller: {
+			durableCursorsEnabled: false,
 		},
 		evaluation: {
 			collectionsEnabled: false,

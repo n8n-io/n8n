@@ -718,7 +718,7 @@ type TerminalGuardOrderServiceInternals = {
 	saveAgentTreeSnapshot: Mock;
 	backgroundTasks: { getRunningTasks: Mock; getRunningTasksByParentCheckpoint?: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
-	creditService: { claimRunUsage: Mock };
+	creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
 	failedInternalFollowUpStreaks: Map<string, number>;
 	schedulePlannedTasks: Mock;
 	drainPendingCheckpointReentries: Mock;
@@ -827,7 +827,10 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.saveAgentTreeSnapshot = vi.fn(async () => {});
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
-	service.creditService = { claimRunUsage: vi.fn(async () => {}) };
+	service.creditService = {
+		claimRunUsage: vi.fn(async () => {}),
+		ensureQuotaLockApplied: vi.fn(async () => {}),
+	};
 	service.failedInternalFollowUpStreaks = new Map();
 	service.schedulePlannedTasks = vi.fn(async () => {});
 	service.drainPendingCheckpointReentries = vi.fn(async () => {});
@@ -977,7 +980,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock };
+			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
 		};
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -1047,7 +1050,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
-		service.creditService = { claimRunUsage: vi.fn() };
+		service.creditService = {
+			claimRunUsage: vi.fn(),
+			ensureQuotaLockApplied: vi.fn(async () => {}),
+		};
 		(createAllTools as Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -5461,14 +5467,17 @@ describe('createAgentMemoryOptions', () => {
 			InstanceAiConfig,
 			'observerMessageTokens' | 'reflectorObservationTokens'
 		>;
-		creditService: { claimRunUsage: Mock };
+		creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
 		logger: { warn: Mock };
 	};
 
 	function buildService(): MemoryOptionsInternals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryOptionsInternals;
 		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
-		service.creditService = { claimRunUsage: vi.fn(async () => {}) };
+		service.creditService = {
+			claimRunUsage: vi.fn(async () => {}),
+			ensureQuotaLockApplied: vi.fn(async () => {}),
+		};
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
