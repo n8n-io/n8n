@@ -114,14 +114,16 @@ Claude sessions can also load the private quality skills from the
 mutation testing, and more). `post-start.mjs` installs the `quality` plugin on
 each container start, so every session gets the skills with no per-session step.
 
-The codespace's own GitHub token reads only `n8n-io/n8n`, so the private
-marketplace needs its own credential. Add a `CLAUDE_SKILLS_TOKEN` secret at
-[github.com/settings/codespaces](https://github.com/settings/codespaces): a
-fine-grained PAT with read-only `contents` on `n8n-io/n8n-claude-skills`. The
-step is skipped without it, and the log is at `/tmp/post-start.log`.
+The private marketplace uses the codespace's own GitHub auth — no extra token.
+`devcontainer.json` grants the codespace read access to
+`n8n-io/n8n-claude-skills` via `customizations.codespaces.repositories`, and
+**each user authorizes that access once when they create the codespace** (GitHub
+prompts for it, then remembers). Both repos are in the same org, which is what
+lets this work.
 
-Note: the token sits in the container, which runs `claude
---dangerously-skip-permissions`. Keep it read-only and scoped to that one repo.
+If a user does not authorize it, the clone fails and the skills step is skipped
+(the worker still starts). Existing codespaces created before this change need a
+recreate to get the prompt. The log is at `/tmp/post-start.log`.
 
 ## Viewing the dev UI locally
 

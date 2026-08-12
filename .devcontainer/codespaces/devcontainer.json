@@ -18,11 +18,21 @@
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
 	},
 	"forwardPorts": [8080, 5678],
+	// Grant the codespace's own GitHub token read access to the private skills
+	// marketplace (same org), so Claude can install it with the codespace's normal
+	// git auth — no extra PAT. Each user authorizes this once at codespace creation.
+	"customizations": {
+		"codespaces": {
+			"repositories": {
+				"n8n-io/n8n-claude-skills": { "permissions": { "contents": "read" } }
+			}
+		}
+	},
 	// Runs in prebuilds, so a fresh codespace starts with deps installed and the build warm
 	"onCreateCommand": "corepack install && pnpm install && (pnpm build > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log) && pnpm --filter=n8n-playwright exec playwright install chromium",
 	// On each container start: install the private skills marketplace into Claude
 	// (best-effort) and start the poll worker. `bash -lc` loads the secrets shim,
-	// so both get their tokens. Logs: /tmp/post-start.log, /tmp/agent-worker.log.
+	// so the worker gets its token. Logs: /tmp/post-start.log, /tmp/agent-worker.log.
 	"postStartCommand": "bash -lc 'node /workspaces/n8n/.devcontainer/codespaces/post-start.mjs >> /tmp/post-start.log 2>&1' || true",
 	"secrets": {
 		"ANTHROPIC_API_KEY": {
@@ -33,9 +43,6 @@
 		},
 		"N8N_DEQUEUE_URL": {
 			"description": "n8n webhook the poll worker calls to claim a pending turn"
-		},
-		"CLAUDE_SKILLS_TOKEN": {
-			"description": "Read-only PAT for n8n-io/n8n-claude-skills, so Claude can install the private quality skills marketplace. Optional; the skills step is skipped without it."
 		},
 		"CLAUDE_CODE_OAUTH_TOKEN": {
 			"description": "Alternative to an API key: token from `claude setup-token` (Max subscription)"
