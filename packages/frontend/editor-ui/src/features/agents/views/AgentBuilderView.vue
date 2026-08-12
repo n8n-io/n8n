@@ -239,6 +239,16 @@ const {
 } = useAgentConfigValidation();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
+
+// The full-page goal-graph preview is a standalone route, so it's only offered
+// outside artifact mode, with the goal-graph module on and the agent declaring
+// at least one goal.
+const showGraphPreview = computed(
+	() =>
+		!isArtifactMode.value &&
+		settingsStore.isAgentsGoalGraphFeatureEnabled &&
+		(localConfig.value?.goals?.length ?? 0) > 0,
+);
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
@@ -1636,6 +1646,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:config-validation-status="configValidation?.status ?? null"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
+			:show-graph-preview="showGraphPreview"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@close-preview="closePreviewDock"

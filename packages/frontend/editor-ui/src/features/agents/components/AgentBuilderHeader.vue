@@ -21,7 +21,11 @@ import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { AGENT_PREVIEW_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import {
+	AGENT_GOAL_PREVIEW_VIEW,
+	AGENT_PREVIEW_VIEW,
+	PROJECT_AGENTS,
+} from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 import AgentPublishButton from './AgentPublishButton.vue';
@@ -43,6 +47,8 @@ const props = defineProps<{
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	beforePublish?: () => Promise<boolean>;
+	/** Show the "Graph preview" action (goal-graph module on + agent declares goals). */
+	showGraphPreview?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -74,6 +80,20 @@ const previewRoute = computed<RouteLocationRaw>(() => ({
 	name: AGENT_PREVIEW_VIEW,
 	params: { projectId: props.projectId, agentId: props.agentId },
 }));
+
+const graphPreviewRoute = computed<RouteLocationRaw>(() => ({
+	name: AGENT_GOAL_PREVIEW_VIEW,
+	params: { projectId: props.projectId, agentId: props.agentId },
+}));
+
+const graphPreviewHref = computed(() => router.resolve(graphPreviewRoute.value).href);
+
+function onGraphPreviewClick(event: MouseEvent) {
+	// Let Cmd/Ctrl/Shift-click follow the href into a new tab.
+	if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+	event.preventDefault();
+	void router.push(graphPreviewRoute.value);
+}
 
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
@@ -215,6 +235,17 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
+			<N8nButton
+				v-if="props.showGraphPreview"
+				variant="ghost"
+				size="medium"
+				icon="waypoints"
+				:href="graphPreviewHref"
+				data-testid="agent-header-graph-preview-btn"
+				@click="onGraphPreviewClick"
+			>
+				{{ i18n.baseText('agents.goalGraph.preview.button') }}
+			</N8nButton>
 			<N8nTooltip :disabled="!isPreviewDisabled" :content="previewDisabledTooltip">
 				<N8nButton
 					variant="ghost"

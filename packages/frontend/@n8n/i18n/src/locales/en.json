@@ -7553,6 +7553,7 @@
 	"agents.goalGraph.preview.title": "Live goal graph",
 	"agents.goalGraph.preview.open": "Open live preview",
 	"agents.goalGraph.preview.button": "Graph preview",
+	"agents.goalGraph.preview.button": "Graph preview",
 	"agents.goalGraph.preview.loadError": "Could not load the agent for preview",
 	"agents.builder.files.title": "Knowledge base",
 	"agents.builder.files.titleTooltip": "Files uploaded to this agent. n8n stores them so the agent can search their contents and read them when answering.",
