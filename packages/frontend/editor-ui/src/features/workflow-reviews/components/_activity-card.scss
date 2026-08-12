@@ -1,0 +1,19 @@
+// Shared by the feed's entry cards and the description card above them.
+
+/* The negative margin cancels the list's inset so every avatar sits in one column, boxed or
+	not; the border comes out of the padding so carded text starts on that same column. */
+@mixin activity-card {
+	margin-inline: calc(-1 * var(--spacing--sm));
+	padding: var(--spacing--xs) calc(var(--spacing--sm) - var(--border-width, 1px));
+	border: var(--border);
+	border-radius: var(--radius--2xs);
+}
+
+/* The actor, the sentence and its timestamp read as one line, so every entry kind spaces
+	them by a word's worth. */
+@mixin activity-headline {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--4xs);
+	flex-wrap: wrap;
+}

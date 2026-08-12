@@ -6,7 +6,7 @@ import { computed } from 'vue';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
-import { formatUserDisplayName } from '../../formatUserDisplayName';
+import { formatActorName } from '../../formatUserDisplayName';
 import WorkflowReviewActivityFallback from './WorkflowReviewActivityFallback.vue';
 
 const props = defineProps<{
@@ -32,12 +32,20 @@ const closedReasonKeys: Record<WorkflowReviewClosedReason, BaseTextKey> = {
 };
 
 /**
- * `null` for the two types whose payload the sentence cannot do without: `review.closed`,
- * whose sentence *is* the stored reason, and `review.changes_requested`, where a note is
- * required on the way in, so a missing one means the payload did not parse. The rest say
- * what happened from the type alone.
+ * Everything that varies by type, so a new type is one case rather than several. `null` for the
+ * two types whose payload the sentence cannot do without: `review.closed`, whose sentence *is*
+ * the stored reason, and `review.changes_requested`, where a note is required on the way in, so
+ * a missing one means the payload did not parse. The rest say what happened from the type alone.
+ *
+ * `namesActor` follows the type, not a missing `createdBy`: that is also null for a decision
+ * whose author was deleted, which must still read as that person's decision.
  */
-const content = computed<{ text: string; note: string | null; testId: string } | null>(() => {
+const content = computed<{
+	text: string;
+	note: string | null;
+	testId: string;
+	namesActor: boolean;
+} | null>(() => {
 	const entry = props.entry;
 	switch (entry.type) {
 		case 'review.opened':
@@ -45,6 +53,7 @@ const content = computed<{ text: string; note: string | null; testId: string } |
 				text: i18n.baseText('workflowReviews.detail.activity.opened'),
 				note: null,
 				testId: 'workflow-review-activity-opened',
+				namesActor: true,
 			};
 		case 'review.changes_requested':
 			if (!entry.data) return null;
@@ -52,18 +61,21 @@ const content = computed<{ text: string; note: string | null; testId: string } |
 				text: i18n.baseText('workflowReviews.detail.activity.changesRequested'),
 				note: entry.data.note,
 				testId: 'workflow-review-activity-changes-requested',
+				namesActor: true,
 			};
 		case 'review.approved':
 			return {
 				text: i18n.baseText('workflowReviews.detail.activity.approved'),
 				note: entry.data?.note ?? null,
 				testId: 'workflow-review-activity-approved',
+				namesActor: true,
 			};
 		case 'review.version_updated':
 			return {
 				text: i18n.baseText('workflowReviews.detail.activity.versionUpdated'),
 				note: null,
 				testId: 'workflow-review-activity-version-updated',
+				namesActor: true,
 			};
 		case 'review.closed':
 			if (!entry.data) return null;
@@ -71,35 +83,36 @@ const content = computed<{ text: string; note: string | null; testId: string } |
 				text: i18n.baseText(closedReasonKeys[entry.data.reason]),
 				note: null,
 				testId: 'workflow-review-activity-closed',
+				namesActor: false,
 			};
 	}
 });
 
-// Branches on the type, not on a missing actor: `createdBy` is also null for a decision
-// whose author was deleted, which must still read as that person's decision.
-const hasActor = computed(() => props.entry.type !== 'review.closed');
-
 const actorName = computed(() =>
-	props.entry.createdBy
-		? formatUserDisplayName(props.entry.createdBy)
-		: i18n.baseText('workflowReviews.detail.activity.unknownAuthor'),
+	formatActorName(
+		props.entry.createdBy,
+		i18n.baseText('workflowReviews.detail.activity.unknownAuthor'),
+	),
 );
 </script>
 
 <template>
 	<div v-if="content" :class="[$style.entry, content.note && $style.boxed]">
 		<N8nAvatar
-			v-if="hasActor"
+			v-if="content.namesActor"
 			size="xxsmall"
 			:first-name="entry.createdBy?.firstName"
 			:last-name="entry.createdBy?.lastName"
 		/>
+		<!-- Holds the avatar's column open, so an actorless sentence stays in line with its
+			neighbours and the timeline above it does not end over its first word. -->
+		<div v-else :class="$style.avatarSpacer" />
 		<!-- Column beside the avatar, as in the comment entry, so a note lines up with the
 			sentence above it instead of starting back at the avatar. -->
 		<div :class="$style.content">
 			<div :class="$style.headline">
 				<N8nText
-					v-if="hasActor"
+					v-if="content.namesActor"
 					size="medium"
 					color="text-base"
 					:class="$style.line"
@@ -110,8 +123,7 @@ const actorName = computed(() =>
 						separator on the actorless entries. -->
 					<span aria-hidden="true" :class="$style.separator">|</span>
 				</N8nText>
-				<!-- One phrase in one colour ("Requested changes 2 hours ago"). The design sets the
-					time at body size; we render it a step down by preference, colour unchanged. -->
+				<!-- One phrase in one colour ("Requested changes 2 hours ago"). -->
 				<N8nText
 					size="medium"
 					color="text-base"
@@ -141,10 +153,17 @@ const actorName = computed(() =>
 </template>
 
 <style lang="scss" module>
+@use '../activity-card' as *;
+
 .entry {
 	display: flex;
 	align-items: flex-start;
 	gap: var(--spacing--2xs);
+}
+
+.avatarSpacer {
+	flex-shrink: 0;
+	width: var(--review-activity--avatar-size);
 }
 
 .content {
@@ -154,27 +173,18 @@ const actorName = computed(() =>
 	min-width: 0;
 }
 
-/* A word's worth of gap, so the sentence and its timestamp read as one phrase. The
-	separator carries its own wider spacing. */
+/* The separator carries its own wider spacing. */
 .headline {
-	display: flex;
-	align-items: baseline;
-	gap: var(--spacing--4xs);
-	flex-wrap: wrap;
+	@include activity-headline;
 }
 
 .separator {
 	margin-inline: var(--spacing--3xs);
 }
 
-/* A decision that carries a note sits in a card, as a comment always does. Keep in step with
-	`.entry` in WorkflowReviewActivityComment.vue. Pulled out by the list's own inset so the
-	avatars stay in one column with the unboxed entries above and below. */
+/* A decision that carries a note sits in a card, as a comment always does. */
 .boxed {
-	margin-inline: calc(-1 * var(--spacing--sm));
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--2xs);
+	@include activity-card;
 }
 
 /* Figma asks for 20px on 14px text; no line-height token gives that ratio. */

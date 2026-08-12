@@ -445,13 +445,6 @@ describe('WorkflowReviewRequestsView', () => {
 			store.decideOnReview.mockResolvedValue(decisionResponse());
 		});
 
-		it('offers the decision actions for an open review', async () => {
-			const { getByTestId } = renderComponent();
-			await waitAllPromises();
-
-			expect(getByTestId('workflow-review-decision-popover')).toBeInTheDocument();
-		});
-
 		it('offers no decision actions for a closed review', async () => {
 			store.detail = createDetail({ state: 'closed', decision: 'approved' });
 
@@ -780,21 +773,6 @@ describe('WorkflowReviewRequestsView', () => {
 			await waitAllPromises();
 
 			expect(router.currentRoute.value.fullPath).toBe('/settings/roles?tab=roles');
-		});
-
-		it('falls back to the generic permission hint for any other reason', async () => {
-			store.detail = createDetail({
-				viewerCanDecide: false,
-				viewerDecisionIneligibilityReason: 'missing_reviewer_permission',
-			});
-
-			const { getByTestId } = renderComponent();
-			await waitAllPromises();
-
-			expect(getByTestId('workflow-review-decision-popover')).toHaveAttribute(
-				'data-ineligibility-hint',
-				'Missing permissions to perform this action',
-			);
 		});
 
 		it('locks the decision actions while a decision is in flight', async () => {

@@ -89,7 +89,7 @@ const tabOptions = computed(() => [
 					<!-- Carded and labelled so the review's own words are not mistaken for the
 						first entry of the feed below it. -->
 					<div :class="$style.descriptionCard">
-						<N8nText size="small" color="text-light">
+						<N8nText tag="h3" size="small" color="text-light">
 							{{ i18n.baseText('workflowReviews.detail.activity.description') }}
 						</N8nText>
 						<N8nText
@@ -157,6 +157,8 @@ const tabOptions = computed(() => [
 </template>
 
 <style module lang="scss">
+@use './activity-card' as *;
+
 .container {
 	display: flex;
 	flex-direction: column;
@@ -196,40 +198,42 @@ const tabOptions = computed(() => [
 }
 
 /* Capped so a long description cannot push the composer off screen. */
-.descriptionCard {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	/* Cancels the header's inset so the border reaches the panel edge and the text starts on
-		the avatar column, exactly as the feed's entry cards do. */
-	margin-inline: calc(-1 * var(--spacing--sm));
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--2xs);
-}
-
 .activityHeader {
+	display: flex;
 	flex-shrink: 0;
 	max-height: 30%;
-	overflow: auto;
 	padding-bottom: var(--spacing--sm);
 	/* Same inset the feed gives its entries, so the description starts on the avatar column
 		rather than a step to its left. */
 	padding-inline: var(--spacing--sm);
 }
 
+/* Fills the capped header rather than overflowing it, so the card's border and its heading
+	stay put and only the description scrolls. */
+.descriptionCard {
+	@include activity-card;
+
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	flex: 1;
+	min-height: 0;
+}
+
 .callout {
 	max-width: var(--review-callout--max-width, 34rem);
 }
 
+/* `pre-wrap` alone does not break a pasted URL, which is the one thing that could scroll the
+	card sideways. */
 .description {
 	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	overflow: auto;
+	min-height: 0;
 }
 
 .decisionActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 	flex-shrink: 0;
 }
 

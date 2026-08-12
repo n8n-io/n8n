@@ -142,11 +142,10 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 
 	/**
 	 * Clears the decision note, unless the viewer typed something else since the submit
-	 * `expected` came from — both callers await a request first. Pass nothing to clear
-	 * regardless.
+	 * `expected` came from — both callers await a request first.
 	 */
-	function clearDecisionNote(expected?: string) {
-		if (expected === undefined || decisionNote.value.trim() === expected) decisionNote.value = '';
+	function clearDecisionNote(expected: string) {
+		if (decisionNote.value.trim() === expected) decisionNote.value = '';
 	}
 
 	function reset() {

@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
-import { formatUserDisplayName } from '../../formatUserDisplayName';
+import { formatActorName } from '../../formatUserDisplayName';
 
 defineProps<{
 	entry: Extract<WorkflowReviewActivityEntry, { type: 'comment.created' }>;
@@ -14,9 +14,10 @@ defineProps<{
 const i18n = useI18n();
 
 function authorName(message: WorkflowReviewActivityMessage): string {
-	return message.createdBy
-		? formatUserDisplayName(message.createdBy)
-		: i18n.baseText('workflowReviews.detail.activity.unknownAuthor');
+	return formatActorName(
+		message.createdBy,
+		i18n.baseText('workflowReviews.detail.activity.unknownAuthor'),
+	);
 }
 </script>
 
@@ -38,7 +39,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 					>
 						{{ authorName(message) }}
 					</N8nText>
-					<N8nText size="small" color="text-light">
+					<N8nText size="small" color="text-base">
 						<time
 							:datetime="message.createdAt"
 							data-test-id="workflow-review-activity-comment-time"
@@ -71,17 +72,15 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 </template>
 
 <style lang="scss" module>
-/* A comment is prose, so it gets the same card as a decision that carries a note. Keep in
-	step with `.boxed` in WorkflowReviewActivitySystemEntry.vue. The negative margin cancels
-	the list's inset so the avatars stay in one column with the unboxed entries. */
+@use '../activity-card' as *;
+
+/* A comment is prose, so it gets the same card as a decision that carries a note. */
 .entry {
+	@include activity-card;
+
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	margin-inline: calc(-1 * var(--spacing--sm));
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--2xs);
 }
 
 .message {
@@ -98,9 +97,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 }
 
 .header {
-	display: flex;
-	align-items: baseline;
-	gap: var(--spacing--2xs);
+	@include activity-headline;
 }
 
 /* Figma asks for 20px on 14px text; no line-height token gives that ratio. */

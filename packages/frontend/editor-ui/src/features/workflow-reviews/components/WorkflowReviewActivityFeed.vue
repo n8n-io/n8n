@@ -185,15 +185,18 @@ onMounted(() => {
 }
 
 .list {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--md);
-	/* Entries sit inset; a boxed entry cancels this to reach the panel edge. */
-	padding-inline: var(--spacing--sm);
+	/* The rail below spans this gap, so both read it from here. */
+	--review-activity--gap: var(--spacing--md);
 	/* Every entry leads with an `xxsmall` avatar (`N8nAvatar/avatarSizes.ts`), and a boxed
 		entry's negative margin and padding cancel out, so all avatars share this column. The
 		rail below is centred on it. */
-	--activity-avatar-size: 16px;
+	--review-activity--avatar-size: 16px;
+
+	display: flex;
+	flex-direction: column;
+	gap: var(--review-activity--gap);
+	/* Entries sit inset; a boxed entry cancels this to reach the panel edge. */
+	padding-inline: var(--spacing--sm);
 }
 
 .item {
@@ -209,8 +212,8 @@ onMounted(() => {
 	/* Floats clear of both neighbours instead of butting into them, as the design does. The
 		row is taller than its avatar, so the same inset reads as a wider gap at the top. */
 	bottom: calc(100% + var(--spacing--5xs));
-	height: calc(var(--spacing--md) - 2 * var(--spacing--5xs));
-	left: calc(var(--activity-avatar-size) / 2);
+	height: calc(var(--review-activity--gap) - 2 * var(--spacing--5xs));
+	left: calc(var(--review-activity--avatar-size) / 2);
 	border-left: var(--border);
 }
 

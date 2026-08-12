@@ -48,6 +48,14 @@ function firstParam(value: string | string[] | undefined): string | null {
 
 const selectedReviewId = computed(() => firstParam(route.params.reviewRequestId));
 
+/**
+ * Watchers and resolved requests below both reach this view after the viewer may have left it,
+ * where the query params it writes mean something else entirely.
+ */
+function isOnInbox() {
+	return route.name === WORKFLOW_REVIEW_REQUESTS_VIEW;
+}
+
 function stateFromQuery(value: unknown): WorkflowReviewRequestState {
 	return value === 'closed' ? 'closed' : 'open';
 }
@@ -76,7 +84,7 @@ function handleListError(error: unknown) {
 watch(
 	selectedReviewId,
 	(id) => {
-		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
+		if (!isOnInbox()) return;
 		if (id) {
 			void store.fetchDetail(id).catch(handleListError);
 			// Failures surface in the feed's own error row, never as a second toast.
@@ -92,7 +100,7 @@ watch(
 watch(
 	() => route.query[REVIEW_INBOX_QUERY_PARAM.state],
 	(next) => {
-		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
+		if (!isOnInbox()) return;
 		void store.setActiveTab(stateFromQuery(next)).catch(handleListError);
 	},
 );
@@ -120,9 +128,7 @@ const detailTab = computed<WorkflowReviewDetailTab>(() =>
 );
 
 function onDetailTabChange(tab: WorkflowReviewDetailTab) {
-	// Reached from a resolved post as well as from a click, so the viewer may be on another
-	// page by now — and `tab` is a real query param elsewhere in the app.
-	if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
+	if (!isOnInbox()) return;
 	const query = { ...route.query };
 	if (tab === 'changes') query[REVIEW_INBOX_QUERY_PARAM.tab] = tab;
 	else delete query[REVIEW_INBOX_QUERY_PARAM.tab];
@@ -152,8 +158,7 @@ function asSentence(message: string) {
  * refetches the list from here.
  */
 function followClosedReview(id: string) {
-	// Reached from a resolved decision, so the viewer may have left the inbox meanwhile.
-	if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
+	if (!isOnInbox()) return;
 	if (activeTab.value === 'closed') return;
 	void router.replace({
 		params: { reviewRequestId: id },

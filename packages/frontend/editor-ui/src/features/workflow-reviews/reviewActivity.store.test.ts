@@ -386,7 +386,7 @@ describe('useReviewActivityStore', () => {
 		// comment the viewer is writing alone.
 		store.draft = 'half a comment';
 		store.decisionNote = 'needs work';
-		store.clearDecisionNote();
+		store.clearDecisionNote('needs work');
 		expect(store.draft).toBe('half a comment');
 	});
 

@@ -93,8 +93,7 @@ async function onComment() {
 				on this branch, so the trigger props land on the span — which is what makes the
 				hint fire over a natively disabled button, and this trigger cannot open anything
 				anyway. An enabled trigger has to stay the bare button, or it loses `aria-expanded`
-				and the focus it gets back on close; the general fix belongs in `N8nPopover`,
-				alongside the deferred accessible name for its dialog. -->
+				and the focus it gets back on close. -->
 			<span v-if="ineligibilityHint">
 				<N8nTooltip :content="ineligibilityHint" :show-after="300">
 					<N8nButton
