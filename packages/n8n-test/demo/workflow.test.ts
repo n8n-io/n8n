@@ -18,3 +18,11 @@ test('workflow unhappy day', async () => {
 
 	await expect(runWorkflow(workflowJson)).rejects.toThrowError();
 });
+
+test('input becomes the trigger item and flows through', async () => {
+	nock('https://test-endpoint.com').get('/test').reply(200, { data: 'Hello world' });
+
+	const output = await runWorkflow(workflowJson, { invokedBy: 'vitest' });
+
+	expect(output.invokedBy).toBe('vitest');
+});

@@ -1,4 +1,3 @@
-import path from 'node:path';
 
 import { CredentialTypes } from '@nodes-testing/credential-types';
 import { CredentialsHelper } from '@nodes-testing/credentials-helper';
@@ -15,6 +14,7 @@ import type {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 import { createRunExecutionData, UnexpectedError, Workflow } from 'n8n-workflow';
+import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 /**
@@ -44,16 +44,14 @@ let engineComponentsPromise:
 	| undefined;
 
 async function loadEngineComponents() {
-	if (!engineComponentsPromise) {
-		engineComponentsPromise = (async () => {
-			const nodesBaseDir = path.dirname(require.resolve('n8n-nodes-base'));
-			const loader = new LoadNodesAndCredentials([nodesBaseDir]);
-			await loader.init();
-			const credentialsHelper = new CredentialsHelper(new CredentialTypes(loader));
-			credentialsHelper.setCredentials({});
-			return { nodeTypes: new NodeTypes(loader), credentialsHelper };
-		})();
-	}
+	engineComponentsPromise ??= (async () => {
+		const nodesBaseDir = path.dirname(require.resolve('n8n-nodes-base'));
+		const loader = new LoadNodesAndCredentials([nodesBaseDir]);
+		await loader.init();
+		const credentialsHelper = new CredentialsHelper(new CredentialTypes(loader));
+		credentialsHelper.setCredentials({});
+		return { nodeTypes: new NodeTypes(loader), credentialsHelper };
+	})();
 	return await engineComponentsPromise;
 }
 
@@ -124,7 +122,10 @@ export async function runWorkflow(
 		},
 	});
 
-	const workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
+	// `trigger`, not `manual`: in manual mode the engine *runs* the trigger node (a
+	// ManualTrigger emits a fresh empty item), while any other mode passes the seeded
+	// input through — and it mirrors how a published workflow actually executes.
+	const workflowExecute = new WorkflowExecute(additionalData, 'trigger', runExecutionData);
 	await workflowExecute.processRunExecutionData(workflow);
 	const run = await runPromise;
 

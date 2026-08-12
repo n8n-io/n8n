@@ -35,6 +35,12 @@
 							"name": "test",
 							"value": "output-field",
 							"type": "string"
+						},
+						{
+							"id": "7f2a9c1e-4b3d-4d21-9a67-0c5b8de1f302",
+							"name": "invokedBy",
+							"value": "={{ $('When clicking ‘Execute workflow’').item.json.invokedBy ?? 'nobody' }}",
+							"type": "string"
 						}
 					]
 				},
