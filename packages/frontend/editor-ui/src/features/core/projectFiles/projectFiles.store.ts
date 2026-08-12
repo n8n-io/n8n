@@ -9,6 +9,7 @@ import {
 } from '@/features/core/projectFiles/constants';
 import {
 	deleteProjectFileApi,
+	fetchProjectFileTextApi,
 	fetchProjectFilesApi,
 	projectFileContentUrl,
 	renameProjectFileApi,
@@ -73,10 +74,19 @@ export const useProjectFilesStore = defineStore(PROJECT_FILES_STORE, () => {
 		}
 	};
 
+	/** URL for an inline preview, for use as an `<img>` source. */
+	const previewUrl = (projectId: string, fileId: string) =>
+		projectFileContentUrl(rootStore.restApiContext, projectId, fileId, 'view');
+
+	const fetchFileText = async (projectId: string, fileId: string) =>
+		await fetchProjectFileTextApi(rootStore.restApiContext, projectId, fileId);
+
 	return {
 		files,
 		totalCount,
 		usage,
+		previewUrl,
+		fetchFileText,
 		quotaFraction,
 		isNearQuota,
 		isAtQuota,

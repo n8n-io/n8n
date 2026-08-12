@@ -201,6 +201,7 @@ describe('GlobalConfig', () => {
 			maxFileSize: 100 * 1024 * 1024,
 			projectMaxSize: 2 * 1024 * 1024 * 1024,
 			personalTotalMaxSize: 1024 * 1024 * 1024,
+			maxPreviewSize: 10 * 1024 * 1024,
 			cleanupIntervalMs: 60 * 1000,
 			fileMaxAgeMs: 10 * 60 * 1000,
 			uploadDir: path.join(tmpdir(), 'n8nProjectFileUploads'),

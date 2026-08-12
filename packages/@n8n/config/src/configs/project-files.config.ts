@@ -36,6 +36,15 @@ export class ProjectFilesConfig {
 	@Env('N8N_PROJECT_FILES_PERSONAL_TOTAL_MAX_SIZE_BYTES')
 	personalTotalMaxSize: number = 1024 * 1024 * 1024;
 
+	/**
+	 * Largest file the preview endpoint will serve inline. One value rather than a
+	 * per-type pair: 10 MiB covers essentially every photo and text file worth
+	 * previewing, and the frontend truncates long text on top of this.
+	 * Default: 10 MiB.
+	 */
+	@Env('N8N_PROJECT_FILES_MAX_PREVIEW_SIZE_BYTES')
+	maxPreviewSize: number = 10 * 1024 * 1024;
+
 	/** Interval in milliseconds between sweeps of the temporary upload directory. Default: 1 minute. */
 	@Env('N8N_PROJECT_FILES_CLEANUP_INTERVAL_MS')
 	cleanupIntervalMs: number = 1 * Time.minutes.toMilliseconds;

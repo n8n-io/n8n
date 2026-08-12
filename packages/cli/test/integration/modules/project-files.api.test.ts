@@ -104,6 +104,7 @@ describe('project files API', () => {
 		config.maxFileSize = 100 * 1024 * 1024;
 		config.projectMaxSize = 2 * 1024 * 1024 * 1024;
 		config.personalTotalMaxSize = 1024 * 1024 * 1024;
+		config.maxPreviewSize = 10 * 1024 * 1024;
 
 		project = await createTeamProject(undefined, owner);
 		await linkUserToProject(viewer, project, 'project:viewer');
@@ -274,15 +275,79 @@ describe('project files API', () => {
 
 			expect(response.headers['content-type']).toContain('text/plain');
 			expect(response.headers['content-length']).toBe('5');
-			// Never inline: rendering user-uploaded content on this origin is stored XSS.
+			// Attachment unless `?action=view` explicitly opts into inline rendering.
 			expect(response.headers['content-disposition']).toBe('attachment; filename="report.txt"');
 			expect(response.text).toBe('hello');
+		});
+
+		it('rejects an unrecognised action instead of guessing', async () => {
+			const created = await upload(ownerAgent, project.id, 'a.txt', 'abc').expect(201);
+
+			// Fail-closed: the enum rejects a junk value rather than falling back, so
+			// there is no path where an unexpected action decides the disposition.
+			await ownerAgent
+				.get(url(project.id, `/${created.body.data.id}/content?action=nonsense`))
+				.expect(400);
 		});
 
 		it('allows a project viewer to download', async () => {
 			const created = await upload(ownerAgent, project.id, 'a.txt', 'abc').expect(201);
 
 			await viewerAgent.get(url(project.id, `/${created.body.data.id}/content`)).expect(200);
+		});
+
+		it('serves a previewable type inline, with sniffing disabled', async () => {
+			const created = await upload(ownerAgent, project.id, 'notes.txt', 'hello').expect(201);
+
+			const response = await ownerAgent
+				.get(url(project.id, `/${created.body.data.id}/content?action=view`))
+				.expect(200);
+
+			expect(response.headers['content-disposition']).toBe('inline');
+			// Without nosniff, text/plain bytes that are really HTML can be sniffed
+			// and rendered as HTML, defeating the allowlist.
+			expect(response.headers['x-content-type-options']).toBe('nosniff');
+			expect(response.headers['content-security-policy']).toContain('sandbox');
+			expect(response.text).toBe('hello');
+		});
+
+		it.each([
+			['text/html', 'page.html'],
+			['image/svg+xml', 'icon.svg'],
+			['application/pdf', 'doc.pdf'],
+		])('refuses to view %s inline', async (mimeType, fileName) => {
+			const created = await ownerAgent
+				.post(url(project.id))
+				.attach('file', Buffer.from('<script>alert(1)</script>'), {
+					filename: fileName,
+					contentType: mimeType,
+				})
+				.expect(201);
+
+			await ownerAgent
+				.get(url(project.id, `/${created.body.data.id}/content?action=view`))
+				.expect(400);
+		});
+
+		it('still allows downloading a type it refuses to preview', async () => {
+			const created = await ownerAgent
+				.post(url(project.id))
+				.attach('file', Buffer.from('<h1>hi</h1>'), {
+					filename: 'page.html',
+					contentType: 'text/html',
+				})
+				.expect(201);
+
+			await ownerAgent.get(url(project.id, `/${created.body.data.id}/content`)).expect(200);
+		});
+
+		it('returns 413 when the file is too large to preview', async () => {
+			const created = await upload(ownerAgent, project.id, 'big.txt', 'more than four').expect(201);
+			config.maxPreviewSize = 4;
+
+			await ownerAgent
+				.get(url(project.id, `/${created.body.data.id}/content?action=view`))
+				.expect(413);
 		});
 
 		it('returns 404 for a file belonging to another project', async () => {

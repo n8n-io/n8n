@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import type { ProjectFileResponse } from '@n8n/api-types';
+import { isProjectFilePreviewable } from '@n8n/api-types';
 import {
 	N8nActionToggle,
 	N8nDataTableServer,
 	N8nIcon,
+	N8nIconButton,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -32,6 +34,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	action: [payload: { action: string; file: ProjectFileResponse }];
+	preview: [file: ProjectFileResponse];
 }>();
 
 const i18n = useI18n();
@@ -64,7 +67,7 @@ const headers = computed<Array<TableHeader<ProjectFileResponse>>>(() => [
 		title: '',
 		key: 'actions',
 		disableSort: true,
-		width: 48,
+		width: 88,
 		align: 'end',
 		// Not a field on the row: the header union requires an accessor for a key
 		// that isn't part of the item type.
@@ -158,18 +161,41 @@ const onAction = (action: string, file: ProjectFileResponse) => {
 		</template>
 
 		<template #[`item.actions`]="{ item }">
-			<N8nActionToggle
-				placement="bottom-end"
-				:actions="actions"
-				theme="dark"
-				:data-test-id="`project-file-actions-${item.id}`"
-				@action="onAction($event, item)"
-			/>
+			<div :class="$style.actionsCell">
+				<N8nTooltip
+					v-if="isProjectFilePreviewable(item.mimeType)"
+					:content="i18n.baseText('projectFiles.action.preview')"
+					placement="top"
+				>
+					<N8nIconButton
+						icon="eye"
+						variant="ghost"
+						size="small"
+						:aria-label="i18n.baseText('projectFiles.action.preview')"
+						:data-test-id="`project-file-preview-${item.id}`"
+						@click="emit('preview', item)"
+					/>
+				</N8nTooltip>
+				<N8nActionToggle
+					placement="bottom-end"
+					:actions="actions"
+					theme="dark"
+					:data-test-id="`project-file-actions-${item.id}`"
+					@action="onAction($event, item)"
+				/>
+			</div>
 		</template>
 	</N8nDataTableServer>
 </template>
 
 <style lang="scss" module>
+.actionsCell {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--4xs);
+}
+
 .nameCell {
 	display: flex;
 	align-items: center;

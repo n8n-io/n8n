@@ -16,3 +16,10 @@ export const PROJECT_FILE_ACTIONS = {
 
 /** Fraction of the quota at which the usage line switches to a warning. */
 export const PROJECT_FILES_QUOTA_WARNING_THRESHOLD = 0.8;
+
+/**
+ * Characters of a text file rendered in the preview. The server caps the file at
+ * `maxPreviewSize`, but a file just under that cap still freezes the tab inside a
+ * `<pre>`, so the display is cut again here.
+ */
+export const MAX_PREVIEW_TEXT_LENGTH = 200_000;

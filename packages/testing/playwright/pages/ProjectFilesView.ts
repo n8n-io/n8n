@@ -38,16 +38,34 @@ export class ProjectFilesView extends BasePage {
 	 * Sets the hidden file input directly rather than clicking the button: the
 	 * click opens an OS file dialog Playwright cannot drive.
 	 */
-	async uploadFile(name: string, contents: string, mimeType = 'text/plain') {
+	async uploadFile(name: string, contents: string | Buffer, mimeType = 'text/plain') {
 		await this.page.getByTestId('project-files-input').setInputFiles({
 			name,
 			mimeType,
-			buffer: Buffer.from(contents),
+			buffer: Buffer.isBuffer(contents) ? contents : Buffer.from(contents),
 		});
 	}
 
 	async clickRowAction(name: string, action: 'download' | 'rename' | 'delete') {
 		await this.actionToggle.open(this.getRowByName(name));
 		await this.actionToggle.getAction(action).click();
+	}
+
+	/** Only rendered for previewable MIME types, so absence is a meaningful assertion. */
+	getPreviewButton(name: string) {
+		return this.getRowByName(name).getByTestId(/^project-file-preview-/);
+	}
+
+	/** The dialog teleports to body, so it is not scoped to the row or the table. */
+	getPreviewDialog() {
+		return this.page.getByTestId('project-file-preview');
+	}
+
+	getPreviewImage() {
+		return this.page.getByTestId('project-file-preview-image');
+	}
+
+	getPreviewText() {
+		return this.page.getByTestId('project-file-preview-text');
 	}
 }

@@ -65,9 +65,37 @@ export const deleteProjectFileApi = async (
  * Downloads navigate to this rather than fetching into a blob: the endpoint sets
  * `Content-Disposition: attachment`, so the browser streams straight to disk and
  * a 100 MB file never lands in a tab's memory.
+ *
+ * `action: 'view'` serves the same bytes inline for preview, and the server
+ * rejects it for any type outside `ProjectFilePreviewableMimeTypes`.
  */
 export const projectFileContentUrl = (
 	context: IRestApiContext,
 	projectId: string,
 	fileId: string,
-) => `${context.baseUrl}/projects/${projectId}/files/${fileId}/content`;
+	action?: 'view',
+) => {
+	const url = `${context.baseUrl}/projects/${projectId}/files/${fileId}/content`;
+
+	return action ? `${url}?action=${action}` : url;
+};
+
+/**
+ * Fetches a previewable file as text.
+ *
+ * Goes through `fetch` with credentials rather than the API client because the
+ * response is raw bytes, not the `{ data }` envelope the client unwraps.
+ */
+export const fetchProjectFileTextApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	fileId: string,
+): Promise<string> => {
+	const response = await fetch(projectFileContentUrl(context, projectId, fileId, 'view'), {
+		credentials: 'include',
+	});
+
+	if (!response.ok) throw new Error(`Preview failed with status ${response.status}`);
+
+	return await response.text();
+};

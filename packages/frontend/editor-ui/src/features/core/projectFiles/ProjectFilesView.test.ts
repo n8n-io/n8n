@@ -1,7 +1,7 @@
 import type { ProjectFileResponse } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -178,6 +178,48 @@ describe('ProjectFilesView', () => {
 		await waitFor(() =>
 			expect(getByTestId('project-files-quota-callout')).toHaveTextContent(/Personal projects/i),
 		);
+	});
+
+	describe('preview', () => {
+		it('offers preview for a previewable type', async () => {
+			const { getByTestId } = setup(['projectFile:listProject'], {
+				files: [{ ...TEST_FILE, id: 'png-1', name: 'logo.png', mimeType: 'image/png' }],
+			} as never);
+
+			await waitFor(() => expect(getByTestId('project-file-preview-png-1')).toBeVisible());
+		});
+
+		it('does not offer preview for a PDF', async () => {
+			// Excluded by ViewableMimeTypes, so the row must show no preview affordance.
+			const { queryByTestId, getByText } = setup(['projectFile:listProject']);
+
+			await waitFor(() => expect(getByText('invoice-template.pdf')).toBeVisible());
+			expect(queryByTestId('project-file-preview-file-1')).toBeNull();
+		});
+
+		it('does not offer preview for an HTML file', async () => {
+			const { queryByTestId, getByText } = setup(['projectFile:listProject'], {
+				files: [{ ...TEST_FILE, id: 'html-1', name: 'page.html', mimeType: 'text/html' }],
+			} as never);
+
+			await waitFor(() => expect(getByText('page.html')).toBeVisible());
+			expect(queryByTestId('project-file-preview-html-1')).toBeNull();
+		});
+
+		it('opens the dialog when preview is clicked', async () => {
+			const { getByTestId } = setup(['projectFile:listProject'], {
+				files: [{ ...TEST_FILE, id: 'png-1', name: 'logo.png', mimeType: 'image/png' }],
+			} as never);
+
+			const button = await waitFor(() => getByTestId('project-file-preview-png-1'));
+			await fireEvent.click(button);
+
+			// N8nDialog teleports to body, so query the whole document rather than the
+			// render container. Scoped to the heading because the file name also
+			// appears in the table row behind the dialog.
+			await waitFor(() => expect(screen.getByTestId('project-file-preview')).toBeVisible());
+			expect(screen.getByRole('heading', { name: 'logo.png' })).toBeVisible();
+		});
 	});
 
 	it('surfaces a load failure as a toast', async () => {

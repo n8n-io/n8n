@@ -1,9 +1,12 @@
 import type { ProjectFileListResponse, ProjectFileResponse } from '@n8n/api-types';
 import {
+	DownloadProjectFileQueryDto,
 	ListProjectFilesQueryDto,
 	RenameProjectFileDto,
 	UploadProjectFileQueryDto,
+	isProjectFilePreviewable,
 } from '@n8n/api-types';
+import { ProjectFilesConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -21,7 +24,7 @@ import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { NextFunction, Response } from 'express';
 import multer from 'multer';
-import { BinaryDataConfig } from 'n8n-core';
+import { BinaryDataConfig, getHtmlSandboxCSP } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { unlink } from 'node:fs/promises';
 
@@ -53,6 +56,7 @@ export class ProjectFilesController {
 		private readonly projectService: ProjectService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly binaryDataConfig: BinaryDataConfig,
+		private readonly projectFilesConfig: ProjectFilesConfig,
 		private readonly telemetry: Telemetry,
 	) {}
 
@@ -152,6 +156,7 @@ export class ProjectFilesController {
 		req: AuthenticatedRequest<{ projectId: string; fileId: string }>,
 		res: Response,
 		@Param('fileId') fileId: string,
+		@Query query: DownloadProjectFileQueryDto,
 	) {
 		const { file, stream } = await this.projectFileService.getAsStream(
 			req.params.projectId,
@@ -160,9 +165,21 @@ export class ProjectFilesController {
 
 		res.setHeader('Content-Type', file.mimeType);
 		res.setHeader('Content-Length', file.fileSizeBytes);
-		// Always an attachment: there is no vetted inline-view path, and rendering
-		// user-uploaded content on the n8n origin would be stored XSS.
-		res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.name)}"`);
+
+		if (query.action === 'view') {
+			this.assertPreviewable(file);
+
+			// Without nosniff, bytes uploaded as text/plain that are really HTML can be
+			// content-sniffed and rendered as HTML, defeating the allowlist above.
+			res.setHeader('X-Content-Type-Options', 'nosniff');
+			res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			res.setHeader('Content-Disposition', 'inline');
+		} else {
+			res.setHeader(
+				'Content-Disposition',
+				`attachment; filename="${encodeURIComponent(file.name)}"`,
+			);
+		}
 
 		return stream;
 	}
@@ -206,6 +223,21 @@ export class ProjectFilesController {
 	// ----------------------------------
 	//         private methods
 	// ----------------------------------
+
+	/**
+	 * Gates inline rendering. Enforced here rather than only in the UI: a
+	 * client-side check is decorative, since anything that can build the URL
+	 * bypasses it.
+	 */
+	private assertPreviewable(file: { mimeType: string; fileSizeBytes: number }): void {
+		if (!isProjectFilePreviewable(file.mimeType)) {
+			throw new BadRequestError('This file type can’t be previewed');
+		}
+
+		if (file.fileSizeBytes > this.projectFilesConfig.maxPreviewSize) {
+			throw new ContentTooLargeError('This file is too large to preview');
+		}
+	}
 
 	private checkInstanceWriteAccess(): void {
 		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {

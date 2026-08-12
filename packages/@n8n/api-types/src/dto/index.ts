@@ -73,6 +73,7 @@ export { ChangeUserRoleInProject } from './project/change-user-role-in-project.d
 export { ListProjectsQueryDto } from './project/list-projects-query.dto';
 
 export { ListProjectFilesQueryDto } from './project-file/list-project-files-query.dto';
+export { DownloadProjectFileQueryDto } from './project-file/download-project-file-query.dto';
 export { UploadProjectFileQueryDto } from './project-file/upload-project-file-query.dto';
 export {
 	RenameProjectFileDto,

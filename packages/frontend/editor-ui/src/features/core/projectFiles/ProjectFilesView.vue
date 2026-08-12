@@ -21,6 +21,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM } from '@/app/constants';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import ProjectFilePreviewDialog from '@/features/core/projectFiles/components/ProjectFilePreviewDialog.vue';
 import ProjectFilesTable from '@/features/core/projectFiles/components/ProjectFilesTable.vue';
 import {
 	DEFAULT_PROJECT_FILES_PAGE_SIZE,
@@ -50,6 +51,8 @@ const search = ref('');
 const page = ref(0);
 const itemsPerPage = ref(DEFAULT_PROJECT_FILES_PAGE_SIZE);
 const fileInput = ref<HTMLInputElement>();
+const previewFile = ref<ProjectFileResponse | null>(null);
+const isPreviewOpen = ref(false);
 
 const projectId = computed(() => projectsStore.currentProjectId ?? '');
 
@@ -219,6 +222,11 @@ const onDragOver = (event: DragEvent) => {
 	isDraggingOver.value = true;
 };
 
+const onPreview = (file: ProjectFileResponse) => {
+	previewFile.value = file;
+	isPreviewOpen.value = true;
+};
+
 const onAction = async ({ action, file }: { action: string; file: ProjectFileResponse }) => {
 	switch (action) {
 		case PROJECT_FILE_ACTIONS.DOWNLOAD:
@@ -384,8 +392,16 @@ onMounted(async () => {
 				:can-delete="canDelete"
 				@update:options="onTableOptionsUpdate"
 				@action="onAction"
+				@preview="onPreview"
 			/>
 		</div>
+
+		<ProjectFilePreviewDialog
+			v-model:open="isPreviewOpen"
+			:project-id="projectId"
+			:file="previewFile"
+			@download="projectFilesStore.downloadFile(projectId, $event.id)"
+		/>
 	</div>
 </template>
 
