@@ -392,8 +392,19 @@ onBeforeUnmount(() => {
 						:is-read-only="isReadOnly"
 						hide-header
 						progressive-disclosure
-						:always-show-all-settings="true"
+						:show-all-settings="panelState.isShowingAllSettings"
+						:settings-filter="panelState.settingsFilter"
+						:always-show-all-settings="experimentalNdvStore.alwaysShowAllSettings"
 						:initial-scroll-top="panelState.scrollTop"
+						@show-all-settings-changed="
+							experimentalNdvStore.updateNodePanelState(node.id, { isShowingAllSettings: $event })
+						"
+						@settings-filter-changed="
+							experimentalNdvStore.updateNodePanelState(node.id, { settingsFilter: $event })
+						"
+						@always-show-all-settings-changed="
+							experimentalNdvStore.setAlwaysShowAllSettings($event)
+						"
 						@scroll-position-changed="updateScrollPosition(node.id, $event)"
 					/>
 				</KeepAlive>
