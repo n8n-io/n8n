@@ -513,6 +513,7 @@ export interface ViewItemProps {
 	title: string;
 	description: string;
 	icon: string;
+	iconColor?: string;
 	tag?: NodeCreatorTag;
 	borderless?: boolean;
 }
@@ -537,6 +538,8 @@ export interface OpenTemplateItemProps {
 	icon?: string;
 	tag?: NodeCreatorTag;
 	compact?: boolean;
+	/** Import the sample onto the current canvas instead of opening it in a new tab */
+	importToCanvas?: boolean;
 }
 
 export interface AgentItemProps {

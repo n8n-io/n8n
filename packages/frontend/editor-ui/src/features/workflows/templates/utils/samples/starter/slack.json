@@ -1,0 +1,52 @@
+{
+	"name": "Slack starter",
+	"meta": {
+		"templateId": "slack-starter-template"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "9c1f4823-97f6-4481-8766-ed328d49919a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "post",
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				},
+				"text": "Hello from n8n!",
+				"otherOptions": {}
+			},
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.7,
+			"position": [224, 0],
+			"id": "4ff63290-62d0-4999-9bd2-337a799f8966",
+			"name": "Send a Slack message"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Send a Slack message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

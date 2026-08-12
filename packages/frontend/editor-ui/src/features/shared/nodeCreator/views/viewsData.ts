@@ -62,6 +62,11 @@ import {
 	XML_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
@@ -72,7 +77,12 @@ import { useI18n } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
 import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
-import { getAiTemplatesCallout, getSendAndWaitNodes } from '../nodeCreator.utils';
+import {
+	getAiTemplatesCallout,
+	getFavoriteNodesSectionItems,
+	getSendAndWaitNodes,
+	getStarterTemplatesSectionItem,
+} from '../nodeCreator.utils';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -216,6 +226,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
+			...getFavoriteNodesSectionItems(),
 			...callouts,
 			// shown only when agents module is active
 			// TODO: revert before GA release
@@ -265,6 +276,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 		title: i18n.baseText('nodeCreator.aiPanel.aiOtherNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
+			...getFavoriteNodesSectionItems(),
 			{
 				key: AI_CATEGORY_DOCUMENT_LOADERS,
 				type: 'subcategory',
@@ -380,6 +392,14 @@ export function TriggerView() {
 	const evaluationStore = useEvaluationStore();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
 
+	// The trigger panel is also reachable on non-empty canvases (e.g. "Add another trigger",
+	// replacing a trigger); importing the starter example only makes sense on a blank canvas
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+	const isEmptyCanvas = workflowDocumentStore.allNodes.length === 0;
+
 	const evaluationTriggerNode = isEvaluationEnabled
 		? {
 				key: EVALUATION_TRIGGER_NODE_TYPE,
@@ -404,6 +424,7 @@ export function TriggerView() {
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
 		subtitle: i18n.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
 		items: [
+			...getFavoriteNodesSectionItems(),
 			{
 				key: MANUAL_TRIGGER_NODE_TYPE,
 				type: 'node',
@@ -495,6 +516,7 @@ export function TriggerView() {
 					icon: 'folder-open',
 				},
 			},
+			...(isEmptyCanvas ? [getStarterTemplatesSectionItem()] : []),
 		],
 	};
 
@@ -643,6 +665,9 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				borderless: true,
 			},
 		} as NodeViewItem);
+
+	// After the AI item unshift, so favorites stay the first item
+	view.items.unshift(...getFavoriteNodesSectionItems());
 
 	view.items.push({
 		key: TRIGGER_NODE_CREATOR_VIEW,

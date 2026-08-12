@@ -14,6 +14,7 @@ import { computed, ref } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeIconSize } from '@/app/utils/nodeIcon';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { useNodeFavoritesStore } from '@/features/shared/nodeCreator/nodeFavorites.store';
 import { isCommunityPackageName } from 'n8n-workflow';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 
@@ -45,6 +46,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
+const nodeFavoritesStore = useNodeFavoritesStore();
 const { getAddedNodesAndConnections } = useActions();
 const { activeViewStack } = useViewStacks();
 const { isSubNodeType } = useNodeType({
@@ -190,6 +192,18 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
 	}
 }
+
+const isFavorite = computed(() => nodeFavoritesStore.isFavorite(props.nodeType.name));
+
+const favoriteLabel = computed(() =>
+	isFavorite.value
+		? i18n.baseText('nodeCreator.favoriteNodes.removeFavorite')
+		: i18n.baseText('nodeCreator.favoriteNodes.addFavorite'),
+);
+
+function onToggleFavorite() {
+	nodeFavoritesStore.toggleFavorite(props.nodeType.name);
+}
 </script>
 
 <template>
@@ -220,22 +234,21 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			</div>
 		</template>
 
-		<template v-if="isOfficial" #extraDetails>
-			<N8nTooltip placement="top" :show-after="500">
+		<template #extraDetails>
+			<N8nTooltip v-if="isOfficial" placement="top" :show-after="500">
 				<template #content>
 					{{ i18n.baseText('generic.officialNode.tooltip', { interpolate: { author: author } }) }}
 				</template>
 				<OfficialIcon :class="[$style.icon, $style.official]" />
 			</N8nTooltip>
-		</template>
 
-		<template
-			v-else-if="
-				isCommunityNode && !isCommunityNodePreview && !activeViewStack?.communityNodeDetails
-			"
-			#extraDetails
-		>
-			<N8nTooltip placement="top" :show-after="500">
+			<N8nTooltip
+				v-else-if="
+					isCommunityNode && !isCommunityNodePreview && !activeViewStack?.communityNodeDetails
+				"
+				placement="top"
+				:show-after="500"
+			>
 				<template #content>
 					<p
 						v-n8n-html="
@@ -252,6 +265,20 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 				</template>
 				<N8nIcon size="small" :class="$style.icon" icon="box" />
 			</N8nTooltip>
+
+			<!-- The global class opts the button out of the creator's document-level key
+				handling so Enter activates it natively instead of selecting the active row -->
+			<button
+				v-if="!isCommunityNodePreview"
+				class="ignore-key-press-node-creator"
+				:class="{ [$style.favoriteButton]: true, [$style.favorited]: isFavorite }"
+				:aria-label="favoriteLabel"
+				:title="favoriteLabel"
+				data-test-id="node-favorite-button"
+				@click.stop="onToggleFavorite"
+			>
+				<N8nIcon :icon="isFavorite ? 'star-filled' : 'star'" size="small" />
+			</button>
 		</template>
 		<template #dragContent>
 			<div
@@ -335,5 +362,34 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	&.official {
 		width: 14px;
 	}
+}
+
+/* Opacity (not visibility) keeps the button clickable and keyboard-focusable when hidden */
+.favoriteButton {
+	display: inline-flex;
+	align-items: center;
+	border: none;
+	background: transparent;
+	padding: 0;
+	cursor: pointer;
+	color: var(--color--text--tint-2);
+	opacity: 0;
+
+	&:hover {
+		color: var(--color--yellow-500);
+	}
+
+	&:focus-visible {
+		opacity: 1;
+	}
+
+	&.favorited {
+		opacity: 1;
+		color: var(--color--yellow-500);
+	}
+}
+
+.nodeItem:hover .favoriteButton {
+	opacity: 1;
 }
 </style>

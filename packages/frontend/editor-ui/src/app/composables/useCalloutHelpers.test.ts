@@ -1,8 +1,12 @@
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { createTestingPinia } from '@pinia/testing';
-import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
+import {
+	getStarterTemplates,
+	SampleTemplates,
+} from '@/features/workflows/templates/utils/workflowSamples';
 import { VIEWS } from '@/app/constants';
+import { nodeViewEventBus } from '@/app/event-bus/node-view';
 
 const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
@@ -172,6 +176,34 @@ describe('useCalloutHelpers()', () => {
 					parentFolderId: 'my-folder-id',
 				},
 			});
+		});
+	});
+
+	describe('importSampleWorkflowToCanvas()', () => {
+		it.each(getStarterTemplates())(
+			'emits an import event with the $key starter nodes and connections',
+			({ template }) => {
+				const emitSpy = vi.spyOn(nodeViewEventBus, 'emit');
+
+				const { importSampleWorkflowToCanvas } = useCalloutHelpers();
+
+				importSampleWorkflowToCanvas(template.meta.templateId);
+
+				expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', {
+					data: { nodes: template.nodes, connections: template.connections },
+					trackEvents: false,
+				});
+			},
+		);
+
+		it('does not emit for an unknown template id', () => {
+			const emitSpy = vi.spyOn(nodeViewEventBus, 'emit');
+
+			const { importSampleWorkflowToCanvas } = useCalloutHelpers();
+
+			importSampleWorkflowToCanvas('unknown-template-id');
+
+			expect(emitSpy).not.toHaveBeenCalled();
 		});
 	});
 

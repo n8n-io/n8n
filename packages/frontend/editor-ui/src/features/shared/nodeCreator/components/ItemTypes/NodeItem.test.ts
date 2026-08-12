@@ -7,9 +7,11 @@ import {
 	DRAG_EVENT_DATA_KEY,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
+import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import { useViewStacks } from '../../composables/useViewStacks';
+import { useNodeFavoritesStore } from '../../nodeFavorites.store';
 import NodeItem from './NodeItem.vue';
 import type { AddedNodesAndConnections } from '@/Interface';
 
@@ -123,6 +125,43 @@ describe('NodeItem', () => {
 			DRAG_EVENT_DATA_KEY,
 			JSON.stringify(addedNodesAndConnections),
 		);
+	});
+
+	describe('favorites', () => {
+		beforeEach(() => {
+			localStorage.clear();
+		});
+
+		it('toggles the favorite on star click without selecting the node', async () => {
+			const { getByTestId, container } = render({
+				pinia,
+				props: {
+					nodeType: mockSimplifiedNodeType({
+						name: 'n8n-nodes-base.slack',
+						displayName: 'Slack',
+						group: ['output'],
+					}),
+				},
+			});
+			const containerClick = vi.fn();
+			container.addEventListener('click', containerClick);
+
+			const store = useNodeFavoritesStore();
+			expect(store.isFavorite('n8n-nodes-base.slack')).toBe(false);
+			expect(getByTestId('node-favorite-button').querySelector('[data-icon="star"]')).toBeTruthy();
+
+			await fireEvent.click(getByTestId('node-favorite-button'));
+
+			expect(store.isFavorite('n8n-nodes-base.slack')).toBe(true);
+			expect(
+				getByTestId('node-favorite-button').querySelector('[data-icon="star-filled"]'),
+			).toBeTruthy();
+			// The star click must not bubble up into node selection
+			expect(containerClick).not.toHaveBeenCalled();
+
+			await fireEvent.click(getByTestId('node-favorite-button'));
+			expect(store.isFavorite('n8n-nodes-base.slack')).toBe(false);
+		});
 	});
 
 	describe('description visibility', () => {

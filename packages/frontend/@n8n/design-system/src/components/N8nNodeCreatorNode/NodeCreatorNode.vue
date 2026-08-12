@@ -89,7 +89,7 @@ const { t } = useI18n();
 	align-items: center;
 	cursor: pointer;
 	z-index: 1;
-	padding: var(--spacing--xs) var(--spacing--2xs) var(--spacing--xs) 0;
+	padding: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs) 0;
 
 	&.hasAction {
 		user-select: none;

@@ -10,6 +10,7 @@ import type {
 	SimplifiedNodeType,
 	SubcategorizedNodeTypes,
 	SubcategoryCreateElement,
+	ViewCreateElement,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
@@ -27,12 +28,15 @@ import {
 	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MESSAGE_AN_AGENT_NODE_TYPE,
+	FAVORITE_NODES_VIEW,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
 	REGULAR_NODE_CREATOR_VIEW,
+	STARTER_TEMPLATES_VIEW,
 } from '@/app/constants';
 import { v4 as uuidv4 } from 'uuid';
 
+import type { BaseTextKey } from '@n8n/i18n';
 import { i18n } from '@n8n/i18n';
 import { reRankSearchResults } from '@n8n/utils/search/re-rank-search-results';
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
@@ -45,7 +49,11 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
-import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
+import {
+	getStarterTemplates,
+	SampleTemplates,
+} from '@/features/workflows/templates/utils/workflowSamples';
+import { useNodeFavoritesStore } from '@/features/shared/nodeCreator/nodeFavorites.store';
 import type { IconName } from '@n8n/design-system';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
@@ -603,6 +611,75 @@ export function getRagStarterCallout(): OpenTemplateElement {
 			},
 		},
 	};
+}
+
+export function getFavoriteNodesSectionItem(): ViewCreateElement {
+	return {
+		uuid: FAVORITE_NODES_VIEW,
+		key: FAVORITE_NODES_VIEW,
+		type: 'view',
+		properties: {
+			title: i18n.baseText('nodeCreator.favoriteNodes.sectionTitle'),
+			icon: 'star',
+			iconColor: 'var(--color--yellow-500)',
+			description: i18n.baseText('nodeCreator.favoriteNodes.sectionDescription'),
+			// Suppress the view-item divider styling, which would draw a stray line above
+			// this item when it renders first in a panel
+			borderless: true,
+		},
+	};
+}
+
+/** The favorites section for a node creator root view; empty when nothing is favorited */
+export function getFavoriteNodesSectionItems(): ViewCreateElement[] {
+	const hasFavorites = useNodeFavoritesStore().favoriteNodeNames.length > 0;
+
+	return hasFavorites ? [getFavoriteNodesSectionItem()] : [];
+}
+
+export function getFavoriteNodeItems(nodes: SimplifiedNodeType[]): INodeCreateElement[] {
+	const nodeFavoritesStore = useNodeFavoritesStore();
+
+	return nodeFavoritesStore.favoriteNodeNames
+		.map((name) => nodes.find((node) => node.name === name))
+		.filter((node): node is SimplifiedNodeType => node !== undefined)
+		.map((node) => transformNodeType(node));
+}
+
+export function getStarterTemplatesSectionItem(): ViewCreateElement {
+	return {
+		uuid: STARTER_TEMPLATES_VIEW,
+		key: STARTER_TEMPLATES_VIEW,
+		type: 'view',
+		properties: {
+			title: i18n.baseText('nodeCreator.starterTemplates.sectionTitle'),
+			icon: 'package-open',
+			description: i18n.baseText('nodeCreator.starterTemplates.sectionDescription'),
+		},
+	};
+}
+
+export function getStarterTemplateItems(): OpenTemplateElement[] {
+	const nodeTypesStore = useNodeTypesStore();
+
+	return getStarterTemplates().map(({ key, template, nodes }) => ({
+		uuid: template.meta.templateId,
+		key: template.meta.templateId,
+		type: 'openTemplate',
+		properties: {
+			templateId: template.meta.templateId,
+			title: i18n.baseText(`nodeCreator.starterTemplates.${key}.title` as BaseTextKey),
+			description: i18n.baseText(`nodeCreator.starterTemplates.${key}.description` as BaseTextKey),
+			nodes: nodes.flatMap((node) => {
+				const nodeType = nodeTypesStore.getNodeType(node.name, node.version);
+				if (!nodeType) {
+					return [];
+				}
+				return nodeType;
+			}),
+			importToCanvas: true,
+		},
+	}));
 }
 
 export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement {

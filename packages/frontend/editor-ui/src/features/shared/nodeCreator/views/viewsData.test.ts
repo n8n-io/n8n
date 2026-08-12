@@ -4,17 +4,30 @@ import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
 	AI_TRANSFORM_NODE_TYPE,
+	FAVORITE_NODES_VIEW,
 	MESSAGE_AN_AGENT_NODE_TYPE,
+	STARTER_TEMPLATES_VIEW,
 } from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { AIView, HitlToolView } from './viewsData';
+import { AINodesView, AIView, HitlToolView, RegularView, TriggerView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
+import { mockSimplifiedNodeType } from '../__tests__/utils';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { useNodeFavoritesStore } from '../nodeFavorites.store';
 import type { SimplifiedNodeType } from '@/Interface';
 
 const getNodeType = vi.fn();
+
+const mockDocumentStoreState: { allNodes: unknown[] } = {
+	allNodes: [],
+};
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => mockDocumentStoreState,
+	createWorkflowDocumentId: (id: string) => `${id}@latest`,
+	injectWorkflowDocumentStore: () => ({ value: mockDocumentStoreState }),
+}));
 
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
 const messageAnAgentNode = mockNodeTypeDescription({
@@ -66,7 +79,10 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 describe('viewsData', () => {
 	// `restoreMocks` restores spies before each test, so re-establish them per-test.
 	beforeEach(() => {
+		localStorage.clear();
 		setActivePinia(createTestingPinia());
+		// Neutralize the seeded demo favorites so each test states its own favorites
+		useNodeFavoritesStore().favoriteNodeNames = [];
 
 		const templatesStore = useTemplatesStore();
 
@@ -92,9 +108,81 @@ describe('viewsData', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('TriggerView', () => {
+		beforeEach(() => {
+			mockDocumentStoreState.allNodes = [];
+		});
+
+		test('should not include the favorites section when nothing is favorited', () => {
+			const result = TriggerView();
+
+			expect(result.items.some((item) => item.key === FAVORITE_NODES_VIEW)).toBe(false);
+		});
+
+		test('should list the favorites section first when favorites exist', () => {
+			useNodeFavoritesStore().favoriteNodeNames = ['n8n-nodes-base.gmail'];
+
+			const result = TriggerView();
+
+			expect(result.items[0].key).toBe(FAVORITE_NODES_VIEW);
+		});
+
+		test('should list the starter templates section as the last item on an empty canvas', () => {
+			const result = TriggerView();
+
+			const lastItem = result.items[result.items.length - 1];
+			expect(lastItem.type).toBe('view');
+			expect(lastItem.key).toBe(STARTER_TEMPLATES_VIEW);
+		});
+
+		test('should not include the starter templates section when the canvas already has nodes', () => {
+			mockDocumentStoreState.allNodes = [{ name: 'Existing node' }];
+
+			const result = TriggerView();
+
+			expect(result.items.some((item) => item.key === STARTER_TEMPLATES_VIEW)).toBe(false);
+		});
+	});
+
+	describe('RegularView', () => {
+		test('should list the favorites section first when favorites exist', () => {
+			useNodeFavoritesStore().favoriteNodeNames = ['n8n-nodes-base.slack'];
+
+			const result = RegularView([]);
+
+			expect(result.items[0].key).toBe(FAVORITE_NODES_VIEW);
+		});
+
+		test('should list the favorites section above the AI item when AI nodes exist', () => {
+			useNodeFavoritesStore().favoriteNodeNames = ['n8n-nodes-base.slack'];
+			const aiNode = mockSimplifiedNodeType({
+				name: 'agent',
+				codex: { categories: ['AI'] },
+			});
+
+			const result = RegularView([aiNode]);
+
+			expect(result.items[0].key).toBe(FAVORITE_NODES_VIEW);
+			expect(result.items[1].key).toBe('AI');
+		});
+
+		test('should not include the favorites section when nothing is favorited', () => {
+			const result = RegularView([]);
+
+			expect(result.items.some((item) => item.key === FAVORITE_NODES_VIEW)).toBe(false);
+		});
+	});
+
 	describe('AIView', () => {
 		test('should return the AI view', () => {
 			expect(AIView([])).toMatchSnapshot();
+		});
+
+		test('should list the favorites section first when favorites exist', () => {
+			useNodeFavoritesStore().favoriteNodeNames = ['n8n-nodes-base.gmail'];
+
+			expect(AIView([]).items[0].key).toBe(FAVORITE_NODES_VIEW);
+			expect(AINodesView([]).items[0].key).toBe(FAVORITE_NODES_VIEW);
 		});
 
 		test('should not include the deprecated AI Transform node', () => {

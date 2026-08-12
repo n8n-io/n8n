@@ -1,0 +1,118 @@
+{
+	"name": "If starter",
+	"meta": {
+		"templateId": "if-starter-template"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "b18ac7c0-62bb-4e43-a57c-e443a0f860c1",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"jsCode": "// Sample data — replace with your own\nreturn [\n  { json: { name: 'Ava', score: 82 } },\n  { json: { name: 'Ben', score: 45 } },\n  { json: { name: 'Cleo', score: 67 } },\n  { json: { name: 'Dan', score: 31 } }\n];"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [224, 0],
+			"id": "bc5edda4-2f03-4d4c-8ae9-51c3ea5f35d1",
+			"name": "Sample scores"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 3
+					},
+					"conditions": [
+						{
+							"id": "665723e7-6ba9-4477-8d97-a4998c203db8",
+							"leftValue": "={{ $json.score }}",
+							"rightValue": 50,
+							"operator": {
+								"type": "number",
+								"operation": "gte"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"position": [448, 0],
+			"id": "f957c1e0-129e-4a44-9194-3a7a8cae6d17",
+			"name": "Check score"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [672, -96],
+			"id": "0531011b-16aa-414b-988a-b3cb31b9f133",
+			"name": "High score"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [672, 96],
+			"id": "1fd4212c-224e-4e86-960a-8a144720eaa8",
+			"name": "Low score"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Sample scores",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sample scores": {
+			"main": [
+				[
+					{
+						"node": "Check score",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check score": {
+			"main": [
+				[
+					{
+						"node": "High score",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Low score",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

@@ -1,0 +1,61 @@
+{
+	"name": "Fetch data from an API",
+	"meta": {
+		"templateId": "http-request-starter-template"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "881d3b1f-c932-454a-b880-2ded7da98289",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"url": "https://api.open-meteo.com/v1/forecast",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "latitude",
+							"value": "52.52"
+						},
+						{
+							"name": "longitude",
+							"value": "13.41"
+						},
+						{
+							"name": "current",
+							"value": "temperature_2m,wind_speed_10m"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.5,
+			"position": [224, 0],
+			"id": "84dc2b95-70bb-4dd7-bece-6aff45f75c9e",
+			"name": "Fetch weather data"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Fetch weather data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

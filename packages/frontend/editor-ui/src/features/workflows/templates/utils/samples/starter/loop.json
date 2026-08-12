@@ -1,0 +1,121 @@
+{
+	"name": "Loop starter",
+	"meta": {
+		"templateId": "loop-starter-template"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "98af2bab-f2d2-4acf-b45c-f6185531c061",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"jsCode": "// Return one object per item you want to loop over\nreturn [\n\t{ name: 'apple' },\n\t{ name: 'banana' },\n\t{ name: 'cherry' },\n];"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [224, 0],
+			"id": "73b81164-2699-406f-b1e0-73de94ca7c9e",
+			"name": "Create a list of items"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [448, 0],
+			"id": "fb2f992a-6992-421b-b6f2-c64916b979e2",
+			"name": "Loop Over Items"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "af3fd05e-b908-4c43-af37-78f149f04a5c",
+							"name": "greeting",
+							"value": "=Hello, {{ $json.name }}!",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.5,
+			"position": [672, 160],
+			"id": "13632d84-083c-417b-88e0-7040dbf612f3",
+			"name": "Add a greeting"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [672, 0],
+			"id": "50d0b9ba-3034-46ed-91ff-cc6096378b3d",
+			"name": "Done looping"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create a list of items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a list of items": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Done looping",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Add a greeting",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add a greeting": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

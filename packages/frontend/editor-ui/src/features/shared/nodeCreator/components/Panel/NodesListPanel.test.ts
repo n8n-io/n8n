@@ -7,7 +7,11 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
-import { REGULAR_NODE_CREATOR_VIEW, DEBOUNCE_TIME } from '@/app/constants';
+import {
+	REGULAR_NODE_CREATOR_VIEW,
+	DEBOUNCE_TIME,
+	LOCAL_STORAGE_NODE_FAVORITES,
+} from '@/app/constants';
 import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -44,6 +48,11 @@ function getWrapperComponent(setup: () => void) {
 }
 
 describe('NodesListPanel', () => {
+	beforeEach(() => {
+		// Neutralize the seeded demo favorites so item counts stay deterministic
+		localStorage.setItem(LOCAL_STORAGE_NODE_FAVORITES, '[]');
+	});
+
 	describe('should render nodes', () => {
 		it('should render trigger items', async () => {
 			const mockedTriggerNodes = [...Array(2).keys()].map((n) =>
@@ -87,7 +96,7 @@ describe('NodesListPanel', () => {
 			await fireEvent.click(container.querySelector('.backButton')!);
 			await nextTick();
 
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(10);
 		});
 
 		it('should render regular nodes', async () => {

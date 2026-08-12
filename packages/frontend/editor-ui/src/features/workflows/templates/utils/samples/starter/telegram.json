@@ -1,0 +1,50 @@
+{
+	"name": "Telegram starter",
+	"meta": {
+		"templateId": "telegram-starter-template"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.telegramTrigger",
+			"typeVersion": 1.5,
+			"position": [0, 0],
+			"id": "7ae8c679-f09e-4adf-8ddb-fa24e6697811",
+			"name": "On new Telegram message"
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "sendMessage",
+				"chatId": "={{ $json.message.chat.id }}",
+				"text": "=Hi {{ $json.message.from.first_name }}! You said: \"{{ $json.message.text }}\". This automatic reply was sent by your n8n workflow.",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [224, 0],
+			"id": "38f1603b-0ba2-432a-bf11-8ea4b19a00e1",
+			"name": "Send reply"
+		}
+	],
+	"connections": {
+		"On new Telegram message": {
+			"main": [
+				[
+					{
+						"node": "Send reply",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

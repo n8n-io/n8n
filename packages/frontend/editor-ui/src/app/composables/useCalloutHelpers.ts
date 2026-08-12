@@ -17,6 +17,8 @@ import {
 } from '@/features/workflows/templates/utils/workflowSamples';
 import type { OpenTemplateElement } from '@/Interface';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { nodeViewEventBus } from '@/app/event-bus/node-view';
+import { deepCopy } from 'n8n-workflow';
 
 export function useCalloutHelpers() {
 	const route = useRoute();
@@ -108,6 +110,19 @@ export function useCalloutHelpers() {
 		window.open(href, '_blank');
 	};
 
+	const importSampleWorkflowToCanvas = (templateId: string) => {
+		const template = getSampleWorkflowByTemplateId(templateId);
+		if (!template) {
+			return;
+		}
+
+		// Copy only nodes and connections so the current workflow keeps its name and metadata
+		nodeViewEventBus.emit('importWorkflowData', {
+			data: deepCopy({ nodes: template.nodes ?? [], connections: template.connections ?? {} }),
+			trackEvents: false,
+		});
+	};
+
 	const isCalloutDismissed = (callout: string) => {
 		return usersStore.isCalloutDismissed(callout);
 	};
@@ -125,6 +140,7 @@ export function useCalloutHelpers() {
 
 	return {
 		openSampleWorkflowTemplate,
+		importSampleWorkflowToCanvas,
 		getTutorialTemplatesNodeCreatorItems,
 		isRagStarterCalloutVisible,
 		isCalloutDismissed,

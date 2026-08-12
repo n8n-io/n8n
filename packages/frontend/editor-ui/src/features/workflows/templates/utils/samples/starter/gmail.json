@@ -1,0 +1,48 @@
+{
+	"name": "Gmail starter",
+	"meta": {
+		"templateId": "gmail-starter-template"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "523712d4-5f75-409a-a565-2b767565d377",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 10,
+				"simple": true,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"position": [224, 0],
+			"id": "24f2658a-5eb6-4a4c-9296-9445ca727897",
+			"name": "Get Gmail messages"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Gmail messages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

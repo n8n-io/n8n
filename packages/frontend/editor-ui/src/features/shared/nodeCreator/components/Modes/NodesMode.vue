@@ -17,6 +17,8 @@ import {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	HITL_SUBCATEGORY,
 	MESSAGE_AN_AGENT_NODE_TYPE,
+	STARTER_TEMPLATES_VIEW,
+	FAVORITE_NODES_VIEW,
 } from '@/app/constants';
 
 import type { BaseTextKey } from '@n8n/i18n';
@@ -28,7 +30,9 @@ import {
 	filterAndSearchNodes,
 	prepareCommunityNodeDetailsViewStack,
 	transformNodeType,
+	getFavoriteNodeItems,
 	getRootSearchCallouts,
+	getStarterTemplateItems,
 	shouldShowCommunityNodeDetails,
 	getHumanInTheLoopActions,
 } from '../../nodeCreator.utils';
@@ -58,10 +62,12 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const { isRagStarterCalloutVisible, openSampleWorkflowTemplate } = useCalloutHelpers();
+const { isRagStarterCalloutVisible, openSampleWorkflowTemplate, importSampleWorkflowToCanvas } =
+	useCalloutHelpers();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
-const { pushViewStack, popViewStack, isAiSubcategoryView, isHitlSubcategoryView } = useViewStacks();
+const { pushViewStack, popViewStack, resetViewStacks, isAiSubcategoryView, isHitlSubcategoryView } =
+	useViewStacks();
 const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -110,6 +116,9 @@ function getFilteredActions(
 }
 
 function onSelected(item: INodeCreateElement) {
+	// Ignore clicks landing while the creator animates out after the stacks were reset
+	if (!activeViewStack.value.uuid) return;
+
 	if (item.type === 'subcategory') {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
@@ -224,6 +233,30 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'view') {
+		if (item.key === FAVORITE_NODES_VIEW) {
+			pushViewStack({
+				title: i18n.baseText('nodeCreator.favoriteNodes.sectionTitle'),
+				rootView: activeViewStack.value.rootView,
+				hasSearch: false,
+				mode: 'nodes',
+				items: getFavoriteNodeItems(mergedNodes),
+				// Preserve the user's favoriting order
+				disableAiGrouping: true,
+			});
+			return;
+		}
+
+		if (item.key === STARTER_TEMPLATES_VIEW) {
+			pushViewStack({
+				title: i18n.baseText('nodeCreator.starterTemplates.sectionTitle'),
+				rootView: activeViewStack.value.rootView,
+				hasSearch: false,
+				mode: 'nodes',
+				items: getStarterTemplateItems(),
+			});
+			return;
+		}
+
 		const views = {
 			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
 			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
@@ -258,12 +291,18 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'openTemplate') {
-		openSampleWorkflowTemplate(item.properties.templateId, {
-			telemetry: {
-				source: 'nodeCreator',
-				section: activeViewStack.value.title,
-			},
-		});
+		if (item.properties.importToCanvas) {
+			importSampleWorkflowToCanvas(item.properties.templateId);
+			// Emptying the view stacks closes the node creator via its viewStacksLength watcher
+			resetViewStacks();
+		} else {
+			openSampleWorkflowTemplate(item.properties.templateId, {
+				telemetry: {
+					source: 'nodeCreator',
+					section: activeViewStack.value.title,
+				},
+			});
+		}
 	}
 }
 

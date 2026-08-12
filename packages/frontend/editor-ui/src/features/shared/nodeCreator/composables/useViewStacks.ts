@@ -96,6 +96,8 @@ export interface ViewStack {
 	forceIncludeNodes?: string[];
 	mode?: 'actions' | 'nodes' | 'community-node' | 'agents';
 	hideActions?: boolean;
+	/** Keep the stack's explicit item order instead of regrouping AI nodes into sections */
+	disableAiGrouping?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
@@ -323,6 +325,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		stack: ViewStack | undefined,
 		sortAlphabetically: boolean,
 	) {
+		if (stack?.disableAiGrouping) return items;
+
 		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
 		const canvasHasAINodes = workflowDocumentStore.value.aiNodes.length > 0;
 		const isVectorStoresCategory = stack?.title === AI_CATEGORY_VECTOR_STORES;
