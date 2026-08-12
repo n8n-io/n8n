@@ -27,7 +27,7 @@ import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 } from './data-table.types';
-import type { IProjectFilesService } from './project-files.types';
+import type { IProjectFilesService, ProjectFilesExpressionProxy } from './project-files.types';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
@@ -3128,6 +3128,13 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	};
 	$evaluation?: { runId: string };
 	$vars?: IDataObject;
+	/**
+	 * Project files ("Files" feature): `$files('name')` resolves metadata plus
+	 * a lazily signed download URL from a per-execution snapshot; `$files.all()`
+	 * returns every file of the workflow's home project. Absent when the
+	 * file-storage module is disabled or no home project could be resolved.
+	 */
+	$files?: ProjectFilesExpressionProxy;
 	$secrets?: IDataObject;
 	$pageCount?: number;
 	$tool?: { name: string; parameters: string };

@@ -38,6 +38,41 @@ export type ProjectFileDownloadResult = {
 	stream: Readable;
 };
 
+/**
+ * What a `$files('name')` expression resolves to: metadata from the
+ * per-execution snapshot plus a short-lived signed download URL — never bytes.
+ * `url` is implemented as a lazy getter: no token is minted unless the
+ * expression actually reads the property.
+ */
+export type ProjectFileExpressionValue = {
+	id: string;
+	name: string;
+	mimeType: string;
+	/** Content size in bytes. */
+	size: number;
+	/** ISO-8601 timestamp of the last change. */
+	updatedAt: string;
+	/**
+	 * Short-lived signed download URL. In the editor — where the signing secret
+	 * does not exist — this is a placeholder string instead.
+	 */
+	url: string;
+};
+
+/** One row of the per-execution metadata snapshot backing `$files`. */
+export type ProjectFilesSnapshotEntry = Omit<ProjectFileExpressionValue, 'url'>;
+
+/**
+ * The `$files` additional key: callable by exact file name — an unknown name
+ * resolves to `undefined`, matching `$vars` miss behavior — with `.all()`
+ * returning every file of the workflow's home project.
+ */
+export type ProjectFilesExpressionProxy = ((
+	name: string,
+) => ProjectFileExpressionValue | undefined) & {
+	all(): ProjectFileExpressionValue[];
+};
+
 // APIs for a project files service operating on a specific projectId.
 // Unlike data tables there is no per-resource sub-service: files have no
 // row/column sub-resources, so one aggregate-shaped service covers every

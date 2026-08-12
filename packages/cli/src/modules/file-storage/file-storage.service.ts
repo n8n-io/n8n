@@ -14,6 +14,7 @@ import { FileStorageSizeValidator } from './file-storage-size-validator.service'
 import { ProjectFileStore, type StoredProjectFile } from './project-file-store';
 import { ProjectFile } from './project-file.entity';
 import { ProjectFileRepository } from './project-file.repository';
+import { ProjectFilesSnapshotService } from './project-files-snapshot.service';
 import type { FileStorageSizeResult } from './types';
 import { formatBytes } from './utils/size-utils';
 
@@ -28,6 +29,7 @@ export class ProjectFileService {
 		private readonly sizeValidator: FileStorageSizeValidator,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly snapshotService: ProjectFilesSnapshotService,
 	) {
 		this.logger = this.logger.scoped('file-storage');
 	}
@@ -124,6 +126,7 @@ export class ProjectFileService {
 				fileSizeBytes: stored.bytesWritten,
 			} as ProjectFile);
 			this.sizeValidator.reset();
+			await this.invalidateSnapshot(projectId);
 			return file;
 		} catch (error) {
 			// Key-first rollback: never leave bytes the row doesn't reference.
@@ -163,6 +166,7 @@ export class ProjectFileService {
 			fileSizeBytes: stored.bytesWritten,
 		});
 		this.sizeValidator.reset();
+		await this.invalidateSnapshot(file.projectId);
 
 		return {
 			...file,
@@ -210,6 +214,7 @@ export class ProjectFileService {
 		if (existing) throw new ProjectFileNameConflictError(name);
 
 		await this.repository.renameFile(fileId, name);
+		await this.invalidateSnapshot(projectId);
 		return { ...file, name, updatedAt: new Date() };
 	}
 
@@ -221,6 +226,7 @@ export class ProjectFileService {
 	async deleteFiles(fileIds: string[], projectId: string): Promise<void> {
 		await this.repository.deleteByIdsInProject(fileIds, projectId);
 		this.sizeValidator.reset();
+		await this.invalidateSnapshot(projectId);
 	}
 
 	async deleteFile(fileId: string, projectId: string): Promise<ProjectFile> {
@@ -240,6 +246,10 @@ export class ProjectFileService {
 		trx?: Parameters<ProjectFileRepository['transferAllToProject']>[2],
 	): Promise<void> {
 		await this.repository.transferAllToProject(fromProjectId, toProjectId, trx);
+		// A caller-owned transaction may not have committed yet, so a racing
+		// read can re-cache pre-transfer rows; the snapshot TTL bounds that.
+		await this.invalidateSnapshot(fromProjectId);
+		await this.invalidateSnapshot(toProjectId);
 	}
 
 	/**
@@ -256,6 +266,7 @@ export class ProjectFileService {
 			projectId,
 		);
 		this.sizeValidator.reset();
+		await this.invalidateSnapshot(projectId);
 	}
 
 	async getFileStorageSize(): Promise<FileStorageSizeResult> {
@@ -271,6 +282,20 @@ export class ProjectFileService {
 	}
 
 	// private methods
+
+	/**
+	 * Drops the cached `$files` expression snapshot after a mutation.
+	 * Best-effort: the short cache TTL is the backstop, so a failed
+	 * invalidation must never fail the mutation that triggered it.
+	 */
+	private async invalidateSnapshot(projectId: string): Promise<void> {
+		await this.snapshotService.invalidateSnapshot(projectId).catch((error) => {
+			this.logger.warn('Failed to invalidate the project files snapshot cache', {
+				projectId,
+				error,
+			});
+		});
+	}
 
 	private async validateQuota(surface: WriteSurface): Promise<void> {
 		await this.sizeValidator.validateSize(

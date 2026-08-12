@@ -20,6 +20,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
+	buildProjectFilesExpressionProxy,
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
@@ -38,6 +39,8 @@ import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/
 import get from 'lodash/get';
 
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useFilesStore } from '@/features/core/files/files.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -111,6 +114,12 @@ export async function resolveParameter<T = IDataObject>(
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: envVars,
+		// Editor-side `$files`: same semantics as the server proxy but built
+		// with NO signer — the signing secret is server-only, so `.url`
+		// previews as the run-time placeholder string.
+		$files: useSettingsStore().isModuleActive('file-storage')
+			? buildProjectFilesExpressionProxy({ snapshot: useFilesStore().expressionSnapshot })
+			: undefined,
 		$tool: isHitlToolType(activeNode?.type)
 			? {
 					name: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,

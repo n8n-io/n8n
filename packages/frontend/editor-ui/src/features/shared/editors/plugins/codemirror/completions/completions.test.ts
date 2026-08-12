@@ -18,6 +18,7 @@ import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import { n8nLang } from '@/features/shared/editors/plugins/codemirror/n8nLang';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
+import { useFilesStore } from '@/features/core/files/files.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { EnterpriseEditionFeature } from '@/app/constants';
@@ -162,6 +163,61 @@ describe('Top-level completions', () => {
 		vi.spyOn(utils, 'autocompletableNodeNames').mockReturnValue(mockNodes.map((node) => node.name));
 
 		expect(await completions('{{ $(| }}')).toHaveLength(mockNodes.length);
+	});
+});
+
+describe('$files completions', () => {
+	const activateFileStorage = () => {
+		// `isModuleActive` is a store function, so the testing pinia stubs it
+		vi.mocked(settingsStore.isModuleActive).mockImplementation(
+			(name: string) => name === 'file-storage',
+		);
+		const filesStore = useFilesStore();
+		filesStore.expressionSnapshot = [
+			{
+				id: 'file-1',
+				name: 'logo.png',
+				mimeType: 'image/png',
+				size: 1234,
+				updatedAt: '2026-08-01T12:00:00.000Z',
+			},
+			{
+				id: 'file-2',
+				name: 'pricing.csv',
+				mimeType: 'text/csv',
+				size: 42,
+				updatedAt: '2026-08-02T08:30:00.000Z',
+			},
+		];
+	};
+
+	test('should not offer $files when the file-storage module is inactive: {{ $files| }}', async () => {
+		expect(await completions('{{ $files| }}')).toBeNull();
+	});
+
+	test('should offer the root, .all() and per-name completions when active: {{ $files| }}', async () => {
+		activateFileStorage();
+
+		const result = await completions('{{ $files| }}');
+
+		expect(result?.map((completion) => completion.label)).toEqual([
+			'$files()',
+			'$files.all()',
+			"$files('logo.png')",
+			"$files('pricing.csv')",
+		]);
+		expect(result?.[0]).toEqual(expect.objectContaining({ section: METADATA_SECTION }));
+	});
+
+	test("should suggest project file names for: {{ $files('| }}", async () => {
+		activateFileStorage();
+
+		const result = await completions("{{ $files('| }}");
+
+		expect(result?.map((completion) => completion.label)).toEqual([
+			"$files('logo.png')",
+			"$files('pricing.csv')",
+		]);
 	});
 });
 

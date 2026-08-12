@@ -5,6 +5,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { ListProjectFilesQuerySortOptions, ProjectFileConflictMode } from '@n8n/api-types';
+import type { ProjectFilesSnapshotEntry } from 'n8n-workflow';
 
 import { FILES_STORE } from '@/features/core/files/constants';
 import {
@@ -39,6 +40,13 @@ export const useFilesStore = defineStore(FILES_STORE, () => {
 
 	const files = ref<ProjectFile[]>([]);
 	const totalCount = ref(0);
+
+	/**
+	 * Editor-side `$files` snapshot for expression previews and autocomplete,
+	 * fetched on workflow open for the workflow's home project — deliberately
+	 * not populated by the Files view, which fills `files` on view entry.
+	 */
+	const expressionSnapshot = ref<ProjectFilesSnapshotEntry[]>([]);
 
 	const usedBytes = ref(0);
 	const maxBytes = ref(0);
@@ -86,6 +94,33 @@ export const useFilesStore = defineStore(FILES_STORE, () => {
 		);
 		files.value = response.data;
 		totalCount.value = response.count;
+	};
+
+	/**
+	 * Loads the `$files` expression snapshot for a project. Best-effort — an
+	 * error (e.g. missing file permissions) leaves the snapshot empty rather
+	 * than breaking workflow initialization. Capped at one page of the list
+	 * API (250 files), plenty for autocomplete and inline previews.
+	 */
+	const fetchExpressionSnapshot = async (projectId: string) => {
+		try {
+			const response = await fetchFilesApi(
+				rootStore.restApiContext,
+				projectId,
+				{ skip: 0, take: 250 },
+				undefined,
+				'name:asc',
+			);
+			expressionSnapshot.value = response.data.map((file) => ({
+				id: file.id,
+				name: file.name,
+				mimeType: file.mimeType,
+				size: file.sizeBytes,
+				updatedAt: file.updatedAt,
+			}));
+		} catch {
+			expressionSnapshot.value = [];
+		}
 	};
 
 	const fetchFileById = async (projectId: string, fileId: string): Promise<ProjectFile | null> => {
@@ -375,6 +410,8 @@ export const useFilesStore = defineStore(FILES_STORE, () => {
 	return {
 		files,
 		totalCount,
+		expressionSnapshot,
+		fetchExpressionSnapshot,
 		usedBytes: computed(() => usedBytes.value),
 		maxBytes: computed(() => maxBytes.value),
 		quotaStatus: computed(() => quotaStatus.value),

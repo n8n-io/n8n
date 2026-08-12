@@ -9,6 +9,7 @@ export * from './common';
 export * from './cron';
 export * from './data-table.types';
 export type * from './project-files.types';
+export * from './project-files-expression-proxy';
 export * from './execution-context';
 export * from './execution-context-establishment-hooks';
 export * from './redaction-channels';

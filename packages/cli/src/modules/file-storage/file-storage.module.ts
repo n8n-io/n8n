@@ -65,7 +65,18 @@ export class FileStorageModule implements ModuleInterface {
 
 	async context() {
 		const { ProjectFilesProxyService } = await import('./project-files-proxy.service.js');
+		const { ProjectFilesSnapshotService } = await import('./project-files-snapshot.service.js');
+		const { FileSigningService } = await import('./file-signing.service.js');
 
-		return { projectFilesProxyProvider: Container.get(ProjectFilesProxyService) };
+		return {
+			projectFilesProxyProvider: Container.get(ProjectFilesProxyService),
+			// Back the `$files` expression: getBase() loads the snapshot per
+			// execution; the signer backs the lazy `.url` getter (sync — the
+			// expression sandbox is synchronous).
+			getProjectFilesSnapshot: async (projectId: string) =>
+				await Container.get(ProjectFilesSnapshotService).getSnapshot(projectId),
+			signProjectFileToken: (fileId: string) =>
+				Container.get(FileSigningService).createSignedToken(fileId),
+		};
 	}
 }
