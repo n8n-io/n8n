@@ -240,7 +240,22 @@ echo "Starting editor-ui build watcher (NDV pane, mirrored into staticCacheDir).
 		# removed, so a request mid-sync sees either the old set intact or
 		# the new set intact -- never a page referencing an asset that's
 		# already gone.
-		rsync -a --delete-after "$tmp/" "$STATIC_CACHE_DIR/"
+		#
+		# --exclude=/types/ is load-bearing, not cosmetic: staticCacheDir also
+		# holds types/{nodes,node-versions,credentials}.json, written once at
+		# boot by FrontendService.generateTypes() (packages/cli/src/services/
+		# frontend.service.ts) -- NOT part of editor-ui's dist/, so $tmp never
+		# contains a types/ dir. Without this exclude, --delete-after treats
+		# staticCacheDir's types/ as stale and deletes it on every rebuild
+		# cycle (i.e. continuously while this watcher runs). The editor UI
+		# fetches those files on every load/reload, so once deleted the
+		# instance can't serve a working UI until a full restart regenerates
+		# them at boot -- which this watcher would then delete again within
+		# one rebuild cycle. rsync leaves excluded paths alone under
+		# --delete-after (does not delete them), so this protects the
+		# directory without disabling cleanup of anything editor-ui actually
+		# owns.
+		rsync -a --delete-after --exclude=/types/ "$tmp/" "$STATIC_CACHE_DIR/"
 		rm -rf "$tmp"
 	}
 
