@@ -174,6 +174,39 @@ describe('CredentialCard', () => {
 		expect(heading).toHaveTextContent('Read only');
 	});
 
+	describe('selection', () => {
+		it('renders a controlled checkbox with an accessible label', () => {
+			const data = createCredential({ id: 'cred-1', name: 'Team Slack' });
+			const { getByTestId, getByRole } = renderComponent({
+				props: { data, selectable: true, selected: true },
+			});
+
+			expect(getByTestId('credential-card-checkbox')).toBeInTheDocument();
+			expect(getByRole('checkbox', { name: 'Select Team Slack' })).toBeChecked();
+		});
+
+		it('emits selection without opening the credential', async () => {
+			const data = createCredential({ id: 'cred-1', name: 'Team Slack' });
+			const { getByRole, emitted } = renderComponent({
+				props: { data, selectable: true },
+			});
+
+			await userEvent.click(getByRole('checkbox', { name: 'Select Team Slack' }));
+
+			expect(emitted()['update:selected']).toEqual([[true]]);
+			expect(emitted().click).toBeUndefined();
+		});
+
+		it('disables an unchecked checkbox when the selection limit is reached', () => {
+			const data = createCredential({ id: 'cred-1', name: 'Team Slack' });
+			const { getByRole } = renderComponent({
+				props: { data, selectable: true, selectionDisabled: true },
+			});
+
+			expect(getByRole('checkbox', { name: 'Select Team Slack' })).toBeDisabled();
+		});
+	});
+
 	describe('global credentials', () => {
 		it('should display global badge when credential has isGlobal true', () => {
 			const data = createCredential({

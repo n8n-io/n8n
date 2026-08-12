@@ -125,7 +125,7 @@ const emit = defineEmits<{
 const slots = defineSlots<{
 	header(): unknown;
 	empty(): unknown;
-	preamble(): unknown;
+	preamble(props: { resources: ResourceType[] }): unknown;
 	postamble(): unknown;
 	postdata(): unknown;
 	'add-button'(): unknown;
@@ -697,7 +697,7 @@ defineExpose({
 					<div class="pb-xs" />
 				</template>
 
-				<slot name="preamble" />
+				<slot name="preamble" :resources="filteredAndSortedResources" />
 
 				<div v-if="resourcesRefreshing" class="resource-list-loading resource-list-loading-instant">
 					<N8nLoading :rows="rowsPerPage" :shrink-last="false" />

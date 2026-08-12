@@ -94,6 +94,7 @@ describe('CredentialsController', () => {
 		credentialsFinderService,
 		mock(), // connectionStatusProxy
 		credentialsOverwrites,
+		mock(), // credentialBulkActionService
 	);
 
 	let req: AuthenticatedRequest;

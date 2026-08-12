@@ -49,18 +49,23 @@ export function useResourcesListSelection<T extends SelectableResource>(
 	const canSelect = (item: T) =>
 		isSelected(item) || selectedCount.value + getItemWeight(item) <= maxSelected;
 
-	/** Add or remove a single item. When `value` is omitted the state is flipped. */
-	const toggleItem = (item: T, value?: boolean) => {
+	/**
+	 * Add or remove a single item. When `value` is omitted the state is flipped.
+	 * Returns `false` when a select is blocked by the selection limit, `true`
+	 * otherwise.
+	 */
+	const toggleItem = (item: T, value?: boolean): boolean => {
 		const key = selectionKey(item);
 		const shouldSelect = value ?? !selected.value.has(key);
+		if (shouldSelect && !canSelect(item)) return false;
 		const next = new Map(selected.value);
 		if (shouldSelect) {
-			if (!next.has(key) && !canSelect(item)) return;
 			next.set(key, item);
 		} else {
 			next.delete(key);
 		}
 		commit(next);
+		return true;
 	};
 
 	/** Whether every item on the given page is currently selected. */

@@ -54,9 +54,16 @@ const selectedText = computed(
 
 const clearSelectionText = computed(() => i18n.baseText('generic.list.clearSelection'));
 
-const visibleActions = computed(() => (props.actions ?? []).slice(0, props.maxVisibleActions));
+const nonDestructiveActions = computed(() => (props.actions ?? []).filter((a) => !a.destructive));
 
-const overflowActions = computed(() => (props.actions ?? []).slice(props.maxVisibleActions));
+const visibleActions = computed(() =>
+	nonDestructiveActions.value.slice(0, props.maxVisibleActions),
+);
+
+const overflowActions = computed(() => [
+	...nonDestructiveActions.value.slice(props.maxVisibleActions),
+	...(props.actions ?? []).filter((a) => a.destructive),
+]);
 
 const hasNoActions = computed(() => usesActionsApi.value && (props.actions ?? []).length === 0);
 

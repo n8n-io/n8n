@@ -1,4 +1,9 @@
 import type { FolderResource, WorkflowResource } from '@/Interface';
+import type {
+	SharedBulkActionItemStatus,
+	SharedBulkActionResult,
+	SharedBulkActionResultItem,
+} from '@/app/types/bulkActions.types';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 /** The only two resource kinds the workflow list can hold. */
@@ -14,22 +19,9 @@ export type BulkActionId =
 	| 'delete';
 
 /** Mirrors the backend `BulkWorkflowActionItemStatus` so mocks/MCP normalize to the same buckets. */
-export type BulkActionItemStatus = 'completed' | 'unchanged' | 'failed' | 'notAttempted';
-
-export type BulkActionResultItem = {
-	id: string;
-	resourceType: 'workflow' | 'folder';
-	name: string;
-	status: BulkActionItemStatus;
-	message?: string;
-};
-
-export type BulkActionResult = {
-	status: 'completed' | 'partial';
-	items: BulkActionResultItem[];
-	/** Mocked operations only touch the local list projection, so the view skips a server refresh. */
-	mocked: boolean;
-};
+export type BulkActionItemStatus = SharedBulkActionItemStatus;
+export type BulkActionResultItem = SharedBulkActionResultItem<'workflow' | 'folder'>;
+export type BulkActionResult = SharedBulkActionResult<'workflow' | 'folder'>;
 
 /** Destination chosen in the Move review dialog. */
 export type BulkMoveDestination = {

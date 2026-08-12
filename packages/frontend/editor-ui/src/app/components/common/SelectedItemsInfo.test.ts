@@ -58,4 +58,23 @@ describe('SelectedItemsInfo', () => {
 		expect(emitted().clearSelection).toBeTruthy();
 		expect(emitted().clearSelection).toHaveLength(1);
 	});
+
+	it('should keep destructive actions in the overflow menu', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				selectedCount: 2,
+				actions: [
+					{ id: 'move', label: 'Move' },
+					{ id: 'archive', label: 'Archive' },
+					{ id: 'delete', label: 'Delete', destructive: true },
+				],
+				maxVisibleActions: 3,
+			},
+		});
+
+		expect(getByTestId('selection-action-move')).toBeInTheDocument();
+		expect(getByTestId('selection-action-archive')).toBeInTheDocument();
+		expect(queryByTestId('selection-action-delete')).not.toBeInTheDocument();
+		expect(getByTestId('selection-overflow')).toBeInTheDocument();
+	});
 });

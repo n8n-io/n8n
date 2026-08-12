@@ -1360,11 +1360,9 @@ describe('POST /credentials/bulk/transfer', () => {
 		const credentials = await Promise.all([
 			saveCredential(randomCredentialPayload(), {
 				user: owner,
-				role: 'credential:owner',
 			}),
 			saveCredential(randomCredentialPayload(), {
 				user: member,
-				role: 'credential:owner',
 			}),
 		]);
 

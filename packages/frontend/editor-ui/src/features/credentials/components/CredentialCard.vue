@@ -26,6 +26,7 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nCard,
+	N8nCheckbox,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -39,6 +40,7 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 const emit = defineEmits<{
 	click: [credentialId: string];
 	connected: [credentialId: string];
+	'update:selected': [value: boolean];
 }>();
 
 const props = withDefaults(
@@ -46,10 +48,16 @@ const props = withDefaults(
 		data: CredentialsResource;
 		readOnly?: boolean;
 		needsSetup?: boolean;
+		selectable?: boolean;
+		selected?: boolean;
+		selectionDisabled?: boolean;
 	}>(),
 	{
 		readOnly: false,
 		needsSetup: false,
+		selectable: false,
+		selected: false,
+		selectionDisabled: false,
 	},
 );
 
@@ -232,7 +240,28 @@ function moveResource() {
 <template>
 	<N8nCard :class="$style.cardLink" @click.stop="onClick">
 		<template #prepend>
-			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
+			<div :class="$style.prepend">
+				<div
+					v-if="selectable"
+					:class="$style.selectionCheckbox"
+					@click.stop
+					@mousedown.stop
+					@dragstart.stop.prevent
+				>
+					<N8nCheckbox
+						:model-value="selected"
+						:disabled="selectionDisabled"
+						:aria-label="
+							locale.baseText('credentials.bulkActions.selectRow', {
+								interpolate: { name: data.name },
+							})
+						"
+						data-test-id="credential-card-checkbox"
+						@update:model-value="emit('update:selected', $event)"
+					/>
+				</div>
+				<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
+			</div>
 		</template>
 		<template #header>
 			<N8nText tag="h2" bold :class="$style.cardHeading">
@@ -327,6 +356,22 @@ function moveResource() {
 	align-items: center;
 	font-size: var(--font-size--sm);
 	padding: var(--spacing--sm) 0 0;
+}
+
+.prepend {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.selectionCheckbox {
+	display: flex;
+	align-items: center;
+	cursor: default;
+
+	:global(.el-checkbox) {
+		margin-right: 0;
+	}
 }
 
 .cardDescription {

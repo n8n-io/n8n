@@ -1,17 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nButton,
-	N8nCallout,
-	N8nDialog,
-	N8nDialogFooter,
-	N8nDialogHeader,
-	N8nDialogTitle,
-	N8nLink,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nCallout, N8nText } from '@n8n/design-system';
 
+import BulkActionReviewDialogShell from '@/app/components/common/BulkActionReviewDialogShell.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import MoveToFolderDropdown from '@/features/core/folders/components/MoveToFolderDropdown.vue';
 import type { ProjectSearchFn } from '@/features/collaboration/projects/projects.utils';
@@ -48,8 +40,6 @@ const i18n = useI18n();
 const shareRecipients = ref<ProjectSharingData[]>([]);
 const moveProject = ref<ProjectSharingData | null>(null);
 const moveFolder = ref<ChangeLocationSearchResult | null>(null);
-const showAffected = ref(false);
-const showUnchanged = ref(false);
 
 watch(
 	() => props.open,
@@ -58,8 +48,6 @@ watch(
 		shareRecipients.value = [];
 		moveProject.value = null;
 		moveFolder.value = null;
-		showAffected.value = false;
-		showUnchanged.value = false;
 	},
 );
 
@@ -90,6 +78,20 @@ const summary = computed(() =>
 			affected: String(affectedCount.value),
 			unchanged: String(unchangedCount.value),
 		},
+	}),
+);
+
+const affectedHeading = computed(() =>
+	i18n.baseText('workflows.bulkActions.review.affectedHeading', {
+		adjustToNumber: affectedCount.value,
+		interpolate: { count: String(affectedCount.value) },
+	}),
+);
+
+const unchangedHeading = computed(() =>
+	i18n.baseText('workflows.bulkActions.review.unchangedHeading', {
+		adjustToNumber: unchangedCount.value,
+		interpolate: { count: String(unchangedCount.value) },
 	}),
 );
 
@@ -132,140 +134,71 @@ const onConfirm = () => {
 </script>
 
 <template>
-	<N8nDialog
+	<BulkActionReviewDialogShell
 		:open="open"
-		size="medium"
-		:show-close-button="!submitting"
-		:disable-outside-pointer-events="true"
-		data-test-id="bulk-action-review-dialog"
+		:title="title"
+		:summary="summary"
+		:confirm-label="confirmLabel"
+		:affected="affected"
+		:unchanged="unchanged"
+		:affected-heading="affectedHeading"
+		:unchanged-heading="unchangedHeading"
+		:submitting="submitting"
+		:confirm-disabled="confirmDisabled"
+		:destructive="isDelete"
+		:error-message="errorMessage"
 		@update:open="close"
+		@confirm="onConfirm"
 	>
-		<N8nDialogHeader>
-			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
-		</N8nDialogHeader>
+		<N8nCallout v-if="isDelete" theme="danger" :class="$style.callout">
+			{{ i18n.baseText('workflows.bulkActions.review.delete.permanent') }}
+		</N8nCallout>
 
-		<div :class="$style.body">
-			<N8nText color="text-base">{{ summary }}</N8nText>
-
-			<N8nCallout v-if="isDelete" theme="danger" :class="$style.callout">
-				{{ i18n.baseText('workflows.bulkActions.review.delete.permanent') }}
-			</N8nCallout>
-
-			<!-- Share: pick recipients to add -->
-			<div v-if="isShare" :class="$style.block">
-				<N8nText color="text-dark">
-					{{ i18n.baseText('workflows.bulkActions.review.share.label') }}
-				</N8nText>
-				<ProjectSharing
-					v-model="shareRecipients"
-					class="pt-2xs"
-					:search-fn="projectSearchFn"
-					:placeholder="i18n.baseText('workflows.bulkActions.review.share.placeholder')"
-					:roles="[]"
-				/>
-			</div>
-
-			<!-- Move: destination project + folder -->
-			<div v-if="isMove" :class="$style.block">
-				<N8nText color="text-dark">
-					{{ i18n.baseText('folders.move.modal.project.label') }}
-				</N8nText>
-				<ProjectSharing
-					v-model="moveProject"
-					class="pt-2xs"
-					:search-fn="projectSearchFn"
-					:filter-fn="moveFilterFn"
-					:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
-				/>
-				<template v-if="moveProject">
-					<N8nText color="text-dark" class="mt-2xs">
-						{{ i18n.baseText('folders.move.modal.folder.label') }}
-					</N8nText>
-					<MoveToFolderDropdown
-						:selected-location="moveFolder"
-						:selected-project-id="moveProject.id"
-						:current-project-id="currentProjectId"
-						@location:selected="moveFolder = $event"
-					/>
-				</template>
-				<N8nCallout
-					v-if="moveDestination?.changesOwnership"
-					theme="warning"
-					:class="$style.callout"
-				>
-					{{ i18n.baseText('workflows.bulkActions.review.move.ownershipWarning') }}
-				</N8nCallout>
-			</div>
-
-			<!-- Affected panel -->
-			<div v-if="affected.length" :class="$style.panel">
-				<N8nLink theme="text" @click="showAffected = !showAffected">
-					{{
-						i18n.baseText('workflows.bulkActions.review.affectedHeading', {
-							adjustToNumber: affectedCount,
-							interpolate: { count: String(affectedCount) },
-						})
-					}}
-				</N8nLink>
-				<ul v-if="showAffected" :class="$style.list" data-test-id="bulk-action-affected-list">
-					<li v-for="item in affected" :key="`${item.resourceType}:${item.id}`">
-						<N8nText size="small">{{ item.name }}</N8nText>
-					</li>
-				</ul>
-			</div>
-
-			<!-- No-change panel -->
-			<div v-if="unchanged.length" :class="$style.panel">
-				<N8nLink theme="text" @click="showUnchanged = !showUnchanged">
-					{{
-						i18n.baseText('workflows.bulkActions.review.unchangedHeading', {
-							adjustToNumber: unchangedCount,
-							interpolate: { count: String(unchangedCount) },
-						})
-					}}
-				</N8nLink>
-				<ul v-if="showUnchanged" :class="$style.list" data-test-id="bulk-action-unchanged-list">
-					<li v-for="item in unchanged" :key="`${item.resourceType}:${item.id}`">
-						<N8nText size="small" color="text-light">{{ item.name }}</N8nText>
-					</li>
-				</ul>
-			</div>
-
-			<N8nCallout v-if="errorMessage" theme="danger" :class="$style.callout">
-				{{ errorMessage }}
-			</N8nCallout>
+		<!-- Share: pick recipients to add -->
+		<div v-if="isShare" :class="$style.block">
+			<N8nText color="text-dark">
+				{{ i18n.baseText('workflows.bulkActions.review.share.label') }}
+			</N8nText>
+			<ProjectSharing
+				v-model="shareRecipients"
+				class="pt-2xs"
+				:search-fn="projectSearchFn"
+				:placeholder="i18n.baseText('workflows.bulkActions.review.share.placeholder')"
+				:roles="[]"
+			/>
 		</div>
 
-		<N8nDialogFooter>
-			<N8nButton
-				variant="outline"
-				:disabled="submitting"
-				data-test-id="bulk-action-cancel"
-				@click="close"
-			>
-				{{ i18n.baseText('generic.cancel') }}
-			</N8nButton>
-			<N8nButton
-				:variant="isDelete ? 'destructive' : 'solid'"
-				:loading="submitting"
-				:disabled="confirmDisabled"
-				data-test-id="bulk-action-confirm"
-				@click="onConfirm"
-			>
-				{{ confirmLabel }}
-			</N8nButton>
-		</N8nDialogFooter>
-	</N8nDialog>
+		<!-- Move: destination project + folder -->
+		<div v-if="isMove" :class="$style.block">
+			<N8nText color="text-dark">
+				{{ i18n.baseText('folders.move.modal.project.label') }}
+			</N8nText>
+			<ProjectSharing
+				v-model="moveProject"
+				class="pt-2xs"
+				:search-fn="projectSearchFn"
+				:filter-fn="moveFilterFn"
+				:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
+			/>
+			<template v-if="moveProject">
+				<N8nText color="text-dark" class="mt-2xs">
+					{{ i18n.baseText('folders.move.modal.folder.label') }}
+				</N8nText>
+				<MoveToFolderDropdown
+					:selected-location="moveFolder"
+					:selected-project-id="moveProject.id"
+					:current-project-id="currentProjectId"
+					@location:selected="moveFolder = $event"
+				/>
+			</template>
+			<N8nCallout v-if="moveDestination?.changesOwnership" theme="warning" :class="$style.callout">
+				{{ i18n.baseText('workflows.bulkActions.review.move.ownershipWarning') }}
+			</N8nCallout>
+		</div>
+	</BulkActionReviewDialogShell>
 </template>
 
 <style lang="scss" module>
-.body {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	margin-top: var(--spacing--xs);
-}
-
 .block {
 	display: flex;
 	flex-direction: column;
@@ -273,23 +206,5 @@ const onConfirm = () => {
 
 .callout {
 	margin: 0;
-}
-
-.panel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.list {
-	max-height: 160px;
-	overflow-y: auto;
-	margin: 0;
-	padding: var(--spacing--3xs) 0 0 var(--spacing--md);
-	list-style: disc;
-
-	li {
-		padding: var(--spacing--5xs) 0;
-	}
 }
 </style>
