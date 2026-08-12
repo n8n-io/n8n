@@ -17,10 +17,10 @@ import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
+import { N8nHarnessSessionCleanupService } from './integrations/n8n-harness-session-cleanup.service';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
-import { AgentHarnessSessionRepository } from './repositories/agent-harness-session.repository';
 import {
 	AgentExecutionRepository,
 	type RunningAgentExecution,
@@ -104,7 +104,7 @@ export class AgentExecutionService {
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
-		private readonly agentHarnessSessionRepository?: AgentHarnessSessionRepository,
+		private readonly harnessSessionCleanupService: N8nHarnessSessionCleanupService,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
@@ -444,14 +444,18 @@ export class AgentExecutionService {
 
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
+		await this.harnessSessionCleanupService.destroyByAgentAndThread(agentId, threadId);
 		await Promise.all([
 			this.agentExecutionThreadRepository.delete({ id: threadId }),
-			this.agentHarnessSessionRepository?.deleteByAgentAndThread(agentId, threadId),
 			this.agentExecutionLogStore.delete(
 				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),
 			),
 		]);
 		return true;
+	}
+
+	async destroyHarnessSessionsForAgent(agentId: string): Promise<void> {
+		await this.harnessSessionCleanupService.destroyByAgent(agentId);
 	}
 
 	/**

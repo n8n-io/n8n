@@ -288,6 +288,7 @@ describe('AgentsService', () => {
 			chatIntegrationService,
 			subAgentCleanupService,
 			eventService,
+			agentExecutionService,
 		} = makeService();
 		const agent = makeAgent({
 			integrations: [
@@ -305,6 +306,10 @@ describe('AgentsService', () => {
 			agentRepository.remove.mock.invocationCallOrder[0],
 		);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentExecutionService.destroyHarnessSessionsForAgent).toHaveBeenCalledWith(agentId);
+		expect(
+			agentExecutionService.destroyHarnessSessionsForAgent.mock.invocationCallOrder[0],
+		).toBeLessThan(agentRepository.remove.mock.invocationCallOrder[0]);
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(agentId, {
 			type: 'slack',
 			credentialId: 'slack-1',

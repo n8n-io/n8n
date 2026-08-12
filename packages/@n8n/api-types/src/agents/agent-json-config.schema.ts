@@ -19,6 +19,23 @@ export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
 export const AGENT_HARNESS_ADAPTERS = ['claude-code', 'codex'] as const;
 
+export const AGENT_HARNESS_MODELS = {
+	'claude-code': [
+		'anthropic/claude-sonnet-4-6',
+		'anthropic/claude-sonnet-4-5',
+		'anthropic/claude-opus-4-6',
+		'anthropic/claude-haiku-4-5',
+	],
+	codex: ['openai/gpt-5.5'],
+} as const satisfies Record<(typeof AGENT_HARNESS_ADAPTERS)[number], readonly string[]>;
+
+export function isAgentHarnessModel(
+	adapter: (typeof AGENT_HARNESS_ADAPTERS)[number],
+	model: string,
+): boolean {
+	return (AGENT_HARNESS_MODELS[adapter] as readonly string[]).includes(model);
+}
+
 export const AgentEngineConfigSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('n8n') }).strict(),
 	z

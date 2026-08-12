@@ -15,6 +15,7 @@ import {
 	AgentHarnessSessionRepository,
 	type AgentHarnessSessionClaimHandle,
 } from '../repositories/agent-harness-session.repository';
+import { N8nHarnessSessionCleanupService } from './n8n-harness-session-cleanup.service';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;
@@ -40,18 +41,31 @@ function isHarnessContinueState(value: unknown): value is HarnessAgentContinueTu
 	);
 }
 
+function isHarnessResetState(
+	value: unknown,
+): value is { type: 'n8n-session-reset'; reason: 'aborted' } {
+	return isRecord(value) && value.type === 'n8n-session-reset' && value.reason === 'aborted';
+}
+
 function deserializeState(sessionId: string, serializedState: string | null): HarnessSessionState {
 	if (!serializedState) return { sessionId };
 
 	const state = jsonParse<unknown>(serializedState, { fallbackValue: undefined });
 	if (isHarnessResumeState(state)) return { sessionId, resumeFrom: state };
 	if (isHarnessContinueState(state)) return { sessionId, continueFrom: state };
+	if (isHarnessResetState(state)) return { sessionId, resetReason: state.reason };
 	throw new OperationalError('Stored harness session state is invalid');
 }
 
 function serializeState(state: HarnessSessionState): string | null {
 	if (state.resumeFrom && state.continueFrom) {
 		throw new OperationalError('Harness session state cannot resume and continue at the same time');
+	}
+	if (state.resetReason) {
+		if (state.resumeFrom || state.continueFrom) {
+			throw new OperationalError('Harness reset state cannot include resumable state');
+		}
+		return JSON.stringify({ type: 'n8n-session-reset', reason: state.resetReason });
 	}
 	const lifecycleState = state.resumeFrom ?? state.continueFrom;
 	return lifecycleState ? JSON.stringify(lifecycleState) : null;
@@ -62,6 +76,7 @@ export class N8nHarnessSessionStore implements HarnessSessionStore {
 	constructor(
 		private readonly repository: AgentHarnessSessionRepository,
 		private readonly config: AgentsConfig,
+		private readonly cleanupService: N8nHarnessSessionCleanupService,
 	) {}
 
 	async claim(
@@ -72,6 +87,28 @@ export class N8nHarnessSessionStore implements HarnessSessionStore {
 			throw new UserError('Harness agents are not enabled on this instance');
 		}
 		options?.abortSignal?.throwIfAborted();
+		if (
+			await this.cleanupService.destroyExpiredForThread(
+				scope.agentId,
+				scope.threadId,
+				scope.runtimeIdentity,
+			)
+		) {
+			throw new UserError(
+				'This agent session expired. Send your message again to start a new session.',
+			);
+		}
+		if (
+			await this.cleanupService.destroySupersededForThread(
+				scope.agentId,
+				scope.threadId,
+				scope.runtimeIdentity,
+			)
+		) {
+			throw new UserError(
+				'This agent changed since the conversation started. Send your message again to start a new session.',
+			);
+		}
 
 		const claimToken = randomUUID();
 		const sessionId = randomUUID();

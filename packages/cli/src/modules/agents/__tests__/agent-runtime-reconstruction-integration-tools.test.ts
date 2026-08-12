@@ -64,6 +64,7 @@ import { ChatIntegrationContextQueryExecutor } from '../integrations/integration
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
+import type { N8nHarnessSessionCleanupService } from '../integrations/n8n-harness-session-cleanup.service';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
@@ -294,6 +295,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
 			mock<AiGatewayService>(),
+			mock<AgentsConfig>({ modules: [] }),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
@@ -311,7 +313,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
 		);
-		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
+		agentTestChatService = new AgentTestChatService(
+			n8nMemory,
+			mock<AgentChatAttachmentService>(),
+			mock<N8nHarnessSessionCleanupService>(),
+		);
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,

@@ -4,6 +4,7 @@ import type {
 	Experimental_SandboxSession as SandboxSession,
 } from '@ai-sdk/provider-utils';
 import { type ExecResult, SandboxClient, SandboxServiceError } from '@n8n/sandbox-client';
+import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path/posix';
 
@@ -26,6 +27,28 @@ export interface N8nHarnessSandboxProviderOptions {
 interface BridgeLease {
 	id: string;
 	url: string;
+}
+
+export class HarnessSessionExpiredError extends UserError {
+	constructor() {
+		super('This agent session expired. Send your message again to start a new session.');
+	}
+}
+
+export async function destroyN8nHarnessSandbox(options: {
+	serviceUrl: string;
+	apiKey?: string;
+	sandboxId: string;
+}): Promise<void> {
+	const client = new SandboxClient({
+		baseUrl: options.serviceUrl.replace(/\/+$/, ''),
+		apiKey: options.apiKey,
+	});
+	try {
+		await client.deleteSandbox(options.sandboxId);
+	} catch (error) {
+		if (!(error instanceof SandboxServiceError && error.status === 404)) throw error;
+	}
 }
 
 type ExecutionEvent =
@@ -177,7 +200,7 @@ export function createN8nHarnessSandboxProvider(
 		let bridgeLease: BridgeLease | undefined;
 		let bridgeRenewalTimer: NodeJS.Timeout | undefined;
 		let bridgeRetentionTimer: NodeJS.Timeout | undefined;
-		let stopped = false;
+		let destroyed = false;
 
 		const revokeBridgeLease = async () => {
 			if (bridgeRenewalTimer) clearInterval(bridgeRenewalTimer);
@@ -197,9 +220,9 @@ export function createN8nHarnessSandboxProvider(
 			}
 		};
 
-		const stopSandbox = async () => {
-			if (stopped) return;
-			stopped = true;
+		const destroySandbox = async () => {
+			if (destroyed) return;
+			destroyed = true;
 			let bridgeError: unknown;
 			try {
 				await revokeBridgeLease();
@@ -348,6 +371,7 @@ export function createN8nHarnessSandboxProvider(
 					void client.deleteExecution(sandboxId, executionId).catch(() => {});
 				}
 			})();
+			void waitPromise.catch(() => {});
 
 			return {
 				stdout,
@@ -406,13 +430,15 @@ export function createN8nHarnessSandboxProvider(
 			},
 			spawn,
 			run: async (processOptions) => {
-				const result = await client.exec(sandboxId, {
-					command: processOptions.command,
-					workdir: processOptions.workingDirectory,
-					env: processOptions.env,
-					abortSignal: processOptions.abortSignal,
-				});
-				return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
+				const process = await spawn(processOptions);
+				const stdout = collectBytes(process.stdout);
+				const stderr = collectBytes(process.stderr);
+				const result = await process.wait();
+				return {
+					exitCode: result.exitCode,
+					stdout: new TextDecoder().decode(await stdout),
+					stderr: new TextDecoder().decode(await stderr),
+				};
 			},
 		};
 
@@ -424,8 +450,8 @@ export function createN8nHarnessSandboxProvider(
 				return ports;
 			},
 			getPortUrl: async ({ port }) => (await createBridgeLease(port)).url,
-			stop: stopSandbox,
-			destroy: stopSandbox,
+			stop: revokeBridgeLease,
+			destroy: destroySandbox,
 			setPorts: async (nextPorts, setPortsOptions) => {
 				setPortsOptions?.abortSignal?.throwIfAborted();
 				if (nextPorts.some((port) => port !== bridgePort)) {
@@ -445,12 +471,28 @@ export function createN8nHarnessSandboxProvider(
 			abortSignal?.throwIfAborted();
 			const sandbox = await client.createSandbox(sessionId ? { id: sessionId } : undefined);
 			const session = buildSession(sandbox.id);
-			if (onFirstCreate) await onFirstCreate(session.restricted(), { abortSignal });
+			try {
+				if (onFirstCreate) await onFirstCreate(session.restricted(), { abortSignal });
+			} catch (error) {
+				try {
+					await session.destroy?.();
+				} catch {
+					// Preserve the bootstrap error as the actionable failure.
+				}
+				throw error;
+			}
 			return session;
 		},
 		resumeSession: async ({ sessionId, abortSignal }) => {
 			abortSignal?.throwIfAborted();
-			await client.getSandbox(sessionId);
+			try {
+				await client.getSandbox(sessionId);
+			} catch (error) {
+				if (error instanceof SandboxServiceError && error.status === 404) {
+					throw new HarnessSessionExpiredError();
+				}
+				throw error;
+			}
 			return buildSession(sessionId);
 		},
 	};

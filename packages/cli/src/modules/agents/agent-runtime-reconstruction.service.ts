@@ -34,7 +34,6 @@ import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { createHash } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
@@ -85,6 +84,7 @@ import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
+import { createHarnessRuntimeIdentity } from './utils/harness-runtime-identity';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
  * row exists, so anything keyed on a real agent id (checkpoints, knowledge
@@ -568,16 +568,13 @@ export class AgentRuntimeReconstructionService {
 			.map((tool) => tool.systemInstruction)
 			.filter((instruction): instruction is string => Boolean(instruction));
 		const instructions = [config.instructions, ...toolInstructions].join('\n\n');
-		const runtimeIdentity = createHash('sha256')
-			.update(
-				JSON.stringify({
-					adapter: engine.adapter,
-					config,
-					toolDescriptors: options.toolDescriptors,
-					toolCodeByName: options.toolCodeByName,
-				}),
-			)
-			.digest('hex');
+		const runtimeIdentity = createHarnessRuntimeIdentity({
+			config,
+			instructions,
+			...(baseUrl ? { baseUrl } : {}),
+			toolDescriptors: options.toolDescriptors,
+			toolCodeByName: options.toolCodeByName,
+		});
 
 		return {
 			agent: new HarnessRuntimeAgent({

@@ -16,6 +16,7 @@ export interface HarnessSessionState {
 	sessionId: string;
 	resumeFrom?: HarnessAgentResumeSessionState;
 	continueFrom?: HarnessAgentContinueTurnState;
+	resetReason?: 'aborted';
 }
 
 /**

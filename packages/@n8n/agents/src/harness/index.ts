@@ -6,10 +6,16 @@ export type {
 	HarnessSessionState,
 	HarnessSessionStore,
 } from './session-store';
-export { translateHarnessStream, type HarnessStreamLifecycleEmitter } from './stream';
+export {
+	chainHarnessStreams,
+	translateHarnessStream,
+	type HarnessStreamLifecycleEmitter,
+} from './stream';
 export { toHarnessTools } from './tool-adapter';
 export {
 	createN8nHarnessSandboxProvider,
+	destroyN8nHarnessSandbox,
+	HarnessSessionExpiredError,
 	type N8nHarnessSandboxProviderOptions,
 } from './n8n-sandbox-provider';
 export type {

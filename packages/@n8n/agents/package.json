@@ -127,6 +127,7 @@
     "ai": "catalog:",
     "ajv": "^8.18.0",
     "langsmith": "catalog:",
+    "n8n-workflow": "workspace:*",
     "undici": "catalog:undici-v7",
     "ws": "catalog:",
     "yaml": "catalog:",

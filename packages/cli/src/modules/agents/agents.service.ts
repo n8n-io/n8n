@@ -322,6 +322,7 @@ export class AgentsService {
 		}
 
 		await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
+		await this.agentExecutionService.destroyHarnessSessionsForAgent(agentId);
 
 		await this.agentRepository.remove(agent);
 

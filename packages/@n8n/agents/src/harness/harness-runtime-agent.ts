@@ -4,6 +4,7 @@ import {
 	type HarnessAgentAdapter,
 	type HarnessAgentSandboxConfig,
 } from '@ai-sdk/harness/agent';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import type {
@@ -17,8 +18,13 @@ import type {
 	SerializableAgentState,
 	StreamResult,
 } from '../types';
+import { HarnessSessionExpiredError } from './n8n-sandbox-provider';
 import type { HarnessSessionClaim, HarnessSessionStore } from './session-store';
-import { translateHarnessStream, type HarnessStreamLifecycleEmitter } from './stream';
+import {
+	chainHarnessStreams,
+	translateHarnessStream,
+	type HarnessStreamLifecycleEmitter,
+} from './stream';
 import { toHarnessTools } from './tool-adapter';
 
 export interface HarnessRuntimeAgentSettings {
@@ -43,6 +49,12 @@ const EMPTY_MESSAGE_LIST = {
 	responseIds: [],
 };
 
+class PreviousHarnessTurnUnfinishedError extends UserError {
+	constructor() {
+		super('The previous agent turn is still finishing. Try again in a moment.');
+	}
+}
+
 function getPrompt(input: AgentMessage[] | string): string {
 	if (typeof input === 'string') return input;
 
@@ -50,7 +62,7 @@ function getPrompt(input: AgentMessage[] | string): string {
 		const message = input[index];
 		if (!('role' in message) || message.role !== 'user') continue;
 		if (message.content.some((part) => part.type !== 'text')) {
-			throw new Error('Harness agents do not support file attachments');
+			throw new UserError('Harness agents do not support file attachments');
 		}
 		const text = message.content
 			.filter((part) => part.type === 'text')
@@ -59,7 +71,7 @@ function getPrompt(input: AgentMessage[] | string): string {
 		if (text) return text;
 	}
 
-	throw new Error('Harness turns require a user text message');
+	throw new UserError('Harness turns require a user text message');
 }
 
 function getSnapshotModel(model: string): { provider: string | null; name: string | null } {
@@ -89,7 +101,7 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 	): Promise<StreamResult> {
 		const persistence = options.persistence;
 		if (!persistence) {
-			throw new Error('Harness turns require a persisted thread scope');
+			throw new UnexpectedError('Harness turns require a persisted thread scope');
 		}
 		const prompt = getPrompt(input);
 
@@ -109,8 +121,21 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 		const abortSignal = options.abortSignal
 			? AbortSignal.any([options.abortSignal, claim.abortSignal])
 			: claim.abortSignal;
+		if (claim.state.resetReason === 'aborted') {
+			try {
+				await claim.clear();
+			} finally {
+				await claim.release();
+			}
+			throw new UserError(
+				'The previous agent session was reset after its turn was canceled. Send your message again to start a new session.',
+			);
+		}
 
-		const lifecycle: HarnessStreamLifecycleEmitter = { emit: () => {} };
+		const pendingLifecycle: Array<Parameters<HarnessStreamLifecycleEmitter['emit']>[0]> = [];
+		const lifecycle: HarnessStreamLifecycleEmitter = {
+			emit: (chunk) => pendingLifecycle.push(chunk),
+		};
 		const tools = toHarnessTools(this.settings.tools ?? [], {
 			runId,
 			persistence,
@@ -135,7 +160,11 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 				abortSignal,
 			});
 		} catch (error) {
-			await claim.release();
+			try {
+				if (error instanceof HarnessSessionExpiredError) await claim.clear();
+			} finally {
+				await claim.release();
+			}
 			throw error;
 		}
 
@@ -151,7 +180,19 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 						abortSignal,
 					});
 
-			const stream = translateHarnessStream(result.stream, {
+			const harnessStream = claim.state.continueFrom
+				? chainHarnessStreams(result.stream, async () => {
+						if (session.hasUnfinishedTurn()) throw new PreviousHarnessTurnUnfinishedError();
+						return (
+							await agent.stream({
+								session,
+								prompt,
+								abortSignal,
+							})
+						).stream;
+					})
+				: result.stream;
+			const stream = translateHarnessStream(harnessStream, {
 				model: this.settings.model,
 				lifecycle,
 				onComplete: async () => {
@@ -163,7 +204,7 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 					if (options.abortSignal?.aborted) {
 						status = 'cancelled';
 						try {
-							await this.destroySession(session, claim);
+							await this.destroySessionAndMarkReset(session, claim);
 						} finally {
 							await claim.release();
 						}
@@ -187,19 +228,28 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 						await claim.release();
 					}
 				},
-				onFailure: async () => {
+				onFailure: async (error) => {
 					status = options.abortSignal?.aborted ? 'cancelled' : 'failed';
 					if (claim.abortSignal.aborted) {
 						await claim.release();
 						return;
 					}
 					try {
-						await this.destroySession(session, claim);
+						if (error instanceof PreviousHarnessTurnUnfinishedError) {
+							const continueFrom = await session.suspendTurn();
+							await claim.save({ sessionId: session.sessionId, continueFrom });
+						} else if (options.abortSignal?.aborted) {
+							await this.destroySessionAndMarkReset(session, claim);
+						} else {
+							await this.destroySession(session, claim);
+						}
 					} finally {
 						await claim.release();
 					}
 				},
 			});
+			for (const chunk of pendingLifecycle) lifecycle.emit(chunk);
+			pendingLifecycle.length = 0;
 
 			return {
 				runId,
@@ -213,7 +263,11 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 				throw error;
 			}
 			try {
-				await this.destroySession(session, claim);
+				if (options.abortSignal?.aborted) {
+					await this.destroySessionAndMarkReset(session, claim);
+				} else {
+					await this.destroySession(session, claim);
+				}
 			} finally {
 				await claim.release();
 			}
@@ -227,7 +281,7 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 		_options: ResumeOptions & ExecutionOptions,
 	): Promise<StreamResult> {
 		await Promise.resolve();
-		throw new Error('Harness host-tool approval continuation is not supported');
+		throw new UserError('Harness host-tool approval continuation is not supported');
 	}
 
 	async close(): Promise<void> {}
@@ -253,5 +307,13 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 		} finally {
 			await claim.clear();
 		}
+	}
+
+	private async destroySessionAndMarkReset(
+		session: { destroy(): Promise<void> },
+		claim: HarnessSessionClaim,
+	): Promise<void> {
+		await session.destroy();
+		await claim.save({ sessionId: claim.state.sessionId, resetReason: 'aborted' });
 	}
 }

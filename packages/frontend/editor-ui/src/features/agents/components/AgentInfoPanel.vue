@@ -6,6 +6,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
+import { AGENT_HARNESS_MODELS, isAgentHarnessModel } from '@n8n/api-types';
 import { N8nMarkdownEditor, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -130,7 +131,18 @@ const filteredAgents = computed<AgentModelsByProvider>(() => {
 	if (!provider) return models;
 
 	const providerModels = models[provider];
-	return providerModels ? { [provider]: providerModels } : {};
+	if (!providerModels) return {};
+	const adapter = selectedEngine.value;
+	if (adapter === 'n8n') return { [provider]: providerModels };
+	const allowedModels: readonly string[] = AGENT_HARNESS_MODELS[adapter];
+	return {
+		[provider]: {
+			...providerModels,
+			models: providerModels.models.filter((model) =>
+				allowedModels.includes(`${provider}/${model.model}`),
+			),
+		},
+	};
 });
 
 const selectedAgent = computed<AgentModelOption | null>(() => {
@@ -143,6 +155,8 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 		(m) => m.model === parsed.name,
 	);
 	if (registryEntry) return registryEntry;
+	const engine = props.config?.engine;
+	if (engine?.type === 'harness' && !isAgentHarnessModel(engine.adapter, modelStr)) return null;
 
 	return {
 		provider: parsed.provider,
@@ -209,6 +223,17 @@ function onEngineChange(value: unknown) {
 		engine: value === 'n8n' ? { type: 'n8n' } : { type: 'harness', adapter: value },
 		model: '',
 		credential: undefined,
+		...(value === 'n8n'
+			? {}
+			: {
+					memory: undefined,
+					subAgents: undefined,
+					skills: [],
+					mcpServers: [],
+					vectorStores: [],
+					providerTools: undefined,
+					config: undefined,
+				}),
 	});
 }
 

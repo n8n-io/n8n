@@ -12,6 +12,39 @@ export interface HarnessStreamLifecycleEmitter {
 	emit(chunk: ToolLifecycleChunk): void;
 }
 
+export function chainHarnessStreams(
+	first: ReadableStream<TextStreamPart<ToolSet>>,
+	next: () => Promise<ReadableStream<TextStreamPart<ToolSet>>>,
+): ReadableStream<TextStreamPart<ToolSet>> {
+	let reader = first.getReader();
+	let isFirst = true;
+
+	return new ReadableStream<TextStreamPart<ToolSet>>({
+		async pull(controller) {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (!done) {
+					if (isFirst && value.type === 'finish') continue;
+					controller.enqueue(value);
+					return;
+				}
+
+				if (!isFirst) {
+					controller.close();
+					return;
+				}
+
+				isFirst = false;
+				reader.releaseLock();
+				reader = (await next()).getReader();
+			}
+		},
+		async cancel(reason) {
+			await reader.cancel(reason);
+		},
+	});
+}
+
 export function translateHarnessStream(
 	stream: ReadableStream<TextStreamPart<ToolSet>>,
 	options: {

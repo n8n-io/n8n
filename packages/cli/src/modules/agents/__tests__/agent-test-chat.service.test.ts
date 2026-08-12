@@ -2,6 +2,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentTestChatService, chatThreadId } from '../agent-test-chat.service';
+import type { N8nHarnessSessionCleanupService } from '../integrations/n8n-harness-session-cleanup.service';
 import type { N8nMemory } from '../integrations/n8n-memory';
 
 const agentId = 'agent-1';
@@ -12,13 +13,15 @@ function makeService() {
 	const n8nMemory = mock<N8nMemory>();
 	const memory = mock<MemoryImplementation>();
 	const attachmentService = mock<AgentChatAttachmentService>();
+	const harnessSessionCleanupService = mock<N8nHarnessSessionCleanupService>();
 	n8nMemory.getImplementation.mockReturnValue(memory);
 
 	return {
-		service: new AgentTestChatService(n8nMemory, attachmentService),
+		service: new AgentTestChatService(n8nMemory, attachmentService, harnessSessionCleanupService),
 		n8nMemory,
 		memory,
 		attachmentService,
+		harnessSessionCleanupService,
 	};
 }
 
@@ -40,14 +43,22 @@ describe('AgentTestChatService', () => {
 	});
 
 	it('clears one user thread or every test-chat thread for an agent', async () => {
-		const { service, memory } = makeService();
+		const { service, memory, harnessSessionCleanupService } = makeService();
 
 		await service.clearTestChatMessages(agentId, userId);
 		expect(memory.deleteThread).toHaveBeenCalledWith(`test-${agentId}:${userId}`);
+		expect(harnessSessionCleanupService.destroyByAgentAndThread).toHaveBeenCalledWith(
+			agentId,
+			`test-${agentId}:${userId}`,
+		);
 
 		await service.clearAllTestChatMessages(agentId);
 		expect(memory.deleteThreadsByPrefix).toHaveBeenCalledWith(`test-${agentId}`);
 		expect(memory.deleteMessagesByThread).toHaveBeenCalledWith(`test-${agentId}`);
 		expect(memory.deleteThread).toHaveBeenCalledWith(`test-${agentId}`);
+		expect(harnessSessionCleanupService.destroyByAgentAndThreadPrefix).toHaveBeenCalledWith(
+			agentId,
+			`test-${agentId}`,
+		);
 	});
 });

@@ -6,6 +6,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
 	findVectorStoreToolNameCollisions,
+	isAgentHarnessModel,
 	isDraftAgentConfig,
 	isDraftIntegration,
 	type AgentConfigValidationIssue,
@@ -83,7 +84,7 @@ export class AgentValidationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,
-		private readonly agentsConfig: AgentsConfig = new AgentsConfig(),
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	/**
@@ -364,9 +365,7 @@ export class AgentValidationService {
 			issues.push(agentIssue('incompatible_credential', 'credential'));
 		}
 
-		const provider = getProviderPrefix(config.model);
-		const expectedProvider = config.engine.adapter === 'claude-code' ? 'anthropic' : 'openai';
-		if (provider && provider !== expectedProvider) {
+		if (!isAgentHarnessModel(config.engine.adapter, config.model)) {
 			issues.push(agentIssue('invalid_value', 'model'));
 		}
 
@@ -394,6 +393,23 @@ export class AgentValidationService {
 		}
 		if (config.config?.promptCaching?.enabled) {
 			issues.push(agentIssue('invalid_value', 'config.promptCaching'));
+		}
+		if (config.config?.toolCallConcurrency !== undefined) {
+			issues.push(agentIssue('invalid_value', 'config.toolCallConcurrency'));
+		}
+		if (config.config?.maxIterations !== undefined) {
+			issues.push(agentIssue('invalid_value', 'config.maxIterations'));
+		}
+		if (config.engine.adapter === 'claude-code' && config.config?.reasoning !== undefined) {
+			issues.push(agentIssue('invalid_value', 'config.reasoning'));
+		}
+		if (
+			config.engine.adapter === 'claude-code' &&
+			(config.config?.webSearch?.enabled ||
+				config.config?.webSearch?.provider !== undefined ||
+				config.config?.webSearch?.credential !== undefined)
+		) {
+			issues.push(agentIssue('invalid_value', 'config.webSearch'));
 		}
 
 		for (const [index, tool] of (config.tools ?? []).entries()) {

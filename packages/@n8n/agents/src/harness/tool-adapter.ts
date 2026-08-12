@@ -1,4 +1,5 @@
 import type { ToolSet } from 'ai';
+import { UserError } from 'n8n-workflow';
 
 import { loadAi } from '../runtime/model/lazy-ai';
 import { executeTool } from '../runtime/tools/tool-adapter';
@@ -31,7 +32,9 @@ export function toHarnessTools(
 	for (const builtTool of tools) {
 		if (!builtTool.inputSchema || !builtTool.handler) continue;
 		if (builtTool.approval?.required || builtTool.suspendSchema || builtTool.resumeSchema) {
-			throw new Error(`Harness tool "${builtTool.name}" requires unsupported continuation support`);
+			throw new UserError(
+				`Harness tool "${builtTool.name}" requires unsupported continuation support`,
+			);
 		}
 
 		const inputSchema = isZodSchema(builtTool.inputSchema)

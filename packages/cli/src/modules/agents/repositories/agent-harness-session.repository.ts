@@ -23,6 +23,11 @@ export interface AcquireAgentHarnessSessionOptions {
 	sessionTtlMs: number;
 }
 
+export type AgentHarnessSessionCleanupRecord = Pick<
+	AgentHarnessSession,
+	'agentId' | 'threadId' | 'runtimeIdentity' | 'sessionId'
+>;
+
 @Service()
 export class AgentHarnessSessionRepository extends Repository<AgentHarnessSession> {
 	constructor(dataSource: DataSource) {
@@ -36,18 +41,6 @@ export class AgentHarnessSessionRepository extends Repository<AgentHarnessSessio
 		const now = new Date();
 		const claimExpiresAt = new Date(now.getTime() + options.claimTtlMs);
 		const expiresAt = new Date(now.getTime() + options.sessionTtlMs);
-		await this.createQueryBuilder()
-			.delete()
-			.from(AgentHarnessSession)
-			.where('"agentId" = :agentId', { agentId: key.agentId })
-			.andWhere('"threadId" = :threadId', { threadId: key.threadId })
-			.andWhere('"runtimeIdentity" = :runtimeIdentity', {
-				runtimeIdentity: key.runtimeIdentity,
-			})
-			.andWhere('"expiresAt" <= :now', { now })
-			.andWhere('("status" = :idle OR "claimExpiresAt" <= :now)', { idle: 'idle', now })
-			.execute();
-
 		const updated = await this.createQueryBuilder()
 			.update(AgentHarnessSession)
 			.set({
@@ -130,18 +123,90 @@ export class AgentHarnessSessionRepository extends Repository<AgentHarnessSessio
 		return (result.affected ?? 0) > 0;
 	}
 
-	async deleteByAgentAndThread(agentId: string, threadId: string): Promise<void> {
-		await this.delete({ agentId, threadId });
+	async findForCleanupByAgentAndThread(
+		agentId: string,
+		threadId: string,
+	): Promise<AgentHarnessSessionCleanupRecord[]> {
+		return await this.find({
+			select: { agentId: true, threadId: true, runtimeIdentity: true, sessionId: true },
+			where: { agentId, threadId },
+		});
 	}
 
-	async deleteByAgentAndThreadPrefix(agentId: string, threadIdPrefix: string): Promise<void> {
-		await this.createQueryBuilder()
-			.delete()
-			.from(AgentHarnessSession)
-			.where('"agentId" = :agentId', { agentId })
-			.andWhere('"threadId" LIKE :threadIdPrefix', {
+	async findForCleanupByAgentAndThreadPrefix(
+		agentId: string,
+		threadIdPrefix: string,
+	): Promise<AgentHarnessSessionCleanupRecord[]> {
+		return await this.createQueryBuilder('session')
+			.select([
+				'session.agentId',
+				'session.threadId',
+				'session.runtimeIdentity',
+				'session.sessionId',
+			])
+			.where('session.agentId = :agentId', { agentId })
+			.andWhere('session.threadId LIKE :threadIdPrefix', {
 				threadIdPrefix: `${threadIdPrefix}%`,
 			})
-			.execute();
+			.getMany();
+	}
+
+	async findForCleanupByAgent(agentId: string): Promise<AgentHarnessSessionCleanupRecord[]> {
+		return await this.find({
+			select: { agentId: true, threadId: true, runtimeIdentity: true, sessionId: true },
+			where: { agentId },
+		});
+	}
+
+	async findSupersededForCleanup(
+		agentId: string,
+		threadId: string,
+		runtimeIdentity: string,
+	): Promise<AgentHarnessSessionCleanupRecord[]> {
+		return await this.createQueryBuilder('session')
+			.select([
+				'session.agentId',
+				'session.threadId',
+				'session.runtimeIdentity',
+				'session.sessionId',
+			])
+			.where('session.agentId = :agentId', { agentId })
+			.andWhere('session.threadId = :threadId', { threadId })
+			.andWhere('session.runtimeIdentity != :runtimeIdentity', { runtimeIdentity })
+			.getMany();
+	}
+
+	async findExpiredForCleanup(
+		agentId: string,
+		threadId: string,
+		runtimeIdentity: string,
+	): Promise<AgentHarnessSessionCleanupRecord[]> {
+		const now = new Date();
+		return await this.createQueryBuilder('session')
+			.select([
+				'session.agentId',
+				'session.threadId',
+				'session.runtimeIdentity',
+				'session.sessionId',
+			])
+			.where('session.agentId = :agentId', { agentId })
+			.andWhere('session.threadId = :threadId', { threadId })
+			.andWhere('session.runtimeIdentity = :runtimeIdentity', { runtimeIdentity })
+			.andWhere('session.expiresAt <= :now', { now })
+			.andWhere('(session.status = :idle OR session.claimExpiresAt <= :now)', {
+				idle: 'idle',
+				now,
+			})
+			.getMany();
+	}
+
+	async deleteCleanupRecord(record: AgentHarnessSessionCleanupRecord): Promise<boolean> {
+		const result = await this.delete({
+			agentId: record.agentId,
+			threadId: record.threadId,
+			runtimeIdentity: record.runtimeIdentity,
+			sessionId: record.sessionId,
+		});
+		return (result.affected ?? 0) > 0;
 	}
 }

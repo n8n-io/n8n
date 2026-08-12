@@ -2,8 +2,8 @@ import { Service } from '@n8n/di';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
+import { N8nHarnessSessionCleanupService } from './integrations/n8n-harness-session-cleanup.service';
 import { N8nMemory } from './integrations/n8n-memory';
-import { AgentHarnessSessionRepository } from './repositories/agent-harness-session.repository';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 
 /** Derive a stable thread ID for the test-chat of a given agent and user. */
@@ -17,7 +17,7 @@ export class AgentTestChatService {
 	constructor(
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
-		private readonly agentHarnessSessionRepository?: AgentHarnessSessionRepository,
+		private readonly harnessSessionCleanupService: N8nHarnessSessionCleanupService,
 	) {}
 
 	/**
@@ -37,18 +37,18 @@ export class AgentTestChatService {
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
 		const threadId = chatThreadId(agentId, userId);
+		await this.harnessSessionCleanupService.destroyByAgentAndThread(agentId, threadId);
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentChatAttachmentService.deleteByThread(threadId, { agentId });
-		await this.agentHarnessSessionRepository?.deleteByAgentAndThread(agentId, threadId);
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
 	async clearAllTestChatMessages(agentId: string) {
 		const threadId = chatThreadId(agentId);
 		const memory = this.n8nMemory.getImplementation(agentId);
+		await this.harnessSessionCleanupService.destroyByAgentAndThreadPrefix(agentId, threadId);
 		await memory.deleteThreadsByPrefix(threadId);
 		await memory.deleteMessagesByThread(threadId);
 		await memory.deleteThread(threadId);
-		await this.agentHarnessSessionRepository?.deleteByAgentAndThreadPrefix(agentId, threadId);
 	}
 }

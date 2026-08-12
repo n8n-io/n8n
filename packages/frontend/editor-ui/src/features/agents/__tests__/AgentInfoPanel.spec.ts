@@ -6,6 +6,7 @@ import { ref } from 'vue';
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import type { ProviderCatalog } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
+import type { AgentModelsByProvider } from '../model-providers';
 
 const ensureLoadedMock = vi.fn();
 const selectCredentialMock = vi.fn();
@@ -65,6 +66,13 @@ vi.mock('@n8n/design-system', () => ({
 			'<div v-bind="$attrs" data-testid="markdown-editor">{{ modelValue }} {{ placeholder }}</div>',
 	},
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
+	N8nSelect: {
+		name: 'N8nSelect',
+		props: ['modelValue', 'disabled', 'size'],
+		emits: ['update:modelValue'],
+		template: '<div><slot /></div>',
+	},
+	N8nOption: { name: 'N8nOption', props: ['value', 'label'], template: '<span />' },
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -73,6 +81,13 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({ currentUserId: 'user-1' }),
+}));
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({
+		isAgentModuleActive: (module: string) => module === 'harnesses',
+		moduleSettings: { agents: { harnessAllowDirectCredentials: false } },
+	}),
 }));
 
 vi.mock('../composables/useAgentProjectId', () => ({
@@ -280,6 +295,51 @@ describe('AgentInfoPanel', () => {
 			expect(last.config?.reasoning).toBe('high');
 		},
 	);
+
+	it('clears hidden n8n-only settings when switching to a harness engine', async () => {
+		const wrapper = mountModelPanel({
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+			memory: { enabled: false, storage: 'n8n' },
+			subAgents: { agents: [] },
+			skills: [{ type: 'skill', id: 'skill-1' }],
+			mcpServers: [],
+			vectorStores: [],
+			providerTools: { anthropic: { web_search: true } },
+			config: { toolCallConcurrency: 2 },
+		});
+
+		wrapper.findComponent({ name: 'N8nSelect' }).vm.$emit('update:modelValue', 'claude-code');
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toEqual({
+			engine: { type: 'harness', adapter: 'claude-code' },
+			model: '',
+			credential: undefined,
+			memory: undefined,
+			subAgents: undefined,
+			skills: [],
+			mcpServers: [],
+			vectorStores: [],
+			providerTools: undefined,
+			config: undefined,
+		});
+	});
+
+	it('only exposes curated models for the selected harness', () => {
+		const wrapper = mountModelPanel({
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+			engine: { type: 'harness', adapter: 'claude-code' },
+		});
+
+		const models = selectorProps(wrapper).modelsByProvider as AgentModelsByProvider;
+		expect(models.anthropic?.models.map((model) => model.model)).toEqual(['claude-sonnet-4-5']);
+	});
 
 	describe('model credential resolution', () => {
 		it("overlays the agent config's credential for the model provider (builder-created agent)", () => {
