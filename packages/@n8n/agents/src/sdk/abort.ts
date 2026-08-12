@@ -16,6 +16,12 @@ export function createAbortError(reason?: unknown): Error {
 	return error;
 }
 
+function createTimeoutError(timeoutMs: number): Error {
+	const error = new Error(`Operation timed out after ${timeoutMs}ms`);
+	error.name = 'TimeoutError';
+	return error;
+}
+
 /** Throw if the given signal has already fired. */
 export function throwIfAborted(signal?: AbortSignal): void {
 	if (signal?.aborted) {
@@ -24,35 +30,59 @@ export function throwIfAborted(signal?: AbortSignal): void {
 }
 
 /**
- * Race work against an abort signal so Stop settles promptly even when the
- * underlying work ignores cancellation. Pass a factory when work must not start
- * until after the abort check (e.g. sandbox recover/retry). Cooperative callers
- * should still forward `abortSignal` into I/O where the provider supports it.
+ * Race work against an abort signal (and optional deadline) so Stop — or a
+ * hung tool — settles promptly even when the underlying work ignores
+ * cancellation. Pass a factory when work must not start until after the
+ * abort check (e.g. sandbox recover/retry). Cooperative callers should still
+ * forward `abortSignal` into I/O where the provider supports it.
  *
- * The abort listener is always removed when the race settles so run-scoped
- * signals do not accumulate listeners across nested tool calls.
+ * When `timeoutMs` is set, work that has not settled by the deadline rejects
+ * with a `TimeoutError` (distinct from `AbortError`) so the executor can
+ * record it as a tool error the LLM can self-correct from, rather than a
+ * cancellation. The abort listener and any pending timer are always removed
+ * when the race settles so run-scoped signals do not accumulate listeners
+ * across nested tool calls.
  */
 export async function raceWithAbort<T>(
 	work: Promise<T> | (() => Promise<T>),
 	signal?: AbortSignal,
+	timeoutMs?: number,
 ): Promise<T> {
 	const run = typeof work === 'function' ? work : async () => await work;
-	if (!signal) {
+	const deadline = timeoutMs !== undefined && timeoutMs > 0 ? timeoutMs : undefined;
+	const hasTimeout = deadline !== undefined;
+	if (!signal && !hasTimeout) {
 		return await run();
 	}
-	throwIfAborted(signal);
+	if (signal) throwIfAborted(signal);
 
 	let onAbort!: () => void;
-	const rejection = new Promise<never>((_, reject) => {
-		onAbort = () => {
-			reject(createAbortError(signal.reason));
-		};
-		signal.addEventListener('abort', onAbort, { once: true });
-	});
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+	const racers: Array<Promise<never>> = [];
+
+	if (signal) {
+		racers.push(
+			new Promise<never>((_, reject) => {
+				onAbort = () => {
+					reject(createAbortError(signal.reason));
+				};
+				signal.addEventListener('abort', onAbort, { once: true });
+			}),
+		);
+	}
+
+	if (hasTimeout) {
+		racers.push(
+			new Promise<never>((_, reject) => {
+				timeoutId = setTimeout(() => reject(createTimeoutError(deadline)), deadline);
+			}),
+		);
+	}
 
 	try {
-		return await Promise.race([run(), rejection]);
+		return await Promise.race([run(), ...racers]);
 	} finally {
-		signal.removeEventListener('abort', onAbort);
+		if (signal) signal.removeEventListener('abort', onAbort);
+		if (timeoutId !== undefined) clearTimeout(timeoutId);
 	}
 }

@@ -180,6 +180,7 @@ export interface ToolCallExecutorDeps {
 	eventBus: AgentEventBus;
 	/** Effective tool-call concurrency (default 1 = sequential). */
 	concurrency: number;
+	toolCallTimeoutMs?: number;
 	/** Invoked when a run is aborted mid-batch so the runtime can set cancelled state. */
 	onCancelled: () => void;
 	tokenCounter: TokenCounter;
@@ -205,6 +206,10 @@ export class ToolCallExecutor {
 
 	private get concurrency(): number {
 		return this.deps.concurrency;
+	}
+
+	private get toolCallTimeoutMs(): number | undefined {
+		return this.deps.toolCallTimeoutMs;
 	}
 
 	private isDelegateSubAgentCall(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
@@ -975,6 +980,7 @@ export class ToolCallExecutor {
 							onSuspend,
 						}),
 					abortSignal,
+					this.toolCallTimeoutMs,
 				),
 		);
 	}

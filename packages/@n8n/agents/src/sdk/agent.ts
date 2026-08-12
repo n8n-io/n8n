@@ -142,6 +142,8 @@ export interface AgentSnapshot {
 	promptCaching: PromptCachingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
+	/** Per-tool-call timeout in ms if set, otherwise null. */
+	toolCallTimeoutMs: number | null;
 }
 
 /**
@@ -206,6 +208,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private promptCachingConfig?: PromptCachingConfig;
 
 	private concurrencyValue?: number;
+
+	private toolCallTimeoutMsValue?: number;
 
 	private telemetryBuilder?: Telemetry;
 
@@ -552,6 +556,17 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
+	 * Set a per-tool-call timeout in milliseconds.
+	 */
+	toolCallTimeoutMs(ms: number): this {
+		if (!Number.isFinite(ms) || ms < 0) {
+			throw new Error('toolCallTimeoutMs must be a non-negative finite number');
+		}
+		this.toolCallTimeoutMsValue = ms;
+		return this;
+	}
+
+	/**
 	 * Attach a workspace to this agent. Workspace tools and instructions
 	 * are injected at build time.
 	 */
@@ -715,6 +730,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			reasoning: this.reasoningLevel ?? null,
 			promptCaching: this.promptCachingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
+			toolCallTimeoutMs: this.toolCallTimeoutMsValue ?? null,
 		};
 	}
 
@@ -1081,6 +1097,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(this.concurrencyValue !== undefined
 				? { toolCallConcurrency: this.concurrencyValue }
 				: {}),
+			...(this.toolCallTimeoutMsValue !== undefined
+				? { toolCallTimeoutMs: this.toolCallTimeoutMsValue }
+				: {}),
 			...(toolSearch !== undefined ? { toolSearch } : {}),
 		});
 
@@ -1118,6 +1137,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			reasoning: this.reasoningLevel,
 			promptCaching: this.promptCachingConfig,
 			toolCallConcurrency: this.concurrencyValue,
+			toolCallTimeoutMs: this.toolCallTimeoutMsValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 			modelCost,
@@ -1135,6 +1155,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			runState: RunStateManager;
 			telemetry?: BuiltTelemetry;
 			toolCallConcurrency?: number;
+			toolCallTimeoutMs?: number;
 			toolSearch?: { topK?: number };
 		},
 	): BuiltTool[] {
@@ -1219,6 +1240,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		runState: RunStateManager;
 		telemetry?: BuiltTelemetry;
 		toolCallConcurrency?: number;
+		toolCallTimeoutMs?: number;
 		toolSearch?: { topK?: number };
 		tools: BuiltTool[];
 		inlineSubAgentBlockedTools?: string[];
@@ -1267,6 +1289,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
+					: {}),
+				...(options.toolCallTimeoutMs !== undefined
+					? { toolCallTimeoutMs: options.toolCallTimeoutMs }
 					: {}),
 			});
 

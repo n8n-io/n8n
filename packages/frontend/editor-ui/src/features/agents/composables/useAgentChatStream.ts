@@ -354,6 +354,30 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		);
 	}
 
+	/**
+	 * Settle tool calls left `pending`/`running` after the stream ended (their
+	 * terminal events never arrived). Used by `stopGenerating` to recover the
+	 * desync where the chat is idle and responsive but tool steps keep pulsing.
+	 * Suspended tools are left untouched — they have a `runId` and are still
+	 * resolvable through the normal resume/cancel flow.
+	 */
+	function settleStaleInFlightToolCalls(): void {
+		for (const message of messages.value) {
+			let changed = false;
+			for (const toolCall of message.toolCalls ?? []) {
+				if (
+					toolCall.state === TOOL_CALL_STATE.PENDING ||
+					toolCall.state === TOOL_CALL_STATE.RUNNING
+				) {
+					toolCall.state = TOOL_CALL_STATE.CANCELLED;
+					toolCall.canceled = true;
+					changed = true;
+				}
+			}
+			if (changed) markMessageSuccessIfSettled(message);
+		}
+	}
+
 	function handleEvent(
 		event: AgentSseEvent,
 		session: StreamSession,
@@ -631,6 +655,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		settleOpenReasoning(session);
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+			// Defensive: if the stream completed (`done`) while tool calls are
+			// still `pending`/`running`, their terminal events never arrived
+			// (e.g. backend emitted `done` before per-tool `tool-execution-end`,
+			// or the events were dropped). Settle them so the UI stops pulsing
+			// and Stop hides — the run is over and the agent is responsive.
+			for (const toolCall of msg.toolCalls ?? []) {
+				if (isToolCallInFlight(toolCall) && toolCall.state !== TOOL_CALL_STATE.SUSPENDED) {
+					toolCall.state = TOOL_CALL_STATE.DONE;
+				}
+			}
 		}
 	}
 
@@ -905,6 +939,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (!openSuspension) {
 			activeController?.abort();
 			await activeStreamSettlement;
+			// Desync recovery: the stream already ended but tool calls are still
+			// pulsing because their terminal events never arrived. There is no
+			// backend run left to cancel — settle the stale state locally so
+			// the UI stops showing Stop and the shimmer clears.
+			if (!isStreaming.value) {
+				settleStaleInFlightToolCalls();
+			}
 			return;
 		}
 
