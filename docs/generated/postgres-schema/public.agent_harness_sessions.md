@@ -24,7 +24,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agent_harness_sessions_adapter | CHECK | CHECK (((adapter)::text = ANY ((ARRAY['claude-code'::character varying, 'codex'::character varying])::text[]))) |
+| CHK_agent_harness_sessions_adapter | CHECK | CHECK (((adapter)::text = ANY ((ARRAY['claude-code'::character varying, 'codex'::character varying, 'claude-code:daytona'::character varying, 'claude-code:n8n-sandbox'::character varying, 'codex:daytona'::character varying, 'codex:n8n-sandbox'::character varying])::text[]))) |
 | CHK_agent_harness_sessions_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['idle'::character varying, 'claimed'::character varying])::text[]))) |
 | FK_ba8bc431add6f2dedad0886d686 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_fdcdfbb4deeeacd3e0077e07f7d | PRIMARY KEY | PRIMARY KEY ("agentId", "threadId", "runtimeIdentity") |
