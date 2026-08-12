@@ -15,7 +15,6 @@ import type {
 } from 'n8n-workflow';
 import { createRunExecutionData, UnexpectedError, Workflow } from 'n8n-workflow';
 import path from 'node:path';
-import { mock } from 'vitest-mock-extended';
 
 import { createMockNodeType, getNodeMocks, MOCK_NODE_TYPE, withMockNodeType } from './mock-node';
 
@@ -98,7 +97,11 @@ export async function runWorkflow(
 	if (!startNode) throw new UnexpectedError('The workflow has no start node to run from');
 
 	// PoC shortcut: the hooks only need the workflow's identity, not a persisted entity.
-	const hooks = new ExecutionLifecycleHooks('trigger', 'n8n-test', mock<IWorkflowBase>());
+	const hooks = new ExecutionLifecycleHooks(
+		'trigger',
+		'n8n-test',
+		{ id: workflowJson.id ?? 'n8n-test', name: workflowJson.name ?? 'n8n-test' } as IWorkflowBase,
+	);
 
 	let resolveRun!: (run: IRun) => void;
 	const runPromise = new Promise<IRun>((resolve) => {
@@ -106,29 +109,24 @@ export async function runWorkflow(
 	});
 	hooks.addHandler('workflowExecuteAfter', (fullRunData) => resolveRun(fullRunData));
 
-	// A mock proxy, as the in-repo NodeTestHarness does: the engine reads far more of
-	// `additionalData` than a test cares about, and the proxy absorbs those reads.
-	const additionalData = mock<IWorkflowExecuteAdditionalData>() as IWorkflowExecuteAdditionalData;
-	additionalData.executionId = 'n8n-test';
-	additionalData.credentialsHelper = credentialsHelper;
-	additionalData.hooks = hooks;
-	// Expression additional-keys build `$execution.resumeUrl` and friends from these.
-	additionalData.webhookWaitingBaseUrl = 'http://localhost/waiting-webhook';
-	additionalData.formWaitingBaseUrl = 'http://localhost/waiting-form';
-	// These are read with truthiness checks: a truthy auto-mock diverts the engine into
-	// code paths a test must not take (eval-mock helpers, encrypted runner credentials,
-	// SSRF bridging, parent callbacks, resumed-execution handling) — null them all.
-	for (const key of [
-		'evalLlmMockHandler',
-		'ssrfBridge',
-		'encryptedRunnerIdentity',
-		'currentNodeParameters',
-		'parentCallbackManager',
-		'restartExecutionId',
-		'executionTimeoutTimestamp',
-	]) {
-		(additionalData as unknown as Record<string, unknown>)[key] = undefined;
-	}
+	// A plain object, deliberately NOT a mock proxy: the engine reads many fields with
+	// truthiness checks (eval-mock helpers, encrypted runner credentials, SSRF bridging,
+	// resumed executions), and a truthy auto-mock diverts it into code paths a test must
+	// not take. Everything not listed reads as undefined, which is what those guards expect.
+	const additionalData = {
+		executionId: 'n8n-test',
+		credentialsHelper,
+		hooks,
+		// Expression additional-keys build `$execution.resumeUrl` and friends from these.
+		webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+		formWaitingBaseUrl: 'http://localhost/waiting-form',
+		webhookBaseUrl: 'http://localhost/webhook',
+		webhookTestBaseUrl: 'http://localhost/webhook-test',
+		restApiUrl: 'http://localhost/rest',
+		instanceBaseUrl: 'http://localhost',
+		variables: {},
+		currentNodeExecutionIndex: 0,
+	} as unknown as IWorkflowExecuteAdditionalData;
 
 	const runExecutionData = createRunExecutionData({
 		executionData: {

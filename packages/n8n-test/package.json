@@ -12,6 +12,7 @@
 		"build": "tsc --noEmit",
 		"typecheck": "tsc --noEmit",
 		"demo": "vitest run",
+		"bundle": "node scripts/bundle.mjs",
 		"test": "vitest run",
 		"test:unit": "vitest run",
 		"test:dev": "vitest --silent=false",
@@ -26,13 +27,13 @@
 		"n8n-workflow": "workspace:*",
 		"nock": "catalog:",
 		"reflect-metadata": "catalog:",
-		"vitest": "catalog:",
-		"vitest-mock-extended": "catalog:"
+		"vitest": "catalog:"
 	},
 	"devDependencies": {
 		"@n8n/typescript-config": "workspace:*",
 		"@n8n/vitest-config": "workspace:*",
 		"@vitest/coverage-v8": "catalog:",
+		"esbuild": "catalog:",
 		"typescript": "catalog:typescript"
 	},
 	"license": "LicenseRef-n8n-sustainable-use"

@@ -15,7 +15,7 @@
 				"options": {}
 			},
 			"type": "n8n-nodes-base.httpRequest",
-			"typeVersion": 4.5,
+			"typeVersion": 4.4,
 			"position": [176, 0],
 			"id": "48591eb0-7e94-4ffa-a04a-ba126008c59a",
 			"name": "Http request"
@@ -47,7 +47,7 @@
 				"options": {}
 			},
 			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.5,
+			"typeVersion": 3.4,
 			"position": [400, 0],
 			"id": "2d32c443-b9af-421d-834b-0ea13648d84d",
 			"name": "Edit Fields"
