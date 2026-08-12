@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import CanvasBackground from '@/features/workflows/canvas/components/elements/background/CanvasBackground.vue';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
@@ -20,7 +19,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 
 const route = useRoute();
 const router = useRouter();
-const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
@@ -37,12 +35,10 @@ const formNodeRenderOverrides: Partial<Record<string, CanvasNodeRenderType>> = {
 	[FORM_NODE_TYPE]: CanvasNodeRenderType.FormStep,
 };
 
-onMounted(async () => {
-	const workflowId = route.params.workflowId as string;
-	if (workflowsStore.workflowId !== workflowId) {
-		const workflowData = await workflowsListStore.fetchWorkflow(workflowId);
-		workflowDocumentStore.value.hydrate(workflowData);
-	}
+// The `workflow` layout keeps the workflow document alive across the tabs
+// (Editor / Executions / Evaluations / Forms), so we don't fetch or hydrate
+// here — doing so would clobber unsaved edits made in the Editor.
+onMounted(() => {
 	loading.value = false;
 });
 
