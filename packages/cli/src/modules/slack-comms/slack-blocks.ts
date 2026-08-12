@@ -340,7 +340,7 @@ function questionsBlocks(event: InstanceAiConfirmationRequestPayload): unknown[]
 function planReviewBlocks(event: InstanceAiConfirmationRequestPayload): unknown[] {
 	const tasks = event.tasks?.tasks ?? [];
 	const checklist = tasks
-		.map((task) => `${statusGlyph(task.status)} ${task.description}`)
+		.map((task) => `${statusGlyph(task.status)} ${toMrkdwn(task.description)}`)
 		.join('\n');
 	const intro = event.introMessage ? `${toMrkdwn(event.introMessage)}\n\n` : '';
 	const body = checklist.length > 0 ? checklist : toMrkdwn(event.message || 'Here is the plan.');

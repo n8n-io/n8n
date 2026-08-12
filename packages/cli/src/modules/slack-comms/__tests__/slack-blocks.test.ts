@@ -221,6 +221,26 @@ describe('confirmationBlocks', () => {
 		expect(text).toContain('Add the HTTP node');
 	});
 
+	it('converts a plan task description through toMrkdwn', () => {
+		const event = basePayload({
+			inputType: 'plan-review',
+			tasks: {
+				tasks: [
+					{
+						id: 't1',
+						description: '**bold** & <angle> [link](https://x)',
+						status: 'todo',
+					},
+				],
+			},
+		});
+
+		const blocks = confirmationBlocks(event, CTX);
+		const section = findBlock(blocks, (b) => b.type === 'section');
+		const text = (section?.text as Record<string, unknown>).text;
+		expect(text).toContain('*bold* &amp; &lt;angle&gt; <https://x|link>');
+	});
+
 	it('never throws for an unhandled inputType', () => {
 		const event = basePayload({
 			inputType: 'resource-decision',
