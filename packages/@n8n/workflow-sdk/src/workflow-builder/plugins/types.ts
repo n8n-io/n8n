@@ -5,7 +5,13 @@
  * WorkflowBuilder with custom validators, composite handlers, and serializers.
  */
 
-import type { AuthoredNodeGroup, GraphNode, NodeInstance, IDataObject } from '../../types/base';
+import type {
+	AuthoredNodeGroup,
+	GraphNode,
+	NodeInstance,
+	IDataObject,
+	WorkflowMeta,
+} from '../../types/base';
 
 /** An authored group with its members resolved to the node IDs the serializer emits. */
 export type ResolvedNodeGroup = Omit<AuthoredNodeGroup, 'members'> & { memberIds: string[] };
@@ -355,7 +361,7 @@ export interface SerializerContext extends PluginContext {
 	resolveTargetNodeName(target: unknown): string | undefined;
 
 	/** Workflow meta information (if set) */
-	readonly meta?: Record<string, unknown>;
+	readonly meta?: WorkflowMeta;
 
 	/** Whether to use Dagre-based layout for node positioning */
 	readonly tidyUp?: boolean;

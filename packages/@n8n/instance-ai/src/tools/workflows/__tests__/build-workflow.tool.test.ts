@@ -92,6 +92,7 @@ type BuildToolOutput = {
 	workflowId?: string;
 	workflowName?: string;
 	workItemId?: string;
+	hasTourDescriptions?: boolean;
 	verificationReadiness?: {
 		status: string;
 		reason?: string;
@@ -233,6 +234,7 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-1',
 			workflowName: 'Daily Weather to Slack',
 			workItemId: filePath,
+			hasTourDescriptions: true,
 			postBuildFlow: {
 				required: true,
 				skillId: 'post-build-flow',
@@ -261,7 +263,16 @@ describe('createBuildWorkflowTool', () => {
 		);
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
-			expect.objectContaining({ name: 'Daily Weather to Slack' }),
+			expect.objectContaining({
+				name: 'Daily Weather to Slack',
+				meta: {
+					nodeDescriptions: {
+						'webhook-1': {
+							summary: 'Runs the "Webhook" step in this workflow.',
+						},
+					},
+				},
+			}),
 			{ markAsAiTemporary: true },
 		);
 		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-1');
@@ -271,6 +282,53 @@ describe('createBuildWorkflowTool', () => {
 			workflowVersionId: 'v-1',
 			sourceHash: hashWorkflowSource(source),
 		});
+	});
+
+	it('returns hasTourDescriptions when the compiled workflow has node descriptions', async () => {
+		const workflowWithTourDescriptions = structuredClone(
+			generatedWorkflow,
+		) as typeof generatedWorkflow & {
+			meta?: Record<string, unknown>;
+		};
+		workflowWithTourDescriptions.meta = {
+			nodeDescriptions: {
+				'webhook-1': {
+					summary: 'Receives incoming support requests',
+					rationale: 'The caller needs the triage result in the webhook response.',
+				},
+			},
+		};
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: workflowWithTourDescriptions,
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({ source: 'workflow source from workspace' });
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Support triage',
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			workflowId: 'wf-1',
+			hasTourDescriptions: true,
+		});
+		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+			expect.objectContaining({
+				meta: {
+					nodeDescriptions: {
+						'webhook-1': {
+							summary: 'Receives incoming support requests',
+							rationale: 'The caller needs the triage result in the webhook response.',
+						},
+					},
+				},
+			}),
+			{ markAsAiTemporary: true },
+		);
 	});
 
 	it('emits a compiled-workflow trace child run carrying the compiled JSON when tracing is present', async () => {

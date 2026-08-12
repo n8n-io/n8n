@@ -47,6 +47,54 @@ describe('new codegen roundtrip', () => {
 		expect(parsedJson.connections['Manual Trigger'].main[0]![0].node).toBe('HTTP Request');
 	});
 
+	it('node tour descriptions roundtrip through config.description', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'test-descriptions',
+			name: 'Described workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+				},
+				{
+					id: 'node-2',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0],
+					parameters: { url: 'https://example.com' },
+				},
+			],
+			connections: {
+				'Manual Trigger': {
+					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+				},
+			},
+			meta: {
+				nodeDescriptions: {
+					'node-2': {
+						summary: 'Looks the requester up in the CRM',
+						rationale: 'This makes routing aware of account tier.',
+					},
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+		const httpNode = parsedJson.nodes.find((node) => node.name === 'HTTP Request');
+
+		expect(code).toContain('description: {');
+		expect(httpNode).toBeDefined();
+		expect(parsedJson.meta?.nodeDescriptions?.[httpNode!.id]).toEqual({
+			summary: 'Looks the requester up in the CRM',
+			rationale: 'This makes routing aware of account tier.',
+		});
+	});
+
 	it('IF branch roundtrip', () => {
 		const originalJson: WorkflowJSON = {
 			id: 'test-if',

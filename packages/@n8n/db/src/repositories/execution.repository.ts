@@ -9,6 +9,7 @@ import type {
 	FindOptionsWhere,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import {
 	Brackets,
 	DataSource,
@@ -422,9 +423,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			...executionInformation
 		} = execution;
 
-		const executionData: Partial<ExecutionData> = {};
+		const executionData: QueryDeepPartialEntity<ExecutionData> = {};
 
-		if (workflowData) executionData.workflowData = workflowData;
+		if (workflowData)
+			executionData.workflowData =
+				workflowData as QueryDeepPartialEntity<ExecutionData>['workflowData'];
 		if (data) executionData.data = stringify(data);
 
 		return await this.manager.transaction(async (tx) => {

@@ -15,6 +15,7 @@ import type {
 	GeneratePinDataOptions,
 	WorkflowBuilderOptions,
 	ToJSONOptions,
+	WorkflowMeta,
 } from './types/base';
 import { isNodeChain } from './types/base';
 import type { ValidationOptions, ValidationResult, ValidationErrorCode } from './validation/index';
@@ -54,7 +55,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _currentNode: string | null;
 	private _currentOutput: number;
 	private _pinData?: Record<string, IDataObject[]>;
-	private _meta?: { templateId?: string; instanceId?: string; [key: string]: unknown };
+	private _meta?: WorkflowMeta;
 	private _registry?: PluginRegistry;
 	private _staleIdToKeyMap?: Map<string, string>;
 	private _branchDepth = 0;
@@ -70,7 +71,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		nodes?: Map<string, GraphNode>,
 		currentNode?: string | null,
 		pinData?: Record<string, IDataObject[]>,
-		meta?: { templateId?: string; instanceId?: string; [key: string]: unknown },
+		meta?: WorkflowMeta,
 		registry?: PluginRegistry,
 		nodeGroups?: AuthoredNodeGroup[],
 	) {

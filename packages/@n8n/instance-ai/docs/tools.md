@@ -229,7 +229,7 @@ this tool with `filePath`.
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
 
-**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings? }`
+**Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, hasTourDescriptions?, remediation?, errors?, warnings? }`
 
 **Behavior**: Reads the source file from the runtime workspace, compiles
 TypeScript sources through the sandbox `tsx` runner or parses WorkflowJSON
@@ -239,7 +239,12 @@ latest source hash and workflow version in thread metadata. If the file has no
 saved workflow ID, the build creates a new workflow unless `workflowId` is
 provided to bind the file to an existing workflow. If the bound workflow no
 longer exists, the tool returns blocked remediation rather than creating a
-replacement.
+replacement. SDK sources should include `config.description` on meaningful
+nodes with a workflow-specific `summary` and decision-focused optional
+`rationale`; when authored descriptions are missing, the tool adds fallback
+summaries from node names before saving. Successful builds return
+`hasTourDescriptions: true` when tour descriptions were saved and `false` when
+no usable tour descriptions were found.
 
 ### `delete-workflow`
 

@@ -10,14 +10,21 @@ import { deepCopy } from 'n8n-workflow';
 import { getOutputName, getInputName } from './semantic-registry';
 import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
 import { AI_CONNECTION_TYPES } from './types';
-import type { WorkflowJSON, NodeJSON } from '../types/base';
-import { normalizeConnections, generateUniqueName } from '../types/base';
+import type { WorkflowJSON, NodeJSON, WorkflowNodeDescription } from '../types/base';
+import {
+	normalizeConnections,
+	generateUniqueName,
+	normalizeWorkflowNodeDescriptions,
+} from '../types/base';
 import { isTriggerNodeType } from '../utils/trigger-detection';
 
 /**
  * Create a SemanticNode from a NodeJSON
  */
-function createSemanticNode(nodeJson: NodeJSON): SemanticNode {
+function createSemanticNode(
+	nodeJson: NodeJSON,
+	description?: WorkflowNodeDescription,
+): SemanticNode {
 	// Normalize typeVersion to number (some workflows store it as a string)
 	if (typeof nodeJson.typeVersion === 'string') {
 		nodeJson.typeVersion = Number(nodeJson.typeVersion);
@@ -27,6 +34,7 @@ function createSemanticNode(nodeJson: NodeJSON): SemanticNode {
 		name: nodeJson.name ?? nodeJson.id, // Use id as fallback for nodes without names
 		type: nodeJson.type,
 		json: nodeJson,
+		description,
 		outputs: new Map(),
 		inputSources: new Map(),
 		subnodes: [],
@@ -337,6 +345,7 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 	// Generate unique names for nodes with undefined/empty names or duplicate names
 	// to prevent Map key collisions
 	const unnamedCounters = new Map<string, number>();
+	const nodeDescriptions = normalizeWorkflowNodeDescriptions(json.meta?.nodeDescriptions);
 	for (const rawNode of json.nodes) {
 		const nodeJson = { ...rawNode };
 		let nodeName = nodeJson.name;
@@ -351,7 +360,7 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 			// The first instance keeps the original name (connections reference it).
 			nodeName = generateUniqueName(nodeName, (n) => graph.nodes.has(n));
 		}
-		const semanticNode = createSemanticNode(nodeJson);
+		const semanticNode = createSemanticNode(nodeJson, nodeDescriptions?.[nodeJson.id]);
 		// Ensure SemanticNode.name matches the unique graph key for variable name generation
 		semanticNode.name = nodeName;
 		graph.nodes.set(nodeName, semanticNode);

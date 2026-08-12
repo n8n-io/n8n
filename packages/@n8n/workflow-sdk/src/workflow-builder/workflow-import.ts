@@ -10,6 +10,7 @@ import {
 	foldLegacyErrorConnections,
 	normalizeConnections,
 	generateUniqueName,
+	normalizeWorkflowNodeDescriptions,
 	type AuthoredNodeGroup,
 	type WorkflowJSON,
 	type NodeInstance,
@@ -30,7 +31,7 @@ export interface ParsedWorkflow {
 	readonly nodes: Map<string, GraphNode>;
 	readonly lastNode: string | null;
 	readonly pinData?: Record<string, IDataObject[]>;
-	readonly meta?: { templateId?: string; instanceId?: string; [key: string]: unknown };
+	readonly meta?: WorkflowJSON['meta'];
 	/** Node groups reconstructed by mapping the JSON's member IDs back to node handles. */
 	readonly nodeGroups?: AuthoredNodeGroup[];
 }
@@ -46,6 +47,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 	// Map from n8n node ID to the created node handle, used to rebuild groups (which
 	// reference members by ID) as node refs — the same shape `.group()` authoring uses.
 	const idToInstance = new Map<string, NodeInstance<string, string, unknown>>();
+	const nodeDescriptions = normalizeWorkflowNodeDescriptions(json.meta?.nodeDescriptions);
 
 	// Create node instances from JSON (shallow-clone each node to avoid mutating the input)
 	let unnamedCounter = 0;
@@ -86,6 +88,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 				alwaysOutputData: n8nNode.alwaysOutputData,
 				onError: n8nNode.onError,
 				extendsCredential: n8nNode.extendsCredential,
+				description: nodeDescriptions?.[n8nNode.id],
 			},
 			update(config) {
 				return { ...this, config: { ...this.config, ...config } };

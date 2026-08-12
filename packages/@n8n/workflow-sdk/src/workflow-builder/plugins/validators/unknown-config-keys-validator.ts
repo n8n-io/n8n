@@ -42,6 +42,7 @@ const KNOWN_CONFIG_KEY_MAP: Record<keyof NodeConfig, true> = {
 	alwaysOutputData: true,
 	onError: true,
 	extendsCredential: true,
+	description: true,
 	pinData: true,
 	output: true,
 	subnodes: true,

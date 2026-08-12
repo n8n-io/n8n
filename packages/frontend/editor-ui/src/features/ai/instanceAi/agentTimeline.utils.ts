@@ -242,6 +242,7 @@ export interface ArtifactInfo {
 	resourceId: string;
 	name: string;
 	projectId?: string;
+	hasTourDescriptions?: boolean;
 	/** ISO timestamp of the tool call that produced this artifact. */
 	completedAt?: string;
 }
@@ -277,9 +278,17 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 		// Workflow artifacts from build-workflow / submit-workflow
 		if (
 			(tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') &&
-			typeof result.workflowId === 'string' &&
-			!seenIds.has(result.workflowId)
+			typeof result.workflowId === 'string'
 		) {
+			const existingArtifact = artifacts.find(
+				(artifact) => artifact.resourceId === result.workflowId,
+			);
+			if (existingArtifact) {
+				if (result.hasTourDescriptions === true) existingArtifact.hasTourDescriptions = true;
+				continue;
+			}
+			if (seenIds.has(result.workflowId)) continue;
+
 			seenIds.add(result.workflowId);
 			const name =
 				(typeof result.workflowName === 'string' ? result.workflowName : undefined) ??
@@ -291,6 +300,7 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 				type: 'workflow',
 				resourceId: result.workflowId,
 				name,
+				hasTourDescriptions: result.hasTourDescriptions === true || undefined,
 				completedAt: tc.completedAt,
 			});
 			continue;

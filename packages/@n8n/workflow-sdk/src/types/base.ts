@@ -320,6 +320,65 @@ export interface NodeJSON {
 	extendsCredential?: string;
 }
 
+export interface WorkflowNodeDescription {
+	summary: string;
+	rationale?: string;
+}
+
+export type WorkflowNodeDescriptions = Record<string, WorkflowNodeDescription>;
+
+export interface WorkflowMeta {
+	templateId?: string;
+	instanceId?: string;
+	nodeDescriptions?: WorkflowNodeDescriptions;
+	[key: string]: NonNullable<unknown> | undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function normalizeWorkflowNodeDescription(
+	value: unknown,
+): WorkflowNodeDescription | undefined {
+	if (!isRecord(value)) return undefined;
+
+	const summary = value.summary;
+	if (typeof summary !== 'string') return undefined;
+
+	const trimmedSummary = summary.trim();
+	if (trimmedSummary.length === 0) return undefined;
+
+	const rationale = value.rationale;
+	if (typeof rationale === 'string') {
+		const trimmedRationale = rationale.trim();
+		if (trimmedRationale.length > 0) {
+			return { summary: trimmedSummary, rationale: trimmedRationale };
+		}
+	}
+
+	return { summary: trimmedSummary };
+}
+
+export function normalizeWorkflowNodeDescriptions(
+	value: unknown,
+	nodeIds?: ReadonlySet<string>,
+): WorkflowNodeDescriptions | undefined {
+	if (!isRecord(value)) return undefined;
+
+	const descriptions: WorkflowNodeDescriptions = {};
+	for (const [nodeId, description] of Object.entries(value)) {
+		if (nodeIds && !nodeIds.has(nodeId)) continue;
+
+		const normalized = normalizeWorkflowNodeDescription(description);
+		if (normalized) {
+			descriptions[nodeId] = normalized;
+		}
+	}
+
+	return Object.keys(descriptions).length > 0 ? descriptions : undefined;
+}
+
 /**
  * n8n workflow JSON format
  */
@@ -330,10 +389,7 @@ export interface WorkflowJSON {
 	connections: IConnections;
 	settings?: WorkflowSettings;
 	pinData?: Record<string, IDataObject[]>;
-	meta?: {
-		templateId?: string;
-		instanceId?: string;
-	};
+	meta?: WorkflowMeta;
 	/**
 	 * Node groups, referencing their members by node ID. Internally the SDK carries
 	 * group members by node *handle* (the value from `node(...)`) and resolves them to
@@ -451,6 +507,7 @@ export interface NodeConfig<TParams = IDataObject> {
 	alwaysOutputData?: boolean;
 	onError?: OnError;
 	extendsCredential?: string;
+	description?: WorkflowNodeDescription;
 	pinData?: IDataObject[];
 	/**
 	 * Declared output shape for data flow validation.

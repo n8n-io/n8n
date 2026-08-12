@@ -114,7 +114,7 @@ describe('extractArtifacts', () => {
 			toolCalls: [
 				makeToolCall({
 					toolName: 'build-workflow',
-					result: { workflowId: 'wf-2', workflowName: 'Built WF' },
+					result: { workflowId: 'wf-2', workflowName: 'Built WF', hasTourDescriptions: true },
 					completedAt: '2026-01-01T00:00:00Z',
 				}),
 			],
@@ -125,6 +125,7 @@ describe('extractArtifacts', () => {
 				type: 'workflow',
 				resourceId: 'wf-2',
 				name: 'Built WF',
+				hasTourDescriptions: true,
 				completedAt: '2026-01-01T00:00:00Z',
 			},
 		]);
@@ -220,13 +221,18 @@ describe('extractArtifacts', () => {
 			toolCalls: [
 				makeToolCall({
 					toolName: 'build-workflow',
-					result: { workflowId: 'wf-1', workflowName: 'WF From ToolCall' },
+					result: {
+						workflowId: 'wf-1',
+						workflowName: 'WF From ToolCall',
+						hasTourDescriptions: true,
+					},
 				}),
 			],
 		});
 		const artifacts = extractArtifacts(node);
 		expect(artifacts).toHaveLength(1);
 		expect(artifacts[0].name).toBe('WF From Target');
+		expect(artifacts[0].hasTourDescriptions).toBe(true);
 	});
 
 	test('recurses into children and deduplicates', () => {

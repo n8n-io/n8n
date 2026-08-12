@@ -7,13 +7,19 @@
 import { deepCopy, normalizeGroupDescription, normalizeNodeShape } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { foldLegacyErrorConnections } from '../../../types/base';
+import {
+	foldLegacyErrorConnections,
+	normalizeWorkflowNodeDescription,
+	normalizeWorkflowNodeDescriptions,
+} from '../../../types/base';
 import type {
 	WorkflowJSON,
 	NodeJSON,
 	IConnections,
 	IDataObject,
 	GraphNode,
+	WorkflowMeta,
+	WorkflowNodeDescriptions,
 } from '../../../types/base';
 import { START_X, DEFAULT_Y } from '../../constants';
 import { calculateNodePositions, calculateNodePositionsDagre } from '../../layout-utils';
@@ -223,6 +229,7 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 	serialize(ctx: SerializerContext): WorkflowJSON {
 		const nodes: NodeJSON[] = [];
 		const connections: IConnections = {};
+		const nodeDescriptions: WorkflowNodeDescriptions = {};
 
 		// Calculate positions for nodes without explicit positions
 		const nodePositions = ctx.tidyUp
@@ -236,6 +243,10 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 			if (!serializedNode) continue;
 
 			nodes.push(serializedNode);
+			const description = normalizeWorkflowNodeDescription(graphNode.instance.config?.description);
+			if (description) {
+				nodeDescriptions[serializedNode.id] = description;
+			}
 
 			// Serialize connections
 			const nodeName = serializedNode.name;
@@ -269,8 +280,28 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 			json.pinData = ctx.pinData;
 		}
 
-		if (ctx.meta) {
-			json.meta = ctx.meta;
+		const emittedNodeIds = new Set(nodes.map((node) => node.id));
+		const existingNodeDescriptions = normalizeWorkflowNodeDescriptions(
+			ctx.meta?.nodeDescriptions,
+			emittedNodeIds,
+		);
+		const emittedNodeDescriptions =
+			Object.keys(nodeDescriptions).length > 0 ? nodeDescriptions : undefined;
+
+		if (ctx.meta || existingNodeDescriptions || emittedNodeDescriptions) {
+			const meta: WorkflowMeta = { ...(ctx.meta ?? {}) };
+			if (existingNodeDescriptions || emittedNodeDescriptions) {
+				meta.nodeDescriptions = {
+					...(existingNodeDescriptions ?? {}),
+					...(emittedNodeDescriptions ?? {}),
+				};
+			} else {
+				delete meta.nodeDescriptions;
+			}
+
+			if (Object.keys(meta).length > 0) {
+				json.meta = meta;
+			}
 		}
 
 		// Members already carry the emitted nodes' IDs; filter out any that aren't present

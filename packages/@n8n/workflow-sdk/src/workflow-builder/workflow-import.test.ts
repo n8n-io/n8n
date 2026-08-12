@@ -468,4 +468,37 @@ describe('parseWorkflowJSON', () => {
 
 		expect(result.nodeGroups).toBeUndefined();
 	});
+
+	it('maps meta.nodeDescriptions onto imported node config', () => {
+		const json: WorkflowJSON = {
+			id: 'wf',
+			name: 'Described workflow',
+			nodes: [
+				{
+					id: 'id-a',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			meta: {
+				nodeDescriptions: {
+					'id-a': {
+						summary: 'Normalizes the request',
+						rationale: 'Downstream nodes can read one stable shape.',
+					},
+				},
+			},
+		};
+
+		const result = parseWorkflowJSON(json);
+
+		expect(result.nodes.get('A')?.instance.config.description).toEqual({
+			summary: 'Normalizes the request',
+			rationale: 'Downstream nodes can read one stable shape.',
+		});
+	});
 });

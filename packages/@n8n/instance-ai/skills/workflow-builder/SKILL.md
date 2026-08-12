@@ -51,6 +51,27 @@ first action turn (each extra sequential turn resends the whole context). When
 unsure which nodes to use, load this skill first and follow its research
 process below.
 
+## Workflow Tour Descriptions
+
+For SDK workflows, add `config.description` to every meaningful non-trivial
+node before calling `build-workflow`. The `summary` must say what the node does
+in this workflow, not what the node type does in general. Add `rationale` when
+the node, setting, expression, fallback, or service choice would otherwise be
+unclear to someone reading the workflow later. Skip only nodes with nothing
+useful to explain.
+
+`build-workflow` adds plain fallback summaries from node names when authored
+descriptions are missing, but those fallbacks do not explain decisions. Author
+`config.description` yourself whenever a rationale would help the user
+understand the workflow.
+
+After a successful `build-workflow`, check `hasTourDescriptions`. For a
+non-trivial generated or edited workflow, `hasTourDescriptions: false` means
+the build is incomplete: edit the same SDK source file to add useful
+`config.description` entries, run SDK validation again, and call
+`build-workflow` again before post-build flow, setup, verification, or a final
+user-visible summary.
+
 ## Repair Strategy
 
 When the edit is to fix a node the user reports as erroring or showing a red
@@ -196,6 +217,11 @@ follow its build → publish → assign steps.
 6. Produce complete TypeScript SDK code and write it with
    `workspace_write_file` (new/full rewrite) or `workspace_str_replace_file`
    (targeted edit). Do not put secrets in the source file.
+   For meaningful workflow nodes, include `config.description` with a
+   workflow-specific `summary` and an optional decision-focused `rationale`.
+   Explain why the node, setting, expression, or fallback exists when that
+   choice would otherwise be unclear. Skip descriptions for nodes with nothing
+   useful to say.
    Before building, decide whether verification needs branch fixtures. When a
    live or nondeterministic upstream node (such as HTTP Request, search/list
    lookups, weather feeds, or AI classifiers) feeds IF/Switch logic and

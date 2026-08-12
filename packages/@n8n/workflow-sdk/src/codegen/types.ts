@@ -5,7 +5,7 @@
  * the transformation from WorkflowJSON to SDK code.
  */
 
-import type { NodeJSON } from '../types/base';
+import type { NodeJSON, WorkflowNodeDescription } from '../types/base';
 
 /**
  * AI connection types that connect subnodes to parent nodes
@@ -79,6 +79,8 @@ export interface SemanticNode {
 	type: string;
 	/** Original JSON representation */
 	json: NodeJSON;
+	/** Tour description derived from workflow meta and emitted back into node config. */
+	description?: WorkflowNodeDescription;
 	/** Semantic outputs: output name → target connections */
 	outputs: Map<string, SemanticConnection[]>;
 	/** Semantic inputs: input slot name → source info */

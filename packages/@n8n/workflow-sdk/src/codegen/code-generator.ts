@@ -207,6 +207,13 @@ function generateSubnodesConfig(node: SemanticNode, ctx: GenerationContext): str
 }
 
 function appendNodeConfigOptions(configParts: string[], node: SemanticNode): void {
+	if (node.description) {
+		const fields = [`summary: '${escapeString(node.description.summary)}'`];
+		if (node.description.rationale) {
+			fields.push(`rationale: '${escapeString(node.description.rationale)}'`);
+		}
+		configParts.push(`description: { ${fields.join(', ')} }`);
+	}
 	if (node.json.webhookId) {
 		configParts.push(`webhookId: '${escapeString(node.json.webhookId)}'`);
 	}

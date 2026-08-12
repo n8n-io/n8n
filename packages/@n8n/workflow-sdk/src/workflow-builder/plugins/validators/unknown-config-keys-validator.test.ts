@@ -90,6 +90,7 @@ describe('unknownConfigKeysValidator', () => {
 				pinData: [{ json: {} }],
 				position: [100, 200],
 				webhookId: 'wh-1',
+				description: { summary: 'Runs custom code' },
 				subnodes: {},
 				name: 'Code',
 			});

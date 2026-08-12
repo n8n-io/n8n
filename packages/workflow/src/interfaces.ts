@@ -3797,6 +3797,7 @@ export interface WorkflowFEMeta {
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
 	nodeDescriptions?: WorkflowNodeDescriptions;
+	[key: string]: NonNullable<unknown> | undefined;
 }
 
 export interface WorkflowNodeDescription {

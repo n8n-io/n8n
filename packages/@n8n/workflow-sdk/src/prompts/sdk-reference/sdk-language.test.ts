@@ -1,6 +1,7 @@
 import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
 
 import {
+	NODE_DESCRIPTIONS_REFERENCE,
 	NODE_GROUPS_REFERENCE,
 	SDK_LANGUAGE_REFERENCE,
 	buildSdkLanguageReference,
@@ -74,6 +75,14 @@ describe('SDK_LANGUAGE_REFERENCE rendering', () => {
 	it('steers runtime logic to a Code node or expression', () => {
 		expect(SDK_LANGUAGE_REFERENCE).toContain('Code node');
 		expect(SDK_LANGUAGE_REFERENCE).toContain("expr('{{ ... }}')");
+	});
+
+	it('embeds node tour description guidance', () => {
+		expect(SDK_LANGUAGE_REFERENCE).toContain(NODE_DESCRIPTIONS_REFERENCE);
+		expect(SDK_LANGUAGE_REFERENCE).toContain('config.description');
+		expect(SDK_LANGUAGE_REFERENCE).toContain('summary');
+		expect(SDK_LANGUAGE_REFERENCE).toContain('rationale');
+		expect(SDK_LANGUAGE_REFERENCE).toMatch(/Skip nodes with nothing useful to say/i);
 	});
 });
 

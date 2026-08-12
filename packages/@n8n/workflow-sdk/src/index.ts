@@ -7,6 +7,9 @@ export type {
 	ToJSONOptions,
 	WorkflowSettings,
 	WorkflowJSON,
+	WorkflowMeta,
+	WorkflowNodeDescription,
+	WorkflowNodeDescriptions,
 	NodeJSON,
 	NodeInstance,
 	TriggerInstance,
@@ -75,7 +78,12 @@ export type {
 } from './types/base';
 
 // Type guards
-export { isNodeChain, isNodeInstance } from './types/base';
+export {
+	isNodeChain,
+	isNodeInstance,
+	normalizeWorkflowNodeDescription,
+	normalizeWorkflowNodeDescriptions,
+} from './types/base';
 
 // Type aliases for convenience
 export type { AnyNode, AnyChain, AnyTrigger, NodeParameters } from './types/aliases';

@@ -21,6 +21,7 @@ export interface WorkflowMetadata {
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
 	nodeDescriptions?: WorkflowNodeDescriptions;
+	[key: string]: NonNullable<unknown> | undefined;
 }
 
 // Simple version of n8n-workflow.Workflow

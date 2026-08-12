@@ -297,6 +297,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						:name="resolveArtifactName(artifact)"
 						:resource-id="artifact.resourceId"
 						:project-id="artifact.projectId"
+						:has-tour-descriptions="artifact.hasTourDescriptions"
 						:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
 						:metadata="formatArtifactMetadata(artifact)"
 					/>

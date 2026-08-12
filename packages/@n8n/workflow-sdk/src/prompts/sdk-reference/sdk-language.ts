@@ -65,6 +65,37 @@ const SAFE_METHODS_SENTENCE =
 	`and the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}. ` +
 	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
 
+export const NODE_DESCRIPTIONS_REFERENCE = `## Node tour descriptions
+
+Use \`config.description\` on meaningful nodes so n8n can show a generated workflow tour:
+
+\`\`\`typescript
+const classify = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Classify request',
+    description: {
+      summary: 'Reads the request and account context and assigns a support category.',
+      rationale: 'An AI Agent works better than keyword rules because billing and incident requests often use overlapping language.',
+    },
+    parameters: { /* ... */ },
+  },
+});
+\`\`\`
+
+\`summary\` says what this node does in this workflow, not what the node type does in
+general. \`rationale\` explains decisions a reader would otherwise question: why this
+node, why a non-default setting, why an expression reads from another node by name, or
+why a fallback branch exists. Omit \`rationale\` when there was no meaningful decision
+behind the node.
+
+Skip nodes with nothing useful to say. A short tour with meaningful entries is better
+than a long tour with generic text. Good summaries read like "Looks the requester up in
+the CRM by email"; avoid type descriptions like "HTTP Request node makes HTTP requests".
+Good rationales explain tradeoffs like "Continue on error keeps triage running during a
+CRM outage" or "A Switch fits because categories are mutually exclusive".`;
+
 /**
  * Node-groups documentation, extracted so consumers can import just this section
  * without the whole builder-language reference. Shared by Instance AI (embedded
@@ -150,6 +181,8 @@ are accepted; anything else fails to parse.
 ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
+
+${NODE_DESCRIPTIONS_REFERENCE}
 
 ${includeGroups ? `${NODE_GROUPS_REFERENCE}\n\n` : ''}## Forbidden constructs
 

@@ -25,6 +25,7 @@ const CARD_WIDTH = 360;
 const ESTIMATED_CARD_HEIGHT = 320;
 const EDGE_MARGIN = 16;
 const NODE_GAP = 16;
+const MAX_PENDING_TOUR_CANVAS_SETTLE_FRAMES = 60;
 
 interface BuildWorkflowTourStepsInput {
 	nodes: WorkflowTourNode[];
@@ -67,6 +68,18 @@ async function waitForAnimationFrame() {
 		}
 		requestAnimationFrame(() => resolve());
 	});
+}
+
+async function waitForCanvasDimensions(getDimensions: () => Dimensions) {
+	for (let frame = 0; frame < MAX_PENDING_TOUR_CANVAS_SETTLE_FRAMES; frame++) {
+		const dimensions = getDimensions();
+		if (dimensions.width > 0 && dimensions.height > 0) return true;
+
+		await nextTick();
+		await waitForAnimationFrame();
+	}
+
+	return false;
 }
 
 export function buildWorkflowTourSteps({
@@ -200,6 +213,7 @@ export function useWorkflowTour(deps: UseWorkflowTourDeps) {
 
 	let groupSnapshot: string[] | null = null;
 	let stepToken = 0;
+	let pendingTourToken = 0;
 
 	const steps = computed(() =>
 		buildWorkflowTourSteps({
@@ -361,7 +375,46 @@ export function useWorkflowTour(deps: UseWorkflowTourDeps) {
 		}
 	});
 
+	watch(
+		() =>
+			[
+				tourStore.pendingWorkflowId,
+				workflowDocumentStore.value.workflowId,
+				totalSteps.value,
+			] as const,
+		async ([pendingWorkflowId, workflowId, count]) => {
+			if (
+				!pendingWorkflowId ||
+				pendingWorkflowId !== workflowId ||
+				count === 0 ||
+				tourStore.isActive
+			) {
+				return;
+			}
+
+			const token = ++pendingTourToken;
+			await nextTick();
+			const canvasReady = await waitForCanvasDimensions(deps.getDimensions);
+			if (!canvasReady || token !== pendingTourToken) return;
+			if (
+				tourStore.pendingWorkflowId !== pendingWorkflowId ||
+				workflowDocumentStore.value.workflowId !== pendingWorkflowId ||
+				totalSteps.value === 0 ||
+				tourStore.isActive
+			) {
+				return;
+			}
+
+			const consumedWorkflowId = tourStore.consumePendingTour();
+			if (consumedWorkflowId !== pendingWorkflowId) return;
+
+			start();
+		},
+		{ immediate: true, flush: 'post' },
+	);
+
 	onBeforeUnmount(() => {
+		pendingTourToken++;
 		if (tourStore.isActive) {
 			exit();
 		}

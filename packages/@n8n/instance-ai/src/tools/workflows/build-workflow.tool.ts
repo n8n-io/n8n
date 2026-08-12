@@ -1,7 +1,13 @@
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
-import { SDK_IMPORTABLE_FUNCTIONS } from '@n8n/workflow-sdk';
+import {
+	normalizeWorkflowNodeDescriptions,
+	SDK_IMPORTABLE_FUNCTIONS,
+	type WorkflowJSON,
+	type WorkflowNodeDescription,
+	type WorkflowNodeDescriptions,
+} from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -205,6 +211,46 @@ const SDK_IMPORTABLE_SYMBOLS = new Set<string>(SDK_IMPORTABLE_FUNCTIONS);
 
 const SDK_IMPORT_REGEX = /import\s*\{([^}]*)\}\s*from\s*['"]@n8n\/workflow-sdk['"]/;
 
+const TOUR_DESCRIPTION_EXCLUDED_NODE_TYPES = new Set(['n8n-nodes-base.stickyNote']);
+
+function createFallbackTourDescription(
+	node: WorkflowJSON['nodes'][number],
+): WorkflowNodeDescription | undefined {
+	if (TOUR_DESCRIPTION_EXCLUDED_NODE_TYPES.has(node.type)) return undefined;
+
+	const name = node.name?.trim();
+	if (!name) return undefined;
+
+	return {
+		summary: `Runs the "${name}" step in this workflow.`,
+	};
+}
+
+function ensureWorkflowTourDescriptions(workflow: WorkflowJSON): boolean {
+	const nodeIds = new Set(workflow.nodes.map((node) => node.id));
+	const descriptions: WorkflowNodeDescriptions = {
+		...(normalizeWorkflowNodeDescriptions(workflow.meta?.nodeDescriptions, nodeIds) ?? {}),
+	};
+
+	for (const node of workflow.nodes) {
+		if (descriptions[node.id]) continue;
+
+		const fallbackDescription = createFallbackTourDescription(node);
+		if (fallbackDescription) {
+			descriptions[node.id] = fallbackDescription;
+		}
+	}
+
+	if (Object.keys(descriptions).length === 0) return false;
+
+	workflow.meta = {
+		...(workflow.meta ?? {}),
+		nodeDescriptions: descriptions,
+	};
+
+	return true;
+}
+
 /** Adds missing known SDK symbols to the import for "X is not defined" errors; undefined when not applicable. */
 export function autoImportMissingSdkSymbols(
 	source: string,
@@ -308,7 +354,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
 				'Use TypeScript SDK source for new workflows, or WorkflowJSON .json source for existing workflow edits. ' +
 				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
-				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
+				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds). ' +
+				'For SDK workflows, add `config.description` on meaningful nodes with a workflow-specific `summary` and decision-focused optional `rationale`; skip nodes with no useful tour explanation. ' +
+				'When authored descriptions are missing, the tool adds fallback tour summaries from node names before saving. If a successful build still returns hasTourDescriptions: false for a non-trivial workflow, edit the SDK source to add useful descriptions and build again before reporting completion.',
 		)
 		.input(buildWorkflowInputSchema)
 		.output(
@@ -330,6 +378,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
 				credentialResolutionNote: z.string().optional(),
 				referencedWorkflowIds: z.array(z.string()).optional(),
+				hasTourDescriptions: z.boolean().optional(),
 				hasUnresolvedPlaceholders: z.boolean().optional(),
 				denied: z.boolean().optional(),
 				reason: z.string().optional(),
@@ -803,6 +852,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
+			const hasTourDescriptions = ensureWorkflowTourDescriptions(json);
 			const credentialMap = await buildCredentialMap(context.credentialService);
 			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
 
@@ -966,6 +1016,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							: undefined,
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
+						hasTourDescriptions,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 						warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
 					};

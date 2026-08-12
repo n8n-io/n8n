@@ -165,6 +165,91 @@ describe('jsonSerializer', () => {
 			expect(result.nodes[1]).not.toHaveProperty('name');
 		});
 
+		describe('node descriptions', () => {
+			it('serializes config.description into meta.nodeDescriptions keyed by emitted node id', () => {
+				const httpNode = node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						name: 'Fetch customer',
+						description: {
+							summary: 'Looks the customer up by email',
+							rationale: 'This keeps the triage path aware of account tier.',
+						},
+					},
+				});
+				const ctx = createMockSerializerContext({
+					meta: { templateId: 'template-1' },
+					nodes: new Map<string, GraphNode>([
+						['Fetch customer', { instance: httpNode, connections: new Map() }],
+					]),
+				});
+
+				const result = jsonSerializer.serialize(ctx);
+
+				expect(result.meta).toEqual({
+					templateId: 'template-1',
+					nodeDescriptions: {
+						[httpNode.id]: {
+							summary: 'Looks the customer up by email',
+							rationale: 'This keeps the triage path aware of account tier.',
+						},
+					},
+				});
+				expect(result.nodes[0]).not.toHaveProperty('description');
+			});
+
+			it('merges existing valid descriptions and prunes stale ids', () => {
+				const httpNode = node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { name: 'Fetch customer' },
+				});
+				const ctx = createMockSerializerContext({
+					meta: {
+						nodeDescriptions: {
+							[httpNode.id]: { summary: 'Existing summary' },
+							'stale-node': { summary: 'Stale summary' },
+						},
+					},
+					nodes: new Map<string, GraphNode>([
+						['Fetch customer', { instance: httpNode, connections: new Map() }],
+					]),
+				});
+
+				const result = jsonSerializer.serialize(ctx);
+
+				expect(result.meta?.nodeDescriptions).toEqual({
+					[httpNode.id]: { summary: 'Existing summary' },
+				});
+			});
+
+			it('removes stale-only descriptions while preserving other meta keys', () => {
+				const httpNode = node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { name: 'Fetch customer' },
+				});
+				const ctx = createMockSerializerContext({
+					meta: {
+						templateId: 'template-1',
+						nodeDescriptions: {
+							'stale-node': { summary: 'Stale summary' },
+						},
+					},
+					nodes: new Map<string, GraphNode>([
+						['Fetch customer', { instance: httpNode, connections: new Map() }],
+					]),
+				});
+
+				const result = jsonSerializer.serialize(ctx);
+
+				expect(result.meta).toEqual({
+					templateId: 'template-1',
+				});
+			});
+		});
+
 		describe('node groups', () => {
 			it('omits nodeGroups when the context has none', () => {
 				const result = jsonSerializer.serialize(createMockSerializerContext());

@@ -109,6 +109,9 @@ import {
 	type ExecutionError,
 	type IRunData,
 	type ITaskData,
+	type WorkflowFEMeta,
+	type WorkflowNodeDescription,
+	type WorkflowNodeDescriptions,
 	NodeHelpers,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -845,11 +848,13 @@ export class InstanceAiAdapterService {
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.
 				const nodes = sanitizeCredentialReferencesForSave(json.nodes);
+				const meta = mergeWorkflowMetaForSave(undefined, json.meta, nodes);
 				let updateData = workflowRepository.create({
 					name: json.name,
 					nodes: nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
 					settings,
+					...(meta ? { meta } : {}),
 					pinData: sdkPinDataToRuntime(json.pinData),
 					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
@@ -910,12 +915,11 @@ export class InstanceAiAdapterService {
 				// Strip redactionPolicy if the user lacks the required directional scope —
 				// mirrors the check in WorkflowService.update().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
+				const [existingWorkflow, ownerProject] = await Promise.all([
+					workflowRepository.findOne({ where: { id: workflowId } }),
+					sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
+				]);
 				if (settings.redactionPolicy !== undefined) {
-					const [existingWorkflow, ownerProject] = await Promise.all([
-						workflowRepository.findOne({ where: { id: workflowId } }),
-						sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
-					]);
-
 					const currentPolicy = existingWorkflow?.settings?.redactionPolicy;
 
 					if (settings.redactionPolicy !== currentPolicy) {
@@ -935,11 +939,13 @@ export class InstanceAiAdapterService {
 				}
 
 				const nodes = sanitizeCredentialReferencesForSave(json.nodes);
+				const meta = mergeWorkflowMetaForSave(existingWorkflow?.meta, json.meta, nodes);
 				let updateData = workflowRepository.create({
 					name: json.name,
 					nodes: nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
 					settings,
+					...(meta ? { meta } : {}),
 					pinData: sdkPinDataToRuntime(json.pinData),
 					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
@@ -3743,6 +3749,79 @@ function sdkNodeGroupsToRuntime(
 	return nodeGroups ?? [];
 }
 
+function normalizeWorkflowNodeDescription(value: unknown): WorkflowNodeDescription | undefined {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+
+	const summary = Reflect.get(value, 'summary');
+	if (typeof summary !== 'string') return undefined;
+
+	const trimmedSummary = summary.trim();
+	if (trimmedSummary.length === 0) return undefined;
+
+	const rationale = Reflect.get(value, 'rationale');
+	if (typeof rationale === 'string') {
+		const trimmedRationale = rationale.trim();
+		if (trimmedRationale.length > 0) {
+			return { summary: trimmedSummary, rationale: trimmedRationale };
+		}
+	}
+
+	return { summary: trimmedSummary };
+}
+
+function normalizeWorkflowNodeDescriptions(
+	value: unknown,
+	nodeIds: ReadonlySet<string>,
+): WorkflowNodeDescriptions | undefined {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+
+	const descriptions: WorkflowNodeDescriptions = {};
+	for (const [nodeId, description] of Object.entries(value)) {
+		if (!nodeIds.has(nodeId)) continue;
+
+		const normalized = normalizeWorkflowNodeDescription(description);
+		if (normalized) {
+			descriptions[nodeId] = normalized;
+		}
+	}
+
+	return Object.keys(descriptions).length > 0 ? descriptions : undefined;
+}
+
+function mergeWorkflowMetaForSave(
+	existingMeta: WorkflowFEMeta | undefined,
+	incomingMeta: WorkflowJSON['meta'],
+	nodes: WorkflowJSON['nodes'],
+): WorkflowFEMeta | undefined {
+	const nodeIds = new Set(nodes.map((node) => node.id).filter((id) => id.length > 0));
+	const existingDescriptions = normalizeWorkflowNodeDescriptions(
+		existingMeta?.nodeDescriptions,
+		nodeIds,
+	);
+	const incomingDescriptions = normalizeWorkflowNodeDescriptions(
+		incomingMeta?.nodeDescriptions,
+		nodeIds,
+	);
+	const meta: WorkflowFEMeta = {
+		...(existingMeta ?? {}),
+		...(incomingMeta ?? {}),
+	};
+	const descriptions = {
+		...(existingDescriptions ?? {}),
+		...(incomingDescriptions ?? {}),
+	};
+
+	if (Object.keys(descriptions).length > 0) {
+		meta.nodeDescriptions = descriptions;
+	} else {
+		delete meta.nodeDescriptions;
+	}
+
+	if (Object.keys(meta).length > 0) return meta;
+
+	return existingMeta || incomingMeta ? meta : undefined;
+}
+
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
 	if (Reflect.get(value, 'id') === null && Reflect.get(value, '__aiGatewayManaged') === true) {
@@ -3809,6 +3888,7 @@ function toWorkflowJSON(
 		})),
 		connections: source.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],
+		...(workflow.meta ? { meta: workflow.meta } : {}),
 		...(source.nodeGroups ? { nodeGroups: source.nodeGroups } : {}),
 	};
 }

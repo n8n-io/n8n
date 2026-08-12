@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { N8nCard, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowTourStore } from '@/features/workflows/tour/workflowTour.store';
+import { N8nButton, N8nCard, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
 
@@ -12,8 +14,11 @@ const props = defineProps<{
 	projectId?: string;
 	metadata?: string;
 	archived?: boolean;
+	hasTourDescriptions?: boolean;
 }>();
 
+const workflowsListStore = useWorkflowsListStore();
+const workflowTourStore = useWorkflowTourStore();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
 	'openDataTablePreview',
@@ -31,6 +36,32 @@ const iconMap: Record<string, IconName> = {
 };
 
 const icon = computed(() => iconMap[props.type] ?? 'file');
+const startTourLabel = computed(() => i18n.baseText('workflowTour.startButton'));
+
+const hasCachedTourDescriptions = computed(() => {
+	if (props.type !== 'workflow') return false;
+
+	const workflow = workflowsListStore.getWorkflowById(props.resourceId);
+	const descriptions =
+		workflow?.meta && typeof workflow.meta === 'object'
+			? Reflect.get(workflow.meta, 'nodeDescriptions')
+			: undefined;
+	if (typeof descriptions !== 'object' || descriptions === null) return false;
+
+	return Object.values(descriptions).some((description) => {
+		if (typeof description !== 'object' || description === null) return false;
+
+		const summary = Reflect.get(description, 'summary');
+		return typeof summary === 'string' && summary.trim().length > 0;
+	});
+});
+
+const showTourButton = computed(
+	() =>
+		props.type === 'workflow' &&
+		!props.archived &&
+		(props.hasTourDescriptions === true || hasCachedTourDescriptions.value),
+);
 
 function projectResourceUrl(projectId: string | undefined, resourceType: 'data-table' | 'agent') {
 	if (resourceType === 'agent') {
@@ -65,6 +96,11 @@ function handleClick(e: MouseEvent) {
 		}
 	}
 }
+
+function handleStartTour() {
+	openPreview?.(props.resourceId);
+	workflowTourStore.requestTour(props.resourceId);
+}
 </script>
 
 <template>
@@ -85,6 +121,16 @@ function handleClick(e: MouseEvent) {
 		<N8nText v-if="props.metadata" color="text-light" :class="$style.metadata">
 			{{ props.metadata }}
 		</N8nText>
+		<div v-if="showTourButton" :class="$style.actions">
+			<N8nButton
+				variant="subtle"
+				size="small"
+				icon="book-open"
+				:label="startTourLabel"
+				data-test-id="instance-ai-artifact-start-tour-button"
+				@click.stop="handleStartTour"
+			/>
+		</div>
 	</N8nCard>
 </template>
 
@@ -130,5 +176,10 @@ function handleClick(e: MouseEvent) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.actions {
+	display: flex;
+	margin-top: var(--spacing--2xs);
 }
 </style>

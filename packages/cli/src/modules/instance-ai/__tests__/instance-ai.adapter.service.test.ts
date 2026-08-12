@@ -1899,6 +1899,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: vi.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: vi.fn().mockResolvedValue(savedWorkflow),
 		update: vi.fn().mockResolvedValue(undefined),
+		findOne: vi.fn().mockResolvedValue(savedWorkflow),
 		manager: {
 			transaction: vi.fn(
 				async (fn: (transactionManager: { save: Mock }) => Promise<unknown>): Promise<unknown> => {
@@ -1918,6 +1919,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: vi.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: vi.fn().mockResolvedValue(undefined),
 		makeOwner: vi.fn().mockResolvedValue(undefined),
+		getWorkflowOwningProject: vi.fn().mockResolvedValue({ id: 'team-project-id' }),
 	};
 
 	const mockAiBuilderTemporaryWorkflowRepository = {
@@ -2077,6 +2079,12 @@ describe('createWorkflowAdapter', () => {
 			],
 			connections: {},
 			settings: {},
+			meta: {
+				templateId: 'template-1',
+				nodeDescriptions: {
+					'debug-id': { summary: 'Generates sample data' },
+				},
+			},
 		});
 
 		const result = await adapter.getAsWorkflowJSON('wf-settings');
@@ -2091,6 +2099,12 @@ describe('createWorkflowAdapter', () => {
 				onError: 'continueErrorOutput',
 			}),
 		);
+		expect(result.meta).toEqual({
+			templateId: 'template-1',
+			nodeDescriptions: {
+				'debug-id': { summary: 'Generates sample data' },
+			},
+		});
 	});
 
 	it('returns the version graph with current workflow metadata when a versionId is passed', async () => {
@@ -2436,6 +2450,132 @@ describe('createWorkflowAdapter', () => {
 
 		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as { nodeGroups: unknown };
 		expect(updateData.nodeGroups).toEqual(nodeGroups);
+	});
+
+	it('persists workflow meta with pruned node descriptions when creating a workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		const workflow = {
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			meta: {
+				templateId: 'template-1',
+				templateCredsSetupCompleted: true,
+				nodeDescriptions: {
+					'node-1': { summary: 'Prepares the request' },
+					'stale-node': { summary: 'Removed node' },
+				},
+			},
+		} as unknown as WorkflowJSON;
+
+		await adapter.createFromWorkflowJSON(workflow);
+
+		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as {
+			meta: Record<string, unknown>;
+		};
+		expect(updateData.meta).toEqual({
+			templateId: 'template-1',
+			templateCredsSetupCompleted: true,
+			nodeDescriptions: {
+				'node-1': { summary: 'Prepares the request' },
+			},
+		});
+	});
+
+	it('merges existing workflow meta and prunes stale descriptions on update', async () => {
+		const { adapter, mockWorkflowRepository, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		mockWorkflowRepository.findOne.mockResolvedValueOnce({
+			id: 'wf-new',
+			settings: {},
+			meta: {
+				templateId: 'template-1',
+				templateCredsSetupCompleted: true,
+				builderVariant: 'mcp',
+				nodeDescriptions: {
+					'node-1': { summary: 'Existing node' },
+					'stale-node': { summary: 'Removed node' },
+				},
+			},
+		});
+		const workflow = {
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-2',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [100, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			meta: {
+				nodeDescriptions: {
+					'node-2': {
+						summary: 'Fetches customer data',
+						rationale: 'The router needs account context.',
+					},
+				},
+			},
+		} as unknown as WorkflowJSON;
+
+		await adapter.updateFromWorkflowJSON('wf-new', workflow);
+
+		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as {
+			meta: Record<string, unknown>;
+		};
+		expect(updateData.meta).toEqual({
+			templateId: 'template-1',
+			templateCredsSetupCompleted: true,
+			builderVariant: 'mcp',
+			nodeDescriptions: {
+				'node-1': { summary: 'Existing node' },
+				'node-2': {
+					summary: 'Fetches customer data',
+					rationale: 'The router needs account context.',
+				},
+			},
+		});
+	});
+
+	it('clears stale-only workflow tour descriptions on update', async () => {
+		const { adapter, mockWorkflowRepository, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		mockWorkflowRepository.findOne.mockResolvedValueOnce({
+			id: 'wf-new',
+			settings: {},
+			meta: {
+				nodeDescriptions: {
+					'stale-node': { summary: 'Removed node' },
+				},
+			},
+		});
+
+		await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+
+		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as {
+			meta: Record<string, unknown>;
+		};
+		expect(updateData.meta).toEqual({});
 	});
 
 	it('strips id-less credential references before creating a workflow', async () => {
