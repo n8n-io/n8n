@@ -1,12 +1,5 @@
 <script lang="ts" setup>
-import {
-	N8nBadge,
-	N8nIcon,
-	N8nSelect2,
-	N8nSelect2Item,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nSelect2, N8nText, N8nTooltip } from '@n8n/design-system';
 import type {
 	SelectItem,
 	SelectOptionBase,
@@ -22,11 +15,14 @@ import RoleContactAdminModal from './RoleContactAdminModal.vue';
 import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';
 
 interface RoleSelectOption extends SelectOptionBase<string> {
-	role?: Role;
+	role: Role;
 	requiresUpgrade?: boolean;
 }
 
 type RoleSelectItem = RoleSelectOption | Extract<SelectItem, { type: 'label' | 'separator' }>;
+
+const isRoleSelectOption = (item: SelectOptionBase): item is RoleSelectOption =>
+	'role' in item && item.role !== undefined;
 
 const props = withDefaults(
 	defineProps<{
@@ -191,41 +187,39 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 				{{ i18n.baseText('projects.settings.role.selector.noResults') }}
 			</template>
 
-			<template #item="{ item }">
-				<template v-if="(item as RoleSelectItem).role">
-					<RoleHoverPopover
-						:role="(item as RoleSelectItem).role!"
-						:permission-count="
-							permissionCountFn ? permissionCountFn((item as RoleSelectItem).role!) : undefined
-						"
-						:total-permissions="totalPermissions"
-						:edit-route-name="editRouteName"
-						:view-route-name="viewRouteName"
-						:from-view="fromView"
+			<template #item-label="{ item }">
+				<RoleHoverPopover
+					v-if="isRoleSelectOption(item)"
+					:role="item.role"
+					:permission-count="permissionCountFn ? permissionCountFn(item.role) : undefined"
+					:total-permissions="totalPermissions"
+					:edit-route-name="editRouteName"
+					:view-route-name="viewRouteName"
+					:from-view="fromView"
+				>
+					<N8nText
+						tag="span"
+						size="medium"
+						:color="isUnavailableRoleItem(item) ? 'text-light' : 'text-dark'"
+						:class="$style.itemLabel"
 					>
-						<N8nSelect2Item v-bind="item" :class="$style.selectItem">
-							<template #item-label>
-								<N8nText
-									tag="span"
-									size="medium"
-									:color="isUnavailableRoleItem(item) ? 'text-light' : 'text-dark'"
-									:class="$style.itemLabel"
-								>
-									{{ item.label }}
-								</N8nText>
-							</template>
-							<template #item-trailing>
-								<N8nBadge
-									v-if="isUnavailableRoleItem(item)"
-									theme="warning"
-									:class="$style.upgradeBadge"
-								>
-									{{ i18n.baseText('generic.upgrade') }}
-								</N8nBadge>
-							</template>
-						</N8nSelect2Item>
-					</RoleHoverPopover>
+						{{ item.label }}
+					</N8nText>
+				</RoleHoverPopover>
+				<template v-else>
+					{{ item.label }}
 				</template>
+			</template>
+
+			<template #item-trailing="{ item, ui }">
+				<N8nBadge
+					v-if="isUnavailableRoleItem(item)"
+					theme="warning"
+					v-bind="ui"
+					:class="$style.upgradeBadge"
+				>
+					{{ i18n.baseText('generic.upgrade') }}
+				</N8nBadge>
 			</template>
 
 			<template #label="{ item }">
@@ -307,15 +301,7 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 	max-width: 180px;
 }
 
-.selectItem {
-	display: flex;
-	align-items: center;
-	width: 100%;
-	height: var(--spacing--xl);
-}
-
 .upgradeBadge {
-	margin-left: auto;
 	cursor: pointer;
 }
 

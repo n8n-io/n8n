@@ -786,6 +786,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	--input--radius--top-right: var(--radius--xs);
 	--input--radius--bottom-right: 0;
 	--input--radius--bottom-left: 0;
+	--input--color--background: transparent;
 	--input--border-color: transparent;
 	--input--border-color--hover: transparent;
 	--input--border-color--focus: transparent;
