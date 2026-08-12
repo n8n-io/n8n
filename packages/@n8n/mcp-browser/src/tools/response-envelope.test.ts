@@ -226,6 +226,30 @@ describe('buildErrorResponse', () => {
 		expect(structuredOf(result).snapshot).toBe('- button "OK"');
 	});
 
+	it('redacts detected secrets from the error snapshot', async () => {
+		mockConnection.adapter.snapshot.mockResolvedValue({
+			tree: '- text "your key: sk-SECRET123"',
+			refCount: 0,
+		});
+		analyzeMock.mockReturnValue({
+			ok: true,
+			sensitive: true,
+			hits: [{ type: 'secret', value: 'sk-SECRET123' }],
+		});
+
+		const result = await buildErrorResponse(
+			new Error('boom'),
+			mockConnection.connection,
+			{},
+			{
+				autoSnapshot: true,
+			},
+		);
+
+		expect(structuredOf(result).snapshot).not.toContain('sk-SECRET123');
+		expect(JSON.stringify(result.content)).not.toContain('sk-SECRET123');
+	});
+
 	it('still returns the error when the snapshot fails', async () => {
 		mockConnection.adapter.snapshot.mockRejectedValue(new Error('page gone'));
 
