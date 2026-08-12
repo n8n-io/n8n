@@ -40,6 +40,8 @@ import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { InstanceAiCredentialHelpHandler } from '@/app/composables/useInstanceAiEditorCapability';
+import { useInstanceAiProactiveOffer } from '@/features/ai/instanceAi/composables/useInstanceAiProactiveOffer';
+import { buildCredentialErrorOffer } from '@/features/ai/instanceAi/instanceAiProactive';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
@@ -123,6 +125,7 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
+const { raise: raiseProactiveOffer } = useInstanceAiProactiveOffer();
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -417,6 +420,35 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		emit('scrollToTop');
 	}
 });
+
+/**
+ * A failed credential test is otherwise a dead end — the danger banner's only
+ * action is Retry. Offer to have the error explained instead.
+ *
+ * Explicit test failures only. `authError` is written by the modal's own test
+ * path (save, Retry, or the retest on open), all of which follow a user action.
+ * `useCredentialTestInBackground` records into the credentials store instead and
+ * so can never land here — it auto-tests while the user is still typing the API
+ * key, and offering help mid-typing would be actively annoying.
+ */
+watch(
+	() => props.authError,
+	(authError) => {
+		// The validation warning replaces the auth-error banner; don't offer help
+		// for an error the user can't see, or one they can't act on.
+		if (!authError || props.showValidationWarning || !canWrite.value) return;
+
+		raiseProactiveOffer(
+			buildCredentialErrorOffer({
+				credentialType: props.credentialType.name,
+				displayName: props.credentialType.displayName,
+				nodeName: activeNode.value?.name,
+				errorMessage: authError,
+				credentialId: props.credentialId || undefined,
+			}),
+		);
+	},
+);
 </script>
 
 <template>
