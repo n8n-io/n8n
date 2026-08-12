@@ -28,19 +28,24 @@ export class TransportModeService {
 		return this.globalConfig.transport[subsystem];
 	}
 
+	/** Whether this process was forked by `n8n hypervisor` - the only source of an IPC channel. */
+	isUnderHypervisor(): boolean {
+		return process.env.N8N_HYPERVISOR_MODE === '1';
+	}
+
 	/**
 	 * Fail fast at boot for selections that cannot work. Leader election and
 	 * pubsub consume the `ipc` value today; this grows as other subsystems are
 	 * wired.
 	 */
 	validateAtBoot(): void {
-		if (this.resolve('leaderElection') === 'ipc' && process.env.N8N_HYPERVISOR_MODE !== '1') {
+		if (this.resolve('leaderElection') === 'ipc' && !this.isUnderHypervisor()) {
 			throw new UserError(
 				'N8N_TRANSPORT_LEADER_ELECTION=ipc requires running under `n8n hypervisor` (no IPC channel otherwise).',
 			);
 		}
 
-		if (this.resolve('pubsub') === 'ipc' && process.env.N8N_HYPERVISOR_MODE !== '1') {
+		if (this.resolve('pubsub') === 'ipc' && !this.isUnderHypervisor()) {
 			throw new UserError(
 				'N8N_TRANSPORT_PUBSUB=ipc requires running under `n8n hypervisor` (no IPC channel otherwise).',
 			);
