@@ -1,3 +1,15 @@
+## [1.123.70](https://github.com/n8n-io/n8n/compare/n8n@1.123.69...n8n@1.123.70) (2026-08-12)
+
+
+### Bug Fixes
+
+* Bump adm-zip from 0.5.10 to 0.6.0 via pnpm override ([c4d602e](https://github.com/n8n-io/n8n/commit/c4d602e3bec0e61267830e9c5fe079628981e9a4))
+* Bump tar from 7.5.16 to 7.5.21 via pnpm override ([d97e715](https://github.com/n8n-io/n8n/commit/d97e7153b5557c3c653a1bd5377645e07727a31c))
+* Bump undici from 7.28.0 to 7.29.0 via pnpm override ([ab2a6bf](https://github.com/n8n-io/n8n/commit/ab2a6bf9916d28cd9501b0b52cc93d70983b60cc))
+* **core:** Bump fast-uri from 3.1.2 to 3.1.5 ([8e4e278](https://github.com/n8n-io/n8n/commit/8e4e278055b2d8d62402d136d288d0a0f66fd0db))
+* **core:** Stop scheduled poll ticks from releasing the activation's expression isolate ([#35934](https://github.com/n8n-io/n8n/issues/35934)) ([ae489a6](https://github.com/n8n-io/n8n/commit/ae489a6adbab92d35539ebd7708492a7a36991ae))
+
+
 ## [1.123.69](https://github.com/n8n-io/n8n/compare/n8n@1.123.68...n8n@1.123.69) (2026-08-05)
 
 
