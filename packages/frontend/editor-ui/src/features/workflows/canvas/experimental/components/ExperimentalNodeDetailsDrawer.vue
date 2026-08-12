@@ -107,19 +107,33 @@ const selectedTab = computed({
 const updateScrollPosition = useThrottleFn((nodeId: string, scrollTop: number) => {
 	experimentalNdvStore.updateNodePanelState(nodeId, { scrollTop });
 }, 100);
-const isDataTab = computed(() => selectedTab.value !== 'properties');
+const isDataTab = computed(() => selectedTab.value === 'input' || selectedTab.value === 'output');
+const isSettingsTab = computed(() => selectedTab.value === 'settings');
 const dataTab = computed(() =>
 	selectedTab.value === 'input' || selectedTab.value === 'output' ? selectedTab.value : 'input',
 );
-const tabs = computed<Array<ITab<NodePanelTab>>>(() => [
-	{ value: 'properties', label: i18n.baseText('nodePanel.properties') },
-	{ value: 'input', label: i18n.baseText('ndv.input') },
-	{ value: 'output', label: i18n.baseText('ndv.output') },
-]);
-
 const parentNodeNames = computed(() =>
 	workflowDocumentStore.value.getParentNodesByDepth(props.node.name, 1).map(({ name }) => name),
 );
+
+// A trigger with no upstream node has nothing to show in Input — the tab would
+// only ever offer an empty parent-node selector.
+const hasInput = computed(() => parentNodeNames.value.length > 0);
+
+const tabs = computed<Array<ITab<NodePanelTab>>>(() =>
+	[
+		{ value: 'properties' as const, label: i18n.baseText('nodePanel.properties') },
+		...(hasInput.value ? [{ value: 'input' as const, label: i18n.baseText('ndv.input') }] : []),
+		{ value: 'output' as const, label: i18n.baseText('ndv.output') },
+		{ value: 'settings' as const, label: i18n.baseText('nodePanel.settings') },
+	].map((tab) => tab as ITab<NodePanelTab>),
+);
+
+// Never strand the panel on a tab that no longer exists.
+watch(hasInput, (has) => {
+	if (!has && selectedTab.value === 'input') selectedTab.value = 'properties';
+});
+
 const workflowRunData = computed(
 	() => workflowExecutionStateStore.value.activeExecution?.data?.resultData?.runData,
 );
@@ -392,6 +406,7 @@ onBeforeUnmount(() => {
 						:is-read-only="isReadOnly"
 						hide-header
 						progressive-disclosure
+						hide-execution-settings
 						:show-all-settings="panelState.isShowingAllSettings"
 						:settings-filter="panelState.settingsFilter"
 						:always-show-all-settings="experimentalNdvStore.alwaysShowAllSettings"
@@ -408,8 +423,17 @@ onBeforeUnmount(() => {
 						@scroll-position-changed="updateScrollPosition(node.id, $event)"
 					/>
 				</KeepAlive>
+				<ExperimentalCanvasNodeSettings
+					v-if="isSettingsTab"
+					:key="`settings-${nodeSettingsViewKey}`"
+					:class="$style.settings"
+					:node-id="node.id"
+					:is-read-only="isReadOnly"
+					hide-header
+					forced-tab="settings"
+				/>
 				<ExperimentalNodePanelData
-					v-if="selectedTab !== 'properties'"
+					v-if="isDataTab"
 					:node="node"
 					:tab="dataTab"
 					:input-node-name="selectedInputNodeName"

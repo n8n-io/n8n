@@ -142,6 +142,18 @@ const node = computed<INodeUi | undefined>(() => {
 		: undefined;
 });
 
+// The node panel is selection-driven: with nothing selected there is nothing to
+// show, so close it rather than parking an empty placeholder over the canvas.
+const hasPanelContent = computed(
+	() =>
+		!experimentalNdvStore.isNdvInFocusPanelEnabled ||
+		showSetupPanel.value ||
+		showEvaluationsPanel.value ||
+		showEvaluationsPaywall.value ||
+		node.value !== undefined ||
+		resolvedParameter.value !== undefined,
+);
+
 // The Node Panel owns its own tabs. Keep the shared sidebar tabs for setup and
 // evaluations surfaces when the Node Panel itself is not visible.
 const isNodePanelActive = computed(
@@ -309,7 +321,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div
-		v-if="focusPanelActive"
+		v-if="focusPanelActive && hasPanelContent"
 		ref="wrapper"
 		data-test-id="focus-sidebar"
 		:class="[

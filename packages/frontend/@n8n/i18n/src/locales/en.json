@@ -2306,6 +2306,7 @@
 	"nodeSettings.parametersShort": "Params",
 	"nodeSettings.settings": "Settings",
 	"nodePanel.properties": "Properties",
+	"nodePanel.settings": "Settings",
 	"nodePanel.showInputData": "Show input data",
 	"nodePanel.hideInputData": "Hide input data",
 	"nodePanel.maximizeData": "Maximize {tab} data",

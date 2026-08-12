@@ -15,7 +15,7 @@ import { CANVAS_ZOOMED_VIEW_EXPERIMENT, NDV_IN_FOCUS_PANEL_EXPERIMENT } from '@/
 import type { INodeUi } from '@/Interface';
 import { useStorage } from '@n8n/composables/useStorage';
 
-export type NodePanelTab = 'properties' | 'input' | 'output';
+export type NodePanelTab = 'properties' | 'input' | 'output' | 'settings';
 
 export type NodePanelState = {
 	selectedTab: NodePanelTab;
