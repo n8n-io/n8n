@@ -17,21 +17,22 @@
 		// needs `privileged: true` on the n8n service (compose-based config)
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
 	},
-	"forwardPorts": [8080, 5678, 8787],
-	"portsAttributes": {
-		"8787": { "label": "agent-broker" }
-	},
+	"forwardPorts": [8080, 5678],
 	// Runs in prebuilds, so a fresh codespace starts with deps installed and the build warm
 	"onCreateCommand": "corepack install && pnpm install && (pnpm build > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log) && pnpm --filter=n8n-playwright exec playwright install chromium",
-	// Start the broker on each container start. `bash -lc` loads the secrets shim, so the
-	// broker gets AGENT_BROKER_TOKEN. tmux detaches it, so it does not block startup.
-	"postStartCommand": "tmux new-session -d -s broker 'bash -lc \"node /workspaces/n8n/.devcontainer/codespaces/agent-broker.mjs >> /tmp/agent-broker.log 2>&1\"' || true",
+	// Start the poll worker on each container start. `bash -lc` loads the secrets shim, so
+	// it gets AGENT_WORKER_TOKEN. tmux detaches it, so it does not block startup. The worker
+	// only makes outbound calls to n8n — nothing inbound is exposed.
+	"postStartCommand": "tmux new-session -d -s agent-worker 'bash -lc \"node /workspaces/n8n/.devcontainer/codespaces/agent-worker.mjs >> /tmp/agent-worker.log 2>&1\"' || true",
 	"secrets": {
 		"ANTHROPIC_API_KEY": {
 			"description": "Anthropic API key for Claude Code / OpenCode sessions"
 		},
-		"AGENT_BROKER_TOKEN": {
-			"description": "Bearer token the agent broker requires on every request (see .devcontainer/codespaces/agent-broker.mjs)"
+		"AGENT_WORKER_TOKEN": {
+			"description": "Shared bearer the poll worker sends to n8n on every dequeue (see .devcontainer/codespaces/agent-worker.mjs)"
+		},
+		"N8N_DEQUEUE_URL": {
+			"description": "n8n webhook the poll worker calls to claim a pending turn"
 		},
 		"CLAUDE_CODE_OAUTH_TOKEN": {
 			"description": "Alternative to an API key: token from `claude setup-token` (Max subscription)"

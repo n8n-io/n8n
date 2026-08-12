@@ -41,40 +41,29 @@ pnpm session rm           # delete the codespace
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
 
-## Agent broker (call the codespace over HTTP)
+## Agent worker (drive a session from n8n)
 
-`agent-broker.mjs` runs one Claude turn per HTTP request, so an external caller
-(an n8n workflow, a script) can drive a session on the codespace. Each turn is a
-headless `claude -p`. State persists on disk, so `--resume` continues a
-conversation across turns and across a stop/start.
+`agent-worker.mjs` lets an n8n workflow drive a Claude Code session on the
+codespace — so Slack (via the Flaky bot) can steer a session running here. Each
+turn is one headless `claude -p`; state persists on disk, so `--resume`
+continues a conversation across turns and across a stop/start.
 
-The broker starts on every container start (`postStartCommand`). It needs the
-`AGENT_BROKER_TOKEN` secret and refuses to start without it. Add the token at
-[github.com/settings/codespaces](https://github.com/settings/codespaces) the
-same way as `ANTHROPIC_API_KEY`. Logs are at `/tmp/agent-broker.log`; the tmux
-session is `broker`.
+**It polls outward — nothing inbound is exposed.** GitHub resets forwarded ports
+to private on every start and gives no API to make one public, so a codespace
+can't be reached inbound reliably. Instead the worker calls *out*: it polls n8n
+for a pending turn addressed to this box's owner (`$GITHUB_USER`), runs it, and
+POSTs the result back to the turn's resume URL. No tunnel, no port, no domain.
 
-The port is private by default. Make it reachable, then health-check it:
+It starts on every container start (`postStartCommand`) and needs two secrets,
+added at [github.com/settings/codespaces](https://github.com/settings/codespaces)
+the same way as `ANTHROPIC_API_KEY`:
 
-```bash
-gh codespace ports visibility 8787:public -c <codespace-name>
-curl https://<codespace-name>-8787.app.github.dev/healthz     # {"ok":true}
-```
+- `AGENT_WORKER_TOKEN` — shared bearer sent on every dequeue.
+- `N8N_DEQUEUE_URL` — the n8n webhook that hands back a pending turn.
 
-A public port has no auth in front of it, so the bearer token is the only
-guard. Keep it secret.
-
-Send a turn (omit `sessionId` to start one; pass it back to continue):
-
-```bash
-curl -s https://<codespace-name>-8787.app.github.dev/turns \
-  -H "Authorization: Bearer $AGENT_BROKER_TOKEN" -H 'content-type: application/json' \
-  -d '{"message":"what branch is this?"}'
-# reply carries .result.session_id — send it back as "sessionId" next turn
-```
-
-Turns take minutes. Pass a `callbackUrl` to get `202 {turnId}` at once and the
-result by POST when the turn ends. See the file header for the full contract.
+Logs are at `/tmp/agent-worker.log`; the tmux session is `agent-worker`
+(`tmux attach -t agent-worker` to watch it). The worker refuses to start if
+either secret (or `$GITHUB_USER`) is missing.
 
 ## Flaky tools (MCP)
 
