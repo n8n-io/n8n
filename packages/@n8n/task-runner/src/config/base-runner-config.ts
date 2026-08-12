@@ -20,6 +20,17 @@ export class BaseRunnerConfig {
 	@Env('N8N_RUNNERS_GRANT_TOKEN')
 	grantToken: string = '';
 
+	/**
+	 * ID to identify as to the task broker. Empty to self-assign one, which is the
+	 * default in `external` mode, where no one else knows this runner beforehand.
+	 *
+	 * Must be unique per runner when set: the broker keys connections by runner ID, so
+	 * two runners sharing one keep evicting each other's connection. In `internal` mode
+	 * n8n sets this itself, per runner it spawns.
+	 */
+	@Env('N8N_RUNNERS_ID')
+	runnerId: string = '';
+
 	@Env('N8N_RUNNERS_MAX_PAYLOAD')
 	maxPayloadSize: number = 1024 * 1024 * 1024;
 
@@ -38,6 +49,24 @@ export class BaseRunnerConfig {
 	 */
 	@Env('N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT')
 	idleTimeout: number = 0;
+
+	/**
+	 * How long (in seconds) the runner keeps offering and serving tasks after being asked
+	 * to shut down, before it commits to draining. Mirrors n8n's graceful-shutdown period.
+	 * In external mode the orchestrator's termination grace (e.g. k8s
+	 * terminationGracePeriodSeconds) must exceed this, or the runner is killed mid-drain.
+	 */
+	@Env('N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT')
+	gracefulShutdownTimeout: number = 30;
+
+	/**
+	 * Extra seconds after the grace period before the runner force-exits itself, as a
+	 * backstop for a stuck graceful stop. In external mode the launcher force-kills the
+	 * runner one further margin later (at grace + 2 × this), so it never kills a runner
+	 * that is still within its own backstop.
+	 */
+	@Env('N8N_RUNNERS_SHUTDOWN_FORCE_KILL_MARGIN')
+	shutdownForceKillMargin: number = 10;
 
 	@Env('GENERIC_TIMEZONE')
 	timezone: string = 'America/New_York';

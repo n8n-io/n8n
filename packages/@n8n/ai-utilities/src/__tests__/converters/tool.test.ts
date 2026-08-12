@@ -1,4 +1,5 @@
 import type { JSONSchema7 } from 'json-schema';
+import type { Mock } from 'vitest';
 import { z } from 'zod';
 
 import { fromLcTool, getParametersJsonSchema } from '../../converters/tool';
@@ -9,7 +10,7 @@ describe('fromLcTool', () => {
 			name: 'search',
 			description: 'Search the web',
 			schema: { type: 'object', properties: { q: { type: 'string' } } },
-			invoke: jest.fn(),
+			invoke: vi.fn(),
 		};
 
 		const result = fromLcTool(tool);
@@ -27,7 +28,7 @@ describe('fromLcTool', () => {
 			name: 'calculator',
 			description: 'Do math',
 			schema: { type: 'object', properties: { a: { type: 'number' } } },
-			func: jest.fn(),
+			func: vi.fn(),
 		};
 
 		const result = fromLcTool(tool);
@@ -119,7 +120,7 @@ describe('getParametersJsonSchema', () => {
 	it('returns schema.toJSONSchema() when ZodSchema has toJSONSchema method', () => {
 		const jsonSchema: JSONSchema7 = { type: 'object', properties: {} };
 		const zodSchema = z.object({ x: z.string() });
-		(zodSchema as { toJSONSchema?: () => JSONSchema7 }).toJSONSchema = jest
+		(zodSchema as { toJSONSchema?: () => JSONSchema7 }).toJSONSchema = vi
 			.fn()
 			.mockReturnValue(jsonSchema);
 		const tool = {
@@ -131,7 +132,7 @@ describe('getParametersJsonSchema', () => {
 		const result = getParametersJsonSchema(tool);
 
 		expect(result).toBe(jsonSchema);
-		expect((zodSchema as unknown as { toJSONSchema: jest.Mock }).toJSONSchema).toHaveBeenCalled();
+		expect((zodSchema as unknown as { toJSONSchema: Mock }).toJSONSchema).toHaveBeenCalled();
 	});
 
 	it('returns zodToJsonSchema(schema) when ZodSchema has no toJSONSchema', () => {

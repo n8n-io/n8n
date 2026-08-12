@@ -7,12 +7,10 @@ import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { PasswordUtility } from '@/services/password.utility';
 import {
+	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
-	isSamlCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
@@ -22,10 +20,8 @@ import type { SamlAttributeMapping, SamlUserAttributes } from './types';
 // can only toggle between email and saml, not directly to e.g. ldap
 export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
 	const currentAuthenticationMethod = getCurrentAuthenticationMethod();
-	if (enabled && !isEmailCurrentAuthenticationMethod() && !isSamlCurrentAuthenticationMethod()) {
-		throw new InternalServerError(
-			`Cannot switch SAML login enabled state when an authentication method other than email or saml is active (current: ${currentAuthenticationMethod})`,
-		);
+	if (enabled) {
+		assertAuthenticationMethodCanBeEnabled('saml');
 	}
 
 	const targetAuthenticationMethod =
@@ -111,6 +107,7 @@ export async function updateUserFromSamlAttributes(
 type GetMappedSamlReturn = {
 	attributes: SamlUserAttributes | undefined;
 	missingAttributes: string[];
+	rawAttributes: Record<string, unknown>;
 };
 
 export function getMappedSamlAttributesFromFlowResult(
@@ -124,11 +121,12 @@ export function getMappedSamlAttributesFromFlowResult(
 	const result: GetMappedSamlReturn = {
 		attributes: undefined,
 		missingAttributes: [] as string[],
+		rawAttributes: {},
 	};
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 	if (flowResult?.extract?.attributes) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const attributes = flowResult.extract.attributes as { [key: string]: string | string[] };
+		result.rawAttributes = attributes as Record<string, unknown>;
 		// TODO:SAML: fetch mapped attributes from flowResult.extract.attributes and create or login user
 		const email = attributes[attributeMapping.email] as string;
 		const firstName = attributes[attributeMapping.firstName] as string;
@@ -159,5 +157,16 @@ export function getMappedSamlAttributesFromFlowResult(
 }
 
 export function isConnectionTestRequest(payload: SamlAcsDto): boolean {
-	return payload.RelayState === getServiceProviderConfigTestReturnUrl();
+	if (!payload.RelayState) return false;
+	return payload.RelayState.startsWith(getServiceProviderConfigTestReturnUrl());
+}
+
+export function extractTestIdFromRelayState(relayState: string | undefined): string | undefined {
+	if (!relayState) return undefined;
+	try {
+		const url = new URL(relayState);
+		return url.searchParams.get('t') ?? undefined;
+	} catch {
+		return undefined;
+	}
 }

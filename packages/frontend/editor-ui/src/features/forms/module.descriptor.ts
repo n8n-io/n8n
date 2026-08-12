@@ -1,4 +1,4 @@
-import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { FORMS_VIEW, FORMS_WORKFLOW_VIEW } from './constants';
 
 const FormsView = async () => await import('./views/FormsView.vue');

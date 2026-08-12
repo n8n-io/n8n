@@ -69,6 +69,31 @@ export function isPlaceholderValue(value: unknown): boolean {
 }
 
 /**
+ * Check if a value contains a placeholder marker anywhere within it.
+ *
+ * Unlike {@link isPlaceholderValue}, which requires the marker to span the
+ * entire string, this catches placeholders embedded in larger strings — most
+ * notably `=<__PLACEHOLDER_VALUE__…__>` produced by wrapping `placeholder()`
+ * inside `expr()`, or placeholders concatenated inside `={{ … }}` blocks.
+ */
+export function containsPlaceholderMarker(value: unknown): boolean {
+	if (typeof value !== 'string') return false;
+	return /<__PLACEHOLDER_VALUE__[\s\S]*?__>/.test(value);
+}
+
+/**
+ * Extract the original hint from a placeholder marker string.
+ * Returns the input unchanged if it does not match the marker format.
+ *
+ * @example
+ * extractHint('<__PLACEHOLDER_VALUE__OpenAI key__>') // → 'OpenAI key'
+ */
+export function extractHint(value: string): string {
+	if (!isPlaceholderValue(value)) return value;
+	return value.slice('<__PLACEHOLDER_VALUE__'.length, -'__>'.length);
+}
+
+/**
  * Check if an object looks like a resource locator value.
  * Resource locators have a 'mode' property (typically 'list', 'id', 'url', or 'name')
  * and a 'value' property.
@@ -294,19 +319,11 @@ export function escapeNewlinesInExpressionStrings(value: unknown): unknown {
 }
 
 /**
- * Generate a deterministic UUID based on workflow ID, node type, and node name.
- * This ensures that the same workflow structure always produces the same node IDs,
- * which is critical for the AI workflow builder where code may be re-parsed multiple times.
+ * Hash a seed string and format the digest as a deterministic UUID v4 structure.
+ * Shared by the node-id and group-id generators so they format identically.
  */
-export function generateDeterministicNodeId(
-	workflowId: string,
-	nodeType: string,
-	nodeName: string,
-): string {
-	const hash = createHash('sha256')
-		.update(`${workflowId}:${nodeType}:${nodeName}`)
-		.digest('hex')
-		.slice(0, 32);
+function deterministicUuidFromSeed(seed: string): string {
+	const hash = createHash('sha256').update(seed).digest('hex').slice(0, 32);
 
 	// Format as valid UUID v4 structure
 	return [
@@ -316,4 +333,27 @@ export function generateDeterministicNodeId(
 		((parseInt(hash[16], 16) & 0x3) | 0x8).toString(16) + hash.slice(17, 20), // Variant
 		hash.slice(20, 32),
 	].join('-');
+}
+
+/**
+ * Generate a deterministic UUID based on workflow ID, node type, and node name.
+ * This ensures that the same workflow structure always produces the same node IDs,
+ * which is critical for the AI workflow builder where code may be re-parsed multiple times.
+ */
+export function generateDeterministicNodeId(
+	workflowId: string,
+	nodeType: string,
+	nodeName: string,
+): string {
+	return deterministicUuidFromSeed(`${workflowId}:${nodeType}:${nodeName}`);
+}
+
+/**
+ * Generate a deterministic UUID for a node group based on workflow ID and group name.
+ * Group names are unique within a workflow, so the same name always yields the same ID
+ * on every round-trip — no persisted-workflow lookup needed. The `:group:` segment keeps
+ * group IDs from ever colliding with node IDs from {@link generateDeterministicNodeId}.
+ */
+export function generateDeterministicGroupId(workflowId: string, groupName: string): string {
+	return deterministicUuidFromSeed(`${workflowId}:group:${groupName}`);
 }

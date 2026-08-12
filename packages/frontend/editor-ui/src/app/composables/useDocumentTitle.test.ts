@@ -1,10 +1,11 @@
 import { mock } from 'vitest-mock-extended';
 import { describe, it, expect } from 'vitest';
+import { effectScope } from 'vue';
 import type { FrontendSettings } from '@n8n/api-types';
-import { useDocumentTitle } from './useDocumentTitle';
+import { claimDocumentTitle, useDocumentTitle } from './useDocumentTitle';
 
 const settings = mock<FrontendSettings>({ releaseChannel: 'stable' });
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings })),
 }));
 
@@ -108,6 +109,50 @@ describe('useDocumentTitle', () => {
 
 			reset();
 			expect(getDocumentState()).toBeUndefined();
+		});
+	});
+
+	describe('claimDocumentTitle', () => {
+		beforeEach(() => {
+			settings.releaseChannel = 'stable';
+		});
+
+		it('should ignore workflow title updates while a host owns the title', () => {
+			const scope = effectScope();
+			scope.run(() => claimDocumentTitle());
+
+			const { set, setDocumentTitle } = useDocumentTitle();
+			set('My conversation');
+			setDocumentTitle('My Workflow', 'IDLE');
+
+			expect(document.title).toBe('My conversation - n8n');
+			scope.stop();
+		});
+
+		it('should apply workflow title updates again once the host releases the title', () => {
+			const scope = effectScope();
+			scope.run(() => claimDocumentTitle());
+			scope.stop();
+
+			useDocumentTitle().setDocumentTitle('My Workflow', 'IDLE');
+
+			expect(document.title).toBe('▶️ My Workflow - n8n');
+		});
+
+		it('should keep the title owned while a second host instance still holds it', () => {
+			// A transient remount claims from the new instance before the old one disposes
+			const outgoing = effectScope();
+			outgoing.run(() => claimDocumentTitle());
+			const incoming = effectScope();
+			incoming.run(() => claimDocumentTitle());
+			outgoing.stop();
+
+			const { set, setDocumentTitle } = useDocumentTitle();
+			set('My conversation');
+			setDocumentTitle('My Workflow', 'IDLE');
+
+			expect(document.title).toBe('My conversation - n8n');
+			incoming.stop();
 		});
 	});
 });

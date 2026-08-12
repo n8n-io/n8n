@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UserError } from 'n8n-workflow';
 
 export type WrappableError = Record<string, unknown>;
 
@@ -7,7 +7,7 @@ export type WrappableError = Record<string, unknown>;
  * This class wraps them in an Error instance and makes all their
  * properties available.
  */
-export class WrappedExecutionError extends ApplicationError {
+export class WrappedExecutionError extends UserError {
 	[key: string]: unknown;
 
 	constructor(error: WrappableError) {

@@ -1,0 +1,102 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*Build a workflow named \\\\\"INS-164 mocked credential guard\\\\\" with a Manual Trigger connected to a Slack node that posts a me[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-dd9f24ce6d3493e1a8ad23d7d8701464-e43ece6a6cbee859-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011CcfQCZed4mQmgbcXtDFr8"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-07-03T15:58:51Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "17989000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-07-03T15:58:51Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-07-03T15:58:51Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-07-03T15:58:51Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "14989000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Fri, 03 Jul 2026 15:58:52 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a157180f6b9bf468-HEL"
+      ]
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01U73eqSHxFBEZ8DRTkwRq3M\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3,\"cache_creation_input_tokens\":18174,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":18174,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":7,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}       }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\",\"signature\":\"\"}              }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"The user wants me to build a workflow named \\\"INS-164 mocked credential guard\\\" with a Manual Trigger connected to a Slack node that posts a message using a mocked slackApi credential placeholder. Let me load\"} }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" the workflow-builder skill first.\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"signature_delta\",\"signature\":\"ErkDCmUIDxgCKkCAbaDQERxAdJR7Mv8Zk0L2gBIMqyDk5Xutac9+WomEVOGq3XucU7aBmBLwe2rk7QHGPmry9uJ+HO188mnmbbX+MhFjbGF1ZGUtc29ubmV0LTQtNjgAQgh0aGlua2luZxIMPcsHSWii08djOnBvGgwgJY3kUjOepZFnqrciMG+FK6UpWSyekQmIRG9g7cyr7Ir9pnQyz7uxQMsd5KTTwbPLlVgAWfkgzCwCV6cV1SqBAlBzDkpsQnWzj+S61GLyN7UEqoas6HJwnVydwa65o4pKkkxCXU8XQXDfK6/5LfZ5rjl4DZdacS8CfMhvotCx2inyanHHk/pzKR8yFuTKKjH5LZQ0faK4959/u7tG3yyEvd4kjayOXMMbePlE5OR1wUrze5iyJ8vnRoy5Of7rNdWRcPROzOsyetdW1cSHquSCQg8ZE7hVjuFNnW6tnJTJaJKDtpnIh0WZLYw7OhxnqCFx1XN4SlHTTImi3iiU9x8QBGL5xAvfsbAbJ0jADJbTGVYr/VxSDdUzpb2ezfhvZL3AhLnaLA8BO7PhgF4a4e/EortEVPZ5KwrtPyfwQUkWaLPOGAE=\"}          }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0   }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}          }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"Loading the workflow-builder skill before writing any code.\"}            }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1      }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_015MSAudnAxno2DVs6BjXKp3\",\"name\":\"load_skill\",\"input\":{},\"caller\":{\"type\":\"direct\"}}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"name\\\": \\\"workflow-builder\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"}\"}            }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":2}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":3,\"cache_creation_input_tokens\":18174,\"cache_read_input_tokens\":0,\"output_tokens\":137,\"output_tokens_details\":{\"thinking_tokens\":67}}              }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"          }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxVTczZXFTSHhGQkVaOERSVGt3UnEzTSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjMsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MTgxNzQsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjoxODE3NCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjcsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fSAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRoaW5raW5nIiwidGhpbmtpbmciOiIiLCJzaWduYXR1cmUiOiIifSAgICAgICAgICAgICAgfQoKZXZlbnQ6IHBpbmcKZGF0YTogeyJ0eXBlIjogInBpbmcifQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGhpbmtpbmdfZGVsdGEiLCJ0aGlua2luZyI6IlRoZSB1c2VyIHdhbnRzIG1lIHRvIGJ1aWxkIGEgd29ya2Zsb3cgbmFtZWQgXCJJTlMtMTY0IG1vY2tlZCBjcmVkZW50aWFsIGd1YXJkXCIgd2l0aCBhIE1hbnVhbCBUcmlnZ2VyIGNvbm5lY3RlZCB0byBhIFNsYWNrIG5vZGUgdGhhdCBwb3N0cyBhIG1lc3NhZ2UgdXNpbmcgYSBtb2NrZWQgc2xhY2tBcGkgY3JlZGVudGlhbCBwbGFjZWhvbGRlci4gTGV0IG1lIGxvYWQifSB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0aGlua2luZ19kZWx0YSIsInRoaW5raW5nIjoiIHRoZSB3b3JrZmxvdy1idWlsZGVyIHNraWxsIGZpcnN0LiJ9ICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoic2lnbmF0dXJlX2RlbHRhIiwic2lnbmF0dXJlIjoiRXJrRENtVUlEeGdDS2tDQWJhRFFFUnhBZEpSN012OFprMEwyZ0JJTXF5RGs1WHV0YWM5K1dvbUVWT0dxM1h1Y1U3YUJtQkx3ZTJyazdRSEdQbXJ5OXVKK0hPMTg4bW5tYmJYK01oRmpiR0YxWkdVdGMyOXVibVYwTFRRdE5qZ0FRZ2gwYUdsdWEybHVaeElNUGNzSFNXaWkwOGRqT25Cdkdnd2dKWTNrVWpPZXBaRm5xcmNpTUcrRks2VXBXU3lla1FtSVJHOWc3Y3lyN0lyOXBuUXl6N3V4UU1zZDVLVFR3YlBMbFZnQVdma2d6Q3dDVjZjVjFTcUJBbEJ6RGtwc1FuV3pqK1M2MUdMeU43VUVxb2FzNkhKd25WeWR3YTY1bzRwS2treENYVThYUVhEZks2LzVMZlo1cmpsNERaZGFjUzhDZk1odm90Q3gyaW55YW5ISGsvcHpLUjh5RnVUS0tqSDVMWlEwZmFLNDk1OS91N3RHM3l5RXZkNGtqYXlPWE1NYmVQbEU1T1Ixd1VyemU1aXlKOHZuUm95NU9mN3JOZFdSY1BST3pPc3lldGRXMWNTSHF1U0NRZzhaRTdoVmp1Rk5uVzZ0bkpUSmFKS0R0cG5JaDBXWkxZdzdPaHhucUNGeDFYTjRTbEhUVEltaTNpaVU5eDhRQkdMNXhBdmZzYkFiSjBqQURKYlRHVllyL1Z4U0RkVXpwYjJlemZodlpMM0FoTG5hTEE4Qk83UGhnRjRhNGUvRW9ydEVWUFo1S3dydFB5ZndRVWtXYUxQT0dBRT0ifSAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjowICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RhcnQKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19zdGFydCIsImluZGV4IjoxLCJjb250ZW50X2Jsb2NrIjp7InR5cGUiOiJ0ZXh0IiwidGV4dCI6IiJ9ICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0IjoiTG9hZGluZyB0aGUgd29ya2Zsb3ctYnVpbGRlciBza2lsbCBiZWZvcmUgd3JpdGluZyBhbnkgY29kZS4ifSAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0b3AKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19zdG9wIiwiaW5kZXgiOjEgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjIsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMTVNU0F1ZG5BeG5vMkRWczZCalhLcDMiLCJuYW1lIjoibG9hZF9za2lsbCIsImlucHV0Ijp7fSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX0gICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjIsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIn0gICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjIsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoie1wibmFtZVwiOiBcIndvcmtmbG93LWJ1aWxkZXIifSAgICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MiwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJcIn0ifSAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0b3AKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19zdG9wIiwiaW5kZXgiOjJ9CgpldmVudDogbWVzc2FnZV9kZWx0YQpkYXRhOiB7InR5cGUiOiJtZXNzYWdlX2RlbHRhIiwiZGVsdGEiOnsic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbH0sInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MywiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjoxODE3NCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsIm91dHB1dF90b2tlbnMiOjEzNywib3V0cHV0X3Rva2Vuc19kZXRhaWxzIjp7InRoaW5raW5nX3Rva2VucyI6Njd9fSAgICAgICAgICAgICAgfQoKZXZlbnQ6IG1lc3NhZ2Vfc3RvcApkYXRhOiB7InR5cGUiOiJtZXNzYWdlX3N0b3AiICAgICAgICAgIH0KCg==",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0000-1783094387250-unknown-host-POST-_v1_messages-a942b0c9.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

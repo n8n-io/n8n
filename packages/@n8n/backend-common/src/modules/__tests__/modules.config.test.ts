@@ -4,7 +4,7 @@ import { UnknownModuleError } from '../errors/unknown-module.error';
 import { ModulesConfig } from '../modules.config';
 
 beforeEach(() => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 	process.env = {};
 	Container.reset();
 });

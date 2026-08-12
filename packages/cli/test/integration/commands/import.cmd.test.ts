@@ -5,14 +5,18 @@ import {
 	getAllSharedWorkflows,
 	getAllWorkflows,
 } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { WorkflowPublishHistoryRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { INodeType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import '@/zod-alias-support';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
+import { WorkflowService } from '@/workflows/workflow.service';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { createMember, createOwner } from '../shared/db/users';
@@ -20,6 +24,7 @@ import { createMember, createOwner } from '../shared/db/users';
 mockInstance(LoadNodesAndCredentials);
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublishHistoryRepository);
+const mockNodeTypes = mockInstance(NodeTypes);
 
 const command = setupTestCommand(ImportWorkflowsCommand);
 
@@ -370,4 +375,135 @@ test('should preserve versionMetadata from JSON file when importing', async () =
 	expect(workflowHistoryRecords).toHaveLength(1);
 	expect(workflowHistoryRecords[0].name).toBe('Historical Version Name');
 	expect(workflowHistoryRecords[0].description).toBe('Historical version description');
+});
+
+describe('--activeState flag', () => {
+	const globalConfig = Container.get(GlobalConfig);
+	const originalMode = globalConfig.executions.mode;
+
+	beforeAll(() => {
+		globalConfig.executions.mode = 'queue';
+	});
+
+	afterAll(() => {
+		globalConfig.executions.mode = originalMode;
+	});
+
+	// TODO: fix this workaround being needed for these tests to run.
+	// It was introduced after refactoring the ImportService used by the import command
+	// from using the ActiveWorkflowManager to activate/deactivate workflows to the WorkflowService.
+	beforeEach(() => {
+		// Bypass webhook conflict detection to avoid infrastructure dependencies
+		// (getWorkflowExecutionData → VariablesService.getAllCached → CacheService/Redis)
+		vi.spyOn(Container.get(WorkflowService) as any, '_findConflictingWebhooks').mockResolvedValue(
+			[],
+		);
+
+		mockNodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
+			if (nodeType === 'n8n-nodes-base.webhook') {
+				return {
+					description: { webhooks: undefined, properties: [] },
+					webhook: vi.fn(),
+				} as unknown as INodeType;
+			}
+			return { description: { properties: [] } } as unknown as INodeType;
+		});
+	});
+
+	describe('fromJson', () => {
+		it('should activate a workflow that is marked as active in the imported json', async () => {
+			await createOwner();
+
+			await command.run([
+				'--separate',
+				'--input=./test/integration/commands/import-workflows/separate',
+				'--activeState=fromJson',
+			]);
+
+			const workflowsInDB = await getAllWorkflows();
+			const activeWorkflow = workflowsInDB.find((w) => w.name === 'active-workflow');
+			const inactiveWorkflow = workflowsInDB.find((w) => w.name === 'inactive-workflow');
+
+			expect(workflowsInDB).toHaveLength(2);
+			expect(activeWorkflow).toMatchObject({ active: true });
+			expect(activeWorkflow?.activeVersionId).toBe(activeWorkflow?.versionId);
+			expect(inactiveWorkflow).toMatchObject({ active: false, activeVersionId: null });
+
+			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+			expect(activeWorkflowManager.add).toHaveBeenCalledWith('998', 'activate');
+			expect(activeWorkflowManager.add).not.toHaveBeenCalledWith('999', expect.anything());
+		});
+
+		it('should deactivate the previously active version and activate the new version when importing a workflow json with an ID that already exists for an active workflow', async () => {
+			const owner = await createOwner();
+
+			await command.run([
+				'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
+				'--activeState=fromJson',
+			]);
+
+			const [first] = await getAllWorkflows();
+			const v1VersionId = first.versionId;
+			expect(first).toMatchObject({ id: '998', active: true, name: 'active-workflow' });
+			expect(first.activeVersionId).toBe(v1VersionId);
+
+			await command.run([
+				'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
+				'--activeState=fromJson',
+			]);
+
+			const [second] = await getAllWorkflows();
+			expect(second).toMatchObject({
+				id: '998',
+				active: true,
+				name: 'active-workflow updated',
+			});
+			expect(second.versionId).not.toBe(v1VersionId);
+			expect(second.activeVersionId).toBe(second.versionId);
+
+			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('998');
+			expect(activeWorkflowManager.add).toHaveBeenLastCalledWith('998', 'activate');
+
+			const publishHistoryRepo = Container.get(WorkflowPublishHistoryRepository);
+			expect(publishHistoryRepo.addRecord).toHaveBeenCalledTimes(3);
+			expect(publishHistoryRepo.addRecord).toHaveBeenLastCalledWith({
+				workflowId: '998',
+				versionId: second.versionId,
+				event: 'activated',
+				userId: owner.id,
+			});
+		});
+	});
+
+	describe('false', () => {
+		it('should deactivate a workflow that is active in the workflow json to import', async () => {
+			await createOwner();
+			const fixture =
+				'./test/integration/commands/import-workflows/separate/001-activeWorkflow.json';
+
+			await command.run([`--input=${fixture}`, '--activeState=fromJson']);
+
+			const [active] = await getAllWorkflows();
+			expect(active).toMatchObject({ id: '998', active: true });
+			expect(active.activeVersionId).toBe(active.versionId);
+
+			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+			vi.mocked(activeWorkflowManager.add).mockClear();
+			vi.mocked(activeWorkflowManager.remove).mockClear();
+
+			await command.run([`--input=${fixture}`, '--activeState=false']);
+
+			const [deactivated] = await getAllWorkflows();
+			expect(deactivated).toMatchObject({
+				id: '998',
+				name: 'active-workflow',
+				active: false,
+				activeVersionId: null,
+			});
+
+			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('998');
+			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+		});
+	});
 });

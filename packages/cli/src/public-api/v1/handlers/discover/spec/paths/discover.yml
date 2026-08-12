@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getDiscover
+  x-required-scope: none
   x-eov-operation-handler: v1/handlers/discover/discover.handler
   tags:
     - Discover

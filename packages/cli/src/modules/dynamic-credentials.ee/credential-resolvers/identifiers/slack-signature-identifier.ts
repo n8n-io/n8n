@@ -1,11 +1,11 @@
-import { createHmac, timingSafeEqual } from 'crypto';
-
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { createHmac, timingSafeEqual } from 'crypto';
 import type { ICredentialContext } from 'n8n-workflow';
-import { z } from 'zod';
-import { IdentifierValidationError, type ITokenIdentifier } from './identifier-interface';
 import { parse as parseQueryString } from 'querystring';
+import { z } from 'zod';
+
+import { IdentifierValidationError, type ITokenIdentifier } from './identifier-interface';
 
 const MAX_TIMESTAMP_AGE_SECONDS = 300; // 5 minutes — Slack's recommended window
 

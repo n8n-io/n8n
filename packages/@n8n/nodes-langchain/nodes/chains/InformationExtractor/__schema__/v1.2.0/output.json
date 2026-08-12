@@ -1,0 +1,12 @@
+{
+	"type": "object",
+	"required": ["output"],
+	"properties": {
+		"output": {
+			"type": "object",
+			"description": "Object of extracted fields matching the node's configured attributes — a parsed object, never a JSON-encoded string",
+			"additionalProperties": true
+		}
+	},
+	"version": 1
+}

@@ -104,4 +104,16 @@ describe('determine-tracks', () => {
 		assert.equal(output.release_type, 'rc');
 		assert.equal(output.rc_branch, 'release-candidate/2.10.x');
 	});
+
+	it('Set release_type accordingly on exp releases', () => {
+		const output = determineTrack('2.9.2-exp.0');
+
+		assert.equal(output.track, 'stable');
+		assert.equal(output.version, '2.9.2-exp.0');
+		assert.equal(output.previous_version, '2.9.2');
+		assert.equal(output.bump, 'patch');
+		assert.equal(output.new_stable_version, null);
+		assert.equal(output.release_type, 'rc');
+		assert.equal(output.rc_branch, 'release-candidate/2.9.x');
+	});
 });

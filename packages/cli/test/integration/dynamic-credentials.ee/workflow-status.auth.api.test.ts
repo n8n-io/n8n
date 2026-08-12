@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest';
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, User } from '@n8n/db';
@@ -8,13 +9,15 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+import { InstanceSettings } from 'n8n-core';
 import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
 import * as utils from '../shared/utils';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
+import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
 import { Telemetry } from '@/telemetry';
 import { createCredentials } from '../shared/db/credentials';
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
@@ -109,8 +112,15 @@ describe('Workflow Status API', () => {
 	let savedWorkflow: WorkflowEntity;
 	let savedCredential: CredentialsEntity;
 	let owner: User;
+	let unrelatedMember: User;
+	let isLeaderSpy: MockInstance;
 
 	beforeAll(async () => {
+		// Force leader role so N8nResolverSeeder.seed() runs (not no-op for followers).
+		isLeaderSpy = vi
+			.spyOn(Container.get(InstanceSettings), 'isLeader', 'get')
+			.mockReturnValue(true);
+
 		// Mock OAuth metadata endpoint for resolver validation
 		nock.cleanAll();
 		nock('https://auth.example.com')
@@ -143,11 +153,20 @@ describe('Workflow Status API', () => {
 			'DynamicCredentialResolver',
 		]);
 
+		// Re-seed the system credential resolver, which the dynamic-credentials proxy
+		// references for any workflow without an explicit `credentialResolverId`.
+		await Container.get(N8nResolverSeeder).seed();
+
 		({ savedWorkflow, savedCredential, owner } = await setupWorkflow());
+
+		// A second regular member with no relationship to the owner's workflow:
+		// not the owner, no project membership, no sharing.
+		unrelatedMember = await createUser();
 	});
 
 	afterAll(async () => {
 		nock.cleanAll();
+		isLeaderSpy.mockRestore();
 		await testDb.terminate();
 		testServer.httpServer.close();
 	});
@@ -248,6 +267,18 @@ describe('Workflow Status API', () => {
 							credentialStatus: expect.any(String),
 						}),
 					]),
+				});
+			});
+
+			describe("when an unrelated authenticated member targets another user's workflow", () => {
+				it('should not expose the credentials of a workflow the member cannot access', async () => {
+					const response = await testServer
+						.authAgentFor(unrelatedMember)
+						.get(`/workflows/${savedWorkflow.id}/execution-status`)
+						.set('Authorization', 'Bearer test-token');
+
+					expect([403, 404]).toContain(response.status);
+					expect(response.body?.data).toBeUndefined();
 				});
 			});
 		});

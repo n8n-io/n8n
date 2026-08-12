@@ -5,7 +5,8 @@ import { Network } from 'testcontainers';
 import { createElapsedLogger, pollContainerHttpEndpoint } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import type { LoadBalancerResult } from './services/load-balancer';
-import { createN8NInstances } from './services/n8n';
+import type { N8NStartupDiagnostics } from './services/n8n';
+import { createN8NInstances, N8NStartupError } from './services/n8n';
 import { helperFactories, services } from './services/registry';
 import type {
 	FileToMount,
@@ -18,6 +19,7 @@ import type {
 	StackConfig,
 	StartContext,
 } from './services/types';
+import { recordStartupFailure } from './startup-diagnostics';
 import { createTelemetryRecorder } from './telemetry';
 
 const SERVICE_REGISTRY: Record<ServiceName, Service> = services;
@@ -37,6 +39,13 @@ export interface N8NStack {
 	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
 	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
 	mainUrls: string[];
+	/**
+	 * Same mains addressed by their network alias, for callers running *inside* the
+	 * stack's network — e.g. an HTTP Request node executed by a worker container,
+	 * which cannot reach the host-mapped ports in `baseUrl`/`mainUrls`.
+	 */
+	internalMainUrls: string[];
+	startupDiagnostics: N8NStartupDiagnostics;
 }
 
 function shouldServiceStart(name: ServiceName, service: Service, ctx: StartContext): boolean {
@@ -76,19 +85,23 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const {
 		mains = 1,
 		workers = 0,
+		webhooks = 0,
 		postgres: usePostgresConfig = false,
 		env = {},
 		projectName,
 		resourceQuota,
 		workerResourceQuota,
+		webhookResourceQuota,
 		services: enabledServices = [],
 		external = false,
+		networkName,
+		coverageHostDir,
 	} = config;
 
 	const log = createElapsedLogger('stack');
 
-	const isQueueMode = mains > 1 || workers > 0;
-	const needsLoadBalancer = mains > 1;
+	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
+	const needsLoadBalancer = mains > 1 || webhooks > 0;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 
@@ -112,7 +125,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	let network: StartedNetwork;
 	try {
 		const networkStart = performance.now();
-		network = await new Network().start();
+		const uuid = networkName ? { nextUuid: () => networkName } : undefined;
+		network = await new Network(uuid).start();
 		telemetry.recordNetwork(Math.round(performance.now() - networkStart));
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -126,6 +140,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			projectName: uniqueProjectName,
 			mains,
 			workers,
+			webhooks,
 			isQueueMode,
 			usePostgres,
 			needsLoadBalancer,
@@ -138,32 +153,39 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			},
 		};
 
-		// Step 1: Start services (parallel by dependency level)
+		// Step 1: Start services sequentially within each dependency level.
+		// Sequential is intentional: parallel start on 2-vCPU CI runners thrashes CPU during
+		// each container's JIT/init spike and pushes services past their startup timeouts.
+		// Local benchmarks showed individual containers booting 2-4× faster sequentially under
+		// contention, with only modest wall-clock cost on uncontended hardware.
 		const allServiceNames = Object.keys(SERVICE_REGISTRY) as ServiceName[];
 		const servicesToStart = allServiceNames.filter((name) =>
 			shouldServiceStart(name, SERVICE_REGISTRY[name], ctx),
 		);
 		const dependencyLevels = groupByDependencyLevel(servicesToStart);
 
+		const startService = async (name: ServiceName) => {
+			const service = SERVICE_REGISTRY[name];
+			const options = service.getOptions?.(ctx);
+			const serviceStart = performance.now();
+			try {
+				const result = await service.start(network, uniqueProjectName, options, ctx);
+				telemetry.recordService(name, Math.round(performance.now() - serviceStart));
+				return { name, service, result };
+			} catch (error) {
+				telemetry.recordService(name, Math.round(performance.now() - serviceStart));
+				const message = error instanceof Error ? error.message : String(error);
+				throw new Error(`Service "${service.description}" (${name}) failed to start: ${message}`);
+			}
+		};
+
 		for (const level of dependencyLevels) {
 			const levelNames = level.map((name) => SERVICE_REGISTRY[name].description).join(', ');
 
-			const levelPromises = level.map(async (name) => {
-				const service = SERVICE_REGISTRY[name];
-				const options = service.getOptions?.(ctx);
-				const serviceStart = performance.now();
-				try {
-					const result = await service.start(network, uniqueProjectName, options, ctx);
-					telemetry.recordService(name, Math.round(performance.now() - serviceStart));
-					return { name, service, result };
-				} catch (error) {
-					telemetry.recordService(name, Math.round(performance.now() - serviceStart));
-					const message = error instanceof Error ? error.message : String(error);
-					throw new Error(`Service "${service.description}" (${name}) failed to start: ${message}`);
-				}
-			});
-
-			const results = await Promise.all(levelPromises);
+			const results: Array<Awaited<ReturnType<typeof startService>>> = [];
+			for (const name of level) {
+				results.push(await startService(name));
+			}
 
 			for (const { name, service, result } of results) {
 				// Some services (e.g., tracing) return multiple containers
@@ -201,6 +223,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const n8nResult = await createN8NInstances({
 			mains,
 			workers,
+			webhooks,
 			projectName: uniqueProjectName,
 			network,
 			serviceEnvironment: environment,
@@ -210,14 +233,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 			resourceQuota,
 			workerResourceQuota,
+			webhookResourceQuota,
 			filesToMount,
+			coverageHostDir,
 		});
 		containers.push(...n8nResult.containers);
 		telemetry.recordN8nStartup(
 			Math.round(performance.now() - n8nStartupStart),
 			n8nResult.containers.length,
 		);
-		log(`n8n ready: ${mains} main(s), ${workers} worker(s)`);
+		log(`n8n ready: ${mains} main(s), ${webhooks} webhook(s), ${workers} worker(s)`);
 
 		if (lbResult) {
 			await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
@@ -226,14 +251,18 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 		ctx.baseUrl = baseUrl;
 
-		// Build direct main URLs (bypassing load balancer)
+		// Build direct main URLs (bypassing load balancer). `mainUrls` are host-mapped
+		// and only reachable from the test process; `internalMainUrls` use the network
+		// alias and are what other containers (workers running a node) must dial.
 		const mainUrls: string[] = [];
+		const internalMainUrls: string[] = [];
 		for (let i = 1; i <= mains; i++) {
-			const mainNamePattern = mains > 1 ? `-n8n-main-${i}` : '-n8n';
-			const mainContainer = containers.find((c) => c.getName().endsWith(mainNamePattern));
+			const mainNameSuffix = mains > 1 ? `-n8n-main-${i}` : '-n8n';
+			const mainContainer = containers.find((c) => c.getName().endsWith(mainNameSuffix));
 			if (mainContainer) {
 				const mainPort = mainContainer.getMappedPort(5678);
 				mainUrls.push(`http://localhost:${mainPort}`);
+				internalMainUrls.push(`http://${uniqueProjectName}${mainNameSuffix}:5678`);
 			}
 		}
 		log(`Direct main URLs: ${mainUrls.join(', ')}`);
@@ -300,7 +329,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		return {
 			baseUrl,
 			projectName: uniqueProjectName,
-			stop: async () => await stopN8NStack(containers, network, uniqueProjectName),
+			stop: async () => await stopN8NStack(containers, network, uniqueProjectName, coverageHostDir),
 			containers,
 			serviceResults,
 			services: servicesProxy,
@@ -320,9 +349,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				return container ? await container.stop() : null;
 			},
 			mainUrls,
+			internalMainUrls,
+			startupDiagnostics: n8nResult.diagnostics,
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
+		if (error instanceof N8NStartupError) {
+			recordStartupFailure(uniqueProjectName, error.diagnostics, message);
+		}
 		telemetry.flush(false, message);
 		throw error;
 	}
@@ -339,12 +373,18 @@ async function stopN8NStack(
 	containers: StartedTestContainer[],
 	network: StartedNetwork,
 	uniqueProjectName: string,
+	coverageHostDir?: string,
 ): Promise<void> {
 	const errors: Error[] = [];
+	// testcontainers stops with timeout:0 (immediate SIGKILL). When collecting
+	// Node V8 coverage we need a graceful SIGTERM + grace so n8n flushes
+	// NODE_V8_COVERAGE to the bind-mounted dir before exit (~1s in practice).
+	// testcontainers `timeout` is in milliseconds (→ docker stop -t seconds).
+	const stopOptions = coverageHostDir ? { timeout: 30_000 } : undefined;
 	try {
 		const stopPromises = containers.reverse().map(async (container) => {
 			try {
-				await container.stop();
+				await container.stop(stopOptions);
 			} catch (error) {
 				errors.push(
 					new Error(`Failed to stop container ${container.getId()}: ${getErrorMessage(error)}`),

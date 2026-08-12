@@ -11,6 +11,7 @@ export type EmailSendOptions = {
 	appendAttribution?: boolean;
 	allowUnauthorizedCerts?: boolean;
 	attachments?: string;
+	fileAttachments?: string;
 	ccEmail?: string;
 	bccEmail?: string;
 	replyTo?: string;
@@ -44,7 +45,10 @@ export function configureTransport(credentials: IDataObject, options: EmailSendO
 		};
 	}
 
-	return createTransport(connectionOptions);
+	return createTransport(connectionOptions, {
+		disableFileAccess: true,
+		disableUrlAccess: true,
+	});
 }
 
 export async function smtpConnectionTest(

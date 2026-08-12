@@ -1,6 +1,6 @@
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type {
 	AddColumnResponse,
 	DataTableColumn,
@@ -21,7 +21,9 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { isDataTableValue, isAGGridCellType } from '@/features/core/dataTable/typeGuards';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import { areValuesEqual } from '@/features/core/dataTable/utils/typeUtils';
+import { isUnsafeNumberValue } from '@/features/core/dataTable/utils/columnUtils';
 import { ResponseError } from '@n8n/rest-api-client';
+import { escapeHtml } from '@/app/utils/htmlUtils';
 
 export type UseDataTableOperationsParams = {
 	colDefs: Ref<ColDef[]>;
@@ -115,7 +117,7 @@ export const useDataTableOperations = ({
 
 		const promptResponse = await message.confirm(
 			i18n.baseText('dataTable.deleteColumn.confirm.message', {
-				interpolate: { name: columnToDelete.headerName ?? '' },
+				interpolate: { name: escapeHtml(columnToDelete.headerName ?? '') },
 			}),
 			i18n.baseText('dataTable.deleteColumn.confirm.title'),
 			{
@@ -303,6 +305,13 @@ export const useDataTableOperations = ({
 				column_id: colDef.colId,
 				column_type: colDef.cellDataType,
 			});
+			if (isUnsafeNumberValue(value)) {
+				toast.showMessage({
+					title: i18n.baseText('dataTable.updateRow.numberPrecisionWarning.title'),
+					message: i18n.baseText('dataTable.updateRow.numberPrecisionWarning.message'),
+					type: 'warning',
+				});
+			}
 		} catch (error) {
 			// Revert cell to original value if the update fails
 			const validOldValue = isDataTableValue(oldValue) ? oldValue : null;

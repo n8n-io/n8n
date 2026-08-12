@@ -20,9 +20,11 @@
  * N8N_DOCKER_IMAGE is also supported for backwards compatibility.
  */
 
+import postgresVersions from './postgres-versions.json';
+
 /** Default images - override via TEST_IMAGE_<KEY> env vars */
 const DEFAULT_IMAGES = {
-	postgres: 'postgres:18-alpine',
+	postgres: postgresVersions.primary,
 	redis: 'redis:alpine',
 	caddy: 'caddy:alpine',
 	n8n: 'n8nio/n8n:local',
@@ -42,6 +44,10 @@ const DEFAULT_IMAGES = {
 	mysql: 'mysql:9.6.0',
 	localstack: 'localstack/localstack:4.13.1',
 	postgresExporter: 'prometheuscommunity/postgres-exporter:v0.17.1',
+	cadvisor: 'gcr.io/cadvisor/cadvisor:v0.49.1',
+	sandboxApi: 'n8nio/n8n-sandbox-service-api:latest',
+	sandboxRunner: 'n8nio/n8n-sandbox-service-runner-dind:latest',
+	sandboxSandbox: 'n8nio/n8n-sandbox-service-sandbox:latest',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */
@@ -119,4 +125,8 @@ export const TEST_CONTAINER_IMAGES = {
 	ngrok: getImage('ngrok'),
 	localstack: getImage('localstack'),
 	postgresExporter: getImage('postgresExporter'),
+	cadvisor: getImage('cadvisor'),
+	sandboxApi: getImage('sandboxApi'),
+	sandboxRunner: getImage('sandboxRunner'),
+	sandboxSandbox: getImage('sandboxSandbox'),
 } as const;

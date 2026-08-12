@@ -21,6 +21,9 @@
                         },
                         "type": {
                             "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
                         }
                     }
                 },
@@ -81,5 +84,5 @@
             }
         }
     },
-    "version": 7
+    "version": 8
 }

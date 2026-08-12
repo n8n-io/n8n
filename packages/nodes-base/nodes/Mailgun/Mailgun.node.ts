@@ -66,6 +66,57 @@ export class Mailgun implements INodeType {
 				description: 'Bcc Email address of the recipient. Multiple ones can be separated by comma.',
 			},
 			{
+				displayName: 'Reply-To',
+				name: 'replyTo',
+				type: 'string',
+				default: '',
+				placeholder: 'reply@example.com',
+				description: 'Reply-To header. Recipients will use this address when replying.',
+			},
+			{
+				displayName: 'Custom Headers',
+				name: 'customHeaders',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				placeholder: 'Add Header',
+				description:
+					'Arbitrary email headers. Enter only the header name (e.g. X-Custom-Header); the h: prefix is added automatically.',
+				options: [
+					{
+						name: 'headers',
+						displayName: 'Header',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								placeholder: 'X-Custom-Header',
+								description: 'Header name (without h: prefix; it is added automatically)',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Header value',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				default: '',
+				placeholder: 'tag1, tag2',
+				description: 'Tags for segmentation and analytics (comma-separated). Sent as o:tag.',
+			},
+			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
@@ -120,6 +171,11 @@ export class Mailgun implements INodeType {
 				const toEmail = this.getNodeParameter('toEmail', itemIndex) as string;
 				const ccEmail = this.getNodeParameter('ccEmail', itemIndex) as string;
 				const bccEmail = this.getNodeParameter('bccEmail', itemIndex) as string;
+				const replyTo = this.getNodeParameter('replyTo', itemIndex) as string;
+				const customHeaders = this.getNodeParameter('customHeaders', itemIndex) as {
+					headers?: Array<{ name: string; value: string }>;
+				};
+				const tagsParam = this.getNodeParameter('tags', itemIndex) as string;
 				const subject = this.getNodeParameter('subject', itemIndex) as string;
 				const text = this.getNodeParameter('text', itemIndex) as string;
 				const html = this.getNodeParameter('html', itemIndex) as string;
@@ -140,6 +196,24 @@ export class Mailgun implements INodeType {
 				}
 				if (bccEmail.length !== 0) {
 					formData.bcc = bccEmail;
+				}
+				if (replyTo.trim().length !== 0) {
+					formData['h:Reply-To'] = replyTo.trim();
+				}
+				const headerEntries = customHeaders?.headers ?? [];
+				for (const { name: headerName, value: headerValue } of headerEntries) {
+					if (headerName?.trim() && headerValue !== undefined) {
+						formData[`h:${headerName.trim()}`] = headerValue;
+					}
+				}
+				if (tagsParam.trim().length !== 0) {
+					const tagList = tagsParam
+						.split(',')
+						.map((t) => t.trim())
+						.filter(Boolean);
+					if (tagList.length) {
+						formData['o:tag'] = tagList;
+					}
 				}
 
 				if (attachmentPropertyString && item.binary) {

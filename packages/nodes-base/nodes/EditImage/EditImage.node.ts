@@ -6,6 +6,7 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 	INodePropertyOptions,
@@ -23,6 +24,48 @@ type EditImageNodeOptions = {
 	format?: string;
 	quality?: number;
 };
+
+const numericOperationParameters: Record<string, string[]> = {
+	blur: ['blur', 'sigma'],
+	border: ['borderWidth', 'borderHeight'],
+	composite: ['positionX', 'positionY'],
+	create: ['width', 'height'],
+	crop: ['width', 'height', 'positionX', 'positionY'],
+	draw: ['startPositionX', 'startPositionY', 'endPositionX', 'endPositionY', 'cornerRadius'],
+	resize: ['width', 'height'],
+	rotate: ['rotate'],
+	shear: ['degreesX', 'degreesY'],
+	text: ['fontSize', 'positionX', 'positionY', 'lineLength'],
+};
+
+function parseNumericParameter(value: unknown, parameterName: string, node: INode): number {
+	if (
+		(typeof value !== 'number' && typeof value !== 'string') ||
+		(typeof value === 'string' && value.trim() === '')
+	) {
+		throw new NodeOperationError(node, `The value of "${parameterName}" must be a number`);
+	}
+
+	const parsedValue = Number(value);
+	if (!Number.isFinite(parsedValue)) {
+		throw new NodeOperationError(node, `The value of "${parameterName}" must be a number`);
+	}
+
+	return parsedValue;
+}
+
+const VALID_IMAGE_FORMATS = new Set(['bmp', 'gif', 'jpeg', 'png', 'tiff', 'tif', 'webp']);
+
+function validateImageFormat(format: unknown, node: INode): string {
+	if (typeof format === 'string' && VALID_IMAGE_FORMATS.has(format)) {
+		return format;
+	}
+
+	throw new NodeOperationError(
+		node,
+		`Invalid image format: ${format}. Valid formats are: ${Array.from(VALID_IMAGE_FORMATS).join(', ')}`,
+	);
+}
 
 const nodeOperations: INodePropertyOptions[] = [
 	{
@@ -765,14 +808,13 @@ export class EditImage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Edit Image',
 		name: 'editImage',
-		icon: 'fa:image',
+		icon: 'node:edit-image',
 		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		description: 'Edits an image like blur, resize or adding border and text',
 		defaults: {
 			name: 'Edit Image',
-			color: '#553399',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -1008,6 +1050,7 @@ export class EditImage implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
 				item = items[itemIndex];
+				const node = this.getNode();
 
 				const operation = this.getNodeParameter('operation', itemIndex);
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as
@@ -1074,6 +1117,27 @@ export class EditImage implements INodeType {
 					];
 				}
 
+				for (const operationData of operations) {
+					const operationName = operationData.operation;
+					if (typeof operationName !== 'string') continue;
+
+					for (const parameterName of numericOperationParameters[operationName] ?? []) {
+						// 'cornerRadius' is applicable only when drawing a rectangle
+						if (parameterName === 'cornerRadius' && operationData.primitive !== 'rectangle')
+							continue;
+
+						operationData[parameterName] = parseNumericParameter(
+							operationData[parameterName],
+							parameterName,
+							node,
+						);
+					}
+				}
+
+				if (options.quality !== undefined) {
+					options.quality = parseNumericParameter(options.quality, 'quality', node);
+				}
+
 				if (operations[0].operation !== 'create') {
 					// "create" generates a new image so does not require any incoming data.
 					this.helpers.assertBinaryData(itemIndex, dataPropertyName);
@@ -1083,6 +1147,8 @@ export class EditImage implements INodeType {
 					);
 					gmInstance = gm(binaryDataBuffer);
 					gmInstance = gmInstance.background('transparent');
+					gmInstance = gmInstance.autoOrient();
+					gmInstance = gmInstance.out('-orient', 'TopLeft');
 				}
 
 				const newItem: INodeExecutionData = {
@@ -1138,16 +1204,10 @@ export class EditImage implements INodeType {
 						cleanupFunctions.push(cleanup);
 						await fsWriteFile(path, binaryDataBuffer);
 
-						if (operations[0].operation === 'create') {
-							// It seems like if the image gets created newly we have to create a new gm instance
-							// else it fails for some reason
-							gmInstance = gm(gmInstance!.stream('png'))
-								.compose(operator)
-								.geometry(geometryString)
-								.composite(path);
-						} else {
-							gmInstance = gmInstance!.compose(operator).geometry(geometryString).composite(path);
-						}
+						gmInstance = gm(gmInstance!.stream('png'))
+							.compose(operator)
+							.geometry(geometryString)
+							.composite(path);
 
 						if (operations.length !== i + 1) {
 							// If there are other operations after the current one create a new gm instance
@@ -1250,18 +1310,26 @@ export class EditImage implements INodeType {
 						});
 
 						// Combine the lines to a single string
-						const renderText = lines.join('\n');
+						// gm escapes `"` internally, but doesn't do it for `\`
+						const renderText = lines.join('\n').replaceAll('\\', '\\\\');
 
+						const fonts = await getSystemFonts();
 						let font = (options.font || operationData.font) as string | undefined;
 						if (!font) {
-							const fonts = await getSystemFonts();
-							font = fonts.find((_font) => _font.includes('Arial.'));
+							font = fonts.find((systemFont) => systemFont.includes('Arial.'));
 						}
 
 						if (!font) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'Default font not found. Select a font from the options.',
+							);
+						}
+
+						if (!fonts.includes(font)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'The selected font is not available. Select a font from the options.',
 							);
 						}
 
@@ -1302,7 +1370,8 @@ export class EditImage implements INodeType {
 				}
 
 				if (options.format !== undefined) {
-					gmInstance = gmInstance!.setFormat(options.format as string);
+					const format = validateImageFormat(options.format, this.getNode());
+					gmInstance = gmInstance!.setFormat(format);
 					newItem.binary![binaryPropertyName].fileExtension = options.format as string;
 					newItem.binary![binaryPropertyName].mimeType = `image/${options.format}`;
 					const fileName = newItem.binary![binaryPropertyName].fileName;

@@ -87,15 +87,17 @@ export function compact(value: object): object {
 // DIVERGENCE from packages/workflow/src/extensions/object-extensions.ts:
 // The original uses URLSearchParams which is a Web API unavailable inside the
 // V8 isolate. encodeURIComponent is an ECMAScript built-in available in all
-// V8 contexts and produces the same output for the supported input type.
+// V8 contexts, but it doesn't encode !'()~ which WHATWG requires. The extra
+// replace step covers those characters to match URLSearchParams output.
+function whatwgEncode(str: string): string {
+	return encodeURIComponent(str)
+		.replace(/%20/g, '+')
+		.replace(/[!'()~]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+}
+
 export function urlEncode(value: object) {
 	return Object.entries(value)
-		.map(
-			([k, v]) =>
-				encodeURIComponent(k).replace(/%20/g, '+') +
-				'=' +
-				encodeURIComponent(String(v)).replace(/%20/g, '+'),
-		)
+		.map(([k, v]) => whatwgEncode(k) + '=' + whatwgEncode(String(v)))
 		.join('&');
 }
 

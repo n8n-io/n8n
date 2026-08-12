@@ -1,3 +1,5 @@
+import FormData from 'form-data';
+import { Readable } from 'stream';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeExecutionData,
@@ -23,12 +25,54 @@ describe('HTTP Node Utils', () => {
 					value: 'baz',
 				},
 			];
-			const defaultReducer: BodyParametersReducer = jest.fn();
+			const defaultReducer: BodyParametersReducer = vi.fn();
 
 			await prepareRequestBody(bodyParameters, 'json', 3, defaultReducer);
 
 			expect(defaultReducer).toBeCalledTimes(1);
 			expect(defaultReducer).toBeCalledWith({}, { name: 'foo.bar', value: 'baz' });
+		});
+
+		it('should create FormData with knownLength for stream binary data', async () => {
+			const streamContent = Buffer.from('test-binary-content');
+			const bodyParameters: BodyParameter[] = [
+				{
+					name: 'File',
+					value: '',
+					parameterType: 'formBinaryData',
+				},
+				{
+					name: 'Folder',
+					value: '/uploads',
+				},
+			];
+
+			const mockReducer: BodyParametersReducer = vi.fn().mockResolvedValue({
+				File: {
+					value: Readable.from(streamContent),
+					options: {
+						filename: 'test.pdf',
+						contentType: 'application/pdf',
+						knownLength: streamContent.length,
+					},
+				},
+			});
+
+			const result = await prepareRequestBody(
+				bodyParameters,
+				'multipart-form-data',
+				4.2,
+				mockReducer,
+			);
+
+			expect(result).toBeInstanceOf(FormData);
+			const formData = result as FormData;
+
+			// Verify FormData can calculate its total length (fails without knownLength)
+			const length = await new Promise<number>((resolve, reject) => {
+				formData.getLength((err, len) => (err ? reject(err) : resolve(len)));
+			});
+			expect(length).toBeGreaterThan(0);
 		});
 
 		it('should call process dot notations', async () => {
@@ -38,7 +82,7 @@ describe('HTTP Node Utils', () => {
 					value: 'baz',
 				},
 			];
-			const defaultReducer: BodyParametersReducer = jest.fn();
+			const defaultReducer: BodyParametersReducer = vi.fn();
 
 			const result = await prepareRequestBody(bodyParameters, 'json', 4, defaultReducer);
 
@@ -274,7 +318,7 @@ describe('HTTP Node Utils', () => {
 
 	describe('getSecrets', () => {
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should return all string credential values as secrets', () => {

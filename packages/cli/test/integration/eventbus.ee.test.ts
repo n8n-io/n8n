@@ -1,8 +1,7 @@
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import axios from 'axios';
-import { mock } from 'jest-mock-extended';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -14,6 +13,7 @@ import {
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
@@ -30,12 +30,13 @@ import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
 
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
-jest.mock('axios');
+vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 
-const mockAxiosInstance = mock<ReturnType<typeof axios.create>>();
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-mockedAxios.create.mockReturnValue(mockAxiosInstance);
+// The webhook destination sends through the OutboundHttp facade; capture the
+// request it performs so we can assert the end-to-end delivery path.
+const webhookRequest = vi.fn();
+const outboundHttp = mockInstance(OutboundHttp);
+outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request: webhookRequest }));
 
 mockInstance(Publisher);
 
@@ -104,7 +105,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	jest.mock('@/eventbus/message-event-bus/message-event-bus');
 	await eventBus?.close();
 });
 
@@ -248,7 +248,7 @@ test('should anonymize audit message to syslog ', async () => {
 
 	syslogDestination.enabled = true;
 
-	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
+	const mockedSyslogClientLog = vi.spyOn(syslogDestination.client, 'log');
 	mockedSyslogClientLog.mockImplementation(async (m, _options, _cb) => {
 		const o = JSON.parse(m);
 		expect(o).toHaveProperty('payload');
@@ -308,8 +308,7 @@ test('should send message to webhook ', async () => {
 
 	webhookDestination.enabled = true;
 
-	mockAxiosInstance.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
-	mockAxiosInstance.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
+	webhookRequest.mockResolvedValue({ statusCode: 200, body: { msg: 'OK' } });
 
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
@@ -320,7 +319,14 @@ test('should send message to webhook ', async () => {
 					await confirmIdInAll(testMessage.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
-					expect(mockAxiosInstance.request).toHaveBeenCalled();
+					expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+					expect(webhookRequest).toHaveBeenCalledWith(
+						expect.objectContaining({
+							url: testWebhookDestination.url,
+							method: 'POST',
+							returnFullResponse: true,
+						}),
+					);
 					webhookDestination.enabled = false;
 					eventBus.logWriter.worker?.removeListener('message', handler003);
 					resolve(true);
@@ -342,7 +348,7 @@ test('should send message to sentry ', async () => {
 
 	sentryDestination.enabled = true;
 
-	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient!, 'captureMessage');
+	const mockedSentryCaptureMessage = vi.spyOn(sentryDestination.sentryClient!, 'captureMessage');
 	mockedSentryCaptureMessage.mockImplementation((_m, _level, _hint, _scope) => {
 		eventBus.confirmMessageDelivered(testMessage, {
 			id: sentryDestination.id,

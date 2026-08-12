@@ -1,3 +1,4 @@
+import type { QuickReplyType } from '@n8n/api-types';
 import {
 	hasRevertVersionId,
 	type ChatRequest,
@@ -7,7 +8,6 @@ import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAI
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import {
-	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT,
 	CODE_WORKFLOW_BUILDER_EXPERIMENT,
 	MERGE_ASK_BUILD_EXPERIMENT,
 } from '@/app/constants/experiments';
@@ -29,12 +29,11 @@ export async function createBuilderPayload(
 	id: string,
 	options: {
 		workflowId: string;
-		quickReplyType?: string;
+		quickReplyType?: QuickReplyType;
 		executionData?: IRunExecutionData['resultData'];
 		workflow?: IWorkflowDb;
 		nodesForSchema?: string[];
 		mode?: 'build' | 'plan';
-		isPlanModeEnabled?: boolean;
 		allowSendingParameterValues?: boolean;
 	},
 ): Promise<ChatRequest.UserChatMessage> {
@@ -78,18 +77,10 @@ export async function createBuilderPayload(
 
 	// Get feature flags from Posthog
 	const codeBuilderVariant = posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name);
-	const isCodeBuilderEnabled =
-		codeBuilderVariant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codeNoPinData ||
-		codeBuilderVariant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
 	const isPinDataEnabled = codeBuilderVariant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
 
 	const featureFlags: ChatRequest.BuilderFeatureFlags = {
-		templateExamples:
-			posthogStore.getVariant(AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name) ===
-			AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.variant,
-		codeBuilder: isCodeBuilderEnabled,
 		pinData: isPinDataEnabled,
-		planMode: options.isPlanModeEnabled ?? false,
 		mergeAskBuild: posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name),
 	};
 

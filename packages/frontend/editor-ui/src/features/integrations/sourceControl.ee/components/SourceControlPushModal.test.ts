@@ -8,11 +8,11 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { useSourceControlStore } from '../sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { reactive } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 
 const eventBus = createEventBus();
@@ -42,7 +42,7 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {
@@ -61,7 +61,7 @@ vi.mock('@/app/composables/useLoadingService', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -566,7 +566,7 @@ describe('SourceControlPushModal', () => {
 		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
 		mockRoute.name = VIEWS.WORKFLOW;
-		mockRoute.params = { name: 'gTbbBkkYTnNyX1jD' };
+		mockRoute.params = { workflowId: 'gTbbBkkYTnNyX1jD' };
 
 		const { getByTestId, getAllByTestId, getByText, getByRole } = renderModal({
 			pinia,
@@ -1816,7 +1816,7 @@ describe('SourceControlPushModal', () => {
 			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
 			mockRoute.name = 'SOME_OTHER_VIEW';
-			mockRoute.params = { name: 'differentId' };
+			mockRoute.params = { workflowId: 'differentId' };
 
 			const { getByTestId, getAllByTestId, getByText } = renderModal({
 				pinia,

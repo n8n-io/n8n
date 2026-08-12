@@ -10,8 +10,8 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
-import type { FrontendSettings } from '@n8n/api-types';
+import type { ChatUI } from '@n8n/design-system';
+import type { FrontendSettings, QuickReplyType } from '@n8n/api-types';
 
 export namespace ChatRequest {
 	export interface NodeExecutionSchema {
@@ -124,10 +124,7 @@ export namespace ChatRequest {
 	}
 
 	export interface BuilderFeatureFlags {
-		templateExamples?: boolean;
-		codeBuilder?: boolean;
 		pinData?: boolean;
-		planMode?: boolean;
 		mergeAskBuild?: boolean;
 	}
 
@@ -136,7 +133,7 @@ export namespace ChatRequest {
 		type: 'message';
 		text: string;
 		id: string;
-		quickReplyType?: string;
+		quickReplyType?: QuickReplyType;
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
 		featureFlags?: BuilderFeatureFlags;

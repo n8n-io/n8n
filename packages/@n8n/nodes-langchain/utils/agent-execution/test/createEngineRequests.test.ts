@@ -44,6 +44,7 @@ describe('createEngineRequests', () => {
 				id: 'call_123',
 				metadata: {
 					itemIndex: 0,
+					toolName: 'calculator',
 				},
 			});
 		});
@@ -78,6 +79,7 @@ describe('createEngineRequests', () => {
 				id: 'call_123',
 				metadata: {
 					itemIndex: 1,
+					toolName: 'calculator',
 				},
 			});
 			expect(result[1]).toEqual({
@@ -88,6 +90,7 @@ describe('createEngineRequests', () => {
 				id: 'call_124',
 				metadata: {
 					itemIndex: 1,
+					toolName: 'search',
 				},
 			});
 		});
@@ -751,6 +754,75 @@ describe('createEngineRequests', () => {
 			expect(result[0].metadata.anthropic?.thinkingContent).toBe('Anthropic thinking content');
 			expect(result[0].metadata.anthropic?.thinkingType).toBe('thinking');
 			expect(result[0].metadata.anthropic?.thinkingSignature).toBe('anthropic_sig_456');
+		});
+	});
+
+	describe('DeepSeek reasoning_content extraction', () => {
+		it('should extract reasoning_content from toolCall.additionalKwargs (streaming path)', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						reasoning_content: 'The user wants me to add 2+2, I should call the calculator.',
+					},
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe(
+				'The user wants me to add 2+2, I should call the calculator.',
+			);
+		});
+
+		it('should extract reasoning_content from messageLog additional_kwargs (non-streaming path)', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							content: '',
+							additional_kwargs: {
+								reasoning_content: 'Reasoning from the raw AIMessage.',
+							},
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe(
+				'Reasoning from the raw AIMessage.',
+			);
+		});
+
+		it('should not set deepseek metadata when reasoning_content is absent', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [{ content: '' }],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek).toBeUndefined();
 		});
 	});
 

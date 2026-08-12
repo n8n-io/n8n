@@ -1,17 +1,41 @@
 import {
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_MCP_TOOL_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
 	WIKIPEDIA_TOOL_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import type {
 	INodeCredentialDescription,
+	INodeCredentials,
 	FromAIArgument,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { isHitlToolType, NodeHelpers, traverseNodeParameters } from 'n8n-workflow';
+import {
+	isHitlToolType,
+	NodeHelpers,
+	normalizeNodeShape,
+	traverseNodeParameters,
+} from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+
+/**
+ * Assigns a freshly generated id to the given node and returns it.
+ *
+ * Pure with respect to application state: it touches only its argument — it
+ * must not access stores or `inject()`, because the workflow document store
+ * wires it into `useWorkflowDocumentNodes` and may itself be constructed
+ * outside component setup (e.g. from `useWorkflowDiff`'s watch effects).
+ */
+export function assignNodeId(node: INodeUi): string {
+	const id = window.crypto.randomUUID();
+	node.id = id;
+	return id;
+}
 
 /**
  * Returns the credentials that are displayable for the given node.
@@ -120,6 +144,8 @@ export function getParameterDisplayableOptions(
 
 	if (!nodeType || !Array.isArray(nodeType.properties)) return options;
 
+	const { check: envFeatureFlag } = useEnvFeatureFlag();
+
 	const nodeParameters =
 		NodeHelpers.getNodeParameters(
 			nodeType.properties,
@@ -131,6 +157,11 @@ export function getParameterDisplayableOptions(
 		) ?? node.parameters;
 
 	return options.filter((option) => {
+		// Options gated behind an env feature flag are hidden until the flag is enabled.
+		if (option.envFeatureFlag && !envFeatureFlag.value(option.envFeatureFlag)) {
+			return false;
+		}
+
 		if (!option.displayOptions && !option.disabledOptions) return true;
 
 		return NodeHelpers.displayParameter(
@@ -142,4 +173,135 @@ export function getParameterDisplayableOptions(
 			'displayOptions',
 		);
 	});
+}
+
+/**
+ * Serializes a node for persistence: strips transient UI state, resolves
+ * default parameters via the node type definition, and retains only the
+ * credentials that are currently displayable.
+ */
+export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi): INodeUi {
+	node = normalizeNodeShape(node);
+
+	const skipKeys = [
+		'color',
+		'continueOnFail',
+		'credentials',
+		'disabled',
+		'issues',
+		'onError',
+		'notes',
+		'parameters',
+		'status',
+	];
+
+	// @ts-expect-error populated field-by-field below
+	const nodeData: INodeUi = {
+		parameters: {},
+	};
+
+	for (const key in node) {
+		if (key.charAt(0) !== '_' && skipKeys.indexOf(key) === -1) {
+			// @ts-expect-error dynamic key copy
+			nodeData[key] = node[key];
+		}
+	}
+
+	// Get the data of the node type that we can get the default values
+	// TODO: Later also has to care about the node-type-version as defaults could be different
+	const nodeType = nodeTypeProvider.getNodeType(node.type, node.typeVersion);
+	const nodeParametersInput = node.parameters ?? {};
+
+	if (nodeType !== null) {
+		const isCredentialOnly = isCredentialOnlyNodeType(nodeType.name);
+
+		if (isCredentialOnly) {
+			nodeData.type = HTTP_REQUEST_NODE_TYPE;
+			nodeData.extendsCredential = getCredentialTypeName(nodeType.name);
+		}
+
+		// Node-Type is known so we can save the parameters correctly
+		const nodeParameters = NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			nodeParametersInput,
+			isCredentialOnly,
+			false,
+			node,
+			nodeType,
+		);
+		nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
+
+		// Add the node credentials if there are some set and if they should be displayed
+		if (
+			node.credentials !== undefined &&
+			node.credentials !== null &&
+			nodeType.credentials !== undefined
+		) {
+			const saveCredentials: INodeCredentials = {};
+			for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
+				if (hasProxyAuth(node) || Object.keys(nodeParametersInput).includes('genericAuthType')) {
+					saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+					continue;
+				}
+
+				const credentialTypeDescription = nodeType.credentials
+					// filter out credentials with same name in different node versions
+					.filter((c) =>
+						NodeHelpers.displayParameterPath(nodeParametersInput, c, '', node, nodeType),
+					)
+					.find((c) => c.name === nodeCredentialTypeName);
+
+				if (credentialTypeDescription === undefined) {
+					// Credential type is not know so do not save
+					continue;
+				}
+
+				if (
+					!NodeHelpers.displayParameterPath(
+						nodeParametersInput,
+						credentialTypeDescription,
+						'',
+						node,
+						nodeType,
+					)
+				) {
+					// Credential should not be displayed so do also not save
+					continue;
+				}
+
+				saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+			}
+
+			// Set credential property only if it has content
+			if (Object.keys(saveCredentials).length !== 0) {
+				nodeData.credentials = saveCredentials;
+			}
+		}
+	} else {
+		// Node-Type is not known so save the data as it is (omit nulls)
+		if (node.credentials !== undefined && node.credentials !== null) {
+			nodeData.credentials = node.credentials;
+		}
+		nodeData.parameters = nodeParametersInput;
+		if (nodeData.color !== undefined) {
+			nodeData.color = node.color;
+		}
+	}
+
+	// Save the disabled property, continueOnFail and onError only when is set
+	if (node.disabled === true) {
+		nodeData.disabled = true;
+	}
+	if (node.continueOnFail === true) {
+		nodeData.continueOnFail = true;
+	}
+	if (node.onError !== undefined && node.onError !== null && node.onError !== 'stopWorkflow') {
+		nodeData.onError = node.onError;
+	}
+	// Save the notes only if when they contain data
+	if (node.notes !== undefined && node.notes !== null && node.notes !== '') {
+		nodeData.notes = node.notes;
+	}
+
+	return nodeData;
 }

@@ -12,7 +12,6 @@ import {
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useFormsLayout } from '../composables/useFormsLayout';
 import { FORM_STEP_NON_FORM_NODE_SCALE, FORMS_WORKFLOW_VIEW } from '../constants';
-import type { Workflow } from 'n8n-workflow';
 import { N8nButton, N8nLoading } from '@n8n/design-system';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -37,7 +36,7 @@ const formNodeRenderOverrides: Partial<Record<string, CanvasNodeRenderType>> = {
 };
 
 onMounted(async () => {
-	const workflowId = route.params.name as string;
+	const workflowId = route.params.workflowId as string;
 	if (workflowsStore.workflow.id !== workflowId) {
 		const workflowData = await workflowsListStore.fetchWorkflow(workflowId);
 		workflowsStore.setWorkflow(workflowData);
@@ -56,8 +55,6 @@ watch(
 
 const showOpenWorkflowButton = computed(() => route.name === FORMS_WORKFLOW_VIEW);
 
-const workflowObject = computed(() => workflowsStore.workflowObject as unknown as Workflow);
-
 const nonFormNodeIds = computed(() =>
 	workflowsStore.workflow.nodes.filter((n) => !FORM_NODE_TYPES.has(n.type)).map((n) => n.id),
 );
@@ -73,7 +70,7 @@ const nonFormNodeCss = computed(() => {
 function openWorkflow() {
 	void router.push({
 		name: VIEWS.WORKFLOW,
-		params: { name: workflowsStore.workflow.id },
+		params: { workflowId: workflowsStore.workflow.id },
 	});
 }
 
@@ -81,7 +78,7 @@ function onNodeActivated(nodeId: string, event?: MouseEvent) {
 	if (event?.type === 'dblclick') {
 		void router.push({
 			name: VIEWS.WORKFLOW,
-			params: { name: workflowsStore.workflow.id, nodeId },
+			params: { workflowId: workflowsStore.workflow.id, nodeId },
 		});
 	} else {
 		uiStore.openModalWithData({ name: FORM_STEP_EDIT_MODAL_KEY, data: { nodeId } });
@@ -100,8 +97,6 @@ function onNodeActivated(nodeId: string, event?: MouseEvent) {
 		>
 			<WorkflowCanvas
 				:id="containerId"
-				:workflow="workflowsStore.workflow"
-				:workflow-object="workflowObject"
 				:read-only="true"
 				:node-type-render-overrides="formNodeRenderOverrides"
 				@update:node:activated="onNodeActivated"

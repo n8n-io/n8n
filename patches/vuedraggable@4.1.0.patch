@@ -1,0 +1,10 @@
+diff --git a/package.json b/package.json
+--- a/package.json
++++ b/package.json
+@@ -93,5 +93,5 @@
+     "dist/*.js",
+     "src/*"
+   ],
+-  "module": "dist/vuedraggable.umd.js"
++  "module": "src/vuedraggable.js"
+ }

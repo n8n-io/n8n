@@ -2,8 +2,8 @@ import { inProduction, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { existsSync } from 'fs';
 import { mkdir, utimes, open, rm } from 'fs/promises';
+import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
-import { sleep } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 export const touchFile = async (filePath: string): Promise<void> => {

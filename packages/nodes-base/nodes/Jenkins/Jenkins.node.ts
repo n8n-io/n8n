@@ -452,15 +452,25 @@ export class Jenkins implements INodeType {
 			async getJobParameters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const job = this.getCurrentNodeParameter('job') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = `/job/${job}/api/json?tree=actions[parameterDefinitions[*]]`;
-				const { actions } = await jenkinsApiRequest.call(this, 'GET', endpoint);
-				for (const { _class, parameterDefinitions } of actions) {
-					if (_class?.includes('ParametersDefinitionProperty')) {
-						for (const { name, type } of parameterDefinitions) {
+				const endpoint = `/job/${job}/api/json?tree=actions[parameterDefinitions[*]],property[parameterDefinitions[*]]`;
+				const result = await jenkinsApiRequest.call(this, 'GET', endpoint);
+				const allParameters = [...(result.actions ?? []), ...(result.property ?? [])];
+				const seenParameterNames = new Set<string>();
+				for (const { _class, parameterDefinitions } of allParameters) {
+					if (
+						!_class?.includes('ParametersDefinitionProperty') ||
+						!Array.isArray(parameterDefinitions)
+					) {
+						continue;
+					}
+
+					for (const { name, type } of parameterDefinitions) {
+						if (!seenParameterNames.has(name)) {
 							returnData.push({
 								name: `${name} - (${type})`,
 								value: name,
 							});
+							seenParameterNames.add(name);
 						}
 					}
 				}

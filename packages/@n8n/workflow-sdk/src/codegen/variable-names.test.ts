@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import { RESERVED_KEYWORDS, toVarName, getVarName, getUniqueVarName } from './variable-names';
 
 describe('variable-names', () => {

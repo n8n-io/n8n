@@ -17,6 +17,9 @@ export interface BinaryCheckContext {
 	llm?: BaseChatModel;
 	llmCallLimiter?: LlmCallLimiter;
 	timeoutMs?: number;
+	agentTextResponse?: string;
+	/** The workflow JSON before this conversation turn (for diff-based checks) */
+	existingWorkflow?: SimpleWorkflow;
 }
 
 export interface BinaryCheck {

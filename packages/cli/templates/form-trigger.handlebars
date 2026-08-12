@@ -256,6 +256,16 @@
 				opacity: 0.7;
 			}
 
+			#submit-btn:disabled {
+				background-color: #e9eaec;
+				color: #9aa0a6;
+				cursor: not-allowed;
+			}
+
+			#submit-btn:disabled:hover {
+				opacity: 1;
+			}
+
 			.error-hidden {
 				display: block;
 				position: relative;
@@ -622,7 +632,7 @@
 						{{/each}}
 					</div>
 
-					<button id='submit-btn' type='submit'>
+					<button id='submit-btn' type='submit' {{#if shellInner}}disabled title='Connect the required credentials first'{{/if}}>
 						<span><svg
 								xmlns='http://www.w3.org/2000/svg'
 								height='18px'
@@ -1087,13 +1097,20 @@
 								document.querySelector('#submitted-form').style.display = 'block';
 								document.querySelector('#submitted-header').textContent = 'Problem submitting response';
 								document.querySelector('#submitted-content').textContent =
-									'Please try again or contact support if the problem persists';
+									response.status === 413
+										? 'The files you are trying to upload are too large. Please reduce the total size and try again.'
+										: 'Please try again or contact support if the problem persists';
 							}
 
 							return;
 						})
 						.catch(function (error) {
 							console.error('Error:', error);
+							form.style.display = 'none';
+							document.querySelector('#submitted-form').style.display = 'block';
+							document.querySelector('#submitted-header').textContent = 'Problem submitting response';
+							document.querySelector('#submitted-content').textContent =
+								'The form could not be submitted. Please check your connection and try again, or contact support if the problem persists.';
 						})
 						.finally(() => {
 							if (window.location.href.includes('form-waiting')) {
@@ -1104,5 +1121,24 @@
 				}
 			});
 		</script>
+		{{#if shellInner}}
+		<script>
+			// Toggle submit on the hosting shell's readiness signals; the server-side
+			// POST gate is the real enforcement.
+			window.addEventListener('message', function (event) {
+				if (event.source !== window.parent) return;
+				if (!event.data) return;
+				var btn = document.getElementById('submit-btn');
+				if (!btn) return;
+				if (event.data.type === 'n8n-shell-credentials-ready') {
+					btn.disabled = false;
+					btn.removeAttribute('title');
+				} else if (event.data.type === 'n8n-shell-credentials-not-ready') {
+					btn.disabled = true;
+					btn.setAttribute('title', 'Connect the required credentials first');
+				}
+			});
+		</script>
+		{{/if}}
 	</body>
 </html>

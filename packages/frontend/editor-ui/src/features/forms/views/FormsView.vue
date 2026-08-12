@@ -31,8 +31,8 @@ interface FormsFilters extends BaseFilters {
 let removeGuard: (() => void) | undefined;
 onMounted(() => {
 	removeGuard = router.beforeEach((to) => {
-		if (to.name === VIEWS.WORKFLOW && to.params.name) {
-			return { name: FORMS_WORKFLOW_VIEW, params: { name: to.params.name } };
+		if (to.name === VIEWS.WORKFLOW && to.params.workflowId) {
+			return { name: FORMS_WORKFLOW_VIEW, params: { workflowId: to.params.workflowId } };
 		}
 		return true;
 	});

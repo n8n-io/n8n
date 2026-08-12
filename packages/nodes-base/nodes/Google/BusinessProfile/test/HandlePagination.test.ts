@@ -3,8 +3,8 @@ import type { DeclarativeRestApiSettings, IExecutePaginationFunctions } from 'n8
 import { handlePagination } from '../GenericFunctions';
 
 describe('GenericFunctions - handlePagination', () => {
-	const mockMakeRoutingRequest = jest.fn();
-	const mockGetNodeParameter = jest.fn();
+	const mockMakeRoutingRequest = vi.fn();
+	const mockGetNodeParameter = vi.fn();
 
 	const mockContext = {
 		makeRoutingRequest: mockMakeRoutingRequest,

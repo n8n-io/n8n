@@ -12,6 +12,26 @@ export interface DiagnosticsResult {
 	queueActive?: number;
 	queueCompletedRate?: number;
 	queueFailedRate?: number;
+	/** Postgres background writer activity. Populated from postgres-exporter. */
+	pgBgwriterCheckpointsTimedRate?: number;
+	pgBgwriterCheckpointsReqRate?: number;
+	pgBgwriterBuffersBackendRate?: number;
+	pgBufferHitRatio?: number;
+	pgBlocksReadRate?: number;
+	/** Container-level resource usage from cAdvisor. */
+	containerStats?: ContainerStat[];
+}
+
+export interface ContainerStat {
+	name: string;
+	cpuPct?: number;
+	cpuPctPeak?: number;
+	memBytes?: number;
+	memBytesPeak?: number;
+	fsReadsBytesRate?: number;
+	fsWritesBytesRate?: number;
+	netRxBytesRate?: number;
+	netTxBytesRate?: number;
 }
 
 function sumValues(results: Array<{ value: number }>): number | undefined {
@@ -29,6 +49,64 @@ const EXPECTED_KEYS: Array<keyof DiagnosticsResult> = [
 	'pgTxRate',
 	'pgActiveConnections',
 ];
+
+/**
+ * Service labels to query container stats for. cAdvisor exposes Docker labels
+ * as `container_label_<dot_to_underscore>`, and every service we start sets
+ * `com.docker.compose.service=<HOSTNAME>` on its container — this is far more
+ * reliable than regex-matching on `name`, which varies by Docker version,
+ * Docker Desktop, and Compose project name.
+ */
+const TRACKED_SERVICES = ['postgres', 'n8n-main', 'n8n-worker', 'redis', 'kafka', 'cadvisor'];
+
+async function queryContainerStats(
+	metrics: MetricsHelper,
+	window: string,
+): Promise<ContainerStat[]> {
+	const stats: ContainerStat[] = [];
+	for (const service of TRACKED_SERVICES) {
+		// Use the compose-service label (set on every service we start).
+		const sel = `{container_label_com_docker_compose_service="${service}"}`;
+		// `rate(container_cpu_usage_seconds_total[w]) * 100` gives % of one core.
+		// `sum without` collapses per-cpu / per-replica series so workers/mains
+		// add together for the row.
+		const cpuQuery = `sum(rate(container_cpu_usage_seconds_total${sel}[${window}])) * 100`;
+		const cpuPeakQuery = `max_over_time((sum(rate(container_cpu_usage_seconds_total${sel}[30s])) * 100)[${window}:30s])`;
+		const memQuery = `sum(avg_over_time(container_memory_working_set_bytes${sel}[${window}]))`;
+		const memPeakQuery = `sum(max_over_time(container_memory_working_set_bytes${sel}[${window}]))`;
+		const fsReadQuery = `sum(rate(container_fs_reads_bytes_total${sel}[${window}]))`;
+		const fsWriteQuery = `sum(rate(container_fs_writes_bytes_total${sel}[${window}]))`;
+		const netRxQuery = `sum(rate(container_network_receive_bytes_total${sel}[${window}]))`;
+		const netTxQuery = `sum(rate(container_network_transmit_bytes_total${sel}[${window}]))`;
+
+		const [cpu, cpuPeak, mem, memPeak, fsR, fsW, netRx, netTx] = await Promise.all([
+			metrics.query(cpuQuery).catch(() => []),
+			metrics.query(cpuPeakQuery).catch(() => []),
+			metrics.query(memQuery).catch(() => []),
+			metrics.query(memPeakQuery).catch(() => []),
+			metrics.query(fsReadQuery).catch(() => []),
+			metrics.query(fsWriteQuery).catch(() => []),
+			metrics.query(netRxQuery).catch(() => []),
+			metrics.query(netTxQuery).catch(() => []),
+		]);
+
+		// Empty result set means no container matched (service not running) — skip the row.
+		if (cpu.length === 0 && mem.length === 0) continue;
+
+		stats.push({
+			name: service,
+			cpuPct: sumValues(cpu),
+			cpuPctPeak: sumValues(cpuPeak),
+			memBytes: sumValues(mem),
+			memBytesPeak: sumValues(memPeak),
+			fsReadsBytesRate: sumValues(fsR),
+			fsWritesBytesRate: sumValues(fsW),
+			netRxBytesRate: sumValues(netRx),
+			netTxBytesRate: sumValues(netTx),
+		});
+	}
+	return stats;
+}
 
 async function queryDiagnostics(
 	metrics: MetricsHelper,
@@ -50,6 +128,12 @@ async function queryDiagnostics(
 		queueActive,
 		queueCompletedRate,
 		queueFailedRate,
+		bgwriterTimedRate,
+		bgwriterReqRate,
+		bgwriterBackendRate,
+		blksHitRate,
+		blksReadRate,
+		containerStats,
 	] = await Promise.all([
 		metrics.query('n8n_nodejs_eventloop_lag_seconds').catch(() => []),
 		metrics
@@ -67,11 +151,23 @@ async function queryDiagnostics(
 		metrics.query('n8n_scaling_mode_queue_jobs_active').catch(() => []),
 		metrics.query(`rate(n8n_scaling_mode_queue_jobs_completed[${window}])`).catch(() => []),
 		metrics.query(`rate(n8n_scaling_mode_queue_jobs_failed[${window}])`).catch(() => []),
+		metrics.query(`rate(pg_stat_bgwriter_checkpoints_timed_total[${window}])`).catch(() => []),
+		metrics.query(`rate(pg_stat_bgwriter_checkpoints_req_total[${window}])`).catch(() => []),
+		metrics.query(`rate(pg_stat_bgwriter_buffers_backend_total[${window}])`).catch(() => []),
+		metrics.query(`rate(pg_stat_database_blks_hit{datname="${db}"}[${window}])`).catch(() => []),
+		metrics.query(`rate(pg_stat_database_blks_read{datname="${db}"}[${window}])`).catch(() => []),
+		queryContainerStats(metrics, window),
 	]);
 
 	const pgTxRateResult = pgTxRateWithTotals.length > 0 ? pgTxRateWithTotals : pgTxRateFallback;
 	const pgInsertRateResult =
 		pgInsertRateWithTotals.length > 0 ? pgInsertRateWithTotals : pgInsertRateFallback;
+	const blksHit = sumValues(blksHitRate);
+	const blksRead = sumValues(blksReadRate);
+	const bufferHitRatio =
+		blksHit !== undefined && blksRead !== undefined && blksHit + blksRead > 0
+			? blksHit / (blksHit + blksRead)
+			: undefined;
 
 	return {
 		eventLoopLag: sumValues(eventLoopLag),
@@ -82,6 +178,12 @@ async function queryDiagnostics(
 		queueActive: sumValues(queueActive),
 		queueCompletedRate: sumValues(queueCompletedRate),
 		queueFailedRate: sumValues(queueFailedRate),
+		pgBgwriterCheckpointsTimedRate: sumValues(bgwriterTimedRate),
+		pgBgwriterCheckpointsReqRate: sumValues(bgwriterReqRate),
+		pgBgwriterBuffersBackendRate: sumValues(bgwriterBackendRate),
+		pgBufferHitRatio: bufferHitRatio,
+		pgBlocksReadRate: blksRead,
+		containerStats: containerStats.length > 0 ? containerStats : undefined,
 	};
 }
 

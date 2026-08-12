@@ -105,11 +105,16 @@ jobs:
     name: Notify Cats on failure
     runs-on: ubuntu-latest
     needs: [build]
-    if: failure()
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
-      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          status: ${{ job.status }}
-          channel: '#team-catalysts'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Benchmark run failed for n8n tag `${{ inputs.n8n_tag || 'nightly' }}` - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#team-catalysts' \
+            --text "Benchmark run failed for n8n tag \`${{ inputs.n8n_tag || 'nightly' }}\` - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

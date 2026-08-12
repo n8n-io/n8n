@@ -1,35 +1,60 @@
 import { Logger } from '@n8n/backend-common';
-import { type AuthenticatedRequest } from '@n8n/db';
+import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
-import { mock, mockDeep } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
-// eslint-disable-next-line import-x/order
+import { Telemetry } from '@/telemetry';
+
+import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
 
-const mockAuthMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => {
+const mockAuthMiddleware = vi.fn().mockImplementation(async function (_req, _res, next) {
 	next();
 });
 const mcpServerMiddlewareService = mockDeep<McpServerMiddlewareService>();
 mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware);
 
-// We need to mock the service before importing the controller as it's used in the middleware
+// The controller's route decorator resolves McpServerMiddlewareService via DI at
+// module-evaluation time, so it must be registered before the controller module
+// loads. ES import hoisting would run a static `import` of the controller before
+// this set, so the controller is imported dynamically in `beforeEach` instead.
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
-import { McpController, type FlushableResponse } from '../mcp.controller';
+import { McpConfig } from '../mcp.config';
+import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
+import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
+import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
-jest.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
-	const StreamableHTTPServerTransport = jest.fn().mockImplementation((_opts) => ({
-		handleRequest: jest.fn().mockResolvedValue(undefined),
-		close: jest.fn().mockResolvedValue(undefined),
-	}));
-	return { StreamableHTTPServerTransport };
-});
+const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
+// The controller wires createMcpHandler (per-request server factory) through
+// toNodeHandler. The mocks run the factory when the node handler is invoked,
+// mirroring the real flow: getServer is only called for requests that reach
+// the transport, and factory errors propagate to the controller's catch.
+vi.mock('@modelcontextprotocol/server', () => ({
+	createMcpHandler: vi.fn((factory: () => Promise<unknown>) => ({ factory })),
+}));
+vi.mock('@modelcontextprotocol/node', () => ({
+	toNodeHandler: vi.fn(
+		(handler: { factory: () => Promise<unknown> }) =>
+			async (req: unknown, res: unknown, body?: unknown) => {
+				await handler.factory();
+				await mockHandleRequest(req, res, body);
+			},
+	),
+}));
 
-const createReq = (overrides: Partial<AuthenticatedRequest> = {}): AuthenticatedRequest =>
-	({ user: { id: 'user-1' }, body: {}, ...overrides }) as unknown as AuthenticatedRequest;
+type AuthenticatedMcpRequest = AuthenticatedRequest & {
+	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
+	mcpClientId?: string;
+};
+
+const createReq = (overrides: Partial<AuthenticatedMcpRequest> = {}): AuthenticatedMcpRequest =>
+	({ user: { id: 'user-1' }, body: {}, ...overrides }) as unknown as AuthenticatedMcpRequest;
 
 const createRes = (): FlushableResponse => {
 	const res = mock<FlushableResponse>();
@@ -39,51 +64,354 @@ const createRes = (): FlushableResponse => {
 };
 
 describe('McpController', () => {
-	let controller: McpController;
+	let McpController: typeof McpControllerType;
+	let controller: McpControllerType;
 	const logger = mock<Logger>();
-	const mcpService = { getServer: jest.fn() } as unknown as McpService;
-	const mcpSettingsService = { getEnabled: jest.fn() } as unknown as McpSettingsService;
+	const telemetry = { track: vi.fn() } as unknown as Telemetry;
+	const mcpService = {
+		getServer: vi.fn(),
+		resolveFeatureFlags: vi.fn(),
+	} as unknown as McpService;
+	const mcpSettingsService = { getEnabled: vi.fn() } as unknown as McpSettingsService;
+	const mcpProtectedResource = {
+		getProtectedResourceMetadataUrl: vi
+			.fn()
+			.mockReturnValue(
+				'https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http',
+			),
+	} as unknown as McpProtectedResource;
 
-	beforeEach(() => {
-		jest.clearAllMocks();
+	beforeEach(async () => {
+		vi.clearAllMocks();
+
+		// Default mock — the controller resolves the MCP feature flags for
+		// every request, so tests that don't care about them still need a sane
+		// default. Individual tests override this with `mockResolvedValue`
+		// when a flag matters.
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: false, variant: 'unassigned' },
+			canvasGroupsEnabled: false,
+		});
 
 		Container.set(Logger, logger);
+		Container.set(Telemetry, telemetry);
 		Container.set(McpService, mcpService);
 		Container.set(McpSettingsService, mcpSettingsService);
+		Container.set(McpProtectedResource, mcpProtectedResource);
+		// Real repositories can't be auto-constructed by DI without a DataSource.
+		Container.set(ApiKeyRepository, mock<ApiKeyRepository>());
 
+		// Imported here (not statically) so the Container.set above runs first.
+		({ McpController } = await import('../mcp.controller.js'));
 		controller = Container.get(McpController);
 	});
 
 	test('returns 403 if MCP access is disabled', async () => {
-		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(false);
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
 		const res = createRes();
 		await controller.build(createReq(), res);
 		expect(res.status).toHaveBeenCalledWith(403);
 		expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
-		expect(mcpService.getServer as unknown as jest.Mock).not.toHaveBeenCalled();
+		expect(mcpService.getServer as unknown as Mock).not.toHaveBeenCalled();
+		// Feature-flag resolution is skipped for rejected requests to
+		// avoid an unnecessary PostHog lookup.
+		expect(mcpService.resolveFeatureFlags as Mock).not.toHaveBeenCalled();
+	});
+
+	test('tracks disabled-access init errors without feature-flag fields', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				mcpAuthType: 'oauth',
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+				},
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
+			user_id: 'user-1',
+			client_name: 'Claude',
+			client_version: '1.0.0',
+			auth_type: 'oauth',
+			mcp_connection_status: 'error',
+			error: 'MCP access is disabled',
+		});
+		expect(mcpService.resolveFeatureFlags as Mock).not.toHaveBeenCalled();
+	});
+
+	test('advertises the MCP routing headers in the CORS allow-list', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
+		const res = createRes();
+		res.header = vi.fn().mockReturnThis();
+
+		await controller.build(createReq(), res);
+
+		expect(res.header).toHaveBeenCalledWith(
+			'Access-Control-Allow-Headers',
+			'Content-Type, Authorization, X-Requested-With, MCP-Protocol-Version, Mcp-Method, Mcp-Name',
+		);
 	});
 
 	test('creates mcp server if MCP access is enabled', async () => {
-		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
-		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn().mockResolvedValue(undefined),
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
 		});
 		const res = createRes();
 		await controller.build(createReq(), res);
-		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalled();
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalled();
+	});
+
+	test('tracks successful initialize connections with auth type and feature flags', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: true, variant: 'variant' },
+			canvasGroupsEnabled: true,
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				mcpAuthType: 'oauth',
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+				},
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
+			user_id: 'user-1',
+			client_name: 'Claude',
+			client_version: '1.0.0',
+			auth_type: 'oauth',
+			mcp_connection_status: 'success',
+			mcp_apps_enabled: true,
+			mcp_apps_variant: 'variant',
+			mcp_canvas_groups_enabled: true,
+		});
+	});
+
+	test('tracks a server/discover handshake with client info and protocol version from _meta', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: false, variant: 'unassigned' },
+			canvasGroupsEnabled: false,
+		});
+		const res = createRes();
+
+		// The 2026-07-28 revision has no `initialize`; a modern client opens with
+		// `server/discover` and carries its identity in the per-request _meta
+		// envelope, so the connection event must fire off that method.
+		await controller.build(
+			createReq({
+				mcpAuthType: 'oauth',
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: {
+						_meta: {
+							[MCP_PROTOCOL_VERSION_META_KEY]: '2026-07-28',
+							[MCP_CLIENT_INFO_META_KEY]: { name: 'Claude', version: '3.0.0' },
+						},
+					},
+				},
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
+			user_id: 'user-1',
+			client_name: 'Claude',
+			client_version: '3.0.0',
+			protocol_version: '2026-07-28',
+			auth_type: 'oauth',
+			mcp_connection_status: 'success',
+			mcp_apps_enabled: false,
+			mcp_apps_variant: 'unassigned',
+			mcp_canvas_groups_enabled: false,
+		});
+	});
+
+	test('reports the env_override variant when the flag is forced on by an operator', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: true, variant: 'env_override' },
+			canvasGroupsEnabled: false,
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+				},
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'User connected to MCP server',
+			expect.objectContaining({
+				mcp_apps_enabled: true,
+				mcp_apps_variant: 'env_override',
+			}),
+		);
+	});
+
+	test('resolves the feature flags once and forwards the resolution to getServer on initialize', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: true, variant: 'variant' },
+			canvasGroupsEnabled: false,
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+				},
+			}),
+			res,
+		);
+
+		expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
+			{ name: 'Claude', version: '1.0.0' },
+			undefined,
+		);
+	});
+
+	test('resolves the feature flags and forwards the resolution to getServer on non-initialize requests', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: false, variant: 'control' },
+			canvasGroupsEnabled: false,
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: {
+					jsonrpc: '2.0',
+					method: 'toolCall',
+				},
+			}),
+			res,
+		);
+
+		// Resolution happens for every request so the registered tools stay
+		// consistent with what was advertised at handshake time.
+		expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
+			undefined,
+			undefined,
+		);
+		// Non-initialize requests still skip telemetry tracking.
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
 	test('HEAD /http returns 401 with WWW-Authenticate header for auth scheme discovery', async () => {
 		const req = {} as Request;
 		const res = createRes();
-		res.header = jest.fn().mockReturnThis();
-		res.end = jest.fn().mockReturnThis();
+		res.header = vi.fn().mockReturnThis();
+		res.end = vi.fn().mockReturnThis();
 
 		await controller.discoverAuthSchemeHead(req, res);
 
-		expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+		expect(res.header).toHaveBeenCalledWith(
+			'WWW-Authenticate',
+			'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+		);
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.end).toHaveBeenCalled();
+	});
+
+	// The route decorators read `McpConfig.rateLimitServer` at import time, so
+	// these assertions prove the configured limit is wired into the routes
+	// without booting the full server.
+	describe('IP rate limit configuration', () => {
+		const getRouteIpRateLimit = (handlerName: string) =>
+			Container.get(ControllerRegistryMetadata).getRouteMetadata(
+				McpController as unknown as Controller,
+				handlerName,
+			).ipRateLimit;
+
+		test.each(['handleGet', 'build'])(
+			'applies the configured server limit to %s',
+			(handlerName) => {
+				const limit = Container.get(McpConfig).rateLimitServer;
+
+				expect(getRouteIpRateLimit(handlerName)).toEqual({ limit });
+			},
+		);
+	});
+
+	describe('GET /http', () => {
+		test('returns 403 if MCP access is disabled', async () => {
+			(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
+			const res = createRes();
+			await controller.handleGet(createReq(), res);
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
+		});
+
+		// The listen stream is unsupported in stateless mode: a GET routed into
+		// the transport would hang forever, so the route must answer 405 itself.
+		test('returns 405 without touching the MCP transport', async () => {
+			(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+			const res = createRes();
+			await controller.handleGet(createReq(), res);
+			expect(res.header).toHaveBeenCalledWith('Allow', 'POST');
+			expect(res.status).toHaveBeenCalledWith(405);
+			expect(res.json).toHaveBeenCalledWith({
+				jsonrpc: '2.0',
+				error: {
+					code: -32000,
+					message: 'Method not allowed.',
+				},
+				id: null,
+			});
+			expect(mcpService.getServer as unknown as Mock).not.toHaveBeenCalled();
+			expect(mockHandleRequest).not.toHaveBeenCalled();
+		});
 	});
 });

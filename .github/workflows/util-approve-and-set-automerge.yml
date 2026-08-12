@@ -30,16 +30,20 @@ jobs:
       - name: Approve PR (as the App)
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          PR_NUMBER: ${{ inputs.pull-request-number }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          gh pr review "${{ inputs.pull-request-number }}" \
+          gh pr review "$PR_NUMBER" \
             --approve \
-            --repo "${{ github.repository }}"
+            --repo "$REPOSITORY"
 
       - name: Enable auto-merge (merge when checks pass)
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          PR_NUMBER: ${{ inputs.pull-request-number }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          gh pr merge "${{ inputs.pull-request-number }}" \
+          gh pr merge "$PR_NUMBER" \
             --auto \
             --squash \
-            --repo "${{ github.repository }}"
+            --repo "$REPOSITORY"

@@ -1,0 +1,696 @@
+import { isQuotaExhaustedError, mapAgentChunkToEvent } from '../map-chunk';
+
+type ApiCallError = Error & { statusCode?: number; responseBody?: string; url?: string };
+
+function apiError(message: string, statusCode?: number, responseBody?: string): ApiCallError {
+	const error = new Error(message) as ApiCallError;
+	if (statusCode !== undefined) error.statusCode = statusCode;
+	if (responseBody !== undefined) error.responseBody = responseBody;
+	return error;
+}
+
+/** Mirrors the SDK's APIResponseError carrying a machine-readable errorCode. */
+function sdkError(message: string, statusCode: number, errorCode?: string): Error {
+	const error = new Error(message) as Error & { statusCode: number; errorCode?: string };
+	error.statusCode = statusCode;
+	if (errorCode !== undefined) error.errorCode = errorCode;
+	return error;
+}
+
+describe('isQuotaExhaustedError', () => {
+	it('matches the SDK errorCode from the token-endpoint 403', () => {
+		expect(
+			isQuotaExhaustedError(sdkError('Have reached end of quota', 403, 'quota_exhausted')),
+		).toBe(true);
+	});
+
+	it('matches the code carried on error.cause when the SDK error is wrapped', () => {
+		const wrapped = new Error('stream failed', {
+			cause: sdkError('Have reached end of quota', 403, 'quota_exhausted'),
+		});
+		expect(isQuotaExhaustedError(wrapped)).toBe(true);
+	});
+
+	it('matches a top-level code in an ai-sdk responseBody', () => {
+		const error = apiError(
+			'Forbidden',
+			403,
+			JSON.stringify({ message: 'Have reached end of quota', code: 'quota_exhausted' }),
+		);
+		expect(isQuotaExhaustedError(error)).toBe(true);
+	});
+
+	it('falls back to a nested error.type in an ai-sdk responseBody', () => {
+		const error = apiError(
+			'Forbidden',
+			403,
+			JSON.stringify({ error: { type: 'quota_exhausted', message: 'Have reached end of quota' } }),
+		);
+		expect(isQuotaExhaustedError(error)).toBe(true);
+	});
+
+	it('does NOT match a quota-sounding message without a code (no string heuristic)', () => {
+		expect(isQuotaExhaustedError(apiError('Have reached end of quota'))).toBe(false);
+		expect(isQuotaExhaustedError('You are out of credits')).toBe(false);
+		expect(isQuotaExhaustedError(apiError('request blocked: quota', 403))).toBe(false);
+	});
+
+	it('does not match a bare 403 or unrelated errors', () => {
+		expect(isQuotaExhaustedError(apiError('Forbidden', 403))).toBe(false);
+		expect(isQuotaExhaustedError(sdkError('Forbidden', 403))).toBe(false);
+		expect(isQuotaExhaustedError(sdkError('rate limited', 429, 'rate_limit'))).toBe(false);
+		expect(isQuotaExhaustedError(undefined)).toBe(false);
+	});
+
+	it('stops walking a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(isQuotaExhaustedError(outer)).toBe(false);
+	});
+});
+
+describe('mapAgentChunkToEvent', () => {
+	const runId = 'run-1';
+	const agentId = 'agent-1';
+
+	const map = (chunk: unknown, responseId?: string) =>
+		mapAgentChunkToEvent(runId, agentId, chunk, responseId);
+
+	it('returns null for invalid and ignored chunks', () => {
+		expect(map(null)).toBeNull();
+		expect(map('hello')).toBeNull();
+		expect(map({ payload: { text: 'hi' } })).toBeNull();
+		expect(map({ type: 'finish', finishReason: 'stop' })).toBeNull();
+		expect(map({ type: 'tool-call-delta', argumentsDelta: '{"x"' })).toBeNull();
+	});
+
+	it('maps native text deltas', () => {
+		expect(map({ type: 'text-delta', delta: 'hello' })).toEqual({
+			type: 'text-delta',
+			runId,
+			agentId,
+			payload: { text: 'hello' },
+		});
+	});
+
+	it('maps native reasoning deltas', () => {
+		expect(map({ type: 'reasoning-delta', delta: 'thinking...' })).toEqual({
+			type: 'reasoning-delta',
+			runId,
+			agentId,
+			payload: { text: 'thinking...' },
+		});
+	});
+
+	it('preserves responseId when provided', () => {
+		expect(map({ type: 'text-delta', delta: 'hello' }, 'response-1')).toEqual({
+			type: 'text-delta',
+			runId,
+			agentId,
+			responseId: 'response-1',
+			payload: { text: 'hello' },
+		});
+	});
+
+	it('maps native tool call messages', () => {
+		expect(
+			map({
+				type: 'message',
+				message: {
+					role: 'tool',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-1',
+							toolName: 'create-workflow',
+							input: { name: 'Workflow' },
+						},
+					],
+				},
+			}),
+		).toEqual({
+			type: 'tool-call',
+			runId,
+			agentId,
+			payload: {
+				toolCallId: 'tc-1',
+				toolName: 'create-workflow',
+				args: { name: 'Workflow' },
+			},
+		});
+	});
+
+	it('ignores malformed native message chunks', () => {
+		expect(map({ type: 'message', message: null })).toBeNull();
+		expect(map({ type: 'message', message: { role: 'tool' } })).toBeNull();
+		expect(map({ type: 'message', message: { role: 'tool', content: null } })).toBeNull();
+	});
+
+	it('maps native tool result messages', () => {
+		expect(
+			map({
+				type: 'message',
+				message: {
+					role: 'tool',
+					content: [
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-1',
+							toolName: 'create-workflow',
+							result: { workflowId: 'wf-1' },
+						},
+					],
+				},
+			}),
+		).toEqual({
+			type: 'tool-result',
+			runId,
+			agentId,
+			payload: {
+				toolCallId: 'tc-1',
+				result: { workflowId: 'wf-1' },
+			},
+		});
+	});
+
+	it('maps native tool result errors', () => {
+		expect(
+			map({
+				type: 'message',
+				message: {
+					role: 'tool',
+					content: [
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-1',
+							toolName: 'create-workflow',
+							result: 'Could not create workflow',
+							isError: true,
+						},
+					],
+				},
+			}),
+		).toEqual({
+			type: 'tool-error',
+			runId,
+			agentId,
+			payload: {
+				toolCallId: 'tc-1',
+				error: 'Could not create workflow',
+			},
+		});
+	});
+
+	it('maps native tool result Error objects to their messages', () => {
+		expect(
+			map({
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				output: new Error('Browser access denied'),
+				isError: true,
+			}),
+		).toEqual({
+			type: 'tool-error',
+			runId,
+			agentId,
+			payload: {
+				toolCallId: 'tc-1',
+				error: 'Browser access denied',
+			},
+		});
+	});
+
+	it('maps native MCP text error content to tool errors', () => {
+		expect(
+			map({
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				output: {
+					content: [{ type: 'text', text: 'File too large' }],
+					isError: true,
+				},
+				isError: true,
+			}),
+		).toEqual({
+			type: 'tool-error',
+			runId,
+			agentId,
+			payload: {
+				toolCallId: 'tc-1',
+				error: 'File too large',
+			},
+		});
+	});
+
+	it('maps structured native MCP error content to tool errors', () => {
+		expect(
+			map({
+				type: 'message',
+				message: {
+					role: 'tool',
+					content: [
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-1',
+							result: {
+								content: [
+									{
+										type: 'text',
+										text: JSON.stringify({ error: { message: 'Access denied by user' } }),
+									},
+								],
+								isError: true,
+							},
+							isError: true,
+						},
+					],
+				},
+			}),
+		).toEqual({
+			type: 'tool-error',
+			runId,
+			agentId,
+			payload: {
+				toolCallId: 'tc-1',
+				error: 'Access denied by user',
+			},
+		});
+	});
+
+	it('maps native suspension chunks to confirmation requests', () => {
+		const validSetupNode = {
+			node: {
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2,
+				parameters: {},
+				position: [0, 0] as [number, number],
+				id: 'node-1',
+			},
+			isTrigger: false,
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'ask-user',
+				input: { prompt: 'Confirm?' },
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'destructive',
+					message: 'Need approval',
+					credentialRequests: [
+						{
+							credentialType: 'slackApi',
+							reason: 'Need Slack access',
+							existingCredentials: [{ id: 'cred-1', name: 'Main Slack' }],
+							suggestedName: 'Slack API',
+						},
+					],
+					projectId: 'project-1',
+					inputType: 'plan-review',
+					questions: [
+						{
+							id: 'q1',
+							question: 'Which channel?',
+							type: 'text',
+						},
+					],
+					introMessage: 'Before continuing',
+					tasks: {
+						tasks: [{ id: 't1', description: 'Build workflow', status: 'todo' }],
+					},
+					planItems: [
+						{
+							id: 'task-1',
+							title: 'Build workflow',
+							kind: 'build-workflow',
+							spec: 'Create a workflow',
+							deps: [],
+						},
+					],
+					domainAccess: { url: 'https://example.com/api', host: 'example.com' },
+					credentialFlow: { stage: 'generic' },
+					setupRequests: [validSetupNode],
+					workflowId: 'wf-1',
+					resourceDecision: {
+						toolGroup: 'Local Gateway',
+						resource: '/tmp/file.txt',
+						description: 'Read /tmp/file.txt',
+						options: ['allowForSession', 'denyOnce'],
+					},
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'ask-user',
+				args: { prompt: 'Confirm?' },
+				severity: 'destructive',
+				message: 'Need approval',
+				credentialRequests: [
+					{
+						credentialType: 'slackApi',
+						reason: 'Need Slack access',
+						existingCredentials: [{ id: 'cred-1', name: 'Main Slack' }],
+						suggestedName: 'Slack API',
+					},
+				],
+				projectId: 'project-1',
+				inputType: 'plan-review',
+				domainAccess: { url: 'https://example.com/api', host: 'example.com' },
+				credentialFlow: { stage: 'generic' },
+				setupRequests: [validSetupNode],
+				workflowId: 'wf-1',
+				questions: [
+					{
+						id: 'q1',
+						question: 'Which channel?',
+						type: 'text',
+					},
+				],
+				introMessage: 'Before continuing',
+				tasks: {
+					tasks: [{ id: 't1', description: 'Build workflow', status: 'todo' }],
+				},
+				planItems: [
+					{
+						id: 'task-1',
+						title: 'Build workflow',
+						kind: 'build-workflow',
+						spec: 'Create a workflow',
+						deps: [],
+					},
+				],
+				resourceDecision: {
+					toolGroup: 'Local Gateway',
+					resource: '/tmp/file.txt',
+					description: 'Read /tmp/file.txt',
+					options: ['allowForSession', 'denyOnce'],
+				},
+			},
+		});
+	});
+
+	it('defaults optional suspension values and filters invalid structured payloads', () => {
+		const result = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			suspendPayload: {
+				severity: 'unknown',
+				credentialRequests: [{ invalid: true }],
+				inputType: 'bad-input-type',
+				questions: [{ invalid: true }],
+				tasks: { tasks: [{ invalid: true }] },
+				domainAccess: { url: 'https://example.com' },
+				webSearch: { invalid: true },
+				credentialFlow: { stage: 'unknown' },
+				setupRequests: [{ invalid: true }],
+				workflowId: 42,
+			},
+		});
+
+		expect(result).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'tc-1',
+				toolCallId: 'tc-1',
+				toolName: '',
+				args: {},
+				severity: 'warning',
+				message: 'Confirmation required',
+			},
+		});
+	});
+
+	it('maps target approval details without replacing the outer routing fields', () => {
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'build-agent-call',
+				toolName: 'build-agent',
+				input: { agentRef: 'support-agent' },
+				suspendPayload: {
+					type: 'approval',
+					requestId: 'approval-1',
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+					builderCheckpoint: { runId: 'builder-run', toolCallId: 'call-agent' },
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'approval-1',
+				toolCallId: 'build-agent-call',
+				toolName: 'build-agent',
+				args: { agentRef: 'support-agent' },
+				severity: 'warning',
+				message: 'Confirmation required',
+				targetApproval: {
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+				},
+			},
+		});
+	});
+
+	it('keeps direct SDK approvals as ordinary Instance AI confirmations', () => {
+		const result = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'direct-tool-call',
+			toolName: 'delete_record',
+			input: { id: 'record-1' },
+			suspendPayload: {
+				type: 'approval',
+				requestId: 'approval-1',
+				toolName: 'delete_record',
+				args: { id: 'record-1' },
+			},
+		});
+
+		expect(result).toMatchObject({
+			type: 'confirmation-request',
+			payload: {
+				toolCallId: 'direct-tool-call',
+				toolName: 'delete_record',
+				args: { id: 'record-1' },
+			},
+		});
+		if (result?.type !== 'confirmation-request') throw new Error('Expected confirmation request');
+		expect(result.payload).not.toHaveProperty('targetApproval');
+	});
+
+	it('maps pause-for-user continue confirmations and web search metadata', () => {
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'pause-for-user',
+				suspendPayload: {
+					requestId: 'request-1',
+					inputType: 'continue',
+					message: 'Continue after reviewing results',
+					webSearch: { query: 'n8n agents deferred tools' },
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'pause-for-user',
+				args: {},
+				severity: 'warning',
+				message: 'Continue after reviewing results',
+				inputType: 'continue',
+				webSearch: { query: 'n8n agents deferred tools' },
+			},
+		});
+	});
+
+	it('maps confirmations with a channelConfig payload', () => {
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'configure_channel',
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'info',
+					message: 'Set up the slack channel',
+					projectId: 'project-1',
+					channelConfig: { integrationType: 'slack', agentId: 'agent-9' },
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'configure_channel',
+				args: {},
+				severity: 'info',
+				message: 'Set up the slack channel',
+				projectId: 'project-1',
+				channelConfig: { integrationType: 'slack', agentId: 'agent-9' },
+			},
+		});
+	});
+
+	it('returns null for suspensions without a tool call id', () => {
+		expect(
+			map({ type: 'tool-call-suspended', suspendPayload: { requestId: 'request-1' } }),
+		).toBeNull();
+	});
+
+	it('maps native error chunks with provider metadata when available', () => {
+		const error = new Error('Provider failed') as Error & {
+			statusCode: number;
+			responseBody: string;
+			url: string;
+		};
+		error.statusCode = 429;
+		error.responseBody = JSON.stringify({ error: { message: 'Rate limited' } });
+		error.url = 'https://api.openai.com/v1/responses';
+
+		expect(map({ type: 'error', error })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content: 'Rate limited',
+				statusCode: 429,
+				provider: 'OpenAI',
+				technicalDetails: JSON.stringify({ error: { message: 'Rate limited' } }),
+			},
+		});
+	});
+
+	it('maps overloaded error records to an actionable message', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'overloaded_error', message: 'Overloaded' },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content: 'The model is overloaded. Try again in a few minutes.',
+			},
+		});
+	});
+
+	it('maps plain error records with a non-empty message', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'api_error', message: 'Provider failed' },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Provider failed' },
+		});
+	});
+
+	it('falls back to an unknown error for malformed error records', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'api_error', message: 42 },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
+
+		expect(map({ type: 'error', error: null })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
+	});
+
+	it('maps an error with a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(map({ type: 'error', error: outer })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'stream failed' },
+		});
+	});
+
+	it('tags quota-exhausted error chunks with a quota_exhausted code', () => {
+		const responseBody = JSON.stringify({
+			error: { type: 'quota_exhausted', message: 'Have reached end of quota' },
+		});
+		const error = apiError('Forbidden', 403, responseBody);
+
+		expect(map({ type: 'error', error })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content: 'Have reached end of quota',
+				statusCode: 403,
+				code: 'quota_exhausted',
+				technicalDetails: responseBody,
+			},
+		});
+	});
+
+	it('surfaces the gateway error message from an ai-sdk error wrapped in error.cause', () => {
+		// The n8n Connect gateway returns an actionable message; the ai-sdk APICallError
+		// reaches the stream wrapped, so the details live on error.cause.
+		const responseBody = JSON.stringify({
+			error: {
+				message:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				type: 'ai_gateway_request_error',
+			},
+		});
+		const wrapped = new Error('Bad Request') as Error & { cause?: unknown };
+		wrapped.cause = apiError('Bad Request', 400, responseBody);
+
+		expect(map({ type: 'error', error: wrapped })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				technicalDetails: responseBody,
+				// Unwrapped from the same cause as the body — a wrapped error must not lose it.
+				statusCode: 400,
+			},
+		});
+	});
+});
