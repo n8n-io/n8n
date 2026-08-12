@@ -34,6 +34,8 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
+const UNKNOWN_COUNT_VALUE = '—';
+
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
@@ -74,7 +76,7 @@ const instanceCapacityNoticeContent = computed(() => {
 
 const workflowsExposedValue = computed(() =>
 	exposedWorkflowsCount.value === null
-		? '-'
+		? UNKNOWN_COUNT_VALUE
 		: i18n.baseText('settings.mcp.workflowsExposed.count', {
 				adjustToNumber: exposedWorkflowsCount.value,
 				interpolate: { count: String(exposedWorkflowsCount.value) },
@@ -85,7 +87,7 @@ const exposedAgentsCount = ref<number | null>(null);
 
 const agentsExposedValue = computed(() =>
 	exposedAgentsCount.value === null
-		? '-'
+		? UNKNOWN_COUNT_VALUE
 		: i18n.baseText('settings.mcp.agentsExposed.count', {
 				adjustToNumber: exposedAgentsCount.value,
 				interpolate: { count: String(exposedAgentsCount.value) },
@@ -153,6 +155,7 @@ const onConfirmDisable = async () => {
 
 /** Populates the store's client totals so the "N clients have access" count renders. */
 const fetchoAuthCLients = async () => {
+	isLoadingClients.value = true;
 	try {
 		await mcpStore.getAllOAuthClients();
 		isLoadingClients.value = false;
@@ -328,7 +331,7 @@ onMounted(async () => {
 						:title="i18n.baseText('settings.mcp.connectedClients.viewAll.title')"
 						:description="
 							isLoadingClients
-								? '-'
+								? UNKNOWN_COUNT_VALUE
 								: i18n.baseText('settings.mcp.connectedClients.viewAll.description', {
 										adjustToNumber: connectedClientsTotal,
 										interpolate: { count: String(connectedClientsTotal) },

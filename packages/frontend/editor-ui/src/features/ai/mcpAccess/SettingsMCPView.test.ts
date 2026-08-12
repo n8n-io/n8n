@@ -14,6 +14,8 @@ import type { WorkflowListItem } from '@/Interface';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 
+const UNKNOWN_COUNT_VALUE = '—';
+
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
 const { hasPermissionMock } = vi.hoisted(() => ({
 	hasPermissionMock: vi.fn().mockReturnValue(true),
@@ -150,15 +152,16 @@ describe('SettingsMCPView', () => {
 
 		it('should keep the connected-clients row (stating the count) when there are none', async () => {
 			mcpStore.oauthClientTotals = { mine: 0 };
+			mcpStore.getAllOAuthClients.mockResolvedValue([]);
 
 			const { getByTestId, queryByTestId } = createComponent({ pinia });
-			await nextTick();
 
-			// No dashed empty-state card on the overview; the settings row stays and states the count.
-			expect(queryByTestId('mcp-clients-empty')).not.toBeInTheDocument();
-			const row = getByTestId('mcp-clients-view-all-row');
-			expect(row).toBeVisible();
-			expect(row).toHaveTextContent('0');
+			await waitFor(() => {
+				expect(queryByTestId('mcp-clients-empty')).not.toBeInTheDocument();
+				const row = getByTestId('mcp-clients-view-all-row');
+				expect(row).toBeVisible();
+				expect(row).toHaveTextContent('0');
+			});
 		});
 
 		it('should navigate to the connected clients page from the view-all row', async () => {
@@ -205,7 +208,7 @@ describe('SettingsMCPView', () => {
 			enableMcpSettings();
 		});
 
-		it('should show — instead of 0 while getAllOAuthClients is pending', async () => {
+		it('should show placeholder instead of 0 while getAllOAuthClients is pending', async () => {
 			// Create a promise we control so we can keep it pending
 			let resolveClients!: (value: OAuthClientResponseDto[]) => void;
 			const clientsPromise = new Promise<OAuthClientResponseDto[]>((res) => {
@@ -213,18 +216,15 @@ describe('SettingsMCPView', () => {
 			});
 			mcpStore.getAllOAuthClients.mockReturnValue(clientsPromise);
 
-			const { getByTestId } = createComponent({ pinia });
+			const { getAllByText, queryByText, queryAllByText } = createComponent({ pinia });
 			await nextTick();
 
-			// While request is still pending, should show — not 0
-			const row = getByTestId('mcp-clients-view-all-row');
-			expect(row).toHaveTextContent('—');
-			expect(row).not.toHaveTextContent('0');
+			expect(getAllByText(UNKNOWN_COUNT_VALUE).length).toBeGreaterThan(0);
+			expect(queryByText('0 clients have access')).not.toBeInTheDocument();
 
-			// Now resolve and confirm the real count appears
 			resolveClients([]);
 			await waitFor(() => {
-				expect(getByTestId('mcp-clients-view-all-row')).not.toHaveTextContent('—');
+				expect(queryAllByText(UNKNOWN_COUNT_VALUE)).toHaveLength(0);
 			});
 		});
 
@@ -236,7 +236,7 @@ describe('SettingsMCPView', () => {
 
 			await waitFor(() => {
 				const row = getByTestId('mcp-clients-view-all-row');
-				expect(row).not.toHaveTextContent('—');
+				expect(row).not.toHaveTextContent(UNKNOWN_COUNT_VALUE);
 				expect(row).toHaveTextContent('0');
 			});
 		});
@@ -244,15 +244,49 @@ describe('SettingsMCPView', () => {
 		it('should keep — and not silently show 0 when getAllOAuthClients fails', async () => {
 			mcpStore.getAllOAuthClients.mockRejectedValue(new Error('network error'));
 
-			const { getByTestId } = createComponent({ pinia });
+			const { getAllByText, queryByText } = createComponent({ pinia });
 
 			await waitFor(() => {
 				expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
 			});
 
-			const row = getByTestId('mcp-clients-view-all-row');
-			expect(row).toHaveTextContent('—');
-			expect(row).not.toHaveTextContent('0');
+			expect(getAllByText(UNKNOWN_COUNT_VALUE).length).toBeGreaterThan(0);
+			expect(queryByText('0 clients have access')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Workflows and agents loading state', () => {
+		beforeEach(() => {
+			enableMcpSettings();
+		});
+
+		it('should show placeholder while fetchWorkflowsAvailableForMCP is pending', async () => {
+			let resolveWorkflows!: (value: { data: WorkflowListItem[]; count: number }) => void;
+			const workflowsPromise = new Promise<{ data: WorkflowListItem[]; count: number }>((res) => {
+				resolveWorkflows = res;
+			});
+			mcpStore.fetchWorkflowsAvailableForMCP.mockReturnValue(workflowsPromise);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('mcp-workflows-exposed-row')).toHaveTextContent(UNKNOWN_COUNT_VALUE);
+
+			resolveWorkflows({ data: [], count: 3 });
+			await waitFor(() => {
+				expect(getByTestId('mcp-workflows-exposed-row')).toHaveTextContent('3 workflows');
+			});
+		});
+
+		it('should show 0 after fetchWorkflowsAvailableForMCP resolves with zero', async () => {
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue({ data: [], count: 0 });
+
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-workflows-exposed-row')).not.toHaveTextContent(UNKNOWN_COUNT_VALUE);
+				expect(getByTestId('mcp-workflows-exposed-row')).toHaveTextContent('0');
+			});
 		});
 	});
 
