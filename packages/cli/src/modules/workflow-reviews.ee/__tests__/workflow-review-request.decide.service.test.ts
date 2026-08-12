@@ -423,8 +423,12 @@ describe('WorkflowReviewRequestService.decide', () => {
 		// sees the archive that committed while this decision queued.
 		workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: true });
 
-		await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
-			BadRequestError,
+		const decision = service.decide(memberUser(), requestId, approveDto);
+		await expect(decision).rejects.toThrow(BadRequestError);
+		// The reviewer is told their review was refused, not that the workflow
+		// "cannot be submitted for review" — that is the author's action, not theirs.
+		await expect(decision).rejects.toThrow(
+			"The workflow 'wf-1' is archived and cannot be reviewed",
 		);
 
 		// Nothing may reach the activity feed: an approval entry here would durably

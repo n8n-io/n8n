@@ -286,11 +286,15 @@ export class WorkflowReviewRequestService {
 	 * Every read is threaded with `ctx` so it runs on the lock transaction's own
 	 * connection. A read that checks out a second connection here deadlocks against
 	 * the transaction holding the first one (see the same note in `decide`).
+	 *
+	 * `blockedAction` names the caller's action in both messages, so a reviewer is
+	 * not told their approval "cannot be submitted for review".
 	 */
 	private async assertWorkflowStillReviewable(
 		workflowId: string,
 		expectedProjectId: string,
 		ctx: OperationContext,
+		blockedAction = 'submitted for review',
 	): Promise<void> {
 		const workflow = await this.workflowRepository.findArchivedState(workflowId, ctx);
 		if (!workflow) {
@@ -299,14 +303,14 @@ export class WorkflowReviewRequestService {
 
 		if (workflow.isArchived) {
 			throw new BadRequestError(
-				`The workflow '${workflowId}' is archived and cannot be submitted for review`,
+				`The workflow '${workflowId}' is archived and cannot be ${blockedAction}`,
 			);
 		}
 
 		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId, ctx);
 		if (project?.id !== expectedProjectId) {
 			throw new ConflictError(
-				`The workflow '${workflowId}' moved to another project and cannot be submitted for review here`,
+				`The workflow '${workflowId}' moved to another project and cannot be ${blockedAction} here`,
 				'Retry from the project that now owns the workflow',
 			);
 		}
@@ -545,7 +549,12 @@ export class WorkflowReviewRequestService {
 
 				// Archive and transfer run in after hooks, so they commit before queueing
 				// on this lock — the pre-lock check can already be stale here.
-				await this.assertWorkflowStillReviewable(currentRow.workflowId, current.projectId, ctx);
+				await this.assertWorkflowStillReviewable(
+					currentRow.workflowId,
+					current.projectId,
+					ctx,
+					'updated',
+				);
 
 				if (currentRow.workflowVersionId === dto.workflowVersionId) {
 					// A concurrent sync won the lock and already re-pinned this version
@@ -734,7 +743,14 @@ export class WorkflowReviewRequestService {
 
 				// Archive and transfer run in after hooks, so they commit before queueing
 				// on this lock — the pre-lock check can already be stale here.
-				await this.assertWorkflowStillReviewable(currentRow.workflowId, current.projectId, ctx);
+				// 'reviewed' covers both decisions: an approval and a change request
+				// are equally refused here.
+				await this.assertWorkflowStillReviewable(
+					currentRow.workflowId,
+					current.projectId,
+					ctx,
+					'reviewed',
+				);
 
 				current.decision = dto.decision;
 				current.updatedById = user.id;

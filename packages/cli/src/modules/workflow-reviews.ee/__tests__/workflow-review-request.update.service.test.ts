@@ -319,7 +319,9 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		// sees the archive that committed while this update queued.
 		workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: true });
 
-		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(BadRequestError);
+		const update = service.updateVersion(user, requestId, dto);
+		await expect(update).rejects.toThrow(BadRequestError);
+		await expect(update).rejects.toThrow("The workflow 'wf-1' is archived and cannot be updated");
 
 		// Nothing may reach the activity feed: a version_updated entry here would
 		// durably assert a re-pin on a workflow that can no longer be reviewed.
