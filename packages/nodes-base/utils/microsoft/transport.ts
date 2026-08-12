@@ -8,7 +8,7 @@ import type {
 	IHookFunctions,
 	INode,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, UnexpectedError } from 'n8n-workflow';
 
 import { capitalize } from '../utilities';
 
@@ -24,8 +24,12 @@ export const SERVICE_PRINCIPAL_AUTH = 'microsoftEntraServicePrincipalApi';
  * that has no usable app-only form. The slash-prefixed `/authentication` key
  * addresses the root selector from a nested field (distinct from the un-prefixed
  * `show.authentication` key used on the credential entries themselves).
+ * Frozen so no import can mutate the contract (the inner array keeps the mutable
+ * type `IDisplayOptions` expects, so only the key is locked).
  */
-export const SP_HIDE = { '/authentication': [SERVICE_PRINCIPAL_AUTH] };
+export const SP_HIDE: Readonly<{ '/authentication': string[] }> = Object.freeze({
+	'/authentication': [SERVICE_PRINCIPAL_AUTH],
+});
 
 export type MicrosoftGraphCredentialType<TDefault extends string> =
 	| TDefault
@@ -33,14 +37,15 @@ export type MicrosoftGraphCredentialType<TDefault extends string> =
 	| typeof SERVICE_PRINCIPAL_AUTH;
 
 // Reject any id that could escape its Graph path segment or start a query/fragment:
-// path separators (`/` `\`), query/fragment starters (`?` `#`), and control chars
-// (0x00–0x1F). `:` and `@` are ALLOWED — they are structure-neutral inside a single
-// Teams id segment (real channel ids look like `19:...@thread.tacv2`), and the proven
-// Graph URL shape interpolates them raw. Validating the shape (not encoding) is what
-// keeps a value safe to interpolate raw. Messages are static so a rejected id is
-// never echoed back.
+// path separators (`/` `\`), query/fragment starters (`?` `#`), percent (`%`, so a
+// pre-encoded separator like `..%2F..` cannot smuggle structure; legitimate Graph ids
+// never carry a literal `%`), and control chars (0x00-0x1F). `:` and `@` are ALLOWED:
+// they are structure-neutral inside a single Teams id segment (real channel ids look
+// like `19:...@thread.tacv2`), and the proven Graph URL shape interpolates them raw.
+// Validating the shape (not encoding) is what keeps a value safe to interpolate raw.
+// Messages are static so a rejected id is never echoed back.
 // eslint-disable-next-line no-control-regex
-const GRAPH_ID_REJECT = /[\x00-\x1f\/\\?#]/;
+const GRAPH_ID_REJECT = /[\x00-\x1f\/\\?#%]/;
 
 /**
  * Validates a user-supplied Graph id (already `extractValue`-resolved) before it is
@@ -52,7 +57,8 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 	const value = String(id ?? '').trim();
 	if (value === '') {
 		throw new NodeOperationError(node, 'A required ID is empty', {
-			// Teams wording; parameterize when the second consumer (SharePoint v2, M2) lands.
+			// Teams wording; make it injectable (UserTargetMessages pattern in
+			// nodes/Microsoft/GenericFunctions.ts) when the second consumer (SharePoint v2) lands.
 			description: 'Set the team, channel, plan, bucket or task ID and try again.',
 		});
 	}
@@ -63,7 +69,8 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 	}
 	if (GRAPH_ID_REJECT.test(value)) {
 		throw new NodeOperationError(node, 'The ID is not valid', {
-			description: 'Remove any slashes, backslashes, question marks or hashes and try again.',
+			description:
+				'Remove any slashes, backslashes, question marks, hashes or percent signs and try again.',
 		});
 	}
 	return value;
@@ -94,16 +101,53 @@ export function buildMicrosoftGraphPath(
 }
 
 /**
+ * Best-effort read of the node's `resource` parameter for "{Resource} not found"
+ * rewrites. The parameter exists on action nodes but not in trigger hook or
+ * load-options contexts, where `getNodeParameter` either throws or returns the
+ * literal fallback `0`; both resolve to `undefined` here so callers fall back to
+ * a generic message instead of surfacing "0 not found".
+ */
+function nodeResourceName(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+): string | undefined {
+	try {
+		const resource = this.getNodeParameter('resource', 0);
+		if (typeof resource === 'string' && resource !== '') {
+			return capitalize(resource);
+		}
+	} catch {
+		// hook/load-options contexts may not expose this parameter
+	}
+	return undefined;
+}
+
+/**
  * Binds the shared Microsoft Graph transport to a node's default credential type;
  * the node facade calls this once at module load and re-exports the returned
- * functions. `defaultCredentialType` must be the node's own delegated OAuth2
- * credential literal (the back-compat default for legacy nodes with no
- * `authentication` value), never `SERVICE_PRINCIPAL_AUTH` or `'microsoftOAuth2Api'`.
+ * functions. `defaultCredentialType` is the node's back-compat delegated OAuth2
+ * default for legacy nodes with no stored `authentication` value: the node's own
+ * credential literal, or the generic `'microsoftOAuth2Api'` where that is the
+ * node's default (as in SharePoint v2). Never `SERVICE_PRINCIPAL_AUTH` (enforced
+ * below): legacy nodes would silently resolve to the tenant-wide app-only
+ * credential.
+ *
+ * Known SharePoint v2 deltas to fold in via factory config (not per-node forks)
+ * when it adopts the kernel: injectable static messages (UserTargetMessages
+ * pattern in nodes/Microsoft/GenericFunctions.ts), per-operation 403 permission
+ * hints, safe-message allowlist, per-page headers and a negative-limit guard on
+ * `microsoftApiRequestAllItems`.
  */
 export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	defaultCredentialType: TDefault;
 }) {
 	const { defaultCredentialType } = config;
+	const defaultTypeName: string = defaultCredentialType;
+	if (defaultTypeName === SERVICE_PRINCIPAL_AUTH) {
+		// Fail at module load so a misconfigured facade can never ship.
+		throw new UnexpectedError(
+			'createMicrosoftGraphTransport: defaultCredentialType must be a delegated OAuth2 credential, not the Service Principal credential',
+		);
+	}
 
 	/**
 	 * Resolves which credential type the node is configured to use. Defaults to the
@@ -154,6 +198,17 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 				? credentials.graphApiBaseUrl
 				: 'https://graph.microsoft.com'
 		).replace(/\/+$/, '');
+		// An explicit `uri` (e.g. a next-page link from Graph) is used verbatim,
+		// but it must stay on the credential's Graph host: the bearer token must
+		// never travel to an unexpected origin. Graph's own @odata.nextLink is
+		// always same-origin, so nothing legitimate is refused.
+		const target = uri || `${baseUrl}${resource}`;
+		if (new URL(target).origin !== new URL(baseUrl).origin) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Refusing to send credentials to an unexpected host',
+			);
+		}
 		const options: IRequestOptions = {
 			headers: {
 				'Content-Type': 'application/json',
@@ -161,7 +216,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			method,
 			body,
 			qs,
-			uri: uri || `${baseUrl}${resource}`,
+			uri: target,
 			json: true,
 		};
 		try {
@@ -194,25 +249,15 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 					rawCode === undefined || rawCode === null ? undefined : Number(rawCode);
 
 				let message: string;
-				// `resource` exists on the action node but NOT in the trigger IHookFunctions
-				// context — read it defensively so a 404 in the trigger falls through to the
-				// generic static message instead of "Undefined not found".
-				let nodeResource: string | undefined;
-				try {
-					const resource = this.getNodeParameter('resource', 0) as string | undefined;
-					if (typeof resource === 'string' && resource !== '') {
-						nodeResource = capitalize(resource);
-					}
-				} catch {
-					nodeResource = undefined;
-				}
+				const nodeResource = nodeResourceName.call(this);
 				if (httpCode === 404 && nodeResource) {
 					message = `${nodeResource} not found`;
 				} else if (httpCode === 401) {
 					message =
 						"The Service Principal token was rejected. Check the app registration's client secret and that admin consent is granted.";
 				} else if (httpCode === 402) {
-					// Teams wording; parameterize when the second consumer (SharePoint v2, M2) lands.
+					// Teams wording; make it injectable (UserTargetMessages pattern in
+					// nodes/Microsoft/GenericFunctions.ts) when the second consumer (SharePoint v2) lands.
 					message =
 						'This operation requires a metered Microsoft Teams API to be enabled on the tenant.';
 				} else if (httpCode === 403) {
@@ -239,8 +284,13 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 				errorOptions.message = error.message;
 
 				if (error.code === 'NotFound' && error.message === 'Resource not found') {
-					const nodeResource = capitalize(this.getNodeParameter('resource', 0) as string);
-					errorOptions.message = `${nodeResource} not found`;
+					// Same defensive read as the SP branch: in a trigger hook context the
+					// `resource` parameter resolves to the fallback `0`, which must not
+					// surface as "0 not found".
+					const nodeResource = nodeResourceName.call(this);
+					if (nodeResource) {
+						errorOptions.message = `${nodeResource} not found`;
+					}
 				}
 			}
 			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);

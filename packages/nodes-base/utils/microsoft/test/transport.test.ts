@@ -20,6 +20,7 @@ describe('Microsoft Graph transport kernel', () => {
 	let mockRequestWithAuthentication: Mock;
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockRequestOAuth2 = vi.fn();
 		mockRequestWithAuthentication = vi.fn();
@@ -36,7 +37,6 @@ describe('Microsoft Graph transport kernel', () => {
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
-		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
@@ -45,14 +45,47 @@ describe('Microsoft Graph transport kernel', () => {
 
 	describe('microsoftApiRequest', () => {
 		describe('graphApiBaseUrl from credentials', () => {
-			it('should use base URL from credentials', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
+			it.each([
+				[
+					'falls back to the default when graphApiBaseUrl is empty',
+					{ graphApiBaseUrl: '' },
+					'https://graph.microsoft.com/teams',
+				],
+				[
+					'falls back to the default when graphApiBaseUrl is undefined',
+					{},
+					'https://graph.microsoft.com/teams',
+				],
+				[
+					'strips a trailing slash from the base URL',
+					{ graphApiBaseUrl: 'https://graph.microsoft.com/' },
+					'https://graph.microsoft.com/teams',
+				],
+				[
+					'strips multiple trailing slashes from the base URL',
+					{ graphApiBaseUrl: 'https://graph.microsoft.com///' },
+					'https://graph.microsoft.com/teams',
+				],
+				[
+					'uses the US Government cloud endpoint from credentials',
+					{ graphApiBaseUrl: 'https://graph.microsoft.us' },
+					'https://graph.microsoft.us/teams',
+				],
+				[
+					'uses the US Government DOD cloud endpoint from credentials',
+					{ graphApiBaseUrl: 'https://dod-graph.microsoft.us' },
+					'https://dod-graph.microsoft.us/teams',
+				],
+				[
+					'uses the China cloud endpoint from credentials',
+					{ graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn' },
+					'https://microsoftgraph.chinacloudapi.cn/teams',
+				],
+			])('%s', async (_name, baseUrlCredential, expectedUri) => {
+				mockRequestOAuth2.mockResolvedValue({ data: 'test' });
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.us',
+					oauthTokenData: { access_token: 'test-access-token' },
+					...baseUrlCredential,
 				});
 
 				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
@@ -61,161 +94,32 @@ describe('Microsoft Graph transport kernel', () => {
 					'microsoftTeamsOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.us/teams',
+						uri: expectedUri,
 						json: true,
 					}),
 				);
 			});
+		});
 
-			it('should fall back to default when credentials.graphApiBaseUrl is empty', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: '',
-				});
+		describe('custom headers', () => {
+			it('merges custom headers over the defaults', async () => {
+				mockRequestOAuth2.mockResolvedValue({ data: 'test' });
+				mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'POST',
+					'/teams',
+					{ displayName: 'x' },
+					{},
+					undefined,
+					{ 'If-Match': 'etag' },
 				);
-			});
-
-			it('should fall back to default when credentials.graphApiBaseUrl is undefined', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftTeamsOAuth2Api',
 					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should strip trailing slashes from base URL using regex', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.com/',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should strip multiple trailing slashes from base URL', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.com///',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.com/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should use US Government cloud endpoint', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://graph.microsoft.us',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://graph.microsoft.us/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should use US Government DOD cloud endpoint', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://dod-graph.microsoft.us',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://dod-graph.microsoft.us/teams',
-						json: true,
-					}),
-				);
-			});
-
-			it('should use China cloud endpoint', async () => {
-				const mockResponse = { data: 'test' };
-				mockRequestOAuth2.mockResolvedValue(mockResponse);
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					oauthTokenData: {
-						access_token: 'test-access-token',
-					},
-					graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
-				});
-
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
-
-				expect(mockRequestOAuth2).toHaveBeenCalledWith(
-					'microsoftTeamsOAuth2Api',
-					expect.objectContaining({
-						method: 'GET',
-						uri: 'https://microsoftgraph.chinacloudapi.cn/teams',
-						json: true,
+						headers: { 'Content-Type': 'application/json', 'If-Match': 'etag' },
 					}),
 				);
 			});
@@ -443,6 +347,82 @@ describe('Microsoft Graph transport kernel', () => {
 
 					expect(error.message).toBe('Channel not found');
 				});
+
+				it('maps a status-less failure (network error) to the static unknown-status message', async () => {
+					mockRequestWithAuthentication.mockRejectedValue(
+						new Error('connect ECONNREFUSED 127.0.0.1:443'),
+					);
+
+					const error = (await microsoftApiRequest
+						.call(mockExecuteFunctions, 'GET', '/v1.0/teams')
+						.catch((e: Error) => e)) as Error;
+
+					expect(error.constructor.name).toBe('NodeApiError');
+					expect(error.message).toBe(
+						"Microsoft Graph rejected the request (HTTP unknown). Check the operation's inputs and the app registration's permissions.",
+					);
+					// the underlying failure detail must not ride along
+					expect(JSON.stringify(error)).not.toContain('ECONNREFUSED');
+				});
+			});
+		});
+
+		describe('delegated OAuth2 error mapping', () => {
+			const delegatedError = (statusCode: number, code: string, message: string) =>
+				Object.assign(new Error(`${statusCode} - {"error":{"code":"${code}"}}`), {
+					statusCode,
+					error: { error: { code, message } },
+				});
+
+			beforeEach(() => {
+				mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+			});
+
+			it('rewrites a 404 NotFound to the static "{Resource} not found" message', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) =>
+					name === 'resource' ? 'channel' : undefined,
+				);
+				mockRequestOAuth2.mockRejectedValue(delegatedError(404, 'NotFound', 'Resource not found'));
+
+				const error = await microsoftApiRequest
+					.call(mockExecuteFunctions, 'GET', '/v1.0/teams/x/channels/y')
+					.catch((e: Error) => e);
+
+				expect(error.constructor.name).toBe('NodeApiError');
+				expect(error.message).toBe('Channel not found');
+			});
+
+			it('passes the Graph error message through for other delegated errors', async () => {
+				mockRequestOAuth2.mockRejectedValue(
+					delegatedError(400, 'BadRequest', 'Invalid filter clause'),
+				);
+
+				const error = await microsoftApiRequest
+					.call(mockExecuteFunctions, 'GET', '/v1.0/teams')
+					.catch((e: Error) => e);
+
+				expect(error.constructor.name).toBe('NodeApiError');
+				expect(error.message).toBe('Invalid filter clause');
+			});
+
+			it('keeps the raw NotFound message when `resource` is unavailable (trigger hook context)', async () => {
+				const mockHookFunctions: Mocked<IHookFunctions> = mockDeep<IHookFunctions>();
+				const hookRequestOAuth2 = vi
+					.fn()
+					.mockRejectedValue(delegatedError(404, 'NotFound', 'Resource not found'));
+				mockHookFunctions.helpers.requestOAuth2 = hookRequestOAuth2;
+				mockHookFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+				mockHookFunctions.getNode.mockReturnValue(mockNode);
+				// Hook contexts treat the 2nd getNodeParameter arg as the FALLBACK, so both
+				// `authentication` and `resource` resolve to the literal `0` on legacy nodes.
+				mockHookFunctions.getNodeParameter.mockReturnValue(0);
+
+				const error = await microsoftApiRequest
+					.call(mockHookFunctions, 'GET', '/v1.0/subscriptions')
+					.catch((e: Error) => e);
+
+				// never "0 not found": without a usable resource name the Graph message stands
+				expect(error.message).toBe('Resource not found');
 			});
 		});
 	});
@@ -504,12 +484,18 @@ describe('Microsoft Graph transport kernel', () => {
 			expect(() => validateMicrosoftGraphId(id, mockNode)).toThrow();
 		});
 
-		it.each(['a/b', 'a\\b', 'a?b', 'a#b', 'x/../../groups/abc', 'abc?$expand=foo'])(
-			'rejects ids containing separators or query characters (%s)',
-			(id) => {
-				expect(() => validateMicrosoftGraphId(id, mockNode)).toThrow();
-			},
-		);
+		it.each([
+			'a/b',
+			'a\\b',
+			'a?b',
+			'a#b',
+			'a%b',
+			'..%2F..',
+			'x/../../groups/abc',
+			'abc?$expand=foo',
+		])('rejects ids containing separators, query characters or percent signs (%s)', (id) => {
+			expect(() => validateMicrosoftGraphId(id, mockNode)).toThrow();
+		});
 
 		it('throws a static message that never echoes the rejected id', () => {
 			const error = (() => {
@@ -745,6 +731,20 @@ describe('Microsoft Graph transport kernel', () => {
 			expect(requestOAuth2).toHaveBeenCalledTimes(2);
 			expect(optionsOfCall(requestOAuth2, 0).qs).toEqual({});
 		});
+
+		it('refuses to follow a cross-origin @odata.nextLink', async () => {
+			const requestOAuth2 = vi.fn().mockResolvedValue({
+				value: [{ id: '1' }],
+				'@odata.nextLink': 'https://elsewhere.example.com/next-page',
+			});
+			const ctx = makeContext(requestOAuth2);
+
+			await expect(
+				microsoftApiRequestAllItems.call(ctx, 'value', 'GET', '/v1.0/teams/1/channels'),
+			).rejects.toThrow('Refusing to send credentials to an unexpected host');
+			// the off-host link is never requested
+			expect(requestOAuth2).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('microsoftApiRequest under a webhook hook (IHookFunctions) context', () => {
@@ -785,32 +785,32 @@ describe('Microsoft Graph transport kernel', () => {
 
 	describe('createMicrosoftGraphTransport', () => {
 		it('honors a non-Teams defaultCredentialType for fallback resolution and requests', async () => {
+			// SharePoint v2's delegated back-compat default IS the generic Graph credential.
 			const sharePoint = createMicrosoftGraphTransport({
-				defaultCredentialType: 'microsoftSharePointOAuth2Api',
+				defaultCredentialType: 'microsoftOAuth2Api',
 			});
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 			mockRequestOAuth2.mockResolvedValue({ data: 'test' });
 			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 
-			expect(sharePoint.getCredentialType.call(mockExecuteFunctions)).toBe(
-				'microsoftSharePointOAuth2Api',
-			);
+			expect(sharePoint.getCredentialType.call(mockExecuteFunctions)).toBe('microsoftOAuth2Api');
 
 			await sharePoint.microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/sites');
 
-			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
-				'microsoftSharePointOAuth2Api',
-			);
-			expect(mockRequestOAuth2).toHaveBeenCalledWith(
-				'microsoftSharePointOAuth2Api',
-				expect.anything(),
-			);
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+			expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
 
 			// Instance isolation: the module-scope Teams-bound instance must be unaffected
 			// by creating a second transport; config must not leak into shared module state.
 			// getNodeParameter is still mocked to undefined here, so this exercises the
 			// Teams instance's fallback.
 			expect(getCredentialType.call(mockExecuteFunctions)).toBe('microsoftTeamsOAuth2Api');
+		});
+
+		it('rejects the Service Principal credential as the default', () => {
+			expect(() =>
+				createMicrosoftGraphTransport({ defaultCredentialType: SERVICE_PRINCIPAL_AUTH }),
+			).toThrow('must be a delegated OAuth2 credential');
 		});
 	});
 });

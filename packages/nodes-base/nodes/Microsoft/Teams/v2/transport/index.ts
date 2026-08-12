@@ -1,10 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHookFunctions,
-	IHttpRequestMethods,
-	ILoadOptionsFunctions,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import {
 	buildMicrosoftGraphPath,
@@ -63,27 +57,4 @@ export function validateTaskBodyIdsUnderSp(
 	const node = this.getNode();
 	if (ids.planId !== undefined) validateMicrosoftGraphId(ids.planId, node);
 	if (ids.bucketId !== undefined) validateMicrosoftGraphId(ids.bucketId, node);
-}
-
-export async function microsoftApiRequestAllItemsSkip(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	propertyName: string,
-	method: IHttpRequestMethods,
-	endpoint: string,
-	body: any = {},
-	query: IDataObject = {},
-): Promise<any> {
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-	query.$top = 100;
-	query.$skip = 0;
-
-	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
-		query.$skip += query.$top;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-	} while (responseData.value.length !== 0);
-
-	return returnData;
 }
