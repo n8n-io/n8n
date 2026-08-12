@@ -79,6 +79,7 @@ function mountDock(
 	return mount(AgentPreviewDock, {
 		...(attachTo ? { attachTo } : {}),
 		props: {
+			isOpen: true,
 			sessionTitle: 'Order help',
 			sessionOptions: [],
 			hasSession: true,

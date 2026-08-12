@@ -4,12 +4,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import {
-	AGENT_PREVIEW_VIEW,
-	AGENT_SESSION_DETAIL_VIEW,
-	CONTINUE_SESSION_ID_PARAM,
-	EXECUTIONS_SECTION_KEY,
-} from '@/features/agents/constants';
+import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type { AgentExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
 import { useI18n } from '@n8n/i18n';
