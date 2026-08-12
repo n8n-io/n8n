@@ -37,7 +37,11 @@ import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.servi
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });
-const requesterUser = mock<User>({ id: 'requester-1', role: { slug: 'global:member' } });
+const requesterUser = mock<User>({
+	id: 'requester-1',
+	disabled: false,
+	role: { slug: 'global:member' },
+});
 
 const requestId = 'req-1';
 const projectId = 'proj-1';
@@ -480,6 +484,26 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect(userRepository.findManyByIds).toHaveBeenCalledWith([requesterUser.id], {
 				includeRole: true,
 			});
+			expect(requestRepository.saveRequest.mock.calls[0]?.[0]).toMatchObject({
+				decision: 'approved',
+				state: 'closed',
+				closedById: null,
+			});
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result.autoPublish).toEqual({
+				status: 'failed',
+				message: 'The review requester is no longer available',
+			});
+		});
+
+		it('keeps the approval as a system close when the requester has been deactivated', async () => {
+			mockSuccessfulDecidePath();
+			userRepository.findManyByIds.mockResolvedValue([
+				mock<User>({ id: requesterUser.id, disabled: true, role: { slug: 'global:member' } }),
+			]);
+
+			const result = await service.decide(memberUser(), requestId, approveDto);
+
 			expect(requestRepository.saveRequest.mock.calls[0]?.[0]).toMatchObject({
 				decision: 'approved',
 				state: 'closed',

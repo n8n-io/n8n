@@ -1635,6 +1635,36 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		});
 	});
 
+	test('lets an assigned viewer approve and publishes under the requester identity', async () => {
+		// The decider holds workflow:read only, so publishing can only work
+		// because it runs as the requester.
+		const { request, workflow } = await seedRequest(owner, {}, [viewer.id]);
+
+		const response = await viewerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: { status: 'published' },
+		});
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			updatedById: viewer.id,
+			closedById: viewer.id,
+		});
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBe('version-1');
+		const records = await publishHistoryRepository.findBy({ workflowId: workflow.id });
+		expect(records).toEqual([
+			expect.objectContaining({ event: 'activated', versionId: 'version-1', userId: owner.id }),
+		]);
+	});
+
 	test('returns 404 for a project:viewer who is not assigned', async () => {
 		const { request } = await seedRequest(owner);
 

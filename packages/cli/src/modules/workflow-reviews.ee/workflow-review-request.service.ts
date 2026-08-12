@@ -758,7 +758,7 @@ export class WorkflowReviewRequestService {
 		const [requester] = await this.userRepository.findManyByIds([createdById], {
 			includeRole: true,
 		});
-		if (!requester) {
+		if (!requester || requester.disabled) {
 			return {
 				canPublish: false,
 				failureMessage: 'The review requester is no longer available',
