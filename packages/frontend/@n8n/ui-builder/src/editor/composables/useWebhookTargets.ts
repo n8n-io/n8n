@@ -1,13 +1,13 @@
 import { computed, ref, watch } from 'vue';
 
-import type { HostWorkflow, UiBuilderHost } from '../host';
+import type { HostWorkflow, UiBuilderHost, WebhookHttpMethod } from '../host';
 
 /** A Webhook trigger a step can point at, ready to show in a dropdown. */
 export interface WebhookTarget {
 	label: string;
 	url: string;
-	/** The method the underlying Webhook node is configured for. Unknown until resolved. */
-	method?: 'GET' | 'POST';
+	/** The method the underlying trigger endpoint is configured for. Unknown until resolved. */
+	method?: WebhookHttpMethod;
 	workflowId?: string;
 }
 
@@ -35,7 +35,7 @@ export function useWebhookTargets(host: UiBuilderHost) {
 	 */
 	const localTargets = computed<WebhookTarget[]>(() =>
 		host.localWebhookPaths().map((entry) => ({
-			label: entry.path,
+			label: entry.label ?? entry.path,
 			url: host.webhookUrlFor(entry.path),
 			method: entry.method,
 			workflowId: host.workflowId(),
@@ -103,7 +103,7 @@ export function useWebhookTargets(host: UiBuilderHost) {
 				.map((workflow) => ({
 					...workflow,
 					triggers: workflow.paths.map((entry) => ({
-						label: `${entry.path} — ${workflow.name}`,
+						label: `${entry.label ?? entry.path} — ${workflow.name}`,
 						url: host.webhookUrlFor(entry.path),
 						method: entry.method,
 						workflowId: workflow.id,

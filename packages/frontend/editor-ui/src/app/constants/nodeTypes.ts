@@ -69,6 +69,7 @@ export const THE_HIVE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.theHiveTrigger';
 export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
+export const API_ROUTER_NODE_TYPE = 'n8n-nodes-base.apiRouter';
 export const WORKABLE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workableTrigger';
 export const WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workflowTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';

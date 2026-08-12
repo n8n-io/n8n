@@ -120,6 +120,17 @@ function optionsFor(url: string): WebhookTarget[] {
 }
 
 /**
+ * A step only ever calls out with GET or POST (see `UiWebhookStep` in
+ * `core/types.ts`), but a target's own method is wider — an API Router
+ * endpoint can be PUT, PATCH, DELETE, or HEAD. Anything other than GET
+ * clamps to POST, same as `normaliseAction` does for a step read back from
+ * storage, so a step never carries a method it cannot actually call with.
+ */
+function stepMethod(target: WebhookTarget | undefined): 'GET' | 'POST' {
+	return target?.method === 'GET' ? 'GET' : 'POST';
+}
+
+/**
  * Picking a target sets its method along with its URL, not just the URL: the
  * whole point of picking from the list rather than typing a URL is that the
  * step then matches what the trigger is actually configured for.
@@ -127,12 +138,12 @@ function optionsFor(url: string): WebhookTarget[] {
 async function onPick(index: number, value: string | undefined) {
 	if (value === BROWSE) {
 		const target = await props.browse();
-		if (target) patch(index, { url: target.url, method: target.method ?? 'POST' });
+		if (target) patch(index, { url: target.url, method: stepMethod(target) });
 		return;
 	}
 
 	const target = props.targets.find((candidate) => candidate.url === value);
-	patch(index, { url: value ?? '', method: value ? (target?.method ?? 'POST') : 'POST' });
+	patch(index, { url: value ?? '', method: value ? stepMethod(target) : 'POST' });
 }
 
 async function onCreate(index: number) {

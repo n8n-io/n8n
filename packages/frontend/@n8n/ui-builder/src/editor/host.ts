@@ -15,11 +15,27 @@ import type { InjectionKey } from 'vue';
  * standalone playground would need.
  */
 
-/** A Webhook trigger's path and the HTTP method it is configured to answer. */
+/**
+ * The HTTP methods a discovered trigger endpoint can be configured for. Wider
+ * than the `'GET' | 'POST'` a webhook *step* can call with (see `UiWebhookStep`
+ * in `core/types.ts`): a trigger the panel merely lists — a plain Webhook node
+ * or one endpoint of an API Router — can answer on any of these, even though an
+ * action step still only ever calls out with GET or POST.
+ */
+export type WebhookHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
+
+/** A trigger endpoint's path and the HTTP method it is configured to answer. */
 export interface WebhookPath {
 	/** Without a leading slash. */
 	path: string;
-	method: 'GET' | 'POST';
+	method: WebhookHttpMethod;
+	/**
+	 * Distinguishes this entry from siblings on the same node — an API Router
+	 * contributes one entry per endpoint, and those need something better than
+	 * the path alone to tell apart in a picker. Falls back to the path when the
+	 * host has nothing better to offer.
+	 */
+	label?: string;
 }
 
 /** A workflow that has at least one Webhook trigger in it. */
