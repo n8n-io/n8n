@@ -290,7 +290,7 @@ describe('useReviewInboxStore', () => {
 				updatedAt: '2024-01-02T00:00:00.000Z',
 			});
 
-			await store.decideOnReview('req-1', 'approved');
+			await store.decideOnReview('req-1', { decision: 'approved' });
 
 			expect(workflowReviewsApi.decideWorkflowReviewRequest).toHaveBeenCalledWith(
 				expect.anything(),
@@ -319,7 +319,7 @@ describe('useReviewInboxStore', () => {
 				updatedAt: '2024-01-02T00:00:00.000Z',
 			});
 
-			await store.decideOnReview('req-1', 'approved');
+			await store.decideOnReview('req-1', { decision: 'approved' });
 
 			expect(store.items).toEqual([expect.objectContaining({ id: 'req-2' })]);
 			expect(store.detail).toEqual(expect.objectContaining({ id: 'req-2', state: 'open' }));
@@ -336,8 +336,16 @@ describe('useReviewInboxStore', () => {
 				updatedAt: '2024-01-02T00:00:00.000Z',
 			});
 
-			await store.decideOnReview('req-1', 'changes_requested');
+			await store.decideOnReview('req-1', {
+				decision: 'changes_requested',
+				note: 'needs work',
+			});
 
+			expect(workflowReviewsApi.decideWorkflowReviewRequest).toHaveBeenCalledWith(
+				expect.anything(),
+				'req-1',
+				{ decision: 'changes_requested', note: 'needs work' },
+			);
 			expect(store.items).toEqual([
 				expect.objectContaining({
 					id: 'req-1',
@@ -361,7 +369,7 @@ describe('useReviewInboxStore', () => {
 				autoPublish: { status: 'published' },
 			});
 
-			const response = await store.decideOnReview('req-1', 'approved');
+			const response = await store.decideOnReview('req-1', { decision: 'approved' });
 
 			expect(response.autoPublish).toEqual({ status: 'published' });
 		});
@@ -372,7 +380,9 @@ describe('useReviewInboxStore', () => {
 				new Error('forbidden'),
 			);
 
-			await expect(store.decideOnReview('req-1', 'approved')).rejects.toThrow('forbidden');
+			await expect(store.decideOnReview('req-1', { decision: 'approved' })).rejects.toThrow(
+				'forbidden',
+			);
 
 			expect(store.items).toEqual([
 				expect.objectContaining({ state: 'open', decision: 'pending' }),

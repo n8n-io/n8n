@@ -205,8 +205,8 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	 * the request; the closed tab refetches on activation and picks it up there.
 	 * Returns the response so callers can surface the auto-publish outcome.
 	 */
-	async function decideOnReview(id: string, decision: WorkflowReviewDecisionInput) {
-		const summary = await decideWorkflowReviewRequest(rootStore.restApiContext, id, { decision });
+	async function decideOnReview(id: string, input: WorkflowReviewDecisionInput) {
+		const summary = await decideWorkflowReviewRequest(rootStore.restApiContext, id, input);
 
 		const item = items.value.find((candidate) => candidate.id === id);
 		if (item) {

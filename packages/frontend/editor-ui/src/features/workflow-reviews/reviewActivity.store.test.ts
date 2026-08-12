@@ -237,6 +237,7 @@ describe('useReviewActivityStore', () => {
 
 		const pending = store.fetchFeed('req-1');
 		store.draft = 'for req-1 only';
+		store.decisionNote = 'for req-1 only';
 		store.reset();
 		resolveFeed(makePage(['1']));
 		await pending;
@@ -245,6 +246,7 @@ describe('useReviewActivityStore', () => {
 		expect(store.currentReviewId).toBeNull();
 		// Leaving the view must not carry a draft into whatever review is opened next.
 		expect(store.draft).toBe('');
+		expect(store.decisionNote).toBe('');
 	});
 
 	it('does not leave the next review stuck in a sending state', async () => {
@@ -366,15 +368,31 @@ describe('useReviewActivityStore', () => {
 		expect(store.entries.map((entry) => entry.id)).toEqual(['2']);
 	});
 
-	it('drops the draft when the viewer moves to another review', async () => {
+	it('drops the comment and decision drafts when the viewer moves to another review', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
 		const store = useReviewActivityStore();
 		await store.fetchFeed('req-1');
 		store.draft = 'for req-1 only';
+		store.decisionNote = 'for req-1 only';
 
 		await store.fetchFeed('req-2');
 
 		expect(store.draft).toBe('');
+		expect(store.decisionNote).toBe('');
+	});
+
+	it('drops the decision note once the decision was submitted', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		store.draft = 'half a comment';
+		store.decisionNote = 'needs work';
+
+		store.clearDecisionNote();
+
+		expect(store.decisionNote).toBe('');
+		// The composer is on screen at the same time and is a separate draft.
+		expect(store.draft).toBe('half a comment');
 	});
 
 	it('reports a failed comment to the composer, not as a feed error', async () => {

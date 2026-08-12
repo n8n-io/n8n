@@ -27,6 +27,10 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 	// Held here, not in the composer: switching to the Changes tab unmounts it, and a
 	// half-typed comment must survive that.
 	const draft = ref('');
+	// Held here, not in the popover: nothing in the detail is keyed on the review, so a
+	// local ref would carry review A's note into review B. This copy goes with the feed
+	// when the selection changes. (It also survives the popover closing.)
+	const decisionNote = ref('');
 
 	let feedRequestSeq = 0;
 	let postSeq = 0;
@@ -48,6 +52,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			entries.value = [];
 			posting.value = false;
 			draft.value = '';
+			decisionNote.value = '';
 		}
 
 		try {
@@ -130,6 +135,10 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		}
 	}
 
+	function clearDecisionNote() {
+		decisionNote.value = '';
+	}
+
 	function reset() {
 		feedRequestSeq += 1;
 		currentReviewId.value = null;
@@ -141,6 +150,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		posting.value = false;
 		error.value = null;
 		draft.value = '';
+		decisionNote.value = '';
 	}
 
 	return {
@@ -153,9 +163,11 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		posting,
 		error,
 		draft,
+		decisionNote,
 		fetchFeed,
 		loadMore,
 		postComment,
+		clearDecisionNote,
 		reset,
 	};
 });

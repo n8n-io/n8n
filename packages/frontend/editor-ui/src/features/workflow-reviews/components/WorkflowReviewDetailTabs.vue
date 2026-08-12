@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
-import { N8nButton, N8nCallout, N8nTabs, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nCallout, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -8,6 +8,7 @@ import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
 import WorkflowReviewCommentComposer from './WorkflowReviewCommentComposer.vue';
+import WorkflowReviewDecisionPopover from './WorkflowReviewDecisionPopover.vue';
 import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
 
 export type WorkflowReviewDetailTab = 'activity' | 'changes';
@@ -20,7 +21,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:tab': [tab: WorkflowReviewDetailTab];
-	decide: [decision: WorkflowReviewDecisionInput];
+	decide: [input: WorkflowReviewDecisionInput];
 }>();
 
 const i18n = useI18n();
@@ -67,27 +68,14 @@ const tabOptions = computed(() => [
 			<!-- Gated on `detail`, not `review`: eligibility only arrives with the
 				detail payload, so the list item alone can't say who may decide. -->
 			<div v-if="detail?.state === 'open'" :class="$style.decisionActions">
-				<N8nTooltip :disabled="!ineligibilityHint" :content="ineligibilityHint" :show-after="300">
-					<N8nButton
-						size="small"
-						:disabled="deciding || !viewerCanDecide"
-						data-test-id="workflow-review-approve-button"
-						@click="emit('decide', 'approved')"
-					>
-						{{ i18n.baseText('workflowReviews.detail.decision.approve') }}
-					</N8nButton>
-				</N8nTooltip>
-				<N8nTooltip :disabled="!ineligibilityHint" :content="ineligibilityHint" :show-after="300">
-					<N8nButton
-						size="small"
-						type="secondary"
-						:disabled="deciding || !viewerCanDecide"
-						data-test-id="workflow-review-request-changes-button"
-						@click="emit('decide', 'changes_requested')"
-					>
-						{{ i18n.baseText('workflowReviews.detail.decision.requestChanges') }}
-					</N8nButton>
-				</N8nTooltip>
+				<WorkflowReviewDecisionPopover
+					:deciding="deciding"
+					:viewer-can-decide="viewerCanDecide"
+					:viewer-can-comment="viewerCanComment"
+					:ineligibility-hint="ineligibilityHint"
+					@decide="emit('decide', $event)"
+					@comment-posted="emit('update:tab', 'activity')"
+				/>
 			</div>
 		</div>
 

@@ -156,10 +156,18 @@ function followClosedReview(id: string) {
 	});
 }
 
-async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
+async function onDecide(id: string, input: WorkflowReviewDecisionInput) {
 	deciding.value = true;
 	try {
-		const { autoPublish, state } = await store.decideOnReview(id, decision);
+		const { autoPublish, state } = await store.decideOnReview(id, input);
+		// The selection does not change, so the `selectedReviewId` watcher never refires and the
+		// entry this decision just wrote needs an explicit refetch. Guarded because the await
+		// above lets the viewer pick another review meanwhile, and `fetchFeed` of the old one
+		// would wipe its feed and discard the newer review's in-flight page.
+		if (selectedReviewId.value === id) {
+			activityStore.clearDecisionNote();
+			void activityStore.fetchFeed(id);
+		}
 		if (state === 'closed') {
 			followClosedReview(id);
 		}
@@ -195,6 +203,9 @@ async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
 		} catch (refetchError) {
 			handleListError(refetchError);
 		}
+		// The feed too, or the panel keeps one missing the decision that beat this one. The
+		// note stays: the reviewer may want to retry with it.
+		if (selectedReviewId.value === id) void activityStore.fetchFeed(id);
 	} finally {
 		deciding.value = false;
 	}
