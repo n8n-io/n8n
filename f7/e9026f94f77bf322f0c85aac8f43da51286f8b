@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.vue
+  s_8ab5ba2d436c6d::t_8f9ab658b5ec05 397
+  s_8ab5ba2d436c6d::t_5c558373f13bd4 20
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8ab5ba2d436c6d::t_a98214cfa45c12 4353-4356
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHealthCheck.vue
+  s_8ab5ba2d436c6d::t_73cc09bfa41265 1-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f7e9026f94f77bf322f0c85aac8f43da51286f8b",
+  "prompts": {},
+  "sessions": {
+    "s_8ab5ba2d436c6d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3eacd850-21bb-4125-8c8c-5fb63227eeac",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
