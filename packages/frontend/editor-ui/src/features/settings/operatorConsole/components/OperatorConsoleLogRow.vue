@@ -92,9 +92,14 @@ const detailJson = computed(() => JSON.stringify(detail.value, null, 2));
 
 			<span v-if="record.stream !== 'log'" :class="$style.stream">{{ record.stream }}</span>
 
-			<span :class="[$style.message, { [$style.messageClamped]: !expanded }]">{{
-				record.message
-			}}</span>
+			<span
+				:class="[
+					$style.message,
+					$style[`message-${record.level}`],
+					{ [$style.messageClamped]: !expanded },
+				]"
+				>{{ record.message }}</span
+			>
 
 			<RouterLink
 				v-if="executionRoute"
@@ -198,8 +203,9 @@ const detailJson = computed(() => JSON.stringify(detail.value, null, 2));
 	color: var(--text-color--subtle);
 }
 
+/* Matches the message tint so the level word and its line read as one unit. */
 .debug {
-	color: var(--text-color--subtler);
+	color: var(--text-color--info);
 }
 
 .scope,
@@ -208,12 +214,35 @@ const detailJson = computed(() => JSON.stringify(detail.value, null, 2));
 	color: var(--text-color--subtler);
 }
 
+/*
+ * Message tinted by level, the way `winston.format.colorize({ all: true })`
+ * paints the dev-mode console, so a wall of debug reads as background noise and
+ * a failure stands out without being hunted for.
+ *
+ * `info` deliberately keeps the default body colour rather than winston's green:
+ * it is the baseline level here and by far the most read, and green would also
+ * collide with the "success" meaning it carries everywhere else in the product.
+ */
 .message {
 	flex: 1 1 auto;
 	min-width: 0;
 	color: var(--text-color);
 	white-space: pre-wrap;
 	word-break: break-word;
+}
+
+.message-error {
+	color: var(--text-color--danger);
+}
+
+.message-warn {
+	color: var(--text-color--warning);
+}
+
+/* The blue of the dev console. `--text-color--info` is the semantic blue token —
+ * named for the colour role, not for the `info` log level. */
+.message-debug {
+	color: var(--text-color--info);
 }
 
 .messageClamped {

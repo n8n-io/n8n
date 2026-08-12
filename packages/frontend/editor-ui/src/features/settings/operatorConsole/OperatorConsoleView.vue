@@ -65,6 +65,7 @@ function onDownload() {
 			:title="pageTitle"
 			:description="i18n.baseText('operatorConsole.description')"
 			:show-docs-link="false"
+			:class="$style.header"
 		/>
 
 		<N8nCallout
@@ -107,6 +108,20 @@ function onDownload() {
 </template>
 
 <style module lang="scss">
+/*
+ * The settings page header caps itself at the content max-width and is centred
+ * by the layout. On a full-width page that leaves a narrow, centred heading
+ * floating over a much wider panel, reading as misaligned. Align it to the
+ * panel's left edge instead — the description still wraps at a readable
+ * measure, it just no longer sits in the middle of the page.
+ */
+/* Class doubled to outrank the component's own single-class rule regardless of
+ * stylesheet order, without reaching for `!important`. */
+.header.header {
+	max-width: none;
+	margin-inline: 0;
+}
+
 .callout {
 	width: 100%;
 }
