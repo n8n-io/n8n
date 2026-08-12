@@ -95,10 +95,19 @@ test.describe(
 			await api.files.uploadFile(project.id, fileName, 'preview me');
 
 			await n8n.navigate.toFiles(project.id);
+			const contentResponse = n8n.page.waitForResponse(
+				(response) => response.url().includes('/files/') && response.url().includes('/content'),
+			);
 			await n8n.files.getFileCardByName(fileName).click();
 
 			await expect(n8n.files.getPreviewPanel()).toBeVisible();
 			await expect(n8n.files.getPreviewPanel()).toContainText(fileName);
+
+			// The preview body loads via an embed that carries no browser-id
+			// header; it must succeed without invalidating the session.
+			expect((await contentResponse).status()).toBe(200);
+			await n8n.navigate.toFiles(project.id);
+			await expect(n8n.files.getFileCardByName(fileName)).toBeVisible();
 		});
 	},
 );
