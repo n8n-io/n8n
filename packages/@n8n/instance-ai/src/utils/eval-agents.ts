@@ -1,8 +1,9 @@
 /** Shared agent factory + helpers for eval LLM calls (hint generation, mock responses, pin data). */
 
-import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
+import { Tool } from '@n8n/agents';
+import type { Agent, GenerateResult, ModelConfig } from '@n8n/agents';
 
-import { applyAgentThinking } from '../agent/apply-agent-thinking';
+import { createAgentFromModel } from './agent-factory';
 
 export { Tool };
 
@@ -91,14 +92,9 @@ export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 // Agent factory
 // ---------------------------------------------------------------------------
 
-/** Anthropic `providerOptions` payload that marks the preceding block as an ephemeral cache breakpoint. */
-export const EPHEMERAL_CACHE = {
-	anthropic: { cacheControl: { type: 'ephemeral' as const } },
-};
-
-const CACHE_PROVIDER_OPTS = {
-	providerOptions: EPHEMERAL_CACHE,
-};
+// Re-exported from its new home in `agent-factory` so existing importers
+// (evaluation scripts) keep resolving it here.
+export { EPHEMERAL_CACHE } from './agent-factory';
 
 /**
  * Env-based tiered model when configured, otherwise the caller's fallback.
@@ -126,18 +122,13 @@ export function createEvalAgent(
 		fallbackModelConfig?: ModelConfig;
 	},
 ): Agent {
-	const model = resolveAgentModel(options.model, options.fallbackModelConfig);
-	const agent = new Agent(name).model(model);
+	const modelConfig = resolveAgentModel(options.model, options.fallbackModelConfig);
 
-	if (options.cache) {
-		agent.instructions(options.instructions, CACHE_PROVIDER_OPTS);
-	} else {
-		agent.instructions(options.instructions);
-	}
-
-	applyAgentThinking(agent, model);
-
-	return agent;
+	return createAgentFromModel(name, {
+		modelConfig,
+		instructions: options.instructions,
+		cache: options.cache,
+	});
 }
 
 // ---------------------------------------------------------------------------

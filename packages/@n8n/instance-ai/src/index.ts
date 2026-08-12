@@ -30,6 +30,7 @@ import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-c
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
+import type * as AgentFactoryMod from './utils/agent-factory';
 import type * as AgentTreeMod from './utils/agent-tree';
 import type * as EvalAgentsMod from './utils/eval-agents';
 import type * as StreamHelpersMod from './utils/stream-helpers';
@@ -128,6 +129,9 @@ const loadMaterializeRuntimeSkills = lazyModule(
 	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
 );
 const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
+const loadAgentFactory = lazyModule(
+	() => require('./utils/agent-factory') as typeof AgentFactoryMod,
+);
 const loadAgentTree = lazyModule(() => require('./utils/agent-tree') as typeof AgentTreeMod);
 const loadBuilderTemplatesService = lazyModule(
 	() => require('./workspace/builder-templates-service') as typeof BuilderTemplatesServiceMod,
@@ -381,6 +385,10 @@ export const asResumable: typeof StreamHelpersMod.asResumable = lazyFunction(
 export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = lazyFunction(
 	() => loadEvalAgents().createEvalAgent,
 );
+export const createAgentFromModel: typeof AgentFactoryMod.createAgentFromModel = lazyFunction(
+	() => loadAgentFactory().createAgentFromModel,
+);
+export type CreateAgentFromModelOptions = AgentFactoryMod.CreateAgentFromModelOptions;
 export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
 	() => loadEvalAgents().extractText,
 );
