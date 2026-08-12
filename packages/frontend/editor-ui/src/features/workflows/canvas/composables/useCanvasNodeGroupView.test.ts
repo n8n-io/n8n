@@ -250,6 +250,25 @@ describe('useCanvasNodeGroupView', () => {
 
 			expect(readStored()).toEqual(['g2', 'g1']);
 		});
+
+		it('restores an expansion order snapshot without replaying recency', () => {
+			const { view } = setup([
+				{ id: 'g1', name: 'A', nodeIds: ['a'] },
+				{ id: 'g2', name: 'B', nodeIds: ['b'] },
+				{ id: 'g3', name: 'C', nodeIds: ['c'] },
+			]);
+
+			view.setGroupExpanded('g1', true);
+			view.setGroupExpanded('g2', true);
+			const snapshot = view.getExpandedOrder();
+
+			view.setGroupExpanded('g1', false);
+			view.setGroupExpanded('g3', true);
+			view.restoreExpandedOrder(snapshot);
+
+			expect(view.getExpandedOrder()).toEqual(['g1', 'g2']);
+			expect(readStored()).toEqual(['g1', 'g2']);
+		});
 	});
 
 	describe('new groups start expanded', () => {

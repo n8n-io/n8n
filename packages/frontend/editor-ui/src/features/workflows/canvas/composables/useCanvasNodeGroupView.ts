@@ -145,6 +145,16 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		persist();
 	}
 
+	function getExpandedOrder() {
+		return [...expandedGroupIdOrder.value];
+	}
+
+	function restoreExpandedOrder(ids: string[]) {
+		const presentIds = new Set(deps.getCurrentGroupIds());
+		expandedGroupIdOrder.value = ids.filter((id) => presentIds.has(id));
+		persist();
+	}
+
 	const isGroupCollapsed = (id: string) => !expandedIds.value.has(id);
 
 	function toggleCollapsed(id: string) {
@@ -319,6 +329,8 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		isGroupCollapsed,
 		toggleCollapsed,
 		setGroupExpanded,
+		getExpandedOrder,
+		restoreExpandedOrder,
 		syncLayoutComponents,
 		getVisualOffsetForComponent,
 		getVisualOffsetForNode,

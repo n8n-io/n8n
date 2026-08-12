@@ -3796,7 +3796,15 @@ export interface WorkflowFEMeta {
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	nodeDescriptions?: WorkflowNodeDescriptions;
 }
+
+export interface WorkflowNodeDescription {
+	summary: string;
+	rationale?: string;
+}
+
+export type WorkflowNodeDescriptions = Record<string, WorkflowNodeDescription>;
 
 export interface WorkflowTestData {
 	description: string;

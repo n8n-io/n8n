@@ -8,11 +8,19 @@ import type {
 
 import type { ITag } from './tags';
 
+export interface WorkflowNodeDescription {
+	summary: string;
+	rationale?: string;
+}
+
+export type WorkflowNodeDescriptions = Record<string, WorkflowNodeDescription>;
+
 export interface WorkflowMetadata {
 	onboardingId?: string;
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	nodeDescriptions?: WorkflowNodeDescriptions;
 }
 
 // Simple version of n8n-workflow.Workflow

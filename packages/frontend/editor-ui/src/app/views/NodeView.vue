@@ -141,6 +141,7 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowTourStore } from '@/features/workflows/tour/workflowTour.store';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
@@ -215,6 +216,10 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const workflowHelpers = useWorkflowHelpers();
+const workflowTourStore = useWorkflowTourStore();
+const isCanvasInteractionSuppressed = computed(
+	() => experimentalNdvStore.isMapperOpen || workflowTourStore.isActive,
+);
 
 // Initialize activity detection for collaboration
 useActivityDetection();
@@ -2000,7 +2005,7 @@ onBeforeUnmount(() => {
 			:can-execute="canExecuteOnCanvas"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
-			:suppress-interaction="experimentalNdvStore.isMapperOpen"
+			:suppress-interaction="isCanvasInteractionSuppressed"
 			:striped-background="stripedCanvasBackground"
 			:hide-controls="hideCanvasControls"
 			:initial-viewport="workflowDocumentStore?.viewport"

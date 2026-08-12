@@ -100,6 +100,9 @@ import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
+import WorkflowTourCard from '@/features/workflows/tour/components/WorkflowTourCard.vue';
+import { useWorkflowTour } from '@/features/workflows/tour/composables/useWorkflowTour';
+import { useWorkflowTourStore } from '@/features/workflows/tour/workflowTour.store';
 
 const $style = useCssModule();
 
@@ -219,6 +222,7 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
+const workflowTourStore = useWorkflowTourStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -285,6 +289,31 @@ const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
 const injectedNodeGroupView = inject(NodeGroupViewKey, null);
 const injectedNodeGroupDescriptionVisibility = inject(NodeGroupDescriptionVisibilityKey, null);
+const workflowTour = useWorkflowTour({
+	findNode,
+	getViewport: () => viewport.value,
+	getDimensions: () => dimensions.value,
+	setViewport,
+	clearSelection: () => props.eventBus.emit('nodes:select', { ids: [] }),
+	nodeGroupView: injectedNodeGroupView,
+});
+const activeWorkflowTourCard = computed(() => {
+	if (
+		!workflowTourStore.isActive ||
+		!workflowTour.currentStep.value ||
+		!workflowTour.cardPlacement.value
+	) {
+		return null;
+	}
+
+	return {
+		step: workflowTour.currentStep.value,
+		placement: workflowTour.cardPlacement.value,
+		totalSteps: workflowTour.totalSteps.value,
+		isFirstStep: workflowTourStore.currentStepIndex === 0,
+		isLastStep: workflowTour.isLastStep.value,
+	};
+});
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -1928,6 +1957,20 @@ defineExpose({
 			@zoom-out="onZoomOut"
 			@tidy-up="onTidyUp({ source: 'canvas-button' })"
 			@toggle-zoom-mode="onToggleZoomMode"
+			@start-tour="workflowTour.start"
+		/>
+
+		<WorkflowTourCard
+			v-if="activeWorkflowTourCard"
+			:step="activeWorkflowTourCard.step"
+			:step-index="workflowTourStore.currentStepIndex"
+			:total-steps="activeWorkflowTourCard.totalSteps"
+			:placement="activeWorkflowTourCard.placement"
+			:is-first-step="activeWorkflowTourCard.isFirstStep"
+			:is-last-step="activeWorkflowTourCard.isLastStep"
+			@prev="workflowTour.prev"
+			@next="workflowTour.next"
+			@exit="workflowTour.exit"
 		/>
 
 		<Suspense>

@@ -7,6 +7,7 @@ import { computed } from 'vue';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { N8nButton, N8nButtonList, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import StartTourButton from '@/features/workflows/tour/components/StartTourButton.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 	'zoom-to-fit': [];
 	'tidy-up': [];
 	'toggle-zoom-mode': [];
+	'start-tour': [];
 }>();
 
 const i18n = useI18n();
@@ -60,6 +62,7 @@ function handleClickCollapseAll() {
 <template>
 	<Controls :show-zoom="false" :show-fit-view="false">
 		<N8nButtonList>
+			<StartTourButton @start="emit('start-tour')" />
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.zoomToFit')"
 				:shortcut="{ keys: ['1'] }"
