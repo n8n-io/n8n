@@ -78,6 +78,21 @@ import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from './services/auth-strategy.registry';
 
+/**
+ * A UI Builder page is served on whatever host called its webhook, but the
+ * runtime it loads always lives on this instance's own origin. Some hosting
+ * setups render that page in a context with an opaque origin (e.g. a
+ * sandboxed preview), which puts the runtime's `<script type="module">` fetch
+ * in CORS mode even though the URL is same-origin. These are public,
+ * unauthenticated build assets, so allowing any origin to read them costs
+ * nothing.
+ */
+function setUiBuilderRuntimeCorsHeader(res: express.Response) {
+	if (/^\/static\/ui-runtime\.(js|css)$/.test(res.req.url)) {
+		res.setHeader('Access-Control-Allow-Origin', '*');
+	}
+}
+
 @Service()
 export class Server extends AbstractServer {
 	private endpointPresetCredentials: string;
@@ -465,6 +480,7 @@ export class Server extends AbstractServer {
 				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
 				}
+				setUiBuilderRuntimeCorsHeader(res);
 			};
 
 			this.app.use(
@@ -474,10 +490,19 @@ export class Server extends AbstractServer {
 					...cacheOptions,
 					setHeaders: setCustomCacheHeader,
 				}),
-				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
+				express.static(EDITOR_UI_DIST_DIR, {
+					...cacheOptions,
+					setHeaders: setUiBuilderRuntimeCorsHeader,
+				}),
 			);
 		} else {
-			this.app.use('/', express.static(staticCacheDir, cacheOptions));
+			this.app.use(
+				'/',
+				express.static(staticCacheDir, {
+					...cacheOptions,
+					setHeaders: setUiBuilderRuntimeCorsHeader,
+				}),
+			);
 		}
 
 		installGlobalProxyAgent();
