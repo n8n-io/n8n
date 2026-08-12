@@ -1,7 +1,7 @@
 import type { CredentialProvider } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
 import type { WorkflowRepository } from '@n8n/db';
-import { AgentsConfig } from '@n8n/config';
+import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';

@@ -16,6 +16,7 @@ function sortObjectKeys(value: unknown): unknown {
 export function createHarnessRuntimeIdentity(options: {
 	config: AgentJsonConfig;
 	instructions: string;
+	sandboxProvider: string;
 	baseUrl?: string;
 	toolDescriptors: Record<string, ToolDescriptor>;
 	toolCodeByName: Record<string, string>;
@@ -38,6 +39,7 @@ export function createHarnessRuntimeIdentity(options: {
 		model: config.model,
 		credential: config.credential,
 		baseUrl: options.baseUrl,
+		sandboxProvider: options.sandboxProvider,
 		instructions: options.instructions,
 		tools: config.tools ?? [],
 		customTools,

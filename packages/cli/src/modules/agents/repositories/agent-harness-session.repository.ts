@@ -25,7 +25,7 @@ export interface AcquireAgentHarnessSessionOptions {
 
 export type AgentHarnessSessionCleanupRecord = Pick<
 	AgentHarnessSession,
-	'agentId' | 'threadId' | 'runtimeIdentity' | 'sessionId'
+	'agentId' | 'threadId' | 'runtimeIdentity' | 'adapter' | 'sessionId'
 >;
 
 @Service()
@@ -128,7 +128,13 @@ export class AgentHarnessSessionRepository extends Repository<AgentHarnessSessio
 		threadId: string,
 	): Promise<AgentHarnessSessionCleanupRecord[]> {
 		return await this.find({
-			select: { agentId: true, threadId: true, runtimeIdentity: true, sessionId: true },
+			select: {
+				agentId: true,
+				threadId: true,
+				runtimeIdentity: true,
+				adapter: true,
+				sessionId: true,
+			},
 			where: { agentId, threadId },
 		});
 	}
@@ -142,6 +148,7 @@ export class AgentHarnessSessionRepository extends Repository<AgentHarnessSessio
 				'session.agentId',
 				'session.threadId',
 				'session.runtimeIdentity',
+				'session.adapter',
 				'session.sessionId',
 			])
 			.where('session.agentId = :agentId', { agentId })
@@ -153,7 +160,13 @@ export class AgentHarnessSessionRepository extends Repository<AgentHarnessSessio
 
 	async findForCleanupByAgent(agentId: string): Promise<AgentHarnessSessionCleanupRecord[]> {
 		return await this.find({
-			select: { agentId: true, threadId: true, runtimeIdentity: true, sessionId: true },
+			select: {
+				agentId: true,
+				threadId: true,
+				runtimeIdentity: true,
+				adapter: true,
+				sessionId: true,
+			},
 			where: { agentId },
 		});
 	}
@@ -168,6 +181,7 @@ export class AgentHarnessSessionRepository extends Repository<AgentHarnessSessio
 				'session.agentId',
 				'session.threadId',
 				'session.runtimeIdentity',
+				'session.adapter',
 				'session.sessionId',
 			])
 			.where('session.agentId = :agentId', { agentId })
@@ -187,6 +201,7 @@ export class AgentHarnessSessionRepository extends Repository<AgentHarnessSessio
 				'session.agentId',
 				'session.threadId',
 				'session.runtimeIdentity',
+				'session.adapter',
 				'session.sessionId',
 			])
 			.where('session.agentId = :agentId', { agentId })

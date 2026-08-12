@@ -8,9 +8,11 @@ import type {
 } from '../repositories/agent-harness-session.repository';
 
 const destroyN8nHarnessSandbox = vi.hoisted(() => vi.fn(async () => {}));
+const destroyDaytonaHarnessSandbox = vi.hoisted(() => vi.fn(async () => {}));
 
 vi.mock('@n8n/agents/harness', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/agents/harness')>()),
+	destroyDaytonaHarnessSandbox,
 	destroyN8nHarnessSandbox,
 }));
 
@@ -18,6 +20,7 @@ const row: AgentHarnessSessionCleanupRecord = {
 	agentId: 'agent-1',
 	threadId: 'thread-1',
 	runtimeIdentity: 'identity-1',
+	adapter: 'claude-code:n8n-sandbox',
 	sessionId: 'sandbox-1',
 };
 
@@ -57,5 +60,26 @@ describe('N8nHarnessSessionCleanupService', () => {
 
 		await expect(service.destroyByAgent(row.agentId)).rejects.toThrow('service unavailable');
 		expect(repository.deleteCleanupRecord).not.toHaveBeenCalled();
+	});
+
+	it('destroys Daytona sessions through the direct sandbox connection', async () => {
+		const repository = mock<AgentHarnessSessionRepository>();
+		const sandboxSettings = mock<SandboxSettingsService>();
+		const daytonaRow = { ...row, adapter: 'claude-code:daytona' };
+		repository.findForCleanupByAgentAndThread.mockResolvedValue([daytonaRow]);
+		sandboxSettings.resolveDaytonaConfig.mockResolvedValue({
+			apiUrl: 'https://daytona.test',
+			apiKey: 'secret',
+		});
+		const service = new N8nHarnessSessionCleanupService(repository, sandboxSettings);
+
+		await service.destroyByAgentAndThread(daytonaRow.agentId, daytonaRow.threadId);
+
+		expect(destroyDaytonaHarnessSandbox).toHaveBeenCalledWith({
+			apiUrl: 'https://daytona.test',
+			apiKey: 'secret',
+			sandboxId: 'sandbox-1',
+		});
+		expect(repository.deleteCleanupRecord).toHaveBeenCalledWith(daytonaRow);
 	});
 });

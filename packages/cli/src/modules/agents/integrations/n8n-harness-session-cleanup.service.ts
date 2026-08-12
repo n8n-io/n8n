@@ -1,4 +1,4 @@
-import { destroyN8nHarnessSandbox } from '@n8n/agents/harness';
+import { destroyDaytonaHarnessSandbox, destroyN8nHarnessSandbox } from '@n8n/agents/harness';
 import { Service } from '@n8n/di';
 import { OperationalError } from 'n8n-workflow';
 
@@ -8,6 +8,7 @@ import {
 	AgentHarnessSessionRepository,
 	type AgentHarnessSessionCleanupRecord,
 } from '../repositories/agent-harness-session.repository';
+import { getStoredHarnessSandboxProvider } from '../utils/harness-sandbox-provider';
 
 @Service()
 export class N8nHarnessSessionCleanupService {
@@ -52,17 +53,39 @@ export class N8nHarnessSessionCleanupService {
 
 	private async destroyRows(rows: AgentHarnessSessionCleanupRecord[]): Promise<void> {
 		if (rows.length === 0) return;
-		const { serviceUrl, apiKey } = await this.sandboxSettings.resolveN8nSandboxConfig();
-		if (!serviceUrl?.trim()) {
-			throw new OperationalError('Cannot clean up harness sessions without a sandbox service URL');
-		}
+		let daytonaConfig:
+			| Awaited<ReturnType<SandboxSettingsService['resolveDaytonaConfig']>>
+			| undefined;
+		let n8nSandboxConfig:
+			| Awaited<ReturnType<SandboxSettingsService['resolveN8nSandboxConfig']>>
+			| undefined;
 
 		for (const row of rows) {
-			await destroyN8nHarnessSandbox({
-				serviceUrl,
-				...(apiKey ? { apiKey } : {}),
-				sandboxId: row.sessionId,
-			});
+			const provider =
+				getStoredHarnessSandboxProvider(row.adapter) ?? this.sandboxSettings.getProvider();
+			if (provider === 'daytona') {
+				daytonaConfig ??= await this.sandboxSettings.resolveDaytonaConfig();
+				if (!daytonaConfig.apiKey?.trim()) {
+					throw new OperationalError('Cannot clean up harness sessions without a Daytona API key');
+				}
+				await destroyDaytonaHarnessSandbox({
+					apiKey: daytonaConfig.apiKey,
+					...(daytonaConfig.apiUrl ? { apiUrl: daytonaConfig.apiUrl } : {}),
+					sandboxId: row.sessionId,
+				});
+			} else {
+				n8nSandboxConfig ??= await this.sandboxSettings.resolveN8nSandboxConfig();
+				if (!n8nSandboxConfig.serviceUrl?.trim()) {
+					throw new OperationalError(
+						'Cannot clean up harness sessions without a sandbox service URL',
+					);
+				}
+				await destroyN8nHarnessSandbox({
+					serviceUrl: n8nSandboxConfig.serviceUrl,
+					...(n8nSandboxConfig.apiKey ? { apiKey: n8nSandboxConfig.apiKey } : {}),
+					sandboxId: row.sessionId,
+				});
+			}
 			await this.repository.deleteCleanupRecord(row);
 		}
 	}

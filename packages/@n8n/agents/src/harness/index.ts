@@ -13,6 +13,11 @@ export {
 } from './stream';
 export { toHarnessTools } from './tool-adapter';
 export {
+	createDaytonaHarnessSandboxProvider,
+	destroyDaytonaHarnessSandbox,
+	type DaytonaHarnessSandboxProviderOptions,
+} from './daytona-sandbox-provider';
+export {
 	createN8nHarnessSandboxProvider,
 	destroyN8nHarnessSandbox,
 	HarnessSessionExpiredError,

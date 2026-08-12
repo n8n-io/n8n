@@ -83,6 +83,7 @@ import { createGetEnvironmentTool } from './tools/environment-tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
+import { createHarnessAdapterStorageIdentity } from './utils/harness-sandbox-provider';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 import { createHarnessRuntimeIdentity } from './utils/harness-runtime-identity';
 /**
@@ -543,16 +544,36 @@ export class AgentRuntimeReconstructionService {
 		const baseUrl = typeof modelSettings.baseURL === 'string' ? modelSettings.baseURL : undefined;
 		const modelApiKey = modelSettings.apiKey;
 		const model = config.model.slice(config.model.indexOf('/') + 1);
-		const { serviceUrl, apiKey: sandboxApiKey } =
-			await Container.get(SandboxSettingsService).resolveN8nSandboxConfig();
-		if (!serviceUrl?.trim()) {
-			throw new UserError(
-				'Harness agents require the n8n sandbox service URL. Set N8N_SANDBOX_SERVICE_URL.',
-			);
-		}
+		const sandboxSettings = Container.get(SandboxSettingsService);
+		const sandboxProvider = sandboxSettings.getProvider();
+		const sandboxConnection = await (async () => {
+			if (sandboxProvider === 'daytona') {
+				const connection = await sandboxSettings.resolveDaytonaConfig();
+				const apiKey = connection.apiKey?.trim();
+				if (!apiKey) {
+					throw new UserError(
+						'Harness agents require a Daytona API key. Set DAYTONA_API_KEY or configure the Daytona sandbox credential.',
+					);
+				}
+				return { type: 'daytona' as const, ...connection, apiKey };
+			}
 
-		const { HarnessRuntimeAgent, createN8nHarnessAdapter, createN8nHarnessSandboxProvider } =
-			await import('@n8n/agents/harness');
+			const connection = await sandboxSettings.resolveN8nSandboxConfig();
+			const serviceUrl = connection.serviceUrl?.trim();
+			if (!serviceUrl) {
+				throw new UserError(
+					'Harness agents require the n8n sandbox service URL. Set N8N_SANDBOX_SERVICE_URL.',
+				);
+			}
+			return { type: 'n8n-sandbox' as const, ...connection, serviceUrl };
+		})();
+
+		const {
+			HarnessRuntimeAgent,
+			createDaytonaHarnessSandboxProvider,
+			createN8nHarnessAdapter,
+			createN8nHarnessSandboxProvider,
+		} = await import('@n8n/agents/harness');
 		const harness = createN8nHarnessAdapter({
 			adapter: engine.adapter,
 			model,
@@ -571,6 +592,7 @@ export class AgentRuntimeReconstructionService {
 		const runtimeIdentity = createHarnessRuntimeIdentity({
 			config,
 			instructions,
+			sandboxProvider,
 			...(baseUrl ? { baseUrl } : {}),
 			toolDescriptors: options.toolDescriptors,
 			toolCodeByName: options.toolCodeByName,
@@ -584,20 +606,35 @@ export class AgentRuntimeReconstructionService {
 				projectId,
 				agentId: memoryOwnerAgentId,
 				runtimeIdentity,
-				adapter: engine.adapter,
+				adapter: createHarnessAdapterStorageIdentity(engine.adapter, sandboxProvider),
 				harness,
 				tools,
 				sessionStore: Container.get(N8nHarnessSessionStore),
 				createSandboxProvider: (claim) =>
-					createN8nHarnessSandboxProvider({
-						serviceUrl,
-						...(sandboxApiKey ? { apiKey: sandboxApiKey } : {}),
-						harness: engine.adapter,
-						ownershipEpoch: claim.fence.ownershipEpoch,
-						claimToken: claim.fence.claimToken,
-						bridgeLeaseTtlMs: this.agentsConfig.harnessClaimTtlSeconds * 1000,
-						bridgeLeaseRetentionMs: this.agentsConfig.harnessSessionTtlSeconds * 1000,
-					}),
+					sandboxConnection.type === 'daytona'
+						? createDaytonaHarnessSandboxProvider({
+								apiKey: sandboxConnection.apiKey,
+								...(sandboxConnection.apiUrl ? { apiUrl: sandboxConnection.apiUrl } : {}),
+								harness: engine.adapter,
+								previewUrlTtlSeconds: this.agentsConfig.harnessSessionTtlSeconds,
+								timeout: this.agentsConfig.sandboxTimeout,
+								createTimeoutSeconds: Math.ceil(this.agentsConfig.sandboxTimeout / 1000),
+								image: this.agentsConfig.sandboxImage,
+								...(this.agentsConfig.sandboxSnapshot.trim()
+									? { snapshot: this.agentsConfig.sandboxSnapshot.trim() }
+									: {}),
+								ephemeral: this.agentsConfig.sandboxEphemeral,
+								logger: this.logger,
+							})
+						: createN8nHarnessSandboxProvider({
+								serviceUrl: sandboxConnection.serviceUrl,
+								...(sandboxConnection.apiKey ? { apiKey: sandboxConnection.apiKey } : {}),
+								harness: engine.adapter,
+								ownershipEpoch: claim.fence.ownershipEpoch,
+								claimToken: claim.fence.claimToken,
+								bridgeLeaseTtlMs: this.agentsConfig.harnessClaimTtlSeconds * 1000,
+								bridgeLeaseRetentionMs: this.agentsConfig.harnessSessionTtlSeconds * 1000,
+							}),
 			}),
 			toolRegistry: buildToolRegistry(resolvedTools),
 		};

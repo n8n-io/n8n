@@ -18,6 +18,7 @@ function identity(value: AgentJsonConfig): string {
 	return createHarnessRuntimeIdentity({
 		config: value,
 		instructions: value.instructions,
+		sandboxProvider: 'daytona',
 		toolDescriptors: {},
 		toolCodeByName: {},
 	});
@@ -45,5 +46,19 @@ describe('createHarnessRuntimeIdentity', () => {
 		expect(identity(config({ tools: [{ type: 'workflow', workflow: 'Run report' }] }))).not.toBe(
 			identity(base),
 		);
+	});
+
+	it('changes when the sandbox provider changes', () => {
+		const value = config();
+		const daytona = identity(value);
+		const n8nSandbox = createHarnessRuntimeIdentity({
+			config: value,
+			instructions: value.instructions,
+			sandboxProvider: 'n8n-sandbox',
+			toolDescriptors: {},
+			toolCodeByName: {},
+		});
+
+		expect(n8nSandbox).not.toBe(daytona);
 	});
 });
