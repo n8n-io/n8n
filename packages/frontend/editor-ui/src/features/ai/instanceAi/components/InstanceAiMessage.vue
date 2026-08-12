@@ -8,6 +8,7 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nMessageRating,
+	N8nTag,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +16,7 @@ import { computed, ref } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import { getContextBlockType, stripContextBlocks } from '../instanceAiProactive';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -30,6 +32,30 @@ const thread = useThread();
 const showDebugInfo = ref(false);
 
 const isUser = computed(() => props.message.role === 'user');
+
+/**
+ * A seeded message carries its error context in an XML block the agent reads but
+ * the user shouldn't see — strip it and summarise it as a chip instead.
+ */
+const userContent = computed(() => stripContextBlocks(props.message.content));
+
+const contextChip = computed(() => {
+	switch (getContextBlockType(props.message.content)) {
+		case 'execution-error':
+			return {
+				icon: 'triangle-alert' as const,
+				label: i18n.baseText('instanceAi.proactive.context.executionError'),
+			};
+		case 'credential-error':
+			return {
+				icon: 'key-round' as const,
+				label: i18n.baseText('instanceAi.proactive.context.credentialError'),
+			};
+		default:
+			return null;
+	}
+});
+
 const isStreaming = computed(() => props.message.isStreaming);
 const showContent = computed(() => props.message.content.length > 0 || isStreaming.value);
 
@@ -150,7 +176,21 @@ function formatJson(value: unknown): string {
 					:is-removable="false"
 				/>
 			</div>
-			<N8nText size="large">{{ props.message.content }}</N8nText>
+			<div
+				v-if="contextChip"
+				:class="$style.contextChip"
+				data-test-id="instance-ai-message-context-chip"
+			>
+				<N8nTag :text="contextChip.label" :clickable="false" size="lg">
+					<template #tag>
+						<span :class="$style.contextChipContent">
+							<N8nIcon :icon="contextChip.icon" size="small" />
+							<span :class="$style.contextChipText">{{ contextChip.label }}</span>
+						</span>
+					</template>
+				</N8nTag>
+			</div>
+			<N8nText size="large">{{ userContent }}</N8nText>
 		</div>
 
 		<!-- Assistant message -->
@@ -255,6 +295,23 @@ function formatJson(value: unknown): string {
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);
+}
+
+/* Same visual language as the composer's handoff-context chip. */
+.contextChip {
+	display: flex;
+	margin-bottom: var(--spacing--2xs);
+}
+
+.contextChipContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	line-height: var(--line-height--xs);
+}
+
+.contextChipText {
+	white-space: nowrap;
 }
 
 .statusIndicator {
