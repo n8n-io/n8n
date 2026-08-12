@@ -1,5 +1,5 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"extends": "../../../@n8n/typescript-config/tsconfig.frontend.json",
 	"compilerOptions": {
 		"noEmit": true,
 		"rootDirs": [".", "../design-system/src", "../i18n/src"],
