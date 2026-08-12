@@ -365,7 +365,7 @@ export class SlackWebClient {
 	}
 
 	async getUserInfo(token: string, userId: string): Promise<SlackUserInfo> {
-		const result = await this.callChecked(token, 'users.info', { user: userId });
+		const result = await this.callCheckedGet(token, 'users.info', { user: userId });
 		if (!isRecord(result.user)) return { email: null, tz: null };
 
 		const profile = isRecord(result.user.profile) ? result.user.profile : undefined;
@@ -384,7 +384,7 @@ export class SlackWebClient {
 	}
 
 	async lookupUserByEmail(token: string, email: string): Promise<string | null> {
-		const result = await this.call(token, 'users.lookupByEmail', { email });
+		const result = await this.callGet(token, 'users.lookupByEmail', { email });
 		if (!result.ok) {
 			if (result.error === 'users_not_found') return null;
 			throw new OperationalError(
@@ -566,6 +566,44 @@ export class SlackWebClient {
 		payload: Record<string, unknown>,
 	): Promise<SlackApiResult> {
 		const result = await this.call(token, method, payload);
+		if (!result.ok) {
+			throw new OperationalError(
+				`Slack API call to "${method}" failed: ${result.error ?? 'unknown_error'}`,
+				{
+					tags: { slackErrorCode: result.error ?? 'unknown_error' },
+				},
+			);
+		}
+		return result;
+	}
+
+	/**
+	 * Slack's legacy read methods (`users.info`, `users.lookupByEmail`, …) do
+	 * not accept a JSON body — the params must ride the query string instead,
+	 * or Slack silently ignores them and the call resolves as if the target
+	 * didn't exist. The token still travels in the Authorization header, never
+	 * in the URL.
+	 */
+	private async callGet(
+		token: string,
+		method: string,
+		query: Record<string, string>,
+	): Promise<SlackApiResult> {
+		const search = new URLSearchParams(query).toString();
+		return await this.outboundHttp.requests().request<SlackApiResult>({
+			url: `${SLACK_API_BASE_URL}/${method}${search ? `?${search}` : ''}`,
+			method: 'GET',
+			json: true,
+			headers: { Authorization: `Bearer ${token}` },
+		});
+	}
+
+	private async callCheckedGet(
+		token: string,
+		method: string,
+		query: Record<string, string>,
+	): Promise<SlackApiResult> {
+		const result = await this.callGet(token, method, query);
 		if (!result.ok) {
 			throw new OperationalError(
 				`Slack API call to "${method}" failed: ${result.error ?? 'unknown_error'}`,

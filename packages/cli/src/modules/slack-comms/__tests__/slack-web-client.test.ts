@@ -134,7 +134,7 @@ describe('SlackWebClient', () => {
 		it('reads the email and timezone off the user', async () => {
 			const { client } = createClient([
 				{
-					method: 'POST',
+					method: 'GET',
 					pathname: '/api/users.info',
 					body: { ok: true, user: { tz: 'Europe/Lisbon', profile: { email: 'ada@example.com' } } },
 				},
@@ -146,9 +146,24 @@ describe('SlackWebClient', () => {
 			});
 		});
 
+		it('sends the user id as a GET query param, with no body', async () => {
+			const { client, httpRequest } = createClient([
+				{ method: 'GET', pathname: '/api/users.info', body: { ok: true, user: { profile: {} } } },
+			]);
+
+			await client.getUserInfo(TOKEN, 'U1');
+
+			const [options] = httpRequest.mock.calls[0];
+			expect(options.method).toBe('GET');
+			expect(new URL(options.url).searchParams.get('user')).toBe('U1');
+			expect(options.body).toBeUndefined();
+			expect(options.headers).toMatchObject({ Authorization: `Bearer ${TOKEN}` });
+			expect(options.url).not.toContain(TOKEN);
+		});
+
 		it('returns null email and null tz when the user has neither', async () => {
 			const { client } = createClient([
-				{ method: 'POST', pathname: '/api/users.info', body: { ok: true, user: { profile: {} } } },
+				{ method: 'GET', pathname: '/api/users.info', body: { ok: true, user: { profile: {} } } },
 			]);
 
 			await expect(client.getUserInfo(TOKEN, 'U1')).resolves.toEqual({ email: null, tz: null });
@@ -156,7 +171,7 @@ describe('SlackWebClient', () => {
 
 		it('returns null email and null tz when there is no user at all', async () => {
 			const { client } = createClient([
-				{ method: 'POST', pathname: '/api/users.info', body: { ok: true } },
+				{ method: 'GET', pathname: '/api/users.info', body: { ok: true } },
 			]);
 
 			await expect(client.getUserInfo(TOKEN, 'U1')).resolves.toEqual({ email: null, tz: null });
@@ -167,7 +182,7 @@ describe('SlackWebClient', () => {
 		it('reads the email off the user profile', async () => {
 			const { client } = createClient([
 				{
-					method: 'POST',
+					method: 'GET',
 					pathname: '/api/users.info',
 					body: { ok: true, user: { profile: { email: 'ada@example.com' } } },
 				},
@@ -178,7 +193,7 @@ describe('SlackWebClient', () => {
 
 		it('returns null when the profile has no email', async () => {
 			const { client } = createClient([
-				{ method: 'POST', pathname: '/api/users.info', body: { ok: true, user: { profile: {} } } },
+				{ method: 'GET', pathname: '/api/users.info', body: { ok: true, user: { profile: {} } } },
 			]);
 
 			await expect(client.getUserEmail(TOKEN, 'U1')).resolves.toBeNull();
@@ -189,7 +204,7 @@ describe('SlackWebClient', () => {
 		it('resolves the Slack user id for a known email', async () => {
 			const { client, httpRequest } = createClient([
 				{
-					method: 'POST',
+					method: 'GET',
 					pathname: '/api/users.lookupByEmail',
 					body: { ok: true, user: { id: 'U9' } },
 				},
@@ -197,13 +212,33 @@ describe('SlackWebClient', () => {
 
 			await expect(client.lookupUserByEmail(TOKEN, 'ada@example.com')).resolves.toBe('U9');
 			const [options] = httpRequest.mock.calls[0];
-			expect(options.body).toMatchObject({ email: 'ada@example.com' });
+			expect(options.body).toBeUndefined();
+		});
+
+		it('sends the email as a GET, url-encoded query param, with no body', async () => {
+			const { client, httpRequest } = createClient([
+				{
+					method: 'GET',
+					pathname: '/api/users.lookupByEmail',
+					body: { ok: true, user: { id: 'U9' } },
+				},
+			]);
+
+			await client.lookupUserByEmail(TOKEN, 'ada+test@example.com');
+
+			const [options] = httpRequest.mock.calls[0];
+			expect(options.method).toBe('GET');
+			expect(new URL(options.url).searchParams.get('email')).toBe('ada+test@example.com');
+			expect(options.url).toContain(encodeURIComponent('ada+test@example.com'));
+			expect(options.body).toBeUndefined();
+			expect(options.headers).toMatchObject({ Authorization: `Bearer ${TOKEN}` });
+			expect(options.url).not.toContain(TOKEN);
 		});
 
 		it('returns null when no Slack account matches the email', async () => {
 			const { client } = createClient([
 				{
-					method: 'POST',
+					method: 'GET',
 					pathname: '/api/users.lookupByEmail',
 					body: { ok: false, error: 'users_not_found' },
 				},
@@ -215,7 +250,7 @@ describe('SlackWebClient', () => {
 		it('throws on an unrelated Slack error', async () => {
 			const { client } = createClient([
 				{
-					method: 'POST',
+					method: 'GET',
 					pathname: '/api/users.lookupByEmail',
 					body: { ok: false, error: 'invalid_auth' },
 				},
