@@ -9,7 +9,11 @@ import type { AgentJsonConfig } from '../types';
 
 const ensureLoadedMock = vi.fn();
 const selectCredentialMock = vi.fn();
-const getDefaultModelForPickerMock = vi.fn();
+// Reactive holder mirroring the real composable, whose verified-default cache
+// is a ref that updates when the backend response lands — watch getters that
+// call the mock must re-run when tests change the value.
+const defaultModelHolder = ref<Record<string, unknown> | null>(null);
+const getDefaultModelForPickerMock = vi.fn(() => defaultModelHolder.value);
 
 function makeCatalog(): ProviderCatalog {
 	return {
@@ -188,7 +192,7 @@ describe('AgentInfoPanel', () => {
 		vi.clearAllMocks();
 		modelCatalog.value = makeCatalog();
 		credsHolder.value = { anthropic: 'credential-1' };
-		getDefaultModelForPickerMock.mockReturnValue(null);
+		defaultModelHolder.value = null;
 	});
 
 	it('renders instructions as a contained markdown editor', () => {
@@ -306,14 +310,14 @@ describe('AgentInfoPanel', () => {
 				model: '',
 				instructions: 'Help users.',
 			});
-			getDefaultModelForPickerMock.mockReturnValue({
+			defaultModelHolder.value = {
 				provider: 'anthropic',
 				model: 'claude-sonnet-4-5',
 				name: 'Claude Sonnet 4.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
-			});
+			};
 
 			wrapper
 				.findComponent({ name: 'AgentModelSelector' })
@@ -328,22 +332,73 @@ describe('AgentInfoPanel', () => {
 			]);
 		});
 
-		it('shows the default-model hint after a default is auto-applied, and clears it on a manual pick', async () => {
-			const wrapper = mountModelPanel({
-				name: 'Support agent',
-				model: '',
-				instructions: 'Help users.',
-			});
-			getDefaultModelForPickerMock.mockReturnValue({
+		it('applies the verified default on mount when a credential is already available', async () => {
+			defaultModelHolder.value = {
 				provider: 'anthropic',
 				model: 'claude-sonnet-4-5',
 				name: 'Claude Sonnet 4.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
-			});
+			};
 
+			// No picker interaction at all: the initial credentials seed resolution.
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: '',
+				instructions: 'Help users.',
+			});
+			await wrapper.vm.$nextTick();
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('update:config')).toContainEqual([
+				expect.objectContaining({
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'credential-1',
+				}),
+			]);
+			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(true);
+		});
+
+		it('does not touch a draft that already has a model on mount', async () => {
+			defaultModelHolder.value = {
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				name: 'Claude Sonnet 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
+
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: 'anthropic/claude-3-haiku',
+				credential: 'credential-1',
+				instructions: 'Help users.',
+			});
+			await wrapper.vm.$nextTick();
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('update:config')).toBeUndefined();
 			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(false);
+		});
+
+		it('shows the default-model hint after a default is auto-applied, and clears it on a manual pick', async () => {
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: '',
+				instructions: 'Help users.',
+			});
+			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(false);
+
+			defaultModelHolder.value = {
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				name: 'Claude Sonnet 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
 
 			wrapper
 				.findComponent({ name: 'AgentModelSelector' })
@@ -368,14 +423,14 @@ describe('AgentInfoPanel', () => {
 				model: '',
 				instructions: 'Help users.',
 			});
-			getDefaultModelForPickerMock.mockReturnValue({
+			defaultModelHolder.value = {
 				provider: 'anthropic',
 				model: 'claude-sonnet-4-5',
 				name: 'Claude Sonnet 4.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
-			});
+			};
 
 			wrapper
 				.findComponent({ name: 'AgentModelSelector' })

@@ -61,12 +61,51 @@ describe('AgentDefaultModelResolverService', () => {
 		});
 	});
 
+	it('resolves to null instead of throwing when the gateway config lookup fails', async () => {
+		const { service, aiGatewayService } = makeService();
+		aiGatewayService.getCredentialTypeForProvider.mockRejectedValue(
+			new Error('n8n credits config fetch recently failed; retry is throttled.'),
+		);
+
+		await expect(service.resolve(user, 'project-1')).resolves.toBeNull();
+	});
+
 	it('resolveFromVerifiedModelIds returns the default when it is in the verified list', () => {
 		const { service } = makeService();
 
 		expect(
 			service.resolveFromVerifiedModelIds('anthropic', 'anthropic-credential', [
 				'claude-opus-4-6',
+				'claude-sonnet-4-6',
+			]),
+		).toEqual({
+			model: 'anthropic/claude-sonnet-4-6',
+			credential: 'anthropic-credential',
+		});
+	});
+
+	it('resolveFromVerifiedModelIds resolves a snapshot-only list to the verified snapshot id', () => {
+		const { service } = makeService();
+
+		// The managed gateway may list only the dated snapshot of the maintained
+		// default — the snapshot is the only callable id there, so it is returned.
+		expect(
+			service.resolveFromVerifiedModelIds('anthropic', 'anthropic-credential', [
+				'claude-opus-4-6',
+				'claude-sonnet-4-6-20251001',
+			]),
+		).toEqual({
+			model: 'anthropic/claude-sonnet-4-6-20251001',
+			credential: 'anthropic-credential',
+		});
+	});
+
+	it('resolveFromVerifiedModelIds prefers the exact default over a snapshot of it', () => {
+		const { service } = makeService();
+
+		expect(
+			service.resolveFromVerifiedModelIds('anthropic', 'anthropic-credential', [
+				'claude-sonnet-4-6-20251001',
 				'claude-sonnet-4-6',
 			]),
 		).toEqual({

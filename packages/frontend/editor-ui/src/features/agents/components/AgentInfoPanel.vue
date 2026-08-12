@@ -15,9 +15,11 @@ import { useToast } from '@n8n/composables/useToast';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@n8n/stores/users.store';
 import shared from '../styles/agent-panel.module.scss';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import {
+	AGENT_MODEL_PROVIDERS,
 	type AgentModelOption,
 	type AgentModelProvider,
 	type AgentModelSelection,
@@ -193,6 +195,30 @@ watch(
 		pendingDefaultProvider.value = null;
 		onModelChange(defaultModel, 'auto');
 	},
+);
+
+// An empty draft can mount with a credential already available (localStorage
+// pick, managed n8n credits, or an existing credential), where no picker event
+// ever fires — seed default resolution from that initial state once, so the
+// agent starts with a working model instead of a blank choice. Personal
+// credentials win over the managed tag, mirroring the backend resolver.
+const initialDefaultSeeded = ref(false);
+watch(
+	[effectiveCredentials, () => props.config],
+	([credentials, config]) => {
+		if (initialDefaultSeeded.value || props.disabled) return;
+		if (!credentials || !config || modelToString(config.model)) return;
+
+		const provider =
+			AGENT_MODEL_PROVIDERS.find(
+				(candidate) => credentials[candidate] && credentials[candidate] !== AI_GATEWAY_MANAGED_TAG,
+			) ?? AGENT_MODEL_PROVIDERS.find((candidate) => credentials[candidate]);
+		if (!provider) return;
+
+		initialDefaultSeeded.value = true;
+		pendingDefaultProvider.value = provider;
+	},
+	{ immediate: true },
 );
 
 function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
