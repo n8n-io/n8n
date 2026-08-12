@@ -329,7 +329,14 @@ export class UserProxyLlm {
 			if (!message) return { kind: 'done' };
 			this.messagesSent++;
 			this.actualTranscript.push({ role: 'user', text: message });
-			return { kind: 'followUp', message };
+			// The rename is a side effect the harness performs at this turn boundary,
+			// not something the user says — it stays out of `actualTranscript` so the
+			// judge reads the conversation the agent actually saw.
+			return {
+				kind: 'followUp',
+				message,
+				...(decision.renameWorkflowTo ? { renameWorkflowTo: decision.renameWorkflowTo } : {}),
+			};
 		}
 		if (decision.action !== 'declare_done') {
 			// The user-turn schema offers only the two actions above, so this only

@@ -95,7 +95,8 @@ function isFriendlyMappableBuilderError(error: unknown): boolean {
 function didUpdateConfig(workSummary: WorkSummary): boolean {
 	const mutationToolNames = new Set<string>(CONFIG_MUTATION_TOOL_NAMES);
 	return workSummary.toolCalls.some(
-		(call) => call.succeeded && mutationToolNames.has(call.toolName),
+		(call) =>
+			call.succeeded && (call.configMutated === true || mutationToolNames.has(call.toolName)),
 	);
 }
 
