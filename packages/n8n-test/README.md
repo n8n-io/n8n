@@ -53,7 +53,12 @@ Feasibility is proven, but these are the edges the production version must own:
 - **Execution mode changes trigger semantics.** In `manual` mode the engine
   *runs* trigger nodes (ManualTrigger emits a fresh empty item, discarding
   seeded input); every other mode passes input through. The PoC runs in
-  `trigger` mode.
+  `trigger` mode — so, precisely: every node executes for real *except* the
+  trigger, whose event is what `input` seeds.
+- **Credentials are silently impossible.** The stub credentials helper decrypts
+  everything to `{}`, so a credentialed node doesn't fail — it sends
+  unauthenticated requests (verified: `httpBasicAuth` sent `Basic Og==`). The
+  real feature needs credential injection, or a loud failure.
 - **Built-dist prerequisite.** `core/nodes-testing` imports `packages/core/dist`,
   and node classes lazy-load from `nodes-base/dist` — the harness cannot run
   from a cold checkout.

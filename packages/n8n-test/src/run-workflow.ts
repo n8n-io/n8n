@@ -104,13 +104,15 @@ export async function runWorkflow(
 	additionalData.formWaitingBaseUrl = 'http://localhost/waiting-form';
 	// These are read with truthiness checks: a truthy auto-mock diverts the engine into
 	// code paths a test must not take (eval-mock helpers, encrypted runner credentials,
-	// SSRF bridging, parent callbacks) — null them exactly as node-test-harness.ts does.
+	// SSRF bridging, parent callbacks, resumed-execution handling) — null them all.
 	for (const key of [
 		'evalLlmMockHandler',
 		'ssrfBridge',
 		'encryptedRunnerIdentity',
 		'currentNodeParameters',
 		'parentCallbackManager',
+		'restartExecutionId',
+		'executionTimeoutTimestamp',
 	]) {
 		(additionalData as unknown as Record<string, unknown>)[key] = undefined;
 	}
