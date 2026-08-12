@@ -1,12 +1,13 @@
-import type { JsonValue } from '@n8n/engine';
+import type { StepSlots } from '@n8n/engine';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { isRecord } from './guards';
 
-export function fromStepInputs(value: JsonValue): INodeExecutionData[][] {
-	if (!Array.isArray(value)) return [[]];
-
+export function fromStepInputs(value: StepSlots): INodeExecutionData[][] {
 	return value.map((items) => {
+		// a bare object in a slot is a single item: the shape of a trigger
+		// payload, until proper trigger handling decides its shape
+		if (isRecord(items)) return [{ json: items as IDataObject }];
 		if (!Array.isArray(items)) return [];
 		return items.map((item): INodeExecutionData => {
 			if (isRecord(item) && isRecord(item.json)) return item as unknown as INodeExecutionData;
@@ -16,6 +17,6 @@ export function fromStepInputs(value: JsonValue): INodeExecutionData[][] {
 	});
 }
 
-export function toStepOutputs(outputs: INodeExecutionData[][]): JsonValue {
-	return outputs as unknown as JsonValue;
+export function toStepOutputs(outputs: INodeExecutionData[][]): StepSlots {
+	return outputs as unknown as StepSlots;
 }

@@ -363,7 +363,6 @@ watch(isCredentialModalOpen, async (isOpen, wasOpen) => {
 				<N8nButton
 					v-else
 					:label="i18n.baseText('appSelection.connectLater')"
-					type="tertiary"
 					size="large"
 					data-test-id="app-selection-skip"
 					@click="handleContinue"

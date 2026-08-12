@@ -54,6 +54,8 @@ export interface ExecuteForChatConfig {
 	memory: AgentMemoryScope;
 	/** Stored attachments to include as file parts on the user turn. */
 	attachments?: StoredAttachmentRef[];
+	/** Identifies the surface that started the draft test run. */
+	source?: string;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -82,6 +84,10 @@ export interface ResumeForChatConfig {
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
+	/** Expected memory scope used to prevent resuming another user's or thread's checkpoint. */
+	expectedMemory?: Partial<AgentMemoryScope>;
+	/** Identifies the surface that resumed the execution. */
+	source?: string;
 	/**
 	 * The calling n8n user for in-app preview chat resumes — used to gate
 	 * node/workflow tools by their access. Absent for published/integration
@@ -112,10 +118,6 @@ export interface ExecuteForTaskPublishedConfig {
 	taskId: string;
 	/** Published agent_history version that supplied the scheduled task snapshot. */
 	taskVersionId: string;
-	// No `user` field here: this run is fired by `ScheduledTaskManager` on a
-	// cron tick — there is no human in the loop at all, let alone an n8n
-	// session, so there's nothing to gate tools against. Same project-scoped
-	// trust boundary as `ExecuteForChatPublishedConfig`.
 }
 
 export interface ExecuteForTaskNowConfig {
@@ -306,6 +308,8 @@ export class AgentExecutionOrchestratorService {
 			runId,
 			toolCallId,
 			resumeData,
+			expectedMemory,
+			source,
 			integrationType,
 			user,
 			usePublishedVersion = true,
@@ -328,6 +332,14 @@ export class AgentExecutionOrchestratorService {
 		}
 		if (memoryScope.delegated === true) {
 			throw new UserError('Delegated actions must be resumed through their parent agent');
+		}
+		if (
+			(expectedMemory?.threadId !== undefined &&
+				memoryScope.threadId !== expectedMemory.threadId) ||
+			(expectedMemory?.resourceId !== undefined &&
+				memoryScope.resourceId !== expectedMemory.resourceId)
+		) {
+			throw new UserError(`Checkpoint ${runId} does not belong to this chat`);
 		}
 
 		const threadId = memoryScope.threadId;
@@ -356,22 +368,25 @@ export class AgentExecutionOrchestratorService {
 		});
 		const startedAt = recorder.startedAt;
 		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
+		let executionSource = source;
 
 		try {
 			// A resume request carries no `source` of its own — recover it from
 			// the suspended run being resumed so tracing stays consistent across
 			// the suspend/resume cycle. Skipped entirely when tracing is disabled,
 			// since `build()` would discard the result anyway.
-			const suspendedExecution = this.agentRunTracingService.enabled
-				? await this.agentExecutionService.findLatestSuspendedRun(threadId)
-				: undefined;
+			const suspendedExecution =
+				this.agentRunTracingService.enabled && source === undefined
+					? await this.agentExecutionService.findLatestSuspendedRun(threadId)
+					: undefined;
+			executionSource ??= suspendedExecution?.source ?? undefined;
 
 			const tracing = await this.agentRunTracingService.build({
 				agentId,
 				projectId,
 				threadId,
 				userId: user?.id,
-				source: suspendedExecution?.source ?? 'unknown',
+				source: executionSource ?? 'unknown',
 				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
 
@@ -392,6 +407,7 @@ export class AgentExecutionOrchestratorService {
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: null,
+				...(executionSource !== undefined ? { source: executionSource } : {}),
 				telemetry: {
 					runType,
 					configuration: runtime.telemetryConfiguration,
@@ -425,6 +441,7 @@ export class AgentExecutionOrchestratorService {
 					agentName: agentInstance.name,
 					projectId,
 					userMessage: null,
+					...(executionSource !== undefined ? { source: executionSource } : {}),
 					record: messageRecord,
 					hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
 					telemetry: {
@@ -447,6 +464,7 @@ export class AgentExecutionOrchestratorService {
 			user,
 			memory,
 			attachments,
+			source,
 			onExecutionRecorded,
 			abortSignal,
 		} = config;
@@ -477,6 +495,7 @@ export class AgentExecutionOrchestratorService {
 			attachments,
 			memory,
 			projectId: runtime.projectId,
+			source,
 			telemetry: {
 				runType: 'test',
 				configuration: runtime.telemetryConfiguration,

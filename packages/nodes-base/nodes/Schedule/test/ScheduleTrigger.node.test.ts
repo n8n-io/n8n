@@ -149,6 +149,32 @@ describe('ScheduleTrigger', () => {
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
+		const DAY = 24 * HOUR;
+		it.each<[string, n8nWorkflow.INodeParameters, number, number]>([
+			[
+				'omits daysInterval',
+				{ rule: { interval: [{ field: 'days', triggerAtHour: 7 }] } },
+				3 * DAY,
+				3,
+			],
+			['omits the field', { rule: { interval: [{ triggerAtHour: 7 }] } }, 3 * DAY, 3],
+			['omits minutesInterval', { rule: { interval: [{ field: 'minutes' }] } }, HOUR, 12],
+			['omits the weekdays', { rule: { interval: [{ field: 'weeks' }] } }, 2 * 7 * DAY, 2],
+			['is missing entirely', {}, 3 * DAY, 3],
+		])(
+			'should emit on the declared default schedule when the stored rule %s',
+			async (_, parameters, elapsed, expected) => {
+				const { emit } = await testTriggerNode(ScheduleTrigger, {
+					timezone,
+					node: { parameters },
+					workflowStaticData: {},
+				});
+
+				vi.advanceTimersByTime(elapsed);
+				expect(emit).toHaveBeenCalledTimes(expected);
+			},
+		);
+
 		it('should emit on schedule defined as a cron expression', async () => {
 			const { emit } = await testTriggerNode(ScheduleTrigger, {
 				timezone,

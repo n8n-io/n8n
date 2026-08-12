@@ -27,6 +27,16 @@ describe('WorkflowHistoryCompactionService', () => {
 		},
 	});
 
+	beforeEach(() => {
+		// Set the system to a time that isn't 3 AM to avoid hitting the "trim once a day" window
+		const mockDate = new Date(2026, 10, 10, 1, 0, 0);
+		vi.setSystemTime(mockDate);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	describe('init', () => {
 		it('should start compacting on main instance that is the leader', () => {
 			const compactingService = new WorkflowHistoryCompactionService(
@@ -64,16 +74,6 @@ describe('WorkflowHistoryCompactionService', () => {
 	});
 
 	describe('startCompacting', () => {
-		beforeEach(() => {
-			// Set the system to a time that isn't 3 AM to avoid hitting the "trim once a day" window
-			const mockDate = new Date(2026, 10, 10, 1, 0, 0);
-			vi.setSystemTime(mockDate);
-		});
-
-		afterEach(() => {
-			vi.useRealTimers();
-		});
-
 		it('should start compacting if service is enabled and DB is migrated', () => {
 			const compactingService = new WorkflowHistoryCompactionService(
 				config,

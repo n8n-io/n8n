@@ -416,12 +416,21 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		await credentialsApi.disconnectOauthToken(rootStore.restApiContext, id);
 	};
 
-	const setConnectedByMe = (id: string, connectedByMe: boolean) => {
+	/**
+	 * Mirrors the caller's own connection state locally. The account identifier is
+	 * only known server-side, so it is cleared unless one is passed in — better no
+	 * label than a stale one from the previously connected account.
+	 */
+	const setConnectedByMe = (
+		id: string,
+		connectedByMe: boolean,
+		connectedAccountIdentifier?: string,
+	) => {
 		const existing = state.value.credentials[id];
 		if (existing) {
 			state.value.credentials = {
 				...state.value.credentials,
-				[id]: { ...existing, connectedByMe },
+				[id]: { ...existing, connectedByMe, connectedAccountIdentifier },
 			};
 		}
 	};
@@ -475,6 +484,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			return res.name;
 		} catch (e) {
 			return fallbackName ?? DEFAULT_CREDENTIAL_NAME;
+		}
+	};
+
+	/** Run a caller-chosen name through the server's numbering dedup ("X" → "X 2" on clash). */
+	const getDedupedCredentialName = async (name: string): Promise<string> => {
+		try {
+			const res = await credentialsApi.getCredentialsNewName(rootStore.restApiContext, name);
+			return res.name;
+		} catch (e) {
+			return name;
 		}
 	};
 
@@ -554,6 +573,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		oAuth1Authorize,
 		oAuth2Authorize,
 		getNewCredentialName,
+		getDedupedCredentialName,
 		testCredential,
 		getCredentialTranslation,
 		setCredentialSharedWith,

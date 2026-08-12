@@ -9,6 +9,7 @@ describe('fetchProviderCatalog', () => {
 	});
 
 	it('returns provider ids that match the agents runtime', async () => {
+		const abortController = new AbortController();
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,
 			json: async () =>
@@ -21,6 +22,7 @@ describe('fetchProviderCatalog', () => {
 								id: 'gpt-5',
 								name: 'GPT-5',
 								tool_call: true,
+								modalities: { input: ['text', 'image'], output: ['text'] },
 							},
 							'gpt-4.1-mini': {
 								id: 'gpt-4.1-mini',
@@ -63,9 +65,13 @@ describe('fetchProviderCatalog', () => {
 		});
 		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ signal: abortController.signal });
 
 		expect(catalog.openai.models['gpt-5'].toolCall).toBe(true);
+		expect(catalog.openai.models['gpt-5'].modalities).toEqual({
+			input: ['text', 'image'],
+			output: ['text'],
+		});
 		expect(catalog.openai.models['gpt-5']).not.toHaveProperty('reasoning');
 		expect(catalog.openai.models['gpt-4.1-mini'].reasoning).toBe(false);
 		expect(catalog['aws-bedrock'].models['anthropic.claude-sonnet-4-5-v1:0'].name).toBe(
@@ -76,6 +82,63 @@ describe('fetchProviderCatalog', () => {
 		expect(catalog['amazon-bedrock']).toBeUndefined();
 		expect(catalog.azure).toBeUndefined();
 		expect(catalog['azure-cognitive-services']).toBeUndefined();
+		expect(fetchMock).toHaveBeenCalledWith('https://models.dev/api.json', {
+			signal: abortController.signal,
+		});
+	});
+
+	it('rejects a malformed catalog response', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => await Promise.resolve([]),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		await expect(fetchProviderCatalog()).rejects.toThrow();
+	});
+
+	it('omits malformed providers and models while retaining valid entries', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					invalidProvider: {
+						id: 'invalid-provider',
+						models: {},
+					},
+					openai: {
+						id: 'openai',
+						name: 'OpenAI',
+						models: {
+							'gpt-valid': {
+								id: 'gpt-valid',
+								name: 'GPT Valid',
+								tool_call: true,
+							},
+							'gpt-missing-name': {
+								id: 'gpt-missing-name',
+							},
+							'gpt-invalid-tool-call': {
+								id: 'gpt-invalid-tool-call',
+								name: 'GPT Invalid Tool Call',
+								tool_call: 'yes',
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.invalidProvider).toBeUndefined();
+		expect(catalog.openai.models).toEqual({
+			'gpt-valid': {
+				id: 'gpt-valid',
+				name: 'GPT Valid',
+				toolCall: true,
+			},
+		});
 	});
 
 	it('drops models marked deprecated on models.dev', async () => {

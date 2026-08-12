@@ -35,12 +35,13 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentConfigService } from '../agent-config.service';
+import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
-import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
@@ -53,6 +54,7 @@ import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
 import { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentValidationService } from '../agent-validation.service';
+import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -131,7 +133,8 @@ function makeRuntimeReconstructionService(
 		{ modules } as unknown as AgentsConfig,
 		mock<AiService>(),
 		outboundHttp,
-		mock<AgentKnowledgeSandboxService>(),
+		mock<AgentWorkspaceService>(),
+		mock<AgentKnowledgeMirrorService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
 		mock<CredentialsFinderService>(),
@@ -254,6 +257,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 			credentialsService,
 			mock<WorkflowRepository>(),
+			mock<NodeToolAiGatewayService>(),
+			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
 		);
@@ -278,6 +283,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			chatIntegrationService,
 			runtimeCacheService,
 			chatIntegrationRegistry,
+			mock<EventService>(),
 			modificationTelemetry,
 			credentialsService,
 			mock<AgentSetupCompletionService>(),
@@ -303,10 +309,15 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentValidationService,
 			credentialsService,
 			telemetry,
+			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
 		);
-		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
+		agentTestChatService = new AgentTestChatService(
+			n8nMemory,
+			mock<AgentChatAttachmentService>(),
+			mock<AgentWorkspaceService>(),
+		);
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,

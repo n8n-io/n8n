@@ -13,6 +13,7 @@ import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-im
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import type {
+	BlockingIssue,
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
@@ -23,6 +24,7 @@ import type {
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
+import { toImportBlockedError } from './import-blocked.error';
 import { needsBundledVariableValues, placeByLayout } from './package-layout';
 import {
 	ImportOrchestrator,
@@ -64,7 +66,21 @@ export class ProjectPackageImporter {
 		this.assertAdequatePermissions(request, manifest);
 
 		const projects = await this.packageParser.getProjects(reader);
-		const projectPlan = await this.projectImporter.plan(request.user, projects);
+		const projectPlan = await this.projectImporter.plan(
+			request.user,
+			projects,
+			request.projectConflictPolicy,
+		);
+		// A refused project decides the whole import, so report it before reading any project's
+		// contents — planning work that is certain to be discarded only delays the same failure.
+		if (projectPlan.conflicts.length > 0) {
+			throw toImportBlockedError(
+				projectPlan.conflicts.map(
+					(conflict): BlockingIssue => ({ type: 'project-conflict', ...conflict }),
+				),
+			);
+		}
+
 		const bundledVariables = needsBundledVariableValues(
 			request,
 			(manifest.requirements?.variables?.length ?? 0) > 0,
@@ -74,7 +90,9 @@ export class ProjectPackageImporter {
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
 		// so publish is always allowed and the project need not exist while its contents are planned.
 		const pendingCreateIds = new Set(
-			projectPlan.filter((item) => item.action === 'create').map((item) => item.sourceProjectId),
+			projectPlan.items
+				.filter((item) => item.action === 'create')
+				.map((item) => item.sourceProjectId),
 		);
 
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
@@ -102,7 +120,7 @@ export class ProjectPackageImporter {
 			{ apiKeyScopes: request.apiKeyScopes },
 		);
 
-		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan);
+		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
 
 		// Resolve every project's workflow ids up front so a sub-workflow reference
 		// that points into another project resolves when its parent is applied.

@@ -48,17 +48,22 @@ const getItemTestId = (id: T): string => {
 	return `action-${id}`;
 };
 
+const toMenuItem = (
+	item: ActionDropdownItem<T>,
+): DropdownMenuItemProps<T, ActionDropdownItem<T>> => ({
+	id: item.id,
+	testId: item.testId ?? getItemTestId(item.id),
+	label: item.label,
+	icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
+	disabled: item.disabled,
+	divided: item.divided,
+	class: getItemClasses(item),
+	data: item,
+	children: item.children?.map(toMenuItem),
+});
+
 const items = computed((): Array<DropdownMenuItemProps<T, ActionDropdownItem<T>>> => {
-	return props.items.map((item) => ({
-		id: item.id,
-		testId: item.testId ?? getItemTestId(item.id),
-		label: item.label,
-		icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
-		disabled: item.disabled,
-		divided: item.divided,
-		class: getItemClasses(item),
-		data: item,
-	}));
+	return props.items.map(toMenuItem);
 });
 
 const emit = defineEmits<{

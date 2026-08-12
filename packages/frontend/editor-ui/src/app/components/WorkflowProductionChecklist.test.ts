@@ -13,7 +13,6 @@ import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowSettingsCache } from '@/app/composables/useWorkflowsCache';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRouter } from 'vue-router';
@@ -23,7 +22,6 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	VIEWS,
-	MODAL_CONFIRM,
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
 	EVALUATIONS_DOCS_URL,
@@ -45,10 +43,6 @@ vi.mock('vue-router', async (importOriginal) => {
 
 vi.mock('@/app/composables/useWorkflowsCache', () => ({
 	useWorkflowSettingsCache: vi.fn(),
-}));
-
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: vi.fn(),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -154,7 +148,6 @@ const renderComponent = createComponentRenderer(WorkflowProductionChecklist, {
 describe('WorkflowProductionChecklist', () => {
 	let router: ReturnType<typeof useRouter>;
 	let workflowsCache: ReturnType<typeof useWorkflowSettingsCache>;
-	let message: ReturnType<typeof useMessage>;
 	let telemetry: ReturnType<typeof useTelemetry>;
 	let evaluationStore: ReturnType<typeof useEvaluationStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
@@ -179,19 +172,10 @@ describe('WorkflowProductionChecklist', () => {
 
 		workflowsCache = {
 			isCacheLoading: ref(false),
-			getMergedWorkflowSettings: vi.fn().mockResolvedValue({
-				suggestedActions: {},
-			}),
-			ignoreSuggestedAction: vi.fn().mockResolvedValue(undefined),
-			ignoreAllSuggestedActionsForAllWorkflows: vi.fn().mockResolvedValue(undefined),
+			getWorkflowSettings: vi.fn().mockResolvedValue({}),
 			updateFirstActivatedAt: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ReturnType<typeof useWorkflowSettingsCache>;
 		(useWorkflowSettingsCache as ReturnType<typeof vi.fn>).mockReturnValue(workflowsCache);
-
-		message = {
-			confirm: vi.fn().mockResolvedValue(MODAL_CONFIRM),
-		} as unknown as ReturnType<typeof useMessage>;
-		(useMessage as ReturnType<typeof vi.fn>).mockReturnValue(message);
 
 		telemetry = {
 			track: vi.fn(),
@@ -310,7 +294,7 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
-		it('should show error workflow action and time saved when not ignored', async () => {
+		it('should show error workflow and time saved actions', async () => {
 			renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
@@ -331,23 +315,6 @@ describe('WorkflowProductionChecklist', () => {
 					},
 				]);
 				expect(mockN8nSuggestedActionsProps.popoverAlignment).toBe('end');
-			});
-		});
-
-		it('should hide actions that are ignored', async () => {
-			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
-				suggestedActions: {
-					errorWorkflow: { ignored: true },
-					timeSaved: { ignored: true },
-				},
-			});
-
-			const { container } = renderComponent({ pinia: createTestingPinia() });
-
-			await vi.waitFor(() => {
-				expect(
-					container.querySelector('[data-test-id="n8n-suggested-actions-stub"]'),
-				).not.toBeInTheDocument();
 			});
 		});
 
@@ -464,70 +431,6 @@ describe('WorkflowProductionChecklist', () => {
 				expect(openModalSpy).toHaveBeenCalledWith(WORKFLOW_SETTINGS_MODAL_KEY);
 			});
 		});
-
-		it('should ignore specific action when ignore is clicked', async () => {
-			renderComponent({ pinia: createTestingPinia() });
-
-			await vi.waitFor(() => {
-				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
-			});
-
-			mockN8nSuggestedActionsEmits['ignore-click']('errorWorkflow');
-
-			await vi.waitFor(() => {
-				expect(workflowsCache.ignoreSuggestedAction).toHaveBeenCalledWith(
-					mockWorkflow.id,
-					'errorWorkflow',
-				);
-				expect(telemetry.track).toHaveBeenCalledWith('user clicked ignore suggested action', {
-					actionId: 'errorWorkflow',
-				});
-			});
-		});
-
-		it('should ignore all actions after confirmation', async () => {
-			renderComponent({ pinia: createTestingPinia() });
-
-			await vi.waitFor(() => {
-				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
-				expect(mockN8nSuggestedActionsProps.ignoreAllLabel).toBe(
-					'workflowProductionChecklist.turnOffWorkflowSuggestions',
-				);
-			});
-
-			mockN8nSuggestedActionsEmits['ignore-all']();
-
-			await vi.waitFor(() => {
-				expect(message.confirm).toHaveBeenCalled();
-				expect(workflowsCache.ignoreAllSuggestedActionsForAllWorkflows).toHaveBeenCalledWith([
-					'errorWorkflow',
-					'timeSaved',
-				]);
-				expect(telemetry.track).toHaveBeenCalledWith(
-					'user clicked ignore suggested actions for all workflows',
-				);
-			});
-		});
-
-		it('should not ignore all actions if confirmation is cancelled', async () => {
-			message.confirm = vi.fn().mockResolvedValue('cancel');
-
-			renderComponent({ pinia: createTestingPinia() });
-
-			await vi.waitFor(() => {
-				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
-			});
-
-			mockN8nSuggestedActionsEmits['ignore-all']();
-
-			await vi.waitFor(() => {
-				expect(message.confirm).toHaveBeenCalled();
-				expect(workflowsCache.ignoreAllSuggestedActionsForAllWorkflows).not.toHaveBeenCalled();
-				expect(telemetry.track).not.toHaveBeenCalledWith(
-					'user clicked ignore suggested actions for all workflows',
-				);
-			});
-		});
 	});
 
 	describe('Popover behavior', () => {
@@ -546,7 +449,7 @@ describe('WorkflowProductionChecklist', () => {
 		});
 
 		it('should open popover automatically on first workflow activation', async () => {
-			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
 				suggestedActions: {},
 				firstActivatedAt: undefined,
 			});
@@ -573,7 +476,7 @@ describe('WorkflowProductionChecklist', () => {
 		});
 
 		it('should not open popover automatically if workflow was previously activated', async () => {
-			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
 				suggestedActions: {},
 				firstActivatedAt: '2024-01-01',
 			});
@@ -599,7 +502,7 @@ describe('WorkflowProductionChecklist', () => {
 		});
 
 		it('should not open popover when activation modal is active', async () => {
-			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
 				suggestedActions: {},
 				firstActivatedAt: undefined,
 			});
@@ -867,32 +770,6 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
-		it('should not show instance-level MCP action when ignored', async () => {
-			const pinia = createTestingPinia();
-			settingsStore = useSettingsStore(pinia);
-			usersStore = useUsersStore(pinia);
-
-			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false },
-			});
-			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
-
-			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
-				suggestedActions: {
-					'instance-mcp-access': { ignored: true },
-				},
-			});
-
-			renderComponent({ pinia });
-
-			await vi.waitFor(() => {
-				const actions = mockN8nSuggestedActionsProps.actions;
-				expect(actions).toBeDefined();
-				expect(actions.find((a: { id: string }) => a.id === 'instance-mcp-access')).toBeUndefined();
-			});
-		});
-
 		it('should show workflow-level MCP action when workflow is eligible', async () => {
 			const pinia = createTestingPinia();
 			settingsStore = useSettingsStore(pinia);
@@ -939,30 +816,6 @@ describe('WorkflowProductionChecklist', () => {
 					moreInfoLink: MCP_DOCS_PAGE_URL,
 					completed: true,
 				});
-			});
-		});
-
-		it('should not show workflow-level MCP action when ignored', async () => {
-			const pinia = createTestingPinia();
-			settingsStore = useSettingsStore(pinia);
-
-			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false },
-			});
-
-			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
-				suggestedActions: {
-					'workflow-mcp-access': { ignored: true },
-				},
-			});
-
-			renderComponent({ pinia });
-
-			await vi.waitFor(() => {
-				const actions = mockN8nSuggestedActionsProps.actions;
-				expect(actions).toBeDefined();
-				expect(actions.find((a: { id: string }) => a.id === 'workflow-mcp-access')).toBeUndefined();
 			});
 		});
 

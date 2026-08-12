@@ -16,6 +16,7 @@ export function toImportBlockedError(
 				issue.type === 'workflow-conflict' ||
 				issue.type === 'workflow-id-conflict' ||
 				issue.type === 'workflow-folder-conflict' ||
+				issue.type === 'project-conflict' ||
 				issue.type === 'folder-conflict' ||
 				issue.type === 'variable-conflict' ||
 				(issue.type === 'data-table-unresolved' &&

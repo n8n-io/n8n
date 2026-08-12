@@ -22,6 +22,7 @@ import {
 	distributeShards,
 	selectTests,
 	changedRuntimeDepsFromManifests,
+	changedOverrideTargets,
 } from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -78,7 +79,7 @@ import {
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
-import { readLockfileImporters } from './core/read-lockfile-importers.js';
+import { readLockfileImporters, readRuntimeClosure } from './core/read-lockfile-importers.js';
 import { readManifestDiffs, readTsconfigDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
@@ -726,10 +727,18 @@ function runSelect(options: CliOptions): void {
 	// Only parse the (large) lockfile when a RUNTIME dependency actually changed —
 	// the only case the dep-graph selector (389) acts on. A devDep-only manifest
 	// change would parse it for nothing.
-	const lockfileImporters =
-		manifests && changedRuntimeDepsFromManifests(manifests).length > 0
-			? readLockfileImporters()
-			: undefined;
+	const runtimeDepsChanged = manifests
+		? changedRuntimeDepsFromManifests(manifests).length > 0
+		: false;
+	const lockfileImporters = runtimeDepsChanged ? readLockfileImporters() : undefined;
+	// The closure classifies override pins; a runtime-dep change already forces
+	// broad, so don't compute it then.
+	const overridesChanged =
+		!runtimeDepsChanged &&
+		Object.values(manifests ?? {}).some(({ before, after }) => {
+			const targets = changedOverrideTargets(before, after);
+			return targets === null || targets.length > 0;
+		});
 	const result = selectTests({
 		changedFiles,
 		mapFile: options.mapFile,
@@ -737,6 +746,7 @@ function runSelect(options: CliOptions): void {
 		manifests,
 		tsconfigs,
 		lockfileImporters,
+		runtimeClosure: overridesChanged ? readRuntimeClosure() : undefined,
 	});
 	console.log(JSON.stringify(result));
 }

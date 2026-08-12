@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { N8nActionDropdown, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';

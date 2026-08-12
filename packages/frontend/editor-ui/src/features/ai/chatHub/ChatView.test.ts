@@ -5,7 +5,7 @@ import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import {
 	createChatHubModuleSettings,
 	createMockAgent,
@@ -420,6 +420,9 @@ describe('ChatView', () => {
 						lastMessageAt: new Date().toISOString(),
 						provider: 'custom-agent',
 						agentId: 'agent-123',
+						// Deliberately differs from the live agent's name, so tests can tell
+						// which of the two the UI rendered
+						agentName: 'Name Cached On Session',
 					}),
 					conversation: {
 						messages: {
@@ -476,17 +479,33 @@ describe('ChatView', () => {
 			await vi.waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith({ name: 'chat' }));
 		});
 
-		it.todo(
-			'handles when the agent selected for the conversation is not available anymore',
-			async () => {
-				vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(emptyChatModelsResponse);
+		// An agent can drop out of the model list (credentials revoked, provider disabled)
+		// while the session keeps its reference to it. `chatStore.getAgent` then falls back
+		// to a placeholder built from the name cached on the session, so the conversation
+		// stays readable and usable rather than blanking out. A deleted agent differs:
+		// `agentId` goes NULL and the reselect-a-model callout renders instead.
+		it('keeps the conversation usable when the selected agent is missing from the model list', async () => {
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(emptyChatModelsResponse);
 
-				const rendered = renderComponent({ pinia });
+			const rendered = renderComponent({ pinia });
 
-				expect(await rendered.findByText(/reselect a model/i)).toBeInTheDocument();
-				expect(await rendered.findByRole('textbox')).toBeDisabled();
-			},
-		);
+			// Wait for both fetches to settle before asserting. The header shows the cached
+			// name transiently while the agent list is still in flight, whether or not the
+			// agent still exists, so asserting earlier would pass either way.
+			await vi.waitFor(() => {
+				expect(chatStore.agentsReady).toBe(true);
+				expect(rendered.container.querySelectorAll('[data-message-id]')).toHaveLength(2);
+			});
+			await nextTick();
+
+			// The live agent is gone, so the header keeps the name cached on the session
+			expect(rendered.queryByRole('button', { name: /Test Custom Agent/i })).toBeNull();
+			expect(rendered.getByRole('button', { name: /Name Cached On Session/i })).toBeInTheDocument();
+
+			// ...and the conversation stays usable: no callout, input not disabled
+			expect(rendered.queryByText(/reselect a model/i)).not.toBeInTheDocument();
+			expect(rendered.getByRole('textbox')).not.toBeDisabled();
+		});
 	});
 
 	describe('Sending messages', () => {

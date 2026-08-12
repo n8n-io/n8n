@@ -13,6 +13,8 @@ import type {
 	Workspace,
 } from '@n8n/agents';
 import type {
+	AgentJsonConfig,
+	AgentSkill,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
@@ -471,6 +473,11 @@ export interface InstanceAiCredentialService {
 	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
 	 *  a predefined credential when one already exists for the target service. */
 	listHttpCredentialHosts?(): Promise<CredentialHostInfo[]>;
+	/** For Templated Custom Auth credentials only: the service host each credential
+	 *  was created for (its recipe's `serviceHost`), by credential id — `null` for
+	 *  untagged/legacy ones. Non-secret metadata; never exposes credential data.
+	 *  Powers same-service filtering of setup candidates for the shared type. */
+	getTemplatedCredentialHosts?(credentialIds: string[]): Promise<Record<string, string | null>>;
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
@@ -484,6 +491,24 @@ export interface CredentialFieldInfo {
 	type: string;
 	required: boolean;
 	description?: string;
+}
+
+export interface McpRegistryServerSummary {
+	slug: string;
+	title: string;
+	description: string;
+	tools: string[];
+}
+
+/** A service the user connected, with those of its tools that reached the agent.
+ *  Named by slug, which is also what the MCP tools accept as an argument. */
+export interface ConnectedMcpService {
+	slug: string;
+	toolNames: string[];
+}
+
+export interface InstanceAiMcpService {
+	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
 }
 
 export interface ExploreResourcesParams {
@@ -512,6 +537,19 @@ export interface ExploreResourcesResult {
 	builderHint?: string;
 }
 
+/**
+ * A resource-locator value the connected credential can't reach. Identifies the
+ * parameter and the offending value only — list the values it *can* reach with
+ * `exploreResources`, which runs the same lookup.
+ */
+export interface UnavailableLocatorValue {
+	/** Parameter name, as declared by the node. */
+	name: string;
+	displayName: string;
+	/** The configured value the credential can't reach. Left in place; repair is the caller's. */
+	currentValue: string;
+}
+
 export interface InstanceAiNodeService {
 	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
@@ -533,6 +571,20 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	/**
+	 * Report resource-locator parameters whose current value the given credential can't
+	 * reach. A credential can narrow a parameter's value space after the value was chosen —
+	 * the managed free-OpenAI-credits credential only proxies an allowlisted subset of
+	 * models — which is otherwise invisible until the workflow runs and fails. Reports the
+	 * unusable value only; list the usable ones with `exploreResources` if needed.
+	 */
+	findUnavailableLocatorValues?(params: {
+		nodeType: string;
+		version: number;
+		credentialType: string;
+		credentialId: string;
+		parameters: Record<string, unknown>;
+	}): Promise<UnavailableLocatorValue[]>;
 	/** Compute parameter issues for a node (mirrors builder's NodeHelpers.getNodeParametersIssues). */
 	getParameterIssues?(
 		nodeType: string,
@@ -956,6 +1008,15 @@ export interface InstanceAiBuilderDelegate {
 	>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
+	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
+	 *  has no config yet. Optional: the host supplies this delegate across a
+	 *  package boundary, so an unwired host emits no snapshots instead of
+	 *  breaking agent building. */
+	readAgentArtifact?(agentId: string): Promise<{
+		config: AgentJsonConfig;
+		skills: Record<string, AgentSkill>;
+		configHash: string | null;
+	} | null>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────
@@ -994,6 +1055,13 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
+	/** Optional — present when the host allows MCP registry discovery for this
+	 *  user. Presence gates the `mcp-servers` tool. */
+	mcpService?: InstanceAiMcpService;
+	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
+	 *  agent is built, which is also when its MCP tools are attached, so it always
+	 *  matches what this agent can actually call. */
+	connectedMcpServices?: ConnectedMcpService[];
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
 	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
@@ -1051,17 +1119,27 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/**
+	 * Run-scoped outcome tracking for browser-assisted credential setup. The
+	 * credentials tool marks an attempt pending when it hands off to the LLM
+	 * with `needsBrowserSetup`; the browser tool wrapper reports each
+	 * `browser_create_credential` outcome. The host resolves the terminal
+	 * success/failure telemetry when the run finishes.
+	 */
+	browserCredentialSetup?: {
+		markPending: (credentialType: string, attemptId?: string) => void;
+		markCreated: (credentialType: string) => void;
+		markCreateFailed: (credentialType: string, errorCode: string) => void;
+	};
 	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
 	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
-	 * IDs of workflows the agent created during the **currently active plan
-	 * cycle**. Populated by build-workflow on every successful create, and
-	 * hydrated at run start from the persisted plan graph when — and only when —
-	 * the plan is still `active` or
-	 * `awaiting_replan`, so replan follow-up runs keep the bypass active but
-	 * the window closes as soon as the plan settles. Consumed by the delete
-	 * handler to skip the confirmation gate when the agent cleans up its own
-	 * in-flight artifacts. Lazily initialized on first create.
+	 * IDs of workflows the agent created during the **current run**. Populated by
+	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
+	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
+	 * the same thread uses the persisted `workflows:update:<id>` session grant
+	 * written at create time — this in-memory set alone does not survive a new run.
+	 * Lazily initialized on first create.
 	 */
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
@@ -1076,6 +1154,10 @@ export interface InstanceAiContext {
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/** Shared runtime workspace for workflow source files and other sandbox-backed artifacts. */
 	workspace?: Workspace;
+	/** Absolute sandbox workspace root (e.g. /home/user/workspace). Lets tools
+	 *  accept absolute file paths under the root by normalizing them to
+	 *  workspace-relative. */
+	workspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */

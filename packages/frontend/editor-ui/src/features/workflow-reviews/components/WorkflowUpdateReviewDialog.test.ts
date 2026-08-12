@@ -64,6 +64,8 @@ const renderComponent = createComponentRenderer(WorkflowUpdateReviewDialog, {
 const renderDialog = async ({
 	flushSave = vi.fn().mockResolvedValue(SAVED_VERSION_ID),
 	seedOpenReview = true,
+	reviewData = openReview,
+	canSubmit = true,
 	versionData = {
 		versionId: SAVED_VERSION_ID,
 		name: null,
@@ -78,7 +80,7 @@ const renderDialog = async ({
 	documentStore.setVersionData(versionData);
 	const reviewStatusStore = useWorkflowReviewStatusStore(pinia);
 	if (seedOpenReview) {
-		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 1, data: [openReview] });
+		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 1, data: [reviewData] });
 		await reviewStatusStore.fetchStatus('workflow-1');
 	} else {
 		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 0, data: [] });
@@ -89,6 +91,7 @@ const renderDialog = async ({
 		open: false,
 		workflowId: 'workflow-1',
 		flushSave,
+		canSubmit,
 	};
 	const result = renderComponent({ pinia, props });
 	await result.rerender({ ...props, open: true });
@@ -146,13 +149,35 @@ describe('WorkflowUpdateReviewDialog', () => {
 					workflowId: 'workflow-1',
 					workflowVersionId: SAVED_VERSION_ID,
 					workflowVersionName: GENERATED_VERSION_NAME,
+					workflowVersionDescription: undefined,
 				},
 			);
 		});
 		expect(flushSave).toHaveBeenCalledOnce();
 		expect(fetchStatusSpy).toHaveBeenCalledWith('workflow-1');
-		expect(emitted('updated')).toHaveLength(1);
+		expect(emitted('updated')).toEqual([['review-1']]);
 		expect(emitted('update:open')).toContainEqual([false]);
+		expect(mockShowError).not.toHaveBeenCalled();
+	});
+
+	it('disables submission when the caller knows the review is up to date', async () => {
+		const { getByTestId, flushSave } = await renderDialog({ canSubmit: false });
+
+		expect(getByTestId('workflow-update-review-submit-button')).toBeDisabled();
+		expect(flushSave).not.toHaveBeenCalled();
+	});
+
+	it('closes without updating when saving resolves to the reviewed version', async () => {
+		const { getByTestId, flushSave, emitted } = await renderDialog({
+			reviewData: { ...openReview, workflowVersionId: SAVED_VERSION_ID },
+		});
+
+		await userEvent.click(getByTestId('workflow-update-review-submit-button'));
+
+		await waitFor(() => expect(emitted('update:open')).toContainEqual([false]));
+		expect(flushSave).toHaveBeenCalledOnce();
+		expect(updateWorkflowReviewRequestVersion).not.toHaveBeenCalled();
+		expect(emitted('updated')).toBeUndefined();
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
 
@@ -206,8 +231,8 @@ describe('WorkflowUpdateReviewDialog', () => {
 		expect(emitted('update:open')).toContainEqual([false]);
 	});
 
-	describe('version name', () => {
-		it('prefills the name the current version already has', async () => {
+	describe('version name and description', () => {
+		it('prefills the name and description the current version already has', async () => {
 			const { getByTestId } = await renderDialog({
 				versionData: {
 					versionId: SAVED_VERSION_ID,
@@ -219,6 +244,9 @@ describe('WorkflowUpdateReviewDialog', () => {
 			expect(getByTestId('workflow-update-review-version-name-input')).toHaveValue(
 				'Release candidate',
 			);
+			expect(getByTestId('workflow-update-review-version-description-input')).toHaveValue(
+				'Existing description',
+			);
 		});
 
 		it('prefills a generated label when the current version has no name', async () => {
@@ -227,6 +255,9 @@ describe('WorkflowUpdateReviewDialog', () => {
 			const input = getByTestId('workflow-update-review-version-name-input');
 			expect(input).toHaveValue(GENERATED_VERSION_NAME);
 			expect(input).toHaveAttribute('maxlength', '128');
+			const descriptionInput = getByTestId('workflow-update-review-version-description-input');
+			expect(descriptionInput).toHaveValue('');
+			expect(descriptionInput).toHaveAttribute('maxlength', '2048');
 		});
 
 		// The publish endpoints accept an empty name, so '' must not leave the
@@ -267,6 +298,7 @@ describe('WorkflowUpdateReviewDialog', () => {
 						workflowId: 'workflow-1',
 						workflowVersionId: SAVED_VERSION_ID,
 						workflowVersionName: 'Release 3',
+						workflowVersionDescription: undefined,
 					},
 				);
 			});
@@ -275,6 +307,47 @@ describe('WorkflowUpdateReviewDialog', () => {
 				name: 'Release 3',
 				description: null,
 			});
+		});
+
+		it('submits the trimmed description and mirrors it into the editor', async () => {
+			const { getByTestId, documentStore } = await renderDialog();
+
+			await userEvent.type(
+				getByTestId('workflow-update-review-version-description-input'),
+				'  What changed  ',
+			);
+			await userEvent.click(getByTestId('workflow-update-review-submit-button'));
+
+			await waitFor(() => {
+				expect(updateWorkflowReviewRequestVersion).toHaveBeenCalledWith(
+					expect.any(Object),
+					'review-1',
+					expect.objectContaining({ workflowVersionDescription: 'What changed' }),
+				);
+			});
+			expect(documentStore.versionData).toMatchObject({ description: 'What changed' });
+		});
+
+		it('sends an empty description when the prefilled one is cleared', async () => {
+			const { getByTestId, documentStore } = await renderDialog({
+				versionData: {
+					versionId: SAVED_VERSION_ID,
+					name: 'Release candidate',
+					description: 'Existing description',
+				},
+			});
+
+			await userEvent.clear(getByTestId('workflow-update-review-version-description-input'));
+			await userEvent.click(getByTestId('workflow-update-review-submit-button'));
+
+			await waitFor(() => {
+				expect(updateWorkflowReviewRequestVersion).toHaveBeenCalledWith(
+					expect.any(Object),
+					'review-1',
+					expect.objectContaining({ workflowVersionDescription: '' }),
+				);
+			});
+			expect(documentStore.versionData).toMatchObject({ description: null });
 		});
 
 		// The name is read before `flushSave()` is awaited, so a mid-save change can't
@@ -306,6 +379,7 @@ describe('WorkflowUpdateReviewDialog', () => {
 						workflowId: 'workflow-1',
 						workflowVersionId: SAVED_VERSION_ID,
 						workflowVersionName: 'Validated name',
+						workflowVersionDescription: undefined,
 					},
 				);
 			});
