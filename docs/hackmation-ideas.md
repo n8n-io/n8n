@@ -1,6 +1,6 @@
 # Hackmation ideas
 
-Three ideas to prototype. Each is scoped as an independent, incremental
+Four ideas to prototype. Each is scoped as an independent, incremental
 improvement — no dependency between them. Written up so any of them can be
 picked up and continued across sessions without re-deriving context.
 
@@ -317,9 +317,111 @@ profile when several exist), before the per-field stats logic even runs.
   logic can be written.
 - i18n for any new UI copy (required per project conventions).
 
+## 4. AI-generated node rename
+
+**Status: not started.** Fresh capture, sibling to idea #2 — no code written
+yet, but the sticky-note feature (see #2 above, now implemented on this
+branch) is a working blueprint for the whole thing: same UI pattern (a
+context-menu entry with the AI `sparkles` icon), same backend pattern (a
+small service resolving the Instance AI model and doing one `generateText()`
+call), same data shape sent to the LLM (node name/type/parameters).
+
+**Problem:** Default node names (`HTTP Request1`, `HTTP Request2`, `IF1`, …)
+carry no information about what a node actually does once its parameters are
+configured. Renaming is manual today — the user has to look at the node's
+configuration and think of a short, meaningful name themselves.
+
+**Idea:** Add a new context-menu entry directly below the existing "Rename"
+entry (single non-sticky node selected), using the same AI `sparkles` icon
+as idea #2's "Generate sticky note" entry. Clicking it:
+1. Reads the selected node — its type, current parameters, and disabled
+   state, the same way idea #2's `onGenerateStickyNote` does via
+   `workflowDocumentStore.value.getNodeById(nodeId)` (no need for
+   connections/neighbors — unlike the sticky note case, this is about what
+   the node itself does, not how it fits into a surrounding flow).
+2. Calls an LLM to produce a very short, descriptive name (a few words, in
+   the same register as a well-named node a human would write —
+   `Filter active users`, not `This node filters the incoming user list to
+   only include users who are active`).
+3. Applies the name the same way a manual rename does, so undo/history and
+   name-uniqueness handling stay identical to typing a name in by hand.
+
+**Relevant code to start from:**
+- Context menu item registration — the existing `rename` entry
+  (`packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts:543-549`,
+  single-node, non-sticky, gated on `isReadOnly`) is exactly where the new
+  entry should be inserted below. Idea #2's `generate_sticky_note` entry
+  (same file, ~line 335, gated on `!onlyStickies && instanceAi.value`) is
+  the closest precedent for wiring a *new* AI action into this same menu —
+  reuse its `instanceAi.value` gate and `icon: 'sparkles'` styling for the
+  new `auto_rename` (or similar) entry. Add the new id to the
+  `ContextMenuAction` union at the top of the file alongside `rename` /
+  `generate_sticky_note`.
+- Action dispatch — context menu actions are switched on in
+  `packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue`.
+  `case 'rename'` (line 1476) emits `update:node:name`, handled in
+  `NodeView.vue` (`onOpenRenameNodeModal`, wired at `NodeView.vue:2093`),
+  which calls `renameNode(currentName, newName, opts)` from
+  `packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts:420`
+  — this is the function an auto-rename action should call directly with
+  the LLM-generated name (skipping the modal/prompt), the same way
+  `case 'generate_sticky_note'` (`Canvas.vue:1529`) emits
+  `generate:sticky-note`, handled in `NodeView.vue` around line 1097, which
+  calls `workflowsStore.generateStickyNoteContent(...)`.
+- LLM call pattern — reuse idea #2's plumbing wholesale rather than
+  reinventing it:
+  - Frontend store method:
+    `packages/frontend/editor-ui/src/app/stores/workflows.store.ts:389`
+    (`generateStickyNoteContent`) takes
+    `Array<Pick<INodeUi, 'name' | 'type' | 'disabled' | 'parameters'>>` and
+    POSTs to `/workflows/:id/generate-sticky-note`. An equivalent
+    `generateNodeName(id, node)` would POST a single node to a new
+    `/workflows/:id/generate-node-name` endpoint with the same node shape.
+  - Backend controller:
+    `packages/cli/src/workflows/workflows.controller.ts:564-572`
+    (`generateStickyNote`, `@ProjectScope('workflow:read')`) — add a sibling
+    endpoint the same way.
+  - Backend service — `WorkflowStickyNoteService.generateContent`
+    (`packages/cli/src/workflows/workflow-sticky-note.service.ts`) is the
+    exact template: resolves the model via
+    `InstanceAiModelService.resolveAgentModelConfig(user)`, builds a prompt
+    from `node.name` / `node.type` / `node.disabled` /
+    `JSON.stringify(node.parameters)`, calls `generateText()` with a token
+    cap (`400` for the sticky note; a rename needs far fewer — a handful of
+    words) and a timeout (`30_000`ms), fails via `OperationalError` if the
+    model returns nothing. A `WorkflowNodeRenameService` (or a method on the
+    sticky note service, if it gets renamed to something more general) can
+    copy this structure almost verbatim, swapping the prompt.
+  - DTO: `packages/@n8n/api-types/src/dto/workflows/generate-sticky-note.dto.ts`
+    (`GenerateStickyNoteDto`) is the shape to mirror for a
+    `GenerateNodeNameDto`.
+
+**Things to figure out before building:**
+- **Output constraints.** Node names have display/width constraints on the
+  canvas — the prompt should push for something short (a handful of words)
+  and the response probably needs trimming/truncation as a safety net rather
+  than trusting the model to always stay brief.
+- **Name uniqueness.** n8n auto-suffixes duplicate node names
+  (`HTTP Request`, `HTTP Request1`, …) — confirm whatever `renameNode` does
+  today for a manually-typed duplicate name also fires correctly when the
+  name comes from the LLM instead of a text input, so two auto-renamed nodes
+  of the same type don't collide silently.
+- **Multi-node selection.** Idea #2 explicitly supports multi-select;
+  renaming is inherently a single-node action (`rename` itself is only
+  offered in `singleNodeActions`, not the multi-select action list) — should
+  the new menu item simply not appear when more than one node is selected,
+  matching `rename`'s own gating, or would a "batch rename" one-call-per-node
+  version be worth offering as a fast-follow?
+- **Sensitive parameter values.** Same caveat as idea #2: node parameters may
+  contain values that shouldn't be sent to an LLM verbatim (e.g. anything
+  resolved from credentials) — needs the same scrubbing/allow-list thinking
+  before wiring the real prompt, not just "send `node.parameters` as-is"
+  because that's what the sticky note code currently does.
+- Menu copy/i18n for the new entry label.
+
 ## Status
 
-All three ideas are documented. Ideas #1 and #2 are implemented on this
-branch. Idea #3 is pre-implementation — no code written yet. This doc
-exists so it (or any future addition) can be picked up in a later session
-without re-deriving the above context.
+All four ideas are documented. Ideas #1 and #2 are implemented on this
+branch. Ideas #3 and #4 are pre-implementation — no code written yet. This
+doc exists so any of them can be picked up in a later session without
+re-deriving the above context.

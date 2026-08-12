@@ -28,6 +28,7 @@ import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type {
 	ExecutionRedactionQueryDto,
+	GenerateNodeNameResponse,
 	GenerateStickyNoteResponse,
 	WorkflowPublicationStatus,
 } from '@n8n/api-types';
@@ -400,6 +401,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return content;
 	}
 
+	async function generateNodeName(
+		id: string,
+		node: Pick<INodeUi, 'name' | 'type' | 'disabled' | 'parameters'>,
+	): Promise<string> {
+		const { name } = await makeRestApiRequest<GenerateNodeNameResponse>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/generate-node-name`,
+			{ node } as unknown as IDataObject,
+		);
+
+		return name;
+	}
+
 	async function fetchPublicationStatus(id: string): Promise<WorkflowPublicationStatus> {
 		return await makeRestApiRequest<WorkflowPublicationStatus>(
 			rootStore.restApiContext,
@@ -564,6 +579,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		publishWorkflow,
 		fetchPublicationStatus,
 		generateStickyNoteContent,
+		generateNodeName,
 		deactivateWorkflow,
 		updateWorkflowSetting,
 		runWorkflow,

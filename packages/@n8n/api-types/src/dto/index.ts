@@ -133,6 +133,7 @@ export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export { GenerateStickyNoteDto } from './workflows/generate-sticky-note.dto';
+export { GenerateNodeNameDto } from './workflows/generate-node-name.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
 export {
 	WorkflowPublicDto,

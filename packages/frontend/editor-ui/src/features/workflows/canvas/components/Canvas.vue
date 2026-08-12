@@ -164,6 +164,7 @@ const emit = defineEmits<{
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
 	'generate:sticky-note': [ids: string[]];
+	'generate:node-name': [nodeId: string];
 	'save:workflow': [];
 }>();
 
@@ -1483,6 +1484,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return onSetNodeActivated(nodeIds[0]);
 		case 'rename':
 			return emit('update:node:name', nodeIds[0]);
+		case 'generate_node_name':
+			return emit('generate:node-name', nodeIds[0]);
 		case 'replace':
 			return emit('replace:node', nodeIds[0]);
 		case 'change_color':

@@ -4,6 +4,7 @@ import {
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
+	GenerateNodeNameDto,
 	GenerateStickyNoteDto,
 	ImportWorkflowFromUrlDto,
 	ManualRunDto,
@@ -65,6 +66,7 @@ import { WorkflowCreationService } from './workflow-creation.service';
 import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowNodeRenameService } from './workflow-node-rename.service';
 import { WorkflowStickyNoteService } from './workflow-sticky-note.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
@@ -97,6 +99,7 @@ export class WorkflowsController {
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowStickyNoteService: WorkflowStickyNoteService,
+		private readonly workflowNodeRenameService: WorkflowNodeRenameService,
 	) {}
 
 	@Post('/')
@@ -569,6 +572,16 @@ export class WorkflowsController {
 		@Body body: GenerateStickyNoteDto,
 	) {
 		return await this.workflowStickyNoteService.generateContent(req.user, body.nodes);
+	}
+
+	@Post('/:workflowId/generate-node-name')
+	@ProjectScope('workflow:read')
+	async generateNodeName(
+		req: AuthenticatedRequest<{ workflowId: string }>,
+		_res: unknown,
+		@Body body: GenerateNodeNameDto,
+	) {
+		return await this.workflowNodeRenameService.generateName(req.user, body.node);
 	}
 
 	@Licensed('feat:sharing')

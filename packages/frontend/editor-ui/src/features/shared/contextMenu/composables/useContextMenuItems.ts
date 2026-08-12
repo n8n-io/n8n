@@ -30,6 +30,7 @@ export type ContextMenuAction =
 	| 'copy_test_url'
 	| 'copy_production_url'
 	| 'rename'
+	| 'generate_node_name'
 	| 'replace'
 	| 'toggle_pin'
 	| 'delete'
@@ -547,6 +548,16 @@ export function useContextMenuItems(
 								shortcut: { keys: ['Space'] },
 								disabled: isReadOnly.value,
 							},
+							...(instanceAi.value
+								? [
+										{
+											id: 'generate_node_name',
+											icon: 'sparkles',
+											label: i18n.baseText('contextMenu.generateNodeName'),
+											disabled: isReadOnly.value,
+										} satisfies Item,
+									]
+								: []),
 							{
 								id: 'replace',
 								label: i18n.baseText('contextMenu.replace'),

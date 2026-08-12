@@ -1126,6 +1126,27 @@ async function onGenerateStickyNote(ids: string[]) {
 	}
 }
 
+async function onGenerateNodeName(nodeId: string) {
+	const node = workflowDocumentStore.value.getNodeById(nodeId);
+	if (!node) return;
+
+	canvasStore.startLoading(i18n.baseText('nodeRename.generate.loading'));
+	try {
+		const name = await workflowsStore.generateNodeName(workflowId.value, {
+			name: node.name,
+			type: node.type,
+			disabled: node.disabled,
+			parameters: node.parameters,
+		});
+
+		await renameNode(node.name, name, { trackHistory: true });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeRename.generate.error'));
+	} finally {
+		canvasStore.stopLoading();
+	}
+}
+
 function onClickConnectionAdd(connection: Connection) {
 	const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
 	const isAddBetweenTool =
@@ -2117,6 +2138,7 @@ onBeforeUnmount(() => {
 			@create:node="onOpenNodeCreatorFromCanvas"
 			@create:sticky="onCreateSticky"
 			@generate:sticky-note="onGenerateStickyNote"
+			@generate:node-name="onGenerateNodeName"
 			@delete:nodes="onDeleteNodes"
 			@update:nodes:enabled="onToggleNodesDisabled"
 			@update:nodes:pin="onPinNodes"
