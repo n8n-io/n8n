@@ -1,11 +1,15 @@
+import type { WorkflowReviewClosedReason } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { DbLock, DbLockService, WorkflowReviewRequestRepository } from '@n8n/db';
+import {
+	DbLock,
+	DbLockService,
+	WorkflowReviewActivityRepository,
+	WorkflowReviewRequestRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import type { WorkflowMutationHooks } from '@/workflows/workflow-mutation-hooks-proxy.service';
-
-type AutoCloseReason = 'workflow-archived' | 'workflow-moved' | 'workflow-deleted';
 
 /**
  * Closes open review requests when their workflow stops being reviewable:
@@ -21,6 +25,7 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
+		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
 	) {}
@@ -60,6 +65,29 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 				workflowIds,
 				workflowReviewRequestIds: closedRequestIds,
 			});
+
+			// Post-commit and best-effort, the opposite of the lock path above: the close has
+			// already committed on the root context with no transaction, so a failed entry can
+			// only be logged. Per-entry so one failure does not strand the remaining swept
+			// requests unexplained.
+			for (const workflowReviewRequestId of closedRequestIds) {
+				try {
+					await this.activityRepository.createActivity(
+						{
+							workflowReviewRequestId,
+							type: 'review.closed',
+							data: { reason: 'workflow-deleted' },
+							createdById: null,
+						},
+						{},
+					);
+				} catch (error) {
+					this.logger.error('Failed to record why a swept review closed', {
+						workflowReviewRequestId,
+						error,
+					});
+				}
+			}
 		} catch (error) {
 			// The delete has already committed; failing it now would be worse than a
 			// request that stays open until the next sweep closes it.
@@ -72,7 +100,7 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 
 	private async closeOpenRequestsForWorkflows(
 		workflowIds: string[],
-		reason: AutoCloseReason,
+		reason: WorkflowReviewClosedReason,
 		options: { rethrow?: boolean } = {},
 	): Promise<void> {
 		try {
@@ -93,6 +121,21 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 						// A system close has no closing user; the decision stays as-is.
 						request.closedById = null;
 						await this.workflowReviewRequestRepository.saveRequest(request, ctx);
+
+						// In the transaction on purpose: a review closed without an explanation is
+						// worse than a close that rolls back. The cost is that a failed insert now
+						// rolls the close back too — swallowed for archive/move, and for the
+						// pre-delete hook it calls the delete off, which the close could already do.
+						await this.activityRepository.createActivity(
+							{
+								workflowReviewRequestId: request.id,
+								type: 'review.closed',
+								data: { reason },
+								createdById: null,
+							},
+							ctx,
+						);
+
 						for (const linkedWorkflowId of linkedWorkflowIds) affected.add(linkedWorkflowId);
 					}
 
@@ -121,8 +164,9 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 				workflowIds,
 				error,
 			});
-			// Cleanup must never fail a mutation that already committed; only the
-			// pre-delete hook is still in a position to call its mutation off.
+			// Cleanup does not fail a mutation that already committed — archive and move end
+			// here, having rolled the close back. Only the pre-delete hook is still in a
+			// position to call its mutation off.
 			if (options.rethrow) throw error;
 		}
 	}

@@ -3,6 +3,8 @@ import type {
 	DbLockService,
 	OperationContext,
 	Transaction,
+	WorkflowReviewActivity,
+	WorkflowReviewActivityRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestRepository,
 } from '@n8n/db';
@@ -15,6 +17,7 @@ import { WorkflowReviewAutoCloseService } from '../workflow-review-auto-close.se
 describe('WorkflowReviewAutoCloseService', () => {
 	const logger = mock<Logger>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
+	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
@@ -23,6 +26,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 	const service = new WorkflowReviewAutoCloseService(
 		logger,
 		requestRepository,
+		activityRepository,
 		dbLockService,
 		collaborationService,
 	);
@@ -159,6 +163,23 @@ describe('WorkflowReviewAutoCloseService', () => {
 			await service.afterWorkflowsDeleted(['wf-1']);
 
 			expect(logger.info).not.toHaveBeenCalled();
+		});
+
+		// The close has already committed on the root context, so a failed explanation can only
+		// be logged — and must not strand the requests behind it in the batch.
+		it('explains the swept reviews it can and only logs the ones it cannot', async () => {
+			requestRepository.closeOrphanedOpenRequests.mockResolvedValue(['req-9', 'req-10']);
+			activityRepository.createActivity
+				.mockRejectedValueOnce(new Error('db down'))
+				.mockResolvedValueOnce(mock<WorkflowReviewActivity>());
+
+			await expect(service.afterWorkflowsDeleted(['wf-1'])).resolves.toBeUndefined();
+
+			expect(activityRepository.createActivity).toHaveBeenCalledTimes(2);
+			expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+				expect.any(String),
+				expect.objectContaining({ workflowReviewRequestId: 'req-9' }),
+			);
 		});
 
 		// The delete already committed, so there is nothing left to abort.

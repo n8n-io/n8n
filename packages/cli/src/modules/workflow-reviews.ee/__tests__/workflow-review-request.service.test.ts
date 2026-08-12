@@ -18,6 +18,7 @@ import type {
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestForWorkflowRow,
+	WorkflowReviewActivityRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	WorkflowRepository,
@@ -72,6 +73,7 @@ describe('WorkflowReviewRequestService', () => {
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
+	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const userRepository = mock<UserRepository>();
 	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const roleService = mock<RoleService>();
@@ -96,6 +98,7 @@ describe('WorkflowReviewRequestService', () => {
 		workflowRepository,
 		authorRepository,
 		reviewerRepository,
+		activityRepository,
 		userRepository,
 		eligibilityService,
 		roleService,

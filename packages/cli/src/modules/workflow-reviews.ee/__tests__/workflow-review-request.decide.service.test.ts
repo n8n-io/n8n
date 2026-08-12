@@ -12,6 +12,7 @@ import type {
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
+	WorkflowReviewActivityRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestWorkflowRepository,
@@ -41,7 +42,10 @@ const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:mem
 const requestId = 'req-1';
 const projectId = 'proj-1';
 const approveDto: DecideWorkflowReviewRequestDto = { decision: 'approved' };
-const requestChangesDto: DecideWorkflowReviewRequestDto = { decision: 'changes_requested' };
+const requestChangesDto: DecideWorkflowReviewRequestDto = {
+	decision: 'changes_requested',
+	note: 'Please rename the node',
+};
 
 describe('WorkflowReviewRequestService.decide', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
@@ -54,6 +58,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
+	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const userRepository = mock<UserRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const roleService = mock<RoleService>();
@@ -78,6 +83,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		workflowRepository,
 		authorRepository,
 		reviewerRepository,
+		activityRepository,
 		userRepository,
 		// Real service over the same mocks, so the override assertions below
 		// exercise the actual eligibility logic decide() shares with the read side.

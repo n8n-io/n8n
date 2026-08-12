@@ -24,6 +24,7 @@ import {
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowRepository,
+	WorkflowReviewActivityRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type OperationContext,
@@ -75,6 +76,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
+		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly userRepository: UserRepository,
 		private readonly eligibilityService: WorkflowReviewEligibilityService,
 		private readonly roleService: RoleService,
@@ -417,6 +419,18 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
+				// Records the opening version: history pruning can null the pin, after which
+				// the version a review opened on is no longer recoverable.
+				await this.activityRepository.createActivity(
+					{
+						workflowReviewRequestId: created.id,
+						type: 'review.opened',
+						data: { workflowVersionIds: [workflowVersionId] },
+						createdById: user.id,
+					},
+					ctx,
+				);
+
 				return created;
 			},
 		);
@@ -545,6 +559,10 @@ export class WorkflowReviewRequestService {
 					return { request: current, changed: false };
 				}
 
+				// Read before the UPDATE: that repository writes by criteria and leaves the
+				// in-memory row alone, so reading first keeps that non-load-bearing.
+				const fromVersionId = currentRow.workflowVersionId;
+
 				await this.workflowReviewRequestWorkflowRepository.updateWorkflowVersion(
 					{
 						workflowReviewRequestId,
@@ -568,6 +586,17 @@ export class WorkflowReviewRequestService {
 
 				await this.workflowReviewRequestAuthorRepository.addAuthorIfMissing(
 					{ workflowReviewRequestId, userId: user.id },
+					ctx,
+				);
+
+				await this.activityRepository.createActivity(
+					{
+						workflowReviewRequestId,
+						type: 'review.version_updated',
+						data: { fromVersionId, toVersionId: dto.workflowVersionId },
+						createdById: user.id,
+						workflowId: dto.workflowId,
+					},
 					ctx,
 				);
 
@@ -638,6 +667,13 @@ export class WorkflowReviewRequestService {
 		);
 		this.assertDecisionAllowed(isAuthor, hasAdminOverride);
 
+		// After the lifecycle and permission checks: a state or permission error outranks a
+		// payload error, so an author keeps being told they may not decide at all rather than
+		// that their note was the problem.
+		if (dto.decision === 'changes_requested' && !dto.note) {
+			throw new BadRequestError('A note is required when requesting changes');
+		}
+
 		const { request: saved, pinnedVersionId } = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			async (ctx) => {
@@ -681,6 +717,23 @@ export class WorkflowReviewRequestService {
 				}
 
 				const savedRequest = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
+
+				await this.activityRepository.createActivity(
+					{
+						workflowReviewRequestId,
+						type: dto.decision === 'approved' ? 'review.approved' : 'review.changes_requested',
+						data: {
+							// A pruned pin drops out rather than landing as a null in the array.
+							workflowVersionIds: currentRows
+								.map((row) => row.workflowVersionId)
+								.filter((id) => id !== null),
+							note: dto.note ?? null,
+						},
+						createdById: user.id,
+					},
+					ctx,
+				);
+
 				return { request: savedRequest, pinnedVersionId: currentRow.workflowVersionId };
 			},
 		);
