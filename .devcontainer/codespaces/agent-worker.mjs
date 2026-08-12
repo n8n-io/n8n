@@ -110,9 +110,6 @@ async function handle(turn) {
 	}
 }
 
-const HEARTBEAT_MS = 60_000;
-let lastBeat = 0;
-
 console.log(`agent-worker polling as ${GITHUB_USER} every ${POLL_INTERVAL_MS}ms`);
 for (;;) {
 	try {
@@ -124,13 +121,6 @@ for (;;) {
 		}
 	} catch (error) {
 		console.error(`poll error: ${error.message}`);
-	}
-	// Log once a minute on idle. This shows the worker is alive. It also gives the
-	// tmux pane output, which lets you test whether pane activity holds the
-	// codespace open (run the worker in a pane, not with a log redirect).
-	if (Date.now() - lastBeat >= HEARTBEAT_MS) {
-		lastBeat = Date.now();
-		console.log(`heartbeat ${new Date().toISOString()}`);
 	}
 	await sleep(POLL_INTERVAL_MS);
 }
