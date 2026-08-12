@@ -1195,7 +1195,7 @@ importers:
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -1267,7 +1267,7 @@ importers:
         version: 1.26.0
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       csv-parse:
         specifier: 'catalog:'
         version: 6.2.1
@@ -1495,7 +1495,7 @@ importers:
         version: link:../utils
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
@@ -1611,7 +1611,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       dotenv:
         specifier: 'catalog:'
         version: 17.2.3
@@ -1759,7 +1759,7 @@ importers:
         version: link:../utils
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -3329,7 +3329,7 @@ importers:
         version: 2.5.7
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       basic-auth:
         specifier: 'catalog:'
         version: 2.0.1
@@ -3541,7 +3541,7 @@ importers:
         version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
@@ -4280,6 +4280,9 @@ importers:
       '@sentry/node':
         specifier: catalog:sentry
         version: 10.55.0(@opentelemetry/exporter-trace-otlp-http@0.217.0(@opentelemetry/api@1.9.1))
+      '@slack/socket-mode':
+        specifier: 2.0.7
+        version: 2.0.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@supabase/supabase-js':
         specifier: 'catalog:'
         version: 2.50.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -4682,7 +4685,7 @@ importers:
         version: 6.141.0
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       concurrently:
         specifier: ^8.2.0
         version: 8.2.0
@@ -4902,7 +4905,7 @@ importers:
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       nock:
         specifier: 'catalog:'
         version: 14.0.14
@@ -5566,7 +5569,7 @@ importers:
         version: link:../../../@n8n/utils
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       flatted:
         specifier: 3.4.2
         version: 3.4.2
@@ -5962,7 +5965,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -6390,7 +6393,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       basic-auth:
         specifier: 'catalog:'
         version: 2.0.1
@@ -7050,7 +7053,7 @@ importers:
         version: 0.16.1
       axios:
         specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -15214,6 +15217,7 @@ packages:
   cron-parser@4.9.0:
     resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
     engines: {node: '>=12.0.0'}
+    deprecated: v4 is no longer maintained, upgrade to v5
 
   cron-parser@5.6.1:
     resolution: {integrity: sha512-QBm4o1PwZiuY7KFbVvW7FLC8bozy7YWzv+Fz6KRS7sQghzcbDZCGxr/Bc5b6TQreAoSwuWVP491dIcK0THCX6A==}
@@ -15257,6 +15261,7 @@ packages:
 
   crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
+    deprecated: Active development of CryptoJS has been discontinued. This library is no longer maintained.
 
   csrf@3.1.0:
     resolution: {integrity: sha512-uTqEnCvWRk042asU6JtapDTcJeeailFy4ydOQS28bj1hcLnYRiqi8SsD2jS412AY1I/4qdOwWZun774iqywf9w==}
@@ -20387,6 +20392,7 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -25793,7 +25799,7 @@ snapshots:
 
   '@codspeed/core@5.2.0':
     dependencies:
-      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       find-up: 6.3.0
       form-data: 4.0.6
       node-gyp-build: 4.8.4
@@ -25917,7 +25923,7 @@ snapshots:
 
   '@daytona/api-client@0.187.0':
     dependencies:
-      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -25937,7 +25943,7 @@ snapshots:
       '@opentelemetry/sdk-node': 0.217.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base': 2.7.1(@opentelemetry/api@1.9.1)
       '@opentelemetry/semantic-conventions': 1.40.0
-      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       busboy: 1.6.0
       dotenv: 17.4.2
       expand-tilde: 2.0.2
@@ -25955,7 +25961,7 @@ snapshots:
 
   '@daytona/toolbox-api-client@0.187.0':
     dependencies:
-      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -27677,7 +27683,7 @@ snapshots:
 
   '@n8n/sandbox-client@0.1.0':
     dependencies:
-      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -28931,7 +28937,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@3.0.5':
     dependencies:
-      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       axios-retry: 4.5.0(axios@1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49))
       component-type: 2.0.0
       join-component: 1.1.0
@@ -29225,7 +29231,7 @@ snapshots:
       '@slack/types': 2.20.1
       '@types/node': 20.19.41
       '@types/retry': 0.12.0
-      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       eventemitter3: 5.0.1
       form-data: 4.0.6
       is-electron: 2.2.2
@@ -32344,7 +32350,7 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)):
     dependencies:
-      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       is-retry-allowed: 2.2.0
 
   axios@1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4):
@@ -39970,7 +39976,7 @@ snapshots:
 
   retry-axios@2.6.0(axios@1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)):
     dependencies:
-      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -40725,7 +40731,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.3.4)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2

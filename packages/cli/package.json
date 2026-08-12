@@ -190,6 +190,7 @@
     "@qdrant/js-client-rest": "catalog:",
     "@rudderstack/rudder-sdk-node": "catalog:",
     "@sentry/node": "catalog:sentry",
+    "@slack/socket-mode": "2.0.7",
     "@supabase/supabase-js": "catalog:",
     "ai": "catalog:",
     "aws4": "1.11.0",
