@@ -1044,6 +1044,7 @@ watch(
 				v-else-if="item.parameter.type === 'uiBuilder'"
 				:value="getParameterValue(item.parameter.name)"
 				:path="item.path"
+				:node="node"
 				:is-read-only="isReadOnly"
 				@value-changed="valueChanged"
 			/>

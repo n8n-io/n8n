@@ -2,9 +2,6 @@
 import {
 	N8nButton,
 	N8nDialog,
-	N8nDialogDescription,
-	N8nDialogHeader,
-	N8nDialogTitle,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nText,
@@ -168,6 +165,25 @@ const inspectorScope = computed<UiScope>(
 );
 
 /**
+ * The real production URL of the Webhook that serves this page, when the host
+ * can pin one down unambiguously — see `UiBuilderHost.liveWebhookUrl`. Read
+ * fresh on click rather than cached, since it also depends on the workflow's
+ * saved connections, which the host is better placed to track than this pane.
+ */
+const liveWebhookUrl = computed(() => props.host.liveWebhookUrl());
+
+const liveWebhookTooltip = computed(() => {
+	if (liveWebhookUrl.value) return 'Open the live webhook URL in a new tab';
+	if (!props.host.workflowActive()) return 'Activate the workflow to get a live URL';
+	return 'No single GET Webhook trigger serving this page could be found';
+});
+
+function openLiveWebhook() {
+	if (!liveWebhookUrl.value) return;
+	window.open(liveWebhookUrl.value, '_blank', 'noopener');
+}
+
+/**
  * `button` + `onClick` gives `buttonOnClick`, then `buttonOnClick2`. The host
  * makes the pair; naming it after what points at it is this pane's business.
  */
@@ -232,16 +248,14 @@ function onEscape(event: KeyboardEvent) {
 		<N8nText size="small" color="text-light">{{ summary }}</N8nText>
 	</div>
 
-	<N8nDialog :open="open" size="cover" @update:open="open = $event" @escape-key-down="onEscape">
+	<N8nDialog
+		:open="open"
+		size="cover"
+		aria-label="UI Builder"
+		@update:open="open = $event"
+		@escape-key-down="onEscape"
+	>
 		<div class="ui-builder">
-			<N8nDialogHeader class="ui-builder__header">
-				<N8nDialogTitle>UI Builder</N8nDialogTitle>
-				<N8nDialogDescription>
-					Click a component in the canvas or the outline to select it. The palette inserts after the
-					selection.
-				</N8nDialogDescription>
-			</N8nDialogHeader>
-
 			<div class="ui-builder__layout">
 				<N8nResizeWrapper
 					class="ui-builder__resizer"
@@ -292,6 +306,7 @@ function onEscape(event: KeyboardEvent) {
 						/>
 
 						<OutlinePane
+							class="ui-builder__outline"
 							:rows="outlineRows"
 							:count="componentCount"
 							:selected-id="selectedId"
@@ -309,16 +324,6 @@ function onEscape(event: KeyboardEvent) {
 
 				<section class="ui-builder__canvas">
 					<div class="ui-builder__toolbar">
-						<N8nText size="small" color="text-light">
-							{{
-								selected
-									? `${selected.type} · ${selected.id}`
-									: selectedPseudo
-										? selectedPseudo.label
-										: 'Nothing selected'
-							}}
-						</N8nText>
-
 						<!-- Which page is on screen, since the canvas shows one at a time. -->
 						<N8nText v-if="editingPage" size="small" color="text-light">
 							{{ editingPage.title || editingPage.path }}
@@ -337,6 +342,17 @@ function onEscape(event: KeyboardEvent) {
 								:icon="previewMode ? 'eye-off' : 'eye'"
 								:aria-label="previewMode ? 'Back to editing' : 'Preview without editing chrome'"
 								@click="previewMode = !previewMode"
+							/>
+						</N8nTooltip>
+
+						<N8nTooltip :content="liveWebhookTooltip">
+							<N8nIconButton
+								variant="ghost"
+								size="small"
+								icon="external-link"
+								:aria-label="liveWebhookTooltip"
+								:disabled="!liveWebhookUrl"
+								@click="openLiveWebhook"
 							/>
 						</N8nTooltip>
 
@@ -416,17 +432,18 @@ function onEscape(event: KeyboardEvent) {
 .ui-builder {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	height: 100%;
 	max-height: 100%;
 	min-height: 0;
 	overflow: hidden;
-}
-
-.ui-builder__header {
-	flex-shrink: 0;
-	/* Clear the dialog's absolutely positioned close button. */
-	padding-right: var(--spacing--xl);
+	/*
+	 * There is no header row any more to clear the dialog's absolutely
+	 * positioned close button, so the layout itself is inset by exactly the
+	 * amount the button pokes into the content area.
+	 */
+	padding-top: var(--spacing--sm);
+	padding-right: var(--spacing--sm);
 }
 
 .ui-builder__layout {
@@ -439,7 +456,7 @@ function onEscape(event: KeyboardEvent) {
 	 * default `align-items: stretch` gives every column the row's full height,
 	 * same as grid did before.
 	 */
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	overflow: hidden;
 }
 
@@ -447,32 +464,42 @@ function onEscape(event: KeyboardEvent) {
  * Sized entirely by its own inline `width` (bound to a resizable column's
  * width ref) — never grows or shrinks on its own. `:deep` reaches into
  * `PaneShell`'s root so the pane actually fills the height this wrapper
- * gets from the flex row, instead of shrinking to its content.
+ * gets from the flex row, instead of shrinking to its content. The pages
+ * pane opts out (see `.ui-builder__pages` below): it sizes to its own
+ * content instead of stretching.
  */
 .ui-builder__resizer {
 	flex: 0 0 auto;
 	min-height: 0;
 }
 
-.ui-builder__resizer :deep(.ui-pane) {
+.ui-builder__resizer :deep(.ui-pane):not(.ui-builder__pages) {
 	height: 100%;
 }
 
 .ui-builder__column {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	height: 100%;
 	min-height: 0;
 }
 
 /*
- * Grows with the list and then stops: enough for a handful of pages without
- * squeezing the outline below it out of the column.
+ * Hugs the page list instead of stretching: with one or two pages, the
+ * outline below gets the room. `max-height` caps it at roughly six rows
+ * plus the header before it scrolls internally (via `PaneShell`'s
+ * `.ui-pane__body`) rather than pushing the outline further down.
  */
 .ui-builder__pages {
-	flex: 0 1 auto;
-	max-height: 40%;
+	flex: 0 0 auto;
+	max-height: calc(var(--height--sm) + 6 * var(--height--xl));
+}
+
+/* Grows to absorb whatever height the content-sized pages pane leaves it. */
+.ui-builder__outline {
+	flex: 1 1 auto;
+	min-height: 0;
 }
 
 .ui-builder__canvas {
@@ -502,6 +529,6 @@ function onEscape(event: KeyboardEvent) {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-	padding: var(--spacing--sm);
+	padding: var(--spacing--xs);
 }
 </style>

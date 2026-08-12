@@ -138,42 +138,45 @@ describe('useOutline', () => {
 	});
 
 	describe('the app frame', () => {
-		it('shows header, pages and footer as pseudo-components even when empty', () => {
+		it('shows header and footer as pseudo-components even when empty, and no pseudo row for the empty paged region', () => {
 			const doc = ref<UiNode>(frame([], [], []));
 
 			const { outlineRows } = useOutline(doc);
-			const [, header, pages, footer] = outlineRows.value;
+			const [, header, footer] = outlineRows.value;
 
+			// No pages, so there is nothing to show in the paged region's place -
+			// no wrapper row and no page row.
 			expect(outlineRows.value.map((row) => row.key)).toEqual([
 				'frame-1',
 				'frame-1/header',
-				'frame-1/default',
 				'frame-1/footer',
 			]);
 
-			for (const row of [header, pages, footer]) {
+			for (const row of [header, footer]) {
 				expect(row.kind).toBe('pseudo');
 				if (row.kind === 'pseudo') expect(row.nodeId).toBe('frame-1');
 			}
 			expect(header.icon).toBe('menu');
-			expect(pages.icon).toBe('files');
 			expect(footer.icon).toBe('info');
-			expect(pages.label).toBe('Pages');
 		});
 
-		it('nests each region’s children under its pseudo-component row', () => {
+		it('renders the paged region’s page directly, with no pseudo row above it', () => {
 			const doc = ref<UiNode>(frame([leaf('heading-1', 'heading')], [leaf('page-1', 'page')], []));
 
 			const { outlineRows } = useOutline(doc);
 
+			// The page sits at the same depth Header/Footer's pseudo rows sit at,
+			// not nested inside a "Pages" wrapper: the paged region always holds
+			// at most one visible child, so the wrapper would only repeat what the
+			// page's own row already says.
 			expect(outlineRows.value.map((row) => row.key)).toEqual([
 				'frame-1',
 				'frame-1/header',
 				'heading-1',
-				'frame-1/default',
 				'page-1',
 				'frame-1/footer',
 			]);
+			expect(outlineRows.value.find((row) => row.key === 'page-1')?.depth).toBe(1);
 		});
 
 		it('marks the frame as expandable and hides the pseudo-components on collapse', () => {
@@ -189,27 +192,22 @@ describe('useOutline', () => {
 			expect(outlineRows.value.map((row) => row.key)).toEqual(['frame-1']);
 		});
 
-		it('gives the paged region exactly one pseudo row no matter how many pages it holds', () => {
+		it('lays out every page as a direct child, with no shared pseudo row, no matter how many the region holds', () => {
 			const doc = ref<UiNode>(
 				frame([], [leaf('page-1', 'page'), leaf('page-2', 'page'), leaf('page-3', 'page')], []),
 			);
 
 			const { outlineRows } = useOutline(doc);
 
-			// One "frame-1/default" row for the region itself, not one per page: a
-			// pseudo row names the slot, and the pages inside it are the slot's
-			// ordinary children, the same as any other region's contents.
+			// Only header and footer are pseudo rows now; the paged region never
+			// gets one, whether it holds one page or several.
 			const pseudoRows = outlineRows.value.filter((row) => row.kind === 'pseudo');
-			expect(pseudoRows).toHaveLength(3); // header, pages, footer - one each
-			expect(pseudoRows.filter((row) => row.key === 'frame-1/default')).toHaveLength(1);
-
-			const pagesPseudo = pseudoRows.find((row) => row.key === 'frame-1/default');
-			expect(pagesPseudo?.label).toBe('Pages');
+			expect(pseudoRows).toHaveLength(2); // header, footer
+			expect(pseudoRows.some((row) => row.key === 'frame-1/default')).toBe(false);
 
 			expect(outlineRows.value.map((row) => row.key)).toEqual([
 				'frame-1',
 				'frame-1/header',
-				'frame-1/default',
 				'page-1',
 				'page-2',
 				'page-3',
@@ -222,16 +220,12 @@ describe('useOutline', () => {
 
 			const { outlineRows } = useOutline(doc);
 			const header = outlineRows.value.find((row) => row.key === 'frame-1/header');
-			const pages = outlineRows.value.find((row) => row.key === 'frame-1/default');
 
 			expect(header?.kind).toBe('pseudo');
 			if (header?.kind === 'pseudo') {
 				expect(header.hasChildren).toBe(true);
 				expect(header.collapsed).toBe(false);
 			}
-
-			expect(pages?.kind).toBe('pseudo');
-			if (pages?.kind === 'pseudo') expect(pages.hasChildren).toBe(false);
 		});
 
 		it('collapsing a pseudo row hides its own children, and toggling back reveals them', () => {
@@ -244,7 +238,6 @@ describe('useOutline', () => {
 			expect(outlineRows.value.map((row) => row.key)).toEqual([
 				'frame-1',
 				'frame-1/header',
-				'frame-1/default',
 				'frame-1/footer',
 			]);
 			const header = outlineRows.value.find((row) => row.key === 'frame-1/header');
@@ -257,25 +250,23 @@ describe('useOutline', () => {
 				'frame-1',
 				'frame-1/header',
 				'heading-1',
-				'frame-1/default',
 				'frame-1/footer',
 			]);
 		});
 
-		it('collapsing a pseudo row leaves other pseudo rows and the frame itself untouched', () => {
+		it('collapsing another pseudo row leaves the paged region’s page and the frame itself untouched', () => {
 			const doc = ref<UiNode>(
 				frame([leaf('heading-1', 'heading')], [leaf('page-1', 'page')], [leaf('text-1')]),
 			);
 
 			const { outlineRows, toggleCollapsed } = useOutline(doc);
 
-			toggleCollapsed('frame-1/default');
+			toggleCollapsed('frame-1/header');
 
 			expect(outlineRows.value.map((row) => row.key)).toEqual([
 				'frame-1',
 				'frame-1/header',
-				'heading-1',
-				'frame-1/default',
+				'page-1',
 				'frame-1/footer',
 				'text-1',
 			]);
@@ -312,20 +303,21 @@ describe('useOutline', () => {
 
 				const { outlineRows } = useOutline(doc, activePageId);
 
-				// page-1's row and subtree are gone entirely; page-2's is flattened
-				// as normal, matching what the canvas has on screen. header/footer
-				// are still shown, empty as they are: they stay on screen regardless
-				// of which page is active.
+				// page-1's row and subtree are gone entirely; page-2's is flattened as
+				// normal, matching what the canvas has on screen, at the same depth
+				// header/footer's pseudo rows sit at rather than nested under a
+				// "Pages" wrapper. header/footer are still shown, empty as they are:
+				// they stay on screen regardless of which page is active.
 				expect(outlineRows.value.map((row) => row.key)).toEqual([
 					'frame-1',
 					'frame-1/header',
-					'frame-1/default',
 					'page-2',
 					'heading-2',
 					'stack-1',
 					'input-1',
 					'frame-1/footer',
 				]);
+				expect(outlineRows.value.find((row) => row.key === 'page-2')?.depth).toBe(1);
 			});
 
 			it('follows the active page when it changes', () => {
@@ -339,7 +331,6 @@ describe('useOutline', () => {
 				expect(outlineRows.value.map((row) => row.key)).toEqual([
 					'frame-1',
 					'frame-1/header',
-					'frame-1/default',
 					'page-1',
 					'heading-1',
 					'frame-1/footer',
@@ -350,13 +341,12 @@ describe('useOutline', () => {
 				expect(outlineRows.value.map((row) => row.key)).toEqual([
 					'frame-1',
 					'frame-1/header',
-					'frame-1/default',
 					'page-2',
 					'frame-1/footer',
 				]);
 			});
 
-			it('falls back to showing every page when there is no active page', () => {
+			it('falls back to showing every page, directly and with no shared wrapper row, when there is no active page', () => {
 				const doc = ref<UiNode>(frame([], [page('page-1', []), page('page-2', [])], []));
 
 				const { outlineRows } = useOutline(doc, ref(undefined));
@@ -364,7 +354,6 @@ describe('useOutline', () => {
 				expect(outlineRows.value.map((row) => row.key)).toEqual([
 					'frame-1',
 					'frame-1/header',
-					'frame-1/default',
 					'page-1',
 					'page-2',
 					'frame-1/footer',
