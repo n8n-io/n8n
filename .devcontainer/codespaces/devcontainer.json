@@ -20,16 +20,16 @@
 	"forwardPorts": [8080, 5678],
 	// Runs in prebuilds, so a fresh codespace starts with deps installed and the build warm
 	"onCreateCommand": "corepack install && pnpm install && (pnpm build > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log) && pnpm --filter=n8n-playwright exec playwright install chromium",
-	// Start the poll worker on each container start. `bash -lc` loads the secrets shim, so
-	// it gets AGENT_WORKER_TOKEN. tmux detaches it, so it does not block startup. The worker
-	// only makes outbound calls to n8n — nothing inbound is exposed.
+	// Start the poll worker on each container start. `bash -lc` loads the secrets
+	// shim, so the worker gets AGENT_WORKER_TOKEN. tmux detaches it, so it does not
+	// block startup. The worker makes only outbound calls. It exposes nothing inbound.
 	"postStartCommand": "tmux new-session -d -s agent-worker 'bash -lc \"node /workspaces/n8n/.devcontainer/codespaces/agent-worker.mjs >> /tmp/agent-worker.log 2>&1\"' || true",
 	"secrets": {
 		"ANTHROPIC_API_KEY": {
 			"description": "Anthropic API key for Claude Code / OpenCode sessions"
 		},
 		"AGENT_WORKER_TOKEN": {
-			"description": "Shared bearer the poll worker sends to n8n on every dequeue (see .devcontainer/codespaces/agent-worker.mjs)"
+			"description": "The shared bearer token. The poll worker sends it to n8n on each dequeue. See .devcontainer/codespaces/agent-worker.mjs."
 		},
 		"N8N_DEQUEUE_URL": {
 			"description": "n8n webhook the poll worker calls to claim a pending turn"

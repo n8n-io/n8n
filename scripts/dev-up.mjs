@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Bring the app up for viewing in one command: ensure deps, (optionally) build,
-// start the backend, wait for health, print the URL.
+// Bring the app up with one command. This script installs missing dependencies,
+// builds if you ask, starts the backend, waits for health, and prints the URL.
 //
-//   pnpm dev:up            deps if missing → dev:be → print URL   (backend hot-reloads)
-//   pnpm dev:up --build    also `pnpm build` first (needed for frontend edits to show)
+//   pnpm dev:up            install if needed, start dev:be, print the URL
+//   pnpm dev:up --build    also run `pnpm build` first
 //
-// dev:be serves the editor from its existing `dist` build, so frontend changes
-// only appear after `--build` + this restart. For live frontend HMR use
-// `pnpm dev:fe:editor` on 8080 instead (needs `pnpm session tunnel 5678 8080`).
+// dev:be serves the editor from the `dist` build. A frontend change appears only
+// after `--build` and this restart. For live frontend hot reload, use
+// `pnpm dev:fe:editor` on 8080. That path needs `pnpm session tunnel 5678 8080`.
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, openSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';

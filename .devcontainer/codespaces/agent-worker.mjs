@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Outbound poll worker for per-turn Claude Code conversations on a codespace.
-// The codespace can't be reached inbound (GitHub port ACL), so this reaches
-// OUT: it polls n8n for a pending turn addressed to this box's owner, runs one
-// `claude -p`, and POSTs the result to the turn's resume URL. All calls are
-// outbound HTTPS to n8n — no inbound, no tunnel, no port to expose.
+// Poll worker for per-turn Claude Code conversations on a codespace.
+// You cannot reach a codespace from outside. GitHub keeps forwarded ports
+// private. So this worker calls out. It polls n8n for a turn addressed to this
+// box's owner. It runs one `claude -p`. It sends the result to the turn's resume
+// URL. Every call is outbound HTTPS to n8n. It opens no inbound port.
 //
 //   AGENT_WORKER_TOKEN=… N8N_DEQUEUE_URL=… node agent-worker.mjs
 //
@@ -22,8 +22,8 @@ const TOKEN = process.env.AGENT_WORKER_TOKEN;
 const GITHUB_USER = process.env.GITHUB_USER;
 const ROOT = resolvePath(process.env.AGENT_WORKER_ROOT ?? '/workspaces');
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS ?? 3000);
-// Keep this BELOW the n8n Wait-node timeout, so a slow turn is reported by the
-// worker (with a real message) before n8n's Wait expires with a generic one.
+// Keep this below the n8n Wait-node limit. Then the worker reports a slow turn
+// before n8n's Wait ends with a generic message.
 const TURN_TIMEOUT_MS = Number(process.env.TURN_TIMEOUT_MS ?? 25 * 60_000);
 
 for (const [k, v] of Object.entries({
@@ -56,7 +56,7 @@ function runClaude({ message, sessionId, cwd }) {
 					if (err?.killed)
 						rej(
 							new Error(
-								`Turn exceeded the ${Math.round(TURN_TIMEOUT_MS / 60_000)}-minute limit and was stopped (it may have been mid-build). Try a smaller step, or run long builds in their own turn.`,
+								`The turn passed the ${Math.round(TURN_TIMEOUT_MS / 60_000)}-minute limit and stopped. It may have been in a build. Do a smaller step, or run a long build in its own turn.`,
 							),
 						);
 					else rej(new Error(stderr?.trim() || err?.message || 'claude produced no output'));
@@ -102,7 +102,7 @@ async function handle(turn) {
 			sessionId: turn.sessionId ?? '',
 		};
 	}
-	// Deliver straight to the turn's resume URL (resumes the waiting n8n execution).
+	// Send the result to the turn's resume URL. This continues the waiting n8n execution.
 	try {
 		await post(turn.resumeUrl, result);
 	} catch (error) {
@@ -117,7 +117,7 @@ for (;;) {
 		if (turn) {
 			console.log(`turn ${turn.turnId}: ${turn.sessionId ? 'resume' : 'new'}`);
 			await handle(turn);
-			continue; // pull the next turn immediately, no delay
+			continue; // get the next turn now, with no delay
 		}
 	} catch (error) {
 		console.error(`poll error: ${error.message}`);

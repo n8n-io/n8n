@@ -44,56 +44,59 @@ pnpm session rm           # delete the codespace
 ## Agent worker (drive a session from n8n)
 
 `agent-worker.mjs` lets an n8n workflow drive a Claude Code session on the
-codespace — so Slack (via the Flaky bot) can steer a session running here. Each
-turn is one headless `claude -p`; state persists on disk, so `--resume`
-continues a conversation across turns and across a stop/start.
+codespace. This is how Slack (the Flaky bot) steers a session that runs here.
+Each turn is one headless `claude -p`. The session state is on disk. So
+`--resume` continues a conversation across turns, and across a stop/start.
 
-**It polls outward — nothing inbound is exposed.** GitHub resets forwarded ports
-to private on every start and gives no API to make one public, so a codespace
-can't be reached inbound reliably. Instead the worker calls *out*: it polls n8n
-for a pending turn addressed to this box's owner (`$GITHUB_USER`), runs it, and
-POSTs the result back to the turn's resume URL. No tunnel, no port, no domain.
+**The worker polls outward. Nothing inbound is exposed.** GitHub sets every
+forwarded port to private on start. It gives no API to make a port public. So
+you cannot reach a codespace from outside reliably. The worker calls out
+instead. It asks n8n for a turn addressed to this box's owner (`$GITHUB_USER`).
+It runs the turn. It sends the result to the turn's resume URL. It uses no
+tunnel, no open port, and no domain.
 
-It starts on every container start (`postStartCommand`) and needs two secrets,
-added at [github.com/settings/codespaces](https://github.com/settings/codespaces)
-the same way as `ANTHROPIC_API_KEY`:
+The worker starts on each container start (`postStartCommand`). It needs two
+secrets. Add them at
+[github.com/settings/codespaces](https://github.com/settings/codespaces), the
+same way as `ANTHROPIC_API_KEY`:
 
-- `AGENT_WORKER_TOKEN` — shared bearer sent on every dequeue.
-- `N8N_DEQUEUE_URL` — the n8n webhook that hands back a pending turn.
+- `AGENT_WORKER_TOKEN` — the shared bearer token. The worker sends it on each poll.
+- `N8N_DEQUEUE_URL` — the n8n webhook that returns a pending turn.
 
-Logs are at `/tmp/agent-worker.log`; the tmux session is `agent-worker`
-(`tmux attach -t agent-worker` to watch it). The worker refuses to start if
-either secret (or `$GITHUB_USER`) is missing.
+The log is at `/tmp/agent-worker.log`. The tmux session is `agent-worker`. To
+watch it, run `tmux attach -t agent-worker`. The worker does not start if a
+secret or `$GITHUB_USER` is missing.
 
-A turn is capped at ~25 minutes (`TURN_TIMEOUT_MS`), which sits just under the
-n8n Wait window so a slow turn reports a real message rather than n8n's generic
-timeout. Keep the two in that order if you change either.
+A turn stops after about 25 minutes (`TURN_TIMEOUT_MS`). This limit is below the
+n8n Wait limit. So the worker reports a clear message before n8n reports a
+generic timeout. Keep the worker limit below the n8n limit if you change either.
 
-### Building and running fast in a session
+### Build and run the app in a session
 
-The prebuild already installed dependencies and warmed the build, so a session
-rarely needs a cold `pnpm install` or a full `pnpm build` — both are slow (often
-10–20 min cold) and can outlast a turn's timeout.
+The prebuild already installed the dependencies and warmed the build. So a
+session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
+(often 10–20 minutes cold). Both can outlast a turn's limit.
 
-- **Bring the app up in one command: `pnpm dev:up`** — ensures deps, starts the
-  backend, waits for health, and prints the URL. Add `--build` only when a
-  frontend change must show (see below).
-- **View it** at `https://<codespace-name>-5678.app.github.dev` — the forwarded
-  port is *private*, so it opens for you in a browser signed into GitHub with no
-  tunnel. (Anonymous/server callers get a 302 — that's why the agent worker
-  polls outward instead.)
-- **There is no `pnpm dev`** (removed). Use `pnpm dev:be` (backend, on 5678) and
-  `pnpm dev:fe:editor` (editor UI HMR, on 8080).
-- **`dev:be` serves the editor from its `dist` build**, so *frontend* edits
-  don't hot-reload there — they need `pnpm dev:up --build` (or `pnpm build`) plus
-  the restart. For live frontend HMR use `pnpm dev:fe:editor`, which needs
-  `pnpm session tunnel 5678 8080` from your laptop (its API base is hardcoded to
-  `localhost:5678`, so the `-8080.app.github.dev` URL won't work directly).
-- Only run `pnpm install` when dependencies actually changed; `pnpm build`
-  reuses the turbo cache and is fast when warm.
-- Stale outputs after switching branches: `pnpm reset` (add `--full` if needed).
-- Give a long build its own turn — don't chain install + full build behind other
-  work in a single turn.
+- **Bring the app up with one command: `pnpm dev:up`.** It installs missing
+  dependencies, starts the backend, waits for health, and prints the URL. Add
+  `--build` only when a frontend change must appear (see below).
+- **Open the app** at `https://<codespace-name>-5678.app.github.dev`. The port
+  is private. It opens for you in a browser that is signed in to GitHub. You do
+  not need a tunnel. An anonymous or server caller gets a 302. That is why the
+  worker polls outward instead.
+- **`pnpm dev` no longer exists.** Use `pnpm dev:be` for the backend (on 5678).
+  Use `pnpm dev:fe:editor` for the editor UI with hot reload (on 8080).
+- **`dev:be` serves the editor from the `dist` build.** So a frontend edit does
+  not hot-reload there. Run `pnpm dev:up --build` (or `pnpm build`) and restart
+  to show it. For live frontend hot reload, use `pnpm dev:fe:editor`. That path
+  needs `pnpm session tunnel 5678 8080` from your laptop. Its API base is set to
+  `localhost:5678`, so the `-8080.app.github.dev` URL does not work on its own.
+- Run `pnpm install` only when the dependencies change. `pnpm build` reuses the
+  turbo cache and is fast when warm.
+- To clear stale build outputs after a branch switch, run `pnpm reset`. Add
+  `--full` if that does not clear it.
+- Give a long build its own turn. Do not chain an install and a full build
+  behind other work in one turn.
 
 ## Flaky tools (MCP)
 
