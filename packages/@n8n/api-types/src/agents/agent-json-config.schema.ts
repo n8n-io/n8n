@@ -17,6 +17,18 @@ import {
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
+export const AGENT_HARNESS_ADAPTERS = ['claude-code', 'codex'] as const;
+
+export const AgentEngineConfigSchema = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('n8n') }).strict(),
+	z
+		.object({
+			type: z.literal('harness'),
+			adapter: z.enum(AGENT_HARNESS_ADAPTERS),
+		})
+		.strict(),
+]);
+
 export const AgentModelSchema = z.string().min(1).regex(
 	/**
 	 * [a-z0-9-]+: Provider name (e.g. "anthropic")
@@ -420,6 +432,7 @@ export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
+	engine: AgentEngineConfigSchema.optional(),
 	instructions: z.string(),
 	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
@@ -513,6 +526,8 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
+export type AgentEngineConfig = z.infer<typeof AgentEngineConfigSchema>;
+export type AgentHarnessAdapter = (typeof AGENT_HARNESS_ADAPTERS)[number];
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;

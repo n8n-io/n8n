@@ -8,7 +8,7 @@ import { Config, Env } from '../decorators';
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = [] as const;
+export const AGENTS_MODULE_NAMES = ['harnesses'] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -70,6 +70,18 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
+
+	/** TTL in seconds for exclusive ownership of an active harness turn. */
+	@Env('N8N_AGENTS_HARNESS_CLAIM_TTL')
+	harnessClaimTtlSeconds: number = 60;
+
+	/** TTL in seconds for detached harness sessions that may be resumed. */
+	@Env('N8N_AGENTS_HARNESS_SESSION_TTL')
+	harnessSessionTtlSeconds: number = 60 * Time.minutes.toSeconds;
+
+	/** Allow long-lived provider keys in harness sandboxes for explicitly opted-in development. */
+	@Env('N8N_AGENTS_HARNESS_ALLOW_DIRECT_CREDENTIALS')
+	harnessAllowDirectCredentials: boolean = false;
 
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')

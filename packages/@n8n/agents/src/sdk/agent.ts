@@ -51,7 +51,7 @@ import type { RuntimeSkill, RuntimeSkillSource } from '../skills';
 import type {
 	AgentEventHandler,
 	AgentMiddleware,
-	BuiltAgent,
+	AgentRuntimeInstance,
 	BuiltEval,
 	BuiltFileStore,
 	BuiltGuardrail,
@@ -158,7 +158,7 @@ export interface AgentSnapshot {
  * ```
  */
 
-export class Agent implements BuiltAgent, AgentBuilder {
+export class Agent implements AgentRuntimeInstance, AgentBuilder {
 	readonly name: string;
 
 	private modelConfig?: ModelConfig;

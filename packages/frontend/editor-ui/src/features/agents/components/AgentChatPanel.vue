@@ -62,8 +62,10 @@ const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
 const attachedFiles = ref<File[]>([]);
+const isHarnessEngine = computed(() => props.agentConfig?.engine?.type === 'harness');
 
 const attachmentCapabilities = computed(() => {
+	if (isHarnessEngine.value) return undefined;
 	const provider = props.agentConfig?.model?.split('/')[0];
 	return provider ? PROVIDER_CAPABILITIES[provider]?.attachments : undefined;
 });
@@ -224,6 +226,9 @@ const chatPlaceholder = computed(() => {
 });
 
 watch(isStreaming, (v) => emit('update:streaming', v));
+watch(isHarnessEngine, (enabled) => {
+	if (enabled) attachedFiles.value = [];
+});
 
 async function onSubmit() {
 	const text = inputText.value.trim();

@@ -1,6 +1,6 @@
 import {
+	Agent as RuntimeAgent,
 	sanitizeToolName as sanitizeMcpToolName,
-	type Agent as RuntimeAgent,
 	type GenerateResult,
 } from '@n8n/agents';
 import {
@@ -286,7 +286,7 @@ export class EvalAgentExecutionService {
 
 		let agent: RuntimeAgent;
 		try {
-			({ agent } = await reconstruction.reconstructFromAgentEntity(
+			const reconstructed = await reconstruction.reconstructFromAgentEntity(
 				agentEntity,
 				credentialProvider,
 				'test',
@@ -326,7 +326,15 @@ export class EvalAgentExecutionService {
 						);
 					},
 				},
-			));
+			);
+			if (!(reconstructed.agent instanceof RuntimeAgent)) {
+				return this.errorResult(
+					'Harness agents are not supported by Instance AI evaluations.',
+					seed,
+					skippedFeatures,
+				);
+			}
+			agent = reconstructed.agent;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return this.errorResult(`Failed to build agent runtime: ${message}`, seed, skippedFeatures);

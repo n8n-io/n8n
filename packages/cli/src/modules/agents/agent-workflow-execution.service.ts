@@ -1,4 +1,9 @@
-import type { Agent as RuntimeAgent, BuiltAgent, BuiltTool, CredentialProvider } from '@n8n/agents';
+import {
+	Agent as RuntimeAgent,
+	type BuiltAgent,
+	type BuiltTool,
+	type CredentialProvider,
+} from '@n8n/agents';
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
@@ -124,6 +129,13 @@ export class AgentWorkflowExecutionService {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
 		}
+		if (agentEntity.schema.engine?.type === 'harness') {
+			return {
+				ok: false,
+				error:
+					'Harness agents cannot currently be invoked from workflow or queue-worker executions.',
+			};
+		}
 
 		try {
 			// No `user`: this path runs an agent invoked from inside a workflow
@@ -139,6 +151,9 @@ export class AgentWorkflowExecutionService {
 					credentialProvider,
 					runType,
 				);
+			if (!(reconstructed instanceof RuntimeAgent)) {
+				return { ok: false, error: 'Harness agents are not supported in workflow execution.' };
+			}
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {
 			return {
@@ -166,6 +181,12 @@ export class AgentWorkflowExecutionService {
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
+		if (config.engine?.type === 'harness') {
+			return {
+				ok: false,
+				error: 'Inline harness agents are not currently supported.',
+			};
+		}
 		try {
 			const { agent: reconstructed } =
 				await this.agentRuntimeReconstructionService.reconstructFromResolvedSource({

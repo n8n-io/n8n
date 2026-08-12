@@ -51,6 +51,7 @@ const {
 	boundCredentialId = null,
 	disabled = false,
 	credentialModalAppendToBody = false,
+	managedCredentialsOnly = false,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
 	credentials: AgentCredentialsByProvider | null;
@@ -67,6 +68,8 @@ const {
 	disabled?: boolean;
 	/** Append credential modals to body (needed when embedded in the Memory dialog). */
 	credentialModalAppendToBody?: boolean;
+	/** Only offer the short-lived n8n Connect credential path. */
+	managedCredentialsOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -197,7 +200,7 @@ const freeOpenAiCreditsDescription = computed(() =>
 
 function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const definition = AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
-	const credentialOptions = getCredentialsForProvider(provider);
+	const credentialOptions = managedCredentialsOnly ? [] : getCredentialsForProvider(provider);
 	const selectedProviderCredentialId = credentials?.[provider] ?? null;
 	const models = modelsByProvider[provider]?.models ?? [];
 	const modelsUnavailable = modelsByProvider[provider]?.unavailable === true;
@@ -218,31 +221,32 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		data: { provider },
 	}));
 
-	const createCredentialItems: MenuItem[] = canCreateCredentials.value
-		? credentialTypes.length === 1
-			? [
-					{
-						id: buildMenuItemId(provider, 'configure', credentialTypes[0]),
-						label: i18n.baseText('agents.modelSelector.configureCredentials'),
-						disabled: false,
-						data: { provider, leadingIcon: 'plus' },
-					},
-				]
-			: [
-					{
-						id: `${provider}::configure`,
-						label: i18n.baseText('agents.modelSelector.configureCredentials'),
-						disabled: false,
-						data: { provider, leadingIcon: 'plus' },
-						children: credentialTypes.map<MenuItem>((credentialType) => ({
-							id: buildMenuItemId(provider, 'configure', credentialType),
-							label: getCredentialTypeDisplayName(credentialType),
+	const createCredentialItems: MenuItem[] =
+		canCreateCredentials.value && !managedCredentialsOnly
+			? credentialTypes.length === 1
+				? [
+						{
+							id: buildMenuItemId(provider, 'configure', credentialTypes[0]),
+							label: i18n.baseText('agents.modelSelector.configureCredentials'),
 							disabled: false,
 							data: { provider, leadingIcon: 'plus' },
-						})),
-					},
-				]
-		: [];
+						},
+					]
+				: [
+						{
+							id: `${provider}::configure`,
+							label: i18n.baseText('agents.modelSelector.configureCredentials'),
+							disabled: false,
+							data: { provider, leadingIcon: 'plus' },
+							children: credentialTypes.map<MenuItem>((credentialType) => ({
+								id: buildMenuItemId(provider, 'configure', credentialType),
+								label: getCredentialTypeDisplayName(credentialType),
+								disabled: false,
+								data: { provider, leadingIcon: 'plus' },
+							})),
+						},
+					]
+			: [];
 
 	// The type the gateway actually serves, which for a multi-credential-type
 	// provider need not be the first one listed.
@@ -274,7 +278,9 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		: [];
 
 	const freeOpenAiCreditsItems: MenuItem[] =
-		provider === FREE_OPENAI_CREDITS_PROVIDER && canUseFreeOpenAiCredits.value
+		provider === FREE_OPENAI_CREDITS_PROVIDER &&
+		canUseFreeOpenAiCredits.value &&
+		!managedCredentialsOnly
 			? [
 					{
 						id: buildMenuItemId(

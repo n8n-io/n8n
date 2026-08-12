@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nCard, N8nTabs } from '@n8n/design-system';
+import { N8nCallout, N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
@@ -26,6 +26,7 @@ import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
+import type { AgentCapabilitySection } from './AgentCapabilitiesSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -54,6 +55,13 @@ const props = defineProps<{
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
+const isHarnessEngine = computed(() => props.localConfig?.engine?.type === 'harness');
+const harnessAdapter = computed(() =>
+	props.localConfig?.engine?.type === 'harness' ? props.localConfig.engine.adapter : null,
+);
+const capabilitySections = computed<AgentCapabilitySection[] | undefined>(() =>
+	isHarnessEngine.value ? ['tools', 'tasks'] : undefined,
+);
 
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
@@ -129,6 +137,9 @@ const i18n = useI18n();
 						@trigger-added="emit('trigger-added', $event)"
 						@agent-changed="emit('agent-changed')"
 					/>
+					<N8nCallout v-if="isHarnessEngine" theme="info" data-testid="agent-harness-notice">
+						{{ i18n.baseText('agents.builder.agent.engine.capabilitiesNotice') }}
+					</N8nCallout>
 
 					<AgentCapabilitiesSection
 						:config="localConfig"
@@ -143,6 +154,7 @@ const i18n = useI18n();
 						:reload-key="tasksReloadKey"
 						:validation-issues="configValidationIssues ?? []"
 						:agent-unsaved="agentUnsaved"
+						:sections="capabilitySections"
 						@open-tool="emit('open-tool', $event)"
 						@open-skill="emit('open-skill', $event)"
 						@add-tool="emit('add-tool')"
@@ -178,8 +190,15 @@ const i18n = useI18n();
 					v-else-if="activeMainTab === 'knowledge'"
 					data-testid="agent-knowledge-tab-content"
 				>
+					<N8nCallout
+						v-if="isHarnessEngine"
+						theme="info"
+						data-testid="agent-harness-knowledge-notice"
+					>
+						{{ i18n.baseText('agents.builder.agent.engine.knowledgeNotice') }}
+					</N8nCallout>
 					<AgentFilesPanel
-						v-if="knowledgeBaseEnabled"
+						v-if="!isHarnessEngine && knowledgeBaseEnabled"
 						:files="agentFiles"
 						:disabled="childrenDisabled"
 						:loading="agentFilesLoading"
@@ -191,6 +210,7 @@ const i18n = useI18n();
 					/>
 
 					<AgentVectorStoresPanel
+						v-if="!isHarnessEngine"
 						:vector-stores="localConfig?.vectorStores ?? []"
 						:disabled="childrenDisabled"
 						data-testid="agent-vector-stores-card"
@@ -219,7 +239,18 @@ const i18n = useI18n();
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
-						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
+						<N8nCallout
+							v-if="isHarnessEngine"
+							theme="info"
+							data-testid="agent-harness-settings-notice"
+						>
+							{{ i18n.baseText('agents.builder.agent.engine.settingsNotice') }}
+						</N8nCallout>
+						<N8nCard
+							v-if="!isHarnessEngine"
+							:class="$style.settingsCard"
+							data-testid="agent-settings-card"
+						>
 							<AgentSubAgentsPanel
 								:config="localConfig"
 								:disabled="childrenDisabled"
@@ -228,7 +259,11 @@ const i18n = useI18n();
 								@update:config="emit('update:config', $event)"
 							/>
 						</N8nCard>
-						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
+						<N8nCard
+							v-if="!isHarnessEngine"
+							:class="$style.settingsCard"
+							data-testid="agent-settings-card"
+						>
 							<AgentMemoryPanel
 								:config="localConfig"
 								:disabled="childrenDisabled"
@@ -249,7 +284,11 @@ const i18n = useI18n();
 								@toggle-mcp-access="emit('toggle-mcp-access', $event)"
 							/>
 						</N8nCard>
-						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
+						<N8nCard
+							v-if="!isHarnessEngine || harnessAdapter === 'codex'"
+							:class="$style.settingsCard"
+							data-testid="agent-settings-card"
+						>
 							<AgentAdvancedPanel
 								:config="localConfig"
 								:disabled="childrenDisabled"

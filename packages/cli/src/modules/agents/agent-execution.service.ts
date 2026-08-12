@@ -20,6 +20,7 @@ import { AgentExecutionLogStore } from './execution-log/agent-execution-log-stor
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
+import { AgentHarnessSessionRepository } from './repositories/agent-harness-session.repository';
 import {
 	AgentExecutionRepository,
 	type RunningAgentExecution,
@@ -103,6 +104,7 @@ export class AgentExecutionService {
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly agentHarnessSessionRepository?: AgentHarnessSessionRepository,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
@@ -444,6 +446,7 @@ export class AgentExecutionService {
 		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await Promise.all([
 			this.agentExecutionThreadRepository.delete({ id: threadId }),
+			this.agentHarnessSessionRepository?.deleteByAgentAndThread(agentId, threadId),
 			this.agentExecutionLogStore.delete(
 				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),
 			),

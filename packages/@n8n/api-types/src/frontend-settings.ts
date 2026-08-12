@@ -404,6 +404,8 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+		/** Whether harness runtimes may receive long-lived provider credentials. */
+		harnessAllowDirectCredentials?: boolean;
 	};
 };
 
