@@ -3,6 +3,7 @@ import {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	getInlineDelegateSubAgentToolOptions,
 	WRITE_TODOS_TOOL_NAME,
+	Workspace,
 } from '@n8n/agents';
 import type * as agents from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
@@ -34,8 +35,9 @@ import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
@@ -93,6 +95,9 @@ function makeReconstructionService(
 		agentRepository?: AgentRepository;
 		agentsConfig?: Partial<AgentsConfig>;
 		n8nCheckpointStorage?: N8NCheckpointStorage;
+		agentFileRepository?: AgentFileRepository;
+		agentWorkspaceService?: AgentWorkspaceService;
+		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -101,10 +106,13 @@ function makeReconstructionService(
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
+	const defaultAgentWorkspaceService = mock<AgentWorkspaceService>();
+	defaultAgentWorkspaceService.getAgentWorkspace.mockResolvedValue(new Workspace({}));
+	const agentWorkspaceService = overrides.agentWorkspaceService ?? defaultAgentWorkspaceService;
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		overrides.agentRepository ?? mock<AgentRepository>(),
-		mock<AgentFileRepository>(),
+		overrides.agentFileRepository ?? mock<AgentFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		mock<UrlService>(),
@@ -119,7 +127,8 @@ function makeReconstructionService(
 		} as unknown as AgentsConfig,
 		mock<AiService>(),
 		outboundHttp,
-		mock<AgentKnowledgeSandboxService>(),
+		agentWorkspaceService,
+		overrides.agentKnowledgeMirrorService ?? mock<AgentKnowledgeMirrorService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
 		mock<CredentialsFinderService>(),
@@ -248,6 +257,103 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			modelToolName: 'Linear_Prod_read_file_12345678',
 			success: true,
 		});
+	});
+});
+
+describe('AgentRuntimeReconstructionService — workspace attachment', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+	});
+
+	it('attaches a workspace without requiring knowledge files', async () => {
+		const agentFileRepository = mock<AgentFileRepository>();
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		const workspace = new Workspace({});
+		agentFileRepository.hasFilesForAgent.mockResolvedValue(false);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue(workspace);
+		const service = makeReconstructionService([], {
+			agentsConfig: { sandboxEnabled: true },
+			agentFileRepository,
+			agentWorkspaceService,
+		});
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
+		expect(getInjectedToolNames()).not.toContain('find_file');
+	});
+
+	it('keeps knowledge tools gated by uploaded files', async () => {
+		const agentFileRepository = mock<AgentFileRepository>();
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue(new Workspace({}));
+		const service = makeReconstructionService([], {
+			agentsConfig: { sandboxEnabled: true },
+			agentFileRepository,
+			agentWorkspaceService,
+		});
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		expect(getInjectedToolNames()).toEqual(
+			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
+		);
+	});
+
+	it('does not attach a workspace to inline runtimes', async () => {
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		const service = makeReconstructionService([], {
+			agentsConfig: { sandboxEnabled: true },
+			agentWorkspaceService,
+		});
+
+		await service.reconstructFromResolvedSource({
+			config: {
+				name: 'Inline',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help',
+			},
+			memoryOwnerAgentId: 'agent-1',
+			projectId: 'project-1',
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills: {},
+			runtimeProfile: 'inline',
+			runType: 'production',
+			parentAgentIdForDelegation: 'parent-agent-1',
+		});
+
+		expect(agentWorkspaceService.getAgentWorkspace).not.toHaveBeenCalled();
+		expect(builtAgent.workspace).not.toHaveBeenCalled();
+	});
+
+	it('continues reconstruction when the workspace is unavailable', async () => {
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		agentWorkspaceService.getAgentWorkspace.mockRejectedValue(new Error('sandbox unavailable'));
+		const service = makeReconstructionService([], {
+			agentsConfig: { sandboxEnabled: true },
+			agentWorkspaceService,
+		});
+
+		await expect(
+			service.reconstructFromAgentEntity(
+				makeAgentEntity(),
+				mock<CredentialProvider>(),
+				'production',
+			),
+		).resolves.toEqual(expect.objectContaining({ agent: builtAgent }));
+		expect(builtAgent.workspace).not.toHaveBeenCalled();
 	});
 });
 

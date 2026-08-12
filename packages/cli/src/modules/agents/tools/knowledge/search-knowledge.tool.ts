@@ -1,6 +1,6 @@
 import { Tool } from '@n8n/agents/tool';
 
-import type { AgentKnowledgeSandboxService } from '../../agent-knowledge-sandbox.service';
+import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
 import {
 	globKnowledgeFilesInputSchema,
 	MAX_READ_RANGES,
@@ -239,11 +239,11 @@ function toReadKnowledgeModelOutput(output: unknown): unknown {
 export function createKnowledgeRetrievalTools({
 	projectId,
 	agentId,
-	sandboxService,
+	knowledgeMirrorService,
 }: {
 	projectId: string;
 	agentId: string;
-	sandboxService: AgentKnowledgeSandboxService;
+	knowledgeMirrorService: AgentKnowledgeMirrorService;
 }) {
 	const globTool = new Tool('find_file')
 		.description(
@@ -253,7 +253,7 @@ export function createKnowledgeRetrievalTools({
 		.handler(
 			async (input) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.globKnowledgeFiles(projectId, agentId, input),
+					async () => await knowledgeMirrorService.globKnowledgeFiles(projectId, agentId, input),
 				),
 		)
 		.toModelOutput(toGlobKnowledgeModelOutput);
@@ -266,7 +266,7 @@ export function createKnowledgeRetrievalTools({
 		.handler(
 			async (input) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.searchKnowledge(projectId, agentId, input),
+					async () => await knowledgeMirrorService.searchKnowledge(projectId, agentId, input),
 				),
 		)
 		.toModelOutput(toSearchKnowledgeModelOutput);
@@ -279,7 +279,7 @@ export function createKnowledgeRetrievalTools({
 		.handler(
 			async (input) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.readKnowledge(projectId, agentId, input),
+					async () => await knowledgeMirrorService.readKnowledge(projectId, agentId, input),
 				),
 		)
 		.toModelOutput(toReadKnowledgeModelOutput);

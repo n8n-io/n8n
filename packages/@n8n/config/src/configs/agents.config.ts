@@ -89,8 +89,4 @@ export class AgentsConfig {
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
-
-	/** When true, Daytona deletes the knowledge sandbox when it stops. */
-	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
-	sandboxEphemeral: boolean = false;
 }

@@ -1,20 +1,20 @@
 import type { BuiltTool } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentKnowledgeSandboxService } from '../../../agent-knowledge-sandbox.service';
+import type { AgentKnowledgeMirrorService } from '../../../agent-knowledge-mirror.service';
 import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';
 
 function buildTool(
-	sandboxService: AgentKnowledgeSandboxService,
+	knowledgeMirrorService: AgentKnowledgeMirrorService,
 	toolName: 'find_file' | 'search_text' | 'read_file',
 ): BuiltTool {
 	const tool = createKnowledgeRetrievalTools({
 		projectId,
 		agentId,
-		sandboxService,
+		knowledgeMirrorService,
 	})
 		.map((builder) => builder.build())
 		.find((candidate) => candidate.name === toolName);
@@ -34,58 +34,62 @@ function getToolHandler(tool: BuiltTool): NonNullable<BuiltTool['handler']> {
 
 describe('createKnowledgeRetrievalTools', () => {
 	it('finds files with the project-scoped sandbox using a catch-all pattern', async () => {
-		const sandboxService = mock<AgentKnowledgeSandboxService>();
-		sandboxService.globKnowledgeFiles.mockResolvedValue({
+		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
+		knowledgeMirrorService.globKnowledgeFiles.mockResolvedValue({
 			files: [],
 			limit: 20,
 			offset: 0,
 			hasMore: false,
 		});
-		const tool = buildTool(sandboxService, 'find_file');
+		const tool = buildTool(knowledgeMirrorService, 'find_file');
 		const input = { pattern: '*' };
 
 		await getToolHandler(tool)(input, {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(sandboxService.globKnowledgeFiles).toHaveBeenCalledWith(projectId, agentId, input);
+		expect(knowledgeMirrorService.globKnowledgeFiles).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			input,
+		);
 	});
 
 	it('searches knowledge with the project-scoped sandbox even when memory uses an integration resource', async () => {
-		const sandboxService = mock<AgentKnowledgeSandboxService>();
-		sandboxService.searchKnowledge.mockResolvedValue({
+		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
+		knowledgeMirrorService.searchKnowledge.mockResolvedValue({
 			outputMode: 'content',
 			matches: [],
 			limit: 10,
 			hasMore: false,
 			truncated: false,
 		});
-		const tool = buildTool(sandboxService, 'search_text');
+		const tool = buildTool(knowledgeMirrorService, 'search_text');
 		const input = { pattern: 'needle', path: ['notes.txt'] };
 
 		await getToolHandler(tool)(input, {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(sandboxService.searchKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
+		expect(knowledgeMirrorService.searchKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
 	});
 
 	it('reads knowledge with the project-scoped sandbox even when memory uses an integration resource', async () => {
-		const sandboxService = mock<AgentKnowledgeSandboxService>();
-		sandboxService.readKnowledge.mockResolvedValue({
+		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
+		knowledgeMirrorService.readKnowledge.mockResolvedValue({
 			file: 'notes.txt',
 			fileId: 'file-1',
 			displayName: 'notes.txt',
 			ranges: [],
 			truncated: false,
 		});
-		const tool = buildTool(sandboxService, 'read_file');
+		const tool = buildTool(knowledgeMirrorService, 'read_file');
 		const input = { file: 'notes.txt', ranges: [{ startLine: 1, endLine: 3 }] };
 
 		await getToolHandler(tool)(input, {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(sandboxService.readKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
+		expect(knowledgeMirrorService.readKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
 	});
 });

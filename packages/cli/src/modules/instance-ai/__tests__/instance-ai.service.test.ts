@@ -1,4 +1,9 @@
 // Manual mocks — must be declared before any imports that touch the mocked modules.
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents')>()),
+	createScopedWorkspace: vi.fn((workspace: unknown) => workspace),
+}));
+
 vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
@@ -23,7 +28,6 @@ vi.mock('@n8n/instance-ai', async () => {
 			}),
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
-		createScopedWorkspace: vi.fn((workspace: unknown) => workspace),
 		getPromptWorkspaceRoot: vi.fn(() => '/home/daytona/workspace'),
 		getWorkspaceRoot: vi.fn(async () => '/home/daytona/workspace'),
 		setupSandboxWorkspace: vi.fn(),

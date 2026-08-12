@@ -1,21 +1,22 @@
-import {
-	Workspace,
-	type AbortableOptions,
-	type AppendOptions,
-	type CopyOptions,
-	type FileContent,
-	type FileEntry,
-	type FileStat,
-	type ListOptions,
-	type MkdirOptions,
-	type ProviderStatus,
-	type ReadOptions,
-	type RemoveOptions,
-	type WorkspaceFilesystem,
-	type WorkspaceSandbox,
-	type WriteOptions,
-} from '@n8n/agents';
 import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix';
+
+import type {
+	AbortableOptions,
+	AppendOptions,
+	CopyOptions,
+	FileContent,
+	FileEntry,
+	FileStat,
+	ListOptions,
+	MkdirOptions,
+	ProviderStatus,
+	ReadOptions,
+	RemoveOptions,
+	WorkspaceFilesystem,
+	WorkspaceSandbox,
+	WriteOptions,
+} from './types';
+import { Workspace } from './workspace';
 
 function isInsideRoot(path: string, root: string): boolean {
 	const boundary = root.endsWith('/') ? root : `${root}/`;
@@ -29,7 +30,7 @@ function resolvePath(root: string, path: string): string {
 		: posixNormalize(posixJoin(normalizedRoot, path));
 
 	if (!isInsideRoot(normalizedPath, normalizedRoot)) {
-		throw new Error(`Path escapes builder workspace root: ${path}`);
+		throw new Error(`Path escapes workspace root: ${path}`);
 	}
 
 	return normalizedPath;
@@ -46,7 +47,7 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 	}
 
 	get name() {
-		return `${this.filesystem.name} (builder scoped)`;
+		return `${this.filesystem.name} (scoped)`;
 	}
 
 	get provider() {
@@ -156,7 +157,7 @@ class ScopedSandbox implements WorkspaceSandbox {
 	}
 
 	get name() {
-		return `${this.sandbox.name} (builder scoped)`;
+		return `${this.sandbox.name} (scoped)`;
 	}
 
 	get provider() {
