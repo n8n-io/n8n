@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
-import type { TabOptions, UserAction } from '@n8n/design-system';
+import type { TabOptions, UserAction, IconName, IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '../projects.types';
 import { useProjectsStore } from '../projects.store';
@@ -15,17 +15,24 @@ import ProjectCreateResource from './ProjectCreateResource.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
-import { type IconName } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
-import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { PROJECT_FILES } from '@/features/core/files/constants';
+import { useFilesStore } from '@/features/core/files/files.store';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
-import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+	isIconOrEmoji,
+} from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
@@ -43,6 +50,7 @@ const telemetry = useTelemetry();
 const agentTelemetry = useAgentTelemetry();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
+const filesStore = useFilesStore();
 
 const currentProjectId = computed(() => projectsStore.currentProject?.id);
 
@@ -155,6 +163,7 @@ const ACTION_TYPES = {
 	CREDENTIAL: 'credential',
 	FOLDER: 'folder',
 	DATA_TABLE: 'dataTable',
+	FILE: 'file',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
 } as const;
@@ -190,6 +199,17 @@ const createDataTableButton = computed(() => ({
 		!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
 }));
 
+const createFileButton = computed(() => ({
+	value: ACTION_TYPES.FILE,
+	label: i18n.baseText('files.add.button.label'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	disabled:
+		sourceControlStore.preferences.branchReadOnly ||
+		filesStore.quotaStatus === 'error' ||
+		!getResourcePermissions(homeProject.value?.scopes)?.file?.create,
+}));
+
 const createVariableButton = computed(() => ({
 	value: ACTION_TYPES.VARIABLE,
 	label: i18n.baseText('variables.add.button.label'),
@@ -221,6 +241,8 @@ const mainButtonConfig = computed(() => {
 			return createCredentialButton.value;
 		case ACTION_TYPES.DATA_TABLE:
 			return createDataTableButton.value;
+		case ACTION_TYPES.FILE:
+			return createFileButton.value;
 		case ACTION_TYPES.VARIABLE:
 			return createVariableButton.value;
 		case ACTION_TYPES.AGENT:
@@ -290,6 +312,20 @@ const menu = computed(() => {
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
+		});
+	}
+
+	if (
+		settingsStore.isModuleActive('file-storage') &&
+		selectedMainButtonType.value !== ACTION_TYPES.FILE
+	) {
+		items.push({
+			value: ACTION_TYPES.FILE,
+			label: i18n.baseText('files.add.button.label'),
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				filesStore.quotaStatus === 'error' ||
+				!getResourcePermissions(homeProject.value?.scopes)?.file?.create,
 		});
 	}
 
@@ -375,6 +411,12 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	[ACTION_TYPES.DATA_TABLE]: (projectId: string) => {
 		void router.push({
 			name: PROJECT_DATA_TABLES,
+			params: { projectId, new: 'new' },
+		});
+	},
+	[ACTION_TYPES.FILE]: (projectId: string) => {
+		void router.push({
+			name: PROJECT_FILES,
 			params: { projectId, new: 'new' },
 		});
 	},

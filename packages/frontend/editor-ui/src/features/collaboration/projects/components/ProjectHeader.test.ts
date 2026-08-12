@@ -501,7 +501,8 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(4);
+			// 3 module-tab checks + the 'file-storage' and 'agents' menu-item gates
+			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(5);
 		});
 
 		it('should pass empty array when no modules are active', () => {

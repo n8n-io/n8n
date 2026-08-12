@@ -133,6 +133,10 @@ export const defaultSettings: FrontendSettings = {
 	dataTables: {
 		maxSize: 0,
 	},
+	fileStorage: {
+		maxSize: 0,
+		maxFileSize: 0,
+	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
 	workflowsAutosaveDisabled: false,

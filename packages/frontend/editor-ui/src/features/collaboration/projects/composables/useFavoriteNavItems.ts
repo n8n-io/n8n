@@ -6,6 +6,7 @@ import { useProjectsStore } from '../projects.store';
 import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project } from '../projects.types';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import { PROJECT_FILES_PREVIEW } from '@/features/core/files/constants';
 import type { FavoriteResourceType } from '@/app/api/favorites';
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 
@@ -77,6 +78,26 @@ export function useFavoriteNavItems() {
 			})),
 	);
 
+	const favoriteFileItems = computed<FavoriteGroupItem[]>(() =>
+		favoritesStore.favorites
+			.filter((f) => f.resourceType === 'file' && f.resourceProjectId)
+			.map((f) => ({
+				menuItem: {
+					id: `favorite-file-${f.resourceId}`,
+					label: f.resourceName,
+					icon: 'file' as IMenuItem['icon'],
+					route: {
+						to: {
+							name: PROJECT_FILES_PREVIEW,
+							params: { projectId: f.resourceProjectId, id: f.resourceId },
+						},
+					},
+				},
+				resourceId: f.resourceId,
+				resourceType: 'file',
+			})),
+	);
+
 	const favoriteFolderItems = computed<FavoriteGroupItem[]>(() =>
 		favoritesStore.favorites
 			.filter((f) => f.resourceType === 'folder' && f.resourceProjectId)
@@ -143,6 +164,12 @@ export function useFavoriteNavItems() {
 				items: favoriteDataTableItems.value,
 			});
 		}
+		if (favoriteFileItems.value.length > 0) {
+			groups.push({
+				type: 'file',
+				items: favoriteFileItems.value,
+			});
+		}
 		if (favoriteAgentItems.value.length > 0) {
 			groups.push({
 				type: 'agent',
@@ -176,6 +203,7 @@ export function useFavoriteNavItems() {
 		favoriteWorkflowItems,
 		favoriteProjectItems,
 		favoriteDataTableItems,
+		favoriteFileItems,
 		favoriteFolderItems,
 		favoriteAgentItems,
 		favoriteGroups,

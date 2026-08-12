@@ -2,6 +2,7 @@ import {
 	MfaRequiredError,
 	ResponseError,
 	STREAM_SEPARATOR,
+	makeRestApiRequest,
 	request,
 	setUnauthorizedHandler,
 	streamRequest,
@@ -61,6 +62,75 @@ describe('request', () => {
 		await expect(request(baseConfig)).rejects.toThrow(MfaRequiredError);
 
 		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('passes onUploadProgress and signal through to axios', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: { data: 'ok' } });
+
+		const onUploadProgress = vi.fn();
+		const controller = new AbortController();
+
+		await request({
+			...baseConfig,
+			method: 'POST',
+			data: { some: 'payload' },
+			onUploadProgress,
+			signal: controller.signal,
+		});
+
+		expect(axiosRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				onUploadProgress,
+				signal: controller.signal,
+			}),
+		);
+	});
+
+	it('does not set onUploadProgress or signal on the axios config when omitted', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: { data: 'ok' } });
+
+		await request(baseConfig);
+
+		const axiosConfig = axiosRequest.mock.calls[0][0];
+		expect(axiosConfig).not.toHaveProperty('onUploadProgress');
+		expect(axiosConfig).not.toHaveProperty('signal');
+	});
+});
+
+describe('makeRestApiRequest', () => {
+	const context = { baseUrl: 'https://api.example.com/rest', pushRef: 'push-ref' };
+
+	it('unwraps the data envelope', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: { data: { id: '1' } } });
+
+		const result = await makeRestApiRequest(context, 'GET', '/files');
+
+		expect(result).toEqual({ id: '1' });
+	});
+
+	it('forwards request options to axios', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: { data: { id: '1' } } });
+
+		const onUploadProgress = vi.fn();
+		const controller = new AbortController();
+
+		await makeRestApiRequest(
+			context,
+			'POST',
+			'/files',
+			{ some: 'payload' },
+			{
+				onUploadProgress,
+				signal: controller.signal,
+			},
+		);
+
+		expect(axiosRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				onUploadProgress,
+				signal: controller.signal,
+			}),
+		);
 	});
 });
 

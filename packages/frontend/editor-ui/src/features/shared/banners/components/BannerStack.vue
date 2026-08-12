@@ -8,6 +8,8 @@ import V1Banner from './banners/V1Banner.vue';
 import EmailConfirmationBanner from './banners/EmailConfirmationBanner.vue';
 import DataTableStorageLimitWarningBanner from './banners/DataTableStorageLimitWarningBanner.vue';
 import DataTableStorageLimitErrorBanner from './banners/DataTableStorageLimitErrorBanner.vue';
+import FileStorageLimitWarningBanner from './banners/FileStorageLimitWarningBanner.vue';
+import FileStorageLimitErrorBanner from './banners/FileStorageLimitErrorBanner.vue';
 import WorkflowAutoDeactivatedBanner from './banners/WorkflowAutoDeactivatedBanner.vue';
 import type { Component } from 'vue';
 import type { N8nBanners } from '../banners.types';
@@ -33,6 +35,14 @@ export const N8N_BANNERS: N8nBanners = {
 	DATA_TABLE_STORAGE_LIMIT_ERROR: {
 		priority: 400,
 		component: DataTableStorageLimitErrorBanner as Component,
+	},
+	FILE_STORAGE_LIMIT_WARNING: {
+		priority: 290,
+		component: FileStorageLimitWarningBanner as Component,
+	},
+	FILE_STORAGE_LIMIT_ERROR: {
+		priority: 390,
+		component: FileStorageLimitErrorBanner as Component,
 	},
 };
 </script>
