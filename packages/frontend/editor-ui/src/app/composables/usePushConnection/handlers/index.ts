@@ -6,6 +6,7 @@ export * from './nodeDescriptionUpdated';
 export * from './nodeExecuteAfter';
 export * from './nodeExecuteAfterData';
 export * from './nodeExecuteBefore';
+export * from './operatorLogs';
 export * from './reloadNodeType';
 export * from './removeNodeType';
 export * from './sendConsoleMessage';

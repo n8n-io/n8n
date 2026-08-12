@@ -4132,7 +4132,7 @@ describe('createContext — builder delegate wiring', () => {
 		vi.restoreAllMocks();
 	});
 
-	/** Route Container.get for the two tokens createContext resolves when wiring the builder delegate. */
+	/** Route Container.get for the tokens createContext resolves when wiring the builder delegate. */
 	function mockBuilderModuleActive(delegate: InstanceAiBuilderDelegate) {
 		const moduleRegistry = { isActive: vi.fn().mockReturnValue(true) };
 		const builderDelegateAdapter = { createDelegate: vi.fn().mockReturnValue(delegate) };

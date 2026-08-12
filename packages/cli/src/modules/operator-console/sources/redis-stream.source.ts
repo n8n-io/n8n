@@ -90,11 +90,15 @@ export class RedisStreamSource implements LogSource {
 	async read(options: LogReadOptions): Promise<OperatorLogReadResult> {
 		if (!this.isQueueMode) return { records: [], nextCursor: EMPTY_CURSOR, gap: false };
 
-		const { since, filter, limit } = options;
+		const { since, filter, limit, direction = 'backward' } = options;
 		const client = this.getQueryClient();
 		const predicate = compileFilter(filter);
 
 		const gap = since === undefined ? false : await this.hasGapBefore(since);
+
+		if (direction === 'backward') {
+			return await this.readBackward(client, since, predicate, limit, gap);
+		}
 
 		const records: OperatorLogRecord[] = [];
 		let cursor = since ?? EMPTY_CURSOR;
@@ -138,6 +142,58 @@ export class RedisStreamSource implements LogSource {
 		}
 
 		return { records, nextCursor: cursor, gap };
+	}
+
+	/**
+	 * The newest matching records at or before `since`, oldest first.
+	 *
+	 * Opening a console wants the tail of the stream. Scanning forward from `-`
+	 * would walk a 50k-entry stream from its oldest end to find the newest lines.
+	 */
+	private async readBackward(
+		client: RedisClient,
+		since: string | undefined,
+		predicate: (record: OperatorLogRecord) => boolean,
+		limit: number,
+		gap: boolean,
+	): Promise<OperatorLogReadResult> {
+		const records: OperatorLogRecord[] = [];
+		let cursor = since ?? EMPTY_CURSOR;
+		let scanned = 0;
+		let from = since ?? '+';
+		let exhausted = false;
+
+		while (records.length < limit && scanned < MAX_ENTRIES_SCANNED_PER_READ && !exhausted) {
+			const chunk = await this.xrevrangeFrom(client, from, Math.min(limit, 200) + 1);
+			if (chunk.length === 0) break;
+
+			for (const [id, fields] of chunk) {
+				if (id === since) continue;
+
+				if (records.length >= limit || scanned >= MAX_ENTRIES_SCANNED_PER_READ) {
+					exhausted = true;
+					break;
+				}
+
+				scanned++;
+				cursor = id;
+
+				const entry = decodeLogStreamEntry(fields);
+				if (!entry) continue;
+
+				// Entries arrive newest-first; unshift so the batch's own records stay
+				// in their original order within the page.
+				for (const record of [...entry.records].reverse()) {
+					if (predicate(record)) records.unshift(record);
+				}
+			}
+
+			const lastId = chunk.at(-1)?.[0];
+			if (lastId === undefined || lastId === from) break; // no backward progress
+			from = lastId;
+		}
+
+		return { records: records.slice(-limit), nextCursor: cursor, gap };
 	}
 
 	subscribe(filter: OperatorLogFilter, onBatch: (batch: OperatorLogBatch) => void): Unsubscribe {
@@ -259,6 +315,14 @@ export class RedisStreamSource implements LogSource {
 
 	private async xrange(client: RedisClient, from: string, count: number): Promise<RawEntry[]> {
 		return await client.xrange(this.streamKey, from, '+', 'COUNT', count);
+	}
+
+	private async xrevrangeFrom(
+		client: RedisClient,
+		from: string,
+		count: number,
+	): Promise<RawEntry[]> {
+		return await client.xrevrange(this.streamKey, from, '-', 'COUNT', count);
 	}
 
 	private async xrevrange(client: RedisClient, count: number): Promise<RawEntry[]> {

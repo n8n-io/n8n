@@ -63,12 +63,12 @@ describe('RedisStreamSource', () => {
 
 	afterEach(() => source.shutdown());
 
-	describe('read', () => {
+	describe('read (forward)', () => {
 		it('should return records from the start when no cursor is given', async () => {
 			xrange.mockResolvedValueOnce([entry('1-0', [record({ message: 'a' })])]);
 			xrange.mockResolvedValueOnce([]);
 
-			const result = await source.read({ filter: {}, limit: 10 });
+			const result = await source.read({ filter: {}, limit: 10, direction: 'forward' });
 
 			expect(result.records.map((r) => r.message)).toEqual(['a']);
 			expect(result.nextCursor).toBe('1-0');
@@ -84,7 +84,12 @@ describe('RedisStreamSource', () => {
 			]);
 			xrange.mockResolvedValueOnce([entry('2-0', [record({ message: 'new' })])]);
 
-			const result = await source.read({ since: '1-0', filter: {}, limit: 10 });
+			const result = await source.read({
+				since: '1-0',
+				filter: {},
+				limit: 10,
+				direction: 'forward',
+			});
 
 			expect(result.records.map((r) => r.message)).toEqual(['new']);
 			expect(result.nextCursor).toBe('2-0');
@@ -95,7 +100,12 @@ describe('RedisStreamSource', () => {
 			xrange.mockResolvedValueOnce([entry('50-0', [record({ message: 'survivor' })])]);
 			xrange.mockResolvedValueOnce([]);
 
-			const result = await source.read({ since: '9-0', filter: {}, limit: 10 });
+			const result = await source.read({
+				since: '9-0',
+				filter: {},
+				limit: 10,
+				direction: 'forward',
+			});
 
 			expect(result.gap).toBe(true);
 			expect(result.records.map((r) => r.message)).toEqual(['survivor']);
@@ -105,7 +115,12 @@ describe('RedisStreamSource', () => {
 			xrange.mockResolvedValueOnce([entry('10-0', [record()])]); // gap probe
 			xrange.mockResolvedValueOnce([entry('10-0', [record()])]);
 
-			const result = await source.read({ since: '10-0', filter: {}, limit: 10 });
+			const result = await source.read({
+				since: '10-0',
+				filter: {},
+				limit: 10,
+				direction: 'forward',
+			});
 
 			expect(result.gap).toBe(false);
 		});
@@ -115,7 +130,12 @@ describe('RedisStreamSource', () => {
 			xrange.mockResolvedValue([]);
 
 			// '10-0' > '9-0' numerically, even though it sorts earlier as a string.
-			const result = await source.read({ since: '10-0', filter: {}, limit: 10 });
+			const result = await source.read({
+				since: '10-0',
+				filter: {},
+				limit: 10,
+				direction: 'forward',
+			});
 
 			expect(result.gap).toBe(false);
 		});
@@ -129,7 +149,11 @@ describe('RedisStreamSource', () => {
 			]);
 			xrange.mockResolvedValueOnce([]);
 
-			const result = await source.read({ filter: { minLevel: 'warn' }, limit: 10 });
+			const result = await source.read({
+				filter: { minLevel: 'warn' },
+				limit: 10,
+				direction: 'forward',
+			});
 
 			expect(result.records.map((r) => r.message)).toEqual(['boom']);
 		});
@@ -140,7 +164,7 @@ describe('RedisStreamSource', () => {
 				entry('2-0', [record({ seq: 3 })]),
 			]);
 
-			const result = await source.read({ filter: {}, limit: 2 });
+			const result = await source.read({ filter: {}, limit: 2, direction: 'forward' });
 
 			expect(result.records).toHaveLength(2);
 			expect(result.nextCursor).toBe('1-0'); // the entry we fully delivered
@@ -153,7 +177,7 @@ describe('RedisStreamSource', () => {
 			]);
 			xrange.mockResolvedValueOnce([]);
 
-			const result = await source.read({ filter: {}, limit: 10 });
+			const result = await source.read({ filter: {}, limit: 10, direction: 'forward' });
 
 			expect(result.records.map((r) => r.message)).toEqual(['fine']);
 			expect(result.nextCursor).toBe('2-0');
@@ -162,10 +186,82 @@ describe('RedisStreamSource', () => {
 		it('should return an empty result outside queue mode', async () => {
 			setup({ mode: 'regular' });
 
-			const result = await source.read({ filter: {}, limit: 10 });
+			const result = await source.read({ filter: {}, limit: 10, direction: 'forward' });
 
 			expect(result).toEqual({ records: [], nextCursor: '', gap: false });
 			expect(xrange).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('read (backward)', () => {
+		// The default direction: opening a console wants the tail of the stream,
+		// not a forward walk from the oldest of 50k entries.
+		it('reads from the newest end when no cursor is given', async () => {
+			xrevrange.mockResolvedValueOnce([entry('9-0', [record({ message: 'newest' })])]);
+			xrevrange.mockResolvedValueOnce([]);
+
+			const result = await source.read({ filter: {}, limit: 10 });
+
+			expect(result.records.map((r) => r.message)).toEqual(['newest']);
+			expect(xrevrange).toHaveBeenCalledWith(STREAM_KEY, '+', '-', 'COUNT', 11);
+			expect(xrange).not.toHaveBeenCalled();
+		});
+
+		it('returns records oldest first even though the scan runs newest first', async () => {
+			xrevrange.mockResolvedValueOnce([
+				entry('2-0', [record({ message: 'second' })]),
+				entry('1-0', [record({ message: 'first' })]),
+			]);
+			xrevrange.mockResolvedValueOnce([]);
+
+			const result = await source.read({ filter: {}, limit: 10 });
+
+			expect(result.records.map((r) => r.message)).toEqual(['first', 'second']);
+		});
+
+		it('preserves record order within a single entry', async () => {
+			xrevrange.mockResolvedValueOnce([
+				entry('1-0', [record({ message: 'a' }), record({ message: 'b' })]),
+			]);
+			xrevrange.mockResolvedValueOnce([]);
+
+			const result = await source.read({ filter: {}, limit: 10 });
+
+			expect(result.records.map((r) => r.message)).toEqual(['a', 'b']);
+		});
+
+		it('pages further into the past from a cursor', async () => {
+			xrange.mockResolvedValueOnce([entry('1-0', [record()])]); // gap probe
+			xrevrange.mockResolvedValueOnce([entry('4-0', [record({ message: 'older' })])]);
+			xrevrange.mockResolvedValueOnce([]);
+
+			const result = await source.read({ since: '5-0', filter: {}, limit: 10 });
+
+			expect(result.records.map((r) => r.message)).toEqual(['older']);
+			expect(xrevrange).toHaveBeenCalledWith(STREAM_KEY, '5-0', '-', 'COUNT', 11);
+		});
+
+		it('applies the filter', async () => {
+			xrevrange.mockResolvedValueOnce([
+				entry('1-0', [
+					record({ level: 'error', message: 'boom' }),
+					record({ level: 'debug', message: 'noise' }),
+				]),
+			]);
+			xrevrange.mockResolvedValueOnce([]);
+
+			const result = await source.read({ filter: { minLevel: 'warn' }, limit: 10 });
+
+			expect(result.records.map((r) => r.message)).toEqual(['boom']);
+		});
+
+		it('returns an empty result outside queue mode', async () => {
+			setup({ mode: 'regular' });
+
+			const result = await source.read({ filter: {}, limit: 10 });
+
+			expect(result).toEqual({ records: [], nextCursor: '', gap: false });
+			expect(xrevrange).not.toHaveBeenCalled();
 		});
 	});
 

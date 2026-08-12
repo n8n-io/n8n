@@ -70,6 +70,7 @@ import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
+import { getInstanceAiLogQueryPort } from './instance-ai-log-query.registry';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { WorkflowTemplatesService } from './workflow-templates.service';
@@ -358,6 +359,9 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
+			// Filled only when the operator-console module is enabled; its absence
+			// is what keeps the `logs` tool off the agent.
+			logQueryService: getInstanceAiLogQueryPort(),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),

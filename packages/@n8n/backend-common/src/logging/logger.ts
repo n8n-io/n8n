@@ -297,6 +297,27 @@ export class Logger implements LoggerType {
 		);
 	}
 
+	/**
+	 * Attaches the rotating file transport if it is not already attached, and
+	 * reports whether file output is now available.
+	 *
+	 * For features that read `n8n.log` back (the operator console's history tier)
+	 * rather than only write to it, so the operator sets one variable instead of
+	 * also having to remember `N8N_LOG_OUTPUT=file`. A no-op when logging is
+	 * silent — there would be nothing to write.
+	 */
+	ensureFileTransport(): boolean {
+		if (this.level === 'silent') return false;
+
+		const alreadyAttached = this.internalLogger.transports.some(
+			(transport) => transport instanceof winston.transports.File,
+		);
+
+		if (!alreadyAttached) this.setFileTransport();
+
+		return true;
+	}
+
 	// #region Convenience methods
 
 	error(message: string, metadata: LogMetadata = {}) {

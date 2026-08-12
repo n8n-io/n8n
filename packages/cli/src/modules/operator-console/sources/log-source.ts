@@ -43,7 +43,12 @@ export type Unsubscribe = () => void;
  * branches on how the instance is deployed.
  */
 export interface LogSource {
-	/** Historical read. Returns `gap: true` if the cursor was already evicted. */
+	/**
+	 * Historical read. Returns `gap: true` if the cursor was already evicted.
+	 *
+	 * `nextCursor` continues in the direction just read: a forward page resumes
+	 * after the newest record returned, a backward page before the oldest.
+	 */
 	read(options: LogReadOptions): Promise<OperatorLogReadResult>;
 
 	/**

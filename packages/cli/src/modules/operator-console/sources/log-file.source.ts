@@ -105,8 +105,10 @@ export class LogFileSource implements LogSource {
 		const oldestAvailable = files[0].index * LINES_PER_FILE;
 		const gap = from !== undefined && from < oldestAvailable;
 
-		const nextCursor =
-			records.length > 0 ? this.encodeCursor(records[records.length - 1].seq) : (since ?? '');
+		// The cursor continues in the direction just read: forward pages resume
+		// after the newest record, backward pages resume before the oldest.
+		const edge = direction === 'forward' ? records[records.length - 1] : records[0];
+		const nextCursor = edge ? this.encodeCursor(edge.seq) : (since ?? '');
 
 		return { records, nextCursor, gap };
 	}

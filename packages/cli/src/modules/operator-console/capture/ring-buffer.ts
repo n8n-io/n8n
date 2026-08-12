@@ -137,6 +137,43 @@ export class LogRingBuffer {
 		return { records, nextSeq: lastScanned, gap };
 	}
 
+	/**
+	 * The newest `limit` records at or before `before`, returned oldest first.
+	 *
+	 * This is what opening a console wants. `readSince` walks forward from the
+	 * oldest retained record, so with a `limit` smaller than the buffer it would
+	 * hand back the *oldest* lines — the wrong end of a log tail.
+	 */
+	readLatest(
+		before: number | undefined,
+		filter: OperatorLogFilter,
+		limit: number,
+	): RingBufferReadResult {
+		const matches = compileFilter(filter);
+		const records: OperatorLogRecord[] = [];
+
+		for (let offset = this.count - 1; offset >= 0 && records.length < limit; offset--) {
+			const index = (this.writeIndex - this.count + offset + this.capacity) % this.capacity;
+			const record = this.slots[index];
+			if (record === undefined) continue;
+			if (before !== undefined && record.seq > before) continue;
+			if (!matches(record)) continue;
+
+			records.push(record);
+		}
+
+		records.reverse();
+
+		const oldest = this.oldestSeq;
+		const gap = before !== undefined && oldest !== undefined && oldest > before + 1;
+
+		// Cursor continues in the same direction, so it points at the oldest
+		// record returned — pass it back to page further into the past.
+		const nextSeq = records.length > 0 ? records[0].seq : (before ?? this.seq);
+
+		return { records, nextSeq, gap };
+	}
+
 	/** Drops since the previous call. Rides on the next batch, then resets. */
 	takeDropped(): number {
 		const dropped = this.droppedUnreported;

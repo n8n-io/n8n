@@ -5,6 +5,7 @@ import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';
 import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
 import { AgentsModule } from '@/features/agents/module.descriptor';
+import { OperatorConsoleModule } from '@/features/settings/operatorConsole/module.descriptor';
 import { OtelModule } from '@/features/settings/otel/module.descriptor';
 import { WorkflowReviewsModule } from '@/features/workflow-reviews/module.descriptor';
 
@@ -19,5 +20,6 @@ export const modules: FrontendModuleDescription[] = [
 	InstanceAiModule,
 	AgentsModule,
 	OtelModule,
+	OperatorConsoleModule,
 	WorkflowReviewsModule,
 ];

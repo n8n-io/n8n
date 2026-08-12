@@ -35,8 +35,18 @@ export class RingBufferSource implements LogSource {
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
-	async read({ since, filter, limit }: LogReadOptions): Promise<OperatorLogReadResult> {
-		const { records, nextSeq, gap } = this.buffer.readSince(parseCursor(since), filter, limit);
+	async read({
+		since,
+		filter,
+		limit,
+		direction = 'backward',
+	}: LogReadOptions): Promise<OperatorLogReadResult> {
+		const cursor = parseCursor(since);
+
+		const { records, nextSeq, gap } =
+			direction === 'forward'
+				? this.buffer.readSince(cursor, filter, limit)
+				: this.buffer.readLatest(cursor, filter, limit);
 
 		return {
 			records,
