@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nInput } from '@n8n/design-system';
+import { N8nInput, N8nInputLabel, N8nPopover } from '@n8n/design-system';
 import {
 	completeExpressionSyntax,
 	ExpressionEditorInput,
@@ -14,7 +14,7 @@ import {
 	type Segment,
 } from '@n8n/expression-editor';
 import type { NodeParameterValueType, NodePropertyTypes } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, inject, ref, useTemplateRef } from 'vue';
 
 import { resolveValue } from '../../core/expressions';
 import {
@@ -26,6 +26,7 @@ import {
 } from '../../core/types';
 import { uiScopeCompletions } from '../expressions/scope-completions';
 import { uiScopeResolver } from '../expressions/scope-resolver';
+import { UiTooltipParentKey } from '../host';
 
 /**
  * One value prop, in either mode. The n8n expression editor, pointed at the
@@ -45,6 +46,22 @@ const emit = defineEmits<{ update: [value: unknown] }>();
 const segments = ref<Segment[]>([]);
 const theme = outputTheme();
 
+// Both follow the NDV: the mode switch appears while the field is under the
+// pointer or has focus, the preview only while the editor is being used.
+const anchor = useTemplateRef<HTMLElement>('anchor');
+const isFocused = ref(false);
+const isFieldHovered = ref(false);
+const areOptionsVisible = computed(() => isFieldHovered.value || isFocused.value);
+const isPreviewOpen = computed(() => isFocused.value);
+
+/** Focus moving between the editor's own elements is not a blur. */
+function onFocusOut(event: FocusEvent) {
+	const next = event.relatedTarget;
+	if (next instanceof Node && anchor.value?.contains(next)) return;
+
+	isFocused.value = false;
+}
+
 const raw = computed(() => {
 	const value = props.modelValue;
 	if (value === null || value === undefined) return '';
@@ -59,6 +76,7 @@ const mode = computed<ExpressionMode>(() =>
 const scope = computed(() => props.scope);
 const resolver = uiScopeResolver(() => scope.value);
 const completionSources = [uiScopeCompletions(() => scope.value)];
+const tooltipParent = inject(UiTooltipParentKey, () => undefined);
 
 /** The three kinds this format adds are stored as plain strings, and convert like one. */
 const parameterType = computed<NodePropertyTypes>(() => {
@@ -118,67 +136,117 @@ function onModeChange(next: ExpressionMode) {
 </script>
 
 <template>
-	<div class="ui-value-field">
-		<div class="ui-value-field__header">
+	<N8nInputLabel
+		:label="descriptor.displayName"
+		:tooltip-text="descriptor.description"
+		:show-tooltip="Boolean(descriptor.description)"
+		:show-options="areOptionsVisible"
+		:bold="false"
+		size="small"
+		color="text-dark"
+		@mouseenter="isFieldHovered = true"
+		@mouseleave="isFieldHovered = false"
+	>
+		<template #options>
 			<ExpressionModeToggle
 				:model-value="mode"
 				:disabled="disabled"
 				@update:model-value="onModeChange"
 			/>
-		</div>
+		</template>
 
-		<N8nInput
-			v-if="mode === 'fixed'"
-			:model-value="raw"
-			:disabled="disabled"
-			size="small"
-			:placeholder="placeholder"
-			@paste="onPaste"
-			@update:model-value="onFixedInput"
-		/>
-
-		<template v-else>
-			<ExpressionEditorInput
-				:model-value="raw.slice(1)"
-				:resolver="resolver"
-				:completion-sources="completionSources"
-				:is-read-only="disabled"
-				:rows="3"
-				data-test-id="ui-builder-expression-input"
-				@update:model-value="
-					(update) => {
-						segments = update.segments;
-						emit('update', update.value);
-					}
-				"
+		<div class="ui-value-field" :class="{ 'ui-value-field--preview-open': isPreviewOpen }">
+			<N8nInput
+				v-if="mode === 'fixed'"
+				:model-value="raw"
+				:disabled="disabled"
+				size="small"
+				:placeholder="placeholder"
+				@paste="onPaste"
+				@focus="isFocused = true"
+				@blur="isFocused = false"
+				@update:model-value="onFixedInput"
 			/>
 
-			<div class="ui-value-field__preview">
-				<ExpressionOutput :segments="segments" :extensions="theme" />
-			</div>
-		</template>
-	</div>
+			<template v-else>
+				<div
+					ref="anchor"
+					class="ui-value-field__editor"
+					@focusin="isFocused = true"
+					@focusout="onFocusOut"
+				>
+					<ExpressionEditorInput
+						:model-value="raw.slice(1)"
+						:resolver="resolver"
+						:completion-sources="completionSources"
+						:is-read-only="disabled"
+						:rows="3"
+						:tooltip-parent="tooltipParent()"
+						data-test-id="ui-builder-expression-input"
+						@update:model-value="
+							(update) => {
+								segments = update.segments;
+								emit('update', update.value);
+							}
+						"
+					/>
+				</div>
+
+				<N8nPopover
+					:open="isPreviewOpen"
+					:reference="anchor ?? undefined"
+					side="bottom"
+					:side-flip="false"
+					:side-offset="0"
+					align="start"
+					width="var(--reka-popper-anchor-width)"
+					:enable-slide-in="false"
+					:enable-scrolling="false"
+					:suppress-auto-focus="true"
+					content-class="ui-value-field__popover"
+					:z-index="'calc(var(--dialogs--z, 1950) + 1)'"
+				>
+					<template #content>
+						<div class="ui-value-field__preview">
+							<ExpressionOutput :segments="segments" :extensions="theme" />
+						</div>
+					</template>
+				</N8nPopover>
+			</template>
+		</div>
+	</N8nInputLabel>
 </template>
 
 <style scoped>
 .ui-value-field {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+
+	/* Rounded all round: no `f(x)` section sits to the left as in the NDV. */
+	--input-triple--radius--top-left: var(--input--radius, var(--radius));
+	--input-triple--radius--bottom-left: var(--input--radius, var(--radius));
+	/* Editor and preview share the code surface, as the NDV's do. */
+	--expression-editor--color--background: var(--code--color--background);
 }
 
-.ui-value-field__header {
-	display: flex;
-	justify-content: flex-end;
+/* The preview hangs off the bottom edge, so the input gives up its corners. */
+.ui-value-field--preview-open {
+	--input-triple--radius--bottom-left: 0;
+	--input-triple--radius--bottom-right: 0;
 }
 
 .ui-value-field__preview {
-	border: var(--border);
-	border-top: none;
-	border-bottom-left-radius: var(--radius);
-	border-bottom-right-radius: var(--radius);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background: var(--code--color--background);
+	/* Teleported out of the field, so the popover surface is the backdrop here. */
+	--expression-editor--color--background: transparent;
+	padding: var(--spacing--2xs);
 	overflow: hidden;
+}
+</style>
+
+<style>
+/* The popover content is teleported, and never carries the scope attribute. */
+.ui-value-field__popover {
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
 }
 </style>

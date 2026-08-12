@@ -34,13 +34,14 @@ export const inputTheme = ({ rows, isReadOnly } = { rows: 5, isReadOnly: false }
 			borderBottomColor:
 				'var(--input--border-bottom-color,var(--input--border-color, var(--border-color)))',
 			borderRadius: 'var(--input--radius, var(--radius))',
-			borderTopLeftRadius: 0,
+			// Square on the left by default: the NDV sits an `f(x)` section there.
+			borderTopLeftRadius: 'var(--input-triple--radius--top-left, 0)',
 			borderTopRightRadius:
 				'var(--input-triple--radius--top-right, var(--input--radius, var(--radius)))',
-			borderBottomLeftRadius: 0,
+			borderBottomLeftRadius: 'var(--input-triple--radius--bottom-left, 0)',
 			borderBottomRightRadius:
 				'var(--input-triple--radius--bottom-right, var(--input--radius, var(--radius)))',
-			backgroundColor: 'white',
+			backgroundColor: 'var(--expression-editor--color--background)',
 		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--code--caret--color)',
@@ -66,7 +67,7 @@ export const outputTheme = () => {
 			padding: '0',
 			borderTopLeftRadius: '0',
 			borderBottomLeftRadius: '0',
-			backgroundColor: 'white',
+			backgroundColor: 'var(--expression-editor--color--background)',
 		},
 		'.cm-scroller': {
 			lineHeight: '1.6',

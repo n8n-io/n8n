@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { history } from '@codemirror/commands';
 import { type EditorState, type Extension, type SelectionRange } from '@codemirror/state';
-import { dropCursor, EditorView } from '@codemirror/view';
+import { dropCursor, EditorView, tooltips } from '@codemirror/view';
 import { onKeyStroke } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 
@@ -22,6 +22,12 @@ type Props = {
 	rows?: number;
 	isReadOnly?: boolean;
 	dataTestId?: string;
+	/**
+	 * Where autocompletion parents its tooltip. Left unset it goes in the editor,
+	 * where a scrolling ancestor can clip it and the host's tooltip styling —
+	 * keyed on its own container — misses it.
+	 */
+	tooltipParent?: HTMLElement;
 	onEditorBlur?: (view: EditorView) => void;
 };
 
@@ -32,6 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	isReadOnly: false,
 	dataTestId: 'inline-expression-editor-input',
+	tooltipParent: undefined,
 	onEditorBlur: undefined,
 });
 
@@ -50,6 +57,7 @@ const extensions = computed(() => [
 	dropCursor(),
 	expressionCloseBrackets(),
 	EditorView.lineWrapping,
+	...(props.tooltipParent ? [tooltips({ parent: props.tooltipParent })] : []),
 	...props.extensions,
 ]);
 const editorValue = computed(() => props.modelValue);

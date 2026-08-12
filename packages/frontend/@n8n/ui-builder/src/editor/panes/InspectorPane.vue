@@ -14,13 +14,16 @@ import UiActionEditor from './UiActionEditor.vue';
 import UiValueField from './UiValueField.vue';
 import { normaliseAction } from '../../core/actions';
 import { pageLabel } from '../../core/pages';
-import type {
-	UiActionStep,
-	UiNode,
-	UiPageInfo,
-	UiProperty,
-	UiRegion,
-	UiScope,
+import {
+	ACTION_PROP_TYPE,
+	ROUTE_PROP_TYPE,
+	STATE_PATH_PROP_TYPE,
+	type UiActionStep,
+	type UiNode,
+	type UiPageInfo,
+	type UiProperty,
+	type UiRegion,
+	type UiScope,
 } from '../../core/types';
 import type { WebhookTarget } from '../composables/useWebhookTargets';
 
@@ -60,6 +63,19 @@ function valueOf(name: string): string {
 	return String(props.node?.props[name] ?? '');
 }
 
+const EDITED_BY_KIND: ReadonlyArray<UiProperty['type']> = [
+	'options',
+	'boolean',
+	ACTION_PROP_TYPE,
+	ROUTE_PROP_TYPE,
+	STATE_PATH_PROP_TYPE,
+];
+
+/** Everything else falls through to a value field, which can hold an expression. */
+function hasOwnEditor(descriptor: UiProperty): boolean {
+	return EDITED_BY_KIND.includes(descriptor.type);
+}
+
 /** Collections and nested properties can sit in `options` too; only real choices render. */
 function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
 	return (descriptor.options ?? []).filter(
@@ -96,6 +112,16 @@ function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
 			</div>
 
 			<div v-for="descriptor in descriptors" :key="descriptor.name" class="ui-field">
+				<!-- Renders its own label, so the fixed/expression toggle can sit in it. -->
+				<UiValueField
+					v-if="!hasOwnEditor(descriptor)"
+					:descriptor="descriptor"
+					:model-value="node.props[descriptor.name]"
+					:scope="scope"
+					:disabled="disabled"
+					@update="emit('setProp', descriptor.name, $event)"
+				/>
+
 				<!--
 					`description` is written on every descriptor and used to go nowhere.
 					`show-tooltip` keeps the marker visible rather than only on hover,
@@ -103,6 +129,7 @@ function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
 					read.
 				-->
 				<N8nInputLabel
+					v-else
 					:label="descriptor.displayName"
 					:tooltip-text="descriptor.description"
 					:show-tooltip="Boolean(descriptor.description)"
@@ -174,21 +201,12 @@ function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
 
 					<!-- A dotted path into state, written as text: never an expression. -->
 					<N8nInput
-						v-if="descriptor.type === 'statePath'"
+						v-else
 						:model-value="valueOf(descriptor.name)"
 						:disabled="disabled"
 						size="small"
 						placeholder="form.name"
 						@update:model-value="emit('setProp', descriptor.name, $event)"
-					/>
-
-					<UiValueField
-						v-else
-						:descriptor="descriptor"
-						:model-value="node.props[descriptor.name]"
-						:scope="scope"
-						:disabled="disabled"
-						@update="emit('setProp', descriptor.name, $event)"
 					/>
 				</N8nInputLabel>
 			</div>

@@ -19,7 +19,7 @@ import { useOutline } from './composables/useOutline';
 import { usePages } from './composables/usePages';
 import { useUiDocument } from './composables/useUiDocument';
 import { useWebhookTargets } from './composables/useWebhookTargets';
-import type { UiBuilderHost } from './host';
+import { UiTooltipParentKey, type UiBuilderHost } from './host';
 import InspectorPane from './panes/InspectorPane.vue';
 import OutlinePane from './panes/OutlinePane.vue';
 import PagesPane from './panes/PagesPane.vue';
@@ -129,6 +129,7 @@ const canvasScope = computed<UiScope>(() => ({
 
 const scopeRegistry = createScopeRegistry();
 provide(UiScopeRegistryKey, scopeRegistry);
+provide(UiTooltipParentKey, () => props.host.tooltipContainer?.());
 
 /**
  * What the inspector previews and completes against: the scope the selected
