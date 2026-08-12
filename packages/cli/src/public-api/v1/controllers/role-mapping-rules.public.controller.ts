@@ -35,7 +35,6 @@ export class RoleMappingRulesPublicController {
 	@ApiTags(['RoleMappingRule'])
 	@ApiResponse(201, RoleMappingRulePublicDto)
 	@ApiErrorResponse(404)
-	@ApiErrorResponse(409)
 	async createRoleMappingRule(
 		req: AuthenticatedRequest,
 		_res: Response,
