@@ -9,7 +9,6 @@ import {
 	N8nInput,
 	N8nOption,
 	N8nSelect,
-	N8nTag,
 	N8nText,
 } from '@n8n/design-system';
 import type { IconOrEmoji, TableHeader } from '@n8n/design-system';
@@ -71,12 +70,6 @@ const headers = computed<Array<TableHeader<WebhookRow>>>(() => [
 		width: 90,
 		align: 'end',
 	},
-	{
-		title: i18n.baseText('settings.webhooks.column.calledBy'),
-		key: 'calledBy',
-		width: 200,
-		disableSort: true,
-	},
 ]);
 
 const nodeTypeFilter = ref<string[]>([]);
@@ -104,14 +97,9 @@ const filteredItems = computed(() => {
 	}
 	if (term) {
 		items = items.filter((row) =>
-			[
-				row.path ?? '',
-				row.workflowName ?? '',
-				row.node,
-				row.method ?? '',
-				row.projectName,
-				...row.calledBy.map((caller) => caller.name),
-			].some((value) => value.toLowerCase().includes(term)),
+			[row.path ?? '', row.workflowName ?? '', row.node, row.method ?? '', row.projectName].some(
+				(value) => value.toLowerCase().includes(term),
+			),
 		);
 	}
 
@@ -165,13 +153,6 @@ const getPathAbbreviation = (path: string) => {
 	const shortened = firstSegment.length > 8 ? firstSegment.slice(0, 8) : firstSegment;
 	return shortened === path ? path : `${shortened}…`;
 };
-
-const MAX_CALLER_PILLS = 3;
-const getOverflowCallers = (row: WebhookRow) =>
-	row.calledBy
-		.slice(MAX_CALLER_PILLS)
-		.map((caller) => caller.name)
-		.join(', ');
 
 const FLASH_DURATION_MS = 2000;
 const flashedKeys = ref(new Set<string>());
@@ -262,6 +243,7 @@ onMounted(async () => {
 				multiple
 				collapse-tags
 				clearable
+				size="medium"
 				:placeholder="i18n.baseText('settings.webhooks.filter.nodeType')"
 				data-testid="webhooks-node-type-filter"
 				:class="$style.nodeTypeFilter"
@@ -275,6 +257,7 @@ onMounted(async () => {
 			</N8nSelect>
 			<N8nInput
 				v-model="search"
+				size="medium"
 				:placeholder="i18n.baseText('settings.webhooks.search.placeholder')"
 				clearable
 				data-testid="webhooks-search"
@@ -341,25 +324,6 @@ onMounted(async () => {
 							<N8nText :class="$style.ellipsis">{{ item.node }}</N8nText>
 						</div>
 					</template>
-
-					<template #[`item.calledBy`]="{ item }">
-						<div v-if="item.calledBy.length > 0" :class="$style.pillCell">
-							<RouterLink
-								v-for="caller in item.calledBy.slice(0, MAX_CALLER_PILLS)"
-								:key="caller.id"
-								:to="getWorkflowLink(caller.id)"
-								target="_blank"
-							>
-								<N8nTag :text="caller.name" />
-							</RouterLink>
-							<N8nTag
-								v-if="item.calledBy.length > MAX_CALLER_PILLS"
-								:text="`+${item.calledBy.length - MAX_CALLER_PILLS}`"
-								:clickable="false"
-								:title="getOverflowCallers(item)"
-							/>
-						</div>
-					</template>
 				</N8nDataTableServer>
 			</section>
 		</template>
@@ -392,6 +356,8 @@ onMounted(async () => {
 .controls {
 	display: flex;
 	justify-content: flex-end;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .search {
@@ -423,12 +389,6 @@ onMounted(async () => {
 .projectCell {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.pillCell {
-	display: flex;
-	flex-wrap: wrap;
 	gap: var(--spacing--3xs);
 }
 

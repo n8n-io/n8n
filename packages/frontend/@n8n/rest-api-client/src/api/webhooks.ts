@@ -24,7 +24,6 @@ export type InstanceWebhook = {
 		type: 'personal' | 'team';
 		icon: { type: 'emoji' | 'icon'; value: string } | null;
 	};
-	calledBy: Array<{ id: string; name: string }>;
 };
 
 export const findWebhook = async (

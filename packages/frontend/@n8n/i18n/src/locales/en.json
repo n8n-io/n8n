@@ -5585,7 +5585,6 @@
 	"settings.webhooks.column.project": "Project",
 	"settings.webhooks.column.node": "Node",
 	"settings.webhooks.column.calls": "Calls",
-	"settings.webhooks.column.calledBy": "Called by",
 	"settings.webhooks.copy.tooltip": "Copy webhook URL",
 	"settings.webhooks.copy.success": "Webhook URL copied",
 	"settings.webhooks.empty.title": "No triggers",

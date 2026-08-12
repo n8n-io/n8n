@@ -2,7 +2,6 @@ import { WebhookEntity } from '@n8n/db';
 import type {
 	Project,
 	SharedWorkflowRepository,
-	WorkflowDependencyRepository,
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -29,13 +28,11 @@ describe('WebhooksController', () => {
 	const webhookService = mock<WebhookService>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const workflowDependencyRepository = mock<WorkflowDependencyRepository>();
 	const nodeTypes = mock<NodeTypes>();
 	const controller = new WebhooksController(
 		webhookService,
 		workflowRepository,
 		sharedWorkflowRepository,
-		workflowDependencyRepository,
 		nodeTypes,
 	);
 
@@ -46,7 +43,6 @@ describe('WebhooksController', () => {
 		workflowRepository.findPublishedWithActiveVersionNodes.mockResolvedValue([]);
 		workflowRepository.findUnpublishedWithNodes.mockResolvedValue([]);
 		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
-		workflowDependencyRepository.findCallersOfWorkflows.mockResolvedValue([]);
 		vi.mocked(getTriggerKinds).mockReturnValue(new Map());
 	});
 
@@ -106,7 +102,6 @@ describe('WebhooksController', () => {
 					nodeType: 'n8n-nodes-base.webhook',
 					isActive: true,
 					project: { name: 'My Project', type: 'team', icon: { type: 'icon', value: 'folder' } },
-					calledBy: [],
 				},
 				{
 					kind: 'webhook',
@@ -118,7 +113,6 @@ describe('WebhooksController', () => {
 					nodeType: undefined,
 					isActive: true,
 					project: undefined,
-					calledBy: [],
 				},
 			]);
 		});
@@ -152,14 +146,6 @@ describe('WebhooksController', () => {
 					['n3', 'persisted'],
 				]),
 			);
-			// Duplicate edges: draft and published versions index separately
-			workflowDependencyRepository.findCallersOfWorkflows.mockResolvedValue([
-				{ workflowId: 'caller1', dependencyKey: 'wf5' },
-				{ workflowId: 'caller1', dependencyKey: 'wf5' },
-			] as never);
-			workflowRepository.findByIds.mockResolvedValue([
-				{ id: 'caller1', name: 'Caller Workflow' } as WorkflowEntity,
-			]);
 
 			const result = await controller.getAll();
 
@@ -172,7 +158,6 @@ describe('WebhooksController', () => {
 					nodeType: 'n8n-nodes-base.scheduleTrigger',
 					isActive: true,
 					project: undefined,
-					calledBy: [{ id: 'caller1', name: 'Caller Workflow' }],
 				},
 				{
 					kind: 'trigger',
@@ -182,7 +167,6 @@ describe('WebhooksController', () => {
 					nodeType: 'n8n-nodes-base.executeWorkflowTrigger',
 					isActive: true,
 					project: undefined,
-					calledBy: [{ id: 'caller1', name: 'Caller Workflow' }],
 				},
 			]);
 		});
@@ -227,7 +211,6 @@ describe('WebhooksController', () => {
 					nodeType: 'n8n-nodes-base.scheduleTrigger',
 					isActive: false,
 					project: undefined,
-					calledBy: [],
 				},
 				{
 					kind: 'webhook',
@@ -239,7 +222,6 @@ describe('WebhooksController', () => {
 					nodeType: 'n8n-nodes-base.webhook',
 					isActive: false,
 					project: undefined,
-					calledBy: [],
 				},
 			]);
 		});

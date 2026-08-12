@@ -1,9 +1,5 @@
 import type { WorkflowEntity } from '@n8n/db';
-import {
-	SharedWorkflowRepository,
-	WorkflowDependencyRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Get, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Request } from 'express';
 import get from 'lodash/get';
@@ -35,7 +31,6 @@ export class WebhooksController {
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly workflowDependencyRepository: WorkflowDependencyRepository,
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
@@ -52,7 +47,6 @@ export class WebhooksController {
 		const workflowIds = [...new Set(rows.map((row) => row.workflowId))];
 		const ownerProjects =
 			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
-		const callersByCallee = await this.getCallersByCallee(workflowIds);
 
 		return rows.map((row) => {
 			const project = ownerProjects.get(row.workflowId);
@@ -61,32 +55,8 @@ export class WebhooksController {
 				project: project
 					? { name: project.name, type: project.type, icon: project.icon }
 					: undefined,
-				calledBy: callersByCallee.get(row.workflowId) ?? [],
 			};
 		});
-	}
-
-	/** Workflows calling each given workflow via an Execute Workflow node. */
-	private async getCallersByCallee(workflowIds: string[]) {
-		const edges = await this.workflowDependencyRepository.findCallersOfWorkflows(workflowIds);
-		const callerIds = [...new Set(edges.map((edge) => edge.workflowId))];
-		const callers = await this.workflowRepository.findByIds(callerIds, { fields: ['id', 'name'] });
-		const callerNames = new Map(callers.map((workflow) => [workflow.id, workflow.name]));
-
-		// Draft and published versions index separately, so dedupe callers per callee
-		const callersByCallee = new Map<string, Map<string, string>>();
-		for (const edge of edges) {
-			const perCallee = callersByCallee.get(edge.dependencyKey) ?? new Map<string, string>();
-			perCallee.set(edge.workflowId, callerNames.get(edge.workflowId) ?? edge.workflowId);
-			callersByCallee.set(edge.dependencyKey, perCallee);
-		}
-
-		return new Map(
-			[...callersByCallee.entries()].map(([calleeId, perCallee]) => [
-				calleeId,
-				[...perCallee.entries()].map(([id, name]) => ({ id, name })),
-			]),
-		);
 	}
 
 	private async getActiveWebhooks(): Promise<TriggerRow[]> {
