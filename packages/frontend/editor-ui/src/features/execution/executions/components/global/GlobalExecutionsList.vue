@@ -19,6 +19,7 @@ import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../exec
 import { executionRetryMessage } from '../../executions.utils';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
+import ExecutionsNlFilter from '../ExecutionsNlFilter.vue';
 import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 
@@ -363,8 +364,14 @@ const goToUpgrade = () => {
 			/>
 			<div :class="$style.execHeaderRight">
 				<ExecutionStopAllText :executions="props.executions" />
+				<ExecutionsNlFilter
+					v-if="settingsStore.settings.executionsNlFilter?.enabled"
+					:filters="props.filters"
+					@filter-changed="onFilterChanged"
+				/>
 				<ExecutionsFilter
 					:workflows="workflows"
+					:model-value="props.filters"
 					class="execFilter"
 					@filter-changed="onFilterChanged"
 				/>

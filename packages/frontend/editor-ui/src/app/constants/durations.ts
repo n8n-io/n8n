@@ -92,4 +92,10 @@ export const DEBOUNCE_TIME = {
 		/** WebSocket disconnect debounce (500ms) */
 		WEBSOCKET_DISCONNECT: 500,
 	},
+
+	/** AI-assisted input */
+	AI: {
+		/** Natural-language filter translation — fires after the user stops typing (3s) */
+		NL_FILTER: 3000,
+	},
 } as const;

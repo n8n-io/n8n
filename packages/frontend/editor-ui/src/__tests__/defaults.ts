@@ -158,6 +158,9 @@ export const defaultSettings: FrontendSettings = {
 		enabled: false,
 		setup: false,
 	},
+	executionsNlFilter: {
+		enabled: false,
+	},
 	workflowHistory: {
 		pruneTime: 0,
 		licensePruneTime: 0,

@@ -1661,6 +1661,8 @@
 	"executionsFilter.customData.inputTooltip.link": "View plans",
 	"executionsFilter.customData.docsTooltip": "Filter executions by data you have saved in them using an ‘Execution Data’ node. {link}",
 	"executionsFilter.customData.docsTooltip.link": "More info",
+	"executionsNlFilter.placeholder": "Try 'failed runs in the last 24 hours'",
+	"executionsNlFilter.error.title": "Couldn't understand that filter",
 	"expressionEdit.anythingInside": "Anything inside ",
 	"expressionEdit.isJavaScript": " is JavaScript.",
 	"expressionEdit.learnMore": "Learn more",
