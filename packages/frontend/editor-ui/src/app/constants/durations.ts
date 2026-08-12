@@ -16,6 +16,8 @@ export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
 
+export const CLUSTER_INFO_POLL_INTERVAL = 1000;
+
 /**
  * Units of time in milliseconds
  */

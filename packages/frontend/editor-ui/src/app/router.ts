@@ -63,6 +63,8 @@ const SettingsApiView = async () =>
 	await import('@/features/settings/apiKeys/views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () =>
 	await import('@/features/integrations/logStreaming.ee/views/SettingsLogStreamingView.vue');
+const SettingsClusterView = async () =>
+	await import('@/features/instanceRegistry/views/SettingsClusterView.vue');
 const SetupView = async () => await import('@/features/core/auth/views/SetupView.vue');
 const SigninView = async () => await import('@/features/core/auth/views/SigninView.vue');
 const SignupView = async () => await import('@/features/core/auth/views/SignupView.vue');
@@ -1060,6 +1062,17 @@ export const routes: RouteRecordRaw[] = [
 							scope: 'logStreaming:manage',
 						},
 					},
+					telemetry: {
+						pageCategory: 'settings',
+					},
+				},
+			},
+			{
+				path: 'cluster',
+				name: VIEWS.CLUSTER_SETTINGS,
+				component: SettingsClusterView,
+				meta: {
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 					},

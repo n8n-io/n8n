@@ -9,6 +9,7 @@ import type { Readable } from 'node:stream';
 import { InstanceRegistryHost } from '@/modules/instance-registry/storage/ipc-instance-storage';
 import { LeaderElectionHost } from '@/scaling/hypervisor-leader-election';
 import { HypervisorMessageRouter } from '@/scaling/hypervisor-message-router';
+import { SupervisorInfoClient, SupervisorInfoHost } from '@/scaling/hypervisor-supervisor-info';
 import { JobQueueHost } from '@/scaling/queue/ipc-job-queue';
 import { PubSubHost } from '@/scaling/transport/hypervisor-message-transport';
 import { CacheHost } from '@/services/cache/ipc.cache-manager';
@@ -57,6 +58,7 @@ export function createChildSupervisor(deps: {
 		number,
 		{ child: SupervisedChild; role: string; env: ChildEnv; execArgv?: string[] }
 	>();
+	const respawns = new Map<string, number>();
 	let shuttingDown = false;
 
 	const spawn = (role: string, env: ChildEnv, execArgv?: string[]) => {
@@ -66,6 +68,7 @@ export function createChildSupervisor(deps: {
 
 	return {
 		spawn,
+		getRespawnCounts: (): Record<string, number> => Object.fromEntries(respawns),
 		onExit(id: number, code: number | null, signal: string | null) {
 			const meta = children.get(id);
 			children.delete(id);
@@ -77,6 +80,7 @@ export function createChildSupervisor(deps: {
 				return;
 			}
 			if (!meta) return;
+			respawns.set(meta.role, (respawns.get(meta.role) ?? 0) + 1);
 			deps.log(`${classifyCrash(code, signal)} — respawning ${meta.role}`);
 			spawn(meta.role, meta.env, meta.execArgv);
 		},
@@ -122,6 +126,8 @@ export class Hypervisor extends BaseCommand {
 			router.register(Container.get(PubSubHost));
 			router.register(Container.get(CacheHost));
 			router.register(Container.get(JobQueueHost));
+			const supervisorInfoHost = Container.get(SupervisorInfoHost);
+			router.register(supervisorInfoHost);
 
 			const baseExecArgv = process.execArgv;
 			// Fork a child, piping+tagging its output. `silent: true` keeps stdio
@@ -142,6 +148,7 @@ export class Hypervisor extends BaseCommand {
 				fork: doFork,
 				log: (message) => this.logger.info(`${selfTag} ${message}`),
 			});
+			supervisorInfoHost.setCountsProvider(() => supervisor.getRespawnCounts());
 
 			cluster.on('message', (worker, message) => router.handleMessage(worker, message));
 			cluster.on('exit', (worker, code, signal) => {
@@ -199,6 +206,10 @@ export class Hypervisor extends BaseCommand {
 		} else {
 			throw new UnexpectedError(`Unknown N8N_HYPERVISOR_ROLE: ${String(role)}`);
 		}
+
+		// Push this child's live process info to the primary so an aggregate
+		// /cluster-info reports current memory for every forked process.
+		Container.get(SupervisorInfoClient).startPushing();
 
 		await command.init?.();
 		await command.run(); // Worker.run() blocks forever; Start.run() returns after boot.

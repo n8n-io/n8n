@@ -194,6 +194,17 @@ describe('createChildSupervisor', () => {
 		expect(fork).toHaveBeenNthCalledWith(2, 'worker', { A: '1' }, ['--max-old-space-size=64']);
 	});
 
+	it('counts respawns per role', () => {
+		const { forked, supervisor } = setup();
+		supervisor.spawn('worker', {}, undefined);
+		expect(supervisor.getRespawnCounts()).toEqual({});
+
+		supervisor.onExit(forked[0].child.id, null, 'SIGKILL');
+		supervisor.onExit(forked[1].child.id, null, 'SIGKILL'); // the respawn
+
+		expect(supervisor.getRespawnCounts()).toEqual({ worker: 2 });
+	});
+
 	it('does not respawn during shutdown and exits once the last child is gone', () => {
 		const { forked, fork, exit, supervisor } = setup();
 		supervisor.spawn('worker', {}, undefined);
