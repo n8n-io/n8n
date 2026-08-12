@@ -1,0 +1,44 @@
+packages/core/src/execution-engine/node-execution-context/workflow-node-context.ts
+  s_0d7ba5127812fa::t_280f54642f51f6 16-17
+packages/workflow/src/workflow-diff.ts
+  s_0d7ba5127812fa::t_b6a34f3b3f7dea 66
+packages/core/src/execution-engine/node-execution-context/load-options-context.ts
+  s_0d7ba5127812fa::t_a7e6386c24bf07 21-22
+packages/workflow/src/errors/expression.error.ts
+  s_0d7ba5127812fa::t_c99063ca6dbb51 25-26
+packages/workflow/src/interfaces.ts
+  s_0d7ba5127812fa::t_47cf753dda1d0a 1606-1610
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_0d7ba5127812fa::t_ad36b5b007ddbe 578
+  s_0d7ba5127812fa::t_328cc8484673fe 580-581
+  s_0d7ba5127812fa::t_63cd4a1a379d73 52-58
+  s_0d7ba5127812fa::t_eb2106d38ca0fe 564-577,579
+packages/workflow/src/schemas.ts
+  s_0d7ba5127812fa::t_df9640e051998c 488
+packages/core/src/execution-engine/node-execution-context/__tests__/throw-on-undefined-expression.test.ts
+  s_0d7ba5127812fa::t_e9db14ab9fb902 32-46,48-49
+  s_0d7ba5127812fa::t_b862e427ef980d 71
+  s_0d7ba5127812fa::t_3ad77bc8583682 47,50,54,56
+  s_0d7ba5127812fa::t_ad36b5b007ddbe 131
+  s_0d7ba5127812fa::t_148cf59477cf53 183
+  s_0d7ba5127812fa::t_df089dca64e300 1-5,7-11,18-31,51-53,55,57-70,72-130,132-182,184-202
+  s_0d7ba5127812fa::t_e2cc316d493e20 6,12-17
+packages/core/src/execution-engine/__tests__/routing-node-undefined-expression.test.ts
+  s_0d7ba5127812fa::t_55d4c13ef1f9a6 1-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "34c5c9e34835e307cc88f1556290576c71c6bc25",
+  "prompts": {},
+  "sessions": {
+    "s_0d7ba5127812fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bac7e68-e5ee-48ab-a9ab-eb830eaf31ae",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
