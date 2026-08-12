@@ -39,7 +39,12 @@ describe('AddReasonToWorkflowPublicationOutbox Migration', () => {
 		const dbConnection = Container.get(DbConnection);
 		await dbConnection.init();
 		dataSource = Container.get(DataSource);
+	});
 
+	// Each test starts from a clean database migrated up to (but not including)
+	// this migration and owns its fixtures, so the tests run in any order or
+	// in isolation.
+	beforeEach(async () => {
 		const context = createTestMigrationContext(dataSource);
 		await context.queryRunner.clearDatabase();
 		await context.queryRunner.release();
@@ -72,14 +77,27 @@ describe('AddReasonToWorkflowPublicationOutbox Migration', () => {
 	});
 
 	it('rolls back cleanly, preserving rows, and can be reapplied', async () => {
-		await undoLastSingleMigration();
+		await runSingleMigration(MIGRATION_NAME);
 
 		let context = createTestMigrationContext(dataSource);
+		try {
+			await insertRecord(context, 'wf-defaulted');
+			await insertRecord(context, 'wf-stamped', 'startup');
+		} finally {
+			await context.queryRunner.release();
+		}
+
+		await undoLastSingleMigration();
+
+		context = createTestMigrationContext(dataSource);
 		try {
 			const rows = await context.runQuery<Array<{ workflowId: string }>>(
 				`SELECT ${context.escape.columnName('workflowId')} FROM ${context.escape.tableName('workflow_publication_outbox')}`,
 			);
-			expect(rows.map(({ workflowId }) => workflowId).sort()).toEqual(['wf-default', 'wf-startup']);
+			expect(rows.map(({ workflowId }) => workflowId).sort()).toEqual([
+				'wf-defaulted',
+				'wf-stamped',
+			]);
 		} finally {
 			await context.queryRunner.release();
 		}
