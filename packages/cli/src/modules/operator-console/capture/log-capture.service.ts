@@ -55,6 +55,31 @@ export function isInternalWriteInProgress(): boolean {
 	return isInternalWrite;
 }
 
+/**
+ * Set while a captured batch is being delivered to subscribers.
+ *
+ * A *different* problem from {@link isInternalWrite}, which stops one winston
+ * entry being captured twice. This stops a slower feedback loop: delivering a
+ * batch makes `Push` log `Pushed to frontend`, that line is captured, which
+ * fills the next batch, which is delivered, which logs… A console left open
+ * would tail nothing but its own delivery chatter, forever, at the batch rate.
+ *
+ * Suppressing capture rather than filtering the `push` scope keeps ordinary
+ * push logging visible in the console — only lines emitted *by the act of
+ * delivering* are dropped.
+ */
+let isDelivering = false;
+
+export function runWithCaptureSuppressed<T>(fn: () => T): T {
+	const wasDelivering = isDelivering;
+	isDelivering = true;
+	try {
+		return fn();
+	} finally {
+		isDelivering = wasDelivering;
+	}
+}
+
 const LOG_SCOPE_VALUES: ReadonlySet<string> = new Set(LOG_SCOPES);
 
 const OPERATOR_LOG_LEVEL_VALUES: ReadonlySet<string> = new Set(OPERATOR_LOG_LEVELS);
@@ -165,6 +190,7 @@ export class LogCaptureService {
 
 	private attachWinstonTransport(): void {
 		const transport = new RingBufferTransport((info) => {
+			if (isDelivering) return;
 			runInternal(() => this.captureWinstonEntry(info));
 		});
 

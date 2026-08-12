@@ -73,10 +73,12 @@ export class OperatorConsoleModule implements ModuleInterface {
 	async shutdown() {
 		const { LogCaptureService } = await import('./capture/log-capture.service.js');
 		const { LogProducerService } = await import('./producer/log-producer.service.js');
+		const { LogConsumerService } = await import('./consumer/log-consumer.service.js');
 		const { LeaseManagerService } = await import('./consumer/lease-manager.service.js');
 
 		Container.get(LogCaptureService).stop();
 		Container.get(LogProducerService).shutdown();
+		Container.get(LogConsumerService).shutdown();
 		Container.get(LeaseManagerService).shutdown();
 	}
 }

@@ -12,7 +12,7 @@ import { Delete, Get, GlobalScope, Post, RestController } from '@n8n/decorators'
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { LeaseManagerService } from './consumer/lease-manager.service';
+import { LogConsumerService } from './consumer/log-consumer.service';
 import { OperatorConsoleConfig } from './operator-console.config';
 import { CompositeLogSource } from './sources/composite-log.source';
 
@@ -44,7 +44,7 @@ type LogsQuery = {
 export class OperatorConsoleController {
 	constructor(
 		private readonly source: CompositeLogSource,
-		private readonly leaseManager: LeaseManagerService,
+		private readonly consumer: LogConsumerService,
 		private readonly config: OperatorConsoleConfig,
 	) {}
 
@@ -97,7 +97,7 @@ export class OperatorConsoleController {
 	async startTail(
 		req: AuthenticatedRequest<{}, {}, OperatorLogFilter>,
 	): Promise<{ leaseTtlMs: number }> {
-		this.leaseManager.open(pushRefOf(req), sanitizeFilter(req.body ?? {}));
+		this.consumer.open(pushRefOf(req), sanitizeFilter(req.body ?? {}));
 
 		return { leaseTtlMs: this.config.leaseTtlMs };
 	}
@@ -105,7 +105,7 @@ export class OperatorConsoleController {
 	@Delete('/tail')
 	@GlobalScope('orchestration:read')
 	async stopTail(req: AuthenticatedRequest): Promise<{ success: true }> {
-		this.leaseManager.close(pushRefOf(req));
+		this.consumer.close(pushRefOf(req));
 
 		return { success: true };
 	}
