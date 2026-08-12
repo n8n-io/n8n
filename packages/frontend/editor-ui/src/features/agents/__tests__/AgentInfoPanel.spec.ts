@@ -6,7 +6,6 @@ import { ref } from 'vue';
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import type { ProviderCatalog } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
-import type { AgentModelsByProvider } from '../model-providers';
 
 const ensureLoadedMock = vi.fn();
 const selectCredentialMock = vi.fn();
@@ -66,13 +65,6 @@ vi.mock('@n8n/design-system', () => ({
 			'<div v-bind="$attrs" data-testid="markdown-editor">{{ modelValue }} {{ placeholder }}</div>',
 	},
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
-	N8nSelect: {
-		name: 'N8nSelect',
-		props: ['modelValue', 'disabled', 'size'],
-		emits: ['update:modelValue'],
-		template: '<div><slot /></div>',
-	},
-	N8nOption: { name: 'N8nOption', props: ['value', 'label'], template: '<span />' },
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -135,7 +127,15 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 	default: {
 		name: 'AgentModelSelector',
 		template: '<div data-testid="agent-model-selector" />',
-		props: ['selectedModel', 'credentials', 'warnMissingCredentials', 'modelsByProvider'],
+		props: [
+			'selectedModel',
+			'credentials',
+			'warnMissingCredentials',
+			'modelsByProvider',
+			'showHarnessModels',
+			'selectedHarnessAdapter',
+			'harnessAllowDirectCredentials',
+		],
 		emits: ['change'],
 	},
 }));
@@ -296,7 +296,7 @@ describe('AgentInfoPanel', () => {
 		},
 	);
 
-	it('clears hidden n8n-only settings when switching to a harness engine', async () => {
+	it('selects a harness adapter and model together while clearing unsupported settings', async () => {
 		const wrapper = mountModelPanel({
 			name: 'Support agent',
 			model: 'anthropic/claude-sonnet-4-5',
@@ -311,13 +311,17 @@ describe('AgentInfoPanel', () => {
 			config: { toolCallConcurrency: 2 },
 		});
 
-		wrapper.findComponent({ name: 'N8nSelect' }).vm.$emit('update:modelValue', 'claude-code');
+		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+			harnessAdapter: 'claude-code',
+		});
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toEqual({
 			engine: { type: 'harness', adapter: 'claude-code' },
-			model: '',
-			credential: undefined,
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
 			memory: undefined,
 			subAgents: undefined,
 			skills: [],
@@ -328,7 +332,7 @@ describe('AgentInfoPanel', () => {
 		});
 	});
 
-	it('only exposes curated models for the selected harness', () => {
+	it('passes harness availability and the selected adapter to the model selector', () => {
 		const wrapper = mountModelPanel({
 			name: 'Support agent',
 			model: 'anthropic/claude-sonnet-4-5',
@@ -337,8 +341,33 @@ describe('AgentInfoPanel', () => {
 			engine: { type: 'harness', adapter: 'claude-code' },
 		});
 
-		const models = selectorProps(wrapper).modelsByProvider as AgentModelsByProvider;
-		expect(models.anthropic?.models.map((model) => model.model)).toEqual(['claude-sonnet-4-5']);
+		expect(selectorProps(wrapper)).toMatchObject({
+			showHarnessModels: true,
+			selectedHarnessAdapter: 'claude-code',
+			harnessAllowDirectCredentials: false,
+		});
+	});
+
+	it('switches back to the n8n runtime when selecting a provider model', async () => {
+		const wrapper = mountModelPanel({
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+			engine: { type: 'harness', adapter: 'claude-code' },
+		});
+
+		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+		});
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toMatchObject({
+			engine: { type: 'n8n' },
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+		});
 	});
 
 	describe('model credential resolution', () => {

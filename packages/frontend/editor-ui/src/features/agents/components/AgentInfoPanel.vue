@@ -6,8 +6,8 @@
  */
 import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { AGENT_HARNESS_MODELS, isAgentHarnessModel } from '@n8n/api-types';
-import { N8nMarkdownEditor, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { isAgentHarnessModel } from '@n8n/api-types';
+import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -91,25 +91,15 @@ const configProvider = computed<AgentModelProvider | null>(() => {
 	return parsed && isAgentModelProvider(parsed.provider) ? parsed.provider : null;
 });
 
-type AgentEngineSelection = 'n8n' | 'claude-code' | 'codex';
-
-const selectedEngine = computed<AgentEngineSelection>(() => {
-	const engine = props.config?.engine;
-	return engine?.type === 'harness' ? engine.adapter : 'n8n';
-});
 const harnessesEnabled = computed(() => settingsStore.isAgentModuleActive('harnesses'));
-const showEngineSelector = computed(
+const showHarnessModels = computed(
 	() => harnessesEnabled.value || props.config?.engine?.type === 'harness',
 );
-const engineProvider = computed<AgentModelProvider | null>(() => {
-	if (selectedEngine.value === 'claude-code') return 'anthropic';
-	if (selectedEngine.value === 'codex') return 'openai';
-	return null;
-});
-const managedCredentialsOnly = computed(
-	() =>
-		selectedEngine.value !== 'n8n' &&
-		settingsStore.moduleSettings.agents?.harnessAllowDirectCredentials !== true,
+const selectedHarnessAdapter = computed(() =>
+	props.config?.engine?.type === 'harness' ? props.config.engine.adapter : null,
+);
+const harnessAllowDirectCredentials = computed(
+	() => settingsStore.moduleSettings.agents?.harnessAllowDirectCredentials === true,
 );
 
 // The agent's persisted `config.credential` is the source of truth for the selected
@@ -125,38 +115,22 @@ const effectiveCredentials = computed(() => {
 	return { ...base, [provider]: credential };
 });
 
-const filteredAgents = computed<AgentModelsByProvider>(() => {
-	const models = getModelsForPicker(effectiveCredentials.value);
-	const provider = engineProvider.value;
-	if (!provider) return models;
-
-	const providerModels = models[provider];
-	if (!providerModels) return {};
-	const adapter = selectedEngine.value;
-	if (adapter === 'n8n') return { [provider]: providerModels };
-	const allowedModels: readonly string[] = AGENT_HARNESS_MODELS[adapter];
-	return {
-		[provider]: {
-			...providerModels,
-			models: providerModels.models.filter((model) =>
-				allowedModels.includes(`${provider}/${model.model}`),
-			),
-		},
-	};
-});
+const modelsByProvider = computed<AgentModelsByProvider>(() =>
+	getModelsForPicker(effectiveCredentials.value),
+);
 
 const selectedAgent = computed<AgentModelOption | null>(() => {
 	const modelStr = modelToString(props.config?.model);
 	if (!modelStr) return null;
 	const parsed = parseModelString(modelStr);
 	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
+	const engine = props.config?.engine;
+	if (engine?.type === 'harness' && !isAgentHarnessModel(engine.adapter, modelStr)) return null;
 
-	const registryEntry = filteredAgents.value[parsed.provider]?.models.find(
+	const registryEntry = modelsByProvider.value[parsed.provider]?.models.find(
 		(m) => m.model === parsed.name,
 	);
 	if (registryEntry) return registryEntry;
-	const engine = props.config?.engine;
-	if (engine?.type === 'harness' && !isAgentHarnessModel(engine.adapter, modelStr)) return null;
 
 	return {
 		provider: parsed.provider,
@@ -189,6 +163,29 @@ function onModelChange(selection: AgentModelSelection) {
 	}
 	const modelName = sanitizeModelId(selection.provider, selection.model);
 	const model = `${selection.provider}/${modelName}`;
+	if (selection.harnessAdapter) {
+		const isChangingHarness =
+			props.config?.engine?.type !== 'harness' ||
+			props.config.engine.adapter !== selection.harnessAdapter;
+		emit('update:config', {
+			engine: { type: 'harness', adapter: selection.harnessAdapter },
+			model,
+			credential: credentialId,
+			...(isChangingHarness
+				? {
+						memory: undefined,
+						subAgents: undefined,
+						skills: [],
+						mcpServers: [],
+						vectorStores: [],
+						providerTools: undefined,
+						config: undefined,
+					}
+				: {}),
+		});
+		return;
+	}
+
 	const capabilities = PROVIDER_CAPABILITIES[selection.provider];
 	const webSearchChanges = normalizeWebSearchForModelChange(
 		props.config,
@@ -207,6 +204,7 @@ function onModelChange(selection: AgentModelSelection) {
 		catalog.value[selection.provider]?.models[modelName]?.reasoning,
 	);
 	emit('update:config', {
+		engine: { type: 'n8n' },
 		model,
 		credential: credentialId,
 		...webSearchChanges,
@@ -214,29 +212,6 @@ function onModelChange(selection: AgentModelSelection) {
 		...reasoningChanges,
 	});
 }
-
-function onEngineChange(value: unknown) {
-	if (value !== 'n8n' && value !== 'claude-code' && value !== 'codex') return;
-	if (value === selectedEngine.value) return;
-
-	emit('update:config', {
-		engine: value === 'n8n' ? { type: 'n8n' } : { type: 'harness', adapter: value },
-		model: '',
-		credential: undefined,
-		...(value === 'n8n'
-			? {}
-			: {
-					memory: undefined,
-					subAgents: undefined,
-					skills: [],
-					mcpServers: [],
-					vectorStores: [],
-					providerTools: undefined,
-					config: undefined,
-				}),
-	});
-}
-
 function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
 	const parsed = parseModelString(modelToString(props.config?.model));
@@ -277,31 +252,6 @@ function onInstructionsInput(value: string) {
 			:description="i18n.baseText('agents.builder.agent.description')"
 		/>
 
-		<div v-if="props.showModel && showEngineSelector" :class="$style.field">
-			<label :class="[$style.label, props.disabled && shared.disabled]">
-				<N8nText step="sm" bold :class="shared.dataEntryLabel">
-					{{ i18n.baseText('agents.builder.agent.engine.label') }}
-				</N8nText>
-			</label>
-			<N8nSelect
-				:model-value="selectedEngine"
-				size="small"
-				:disabled="props.disabled"
-				data-testid="agent-engine-selector"
-				@update:model-value="onEngineChange"
-			>
-				<N8nOption value="n8n" :label="i18n.baseText('agents.builder.agent.engine.n8n')" />
-				<N8nOption
-					value="claude-code"
-					:label="i18n.baseText('agents.builder.agent.engine.claudeCode')"
-				/>
-				<N8nOption value="codex" :label="i18n.baseText('agents.builder.agent.engine.codex')" />
-			</N8nSelect>
-			<N8nText size="small" :class="shared.dataEntrySubLabel">
-				{{ i18n.baseText('agents.builder.agent.engine.hint') }}
-			</N8nText>
-		</div>
-
 		<div v-if="props.showModel" :class="[$style.field]">
 			<label :class="[$style.label, props.disabled && shared.disabled]"
 				><N8nText step="sm" bold :class="shared.dataEntryLabel">{{
@@ -312,12 +262,14 @@ function onInstructionsInput(value: string) {
 				:disabled="props.disabled"
 				:selected-model="selectedAgent"
 				:credentials="effectiveCredentials"
-				:models-by-provider="filteredAgents"
+				:models-by-provider="modelsByProvider"
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
 				:bound-credential-id="props.config?.credential ?? null"
-				:managed-credentials-only="managedCredentialsOnly"
+				:show-harness-models="showHarnessModels"
+				:selected-harness-adapter="selectedHarnessAdapter"
+				:harness-allow-direct-credentials="harnessAllowDirectCredentials"
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
