@@ -791,6 +791,7 @@ function createInboxItem(): WorkflowReviewInboxItem {
 		workflowName: 'My workflow',
 		workflowVersionId: null,
 		requester: null,
+		authors: [],
 		reviewers: [],
 		decision: 'pending',
 		state: 'open',
@@ -808,6 +809,7 @@ function createDetail(
 		workflows: [],
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
+		viewerCanComment: true,
 		...overrides,
 	};
 }

@@ -16,6 +16,7 @@ export interface WorkflowReviewInboxItem extends WorkflowReviewRequestSummary {
 	title: string;
 	workflowName: string | null;
 	requester: WorkflowReviewEligibleReviewer | null;
+	authors: WorkflowReviewEligibleReviewer[];
 	reviewers: WorkflowReviewEligibleReviewer[];
 }
 

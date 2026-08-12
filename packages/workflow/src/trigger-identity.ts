@@ -37,13 +37,6 @@ export interface TriggerIdentityOptions {
 	 * which authenticates the submitter but establishes no identity.
 	 */
 	isFormOAuth2Enabled?: boolean;
-	/**
-	 * Whether `N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS` is on for the instance.
-	 * Unlike the form's flag, this one does gate the Webhook node's `n8nOAuth2`
-	 * option directly — it's opt-in and hidden in the editor while off. A caller
-	 * that hasn't read the flag must not let an existing `n8nOAuth2` value through.
-	 */
-	isWebhookOAuth2Enabled?: boolean;
 }
 
 /** Whether a trigger's parameters declare at least one context establishment hook. */
@@ -77,15 +70,10 @@ export function classifyTriggerIdentity(
 		nodeType === CHAT_TRIGGER_NODE_TYPE && parameters?.availableInChat === true;
 	const isMcpTrigger =
 		nodeType === MCP_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
-	// The Webhook node's opt-in "n8n User Auth (OAuth2)" mode injects the caller's
-	// n8n identity the same way the MCP trigger does — sharing the `n8nOAuth2` value.
-	// Unlike the MCP trigger, this mode is gated by an instance flag (the option is
-	// hidden in the editor while it's off), so a caller must opt in with
-	// `isWebhookOAuth2Enabled` for it to count — omitting it fails closed.
+	// The Webhook node's "n8n User Auth (OAuth2)" mode injects the caller's n8n
+	// identity the same way the MCP trigger does — sharing the `n8nOAuth2` value.
 	const isOAuth2Webhook =
-		nodeType === WEBHOOK_NODE_TYPE &&
-		parameters?.authentication === 'n8nOAuth2' &&
-		options.isWebhookOAuth2Enabled === true;
+		nodeType === WEBHOOK_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
 	// The form trigger only establishes an identity through its OAuth2 flow, so callers
 	// must opt the branch in with the instance's `isFormOAuth2Enabled`. Omitting it fails
 	// closed: without the flag a `n8nUserAuth` form takes the legacy cookie/HMAC path,
