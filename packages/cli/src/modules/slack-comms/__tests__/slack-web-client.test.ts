@@ -83,6 +83,15 @@ describe('truncateChunk', () => {
 	});
 });
 
+function chunksFromBody(body: unknown): Array<Record<string, unknown>> {
+	if (typeof body !== 'object' || body === null || !('chunks' in body)) return [];
+	const { chunks } = body;
+	if (!Array.isArray(chunks)) return [];
+	return chunks.filter(
+		(chunk): chunk is Record<string, unknown> => typeof chunk === 'object' && chunk !== null,
+	);
+}
+
 function createClient(routes: Route[]) {
 	const { outboundHttp, httpRequest } = createFakeOutboundHttp(
 		routes,
@@ -310,6 +319,85 @@ describe('SlackWebClient', () => {
 			const transport = await client.openStream(TOKEN, target, 'fallback');
 
 			expect(transport).toBeInstanceOf(UpdateStreamTransport);
+		});
+
+		it('sends channel, thread_ts and task_display_mode on chat.startStream, omitting recipient ids when the target has neither', async () => {
+			const { client, httpRequest } = createClient([
+				{ method: 'POST', pathname: '/api/chat.startStream', body: { ok: true, ts: '10.1' } },
+			]);
+
+			await client.openStream(TOKEN, target, 'native');
+
+			const [options] = httpRequest.mock.calls[0];
+			expect(options.body).toMatchObject({
+				channel: 'C1',
+				thread_ts: '1.1',
+				task_display_mode: 'plan',
+			});
+			expect(options.body).not.toHaveProperty('recipient_user_id');
+			expect(options.body).not.toHaveProperty('recipient_team_id');
+		});
+
+		it('includes both recipient ids on chat.startStream when the target carries both', async () => {
+			const { client, httpRequest } = createClient([
+				{ method: 'POST', pathname: '/api/chat.startStream', body: { ok: true, ts: '10.1' } },
+			]);
+			const channelTarget: StreamTarget = {
+				channel: 'C1',
+				threadTs: '1.1',
+				recipientUserId: 'U1',
+				recipientTeamId: 'T1',
+			};
+
+			await client.openStream(TOKEN, channelTarget, 'native');
+
+			const [options] = httpRequest.mock.calls[0];
+			expect(options.body).toMatchObject({ recipient_user_id: 'U1', recipient_team_id: 'T1' });
+		});
+
+		it('truncates an oversized task_update chunk before chat.appendStream', async () => {
+			const { client, httpRequest } = createClient([
+				{ method: 'POST', pathname: '/api/chat.startStream', body: { ok: true, ts: '10.1' } },
+				{ method: 'POST', pathname: '/api/chat.appendStream', body: { ok: true } },
+			]);
+
+			const transport = await client.openStream(TOKEN, target, 'native');
+			await transport.append([
+				{ type: 'task_update', id: 't1', title: 'x'.repeat(400), status: 'in_progress' },
+			]);
+
+			const appendCall = httpRequest.mock.calls.find(([options]) =>
+				options.url.endsWith('/chat.appendStream'),
+			);
+			expect(appendCall).toBeDefined();
+			const [options] = appendCall ?? [];
+			const chunks = chunksFromBody(options?.body);
+			expect(chunks).toHaveLength(1);
+			const title = chunks[0]?.title;
+			expect(typeof title).toBe('string');
+			expect(typeof title === 'string' ? title.length : Infinity).toBeLessThanOrEqual(256);
+		});
+
+		it('carries the close(final) markdown and blocks on chat.stopStream', async () => {
+			const { client, httpRequest } = createClient([
+				{ method: 'POST', pathname: '/api/chat.startStream', body: { ok: true, ts: '10.1' } },
+				{ method: 'POST', pathname: '/api/chat.stopStream', body: { ok: true } },
+			]);
+
+			const transport = await client.openStream(TOKEN, target, 'native');
+			await transport.close({ markdown: 'Done', blocks: [{ type: 'section' }] });
+
+			const stopCall = httpRequest.mock.calls.find(([options]) =>
+				options.url.endsWith('/chat.stopStream'),
+			);
+			expect(stopCall).toBeDefined();
+			const [options] = stopCall ?? [];
+			expect(options?.body).toMatchObject({
+				channel: 'C1',
+				ts: '10.1',
+				markdown_text: 'Done',
+				blocks: [{ type: 'section' }],
+			});
 		});
 	});
 });
