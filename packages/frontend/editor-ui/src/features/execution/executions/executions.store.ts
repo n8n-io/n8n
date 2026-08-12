@@ -148,11 +148,15 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	/** Translates a natural-language query into a filter patch. See `resolveNlFilterPatch`. */
-	async function translateNlFilter(query: string): Promise<ExecutionsNlFilterResponseDto> {
+	async function translateNlFilter(
+		query: string,
+		workflowNames: string[],
+	): Promise<ExecutionsNlFilterResponseDto> {
 		return await makeRestApiRequest(rootStore.restApiContext, 'POST', '/ai/executions-filter', {
 			query,
 			now: new Date().toISOString(),
 			timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+			workflowNames,
 		});
 	}
 

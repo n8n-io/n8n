@@ -26,7 +26,7 @@ export const EXECUTIONS_NL_FILTER_VOTES = ['all', 'up', 'down'] as const;
  */
 export class ExecutionsNlFilterResponseDto extends Z.class({
 	status: z.enum(EXECUTIONS_NL_FILTER_STATUSES).optional(),
-	/** Workflow names/references as they appear in the query, e.g. ["Daily Report", "Slack Alerts"]. Resolved to IDs by the frontend. */
+	/** Workflow names matched against the request's `workflowNames` list, so a fragment in the query resolves to the full name. Resolved to IDs by the frontend. */
 	workflowNames: z.array(z.string()).optional(),
 	/** ISO 8601 timestamp. */
 	startDate: z.string().optional(),

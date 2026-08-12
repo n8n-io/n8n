@@ -159,7 +159,12 @@ async function runTranslation() {
 	isTranslating.value = true;
 
 	try {
-		const response = await executionsStore.translateNlFilter(trimmedQuery);
+		// Sent as matching context so the model can turn a fragment ("daily report") into the real
+		// workflow name; it still returns names, which are resolved to IDs locally.
+		const response = await executionsStore.translateNlFilter(
+			trimmedQuery,
+			workflowsListStore.allWorkflows.map((workflow) => workflow.name),
+		);
 		// A newer request started (or finished) while this one was in flight — discard.
 		if (currentRequestId !== requestId) return;
 

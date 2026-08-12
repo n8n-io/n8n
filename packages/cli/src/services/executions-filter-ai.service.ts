@@ -14,12 +14,13 @@ const MODEL_ID = 'anthropic/claude-haiku-4-5';
 const REQUEST_TIMEOUT_MS = 15_000;
 
 const SYSTEM_PROMPT = `You translate a natural-language description of workflow executions into a filter object.
-You have no access to the user's actual workflows, tags, or data — extract names and values verbatim from the query as plain strings; do not invent IDs.
+The prompt lists the user's workflows; everything else (tags, custom data) you have no visibility of, so extract those verbatim from the query as plain strings. Never invent IDs.
 
 Rules:
 - Only set fields the query actually specifies. Omit anything you're not confident about.
-- "workflowNames" is a list of workflow names/references as they appear in the query, e.g. ["Daily Report"] from "Daily Report runs", or ["Daily Report", "Slack Alerts"] from "Daily Report and Slack Alerts runs". Omit if no workflow is mentioned.
-- A workflow name can itself contain "&" or "and" (e.g. "Sales & Marketing", "Sales and Marketing Sync"). When the query has "&"/"and" between two capitalized phrases, use your best judgment on whether it separates two distinct workflow names or is part of one workflow's name — you won't always get this right, and that's fine.
+- "workflowNames" identifies workflows the query refers to. Match against the workflow list in the prompt and return the full names from that list exactly as written there — the query often carries only a fragment, an abbreviation, a differently-cased version, or a rough paraphrase of the real name.
+- Only return a name that is in that list. If a mentioned workflow matches nothing in the list, or several candidates are equally plausible with nothing to separate them, omit it rather than guessing — a wrong workflow filter silently shows the wrong executions. Omit "workflowNames" entirely if the query names no workflow.
+- Workflow names can themselves contain "&" or "and" (e.g. "Sales & Marketing"). Let the list settle whether such a phrase is one workflow or two: prefer whichever reading matches actual entries in it.
 - "status" must be one of: all, error, canceled, new, running, success, waiting. Map "failed" and "crashed" to "error".
 - "startDate" and "endDate" are ISO 8601 timestamps, resolved relative to the given current time and timezone. Recognise a time period however it is phrased, including:
   - relative durations: "last 5 hours", "in the past 30 minutes", "previous 3 days", "over the last couple of weeks"
@@ -81,8 +82,15 @@ export class ExecutionsFilterAiService {
 	}
 
 	private buildPrompt(request: ExecutionsNlFilterRequestDto): string {
+		const workflowList = request.workflowNames.length
+			? request.workflowNames.map((name) => `- ${name}`).join('\n')
+			: '(none)';
+
 		return `Current time: ${request.now}
 Timezone: ${request.timezone}
+
+The user's workflows:
+${workflowList}
 
 Query: "${request.query}"`;
 	}
