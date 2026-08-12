@@ -38,6 +38,8 @@ let requestId = 0;
 const isFocused = ref(false);
 /** Set by Escape and by picking an entry, so the dropdown stays shut while the input keeps focus. */
 const isHistoryDismissed = ref(false);
+/** Index into `matchingQueries`; -1 means the text as typed, not a history entry. */
+const highlightedIndex = ref(-1);
 const inputWrapper = ref<HTMLDivElement>();
 const historyList = ref<HTMLUListElement>();
 
@@ -66,6 +68,12 @@ const matchingQueries = computed(() => {
 const isHistoryOpen = computed(
 	() => isFocused.value && !isHistoryDismissed.value && matchingQueries.value.length > 0,
 );
+
+// The highlight indexes into a list that shrinks as the user types, so drop it whenever that list
+// changes or the dropdown closes rather than leaving it pointing at a different (or absent) entry.
+watch([matchingQueries, isHistoryOpen], () => {
+	highlightedIndex.value = -1;
+});
 
 const isAnnotationFiltersEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
@@ -195,6 +203,12 @@ function onQueryChange(value: string) {
 }
 
 function onEnter() {
+	const highlighted = matchingQueries.value[highlightedIndex.value];
+	if (highlighted) {
+		onHistorySelect(highlighted);
+		return;
+	}
+
 	debouncedRunTranslation.cancel();
 	void runTranslation();
 }
@@ -214,11 +228,22 @@ function onEscape() {
 	isHistoryDismissed.value = true;
 }
 
-/** The list is portaled out of the tab order, so give the keyboard an explicit way in. */
-async function onArrowDown() {
+/**
+ * Moves a highlight rather than DOM focus: focusing an item would blur the input, which closes
+ * the dropdown (see `isHistoryOpen`) out from under the element being focused. Wraps through -1
+ * so arrowing past either end returns to the text as typed.
+ */
+async function moveHighlight(delta: 1 | -1) {
 	if (!isHistoryOpen.value) return;
+
+	const lastIndex = matchingQueries.value.length - 1;
+	const next = highlightedIndex.value + delta;
+	highlightedIndex.value = next > lastIndex ? -1 : next < -1 ? lastIndex : next;
+
 	await nextTick();
-	historyList.value?.querySelector('button')?.focus();
+	historyList.value
+		?.querySelectorAll('button')
+		[highlightedIndex.value]?.scrollIntoView({ block: 'nearest' });
 }
 </script>
 
@@ -234,7 +259,8 @@ async function onArrowDown() {
 			@blur="onBlur"
 			@keydown.enter="onEnter"
 			@keydown.esc="onEscape"
-			@keydown.down.prevent="onArrowDown"
+			@keydown.down.prevent="moveHighlight(1)"
+			@keydown.up.prevent="moveHighlight(-1)"
 		>
 			<template v-if="isTranslating" #suffix>
 				<N8nIcon icon="spinner" spin data-test-id="executions-nl-filter-loading" />
@@ -257,11 +283,15 @@ async function onArrowDown() {
 					:aria-label="locale.baseText('executionsNlFilter.history.ariaLabel')"
 					data-test-id="executions-nl-filter-history-list"
 				>
-					<li v-for="entry in matchingQueries" :key="entry.savedAt">
+					<li v-for="(entry, index) in matchingQueries" :key="entry.savedAt">
 						<button
 							type="button"
-							:class="$style.historyItem"
+							:class="[
+								$style.historyItem,
+								{ [$style.historyItemHighlighted]: index === highlightedIndex },
+							]"
 							:title="entry.query"
+							:aria-selected="index === highlightedIndex"
 							@mousedown.prevent
 							@click="onHistorySelect(entry)"
 						>
@@ -320,5 +350,11 @@ async function onArrowDown() {
 	&:hover {
 		background: var(--color--foreground--tint-1);
 	}
+}
+
+/* Keyboard highlight — focus stays in the input, so this stands in for a focus ring. */
+.historyItemHighlighted,
+.historyItemHighlighted:hover {
+	background: var(--color--foreground--tint-1);
 }
 </style>
