@@ -10,6 +10,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { LOCAL_STORAGE_AGENT_GOAL_PREVIEW_CHAT_WIDTH } from '@/app/constants';
 import { getAgent } from '../composables/useAgentApi';
 import { useAgentConfig } from '../composables/useAgentConfig';
+import { useGoalGraphToolIcons } from '../composables/useGoalGraphToolIcons';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type { GoalGraphLiveState } from '../composables/useAgentChatStream';
 import { AGENT_BUILDER_VIEW, CONTINUE_SESSION_ID_PARAM } from '../constants';
@@ -43,6 +44,7 @@ const { config, fetchConfig } = useAgentConfig();
 
 const goals = computed(() => config.value?.goals ?? []);
 const slots = computed(() => config.value?.slots ?? []);
+const toolIcons = useGoalGraphToolIcons(config);
 
 // The chat panel is a resizable right-docked column; the graph fills the rest.
 // N8nResizeWrapper emits the clamped new width, so we just persist it.
@@ -91,7 +93,12 @@ function close() {
 <template>
 	<div :class="$style.page" data-testid="agent-goal-graph-preview">
 		<section :class="$style.graph">
-			<AgentGoalGraphCanvas :goals="goals" :slots="slots" :state="liveState" />
+			<AgentGoalGraphCanvas
+				:goals="goals"
+				:slots="slots"
+				:state="liveState"
+				:tool-icons="toolIcons"
+			/>
 		</section>
 
 		<N8nResizeWrapper

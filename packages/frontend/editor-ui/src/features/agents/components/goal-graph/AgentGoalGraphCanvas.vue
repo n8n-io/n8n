@@ -4,7 +4,9 @@ import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentGoalConfig, AgentSlotConfig, GoalStatus } from '@n8n/api-types';
 
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import type { GoalGraphLiveState, ToolExecState } from '../../composables/useAgentChatStream';
+import type { GoalGraphToolIcon } from '../../composables/useGoalGraphToolIcons';
 import { wouldCreateCycle } from './goalGraphEdit';
 import {
 	computeGoalGraphLayout,
@@ -21,8 +23,10 @@ const props = withDefaults(
 		slots: AgentSlotConfig[];
 		state: GoalGraphLiveState;
 		editable?: boolean;
+		/** Runtime tool name → icon, so tool nodes match the config-page chips. */
+		toolIcons?: Record<string, GoalGraphToolIcon>;
 	}>(),
-	{ editable: false },
+	{ editable: false, toolIcons: () => ({}) },
 );
 
 const emit = defineEmits<{
@@ -66,6 +70,7 @@ interface ToolView {
 	y: number;
 	execState?: ToolExecState;
 	available: boolean;
+	icon?: GoalGraphToolIcon;
 }
 
 const toolNodes = computed<ToolView[]>(() => {
@@ -82,6 +87,7 @@ const toolNodes = computed<ToolView[]>(() => {
 				y: gpos.y + TOOL_OFFSET_Y,
 				execState: props.state.tools[att.tool],
 				available: statusOf(goal.id) === 'active',
+				icon: props.toolIcons[att.tool],
 			});
 		});
 	}
@@ -509,19 +515,8 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 						]"
 						:style="{ left: `${tool.x - TOOL_SIZE / 2}px`, top: `${tool.y - TOOL_SIZE / 2}px` }"
 					>
-						<svg
-							viewBox="0 0 24 24"
-							:class="$style.toolIcon"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<circle cx="12" cy="12" r="3.4" />
-							<path
-								d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
-								stroke-linecap="round"
-							/>
-						</svg>
+						<NodeIcon v-if="tool.icon?.nodeType" :node-type="tool.icon.nodeType" :size="26" />
+						<N8nIcon v-else :icon="tool.icon?.fallbackIcon ?? 'wrench'" :size="24" />
 						<span v-if="tool.execState === 'done'" :class="[$style.badge, $style.badgeAchieved]"
 							>✓</span
 						>
@@ -778,11 +773,6 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 
 .toolDim {
 	opacity: 0.5;
-}
-
-.toolIcon {
-	width: 24px;
-	height: 24px;
 }
 
 .toolLabel {

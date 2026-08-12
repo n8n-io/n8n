@@ -7,6 +7,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import type { GoalGraphLiveState } from '../composables/useAgentChatStream';
+import { useGoalGraphToolIcons } from '../composables/useGoalGraphToolIcons';
 import { AGENT_GOAL_EDIT_MODAL_KEY, AGENT_GOAL_PREVIEW_VIEW } from '../constants';
 import type { AgentGoalEditModalData } from './AgentGoalEditModal.vue';
 import AgentSectionEditor from './AgentSectionEditor.vue';
@@ -49,6 +50,7 @@ function openLivePreview() {
 
 const goals = computed(() => props.config?.goals ?? []);
 const slots = computed(() => props.config?.slots ?? []);
+const toolIcons = useGoalGraphToolIcons(() => props.config);
 
 // Structure-only preview: no run has happened, so statuses/tools are empty
 // (goals render neutral). Slots are seeded with their declared initial values.
@@ -162,6 +164,7 @@ function onRemoveEdge({ from, to }: { from: string; to: string }) {
 						:goals="goals"
 						:slots="slots"
 						:state="previewState"
+						:tool-icons="toolIcons"
 						:editable="!props.disabled && !!props.config"
 						@add-goal="onAddGoal"
 						@edit-goal="onEditGoal"
