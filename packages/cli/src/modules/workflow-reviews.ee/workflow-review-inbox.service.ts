@@ -131,7 +131,7 @@ export class WorkflowReviewInboxService {
 			this.resolveParticipants(request),
 			// Resolved against the pinned (pre-read-filter) row, matching the row
 			// decide() authorizes against — not against what the caller can read.
-			this.eligibilityService.resolveViewerEligibility(user, request, access.pinnedWorkflowId),
+			this.eligibilityService.resolveViewerEligibility(user, access),
 		]);
 
 		const { requester, authors, reviewers } = participantsByRequestId.get(request.id) ?? {
@@ -146,6 +146,7 @@ export class WorkflowReviewInboxService {
 			workflows,
 			viewerCanDecide: eligibility.canDecide,
 			viewerDecisionIneligibilityReason: eligibility.decisionIneligibilityReason,
+			viewerCanComment: eligibility.canComment,
 		};
 	}
 

@@ -93,6 +93,7 @@ export {
 	WorkflowReviewActivityRepository,
 	type WorkflowReviewActivityFeedEntry,
 } from './workflow-review-activity.repository';
+export { WorkflowReviewActivityCommentRepository } from './workflow-review-activity-comment.repository';
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,

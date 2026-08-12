@@ -80,6 +80,7 @@ function makeDetail(
 		workflows: [makeWorkflowDetail()],
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
+		viewerCanComment: true,
 		...overrides,
 	};
 }

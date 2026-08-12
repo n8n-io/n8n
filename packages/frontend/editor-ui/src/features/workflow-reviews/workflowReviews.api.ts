@@ -7,6 +7,7 @@ import type {
 	ListWorkflowReviewActivityResponse,
 	ListWorkflowReviewInboxResponse,
 	UpdateWorkflowReviewRequestVersionDto,
+	WorkflowReviewActivityEntry,
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestList,
@@ -122,5 +123,18 @@ export async function fetchWorkflowReviewActivity(
 		'GET',
 		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/activity`,
 		params,
+	);
+}
+
+export async function createWorkflowReviewComment(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+	payload: { body: string },
+): Promise<WorkflowReviewActivityEntry> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/comments`,
+		{ ...payload },
 	);
 }
