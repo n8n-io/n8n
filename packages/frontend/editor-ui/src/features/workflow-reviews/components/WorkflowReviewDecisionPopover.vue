@@ -32,6 +32,8 @@ const noteInputId = useId();
 
 const note = computed(() => decisionNote.value.trim());
 
+// Every viewer who may decide may also comment, and a viewer who may not decide cannot open
+// the popover at all, so the last term only guards against those two rules drifting apart.
 const commentDisabled = computed(
 	() => posting.value || props.deciding || note.value.length === 0 || !props.viewerCanComment,
 );
