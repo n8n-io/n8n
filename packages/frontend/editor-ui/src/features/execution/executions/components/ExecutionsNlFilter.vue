@@ -190,6 +190,7 @@ function onEnter() {
 			side="bottom"
 			align="start"
 			max-height="320px"
+			:content-class="$style.historyPopover"
 		>
 			<template #trigger>
 				<N8nButton
@@ -211,8 +212,7 @@ function onEnter() {
 							:title="entry.query"
 							@click="onHistorySelect(entry)"
 						>
-							<N8nIcon icon="history" size="small" :class="$style.historyItemIcon" />
-							<span :class="$style.historyItemText">{{ entry.query }}</span>
+							{{ entry.query }}
 						</button>
 					</li>
 				</ul>
@@ -248,39 +248,44 @@ function onEnter() {
 	min-width: 0;
 }
 
+/*
+ * Doubled selector so this beats N8nPopover's own single-class `--background--surface` rule
+ * without depending on stylesheet order — the two classes land on the same element.
+ * The value mirrors N8nInput's `--input--color--background` so the dropdown reads as an
+ * extension of the input it's anchored to.
+ */
+.historyPopover.historyPopover {
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+}
+
 .historyList {
 	list-style: none;
 	margin: 0;
 	padding: 0;
 }
 
+.historyList li + li .historyItem {
+	border-top: var(--border-width, 1px) solid var(--border-color--subtle);
+}
+
 .historyItem {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	display: block;
 	width: 100%;
+	/* Horizontal padding matches N8nInput's `--input--padding`, so the text lines up with the query above it. */
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	border: 0;
-	border-radius: var(--radius--sm);
 	background: transparent;
 	color: var(--color--text--shade-1);
-	font-size: var(--font-size--2xs);
+	/* Matches N8nInput's default `--input--font-size`. */
+	font-size: var(--font-size--sm);
 	text-align: left;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	cursor: pointer;
 
 	&:hover {
 		background: var(--color--foreground--tint-1);
 	}
-}
-
-.historyItemIcon {
-	flex-shrink: 0;
-	color: var(--color--text--tint-1);
-}
-
-.historyItemText {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 </style>
