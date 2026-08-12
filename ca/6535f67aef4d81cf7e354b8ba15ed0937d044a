@@ -1,0 +1,24 @@
+docs/generated/sqlite-schema/agent_harness_sessions.md
+  s_e2504e875a073c::t_31e4ac1be5f16e 9,38-39
+packages/@n8n/db/src/migrations/common/1786540631760-AllowHarnessSessionSandboxProviders.ts
+  s_e2504e875a073c::t_9d864d7aee0a7b 1-2,14,18-19,26-27
+  s_e2504e875a073c::t_0a16d5ef185dd1 3-13,15-17,20-25
+docs/generated/postgres-schema/public.agent_harness_sessions.md
+  s_e2504e875a073c::t_8bdacc811c3fe3 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ca6535f67aef4d81cf7e354b8ba15ed0937d044a",
+  "prompts": {},
+  "sessions": {
+    "s_e2504e875a073c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff50f-358b-7522-8664-26ba4394dffe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

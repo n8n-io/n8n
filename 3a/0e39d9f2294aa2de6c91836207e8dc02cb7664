@@ -1,0 +1,56 @@
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_2dd11acf1bf19d::t_8e173635813de0 38-39
+packages/nodes-base/credentials/common/atlassian-scopes.ts
+  s_2dd11acf1bf19d::t_8e173635813de0 2,11-12,21-22
+  s_2dd11acf1bf19d::t_b723a12a980bb1 13,18,23,38
+packages/nodes-base/credentials/JiraSoftwareCloudOAuth2Api.credentials.ts
+  s_2dd11acf1bf19d::t_95c8b7e8aa9013 18-35
+packages/nodes-base/utils/atlassian.ts
+  s_2dd11acf1bf19d::t_8e173635813de0 31-32
+packages/nodes-base/credentials/test/ConfluenceCloudOAuth2Api.credentials.test.ts
+  s_2dd11acf1bf19d::t_b01efc528e827c 2-3,6,8,17-26
+  s_2dd11acf1bf19d::t_8e173635813de0 16,99
+packages/nodes-base/credentials/ConfluenceCloudOAuth2Api.credentials.ts
+  s_2dd11acf1bf19d::t_4331c0877fa7b2 18-35
+  s_2dd11acf1bf19d::t_daf84a0f1a1b65 1
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_2dd11acf1bf19d::t_29e319d649f2b4 13
+  s_2dd11acf1bf19d::t_75849bee26af2c 40,42-47
+packages/nodes-base/credentials/AtlassianOAuth2Api.credentials.ts
+  s_2dd11acf1bf19d::t_93a836ca098c86 8
+  s_2dd11acf1bf19d::t_8e173635813de0 16-17
+  s_2dd11acf1bf19d::t_d3349b60a06c01 61-62
+  s_2dd11acf1bf19d::t_de2c85a18225db 1
+packages/nodes-base/nodes/Jira/__test__/JiraTrigger.node.test.ts
+  s_2dd11acf1bf19d::t_a6fc3b11877eeb 25-29,32,289,326-329,379-382,414-416,468,500-503,543-546,589-592,620-623,654-657
+packages/nodes-base/credentials/test/JiraSoftwareCloudOAuth2Api.credentials.test.ts
+  s_2dd11acf1bf19d::t_8e173635813de0 16
+  s_2dd11acf1bf19d::t_b01efc528e827c 17-26
+packages/nodes-base/utils/__tests__/atlassian.test.ts
+  s_2dd11acf1bf19d::t_9388f57e13b116 156-160,162-174
+packages/nodes-base/credentials/test/AtlassianOAuth2Api.credentials.test.ts
+  s_2dd11acf1bf19d::t_7b49864e7e40c7 42-44,46-48,50-52
+  s_2dd11acf1bf19d::t_63c5019944f3a0 1-3,5
+  s_2dd11acf1bf19d::t_c57fd6ce63d8a1 41
+packages/nodes-base/nodes/Jira/UserDescription.ts
+  s_2dd11acf1bf19d::t_c155c9da338121 36-49
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_2dd11acf1bf19d::t_36184adb841ef0 126-132,134-140
+  s_2dd11acf1bf19d::t_8e173635813de0 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3a0e39d9f2294aa2de6c91836207e8dc02cb7664",
+  "prompts": {},
+  "sessions": {
+    "s_2dd11acf1bf19d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e4031ed-9151-4cc4-abed-6d95597b73f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

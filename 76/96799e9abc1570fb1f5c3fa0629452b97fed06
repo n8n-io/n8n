@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/core/auth/components/ConfirmPasswordModal.vue
+  s_61c084afce2bbf::t_6e83eade9af84e 3
+  s_61c084afce2bbf::t_1a16c78bcccf8a 11-15
+packages/frontend/editor-ui/src/features/core/auth/components/PromptMfaCodeModal.vue
+  s_61c084afce2bbf::t_6e83eade9af84e 4
+  s_61c084afce2bbf::t_1a16c78bcccf8a 12-16
+packages/frontend/editor-ui/src/app/modals.manifest.ts
+  s_61c084afce2bbf::t_d8d7aed4fa4d89 1-27
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_61c084afce2bbf::t_6e83eade9af84e 9,15
+packages/frontend/editor-ui/src/features/core/auth/modals.ts
+  s_61c084afce2bbf::t_7b451830c1b1f1 1-37
+packages/frontend/editor-ui/src/app/components/ModalRoot.test.ts
+  s_61c084afce2bbf::t_67d7ef21456109 14,17-19
+packages/frontend/editor-ui/src/features/core/auth/components/ChangePasswordModal.vue
+  s_61c084afce2bbf::t_6e83eade9af84e 4
+  s_61c084afce2bbf::t_1a16c78bcccf8a 14-18
+packages/frontend/editor-ui/src/features/core/auth/auth.constants.ts
+  s_61c084afce2bbf::t_7f349fb2f59c7b 1-4
+packages/frontend/editor-ui/src/features/core/auth/components/MfaSetupModal.vue
+  s_61c084afce2bbf::t_6e83eade9af84e 8
+  s_61c084afce2bbf::t_1a16c78bcccf8a 21-25
+packages/frontend/editor-ui/src/features/core/auth/components/ConfirmPasswordModal.test.ts
+  s_61c084afce2bbf::t_6e83eade9af84e 8
+packages/frontend/editor-ui/src/main.ts
+  s_61c084afce2bbf::t_6debbb0feada17 53-55
+  s_61c084afce2bbf::t_96237adb313c71 56
+  s_61c084afce2bbf::t_8b693b59893cde 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7696799e9abc1570fb1f5c3fa0629452b97fed06",
+  "prompts": {},
+  "sessions": {
+    "s_61c084afce2bbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "046a1647-ab2e-475f-9acc-1298a6d4400a",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
