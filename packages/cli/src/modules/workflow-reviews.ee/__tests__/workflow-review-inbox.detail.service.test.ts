@@ -5,6 +5,7 @@ import type {
 	WorkflowHistory,
 	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
+	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowDetailRow,
@@ -65,6 +66,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
+	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const userRepository = mock<UserRepository>();
 	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const licenseState = mock<LicenseState>();
@@ -77,6 +79,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		requestRepository,
 		workflowRepository,
 		reviewerRepository,
+		authorRepository,
 		userRepository,
 		eligibilityService,
 	);
@@ -98,6 +101,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		mockGate();
 		reviewerRepository.findByRequestIds.mockResolvedValue([]);
+		authorRepository.findByRequestIds.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
 		publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 		workflowHistoryService.findVersion.mockResolvedValue(null);
@@ -178,6 +182,69 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.state).toBe('open');
 			expect(detail.workflows).toEqual([]);
 			expect(detail.workflowName).toBeNull();
+		});
+	});
+
+	describe('the people on the review', () => {
+		function mockUsers(...ids: string[]) {
+			userRepository.findManyByIds.mockResolvedValue(
+				ids.map((id) =>
+					mock<User>({ id, email: `${id}@example.com`, firstName: id, lastName: id }),
+				),
+			);
+		}
+
+		it('returns the requester, every author, and the reviewers', async () => {
+			authorRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: requestId, userId: requester.id }),
+				mock({ workflowReviewRequestId: requestId, userId: 'author-2' }),
+			]);
+			reviewerRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: requestId, userId: 'reviewer-1' }),
+			]);
+			mockUsers(requester.id, 'author-2', 'reviewer-1');
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(authorRepository.findByRequestIds).toHaveBeenCalledWith([requestId]);
+			expect(detail.requester).toMatchObject({ id: requester.id });
+			// The requester stays in `authors`; deduplication is the frontend's job.
+			expect(detail.authors.map((author) => author.id)).toEqual([requester.id, 'author-2']);
+			expect(detail.reviewers.map((reviewer) => reviewer.id)).toEqual(['reviewer-1']);
+		});
+
+		it('resolves a user holding several roles with a single deduplicated lookup', async () => {
+			authorRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: requestId, userId: requester.id }),
+				mock({ workflowReviewRequestId: requestId, userId: 'reviewer-1' }),
+			]);
+			reviewerRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: requestId, userId: 'reviewer-1' }),
+			]);
+			mockUsers(requester.id, 'reviewer-1');
+
+			await service.getDetail(requester, requestId);
+
+			expect(userRepository.findManyByIds).toHaveBeenCalledTimes(1);
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith([requester.id, 'reviewer-1']);
+		});
+
+		it('omits an author whose user no longer resolves, keeping the others', async () => {
+			authorRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: requestId, userId: requester.id }),
+				mock({ workflowReviewRequestId: requestId, userId: 'deleted-author' }),
+			]);
+			mockUsers(requester.id);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.authors.map((author) => author.id)).toEqual([requester.id]);
+		});
+
+		it('returns no authors when the review has no author rows', async () => {
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.authors).toEqual([]);
 		});
 	});
 
