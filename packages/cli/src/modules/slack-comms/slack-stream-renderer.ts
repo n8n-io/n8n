@@ -86,6 +86,49 @@ function slackErrorCode(error: unknown): string | undefined {
 	return typeof code === 'string' ? code : undefined;
 }
 
+const TABLE_ROW_PATTERN = /^\s*\|.*\|\s*$/;
+
+function isTableRow(line: string): boolean {
+	return TABLE_ROW_PATTERN.test(line);
+}
+
+function splitTableCells(line: string): string[] {
+	const inner = line.trim().slice(1, -1);
+	return inner.split('|').map((cell) => cell.trim());
+}
+
+function isSeparatorRow(cells: string[]): boolean {
+	return cells.length > 0 && cells.every((cell) => /^:?-+:?$/.test(cell));
+}
+
+/**
+ * Slack has no table renderer, so a markdown table reaches it as raw,
+ * mangled `| a | b |` lines. Each row becomes a bullet instead; separator
+ * rows (`|---|:--:|`) carry no content and are dropped.
+ */
+function transformMarkdownTables(text: string): string {
+	const lines = text.split('\n').flatMap((line) => {
+		if (!isTableRow(line)) return [line];
+		const cells = splitTableCells(line);
+		if (isSeparatorRow(cells)) return [];
+		return [`• ${cells.join(' — ')}`];
+	});
+	return lines.join('\n');
+}
+
+/**
+ * A table row split across two coalesced flushes must not be converted
+ * half-row-by-half-row: an unterminated line that looks like it's still
+ * mid-table-row (starts with `|`, no closing newline yet) is held back until
+ * its newline arrives. Everything else flushes immediately as before.
+ */
+function splitTrailingTableLine(text: string): { ready: string; pending: string } {
+	const lastNewline = text.lastIndexOf('\n');
+	const tail = lastNewline === -1 ? text : text.slice(lastNewline + 1);
+	if (!tail.startsWith('|')) return { ready: text, pending: '' };
+	return { ready: lastNewline === -1 ? '' : text.slice(0, lastNewline + 1), pending: tail };
+}
+
 interface StreamSessionDeps {
 	webClient: SlackWebClient;
 	eventBus: InProcessEventBus;
@@ -130,7 +173,15 @@ class StreamSession {
 
 	private textBuffer = '';
 
-	private markdownFlushCount = 0;
+	/**
+	 * What the last chunk sent to Slack was, for markdown separator decisions:
+	 * `'prose'` (a text-delta flush) never gets a leading blank line before
+	 * another `'prose'` chunk — they're continuations of one stream of text —
+	 * but every other adjacency (into or out of a `'block'` or `'discrete'`
+	 * chunk) does. Reset to `'none'` on transport reopen: a reopened
+	 * transport is a brand new Slack message with nothing rendered yet.
+	 */
+	private lastSentKind: 'none' | 'prose' | 'block' | 'discrete' = 'none';
 
 	private closed = false;
 
@@ -242,7 +293,10 @@ class StreamSession {
 			});
 		}
 
-		if (chunks.length > 0) this.enqueue(async () => await this.send(chunks));
+		if (chunks.length > 0) {
+			this.lastSentKind = 'block';
+			this.enqueue(async () => await this.send(chunks));
+		}
 	}
 
 	private onToolStart(event: ToolInputStartEvent): void {
@@ -260,6 +314,7 @@ class StreamSession {
 		if (this.hasPlan) return;
 		this.tasks.set(toolCallId, { title, status: 'in_progress' });
 		this.trackActiveTask(toolCallId, title, 'in_progress');
+		this.lastSentKind = 'block';
 		this.enqueue(
 			async () =>
 				await this.send([{ type: 'task_update', id: toolCallId, title, status: 'in_progress' }]),
@@ -285,6 +340,7 @@ class StreamSession {
 			error === undefined
 				? { type: 'task_update', id: toolCallId, title: existing.title, status }
 				: { type: 'task_update', id: toolCallId, title: existing.title, status, details: error };
+		this.lastSentKind = 'block';
 		this.enqueue(async () => await this.send([chunk]));
 	}
 
@@ -318,7 +374,9 @@ class StreamSession {
 	private onError(event: ErrorEvent): void {
 		this.enqueue(
 			async () =>
-				await this.send([this.markdownChunk(`Ran into a problem: ${event.payload.content}`)]),
+				await this.send([
+					this.markdownChunk(`Ran into a problem: ${event.payload.content}`, 'discrete'),
+				]),
 		);
 	}
 
@@ -333,6 +391,7 @@ class StreamSession {
 			});
 		}
 
+		this.lastSentKind = 'block';
 		this.enqueue(
 			async () =>
 				await this.send([
@@ -347,25 +406,47 @@ class StreamSession {
 	}
 
 	private onRunFinish(event: RunFinishEvent): void {
-		this.enqueue(async () => await this.flushTextIfAny());
+		// Force: this run's stream is about to close, so an unterminated
+		// trailing table line has no more newline coming — send it as-is
+		// rather than losing it.
+		this.enqueue(async () => await this.flushTextIfAny(true));
 		if (event.payload.status === 'error') {
-			this.enqueue(async () => await this.send([this.markdownChunk(RUN_ERROR_MESSAGE)]));
+			this.enqueue(
+				async () => await this.send([this.markdownChunk(RUN_ERROR_MESSAGE, 'discrete')]),
+			);
 		}
 		this.enqueue(async () => await this.closeTransport());
 		this.scheduleIdleCheck();
 	}
 
-	private markdownChunk(text: string): SlackChunk {
-		const prefixed = this.markdownFlushCount > 0 ? `\n\n${text}` : text;
-		this.markdownFlushCount += 1;
-		return { type: 'markdown_text', text: prefixed };
+	/**
+	 * `'prose'` chunks (text-delta flushes) are continuations of one stream
+	 * of text: two in a row get no separator between them, or a sentence or
+	 * table cell split across a flush boundary comes out broken mid-word. A
+	 * `'discrete'` chunk (the error line, the run-finish apology) is always
+	 * visually separated from whatever came before, and whatever prose
+	 * follows it is separated in turn.
+	 */
+	private markdownChunk(text: string, kind: 'prose' | 'discrete'): SlackChunk {
+		const continuesProse = kind === 'prose' && this.lastSentKind === 'prose';
+		const needsSeparator = this.lastSentKind !== 'none' && !continuesProse;
+		this.lastSentKind = kind;
+		return { type: 'markdown_text', text: needsSeparator ? `\n\n${text}` : text };
 	}
 
-	private async flushTextIfAny(): Promise<void> {
+	private async flushTextIfAny(force = false): Promise<void> {
 		if (!this.textBuffer) return;
-		const text = this.textBuffer;
-		this.textBuffer = '';
-		await this.send([this.markdownChunk(text)]);
+		if (force) {
+			const text = this.textBuffer;
+			this.textBuffer = '';
+			await this.send([this.markdownChunk(transformMarkdownTables(text), 'prose')]);
+			return;
+		}
+
+		const { ready, pending } = splitTrailingTableLine(this.textBuffer);
+		this.textBuffer = pending;
+		if (!ready) return;
+		await this.send([this.markdownChunk(transformMarkdownTables(ready), 'prose')]);
 	}
 
 	private enqueue(fn: () => Promise<void>): void {
@@ -427,6 +508,7 @@ class StreamSession {
 				'native',
 			);
 			this.transportOpen = true;
+			this.lastSentKind = 'none';
 			this.resetHeartbeat();
 		} catch (error) {
 			this.deps.logger.error('Failed to reopen Slack stream transport', {
@@ -495,6 +577,7 @@ class StreamSession {
 		const taskId = this.lastActiveTaskId;
 		const title = this.lastActiveTitle;
 		if (taskId !== undefined && title !== undefined) {
+			this.lastSentKind = 'block';
 			this.enqueue(
 				async () =>
 					await this.send([

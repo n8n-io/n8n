@@ -602,17 +602,51 @@ describe('SlackStreamRenderer', () => {
 			]);
 		});
 
-		it('separates successive markdown flushes with a blank line', async () => {
+		it('does not insert a separator between successive text-delta flushes (they are one continuous prose stream)', async () => {
 			const { renderer, transport, emit, target } = createHarness();
 			await renderer.attach('thread-1', target);
 
-			emit(textDeltaEvent('First chunk'));
+			emit(textDeltaEvent('Automate Multi-Platform Social '));
 			await vi.advanceTimersByTimeAsync(1000);
-			emit(textDeltaEvent('Second chunk'));
+			emit(textDeltaEvent('Media Content Creation'));
 			await vi.advanceTimersByTimeAsync(1000);
 
-			expect(markdownChunks(transport.append.mock.calls[1][0])).toEqual([
-				{ type: 'markdown_text', text: '\n\nSecond chunk' },
+			expect(transport.append).toHaveBeenCalledTimes(2);
+			const first = markdownChunks(transport.append.mock.calls[0][0])[0].text;
+			const second = markdownChunks(transport.append.mock.calls[1][0])[0].text;
+			expect(second.startsWith('\n')).toBe(false);
+			expect(first + second).toContain('Social Media Content');
+		});
+
+		it('separates a discrete block (the run-finish apology) from the prose that preceded it', async () => {
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			emit(textDeltaEvent('Working on it'));
+			await vi.advanceTimersByTimeAsync(1000);
+			emit(runFinishEvent('error'));
+
+			await vi.waitFor(() => {
+				expect(transport.append).toHaveBeenCalledTimes(2);
+			});
+			expect(markdownChunks(transport.append.mock.calls[1][0])[0].text.startsWith('\n\n')).toBe(
+				true,
+			);
+		});
+
+		it('separates the first prose flush after a task_update block', async () => {
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			emit(toolCallEvent('call-1', 'workflows', { action: 'list' }));
+			await vi.advanceTimersByTimeAsync(0);
+			transport.append.mockClear();
+
+			emit(textDeltaEvent('Now writing the summary'));
+			await vi.advanceTimersByTimeAsync(1000);
+
+			expect(markdownChunks(transport.append.mock.calls[0][0])).toEqual([
+				{ type: 'markdown_text', text: '\n\nNow writing the summary' },
 			]);
 		});
 
@@ -652,6 +686,57 @@ describe('SlackStreamRenderer', () => {
 			await vi.advanceTimersByTimeAsync(3000);
 
 			expect(transport.append).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('markdown tables', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		it('converts a table to bullets and drops the separator row', async () => {
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			emit(textDeltaEvent('| Name | Role |\n| --- | --- |\n| Ada | Engineer |\n'));
+			await vi.advanceTimersByTimeAsync(1000);
+
+			expect(markdownChunks(transport.append.mock.calls[0][0])).toEqual([
+				{ type: 'markdown_text', text: '• Name — Role\n• Ada — Engineer\n' },
+			]);
+		});
+
+		it('buffers a table row split across two deltas and converts it once, correctly', async () => {
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			emit(textDeltaEvent('| Ada | Eng'));
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(transport.append).not.toHaveBeenCalled();
+
+			emit(textDeltaEvent('ineer |\n'));
+			await vi.advanceTimersByTimeAsync(1000);
+
+			expect(transport.append).toHaveBeenCalledTimes(1);
+			expect(markdownChunks(transport.append.mock.calls[0][0])).toEqual([
+				{ type: 'markdown_text', text: '• Ada — Engineer\n' },
+			]);
+		});
+
+		it('flushes an unterminated table line as-is when the run ends before its newline arrives', async () => {
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			emit(textDeltaEvent('| Ada | Eng'));
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(transport.append).not.toHaveBeenCalled();
+
+			emit(runFinishEvent('completed'));
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(markdownChunks(transport.append.mock.calls[0][0])).toEqual([
+				{ type: 'markdown_text', text: '| Ada | Eng' },
+			]);
 		});
 	});
 
