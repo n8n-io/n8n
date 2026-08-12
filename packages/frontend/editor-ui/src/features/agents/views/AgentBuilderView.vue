@@ -263,6 +263,7 @@ const {
 	currentSessionHasMessages,
 	currentSessionTitle,
 	currentSessionIsEphemeral,
+	sessionMenu,
 	setSessionInUrl,
 	clearContinueSessionParam,
 	onSessionPick,
@@ -1839,6 +1840,7 @@ function onSwitchAgent(nextAgentId: string) {
 					<AgentPreviewDock
 						v-if="isPreviewDockOpen"
 						:session-title="currentSessionTitle"
+						:session-options="sessionMenu"
 						:has-session="currentSessionHasMessages"
 						:initialized="initialized"
 						:project-id="projectId"
@@ -1851,6 +1853,7 @@ function onSwitchAgent(nextAgentId: string) {
 						:before-send="beforePreviewSend"
 						@view-trace="viewPreviewTrace"
 						@new-session="startNewPreviewSession"
+						@session-select="onSessionPick"
 						@close="closePreviewDock"
 						@continue-loaded="onContinueLoaded"
 						@send-to-assistant="onSendPreviewToAssistant"
