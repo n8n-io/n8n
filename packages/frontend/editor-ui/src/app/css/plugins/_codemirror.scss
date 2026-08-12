@@ -118,10 +118,12 @@
 	}
 }
 
-// A tooltip with no content at all still picks up the padding rule below plus
-// CodeMirror's own background, so it paints as a small empty box in the corner
-// of the zero-sized container.
-#cm-tooltip-container .cm-tooltip:empty {
+// Every CodeMirror editor mounts a tooltip host into this container, carrying the
+// generated theme classes (and so a background and border) but no `cm-tooltip`
+// class and no content until a tooltip is actually shown. With several expression
+// editors on screen they stack up as small white boxes in the corner. The
+// container is zero-sized, so an empty direct child is never real content.
+#cm-tooltip-container > :empty {
 	display: none;
 }
 

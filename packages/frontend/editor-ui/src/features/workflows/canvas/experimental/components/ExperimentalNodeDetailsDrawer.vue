@@ -180,6 +180,10 @@ watch(
 );
 
 watch(preferredInputNodeName, (nodeName) => {
+	// Never clear the selection: the mapping flyout is `v-if`d on it, so dropping to
+	// undefined unmounts the flyout mid-drag. Keep the last good node instead.
+	if (!nodeName) return;
+
 	if (
 		!selectedInputNodeName.value ||
 		!parentNodeNames.value.includes(selectedInputNodeName.value)
