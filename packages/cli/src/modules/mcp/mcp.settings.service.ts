@@ -1,7 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { SettingsRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import {
+	SettingsRepository,
+	WorkflowEntity,
+	WorkflowRepository,
+	type User,
+	type EntityManager,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import {
@@ -56,14 +61,14 @@ export class McpSettingsService {
 		private readonly collaborationService: CollaborationService,
 	) {}
 
-	async getEnabled(): Promise<boolean> {
+	async getEnabled(em?: EntityManager): Promise<boolean> {
 		const isMcpAccessEnabled = await this.cacheService.get<string>(KEY);
 
 		if (isMcpAccessEnabled !== undefined) {
 			return isMcpAccessEnabled === 'true';
 		}
 
-		const row = await this.settingsRepository.findByKey(KEY);
+		const row = await this.settingsRepository.findByKey(KEY, em);
 
 		const enabled = row?.value === 'true';
 
@@ -106,8 +111,8 @@ export class McpSettingsService {
 		await this.cacheService.set(REDIRECT_URIS_KEY, JSON.stringify(uris));
 	}
 
-	async getAutoExposeNewWorkflows(): Promise<boolean> {
-		if (!(await this.getEnabled())) {
+	async getAutoExposeNewWorkflows(em?: EntityManager): Promise<boolean> {
+		if (!(await this.getEnabled(em))) {
 			return false;
 		}
 
@@ -117,7 +122,7 @@ export class McpSettingsService {
 			return cached === 'true';
 		}
 
-		const row = await this.settingsRepository.findByKey(AUTO_EXPOSE_NEW_WORKFLOWS_KEY);
+		const row = await this.settingsRepository.findByKey(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, em);
 
 		const enabled = row?.value === 'true';
 

@@ -57,7 +57,7 @@ describe('McpSettingsService', () => {
 			findByKey.mockResolvedValue(null);
 
 			await expect(service.getEnabled()).resolves.toBe(false);
-			expect(findByKey).toHaveBeenCalledWith('mcp.access.enabled');
+			expect(findByKey).toHaveBeenCalledWith('mcp.access.enabled', undefined);
 		});
 
 		test('returns true when setting value is "true"', async () => {
@@ -115,7 +115,7 @@ describe('McpSettingsService', () => {
 			findByKey.mockResolvedValue(null);
 
 			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(false);
-			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows');
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', undefined);
 			expect(cacheService.set).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', 'false');
 		});
 
@@ -137,7 +137,19 @@ describe('McpSettingsService', () => {
 			);
 
 			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(true);
-			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows');
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', undefined);
+		});
+
+		test('forwards the entity manager to both settings reads on a cache miss', async () => {
+			vi.spyOn(service, 'getEnabled').mockRestore();
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockResolvedValue(mock<Settings>({ key: 'x', value: 'true', loadOnStartup: true }));
+			const em = mock<EntityManager>();
+
+			await service.getAutoExposeNewWorkflows(em);
+
+			expect(findByKey).toHaveBeenCalledWith('mcp.access.enabled', em);
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', em);
 		});
 	});
 

@@ -184,11 +184,6 @@ export class WorkflowCreationService {
 
 		const floor = await this.readActiveRedactionFloor();
 
-		// Resolve MCP auto-exposure before opening the transaction: its settings
-		// read must not compete for a pool connection while the create transaction
-		// holds one (that starves small pools and stalls every workflow create).
-		await this.resolveMcpExposureOnCreate(newWorkflow);
-
 		const { manager: dbManager } = this.projectRepository;
 
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
@@ -214,6 +209,8 @@ export class WorkflowCreationService {
 				transactionManager,
 				floor,
 			);
+
+			await this.resolveMcpExposureOnCreate(newWorkflow, transactionManager);
 
 			if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 				newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(
@@ -347,11 +344,17 @@ export class WorkflowCreationService {
 		newWorkflow.settings = { ...(newWorkflow.settings ?? {}), redactionPolicy: seed };
 	}
 
-	private async resolveMcpExposureOnCreate(newWorkflow: WorkflowEntity): Promise<void> {
+	private async resolveMcpExposureOnCreate(
+		newWorkflow: WorkflowEntity,
+		transactionManager: EntityManager,
+	): Promise<void> {
 		if (newWorkflow.settings?.availableInMCP !== undefined) return;
 
 		try {
-			if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows())) return;
+			// Read through the create transaction's connection: a settings read on a
+			// separate pool connection would deadlock small pools (the transaction
+			// holds one, the read waits for another that never frees).
+			if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows(transactionManager))) return;
 		} catch (error) {
 			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
 				cause: error instanceof Error ? error.message : String(error),
