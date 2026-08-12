@@ -1,9 +1,11 @@
-// criu-activator milestone 2: scale-to-zero proxy for n8n.
+// criu-activator: scale-to-zero proxy for n8n.
 //
-// The activator (PID 1, root) owns :5678. n8n listens internally on :5680.
+// The activator (PID 1, root) owns :5678. n8n listens internally on :5690.
 // n8n starts, gets dumped once healthy, and stays dumped until a request
 // arrives; then it's restored, the request is proxied, and after idleTimeout
-// with no in-flight requests it's dumped again.
+// with no in-flight requests it's dumped again. A periodic heartbeat
+// (RESTORE_INTERVAL/RUN_DURATION) briefly wakes it so scheduled work can
+// fire, and n8n's log file is streamed to stdout.
 package main
 
 import (
@@ -31,25 +33,40 @@ const (
 	n8nLog  = "/tmp/n8n.log"
 )
 
-var idleTimeout = 10 * time.Second
+var (
+	idleTimeout = 10 * time.Second
+	// periodic heartbeat: restore every restoreInterval, run for runDuration,
+	// dump again (unless real traffic arrived) — lets schedule triggers fire
+	// while the instance is otherwise suspended
+	restoreInterval = 30 * time.Second
+	runDuration     = 2 * time.Second
+)
 
 // --manage-cgroups=ignore: restored trees stay in the activator's current
 // cgroup instead of the paths recorded at dump time, so they can never
 // outlive the container (k8s restarts the container, not the pod netns)
 var criuFlags = []string{"--tcp-established", "--file-locks", "--ext-unix-sk", "--manage-cgroups=ignore"}
 
+func durFromEnv(dst *time.Duration, name string) {
+	v := os.Getenv(name)
+	if v == "" {
+		return
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		fatal("bad %s %q: %v", name, v, err)
+	}
+	*dst = d
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "child" {
 		childStage()
 		return
 	}
-	if v := os.Getenv("IDLE_TIMEOUT"); v != "" {
-		d, err := time.ParseDuration(v)
-		if err != nil {
-			fatal("bad IDLE_TIMEOUT %q: %v", v, err)
-		}
-		idleTimeout = d
-	}
+	durFromEnv(&idleTimeout, "IDLE_TIMEOUT")
+	durFromEnv(&restoreInterval, "RESTORE_INTERVAL") // 0 disables the heartbeat
+	durFromEnv(&runDuration, "RUN_DURATION")
 	supervisor()
 }
 
@@ -253,6 +270,8 @@ func supervisor() {
 	sup.mu.Unlock()
 
 	go idleWatcher()
+	go periodicWaker()
+	go streamN8NLog()
 
 	target, _ := url.Parse(n8nURL)
 	proxy := httputil.NewSingleHostReverseProxy(target)
@@ -308,6 +327,73 @@ func requestDone() {
 	sup.mu.Unlock()
 }
 
+// periodicWaker restores a dumped n8n every restoreInterval and lets it run
+// for runDuration so scheduled work (cron triggers, queued timers) can fire
+// while the instance is otherwise suspended. If real traffic arrived during
+// the window, the idle watcher takes over instead of dumping immediately.
+func periodicWaker() {
+	if restoreInterval <= 0 {
+		return
+	}
+	for range time.Tick(restoreInterval) {
+		sup.mu.Lock()
+		if sup.state != dumped {
+			sup.mu.Unlock()
+			continue
+		}
+		t := time.Now()
+		if err := restoreLocked(); err != nil {
+			sup.mu.Unlock()
+			fatal("periodic restore: %v\n--- restore.log tail ---\n%s", err, tail(imgDir+"/restore.log", 4000))
+		}
+		wokenAt := time.Now()
+		logf("periodic restore in %v, running for %v", time.Since(t).Round(time.Millisecond), runDuration)
+		sup.mu.Unlock()
+
+		time.Sleep(runDuration)
+
+		sup.mu.Lock()
+		if sup.state == running && sup.inflight == 0 && !sup.lastActivity.After(wokenAt) {
+			t = time.Now()
+			refreshCacheLocked()
+			if err := dumpLocked(); err != nil {
+				sup.mu.Unlock()
+				fatal("periodic dump: %v\n--- dump.log tail ---\n%s", err, tail(imgDir+"/dump.log", 4000))
+			}
+			logf("periodic run over → dumped in %v", time.Since(t).Round(time.Millisecond))
+		} else {
+			logf("periodic run extended by traffic, idle watcher takes over")
+		}
+		sup.mu.Unlock()
+	}
+}
+
+// streamN8NLog copies /tmp/n8n.log to the activator's stdout so pod logs
+// carry n8n's output. The child can't write to stdout directly: its stdio
+// must be a plain file for criu (log-collector pipes are external fds).
+func streamN8NLog() {
+	f, err := os.Open(n8nLog)
+	if err != nil {
+		logf("n8n log stream: %v", err)
+		return
+	}
+	buf := make([]byte, 32*1024)
+	for {
+		n, err := f.Read(buf)
+		if n > 0 {
+			os.Stdout.Write(buf[:n])
+		}
+		if err == io.EOF {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		if err != nil {
+			logf("n8n log stream: %v", err)
+			return
+		}
+	}
+}
+
 func idleWatcher() {
 	for range time.Tick(time.Second) {
 		sup.mu.Lock()
@@ -346,6 +432,7 @@ func restoreLocked() error {
 		return err
 	}
 	sup.state = running
+	sup.lastActivity = time.Now() // fresh idle clock — else the idle watcher kills the run window instantly
 	waitHealthy(30 * time.Second)
 	return nil
 }
