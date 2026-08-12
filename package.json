@@ -113,7 +113,7 @@
       "nodemailer": "7.0.11",
       "validator": "13.15.26",
       "lodash": "4.18.0",
-      "body-parser": "2.2.1",
+      "body-parser": "2.3.0",
       "ajv@6": "6.14.0",
       "ajv@7": "8.18.0",
       "ajv@8": "8.18.0",
