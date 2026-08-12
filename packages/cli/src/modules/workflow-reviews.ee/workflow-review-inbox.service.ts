@@ -121,7 +121,11 @@ export class WorkflowReviewInboxService {
 		const { request, readableWorkflowRows } = access;
 
 		const [workflows, participantsByRequestId, eligibility] = await Promise.all([
-			Promise.all(readableWorkflowRows.map(async (row) => await this.toWorkflowDetail(row))),
+			Promise.all(
+				readableWorkflowRows.map(
+					async (row) => await this.toWorkflowDetail(row, request.state === 'closed'),
+				),
+			),
 			this.resolveParticipants(request),
 			// Resolved against the pinned (pre-read-filter) row, matching the row
 			// decide() authorizes against — not against what the caller can read.
@@ -151,19 +155,24 @@ export class WorkflowReviewInboxService {
 	}
 
 	/**
-	 * Both diff sides for one child row. The baseline is resolved at read time, so
-	 * a publish during an open review moves what reviewers are diffing against.
+	 * Both diff sides for one child row. Open reviews use the live published
+	 * pointer (so a publish during review moves the baseline). Closed reviews
+	 * use the baseline frozen at approval; closed + null means unavailable —
+	 * never fall back to the live pointer (that would show a misleading diff).
 	 */
 	private async toWorkflowDetail(
 		row: WorkflowReviewRequestWorkflowDetailRow,
+		isClosed: boolean,
 	): Promise<WorkflowReviewRequestWorkflowDetail> {
-		const publishedVersionId = await this.workflowPublishedVersionRepository.getPublishedVersionId(
-			row.workflowId,
-		);
+		// Approve is the only writer of baselineVersionId and it closes the request,
+		// so open rows always have null — branch on isClosed only.
+		const baselineVersionId = isClosed
+			? row.baselineVersionId
+			: await this.workflowPublishedVersionRepository.getPublishedVersionId(row.workflowId);
 
 		const [pinnedVersion, baselineVersion] = await Promise.all([
 			this.findVersionSnapshot(row.workflowId, row.workflowVersionId),
-			this.findVersionSnapshot(row.workflowId, publishedVersionId),
+			this.findVersionSnapshot(row.workflowId, baselineVersionId),
 		]);
 
 		return {

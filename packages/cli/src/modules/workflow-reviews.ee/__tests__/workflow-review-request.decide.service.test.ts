@@ -115,6 +115,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const mockSuccessfulDecidePath = () => {
 		requestRepository.findById.mockResolvedValue(openRequest());
 		workflowRepository.findByRequestId.mockResolvedValue([pinnedRow()]);
+		workflowRepository.captureApprovalBaseline.mockResolvedValue(undefined);
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<WorkflowEntity>({ isArchived: false }),
 		);
@@ -296,6 +297,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 		);
 		// Re-checked under the lock through the transaction manager.
 		expect(requestRepository.findById).toHaveBeenCalledWith(requestId, ctx);
+		expect(workflowRepository.captureApprovalBaseline).toHaveBeenCalledExactlyOnceWith(
+			{ workflowReviewRequestId: requestId, workflowId: 'wf-1' },
+			ctx,
+		);
 		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({
 			decision: 'approved',
@@ -321,6 +326,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 		const result = await service.decide(memberUser(), requestId, requestChangesDto);
 
+		expect(workflowRepository.captureApprovalBaseline).not.toHaveBeenCalled();
 		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({
 			decision: 'changes_requested',

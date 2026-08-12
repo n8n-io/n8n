@@ -2610,6 +2610,40 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		});
 	});
 
+	test('keeps the approval-time baseline after the published pointer moves', async () => {
+		const workflow = await createWorkflow({ name: 'Reviewed workflow' }, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-published' });
+		await createWorkflowHistoryItem(workflow.id, {
+			versionId: 'version-pinned',
+			name: 'Release candidate',
+		});
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-later' });
+		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-published');
+		const request = await seedRequest(workflow.id, 'version-pinned', owner);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		// Auto-publish moved the live pointer to the pinned version; advance it again
+		// so a live read would show the wrong baseline without persistence.
+		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-later');
+
+		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data.state).toBe('closed');
+		expect(response.body.data.workflows[0].baselineVersion).toMatchObject({
+			versionId: 'version-published',
+		});
+		expect(response.body.data.workflows[0].pinnedVersion).toMatchObject({
+			versionId: 'version-pinned',
+		});
+
+		const [child] = await workflowRepository.findByRequestId(request.id, {});
+		expect(child?.baselineVersionId).toBe('version-published');
+	});
+
 	test('has nothing to compare against when the workflow was never published', async () => {
 		const workflow = await createWorkflow({}, teamProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });

@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
@@ -16,11 +17,17 @@ export type WorkflowReviewRequestWorkflowDetailRow = {
 	workflowId: string;
 	workflowName: string;
 	workflowVersionId: string | null;
+	/** Frozen at approval; null while open or when never published / pre-ship. */
+	baselineVersionId: string | null;
 };
 
 @Service()
 export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<WorkflowReviewRequestWorkflow> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
+	) {
 		super(WorkflowReviewRequestWorkflow, dataSource.manager, transactionRunner);
 	}
 
@@ -59,6 +66,33 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 				workflowId: input.workflowId,
 			},
 			{ workflowVersionId: input.workflowVersionId },
+		);
+	}
+
+	/**
+	 * Freeze the live published pointer onto the child row at approval time.
+	 * Reads through the published-version repo with `ctx` so both the SELECT and
+	 * UPDATE share the lock transaction (no second pooled connection).
+	 */
+	async captureApprovalBaseline(
+		input: {
+			workflowReviewRequestId: string;
+			workflowId: string;
+		},
+		ctx: OperationContext,
+	): Promise<void> {
+		const publishedVersionId = await this.workflowPublishedVersionRepository.getPublishedVersionId(
+			input.workflowId,
+			ctx,
+		);
+
+		await this.managerFor(ctx).update(
+			WorkflowReviewRequestWorkflow,
+			{
+				workflowReviewRequestId: input.workflowReviewRequestId,
+				workflowId: input.workflowId,
+			},
+			{ baselineVersionId: publishedVersionId },
 		);
 	}
 
@@ -112,18 +146,21 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 			.select('wrw.workflowId', 'workflowId')
 			.addSelect('workflow.name', 'workflowName')
 			.addSelect('wrw.workflowVersionId', 'workflowVersionId')
+			.addSelect('wrw.baselineVersionId', 'baselineVersionId')
 			.where('wrw.workflowReviewRequestId = :requestId', { requestId })
 			.orderBy('wrw.id', 'ASC')
 			.getRawMany<{
 				workflowId: string;
 				workflowName: string;
 				workflowVersionId: string | null;
+				baselineVersionId: string | null;
 			}>();
 
 		return rows.map((row) => ({
 			workflowId: row.workflowId,
 			workflowName: row.workflowName,
 			workflowVersionId: row.workflowVersionId ?? null,
+			baselineVersionId: row.baselineVersionId ?? null,
 		}));
 	}
 }

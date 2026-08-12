@@ -112,8 +112,9 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	function mockChildRow(
 		pinnedVersionId: string | null = 'ver-pinned',
 		workflowName = 'My workflow',
+		baselineVersionId: string | null = null,
 	) {
-		mockGate([{ workflowId, workflowName, workflowVersionId: pinnedVersionId }]);
+		mockGate([{ workflowId, workflowName, workflowVersionId: pinnedVersionId, baselineVersionId }]);
 	}
 
 	describe('when reviews are unavailable', () => {
@@ -318,6 +319,56 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows[0]?.pinnedVersion).not.toHaveProperty('authors');
+		});
+
+		it('uses the frozen baseline on a closed review, not the live published pointer', async () => {
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest({ state: 'closed', decision: 'approved' }),
+				readableWorkflowRows: [
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						baselineVersionId: 'ver-frozen',
+					},
+				],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: true,
+			});
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-live-now');
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-frozen' });
+			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
+		});
+
+		it('returns no baseline for a closed review when none was captured', async () => {
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest({ state: 'closed', decision: 'approved' }),
+				readableWorkflowRows: [
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						baselineVersionId: null,
+					},
+				],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: true,
+			});
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-live-now');
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toBeNull();
+			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
 		});
 	});
 });

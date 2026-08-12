@@ -54,7 +54,12 @@ describe('WorkflowReviewAccessService', () => {
 
 	function mockChildRow(pinnedVersionId: string | null = 'ver-pinned') {
 		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
-			{ workflowId, workflowName: 'My workflow', workflowVersionId: pinnedVersionId },
+			{
+				workflowId,
+				workflowName: 'My workflow',
+				workflowVersionId: pinnedVersionId,
+				baselineVersionId: null,
+			},
 		]);
 	}
 
@@ -132,7 +137,12 @@ describe('WorkflowReviewAccessService', () => {
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
 			expect(result.readableWorkflowRows).toEqual([
-				{ workflowId, workflowName: 'My workflow', workflowVersionId: 'ver-pinned' },
+				{
+					workflowId,
+					workflowName: 'My workflow',
+					workflowVersionId: 'ver-pinned',
+					baselineVersionId: null,
+				},
 			]);
 			expect(result.pinnedWorkflowId).toBe(workflowId);
 			expect(result.canReadPinnedWorkflow).toBe(true);
