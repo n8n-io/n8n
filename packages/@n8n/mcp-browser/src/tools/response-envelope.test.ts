@@ -1,8 +1,8 @@
 import { McpBrowserError } from '../errors';
-import { analyzeHtmlSensitivity } from '../sensitivity/analyze-html';
-import type { CallToolResult } from '../types';
 import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
 import { createMockConnection } from './test-helpers';
+import { analyzeHtmlSensitivity } from '../sensitivity/analyze-html';
+import type { CallToolResult } from '../types';
 
 vi.mock('../sensitivity/analyze-html', () => ({
 	analyzeHtmlSensitivity: vi.fn(),
