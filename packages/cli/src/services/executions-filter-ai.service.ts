@@ -25,7 +25,10 @@ Rules:
 - If the query gives a single point in time (e.g. "today", "this week"), set "startDate" to the start of that period and leave "endDate" unset unless the query also implies an end.
 - "annotationTagNames" is a list of tag names as they appear in the query. Omit if the query mentions no tags.
 - "vote" is the execution rating: "up" for good/positive/thumbs-up, "down" for bad/negative/thumbs-down. Omit unless the query is explicitly about the rating.
-- "metadata" captures a specific piece of custom/highlighted execution data the query names, as one or more { key, value, exactMatch } entries — e.g. "where the order id is 123" becomes key "order id", value "123". Set "exactMatch" to true only if the query asks for an exact match (e.g. "exactly", "precisely"); otherwise omit it. Omit "metadata" entirely if the query doesn't name a specific field/value pair.`;
+- "metadata" captures custom/highlighted execution data — arbitrary key-value pairs a user saved on the execution via an "Execution Data" node, not built-in execution fields. It has two sources:
+  1. Explicit framing: "where the order id is 123" becomes key "order id", value "123".
+  2. Unmatched field-like clauses: after you've accounted for workflow, status, dates, tags, and rating, if the query still names a field and a specific value for it — an ID, a proper noun, a quoted string, a number, an email, a code — treat that as metadata too. E.g. "customer_id 42" -> key "customer_id", value "42"; "invoice #A1234" -> key "invoice", value "A1234"; "runs for user jane@co.com" -> key "user", value "jane@co.com".
+  Do NOT do this for vague descriptive language with no clear field name or no specific value ("large orders", "important runs", "the usual customer") — leave those unmatched rather than guessing a key/value for them; a wrong metadata filter can silently zero out the whole list. Set "exactMatch" to true only if the query asks for an exact match (e.g. "exactly", "precisely"); otherwise omit it. Omit "metadata" entirely if nothing in the query qualifies.`;
 
 @Service()
 export class ExecutionsFilterAiService {
