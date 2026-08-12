@@ -26,6 +26,10 @@ export class ProjectFileRepository extends Repository<ProjectFile> {
 		return { count, data };
 	}
 
+	async findById(fileId: string): Promise<ProjectFile | null> {
+		return await this.findOneBy({ id: fileId });
+	}
+
 	async findByIdInProject(fileId: string, projectId: string): Promise<ProjectFile | null> {
 		return await this.findOneBy({ id: fileId, projectId });
 	}

@@ -292,6 +292,21 @@
 		"DELETE /data-tables/{dataTableId}/columns/{columnId}": {
 			"status": "gap"
 		},
+		"GET /files": {
+			"status": "gap"
+		},
+		"GET /files/{fileId}": {
+			"status": "gap"
+		},
+		"GET /files/{fileId}/content": {
+			"status": "gap"
+		},
+		"PUT /files/{fileId}": {
+			"status": "gap"
+		},
+		"DELETE /files/{fileId}": {
+			"status": "gap"
+		},
 		"POST /projects": {
 			"status": "gap"
 		},

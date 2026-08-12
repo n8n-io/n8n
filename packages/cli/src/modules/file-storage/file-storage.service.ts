@@ -42,6 +42,16 @@ export class ProjectFileService {
 		return file;
 	}
 
+	/**
+	 * Lookup by id alone, for callers that authorize on the file's own project
+	 * (the Public API's `:fileId` routes) rather than a projectId in the path.
+	 */
+	async getFileById(fileId: string): Promise<ProjectFile> {
+		const file = await this.repository.findById(fileId);
+		if (!file) throw new ProjectFileNotFoundError(fileId);
+		return file;
+	}
+
 	async findByNameInProject(name: string, projectId: string): Promise<ProjectFile | null> {
 		return await this.repository.findByNameInProject(name, projectId);
 	}

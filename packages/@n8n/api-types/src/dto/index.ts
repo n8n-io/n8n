@@ -261,6 +261,12 @@ export {
 	type ProjectFileConflictMode,
 } from './project-files/upload-project-file-query.dto';
 export { UpdateProjectFileDto } from './project-files/update-project-file.dto';
+export {
+	ProjectFilePublicDto,
+	ProjectFileListPublicDto,
+	ProjectFileDeletedPublicDto,
+	projectFilePublicSchema,
+} from './project-files/project-file-public.dto';
 export { BatchDeleteProjectFilesDto } from './project-files/batch-delete-project-files.dto';
 export { ProjectFileContentQueryDto } from './project-files/project-file-content-query.dto';
 export { ProjectFileSignedQueryDto } from './project-files/project-file-signed-query.dto';

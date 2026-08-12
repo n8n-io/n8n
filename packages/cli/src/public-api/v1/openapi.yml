@@ -37,6 +37,8 @@ tags:
     description: Operations about evaluation test runs
   - name: Execution
     description: Operations about executions
+  - name: Files
+    description: Operations about project files
   - name: Folders
     description: Operations about folders
   - name: Insights

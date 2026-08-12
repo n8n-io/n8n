@@ -70,6 +70,7 @@ export class ListProjectFilesQueryDto extends Z.class({
 
 export class PublicApiListProjectFilesQueryDto extends Z.class({
 	...publicApiPaginationSchema,
+	cursor: z.string().optional(),
 	filter: publicApiFilterValidator,
 	sortBy: sortByValidator,
 }) {}
