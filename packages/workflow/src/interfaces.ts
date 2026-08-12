@@ -2681,9 +2681,19 @@ export interface INodeTypeBaseDescription {
 	 */
 	respondsToWebhook?: true;
 
+	/**
+	 * Output fields holding a document rather than a value, keyed by dot-notation
+	 * path relative to `item.json` (e.g. `{ html: 'html' }`). The UI previews
+	 * these instead of printing them as one long string.
+	 */
+	outputFieldRendering?: Record<string, OutputFieldRendering>;
+
 	/** Path to schema directory relative to nodes-base/dist/nodes/ (e.g., "Google/Drive") */
 	schemaPath?: string;
 }
+
+/** How the UI should render an output field declared in `outputFieldRendering`. */
+export type OutputFieldRendering = 'html';
 
 /**
  * NodeDescription entries that replace the base node entries when

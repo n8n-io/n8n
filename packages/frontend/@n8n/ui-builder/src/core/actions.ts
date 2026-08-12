@@ -1,7 +1,14 @@
 import { isPlainObject } from 'lodash';
 
 import { actionKey } from './loading';
-import type { UiAction, UiActionStep, UiResponseBinding, UiWebhookStep } from './types';
+import { HTTP_METHODS } from './types';
+import type {
+	UiAction,
+	UiActionStep,
+	UiHttpMethod,
+	UiResponseBinding,
+	UiWebhookStep,
+} from './types';
 
 /**
  * What an action prop holds, and how to read the shapes that came before it.
@@ -28,6 +35,23 @@ export function createStep(kind: UiActionKind): UiActionStep {
 	return { kind: 'webhook', url: '', method: 'POST' };
 }
 
+/**
+ * The request body is an expression. A step saved when it was a state path —
+ * `form` — means the same thing written the way everything else in a document
+ * is: `={{ $state.form }}`.
+ */
+function readRequest(value: unknown): string | undefined {
+	if (typeof value !== 'string' || !value) return undefined;
+
+	return value.startsWith('=') ? value : `={{ $state.${value} }}`;
+}
+
+/** POST unless the step names a method this app can actually send. */
+function readMethod(value: unknown): UiHttpMethod {
+	const method = typeof value === 'string' ? value.toUpperCase() : '';
+	return HTTP_METHODS.find((known) => known === method) ?? 'POST';
+}
+
 /** A path per state key, or one path for the whole body. Anything else is no binding. */
 function readResponseBinding(value: unknown): UiResponseBinding | undefined {
 	if (typeof value === 'string') return value || undefined;
@@ -40,8 +64,26 @@ function readResponseBinding(value: unknown): UiResponseBinding | undefined {
 	return pairs.length ? Object.fromEntries(pairs) : undefined;
 }
 
-function readStep(value: unknown): UiActionStep | undefined {
-	if (!isPlainObject(value)) return undefined;
+/**
+ * A webhook step used to place its own reply. It now hands the chain
+ * `$response` and a `set` step does the placing, so the binding reads as the
+ * steps it always stood for — and an author can see and edit them.
+ */
+function expandResponseBinding(binding: UiResponseBinding | undefined): UiActionStep[] {
+	if (!binding) return [];
+
+	const pairs: Array<[string, string]> =
+		typeof binding === 'string' ? [[binding, '']] : Object.entries(binding);
+
+	return pairs.map(([path, from]) => ({
+		kind: 'set',
+		path,
+		value: from ? `={{ $response.${from} }}` : '={{ $response }}',
+	}));
+}
+
+function readStep(value: unknown): UiActionStep[] {
+	if (!isPlainObject(value)) return [];
 
 	const step = value as Record<string, unknown>;
 
@@ -55,28 +97,31 @@ function readStep(value: unknown): UiActionStep | undefined {
 		// legacy `{}` with no kind and no url, which never reaches this branch
 		// (its kind comes out undefined above). So an explicit 'webhook' kind
 		// with an empty url is a real, still-unconfigured step, not "no action".
-		return {
-			kind,
-			url: typeof step.url === 'string' ? step.url : '',
-			method: step.method === 'GET' ? 'GET' : 'POST',
-			request: typeof step.request === 'string' && step.request ? step.request : undefined,
-			response: readResponseBinding(step.response),
-		};
+		return [
+			{
+				kind,
+				url: typeof step.url === 'string' ? step.url : '',
+				method: readMethod(step.method),
+				request: readRequest(step.request),
+				key: typeof step.key === 'string' && step.key ? step.key : undefined,
+			},
+			...expandResponseBinding(readResponseBinding(step.response)),
+		];
 	}
 
 	if (kind === 'notify') {
-		return { kind, message: String(step.message ?? ''), type: readToastType(step.type) };
+		return [{ kind, message: String(step.message ?? ''), type: readToastType(step.type) }];
 	}
 
 	if (kind === 'navigate') {
-		return { kind, to: String(step.to ?? '') };
+		return [{ kind, to: String(step.to ?? '') }];
 	}
 
 	if (kind === 'set') {
-		return { kind, path: String(step.path ?? ''), value: step.value };
+		return [{ kind, path: String(step.path ?? ''), value: step.value }];
 	}
 
-	return undefined;
+	return [];
 }
 
 function readToastType(value: unknown): 'success' | 'error' | 'info' {
@@ -90,19 +135,35 @@ function readToastType(value: unknown): 'success' | 'error' | 'info' {
  */
 export function normaliseAction(value: unknown): UiActionStep[] {
 	if (Array.isArray(value)) {
-		return value.map(readStep).filter((step): step is UiActionStep => step !== undefined);
+		return value.flatMap(readStep);
 	}
 
 	// The single-webhook shape. Anything else, including `{}`, is no action.
 	const legacy = value as UiAction | undefined;
 	if (isPlainObject(value) && typeof legacy?.url === 'string' && legacy.url) {
 		// Through the same reader as a step in a list, so the two paths cannot
-		// disagree about the same input: a hand-written `PUT` was surviving here
-		// and being coerced there, against a type that allows neither.
-		return [{ kind: 'webhook', url: legacy.url, method: legacy.method === 'GET' ? 'GET' : 'POST' }];
+		// disagree about the same input.
+		return [{ kind: 'webhook', url: legacy.url, method: readMethod(legacy.method) }];
 	}
 
 	return [];
+}
+
+/**
+ * A name for a call's reply, from what it calls: `…/webhook/orders-app/orders`
+ * gives `orders`. Identifier-safe and unique within the chain, because the way
+ * it is read is `$responses.orders`.
+ */
+export function replyKeyFor(url: string, taken: readonly string[]): string {
+	const segment = url.split('?')[0].split('/').filter(Boolean).pop() ?? '';
+	const cleaned = segment.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+	const base = /^[A-Za-z_]/.test(cleaned) ? cleaned : `reply${cleaned ? `_${cleaned}` : ''}`;
+
+	if (!taken.includes(base)) return base;
+
+	let n = 2;
+	while (taken.includes(`${base}${n}`)) n++;
+	return `${base}${n}`;
 }
 
 /** The webhook URLs a chain calls, in the order it calls them. */

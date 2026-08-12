@@ -2,6 +2,7 @@
 import {
 	N8nButton,
 	N8nDialog,
+	N8nIcon,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nText,
@@ -9,7 +10,9 @@ import {
 } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, provide, reactive, ref, toRef } from 'vue';
 
-import type { UiNode, UiScope, UiWebhookStep } from '../core/types';
+import { writeState } from '../core/binding';
+import type { UiActionStep, UiNode, UiScope, UiWebhookStep } from '../core/types';
+import { getComponentDef } from '../kit';
 import { createScopeRegistry, UiScopeRegistryKey } from '../renderer/scope-registry';
 import UiRenderer from '../renderer/UiRenderer.vue';
 import { useActionPreview } from './composables/useActionPreview';
@@ -18,6 +21,7 @@ import { usePages } from './composables/usePages';
 import { useUiBuilderLayout } from './composables/useUiBuilderLayout';
 import { useUiDocument } from './composables/useUiDocument';
 import { useWebhookTargets } from './composables/useWebhookTargets';
+import type { WebhookTarget } from './composables/useWebhookTargets';
 import { UiTooltipParentKey, type UiBuilderHost } from './host';
 import InspectorPane from './panes/InspectorPane.vue';
 import OutlinePane from './panes/OutlinePane.vue';
@@ -109,8 +113,8 @@ const {
 
 const {
 	localTargets,
-	targetForUrl,
-	labelForUrl,
+	targetFor,
+	labelFor,
 	loadEligible,
 	pickerOpen,
 	pickerQuery,
@@ -129,10 +133,20 @@ const canvasState = reactive<{
 	$loading: Record<string, boolean>;
 }>({ $state: {}, $loading: {} });
 
-const { previewStatus, runAction, loadLastExecution } = useActionPreview(
+/**
+ * An input on the canvas fills the canvas state, exactly as it would fill the
+ * running app's. It is the only way to put a form's own values there — a reply
+ * cannot — and without them a request body reading `{{ $state.form }}` has
+ * nothing to preview and the inspector shows the expression as unresolved.
+ */
+function writeCanvasState(path: string, value: unknown) {
+	writeState(canvasState.$state, path, value);
+}
+
+const { previewStatus, responses, runAction, runChain, loadLastExecution } = useActionPreview(
 	props.host,
 	canvasState.$state,
-	targetForUrl,
+	targetFor,
 	loadEligible,
 );
 
@@ -164,6 +178,11 @@ const inspectorScope = computed<UiScope>(
 	() => scopeRegistry.scopeFor(selectedId.value) ?? canvasScope.value,
 );
 
+/** The selected component's descriptor, for the small selection panel above the inspector. */
+const selectedDef = computed(() =>
+	selected.value ? getComponentDef(selected.value.type) : undefined,
+);
+
 /**
  * The real production URL of the Webhook that serves this page, when the host
  * can pin one down unambiguously — see `UiBuilderHost.liveWebhookUrl`. Read
@@ -187,19 +206,20 @@ function openLiveWebhook() {
  * `button` + `onClick` gives `buttonOnClick`, then `buttonOnClick2`. The host
  * makes the pair; naming it after what points at it is this pane's business.
  */
-async function createTrigger(propName: string): Promise<string | undefined> {
+async function createTrigger(propName: string): Promise<WebhookTarget | undefined> {
 	if (!selected.value) return undefined;
 
 	const type = selected.value.type;
 	const base = `${type}${propName.charAt(0).toUpperCase()}${propName.slice(1)}`;
-	const taken = new Set(props.host.localWebhookPaths());
+	const taken = new Set(props.host.localEndpoints().map((endpoint) => endpoint.path));
 
 	let path = base;
 	let n = 2;
 	while (taken.has(path)) path = `${base}${n++}`;
 
 	const made = await props.host.createWebhookPair(path);
-	return made ? props.host.webhookUrlFor(path) : undefined;
+	// The host makes the pair as a POST, which is what a step wanting a body needs.
+	return made ? { label: path, url: props.host.webhookUrlFor(path), method: 'POST' } : undefined;
 }
 
 /**
@@ -256,6 +276,59 @@ function onEscape(event: KeyboardEvent) {
 		@escape-key-down="onEscape"
 	>
 		<div class="ui-builder">
+			<header class="ui-builder__header">
+				<div class="ui-builder__header-content">
+					<N8nIcon icon="layout-template" size="medium" class="ui-builder__header-icon" />
+					<div class="ui-builder__header-title">
+						<N8nText size="small">UI Builder</N8nText>
+					</div>
+				</div>
+
+				<div class="ui-builder__header-actions">
+					<N8nTooltip content="Docs aren't wired up yet">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="book-open"
+							aria-label="Documentation (not yet available)"
+							disabled
+						/>
+					</N8nTooltip>
+
+					<N8nTooltip :content="previewMode ? 'Back to editing' : 'Preview without editing chrome'">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							:icon="previewMode ? 'eye-off' : 'eye'"
+							:aria-label="previewMode ? 'Back to editing' : 'Preview without editing chrome'"
+							@click="previewMode = !previewMode"
+						/>
+					</N8nTooltip>
+
+					<N8nTooltip :content="liveWebhookTooltip">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="external-link"
+							:aria-label="liveWebhookTooltip"
+							:disabled="!liveWebhookUrl"
+							@click="openLiveWebhook"
+						/>
+					</N8nTooltip>
+
+					<N8nTooltip content="Delete the selected component">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="trash-2"
+							aria-label="Delete the selected component"
+							:disabled="readOnly || previewMode || !selectedId || selectedId === doc.id"
+							@click="deleteSelected"
+						/>
+					</N8nTooltip>
+				</div>
+			</header>
+
 			<div class="ui-builder__layout">
 				<N8nResizeWrapper
 					class="ui-builder__resizer"
@@ -323,51 +396,6 @@ function onEscape(event: KeyboardEvent) {
 				</N8nResizeWrapper>
 
 				<section class="ui-builder__canvas">
-					<div class="ui-builder__toolbar">
-						<!-- Which page is on screen, since the canvas shows one at a time. -->
-						<N8nText v-if="editingPage" size="small" color="text-light">
-							{{ editingPage.title || editingPage.path }}
-						</N8nText>
-
-						<N8nText v-if="previewStatus" size="small" color="text-light">
-							preview: {{ previewStatus }}
-						</N8nText>
-
-						<N8nTooltip
-							:content="previewMode ? 'Back to editing' : 'Preview without editing chrome'"
-						>
-							<N8nIconButton
-								variant="ghost"
-								size="small"
-								:icon="previewMode ? 'eye-off' : 'eye'"
-								:aria-label="previewMode ? 'Back to editing' : 'Preview without editing chrome'"
-								@click="previewMode = !previewMode"
-							/>
-						</N8nTooltip>
-
-						<N8nTooltip :content="liveWebhookTooltip">
-							<N8nIconButton
-								variant="ghost"
-								size="small"
-								icon="external-link"
-								:aria-label="liveWebhookTooltip"
-								:disabled="!liveWebhookUrl"
-								@click="openLiveWebhook"
-							/>
-						</N8nTooltip>
-
-						<N8nTooltip content="Delete the selected component">
-							<N8nIconButton
-								variant="ghost"
-								size="small"
-								icon="trash-2"
-								aria-label="Delete the selected component"
-								:disabled="readOnly || previewMode || !selectedId || selectedId === doc.id"
-								@click="deleteSelected"
-							/>
-						</N8nTooltip>
-					</div>
-
 					<div class="ui-builder__surface">
 						<UiRenderer
 							:node="doc"
@@ -377,6 +405,7 @@ function onEscape(event: KeyboardEvent) {
 							:hovered-id="hoveredId"
 							:on-select="selectNode"
 							:on-hover="(id?: string) => (hoveredId = id)"
+							:on-write="writeCanvasState"
 						/>
 					</div>
 				</section>
@@ -391,21 +420,56 @@ function onEscape(event: KeyboardEvent) {
 					:style="{ width: `${inspectorWidth}px` }"
 					@resize="onInspectorResize"
 				>
-					<InspectorPane
-						:node="selected"
-						:pseudo="selectedPseudo"
-						:descriptors="inspectorProps"
-						:pages="pages"
-						:targets="localTargets"
-						:scope="inspectorScope"
-						:disabled="readOnly"
-						:label-for="labelForUrl"
-						:browse="pickExternal"
-						:create-trigger="createTrigger"
-						:run="(step: UiWebhookStep) => void runAction(step)"
-						:history="(step: UiWebhookStep) => void loadLastExecution(step)"
-						@set-prop="setProp"
-					/>
+					<div class="ui-builder__column">
+						<!--
+							The top bar is generic, panel-level actions only (see the header
+							above); what is actually selected lives here instead, right next
+							to the properties it describes.
+						-->
+						<div class="ui-builder__selection">
+							<N8nText size="small" color="text-light">
+								{{ editingPage ? editingPage.title || editingPage.path : 'No page selected' }}
+							</N8nText>
+							<template v-if="selected">
+								<N8nText size="small" color="text-light">/</N8nText>
+								<N8nIcon
+									v-if="selectedDef?.icon"
+									:icon="selectedDef.icon"
+									size="small"
+									class="ui-builder__selection-icon"
+								/>
+								<N8nText size="small" bold color="text-dark">
+									{{ selectedDef?.label ?? selected.type }}
+								</N8nText>
+							</template>
+							<template v-else-if="selectedPseudo">
+								<N8nText size="small" color="text-light">/</N8nText>
+								<N8nText size="small" bold color="text-dark">{{ selectedPseudo.label }}</N8nText>
+							</template>
+						</div>
+
+						<InspectorPane
+							class="ui-builder__inspector"
+							:node="selected"
+							:pseudo="selectedPseudo"
+							:descriptors="inspectorProps"
+							:pages="pages"
+							:targets="localTargets"
+							:scope="inspectorScope"
+							:responses="responses"
+							:disabled="readOnly"
+							:label-for="labelFor"
+							:browse="pickExternal"
+							:create-trigger="createTrigger"
+							:run="(step: UiWebhookStep, after: UiActionStep[]) => void runAction(step, after)"
+							:history="
+								(step: UiWebhookStep, after: UiActionStep[]) => void loadLastExecution(step, after)
+							"
+							:run-all="(steps: UiActionStep[]) => void runChain(steps)"
+							:preview-status="previewStatus"
+							@set-prop="setProp"
+						/>
+					</div>
 				</N8nResizeWrapper>
 			</div>
 		</div>
@@ -437,13 +501,77 @@ function onEscape(event: KeyboardEvent) {
 	max-height: 100%;
 	min-height: 0;
 	overflow: hidden;
-	/*
-	 * There is no header row any more to clear the dialog's absolutely
-	 * positioned close button, so the layout itself is inset by exactly the
-	 * amount the button pokes into the content area.
-	 */
-	padding-top: var(--spacing--sm);
-	padding-right: var(--spacing--sm);
+}
+
+/*
+ * The same structure as the NDV's own `NDVHeader.vue`: an icon and a title on
+ * the left (`.content`/`.title` there), generic panel actions on the right
+ * (`.actions`), so the two authoring surfaces read as the same family. This
+ * bar is panel-level only — what is actually selected lives in
+ * `.ui-builder__selection` instead, next to the properties it describes.
+ * `padding-right` carries what the removed `N8nDialogHeader` used to: it
+ * clears the dialog's absolutely positioned close button.
+ */
+.ui-builder__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+	padding: var(--spacing--4xs);
+	padding-right: var(--spacing--xl);
+	background: var(--color--background--light-3);
+}
+
+.ui-builder__header-content {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-left: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.ui-builder__header-icon {
+	align-self: center;
+}
+
+.ui-builder__header-title {
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--sm);
+}
+
+.ui-builder__header-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+/* One divider per control, matching `NDVHeader`'s `.actions` treatment. */
+.ui-builder__header-actions > *:not(:last-child) {
+	border-right: var(--border);
+	padding-right: var(--spacing--2xs);
+}
+
+/*
+ * The selection breadcrumb that used to sit in the top bar: the page being
+ * edited, and the component selected within it. A slim row, not a full pane
+ * (`PaneShell` is for panes with their own scrollable body), sitting directly
+ * above the properties it describes.
+ */
+.ui-builder__selection {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	flex-shrink: 0;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--background--subtle);
+	min-width: 0;
+}
+
+.ui-builder__selection-icon {
+	color: var(--color--text--tint-1);
 }
 
 .ui-builder__layout {
@@ -477,6 +605,24 @@ function onEscape(event: KeyboardEvent) {
 	height: 100%;
 }
 
+/*
+ * `N8nResizeWrapper`'s own drag handle (`[data-test-id="resize-handle"]`) is
+ * an invisible hit-area by design — a cursor swap, nothing painted. Scoped
+ * here rather than in the shared component, so this doesn't change the
+ * handle everywhere it's used (e.g. the NDV's own panel resize): a thin line
+ * appears only on hover, so a column boundary reads as draggable instead of
+ * as a hairline gap between two bordered panes.
+ */
+.ui-builder__resizer :deep([data-test-id='resize-handle']) {
+	background: var(--color--primary);
+	opacity: 0;
+	transition: opacity 80ms ease;
+}
+
+.ui-builder__resizer:hover :deep([data-test-id='resize-handle']) {
+	opacity: 1;
+}
+
 .ui-builder__column {
 	display: flex;
 	flex-direction: column;
@@ -502,6 +648,12 @@ function onEscape(event: KeyboardEvent) {
 	min-height: 0;
 }
 
+/* Grows to absorb whatever height the content-sized selection row leaves it. */
+.ui-builder__inspector {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
 .ui-builder__canvas {
 	display: flex;
 	flex-direction: column;
@@ -512,17 +664,6 @@ function onEscape(event: KeyboardEvent) {
 	border-radius: var(--radius);
 	background: var(--background--surface);
 	overflow: hidden;
-}
-
-.ui-builder__toolbar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-bottom: var(--border);
-	background: var(--color--foreground--tint-2);
 }
 
 .ui-builder__surface {

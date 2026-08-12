@@ -1,8 +1,10 @@
 import { getComponentSpec, regionNamesOf } from './kit-spec';
 import {
 	ACTION_PROP_TYPE,
+	HTTP_METHODS,
 	ROUTE_PROP_TYPE,
 	STATE_PATH_PROP_TYPE,
+	type UiHttpMethod,
 	type UiNode,
 	type UiProperty,
 } from './types';
@@ -70,8 +72,21 @@ function checkAction(value: unknown, path: string, issues: UiDefinitionIssue[]):
 			});
 			return;
 		}
-		if (step.kind === 'webhook' && typeof step.url !== 'string') {
-			issues.push({ path: `${at}.url`, message: 'A webhook step needs a string `url`' });
+		if (step.kind === 'webhook') {
+			if (typeof step.url !== 'string') {
+				issues.push({ path: `${at}.url`, message: 'A webhook step needs a string `url`' });
+			}
+			if (step.method !== undefined && !HTTP_METHODS.includes(step.method as UiHttpMethod)) {
+				issues.push({
+					path: `${at}.method`,
+					message: `"${show(step.method)}" is not one of: ${HTTP_METHODS.join(', ')}`,
+				});
+			}
+			// `response` was the old way to place a reply; `normaliseAction` still
+			// reads it, so it is legacy rather than wrong.
+			if (step.key !== undefined && typeof step.key !== 'string') {
+				issues.push({ path: `${at}.key`, message: 'A reply key is a string' });
+			}
 		}
 		if (step.kind === 'notify' && typeof step.message !== 'string') {
 			issues.push({ path: `${at}.message`, message: 'A notify step needs a string `message`' });

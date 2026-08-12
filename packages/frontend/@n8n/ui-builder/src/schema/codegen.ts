@@ -1,6 +1,7 @@
 import { UI_KIT_SPEC } from './kit-spec';
 import {
 	ACTION_PROP_TYPE,
+	HTTP_METHODS,
 	ROUTE_PROP_TYPE,
 	STATE_PATH_PROP_TYPE,
 	type UiComponentSpec,
@@ -28,6 +29,10 @@ const HEADER = `/**
  * These are NOT n8n expressions. They are resolved in the browser against the
  * app's own scope — \`$state\`, \`$loading\`, \`$route\`, \`$pages\`, and \`$item\` /
  * \`$index\` inside a \`repeat\`. n8n never evaluates them.
+ *
+ * Inside an action chain the steps after a webhook also see \`$response\` (what
+ * that call answered) and \`$responses.<key>\` (each answer so far, by the key
+ * its call was given). A \`set\` step is how any of it reaches \`$state\`.
  */`;
 
 function literal(value: string | number | boolean): string {
@@ -103,7 +108,10 @@ export function uiDefinitionTypeSource(exported: boolean): string {
 
 	return [
 		`${prefix} UiExpr = \`={{\${string}}}\`;`,
-		`${prefix} UiWebhookStep = { kind: 'webhook'; url: string; method?: 'GET' | 'POST'; request?: string; response?: string | Record<string, string> };`,
+		`${prefix} UiHttpMethod = ${HTTP_METHODS.map((method) => `'${method}'`).join(' | ')};`,
+		// `request` is an expression, and the reply is not placed by the step: it
+		// becomes `$response` for the steps after it, which a `set` step reads.
+		`${prefix} UiWebhookStep = { kind: 'webhook'; url: string; method?: UiHttpMethod; request?: UiExpr; key?: string };`,
 		`${prefix} UiNotifyStep = { kind: 'notify'; message: string; type?: 'success' | 'error' | 'info' };`,
 		`${prefix} UiNavigateStep = { kind: 'navigate'; to: string };`,
 		`${prefix} UiSetStep = { kind: 'set'; path: string; value?: unknown };`,

@@ -34,6 +34,7 @@ export class UiBuilder implements INodeType {
 		version: 1,
 		description: 'Serve a UI defined in this node as a web app',
 		respondsToWebhook: true,
+		outputFieldRendering: { html: 'html' },
 		defaults: {
 			name: 'UI Builder',
 		},
@@ -73,34 +74,42 @@ There is no $json, no $node, no $now. Writing one produces a blank prop, not an
 error. Conversely, an n8n expression belongs nowhere in this parameter.
 </pattern>
 
-<pattern title="Reads and writes are separate props">
-\`value\` is what a component displays; \`model\` is the state path it writes user
-input into. Nothing is inferred from one to the other, so an input that both
-shows and edits a value sets both:
+<pattern title="An input is one binding, named once">
+\`model\` is the place in state an input both reads and writes — not a write
+target paired with a separate \`value\` to display. Name the path once:
 
 const nameInput = { id: 'name', type: 'input', props: {
-  value: '={{ $state.form.name }}',
   model: 'form.name',
   placeholder: 'Order name',
 }, tree: {} };
+
+Everything else reading \`$state.form.name\` — a request body, another
+component — then sees what was typed.
 </pattern>
 
 <pattern title="An action is a chain of steps, run in order">
 \`onClick\`, \`onEnter\` and \`onMount\` hold a list, not a single call. A webhook
-step owns both ends of the exchange: \`request\` is the state path to send as the
-body (unset sends all of state), \`response\` is where the reply lands (unset
-discards it). A webhook answering \`ok: false\` ends the chain, which is what
-stops a failed save from navigating away from the form that failed.
+step's \`request\` is the body to send, as an expression (unset sends all of
+state). It does not place the reply anywhere: the reply becomes \`$response\` for
+the steps after it, and a \`set\` step decides what of it is worth keeping. Give
+the step a \`key\` when a chain calls more than once, and the answers are also at
+\`$responses.<key>\`. A webhook answering \`ok: false\` ends the chain, which is
+what stops a failed save from navigating away from the form that failed.
 
 onClick: [
-  { kind: 'webhook', url: '{webhookBaseUrl}/orders-app/orders', method: 'POST', request: 'form' },
+  { kind: 'webhook', url: '{webhookBaseUrl}/orders-app/orders', method: 'POST', request: '={{ $state.form }}' },
   { kind: 'set', path: 'form', value: {} },
   { kind: 'notify', message: 'Order added', type: 'success' },
   { kind: 'navigate', to: '/' },
 ]
 
-A step's expressions resolve as that step runs, so a notify after a webhook sees
-what the webhook merged.
+To keep a reply, set from it:
+
+  { kind: 'webhook', url: '…/orders', method: 'GET' },
+  { kind: 'set', path: 'orders', value: '={{ $response }}' },
+
+A step's expressions resolve as that step runs, so a step after a webhook sees
+what that webhook answered.
 </pattern>
 
 <pattern title="A whole app: API Router serves the page and the actions">
@@ -134,7 +143,10 @@ const definition = {
     } }],
     default: [{ id: 'list', type: 'page', props: {
       path: '/', title: 'Orders',
-      onEnter: [{ kind: 'webhook', url: '{webhookBaseUrl}/orders-app/orders', method: 'GET', response: 'orders' }],
+      onEnter: [
+        { kind: 'webhook', url: '{webhookBaseUrl}/orders-app/orders', method: 'GET' },
+        { kind: 'set', path: 'orders', value: '={{ $response }}' },
+      ],
     }, tree: {
       default: [{ id: 'rows', type: 'table', props: { rows: '={{ $state.orders }}', columns: 'name,qty' }, tree: {} }],
     } }],

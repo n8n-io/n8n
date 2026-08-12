@@ -13,6 +13,9 @@ import Draggable from '@/app/components/Draggable.vue';
 import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import BinaryEntryDataTable from './BinaryEntryDataTable.vue';
+import HtmlPreviewButton from './HtmlPreviewButton.vue';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { isRenderedField } from '@/features/ndv/runData/outputFieldRendering';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
@@ -94,6 +97,10 @@ const pairedItemMappings = computed(
 	() => workflowExecutionStateStore.value.activeExecutionPairedItemMappings,
 );
 const tableData = computed(() => convertToTable(props.inputData));
+const nodeTypesStore = useNodeTypesStore();
+const nodeType = computed(() =>
+	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
+);
 const collapsingColumnIndex = computed(() => {
 	if (!props.collapsingColumnName) {
 		return -1;
@@ -354,6 +361,13 @@ function isObject(data: GenericValue): data is Record<string, unknown> {
 
 function hasJsonInColumn(colIndex: number): boolean {
 	return tableData.value.hasJson[tableData.value.columns[colIndex]];
+}
+
+/** The cell's document, when its column is one the node type declares as HTML. */
+function htmlInColumn(colIndex: number, value: GenericValue): string {
+	if (typeof value !== 'string' || value.length === 0) return '';
+
+	return isRenderedField(nodeType.value, 'html', tableData.value.columns[colIndex]) ? value : '';
 }
 
 function convertToTable(inputData: INodeExecutionData[]): ITableData {
@@ -721,8 +735,13 @@ watch(
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
 					>
+						<HtmlPreviewButton
+							v-if="htmlInColumn(index2, data)"
+							:html="htmlInColumn(index2, data)"
+							:title="tableData.columns[index2]"
+						/>
 						<TextWithHighlights
-							v-if="isSimple(data)"
+							v-else-if="isSimple(data)"
 							:content="getValueToRender(data)"
 							:search="search"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"

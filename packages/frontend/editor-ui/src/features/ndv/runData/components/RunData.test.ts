@@ -25,6 +25,7 @@ import {
 	type INodeExecutionData,
 	type ITaskData,
 	type ITaskMetadata,
+	type INodeTypeDescription,
 	type NodeHint,
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
@@ -1461,6 +1462,36 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('declared HTML output field', () => {
+		const htmlItem = [{ json: { html: '<p>Hello</p>' } }];
+
+		it('offers the HTML display mode for a node type that declares one', () => {
+			const { getByTestId } = render({
+				displayMode: 'table',
+				defaultRunItems: htmlItem,
+				outputFieldRendering: { html: 'html' },
+			});
+
+			expect(getByTestId('ndv-run-data-display-mode')).toHaveTextContent('HTML');
+		});
+
+		it('does not offer it when the node type declares nothing', () => {
+			const { getByTestId } = render({ displayMode: 'table', defaultRunItems: htmlItem });
+
+			expect(getByTestId('ndv-run-data-display-mode')).not.toHaveTextContent('HTML');
+		});
+
+		it('does not offer it when the declared field is empty', () => {
+			const { getByTestId } = render({
+				displayMode: 'table',
+				defaultRunItems: [{ json: { html: '' } }],
+				outputFieldRendering: { html: 'html' },
+			});
+
+			expect(getByTestId('ndv-run-data-display-mode')).not.toHaveTextContent('HTML');
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
@@ -1487,6 +1518,7 @@ describe('RunData', () => {
 		redactionInfo,
 		executionStatus,
 		nodeTypeHints,
+		outputFieldRendering,
 		withRunData = true,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
@@ -1501,6 +1533,7 @@ describe('RunData', () => {
 		redactionInfo?: { isRedacted: boolean; reason: string; canReveal: boolean };
 		executionStatus?: ExecutionStatus;
 		nodeTypeHints?: NodeHint[];
+		outputFieldRendering?: INodeTypeDescription['outputFieldRendering'];
 		withRunData?: boolean;
 		lastSuccessfulExecution?: {
 			id: string;
@@ -1550,13 +1583,15 @@ describe('RunData', () => {
 		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(testWorkflowId));
 
 		nodeTypesStore.setNodeTypes(
-			nodeTypeHints
-				? defaultNodeDescriptions.map((description) =>
-						description.name === SET_NODE_TYPE
-							? { ...description, hints: nodeTypeHints }
-							: description,
-					)
-				: defaultNodeDescriptions,
+			defaultNodeDescriptions.map((description) =>
+				description.name === SET_NODE_TYPE
+					? {
+							...description,
+							...(nodeTypeHints ? { hints: nodeTypeHints } : {}),
+							...(outputFieldRendering ? { outputFieldRendering } : {}),
+						}
+					: description,
+			),
 		);
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(workflowNodes[0]);

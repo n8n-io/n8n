@@ -9,6 +9,7 @@ const ROOT_DOCS: Record<string, string> = {
 	$loading: 'Which actions are in flight, plus $any',
 	$route: 'The page on screen',
 	$pages: 'Every page this app holds',
+	$response: 'What the call before this step answered',
 };
 
 const PATH_BEFORE_DOT = /[$A-Za-z_][\w$.[\]'"]*\.[\w$]*$/;

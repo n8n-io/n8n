@@ -13,6 +13,12 @@ import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { nonExistingJsonPath } from '@/app/constants';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
+import HtmlPreviewButton from './HtmlPreviewButton.vue';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	fieldPathFromJsonPath,
+	isRenderedField,
+} from '@/features/ndv/runData/outputFieldRendering';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
@@ -130,6 +136,22 @@ const formatValue = (value: unknown) => {
 const getListItemName = (path: string) => {
 	return path.replace(/^(\["?\d"?]\.?)/g, '');
 };
+
+const nodeTypesStore = useNodeTypesStore();
+const nodeType = computed(() =>
+	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
+);
+
+/**
+ * A document printed inline is unreadable and, at a few hundred kilobytes,
+ * slow to render, so a declared HTML field gets a button to the preview instead
+ * of its text.
+ */
+const htmlAt = (path: string, content: unknown) => {
+	if (!isString(content) || content.length === 0) return '';
+
+	return isRenderedField(nodeType.value, 'html', fieldPathFromJsonPath(path)) ? content : '';
+};
 </script>
 
 <template>
@@ -194,7 +216,13 @@ const getListItemName = (path: string) => {
 					/>
 				</template>
 				<template #renderNodeValue="{ node }">
+					<HtmlPreviewButton
+						v-if="htmlAt(node.path, node.content)"
+						:html="htmlAt(node.path, node.content)"
+						:title="getListItemName(node.path)"
+					/>
 					<TextWithHighlights
+						v-else
 						:content="formatValue(node.content)"
 						:search="search"
 						data-target="mappable"

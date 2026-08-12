@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { placeResponse, requestBody, writeState } from './binding';
-import type { UiState, UiWebhookStep } from './types';
+import { requestBody, writeState } from './binding';
+import type { UiScope, UiState, UiWebhookStep } from './types';
 
 const step = (fields: Partial<UiWebhookStep> = {}): UiWebhookStep => ({
 	kind: 'webhook',
@@ -11,72 +11,32 @@ const step = (fields: Partial<UiWebhookStep> = {}): UiWebhookStep => ({
 
 describe('requestBody', () => {
 	const state: UiState = { form: { name: 'Widget' }, orders: [] };
+	const scope: UiScope = { $state: state };
 
 	it('sends all of state when the step names no part of it', () => {
-		expect(requestBody(state, step())).toBe(state);
+		expect(requestBody(step(), scope)).toBe(state);
 	});
 
-	it('sends only the part the step names', () => {
-		expect(requestBody(state, step({ request: 'form' }))).toEqual({ name: 'Widget' });
+	it('sends the part of state its body names', () => {
+		expect(requestBody(step({ request: '={{ $state.form }}' }), scope)).toEqual({
+			name: 'Widget',
+		});
 	});
 
 	it('sends nothing for a path state does not have', () => {
-		expect(requestBody(state, step({ request: 'nope.deeper' }))).toBeUndefined();
-	});
-});
-
-describe('placeResponse', () => {
-	it('discards the reply of a step with no binding', () => {
-		const state: UiState = {};
-
-		expect(placeResponse(state, undefined, [{ id: 1 }])).toEqual([]);
-		expect(state).toEqual({});
+		expect(requestBody(step({ request: '={{ $state.nope.deeper }}' }), scope)).toBeUndefined();
 	});
 
-	it('writes the whole body at the path a string names', () => {
-		const state: UiState = {};
-
-		expect(placeResponse(state, 'orders', [{ id: 1 }])).toEqual(['orders']);
-		expect(state).toEqual({ orders: [{ id: 1 }] });
+	it('sends a shape the body makes up', () => {
+		expect(requestBody(step({ request: '={{ { name: $state.form.name } }}' }), scope)).toEqual({
+			name: 'Widget',
+		});
 	});
 
-	it('keeps a one-row list a list', () => {
-		const state: UiState = {};
-		placeResponse(state, 'orders', [{ id: 1 }]);
-
-		expect(state.orders).toEqual([{ id: 1 }]);
-	});
-
-	it('replaces rather than merges, so a shorter list is shorter', () => {
-		const state: UiState = { orders: [{ id: 1 }, { id: 2 }] };
-		placeResponse(state, 'orders', [{ id: 3 }]);
-
-		expect(state.orders).toEqual([{ id: 3 }]);
-	});
-
-	it('fills several paths from one reply', () => {
-		const state: UiState = {};
-		const body = { data: { items: [{ id: 1 }], count: 1 } };
-
-		expect(placeResponse(state, { orders: 'data.items', total: 'data.count' }, body)).toEqual([
-			'orders',
-			'total',
-		]);
-		expect(state).toEqual({ orders: [{ id: 1 }], total: 1 });
-	});
-
-	it('writes undefined for a path the reply does not have, rather than skipping it', () => {
-		const state: UiState = { orders: [{ id: 1 }] };
-		placeResponse(state, { orders: 'data.items' }, {});
-
-		expect(state.orders).toBeUndefined();
-	});
-
-	it('writes into a nested state path', () => {
-		const state: UiState = {};
-		placeResponse(state, 'page.orders', [{ id: 1 }]);
-
-		expect(state).toEqual({ page: { orders: [{ id: 1 }] } });
+	it('resolves an expression against the whole scope, not only state', () => {
+		expect(
+			requestBody(step({ request: '={{ { id: $item.id } }}' }), { ...scope, $item: { id: 7 } }),
+		).toEqual({ id: 7 });
 	});
 });
 

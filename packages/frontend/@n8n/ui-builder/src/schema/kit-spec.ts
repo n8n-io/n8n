@@ -218,13 +218,16 @@ const INPUT = spec({
 	type: 'input',
 	group: 'Input',
 	label: 'Input',
+	bindsValueTo: 'value',
 	props: [
-		{ displayName: 'Value', name: 'value', type: 'string', default: '' },
 		{
-			displayName: 'Writes To',
+			displayName: 'Binds To',
 			name: 'model',
 			type: STATE_PATH_PROP_TYPE,
 			default: '',
+			placeholder: 'form.name',
+			description:
+				'The place in app state this input reads and writes, e.g. form.name. Anything else reading $state.form.name — a request body, another component — sees what was typed here.',
 		},
 		{ displayName: 'Placeholder', name: 'placeholder', type: 'string', default: '' },
 	],

@@ -177,8 +177,8 @@ Documented so nobody has to rediscover why:
 - **No `@n8n/expression-runtime`.** It depends on isolated-vm, and editor-ui
   aliases it to throwing stubs for browser builds. Tournament is what editor-ui
   itself uses in the browser.
-- **No state deletion.** The merge can set a key, never remove one.
-- **No last-write protection.** Concurrent responses merge in arrival order.
+- **No state deletion.** A `set` step can write a key, never remove one.
+- **No last-write protection.** Concurrent replies land in arrival order.
 - **No region typing.** Any component can go in any region. A component's props
   are typed by their descriptors; its regions accept anything. This is what
   leaves a shell inside a shell possible: both would read the same fragment,

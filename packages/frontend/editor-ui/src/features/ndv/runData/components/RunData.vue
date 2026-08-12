@@ -31,7 +31,6 @@ import {
 	CORE_NODES_CATEGORY,
 	DATA_EDITING_DOCS_URL,
 	DATA_PINNING_DOCS_URL,
-	HTML_NODE_TYPE,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
@@ -72,6 +71,10 @@ import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
 import { useRoute, useRouter } from 'vue-router';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
+import {
+	renderedFieldPaths,
+	renderedFieldValue,
+} from '@/features/ndv/runData/outputFieldRendering';
 import { asyncComputed } from '@vueuse/core';
 import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
 import RunDataItemCount from './RunDataItemCount.vue';
@@ -514,7 +517,12 @@ const binaryData = computed(() => {
 		.getBinaryData(workflowRunData.value, node.value.name, props.runIndex, currentOutputIndex.value)
 		.filter((data) => Boolean(data && Object.keys(data).length));
 });
-const inputHtml = computed(() => String(inputData.value[0]?.json?.html ?? ''));
+const htmlFieldPath = computed(() => renderedFieldPaths(nodeType.value, 'html')[0]);
+const inputHtml = computed(() =>
+	htmlFieldPath.value === undefined
+		? ''
+		: renderedFieldValue(inputData.value[0]?.json, htmlFieldPath.value),
+);
 const currentOutputIndex = computed(() => {
 	if (props.overrideOutputs?.length && !props.overrideOutputs.includes(outputIndex.value)) {
 		return props.overrideOutputs[0];
@@ -1432,11 +1440,9 @@ function enableNode() {
 	}
 }
 
-const shouldDisplayHtml = computed(
-	() =>
-		node.value?.type === HTML_NODE_TYPE &&
-		node.value.parameters.operation === 'generateHtmlTemplate',
-);
+// Offered on the strength of the data, not the parameters: a node type can
+// declare an HTML field that this run did not fill.
+const shouldDisplayHtml = computed(() => inputHtml.value.length > 0);
 
 function setDisplayMode() {
 	if (shouldDisplayHtml.value) {
