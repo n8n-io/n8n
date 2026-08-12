@@ -659,6 +659,16 @@ const showGenerateSampleDataButton = computed(
 		canGenerateSampleData.value,
 );
 
+/**
+ * Fills the editor rather than pinning: the point of edit mode is that the user
+ * reviews and saves the data themselves, so generating must not pin behind them.
+ * `clearJsonKey` strips the `json` envelope to match what the editor displays.
+ */
+function applySampleDataToEditor(items: INodeExecutionData[]): boolean {
+	ndvStore.value.setOutputPanelEditModeValue(JSON.stringify(clearJsonKey(items), null, 2));
+	return true;
+}
+
 const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	if (!node.value) return null;
 	const errorMetadata = parseErrorMetadata(workflowRunErrorAsNodeError.value);
@@ -1604,7 +1614,7 @@ defineExpose({ enterEditMode });
 					:disabled="node?.disabled || isGeneratingSampleData"
 					icon="sparkles"
 					data-test-id="ndv-generate-sample-data"
-					@click="generateSampleData"
+					@click="() => generateSampleData()"
 				/>
 
 				<RunDataPinButton
@@ -1621,8 +1631,21 @@ defineExpose({ enterEditMode });
 				/>
 
 				<div v-if="!props.disableEdit" v-show="editMode.enabled" :class="$style.editModeActions">
+					<N8nIconButton
+						v-if="canGenerateSampleData"
+						variant="subtle"
+						size="small"
+						:title="i18n.baseText('ndv.output.generateSampleData.editor.tooltip')"
+						:circle="false"
+						:loading="isGeneratingSampleData"
+						:disabled="node?.disabled || isGeneratingSampleData"
+						icon="wand-sparkles"
+						data-test-id="ndv-generate-sample-data-editor"
+						@click="generateSampleData(applySampleDataToEditor)"
+					/>
 					<N8nButton
 						variant="subtle"
+						class="ml-2xs"
 						:label="i18n.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>
@@ -2250,7 +2273,9 @@ defineExpose({ enterEditMode });
 			@update:current-page="onCurrentPageChange"
 			@update:page-size="onPageSizeChange"
 		/>
-		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
+		<!-- Also blocks while sample data is generating: the request takes seconds, and
+		     editing or pinning underneath it would race the result. -->
+		<N8nBlockUi :show="blockUI || isGeneratingSampleData" :class="$style.uiBlocker" />
 	</div>
 </template>
 

@@ -185,6 +185,44 @@ describe('RunData', () => {
 			await waitFor(() => expect(generateSampleData).toHaveBeenCalledTimes(1));
 			expect(generateSampleData.mock.calls[0][1].nodeNames).toEqual(['Test Node']);
 		});
+
+		describe('from the mock data editor', () => {
+			// Edit mode lives on the NDV store, so it has to be handed back or every
+			// later test renders with the editor open.
+			afterEach(() => {
+				ndvStore.outputPanelEditMode = { enabled: false, value: '' };
+			});
+
+			it('offers the wand only while editing', async () => {
+				const { getByTestId, queryByTestId } = render({
+					displayMode: 'table',
+					instanceAiEnabled: true,
+				});
+
+				// The edit-mode actions use v-show, so the wand is present but hidden.
+				expect(queryByTestId('ndv-generate-sample-data-editor')).not.toBeVisible();
+
+				ndvStore.outputPanelEditMode = { enabled: true, value: '[]' };
+				await waitFor(() => expect(getByTestId('ndv-generate-sample-data-editor')).toBeVisible());
+			});
+
+			it('fills the editor instead of pinning', async () => {
+				generateSampleData.mockResolvedValue({ pinData: { 'Test Node': [{ json: { id: 7 } }] } });
+
+				const { getByTestId } = render({ displayMode: 'table', instanceAiEnabled: true });
+				ndvStore.outputPanelEditMode = { enabled: true, value: '[]' };
+				await waitFor(() => expect(getByTestId('ndv-generate-sample-data-editor')).toBeVisible());
+
+				await userEvent.click(getByTestId('ndv-generate-sample-data-editor'));
+
+				// The user reviews and saves; generating must not pin behind their back.
+				await waitFor(() =>
+					expect(ndvStore.setOutputPanelEditModeValue).toHaveBeenCalledWith(
+						JSON.stringify([{ id: 7 }], null, 2),
+					),
+				);
+			});
+		});
 	});
 
 	it('should render data correctly even when "item.json" has another "json" key', async () => {

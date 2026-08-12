@@ -4,6 +4,8 @@ import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
+import type { INodeExecutionData } from 'n8n-workflow';
+
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -19,10 +21,17 @@ export type UseGenerateSampleDataOptions = {
 	runIndex?: MaybeRef<number>;
 };
 
+/**
+ * Where generated items go. Returns whether they were accepted — a target that
+ * declines (e.g. data too large to pin) has already explained why, so the caller
+ * stays quiet rather than reporting success.
+ */
+export type ApplySampleData = (items: INodeExecutionData[]) => boolean;
+
 export type UseGenerateSampleDataReturn = {
 	isGenerating: Ref<boolean>;
 	canGenerate: ComputedRef<boolean>;
-	generate: () => Promise<void>;
+	generate: (apply?: ApplySampleData) => Promise<void>;
 };
 
 /**
@@ -58,7 +67,24 @@ export function useGenerateSampleData(
 			pinnedData.canPinNode(false),
 	);
 
-	async function generate(): Promise<void> {
+	/**
+	 * Default target: pin the items. Owns the size pre-check because `setData`
+	 * toasts the specific size error itself before throwing — letting it through
+	 * to the generic handler below would report the same failure twice.
+	 */
+	function pinItems(items: INodeExecutionData[]): boolean {
+		if (!pinnedData.isValidSize(items)) return false;
+
+		pinnedData.setData(items, 'ai-sample-data');
+		return true;
+	}
+
+	async function generate(apply?: ApplySampleData): Promise<void> {
+		// A custom target reports its own outcome visibly (the editor fills in), and
+		// the pinned-data success copy would be a lie there — nothing is pinned until
+		// the user saves. Drift is still announced either way: that is about the data.
+		const target = apply ?? pinItems;
+		const isPinning = apply === undefined;
 		const node = unref(options.node);
 
 		if (!node || isGenerating.value || !canGenerate.value) return;
@@ -89,31 +115,31 @@ export function useGenerateSampleData(
 				return;
 			}
 
-			// Checked up front so the size error surfaces once, from `isValidSize`,
-			// instead of also as the generic failure toast below.
-			if (!pinnedData.isValidSize(items)) return;
-
+			let applied: boolean;
 			try {
-				pinnedData.setData(items, 'ai-sample-data');
+				applied = target(items);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('ndv.output.generateSampleData.error.title'));
 				return;
 			}
 
-			const isDrift = response.warning === 'field-drift';
+			if (!applied) return;
+
+			if (response.warning === 'field-drift') {
+				toast.showMessage({
+					title: i18n.baseText('ndv.output.generateSampleData.drift.title'),
+					message: i18n.baseText('ndv.output.generateSampleData.drift.message'),
+					type: 'warning',
+				});
+				return;
+			}
+
+			if (!isPinning) return;
 
 			toast.showMessage({
-				title: i18n.baseText(
-					isDrift
-						? 'ndv.output.generateSampleData.drift.title'
-						: 'ndv.output.generateSampleData.success.title',
-				),
-				message: i18n.baseText(
-					isDrift
-						? 'ndv.output.generateSampleData.drift.message'
-						: 'ndv.output.generateSampleData.success.message',
-				),
-				type: isDrift ? 'warning' : 'success',
+				title: i18n.baseText('ndv.output.generateSampleData.success.title'),
+				message: i18n.baseText('ndv.output.generateSampleData.success.message'),
+				type: 'success',
 			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('ndv.output.generateSampleData.error.title'));

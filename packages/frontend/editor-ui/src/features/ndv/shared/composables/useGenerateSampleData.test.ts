@@ -269,4 +269,77 @@ describe('useGenerateSampleData', () => {
 			expect(isGenerating.value).toBe(false);
 		});
 	});
+
+	describe('custom apply target', () => {
+		const items: INodeExecutionData[] = [{ json: { id: 1, name: 'Ada' } }];
+
+		it('hands the generated items to the supplied target instead of pinning', async () => {
+			generateSampleDataApi.mockResolvedValue({ pinData: { 'My Node': items } });
+			const apply = vi.fn().mockReturnValue(true);
+
+			const { generate } = setup();
+			await generate(apply);
+
+			expect(apply).toHaveBeenCalledWith(items);
+			expect(setData).not.toHaveBeenCalled();
+		});
+
+		// The pinned-data success copy would be a lie for a custom target, and the
+		// target's own effect (the editor filling in) is already visible feedback.
+		it('leaves success unannounced for a custom target', async () => {
+			generateSampleDataApi.mockResolvedValue({ pinData: { 'My Node': items } });
+
+			const { generate } = setup();
+			await generate(vi.fn().mockReturnValue(true));
+
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('still warns about field drift, which is about the data not the target', async () => {
+			generateSampleDataApi.mockResolvedValue({
+				pinData: { 'My Node': items },
+				warning: 'field-drift',
+			});
+
+			const { generate } = setup();
+			await generate(vi.fn().mockReturnValue(true));
+
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		});
+
+		it('stays quiet when the target declines the items', async () => {
+			generateSampleDataApi.mockResolvedValue({ pinData: { 'My Node': items } });
+
+			const { generate } = setup();
+			await generate(vi.fn().mockReturnValue(false));
+
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('surfaces a throwing target as an error rather than letting it escape', async () => {
+			generateSampleDataApi.mockResolvedValue({ pinData: { 'My Node': items } });
+			const apply = vi.fn(() => {
+				throw new Error('editor unavailable');
+			});
+
+			const { generate } = setup();
+			await expect(generate(apply)).resolves.toBeUndefined();
+
+			expect(showError).toHaveBeenCalled();
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('never asks the target to apply data the node could not hold', async () => {
+			generateSampleDataApi.mockResolvedValue({ pinData: { 'My Node': items } });
+			isValidSize.mockReturnValue(false);
+			const apply = vi.fn().mockReturnValue(true);
+
+			const { generate } = setup();
+			await generate(apply);
+
+			// The default pin target owns the size check, so a custom target is
+			// still offered the items — it decides what "too large" means for it.
+			expect(apply).toHaveBeenCalledWith(items);
+		});
+	});
 });

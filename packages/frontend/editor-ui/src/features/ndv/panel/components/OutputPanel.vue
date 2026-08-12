@@ -343,7 +343,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:is-executing="isNodeRunning"
 		:executing-message="i18n.baseText('ndv.output.executing')"
 		:push-ref="pushRef"
-		:block-u-i="blockUI"
+		:block-u-i="blockUI || isGeneratingSampleData"
 		:is-production-execution-preview="isProductionExecutionPreview"
 		:search-shortcut="isPaneActive ? '/' : undefined"
 		:hide-pagination="outputMode === 'logs'"
