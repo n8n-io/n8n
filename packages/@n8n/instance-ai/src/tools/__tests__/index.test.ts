@@ -27,6 +27,10 @@ vi.mock('../executions.tool', () => ({
 	createExecutionsTool: vi.fn(() => ({ id: 'executions' })),
 }));
 
+vi.mock('../logs.tool', () => ({
+	createLogsTool: vi.fn(() => ({ id: 'logs' })),
+}));
+
 vi.mock('../nodes.tool', () => ({
 	createNodesTool: vi.fn((_context: unknown, scope?: string) => ({
 		id: scope ? `nodes-${scope}` : 'nodes',
@@ -226,6 +230,26 @@ describe('domain tool construction', () => {
 
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
+	});
+
+	it('gates the logs tool on the host-wired logQueryService', () => {
+		// Presence is the whole gate: the operator-console module is opt-in, and
+		// when it is off the adapter leaves the field unset.
+		const disabled = makeContext();
+		expect(createAllTools(disabled).get('logs')).toBeUndefined();
+		expect(createOrchestratorDomainTools(disabled).get('logs')).toBeUndefined();
+
+		const enabled = makeContext({
+			logQueryService: {} as InstanceAiContext['logQueryService'],
+		});
+		expect(createAllTools(enabled).get('logs')).toBeDefined();
+		expect(createOrchestratorDomainTools(enabled).get('logs')).toBeDefined();
+	});
+
+	it('never defers logs behind search_tools', () => {
+		// The questions it answers ("why did this execution fail?") do not read as
+		// log questions, so the agent has little reason to go looking for it.
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('logs')).toBe(true);
 	});
 
 	it('registers create-tasks but not the removed plan orchestration tool', () => {
