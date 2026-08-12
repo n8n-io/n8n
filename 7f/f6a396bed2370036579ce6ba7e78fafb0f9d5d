@@ -1,0 +1,57 @@
+packages/nodes-base/nodes/Docker/docker.svg
+  s_385d4dd73c1589::t_ca6dadcba12692 5
+packages/nodes-base/nodes/Docker/Docker.node.ts
+  s_385d4dd73c1589::t_ab947103b127c8 167-178
+  s_385d4dd73c1589::t_aa3059cdd98217 1
+  s_385d4dd73c1589::t_b43afac041bec8 251-253
+  s_385d4dd73c1589::t_6257107f89c83c 256,258-264
+  s_385d4dd73c1589::t_4042d1de20db5c 192
+  s_385d4dd73c1589::t_1b0730dffff93d 280
+  s_385d4dd73c1589::t_30c419deccadf8 79-113
+  s_385d4dd73c1589::t_9df88c7c2c712d 203-206
+  s_385d4dd73c1589::t_0d707082d46308 32
+  s_385d4dd73c1589::t_c7b0011bf00993 10
+  s_385d4dd73c1589::t_250af60e351fe7 230-238
+  s_385d4dd73c1589::t_b50a11387127cb 156
+  s_385d4dd73c1589::t_c78871f8cb8948 207-228
+  s_385d4dd73c1589::t_8e1d10c90d1782 2-9,11-31,33-43,45-74,76-78,151-155,157-166,179-191,193-202,229,239-250,255,257,265-279,281-291
+  s_385d4dd73c1589::t_2ad43375beb21b 44
+  s_385d4dd73c1589::t_75c100ba53dd7e 254
+  s_385d4dd73c1589::t_e6f4b0f6ee442d 75
+  s_385d4dd73c1589::t_bcae70746621bd 114-150
+packages/nodes-base/nodes/Docker/GenericFunctions.ts
+  s_385d4dd73c1589::t_ba7b757f1d839b 50
+  s_385d4dd73c1589::t_2be3b170562670 73-75
+  s_385d4dd73c1589::t_442c0860b1690e 3-7,21
+  s_385d4dd73c1589::t_6e91fb33751f84 88-89
+  s_385d4dd73c1589::t_ac3915893b4e6f 34
+  s_385d4dd73c1589::t_89e6db736c1872 1-2,16-20,23,25-32,35,37-49,54-64,67-72,76-87,91,93-99
+  s_385d4dd73c1589::t_867017b2bcb2ab 8-15,22
+  s_385d4dd73c1589::t_78fe1c31958580 51-53
+  s_385d4dd73c1589::t_2e6c9ab6674bd8 65-66
+  s_385d4dd73c1589::t_7e4d588550ae32 33
+  s_385d4dd73c1589::t_410dc0d70e7aed 90
+  s_385d4dd73c1589::t_3d237e2c7a1acb 36
+  s_385d4dd73c1589::t_65f54c6312d22f 92
+  s_385d4dd73c1589::t_b13b131ea0a559 24
+packages/nodes-base/package.json
+  s_385d4dd73c1589::t_c94aff0d03fee4 532
+packages/nodes-base/nodes/Docker/Docker.node.json
+  s_385d4dd73c1589::t_5348ea3613b6f9 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ff6a396bed2370036579ce6ba7e78fafb0f9d5d",
+  "prompts": {},
+  "sessions": {
+    "s_385d4dd73c1589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5f982d2-f3ab-498c-bacc-95859f6ca4fb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
