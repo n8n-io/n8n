@@ -8,6 +8,7 @@
 import type { Logger } from '@n8n/backend-common';
 import {
 	createTeamProject,
+	createWorkflow,
 	getPersonalProject,
 	linkUserToProject,
 	mockInstance,
@@ -26,6 +27,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { ProjectFileCleanupService } from '@/modules/project-files/project-file-cleanup.service';
+import { ProjectFileService } from '@/modules/project-files/project-file.service';
 import { Telemetry } from '@/telemetry';
 
 import { createMember, createOwner } from '../shared/db/users';
@@ -118,8 +120,8 @@ describe('project files API', () => {
 				name: 'report.txt',
 				mimeType: 'text/plain',
 				fileSizeBytes: 5,
-				createdBy: { id: owner.id, email: owner.email },
-				updatedBy: { id: owner.id },
+				createdBy: { type: 'user', id: owner.id, email: owner.email },
+				updatedBy: { type: 'user', id: owner.id },
 			});
 			expect(response.body.data.id).toEqual(expect.any(String));
 
@@ -223,6 +225,28 @@ describe('project files API', () => {
 			const page = await ownerAgent.get(url(project.id, '?take=1')).expect(200);
 			expect(page.body.data.count).toBe(2);
 			expect(page.body.data.data).toHaveLength(1);
+		});
+
+		it('attributes a file written by the node to the workflow, not a user', async () => {
+			const workflow = await createWorkflow({ name: 'Rates report' }, project);
+			await Container.get(ProjectFileService).store(
+				project.id,
+				{ type: 'workflow', workflowId: workflow.id },
+				{
+					name: 'rates-latest.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					source: { type: 'buffer', buffer: Buffer.from('a,b') },
+				},
+			);
+
+			const response = await ownerAgent.get(url(project.id)).expect(200);
+
+			expect(response.body.data.data[0]).toMatchObject({
+				name: 'rates-latest.csv',
+				createdBy: { type: 'workflow', id: workflow.id, name: 'Rates report' },
+				updatedBy: { type: 'workflow', id: workflow.id, name: 'Rates report' },
+			});
 		});
 
 		it('searches case-insensitively', async () => {

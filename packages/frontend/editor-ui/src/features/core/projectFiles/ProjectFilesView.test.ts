@@ -5,6 +5,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { VIEWS } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectFilesView from '@/features/core/projectFiles/ProjectFilesView.vue';
@@ -33,6 +34,11 @@ const router = createRouter({
 	routes: [
 		{ path: '/projects/:projectId/files', component: { template: '<div></div>' } },
 		{ path: '/projects/:projectId', component: { template: '<div></div>' } },
+		{
+			name: VIEWS.WORKFLOW,
+			path: '/workflow/:workflowId',
+			component: { template: '<div></div>' },
+		},
 	],
 });
 
@@ -47,8 +53,20 @@ const TEST_FILE: ProjectFileResponse = {
 	fileSizeBytes: 1_258_291,
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
-	createdBy: { id: 'u1', email: 'alex@example.com', firstName: 'Alex', lastName: 'Kim' },
-	updatedBy: { id: 'u1', email: 'alex@example.com', firstName: 'Alex', lastName: 'Kim' },
+	createdBy: {
+		type: 'user',
+		id: 'u1',
+		email: 'alex@example.com',
+		firstName: 'Alex',
+		lastName: 'Kim',
+	},
+	updatedBy: {
+		type: 'user',
+		id: 'u1',
+		email: 'alex@example.com',
+		firstName: 'Alex',
+		lastName: 'Kim',
+	},
 };
 
 let pinia: ReturnType<typeof createTestingPinia>;
@@ -113,6 +131,26 @@ describe('ProjectFilesView', () => {
 		await waitFor(() => expect(getByText('invoice-template.pdf')).toBeVisible());
 		expect(getByText('1 MB')).toBeVisible();
 		expect(getByText('Alex Kim')).toBeVisible();
+	});
+
+	it('credits the workflow, linking to it, when the node wrote the file', async () => {
+		const { getByText } = setup(['projectFile:listProject'], {
+			files: [
+				{
+					...TEST_FILE,
+					name: 'rates-latest.csv',
+					mimeType: 'text/csv',
+					createdBy: { type: 'workflow', id: 'wf-1', name: 'Rates report' },
+					updatedBy: { type: 'workflow', id: 'wf-1', name: 'Rates report' },
+				},
+			],
+		});
+
+		// The workflow name, not a person, wrapped in a link back to the workflow.
+		// `RouterLink` is globally stubbed as `<a><slot /></a>`, so the resolved
+		// target is not assertable here.
+		await waitFor(() => expect(getByText('Rates report')).toBeVisible());
+		expect(getByText('Rates report').closest('a')).not.toBeNull();
 	});
 
 	it('shows the storage usage line', async () => {

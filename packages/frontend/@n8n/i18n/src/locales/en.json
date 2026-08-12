@@ -5730,6 +5730,7 @@
 	"projectFiles.table.header.size": "Size",
 	"projectFiles.table.header.uploadedBy": "Uploaded by",
 	"projectFiles.table.header.updatedAt": "Updated",
+	"projectFiles.table.addedByWorkflow": "Added by this workflow",
 	"projectFiles.table.unknownUser": "Unknown",
 	"projectFiles.action.download": "Download",
 	"projectFiles.action.preview": "Preview",

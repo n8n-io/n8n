@@ -14,6 +14,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import { VIEWS } from '@/app/constants';
 
 import { PROJECT_FILE_ACTIONS } from '@/features/core/projectFiles/constants';
 import { fileIcon, formatBytes } from '@/features/core/projectFiles/utils';
@@ -107,17 +108,30 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 	return available;
 });
 
+/** Whoever last touched the file, falling back to whoever created it. */
+const fileActor = (file: ProjectFileResponse) => file.updatedBy ?? file.createdBy;
+
 /**
- * `null` means the original uploader is no longer resolvable — a deleted user.
+ * `null` means the actor is no longer resolvable — a deleted user or workflow.
  * Shown as "Unknown" rather than blank so the column is never silently empty.
  */
 const actorName = (file: ProjectFileResponse) => {
-	const actor = file.updatedBy ?? file.createdBy;
+	const actor = fileActor(file);
 	if (!actor) return i18n.baseText('projectFiles.table.unknownUser');
+
+	if (actor.type === 'workflow') return actor.name;
 
 	const name = [actor.firstName, actor.lastName].filter(Boolean).join(' ');
 
 	return name || actor.email;
+};
+
+/** Files written by the node link back to the workflow that wrote them. */
+const workflowRoute = (file: ProjectFileResponse) => {
+	const actor = fileActor(file);
+	if (actor?.type !== 'workflow') return undefined;
+
+	return { name: VIEWS.WORKFLOW, params: { workflowId: actor.id } };
 };
 
 const onAction = (action: string, file: ProjectFileResponse) => {
@@ -151,7 +165,17 @@ const onAction = (action: string, file: ProjectFileResponse) => {
 		</template>
 
 		<template #[`item.updatedBy`]="{ item }">
-			<N8nText color="text-base" size="small">{{ actorName(item) }}</N8nText>
+			<N8nTooltip
+				v-if="workflowRoute(item)"
+				:content="i18n.baseText('projectFiles.table.addedByWorkflow')"
+				placement="top"
+			>
+				<RouterLink :to="workflowRoute(item)!" :class="$style.workflowActor">
+					<N8nIcon icon="workflow" color="text-light" size="small" />
+					<N8nText color="text-base" size="small">{{ actorName(item) }}</N8nText>
+				</RouterLink>
+			</N8nTooltip>
+			<N8nText v-else color="text-base" size="small">{{ actorName(item) }}</N8nText>
 		</template>
 
 		<template #[`item.updatedAt`]="{ item }">
@@ -200,6 +224,13 @@ const onAction = (action: string, file: ProjectFileResponse) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.workflowActor {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	min-width: 0;
 }
 
