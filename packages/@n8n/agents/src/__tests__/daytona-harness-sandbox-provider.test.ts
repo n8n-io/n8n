@@ -214,14 +214,12 @@ describe('DaytonaHarnessSandboxProvider', () => {
 			[
 				'-lc',
 				[
-					'if command -v pnpm >/dev/null 2>&1; then',
-					'  pnpm --version',
-					'elif command -v corepack >/dev/null 2>&1; then',
-					'  corepack pnpm --version',
-					'elif command -v npm >/dev/null 2>&1; then',
+					'if command -v npm >/dev/null 2>&1; then',
 					'  npm exec --yes --package=pnpm@10.32.1 -- pnpm --version',
+					'elif command -v pnpm >/dev/null 2>&1; then',
+					'  pnpm --version',
 					'else',
-					'  echo "Harness bootstrap requires Node.js with pnpm, corepack, or npm" >&2',
+					'  echo "Harness bootstrap requires Node.js with npm or pnpm" >&2',
 					'  exit 127',
 					'fi',
 				].join('\n'),
