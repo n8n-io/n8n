@@ -1,11 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service';
-
+import type { MessageTransportService } from '../../transport/message-transport.service';
 import type { PubSubEventBus } from '../pubsub.eventbus';
 import type { McpRelayMessage } from '../subscriber.service';
 import { Subscriber } from '../subscriber.service';
@@ -15,93 +13,77 @@ describe('Subscriber', () => {
 		vi.restoreAllMocks();
 	});
 
-	const client = mock<SingleNodeClient>();
-	const redisClientService = mock<RedisClientService>({ createClient: () => client });
+	const messageTransport = mock<MessageTransportService>();
 	const executionsConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
 	const globalConfig = mockInstance(GlobalConfig, { redis: { prefix: 'n8n' } });
 
-	describe('constructor', () => {
-		it('should init Redis client in scaling mode', () => {
-			const subscriber = new Subscriber(
-				mock(),
-				mock(),
-				mock(),
-				redisClientService,
-				executionsConfig,
-				globalConfig,
-			);
+	function createSubscriber(
+		logger = mockLogger(),
+		pubsubEventBus: PubSubEventBus = mock(),
+		config: ExecutionsConfig = executionsConfig,
+		global: GlobalConfig = globalConfig,
+	) {
+		return new Subscriber(logger, mock(), pubsubEventBus, messageTransport, config, global);
+	}
 
-			expect(subscriber.getClient()).toEqual(client);
+	/** Subscribes and returns the handler `Subscriber` registered with the transport for `channel`. */
+	async function subscribeAndGetHandler(subscriber: Subscriber, channel: string) {
+		await subscriber.subscribe(channel);
+		const call = messageTransport.subscribe.mock.calls.find(([ch]) => ch === channel);
+		expect(call).toBeDefined();
+		return call![1] as (message: string) => void;
+	}
+
+	describe('constructor', () => {
+		it('should build prefixed channel names in scaling mode', () => {
+			const subscriber = createSubscriber();
+
+			expect(subscriber.getCommandChannel()).toEqual('n8n:n8n.commands');
 		});
 
-		it('should not init Redis client in regular mode', () => {
+		it('should not build channel names in regular mode', () => {
 			const regularModeConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
-			const subscriber = new Subscriber(
-				mock(),
-				mock(),
-				mock(),
-				redisClientService,
-				regularModeConfig,
-				globalConfig,
-			);
+			const subscriber = createSubscriber(mockLogger(), mock(), regularModeConfig);
 
-			expect(subscriber.getClient()).toBeUndefined();
+			expect(subscriber.getCommandChannel()).toBeUndefined();
 		});
 	});
 
 	describe('shutdown', () => {
-		it('should disconnect Redis client', () => {
-			const subscriber = new Subscriber(
-				mock(),
-				mock(),
-				mock(),
-				redisClientService,
-				executionsConfig,
-				globalConfig,
-			);
+		it('should shut down the message transport', () => {
+			const subscriber = createSubscriber();
 			subscriber.shutdown();
-			expect(client.disconnect).toHaveBeenCalled();
+			expect(messageTransport.shutdown).toHaveBeenCalled();
 		});
 	});
 
 	describe('subscribe', () => {
 		it('should subscribe to pubsub channel with prefix', async () => {
-			const subscriber = new Subscriber(
-				mock(),
-				mock(),
-				mock(),
-				redisClientService,
-				executionsConfig,
-				globalConfig,
-			);
+			const subscriber = createSubscriber();
 
 			const commandChannel = subscriber.getCommandChannel();
 			await subscriber.subscribe(commandChannel);
 
-			expect(client.subscribe).toHaveBeenCalledWith('n8n:n8n.commands', expect.any(Function));
+			expect(messageTransport.subscribe).toHaveBeenCalledWith(
+				'n8n:n8n.commands',
+				expect.any(Function),
+			);
 		});
 	});
 
 	describe('prefix isolation', () => {
 		it('should apply configured prefix when subscribing to channels', async () => {
 			const customConfig = mockInstance(GlobalConfig, { redis: { prefix: 'n8n-instance-1' } });
-			const subscriber = new Subscriber(
-				mock(),
-				mock(),
-				mock(),
-				redisClientService,
-				executionsConfig,
-				customConfig,
-			);
+			const subscriber = createSubscriber(mockLogger(), mock(), executionsConfig, customConfig);
 
 			await subscriber.subscribe(subscriber.getCommandChannel());
 			await subscriber.subscribe(subscriber.getWorkerResponseChannel());
 
-			expect(client.subscribe).toHaveBeenCalledWith(
+			expect(messageTransport.subscribe).toHaveBeenCalledWith(
 				'n8n-instance-1:n8n.commands',
 				expect.any(Function),
 			);
-			expect(client.subscribe).toHaveBeenCalledWith(
+			expect(messageTransport.subscribe).toHaveBeenCalledWith(
 				'n8n-instance-1:n8n.worker-response',
 				expect.any(Function),
 			);
@@ -111,38 +93,27 @@ describe('Subscriber', () => {
 	describe('debounce', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
-			client.on.mockClear();
+			messageTransport.subscribe.mockClear();
 		});
 
 		afterEach(() => {
 			vi.useRealTimers();
 		});
 
-		function getMessageHandler() {
-			const call = client.on.mock.calls.find(([event]) => event === 'message');
-			expect(call).toBeDefined();
-			return call![1] as (channel: string, msg: string) => void;
-		}
-
 		function makeCommandMsg(command: string, debounce: boolean, payload?: unknown) {
 			return JSON.stringify({ command, senderId: 'other-host', debounce, payload });
 		}
 
-		it('should not drop different debounced commands arriving within 300ms', () => {
+		it('should not drop different debounced commands arriving within 300ms', async () => {
 			const pubsubEventBus = mock<PubSubEventBus>();
-			new Subscriber(
-				mockLogger(),
-				mock(),
-				pubsubEventBus,
-				redisClientService,
-				executionsConfig,
-				globalConfig,
+			const subscriber = createSubscriber(mockLogger(), pubsubEventBus);
+			const messageHandler = await subscribeAndGetHandler(
+				subscriber,
+				subscriber.getCommandChannel(),
 			);
 
-			const messageHandler = getMessageHandler();
-
-			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-license', true));
-			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-external-secrets-providers', true));
+			messageHandler(makeCommandMsg('reload-license', true));
+			messageHandler(makeCommandMsg('reload-external-secrets-providers', true));
 
 			vi.advanceTimersByTime(300);
 
@@ -154,22 +125,17 @@ describe('Subscriber', () => {
 			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(2);
 		});
 
-		it('should debounce repeated identical commands within 300ms', () => {
+		it('should debounce repeated identical commands within 300ms', async () => {
 			const pubsubEventBus = mock<PubSubEventBus>();
-			new Subscriber(
-				mockLogger(),
-				mock(),
-				pubsubEventBus,
-				redisClientService,
-				executionsConfig,
-				globalConfig,
+			const subscriber = createSubscriber(mockLogger(), pubsubEventBus);
+			const messageHandler = await subscribeAndGetHandler(
+				subscriber,
+				subscriber.getCommandChannel(),
 			);
 
-			const messageHandler = getMessageHandler();
-
-			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-license', true));
-			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-license', true));
-			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-license', true));
+			messageHandler(makeCommandMsg('reload-license', true));
+			messageHandler(makeCommandMsg('reload-license', true));
+			messageHandler(makeCommandMsg('reload-license', true));
 
 			vi.advanceTimersByTime(300);
 
@@ -177,24 +143,16 @@ describe('Subscriber', () => {
 			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(1);
 		});
 
-		it('should not debounce immediate commands', () => {
+		it('should not debounce immediate commands', async () => {
 			const pubsubEventBus = mock<PubSubEventBus>();
-			new Subscriber(
-				mockLogger(),
-				mock(),
-				pubsubEventBus,
-				redisClientService,
-				executionsConfig,
-				globalConfig,
+			const subscriber = createSubscriber(mockLogger(), pubsubEventBus);
+			const messageHandler = await subscribeAndGetHandler(
+				subscriber,
+				subscriber.getCommandChannel(),
 			);
-
-			const messageHandler = getMessageHandler();
 
 			const payload = { workflowId: 'wf-1', activeVersionId: 'v-1', activationMode: 'init' };
-			messageHandler(
-				'n8n:n8n.commands',
-				makeCommandMsg('add-webhooks-triggers-and-pollers', false, payload),
-			);
+			messageHandler(makeCommandMsg('add-webhooks-triggers-and-pollers', false, payload));
 
 			expect(pubsubEventBus.emit).toHaveBeenCalledWith(
 				'add-webhooks-triggers-and-pollers',
@@ -203,29 +161,18 @@ describe('Subscriber', () => {
 			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(1);
 		});
 
-		it('should deliver each display-workflow-activation immediately without coalescing', () => {
+		it('should deliver each display-workflow-activation immediately without coalescing', async () => {
 			const pubsubEventBus = mock<PubSubEventBus>();
-			new Subscriber(
-				mockLogger(),
-				mock(),
-				pubsubEventBus,
-				redisClientService,
-				executionsConfig,
-				globalConfig,
+			const subscriber = createSubscriber(mockLogger(), pubsubEventBus);
+			const messageHandler = await subscribeAndGetHandler(
+				subscriber,
+				subscriber.getCommandChannel(),
 			);
-
-			const messageHandler = getMessageHandler();
 
 			const payload1 = { workflowId: 'wf-1', activeVersionId: 'v-1' };
 			const payload2 = { workflowId: 'wf-2', activeVersionId: 'v-2' };
-			messageHandler(
-				'n8n:n8n.commands',
-				makeCommandMsg('display-workflow-activation', false, payload1),
-			);
-			messageHandler(
-				'n8n:n8n.commands',
-				makeCommandMsg('display-workflow-activation', false, payload2),
-			);
+			messageHandler(makeCommandMsg('display-workflow-activation', false, payload1));
+			messageHandler(makeCommandMsg('display-workflow-activation', false, payload2));
 
 			expect(pubsubEventBus.emit).toHaveBeenCalledWith('display-workflow-activation', payload1);
 			expect(pubsubEventBus.emit).toHaveBeenCalledWith('display-workflow-activation', payload2);
@@ -235,28 +182,20 @@ describe('Subscriber', () => {
 
 	describe('MCP relay handling', () => {
 		beforeEach(() => {
-			// Clear mock calls to ensure each test gets fresh state
-			client.on.mockClear();
+			messageTransport.subscribe.mockClear();
 		});
 
-		it('should invoke handler for valid MCP relay messages', () => {
+		it('should invoke handler for valid MCP relay messages', async () => {
 			const logger = mockLogger();
-			const subscriber = new Subscriber(
-				logger,
-				mock(),
-				mock(),
-				redisClientService,
-				executionsConfig,
-				globalConfig,
-			);
+			const subscriber = createSubscriber(logger);
 
 			const mockHandler = vi.fn();
 			subscriber.setMcpRelayHandler(mockHandler);
 
-			// Get the message handler registered on the client (the one from this test)
-			const messageHandlerCall = client.on.mock.calls.find(([event]) => event === 'message');
-			expect(messageHandlerCall).toBeDefined();
-			const messageHandler = messageHandlerCall![1] as (channel: string, msg: string) => void;
+			const messageHandler = await subscribeAndGetHandler(
+				subscriber,
+				subscriber.getMcpRelayChannel(),
+			);
 
 			const relayMsg: McpRelayMessage = {
 				sessionId: 'session-123',
@@ -264,35 +203,28 @@ describe('Subscriber', () => {
 				response: { test: true },
 			};
 
-			messageHandler('n8n:n8n.mcp-relay', JSON.stringify(relayMsg));
+			messageHandler(JSON.stringify(relayMsg));
 
 			expect(mockHandler).toHaveBeenCalledWith(relayMsg);
 		});
 
-		it('should log error and not invoke handler for malformed messages', () => {
-			// Create a scoped logger mock that will be returned by logger.scoped()
+		it('should log error and not invoke handler for malformed messages', async () => {
 			const scopedLogger = mock<Logger>();
 			const logger = mock<Logger>({
 				scoped: vi.fn().mockReturnValue(scopedLogger),
 			});
-			const subscriber = new Subscriber(
-				logger,
-				mock(),
-				mock(),
-				redisClientService,
-				executionsConfig,
-				globalConfig,
-			);
+			const subscriber = createSubscriber(logger);
 
 			const mockHandler = vi.fn();
 			subscriber.setMcpRelayHandler(mockHandler);
 
-			const messageHandlerCall = client.on.mock.calls.find(([event]) => event === 'message');
-			expect(messageHandlerCall).toBeDefined();
-			const messageHandler = messageHandlerCall![1] as (channel: string, msg: string) => void;
+			const messageHandler = await subscribeAndGetHandler(
+				subscriber,
+				subscriber.getMcpRelayChannel(),
+			);
 
 			// Send malformed message (missing required fields)
-			messageHandler('n8n:n8n.mcp-relay', JSON.stringify({ invalid: true }));
+			messageHandler(JSON.stringify({ invalid: true }));
 
 			expect(mockHandler).not.toHaveBeenCalled();
 			// The scoped logger is what's actually used internally
@@ -302,14 +234,14 @@ describe('Subscriber', () => {
 			);
 		});
 
-		it('should handle missing handler gracefully', () => {
+		it('should handle missing handler gracefully', async () => {
 			const logger = mockLogger();
-			// Create subscriber but don't set a handler - constructor registers message listener
-			new Subscriber(logger, mock(), mock(), redisClientService, executionsConfig, globalConfig);
-
-			const messageHandlerCall = client.on.mock.calls.find(([event]) => event === 'message');
-			expect(messageHandlerCall).toBeDefined();
-			const messageHandler = messageHandlerCall![1] as (channel: string, msg: string) => void;
+			// Create subscriber but don't set a handler
+			const subscriber = createSubscriber(logger);
+			const messageHandler = await subscribeAndGetHandler(
+				subscriber,
+				subscriber.getMcpRelayChannel(),
+			);
 
 			const relayMsg: McpRelayMessage = {
 				sessionId: 'session-123',
@@ -318,7 +250,7 @@ describe('Subscriber', () => {
 			};
 
 			// Should not throw when handler is not set
-			expect(() => messageHandler('n8n:n8n.mcp-relay', JSON.stringify(relayMsg))).not.toThrow();
+			expect(() => messageHandler(JSON.stringify(relayMsg))).not.toThrow();
 		});
 	});
 });

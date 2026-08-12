@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import {
 	inDevelopment,
 	inTest,
@@ -15,6 +14,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
 import {
 	BinaryDataBlobManager,
 	BinaryDataConfig,
@@ -25,10 +25,10 @@ import {
 	ExecutionContextHookRegistry,
 	StorageConfig,
 } from 'n8n-core';
-import { sleep } from '@n8n/utils/sleep';
 import { Expression, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
+import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
@@ -43,6 +43,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { MessageTransportService } from '@/scaling/transport/message-transport.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
@@ -150,6 +151,18 @@ export abstract class BaseCommand<F = never> {
 		if (useRedisForLocking) {
 			const { RedisLockService } = await import('@/scaling/redis-lock.service.js');
 			Container.get(LockService).setProvider(Container.get(RedisLockService));
+		}
+
+		// `Publisher`/`Subscriber` only exchange messages in queue mode, which today still
+		// requires Redis for the execution queue regardless - so this swap doesn't yet let a
+		// real deployment drop Redis. It proves the transport is swappable the same way locking
+		// is: a working `IpcMessageTransport` is the default, and this is the single call site
+		// that opts a deployment into `RedisMessageTransport` instead.
+		if (this.globalConfig.executions.mode === 'queue') {
+			const { RedisMessageTransport } = await import(
+				'@/scaling/transport/redis-message-transport.js'
+			);
+			Container.get(MessageTransportService).setProvider(Container.get(RedisMessageTransport));
 		}
 
 		await this.dbConnection
