@@ -180,3 +180,30 @@ describe('delete', () => {
 		expect(objectStoreService.deleteByKeys).not.toHaveBeenCalled();
 	});
 });
+
+describe('list', () => {
+	it('should map object-store entries to keys with Date lastModified', async () => {
+		objectStoreService.list.mockResolvedValueOnce([
+			{
+				key: 'p/one.bin',
+				lastModified: '2026-08-10T00:00:00.000Z',
+				eTag: '"abc"',
+				size: 11,
+				storageClass: 'STANDARD',
+			},
+		]);
+
+		const entries = await store.list('p/');
+
+		expect(objectStoreService.list).toHaveBeenCalledWith('p/');
+		expect(entries).toEqual([
+			{ key: 'p/one.bin', lastModified: new Date('2026-08-10T00:00:00.000Z') },
+		]);
+	});
+
+	it('should return an empty array when nothing matches', async () => {
+		objectStoreService.list.mockResolvedValueOnce([]);
+
+		await expect(store.list('missing/')).resolves.toEqual([]);
+	});
+});

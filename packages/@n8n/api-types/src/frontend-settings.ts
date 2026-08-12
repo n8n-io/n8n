@@ -145,6 +145,10 @@ export interface FrontendSettings {
 	dataTables: {
 		maxSize: number;
 	};
+	fileStorage: {
+		maxSize: number;
+		maxFileSize: number;
+	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;

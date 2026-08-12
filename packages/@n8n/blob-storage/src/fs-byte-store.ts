@@ -6,7 +6,7 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 
 import { assertChunkSize } from './stream-utils';
-import type { ByteStore, ByteStoreKey } from './types';
+import type { ByteStore, ByteStoreKey, ByteStoreListEntry } from './types';
 
 export type FsByteStoreOptions = {
 	/** Root dir all keys resolve under. */
@@ -95,6 +95,36 @@ export class FsByteStore implements ByteStore {
 		await Promise.all(deletePaths.map(async (p) => await fs.rm(p, { force: true })));
 		const dirs = [...new Set(deletePaths.map((p) => path.dirname(p)))];
 		await Promise.all(dirs.map(async (dir) => await this.removeEmptyAncestors(dir)));
+	}
+
+	async list(prefix: string): Promise<ByteStoreListEntry[]> {
+		const root = this.getAbsolutePath(prefix);
+		let dirents;
+		try {
+			dirents = await fs.readdir(root, { recursive: true, withFileTypes: true });
+		} catch (error) {
+			if (this.isFileNotFound(error)) return [];
+			throw error;
+		}
+
+		const storagePath = path.resolve(this.options.storagePath);
+		const entries: ByteStoreListEntry[] = [];
+		for (const dirent of dirents) {
+			if (!dirent.isFile()) continue;
+			const absolutePath = path.join(dirent.parentPath, dirent.name);
+			let mtime;
+			try {
+				({ mtime } = await fs.stat(absolutePath));
+			} catch (error) {
+				if (this.isFileNotFound(error)) continue; // deleted between readdir and stat
+				throw error;
+			}
+			entries.push({
+				key: path.relative(storagePath, absolutePath).split(path.sep).join('/'),
+				lastModified: mtime,
+			});
+		}
+		return entries;
 	}
 
 	/** Absolute filesystem path for `key`, guarded against escaping the storage root. */

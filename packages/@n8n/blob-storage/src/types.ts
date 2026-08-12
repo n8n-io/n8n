@@ -14,6 +14,12 @@ export type StorageLocation = 'fs' | 's3' | 'az';
 
 export type ByteStoreKey = string;
 
+/** A blob entry returned by {@link ByteStore.list}. */
+export type ByteStoreListEntry = {
+	key: ByteStoreKey;
+	lastModified: Date;
+};
+
 /** A raw byte store addressed by an opaque key. */
 export interface ByteStore {
 	init?(): Promise<void>;
@@ -38,6 +44,12 @@ export interface ByteStore {
 	rename(oldKey: ByteStoreKey, newKey: ByteStoreKey): Promise<void>;
 
 	delete(keys: ByteStoreKey[]): Promise<void>;
+
+	/**
+	 * Lists all objects under `prefix`, which denotes a logical directory.
+	 * Returns an empty array when nothing matches.
+	 */
+	list(prefix: string): Promise<ByteStoreListEntry[]>;
 
 	/** `null` when no object exists. Absent on `fs`, where the domain layer keeps companion `.metadata` entries. */
 	getMetadata?(key: ByteStoreKey): Promise<BlobMetadata | null>;

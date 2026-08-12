@@ -9,7 +9,7 @@ import { PassThrough, Readable, pipeline } from 'node:stream';
 
 import { AzureBlobConfig } from './azure-blob.config';
 import { createFixedSizeChunker } from '../stream-utils';
-import type { BlobMetadata, PreWriteBlobMetadata } from '../types';
+import type { BlobMetadata, ByteStoreListEntry, PreWriteBlobMetadata } from '../types';
 
 @Service()
 export class AzureBlobService {
@@ -166,6 +166,18 @@ export class AzureBlobService {
 	async delete(blobName: string) {
 		try {
 			await this.containerClient.getBlockBlobClient(blobName).deleteIfExists();
+		} catch (e) {
+			this.handleError(e);
+		}
+	}
+
+	async list(prefix: string): Promise<ByteStoreListEntry[]> {
+		try {
+			const entries: ByteStoreListEntry[] = [];
+			for await (const blob of this.containerClient.listBlobsFlat({ prefix })) {
+				entries.push({ key: blob.name, lastModified: blob.properties.lastModified });
+			}
+			return entries;
 		} catch (e) {
 			this.handleError(e);
 		}

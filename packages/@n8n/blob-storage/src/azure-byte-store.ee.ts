@@ -67,6 +67,10 @@ export class AzureByteStore implements ByteStore {
 		}
 	}
 
+	async list(prefix: string) {
+		return await this.azureBlob.list(prefix);
+	}
+
 	// private methods
 
 	private isNotFound(error: unknown) {

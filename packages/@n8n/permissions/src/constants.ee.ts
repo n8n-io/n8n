@@ -69,6 +69,7 @@ export const RESOURCES = {
 		'writeColumn',
 		'listProject',
 	] as const,
+	file: [...DEFAULT_OPERATIONS, 'listProject'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,

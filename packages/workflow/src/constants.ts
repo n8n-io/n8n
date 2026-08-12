@@ -53,6 +53,8 @@ export const MICROSOFT_AGENT365_TRIGGER_NODE_TYPE =
 export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
 export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
+export const FILES_NODE_TYPE = 'n8n-nodes-base.files';
+export const FILES_TOOL_NODE_TYPE = 'n8n-nodes-base.filesTool';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -75,6 +77,8 @@ export const DATA_TABLE_NODE_TYPES = [
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 ];
+
+export const PROJECT_FILES_NODE_TYPES = [FILES_NODE_TYPE, FILES_TOOL_NODE_TYPE];
 
 export const ADD_FORM_NOTICE = 'addFormPage';
 

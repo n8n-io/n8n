@@ -49,6 +49,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'create',
 		'delete',
 	],
+	file: ['read', 'update', 'create', 'delete'],
 	projectVariable: ['read', 'update', 'create', 'delete'],
 } as const satisfies {
 	[R in keyof typeof RESOURCES]?: ReadonlyArray<(typeof RESOURCES)[R][number]>;
@@ -98,6 +99,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'variable:list',
 			'variable:read',
 			'dataTable:list',
+			'file:list',
 			'chatHub:manage', // Chat
 			'chatHub:message', // needed for model listing on the Chat settings page
 			'aiAssistant:manage', // AI Assistant
@@ -168,17 +170,24 @@ const projectBaseScopes = projectResources.flatMap((resource) =>
 	),
 );
 
+/** Resources whose project-scoped list variant is `:listProject` rather than `:list`. */
+const listProjectResources: ReadonlyArray<keyof typeof RESOURCES> = ['dataTable', 'file'];
+
 /**
  * The project role editor auto-adds a companion "list" scope whenever a `:read`
- * scope is selected — `dataTable:read` pairs with `dataTable:listProject`, every
- * other `:read` with `:list` (see ProjectRoleView.toggleScope). These are never
- * shown as checkboxes but are sent on save, so the whitelist must accept them.
+ * scope is selected — resources in {@link listProjectResources} pair `:read`
+ * with `:listProject`, every other `:read` with `:list` (see
+ * ProjectRoleView.toggleScope). These are never shown as checkboxes but are
+ * sent on save, so the whitelist must accept them.
  */
 const projectAutoAddedListScopes = projectBaseScopes
 	.filter((scope) => scope.endsWith(':read'))
-	.map((scope) =>
-		scope === 'dataTable:read' ? 'dataTable:listProject' : scope.replace(/:read$/, ':list'),
-	) as Scope[];
+	.map((scope) => {
+		const resource = scope.slice(0, -':read'.length) as keyof typeof RESOURCES;
+		return listProjectResources.includes(resource)
+			? `${resource}:listProject`
+			: scope.replace(/:read$/, ':list');
+	}) as Scope[];
 
 export const PROJECT_CUSTOM_ROLE_SCOPES: ReadonlySet<Scope> = new Set([
 	...projectBaseScopes,

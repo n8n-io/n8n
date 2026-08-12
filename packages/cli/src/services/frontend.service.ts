@@ -299,6 +299,10 @@ export class FrontendService {
 			dataTables: {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
+			fileStorage: {
+				maxSize: this.globalConfig.fileStorage.maxSize,
+				maxFileSize: this.globalConfig.fileStorage.maxFileSize,
+			},
 			publicApi: {
 				enabled: isApiEnabled(),
 				latestVersion: 1,

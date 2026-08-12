@@ -234,3 +234,31 @@ describe('path traversal guard', () => {
 		}
 	});
 });
+
+describe('list', () => {
+	it('lists all files under a prefix recursively, keyed relative to the storage root', async () => {
+		await store.write('p/proj1/one.bin', body);
+		await store.write('p/proj1/nested/two.bin', body);
+		await store.write('p/proj2/three.bin', body);
+		await store.write('other/four.bin', body);
+
+		const entries = await store.list('p');
+
+		expect(entries.map((e) => e.key).sort()).toEqual([
+			'p/proj1/nested/two.bin',
+			'p/proj1/one.bin',
+			'p/proj2/three.bin',
+		]);
+		for (const entry of entries) {
+			expect(entry.lastModified).toBeInstanceOf(Date);
+		}
+	});
+
+	it('returns an empty array for a missing prefix', async () => {
+		await expect(store.list('missing/prefix')).resolves.toEqual([]);
+	});
+
+	it('rejects a prefix that escapes the storage root', async () => {
+		await expect(store.list('../escape')).rejects.toThrow(UnexpectedError);
+	});
+});
