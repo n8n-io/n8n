@@ -353,8 +353,17 @@ function isParameterInitiallyVisible(parameter: INodeProperties, path = 'paramet
 	);
 }
 
+// `parametersByTab.params` is the node type's whole property list; the renderer
+// then drops anything whose displayOptions don't match. Counting the raw list
+// promises fields that will never appear, so gate on the same condition.
+const displayableParameters = computed(() =>
+	parametersByTab.value.params.filter((parameter) =>
+		nodeHelpers.displayParameter(nodeValues.value, parameter, 'parameters', node.value ?? null),
+	),
+);
+
 const visibleParameters = computed(() => {
-	const all = parametersByTab.value.params;
+	const all = displayableParameters.value;
 	const visible = all.filter(
 		(parameter) =>
 			initiallyVisibleParameterNames.value.has(parameter.name) ||
@@ -374,7 +383,7 @@ const visibleParameters = computed(() => {
 		.slice(0, EMPTY_DISCLOSURE_FALLBACK_COUNT);
 });
 const disclosedParameters = computed(() =>
-	parametersByTab.value.params.filter(
+	displayableParameters.value.filter(
 		(parameter) => !visibleParameters.value.some((visible) => visible.name === parameter.name),
 	),
 );
@@ -384,8 +393,11 @@ const displayedParameters = computed(() => {
 
 	return parametersByTab.value.params.filter(parameterMatchesFilter);
 });
-const setParametersCount = computed(
-	() => parametersByTab.value.params.filter((parameter) => isParameterChanged(parameter)).length,
+// Only fields that are both hidden *and* set are worth warning about — a count of
+// everything set says nothing about what the fold is concealing. Normally zero,
+// since setting a field also pins it visible.
+const hiddenSetParametersCount = computed(
+	() => disclosedParameters.value.filter((parameter) => isParameterChanged(parameter)).length,
 );
 
 // Folding a parameter away is presentational — ParameterInputList must not treat
@@ -1038,12 +1050,17 @@ function handleSelectAction(params: INodeParameters) {
 						size="small"
 						icon="chevron-down"
 						:label="
-							i18n.baseText('nodePanel.showAllSettings', {
-								interpolate: {
-									count: disclosedParameters.length,
-									setCount: setParametersCount,
-								},
-							})
+							hiddenSetParametersCount > 0
+								? i18n.baseText('nodePanel.showAllSettingsSomeSet', {
+										interpolate: {
+											count: disclosedParameters.length,
+											setCount: hiddenSetParametersCount,
+										},
+									})
+								: i18n.baseText('nodePanel.showAllSettings', {
+										adjustToNumber: disclosedParameters.length,
+										interpolate: { count: disclosedParameters.length },
+									})
 						"
 						@click="emit('showAllSettingsChanged', true)"
 					/>
