@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { AgentGoalConfig, AgentSlotConfig } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRoute, useRouter } from 'vue-router';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import type { GoalGraphLiveState } from '../composables/useAgentChatStream';
-import { AGENT_GOAL_EDIT_MODAL_KEY } from '../constants';
+import { AGENT_GOAL_EDIT_MODAL_KEY, AGENT_GOAL_PREVIEW_VIEW } from '../constants';
 import type { AgentGoalEditModalData } from './AgentGoalEditModal.vue';
 import AgentSectionEditor from './AgentSectionEditor.vue';
 import AgentGoalGraphCanvas from './goal-graph/AgentGoalGraphCanvas.vue';
@@ -29,6 +30,22 @@ const emit = defineEmits<{ 'update:config': [config: AgentJsonConfig] }>();
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const route = useRoute();
+const router = useRouter();
+
+// The live preview is a dedicated agent route, so it needs a real agent URL.
+// Hidden in artifact mode where the builder shell has no such params.
+const canOpenPreview = computed(() => !!route.params.projectId && !!route.params.agentId);
+
+function openLivePreview() {
+	void router.push({
+		name: AGENT_GOAL_PREVIEW_VIEW,
+		params: {
+			projectId: String(route.params.projectId),
+			agentId: String(route.params.agentId),
+		},
+	});
+}
 
 const goals = computed(() => props.config?.goals ?? []);
 const slots = computed(() => props.config?.slots ?? []);
@@ -106,9 +123,21 @@ function onRemoveEdge({ from, to }: { from: string; to: string }) {
 		data-testid="agent-goals-panel"
 	>
 		<div :class="$style.titleGroup">
-			<N8nText :bold="true">
-				{{ i18n.baseText('agents.builder.goals.label') }}
-			</N8nText>
+			<div :class="$style.titleRow">
+				<N8nText :bold="true">
+					{{ i18n.baseText('agents.builder.goals.label') }}
+				</N8nText>
+				<N8nButton
+					v-if="canOpenPreview"
+					type="secondary"
+					size="small"
+					icon="external-link"
+					data-testid="agent-goals-open-preview-btn"
+					@click="openLivePreview"
+				>
+					{{ i18n.baseText('agents.goalGraph.preview.open') }}
+				</N8nButton>
+			</div>
 			<N8nText size="small" color="text-light">
 				{{ i18n.baseText('agents.builder.goals.hint') }}
 			</N8nText>
@@ -158,6 +187,13 @@ function onRemoveEdge({ from, to }: { from: string; to: string }) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+}
+
+.titleRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 }
 
 .split {
