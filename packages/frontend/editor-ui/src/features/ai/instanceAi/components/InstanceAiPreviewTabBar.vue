@@ -100,6 +100,7 @@ watch(
 
 function tabHref(tab: ArtifactTab): string | undefined {
 	if (tab.type === 'workflow') return `/workflow/${tab.id}`;
+	if (tab.type === 'agent') return `/projects/${tab.projectId}/agents/${tab.id}`;
 	if (tab.type === 'data-table') {
 		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
 	}
