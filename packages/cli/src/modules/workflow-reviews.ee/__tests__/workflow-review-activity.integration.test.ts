@@ -398,7 +398,9 @@ describe('Recording the review lifecycle in the feed', () => {
 			typeVersion: 1,
 			createdBy: expect.objectContaining({ id: member.id }),
 		});
-		expect(feed.data[0].data).toEqual({ workflowVersionIds: ['version-1'] });
+		expect(feed.data[0].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+		});
 	});
 
 	test('records the note and the reviewed version when a reviewer requests changes', async () => {
@@ -416,7 +418,7 @@ describe('Recording the review lifecycle in the feed', () => {
 			createdBy: expect.objectContaining({ id: owner.id }),
 		});
 		expect(feed.data[1].data).toEqual({
-			workflowVersionIds: ['version-1'],
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
 			note: 'Please rename the node',
 		});
 	});
@@ -449,7 +451,7 @@ describe('Recording the review lifecycle in the feed', () => {
 		const feed = await getActivity(ownerAgent, requestId);
 		expect(entryTypes(feed)).toEqual(['review.opened', 'review.approved']);
 		expect(feed.data[1].data).toEqual({
-			workflowVersionIds: ['version-1'],
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
 			note: 'Ships as is',
 		});
 	});
@@ -466,7 +468,28 @@ describe('Recording the review lifecycle in the feed', () => {
 		const feed = await getActivity(ownerAgent, requestId);
 		// `null`, not a missing key: "no note given" and "the payload did not parse" are
 		// different things on an audit record.
-		expect(feed.data[1].data).toEqual({ workflowVersionIds: ['version-1'], note: null });
+		expect(feed.data[1].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+			note: null,
+		});
+	});
+
+	test('still names the workflow an approved version came from after that workflow is deleted', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		await workflowEntityRepository.delete(workflow.id);
+
+		const feed = await getActivity(ownerAgent, requestId);
+		expect(feed.data[1].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+			note: null,
+		});
 	});
 
 	test('records the version a re-pinned review moved from and to, scoped to that workflow', async () => {
@@ -582,7 +605,7 @@ describe('Reading the activity feed', () => {
 				{
 					workflowReviewRequestId,
 					type: 'review.opened',
-					data: { workflowVersionIds: [] },
+					data: { workflowVersions: [] },
 					createdById: owner.id,
 				},
 				{},
@@ -719,7 +742,10 @@ describe('Reading the activity feed', () => {
 
 	test('shows a non-comment activity entry with its details intact and no messages', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
-		const data = { workflowVersionIds: ['version-pinned'], note: 'needs work' };
+		const data = {
+			workflowVersions: [{ workflowId: 'workflow-reviewed', workflowVersionId: 'version-pinned' }],
+			note: 'needs work',
+		};
 		await activityRepository.createActivity(
 			{
 				workflowReviewRequestId: request.id,

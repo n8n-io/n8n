@@ -266,7 +266,11 @@ describe('WorkflowReviewActivityFeed', () => {
 			[
 				[
 					'the review being submitted',
-					{ ...systemEntry, type: 'review.opened', data: { workflowVersionIds: ['version-1'] } },
+					{
+						...systemEntry,
+						type: 'review.opened',
+						data: { workflowVersions: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }] },
+					},
 					{ testId: 'workflow-review-activity-opened', text: 'Review submitted' },
 				],
 				[
@@ -274,7 +278,10 @@ describe('WorkflowReviewActivityFeed', () => {
 					{
 						...systemEntry,
 						type: 'review.changes_requested',
-						data: { workflowVersionIds: ['version-1'], note: 'Please add retries' },
+						data: {
+							workflowVersions: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }],
+							note: 'Please add retries',
+						},
 					},
 					{
 						testId: 'workflow-review-activity-changes-requested',
@@ -287,7 +294,10 @@ describe('WorkflowReviewActivityFeed', () => {
 					{
 						...systemEntry,
 						type: 'review.approved',
-						data: { workflowVersionIds: ['version-1'], note: 'Ship it' },
+						data: {
+							workflowVersions: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }],
+							note: 'Ship it',
+						},
 					},
 					{
 						testId: 'workflow-review-activity-approved',
@@ -300,7 +310,10 @@ describe('WorkflowReviewActivityFeed', () => {
 					{
 						...systemEntry,
 						type: 'review.approved',
-						data: { workflowVersionIds: ['version-1'], note: null },
+						data: {
+							workflowVersions: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }],
+							note: null,
+						},
 					},
 					{ testId: 'workflow-review-activity-approved', text: 'Approved submission' },
 				],
@@ -399,7 +412,10 @@ describe('WorkflowReviewActivityFeed', () => {
 				{
 					...systemEntry,
 					type: 'review.approved',
-					data: { workflowVersionIds: ['version-1'], note: null },
+					data: {
+						workflowVersions: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }],
+						note: null,
+					},
 					createdBy: {
 						id: 'user-1',
 						email: 'ada@example.com',
@@ -422,7 +438,10 @@ describe('WorkflowReviewActivityFeed', () => {
 				{
 					...systemEntry,
 					type: 'review.approved',
-					data: { workflowVersionIds: ['version-1'], note: null },
+					data: {
+						workflowVersions: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }],
+						note: null,
+					},
 				},
 			];
 

@@ -31,15 +31,24 @@ export const workflowReviewClosedReasonSchema = z.enum([
 ]);
 export type WorkflowReviewClosedReason = z.infer<typeof workflowReviewClosedReasonSchema>;
 
+/**
+ * Pairs the version with its workflow: the entry is the immutable record, and the live pin it was
+ * built from is prunable, so a bare version id becomes unresolvable once pruning removes the
+ * history row.
+ */
+export const workflowReviewActivityWorkflowVersionSchema = z.object({
+	workflowId: z.string(),
+	workflowVersionId: z.string(),
+});
 export const workflowReviewOpenedActivityDataSchema = z.object({
-	workflowVersionIds: z.array(z.string()),
+	workflowVersions: z.array(workflowReviewActivityWorkflowVersionSchema),
 });
 export type WorkflowReviewOpenedActivityData = z.infer<
 	typeof workflowReviewOpenedActivityDataSchema
 >;
 
 export const workflowReviewDecisionActivityDataSchema = z.object({
-	workflowVersionIds: z.array(z.string()),
+	workflowVersions: z.array(workflowReviewActivityWorkflowVersionSchema),
 	note: z.string().nullable(),
 });
 export type WorkflowReviewDecisionActivityData = z.infer<

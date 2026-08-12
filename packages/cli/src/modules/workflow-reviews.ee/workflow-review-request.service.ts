@@ -437,7 +437,7 @@ export class WorkflowReviewRequestService {
 					{
 						workflowReviewRequestId: created.id,
 						type: 'review.opened',
-						data: { workflowVersionIds: [workflowVersionId] },
+						data: { workflowVersions: [{ workflowId, workflowVersionId }] },
 						createdById: user.id,
 					},
 					ctx,
@@ -778,9 +778,11 @@ export class WorkflowReviewRequestService {
 						type: dto.decision === 'approved' ? 'review.approved' : 'review.changes_requested',
 						data: {
 							// A pruned pin drops out rather than landing as a null in the array.
-							workflowVersionIds: currentRows
-								.map((row) => row.workflowVersionId)
-								.filter((id) => id !== null),
+							workflowVersions: currentRows.flatMap((row) =>
+								row.workflowVersionId === null
+									? []
+									: [{ workflowId: row.workflowId, workflowVersionId: row.workflowVersionId }],
+							),
 							note: dto.note ?? null,
 						},
 						createdById: user.id,

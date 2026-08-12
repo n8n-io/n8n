@@ -600,7 +600,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect(activityRepository.createActivity).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'review.approved',
-					data: { workflowVersionIds: [], note: null },
+					data: { workflowVersions: [], note: null },
 				}),
 				ctx,
 			);

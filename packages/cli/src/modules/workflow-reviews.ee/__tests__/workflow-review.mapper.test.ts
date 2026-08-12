@@ -33,7 +33,10 @@ describe('toActivityEntry', () => {
 			id: 8,
 			typeVersion: 2,
 			type: 'review.approved',
-			data: { workflowVersionIds: ['ver-1'], note: 'Ship it' },
+			data: {
+				workflowVersions: [{ workflowId: 'wf-1', workflowVersionId: 'ver-1' }],
+				note: 'Ship it',
+			},
 			createdById: null,
 			createdAt: new Date('2026-07-20T10:00:00.000Z'),
 		});
