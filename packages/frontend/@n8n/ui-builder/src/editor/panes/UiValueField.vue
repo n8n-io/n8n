@@ -171,17 +171,27 @@ function onModeChange(next: ExpressionMode) {
 		</template>
 
 		<div class="ui-value-field" :class="{ 'ui-value-field--preview-open': isPreviewOpen }">
-			<N8nInput
+			<!-- Fixed mode defaults to a text input; a dropdown-like descriptor
+			     (options, boolean, route) overrides it with its own widget while
+			     keeping the expression toggle above. -->
+			<slot
 				v-if="mode === 'fixed'"
-				:model-value="raw"
+				name="fixed"
+				:value="modelValue"
 				:disabled="disabled"
-				size="small"
-				:placeholder="placeholder"
-				@paste="onPaste"
-				@focus="isFocused = true"
-				@blur="isFocused = false"
-				@update:model-value="onFixedInput"
-			/>
+				:update="(value: unknown) => emit('update', value)"
+			>
+				<N8nInput
+					:model-value="raw"
+					:disabled="disabled"
+					size="small"
+					:placeholder="placeholder"
+					@paste="onPaste"
+					@focus="isFocused = true"
+					@blur="isFocused = false"
+					@update:model-value="onFixedInput"
+				/>
+			</slot>
 
 			<template v-else>
 				<div

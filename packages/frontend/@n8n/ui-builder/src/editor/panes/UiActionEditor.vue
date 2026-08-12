@@ -15,16 +15,17 @@ import UiValueField from './UiValueField.vue';
 import { ACTION_KINDS, createStep, replyKeyFor } from '../../core/actions';
 import type { UiActionKind } from '../../core/actions';
 import { pageLabel } from '../../core/pages';
-import type {
-	UiActionStep,
-	UiHttpMethod,
-	UiNavigateStep,
-	UiNotifyStep,
-	UiPageInfo,
-	UiProperty,
-	UiScope,
-	UiSetStep,
-	UiWebhookStep,
+import {
+	ROUTE_PROP_TYPE,
+	type UiActionStep,
+	type UiHttpMethod,
+	type UiNavigateStep,
+	type UiNotifyStep,
+	type UiPageInfo,
+	type UiProperty,
+	type UiScope,
+	type UiSetStep,
+	type UiWebhookStep,
 } from '../../core/types';
 import { targetKey } from '../composables/useWebhookTargets';
 import type { WebhookTarget } from '../composables/useWebhookTargets';
@@ -70,6 +71,8 @@ const props = defineProps<{
 	 */
 	run: (step: UiWebhookStep, following: UiActionStep[]) => void;
 	history: (step: UiWebhookStep, following: UiActionStep[]) => void;
+	/** What the last run/history click returned, if anything. Not tied to a particular step. */
+	previewStatus?: string;
 }>();
 
 const emit = defineEmits<{ update: [steps: UiActionStep[]] }>();
@@ -288,6 +291,19 @@ function scopeFor(index: number): UiScope {
 		$response: (latest ? props.responses[latest] : undefined) ?? {},
 	};
 }
+
+/**
+ * Not a real property, just enough of one for `UiValueField` to render this
+ * step's destination through: a `route` field, the same widget the
+ * property-level "Go to page" field uses. No label, since the step's own
+ * kind picker above already says what this row is.
+ */
+const toDescriptor: UiProperty = {
+	displayName: '',
+	name: 'to',
+	type: ROUTE_PROP_TYPE,
+	default: '',
+};
 </script>
 
 <template>
@@ -428,6 +444,11 @@ function scopeFor(index: number): UiScope {
 						/>
 					</N8nInputLabel>
 				</div>
+
+				<!-- What the run/history buttons above just returned, if anything. -->
+				<N8nText v-if="previewStatus" size="small" color="text-light" :class="$style.preview">
+					{{ previewStatus }}
+				</N8nText>
 			</template>
 
 			<!--
@@ -495,26 +516,36 @@ function scopeFor(index: number): UiScope {
 			</template>
 
 			<!-- Navigate: a page of this app, or an expression producing a path. -->
-			<div v-else :class="$style.field">
-				<N8nInputLabel label="Go to" :bold="false" size="small" color="text-dark">
-					<N8nSelect
-						:model-value="(step as UiNavigateStep).to"
-						:disabled="disabled"
-						size="small"
-						filterable
-						allow-create
-						default-first-option
-						:placeholder="pages.length ? 'Pick a page' : 'This app has no pages yet'"
-						@update:model-value="patch(index, { to: $event })"
-					>
-						<N8nOption
-							v-for="page in pages"
-							:key="page.id"
-							:label="pageLabel(page)"
-							:value="page.path"
-						/>
-					</N8nSelect>
-				</N8nInputLabel>
+			<div v-else :class="$style.row">
+				<UiValueField
+					:class="$style.grow"
+					:descriptor="toDescriptor"
+					:model-value="(step as UiNavigateStep).to"
+					:scope="scopeFor(index)"
+					:disabled="disabled"
+					@update="patch(index, { to: String($event ?? '') })"
+				>
+					<template #fixed="{ value, disabled: isDisabled, update }">
+						<N8nSelect
+							:model-value="value"
+							:disabled="isDisabled"
+							size="small"
+							filterable
+							allow-create
+							default-first-option
+							clearable
+							:placeholder="pages.length ? 'Pick a page' : 'This app has no pages yet'"
+							@update:model-value="update($event ?? '')"
+						>
+							<N8nOption
+								v-for="page in pages"
+								:key="page.id"
+								:label="pageLabel(page)"
+								:value="page.path"
+							/>
+						</N8nSelect>
+					</template>
+				</UiValueField>
 			</div>
 		</div>
 
@@ -591,5 +622,10 @@ function scopeFor(index: number): UiScope {
 .narrow {
 	width: 96px;
 	flex-shrink: 0;
+}
+
+.preview {
+	display: block;
+	margin-top: var(--spacing--5xs);
 }
 </style>

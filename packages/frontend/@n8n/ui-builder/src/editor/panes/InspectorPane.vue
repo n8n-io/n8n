@@ -21,7 +21,6 @@ import { normaliseAction } from '../../core/actions';
 import { pageLabel } from '../../core/pages';
 import {
 	ACTION_PROP_TYPE,
-	ROUTE_PROP_TYPE,
 	STATE_PATH_PROP_TYPE,
 	type UiActionStep,
 	type UiHttpMethod,
@@ -63,6 +62,8 @@ const props = defineProps<{
 	run: (step: UiWebhookStep, following: UiActionStep[]) => void;
 	history: (step: UiWebhookStep, following: UiActionStep[]) => void;
 	runAll: (steps: UiActionStep[]) => void;
+	/** What the last run/history click against a webhook step returned, if anything. */
+	previewStatus?: string;
 }>();
 
 const emit = defineEmits<{
@@ -95,15 +96,14 @@ function valueOf(name: string): string {
 	return String(props.node?.props[name] ?? '');
 }
 
-const EDITED_BY_KIND: ReadonlyArray<UiProperty['type']> = [
-	'options',
-	'boolean',
-	ACTION_PROP_TYPE,
-	ROUTE_PROP_TYPE,
-	STATE_PATH_PROP_TYPE,
-];
+const EDITED_BY_KIND: ReadonlyArray<UiProperty['type']> = [ACTION_PROP_TYPE, STATE_PATH_PROP_TYPE];
 
-/** Everything else falls through to a value field, which can hold an expression. */
+/**
+ * Everything else falls through to a value field, which can hold an
+ * expression. `options`, `boolean` and `route` render their own dropdown as
+ * the value field's fixed-mode widget (see the `#fixed` templates below),
+ * so they gain expression support without losing their picker UI.
+ */
 function hasOwnEditor(descriptor: UiProperty): boolean {
 	return EDITED_BY_KIND.includes(descriptor.type);
 }
@@ -134,7 +134,63 @@ function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
 					:scope="scope"
 					:disabled="disabled"
 					@update="emit('setProp', descriptor.name, $event)"
-				/>
+				>
+					<template
+						v-if="descriptor.type === 'options'"
+						#fixed="{ value, disabled: isDisabled, update }"
+					>
+						<N8nSelect
+							:model-value="value"
+							:disabled="isDisabled"
+							size="small"
+							@update:model-value="update"
+						>
+							<N8nOption
+								v-for="option in choicesOf(descriptor)"
+								:key="String(option.value)"
+								:label="option.name"
+								:value="option.value"
+							/>
+						</N8nSelect>
+					</template>
+
+					<template
+						v-else-if="descriptor.type === 'boolean'"
+						#fixed="{ value, disabled: isDisabled, update }"
+					>
+						<N8nSelect
+							:model-value="Boolean(value)"
+							:disabled="isDisabled"
+							size="small"
+							@update:model-value="update"
+						>
+							<N8nOption label="false" :value="false" />
+							<N8nOption label="true" :value="true" />
+						</N8nSelect>
+					</template>
+
+					<!-- A page path, picked from the pages the document holds. -->
+					<template
+						v-else-if="descriptor.type === 'route'"
+						#fixed="{ value, disabled: isDisabled, update }"
+					>
+						<N8nSelect
+							:model-value="value"
+							:disabled="isDisabled || pages.length === 0"
+							size="small"
+							clearable
+							:placeholder="pages.length ? 'Pick a page' : 'This app has no pages yet'"
+							@update:model-value="update($event ?? '')"
+						>
+							<N8nOption
+								v-for="page in pages"
+								:key="page.id"
+								:label="pageLabel(page)"
+								:value="page.path"
+							/>
+						</N8nSelect>
+					</template>
+				</UiValueField>
 
 				<!--
 					An action is a chain of steps, not one value, so it gets its own
@@ -184,11 +240,13 @@ function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
 						:create="async () => await createTrigger(descriptor.name)"
 						:run="run"
 						:history="history"
+						:preview-status="previewStatus"
 						@update="emit('setProp', descriptor.name, $event)"
 					/>
 				</N8nCollapsiblePanel>
 
 				<!--
+					A dotted path into state, written as text: never an expression.
 					`description` is written on every descriptor and used to go nowhere.
 					`show-tooltip` keeps the marker visible rather than only on hover,
 					since a pane this narrow gives no other clue that there is more to
@@ -203,53 +261,7 @@ function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
 					size="small"
 					color="text-dark"
 				>
-					<N8nSelect
-						v-if="descriptor.type === 'options'"
-						:model-value="node.props[descriptor.name]"
-						:disabled="disabled"
-						size="small"
-						@update:model-value="emit('setProp', descriptor.name, $event)"
-					>
-						<N8nOption
-							v-for="option in choicesOf(descriptor)"
-							:key="String(option.value)"
-							:label="option.name"
-							:value="option.value"
-						/>
-					</N8nSelect>
-
-					<N8nSelect
-						v-else-if="descriptor.type === 'boolean'"
-						:model-value="Boolean(node.props[descriptor.name])"
-						:disabled="disabled"
-						size="small"
-						@update:model-value="emit('setProp', descriptor.name, $event)"
-					>
-						<N8nOption label="false" :value="false" />
-						<N8nOption label="true" :value="true" />
-					</N8nSelect>
-
-					<!-- A page path, picked from the pages the document holds. -->
-					<N8nSelect
-						v-else-if="descriptor.type === 'route'"
-						:model-value="valueOf(descriptor.name)"
-						:disabled="disabled || pages.length === 0"
-						size="small"
-						clearable
-						:placeholder="pages.length ? 'Pick a page' : 'This app has no pages yet'"
-						@update:model-value="emit('setProp', descriptor.name, $event ?? '')"
-					>
-						<N8nOption
-							v-for="page in pages"
-							:key="page.id"
-							:label="pageLabel(page)"
-							:value="page.path"
-						/>
-					</N8nSelect>
-
-					<!-- A dotted path into state, written as text: never an expression. -->
 					<N8nInput
-						v-else
 						:model-value="valueOf(descriptor.name)"
 						:disabled="disabled"
 						size="small"

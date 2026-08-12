@@ -3,13 +3,7 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { UiBuilderPanel } from '@n8n/ui-builder';
-import type {
-	HostEndpoint,
-	HostExecutionOutput,
-	HostWorkflow,
-	UiBuilderHost,
-	UiHttpMethod,
-} from '@n8n/ui-builder';
+import type { HostExecutionOutput, HostWorkflow, UiBuilderHost } from '@n8n/ui-builder';
 import { getNodeWebhookUrl, NodeConnectionTypes } from 'n8n-workflow';
 import type { INode, INodeParameters, NodeParameterValueType } from 'n8n-workflow';
 import { computed } from 'vue';
@@ -26,6 +20,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
+import { endpointsOf, liveWebhookCandidatesOf } from './uiBuilderWebhookDiscovery';
 
 /**
  * The `uiBuilder` parameter, and the only part of the UI builder that editor-ui
@@ -56,110 +51,24 @@ const executionsStore = useExecutionsStore();
 const documentStore = injectWorkflowDocumentStore();
 const { addNodes, addConnections } = useCanvasOperations();
 
-/** One endpoint of an API Router, as the node stores it. */
-interface RouterEndpoint {
-	method?: string;
-	path?: string;
-	options?: { name?: string };
-}
-
-type NodeLike = { type: string; webhookId?: string; parameters?: Record<string, unknown> };
-
-const HTTP_METHODS: UiHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
-
-function asMethod(value: unknown): UiHttpMethod | undefined {
-	const method = String(value ?? '').toUpperCase();
-	return HTTP_METHODS.find((known) => known === method);
-}
-
-function trimSlashes(value: string): string {
-	return value.replace(/^\/+/, '').replace(/\/+$/, '');
-}
-
 /**
- * A Webhook trigger's own path, once per method it listens to — "multiple
- * methods" mode stores them as a list.
+ * The nearest upstream Webhook and API Router trigger(s) reachable from this
+ * node's own main input — the entry point(s) of whatever chain renders this
+ * page. Walking ancestors rather than scanning every trigger in the workflow
+ * is what keeps an unrelated trigger elsewhere in a bigger workflow out of the
+ * running: an ancestor of this node is, by construction, upstream of the same
+ * subgraph.
  */
-function webhookEndpoints(node: NodeLike): HostEndpoint[] {
-	const path = trimSlashes(String(node.parameters?.path ?? ''));
-	if (!path) return [];
-
-	const configured = node.parameters?.httpMethod;
-	const methods = (Array.isArray(configured) ? configured : [configured])
-		.map(asMethod)
-		.filter((method): method is UiHttpMethod => method !== undefined);
-
-	// The Webhook node's own default: an unset `httpMethod` means GET.
-	return (methods.length ? methods : (['GET'] as UiHttpMethod[])).map((method) => ({
-		path,
-		method,
-	}));
-}
-
-/**
- * An API Router's endpoints, each under the router's base path — the same join
- * the node itself does when it claims its webhook routes, so these are the URLs
- * that actually answer. An empty base path means the node serves under its
- * webhook id instead.
- */
-function apiRouterEndpoints(node: NodeLike): HostEndpoint[] {
-	const base = trimSlashes(String(node.parameters?.basePath ?? '') || (node.webhookId ?? ''));
-	const collection = node.parameters?.endpoints;
-	const list =
-		collection && typeof collection === 'object' && 'endpoint' in collection
-			? (collection as { endpoint?: unknown }).endpoint
-			: undefined;
-
-	if (!Array.isArray(list)) return [];
-
-	return list.map((entry) => {
-		const endpoint = entry as RouterEndpoint;
-		const suffix = trimSlashes(String(endpoint.path ?? ''));
-
-		return {
-			path: [base, suffix].filter(Boolean).join('/'),
-			method: asMethod(endpoint.method) ?? 'GET',
-			name: endpoint.options?.name?.trim() || undefined,
-		};
-	});
-}
-
-/** Everything in a workflow that answers an HTTP request an action could call. */
-function endpointsOf(nodes: NodeLike[]): HostEndpoint[] {
-	return nodes.flatMap((node) => {
-		if (node.type === WEBHOOK_NODE_TYPE) return webhookEndpoints(node);
-		if (node.type === API_ROUTER_NODE_TYPE) return apiRouterEndpoints(node);
-
-		return [];
-	});
-}
-
-/**
- * A browser tab opened for this button only ever does a GET, so a Webhook
- * configured for another single method — or one left in "multiple methods"
- * mode, where there is no one method to point a tab at — doesn't qualify.
- * Matches the Webhook node's own default: an unset `httpMethod` means GET.
- */
-function isGetWebhook(node: INode): boolean {
-	if (node.parameters?.multipleMethods) return false;
-	const method = node.parameters?.httpMethod;
-	return method === undefined || method === 'GET';
-}
-
-/**
- * The nearest upstream Webhook trigger(s) reachable from this node's own main
- * input — the entry point(s) of whatever chain renders this page. Walking
- * ancestors rather than scanning every Webhook node in the workflow is what
- * keeps an unrelated webhook elsewhere in a bigger workflow out of the running:
- * an ancestor of this node is, by construction, upstream of the same subgraph.
- */
-function upstreamWebhookTriggers(nodeName: string): INode[] {
+function upstreamTriggers(nodeName: string): INode[] {
 	const store = documentStore.value;
 
 	return store
 		.getParentNodes(nodeName)
 		.map((name) => store.getNodeByNameFromWorkflow(name))
-		.filter((candidate): candidate is INode => candidate?.type === WEBHOOK_NODE_TYPE);
+		.filter(
+			(candidate): candidate is INode =>
+				candidate?.type === WEBHOOK_NODE_TYPE || candidate?.type === API_ROUTER_NODE_TYPE,
+		);
 }
 
 const host: UiBuilderHost = {
@@ -176,9 +85,10 @@ const host: UiBuilderHost = {
 	workflowActive: () => Boolean(documentStore.value?.active),
 
 	/**
-	 * Undefined unless exactly one GET-configured Webhook trigger is upstream of
-	 * this node and the workflow is active — a live webhook 404s otherwise, and
-	 * more than one candidate means guessing which page it actually serves.
+	 * Undefined unless exactly one GET-reachable endpoint (a Webhook trigger, or
+	 * one endpoint of an API Router) is upstream of this node and the workflow
+	 * is active — a live webhook 404s otherwise, and more than one candidate
+	 * means guessing which page it actually serves.
 	 */
 	liveWebhookUrl: () => {
 		const store = documentStore.value;
@@ -186,14 +96,14 @@ const host: UiBuilderHost = {
 		const nodeName = props.node?.name;
 		if (!workflowId || !nodeName || !store.active) return undefined;
 
-		const candidates = upstreamWebhookTriggers(nodeName).filter(isGetWebhook);
+		const candidates = liveWebhookCandidatesOf(upstreamTriggers(nodeName));
 		if (candidates.length !== 1) return undefined;
 
-		const [trigger] = candidates;
-		const path = String(trigger.parameters?.path ?? '').replace(/^\//, '');
+		const [{ node: trigger, path }] = candidates;
 
-		// `isFullPath` isn't a node parameter — it's a static `true` on the Webhook
-		// node type's own webhook description (see nodes-base `Webhook/description.ts`),
+		// `isFullPath` isn't a node parameter — it's a static `true` on the
+		// Webhook and API Router node types' own webhook descriptions (see
+		// nodes-base `Webhook/description.ts` and `ApiRouter/description.ts`),
 		// meaning the production URL is the path on its own, with no webhookId
 		// segment. `trigger.parameters?.isFullPath` doesn't exist and is always
 		// undefined, which previously coerced to `false` and wrongly prefixed the
