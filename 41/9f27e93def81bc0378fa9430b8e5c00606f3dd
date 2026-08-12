@@ -1,0 +1,51 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/trigger-endpoints.test.ts
+  s_f4f3f37a98d31a::t_830491d336b207 134-218
+  s_f4f3f37a98d31a::t_e420e46c9b0fb0 35-112
+  s_f4f3f37a98d31a::t_6a98b9d755cd79 219
+packages/@n8n/instance-ai/src/tools/workflows/validate-error-workflow.ts
+  s_f4f3f37a98d31a::t_e005e6ce9c8c73 24
+  s_f4f3f37a98d31a::t_10ec7ba1c49896 55,57,62-65,67-76
+  s_f4f3f37a98d31a::t_3dfb23a51ae0ca 22-23,25-27
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_f4f3f37a98d31a::t_e713ec3444ad26 212-396
+  s_f4f3f37a98d31a::t_d0ebd5760dc560 767-854
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_f4f3f37a98d31a::t_79e64d2f9c9739 366
+  s_f4f3f37a98d31a::t_89480413aa740a 451-467,470-489,491-495,506-509,511-532,536-541
+  s_f4f3f37a98d31a::t_aabd01d34d8242 257,260-270
+  s_f4f3f37a98d31a::t_fb52bdac4b541c 356
+  s_f4f3f37a98d31a::t_d29ec3068fdb6b 13-17
+  s_f4f3f37a98d31a::t_e65a2b9e215d2d 373
+  s_f4f3f37a98d31a::t_28a05426c3a7b8 156,158,162,164
+  s_f4f3f37a98d31a::t_607eb874a016ae 25
+packages/@n8n/instance-ai/src/tools/workflows/trigger-endpoints.ts
+  s_f4f3f37a98d31a::t_2170521dd12e87 71-73,79-110,113-146
+  s_f4f3f37a98d31a::t_1d1c90af74f2bd 1,3
+  s_f4f3f37a98d31a::t_72750d610c0fdd 32-48
+  s_f4f3f37a98d31a::t_8b1c48170b1a10 57-61
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/validate-error-workflow.test.ts
+  s_f4f3f37a98d31a::t_68677bfd12daf7 123-125,127,132-144,150-164
+  s_f4f3f37a98d31a::t_751fe6514e4102 126
+  s_f4f3f37a98d31a::t_b1fd4cfd2c0963 43-56,165
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/detect-data-table-columns.test.ts
+  s_f4f3f37a98d31a::t_264e0c8543e4ef 67-109
+packages/@n8n/instance-ai/src/tools/workflows/detect-data-table-columns.ts
+  s_f4f3f37a98d31a::t_0e4a5f6fd31f81 21,40-47
+  s_f4f3f37a98d31a::t_f5c310829252d8 48-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "419f27e93def81bc0378fa9430b8e5c00606f3dd",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
