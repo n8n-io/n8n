@@ -45,6 +45,7 @@ export type {
 	HostExecutionOutput,
 	HostWorkflow,
 	UiBuilderHost,
+	WebhookPath,
 } from './editor/host';
 export { createUiApp } from './runtime/create-app';
 export {

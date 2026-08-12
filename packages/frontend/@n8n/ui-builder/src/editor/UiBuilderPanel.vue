@@ -192,7 +192,7 @@ async function createTrigger(propName: string): Promise<string | undefined> {
 
 	const type = selected.value.type;
 	const base = `${type}${propName.charAt(0).toUpperCase()}${propName.slice(1)}`;
-	const taken = new Set(props.host.localWebhookPaths());
+	const taken = new Set(props.host.localWebhookPaths().map((entry) => entry.path));
 
 	let path = base;
 	let n = 2;
@@ -414,7 +414,7 @@ function onEscape(event: KeyboardEvent) {
 						:label-for="labelForUrl"
 						:browse="pickExternal"
 						:create-trigger="createTrigger"
-						:run="(url: string) => void runAction(url)"
+						:run="(url: string, method?: 'GET' | 'POST') => void runAction(url, method)"
 						:history="(url: string) => void loadLastExecution(url)"
 						@set-prop="setProp"
 					/>

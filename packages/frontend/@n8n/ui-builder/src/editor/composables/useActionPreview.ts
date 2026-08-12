@@ -45,17 +45,18 @@ export function useActionPreview(
 		previewStatus.value = `${source}: ${Object.keys(merged).join(', ')}`;
 	}
 
-	/** POST the canvas's state to the step's trigger, exactly as the running app would. */
-	async function runAction(url: string) {
+	/** Call the step's trigger with its configured method, exactly as the running app would. */
+	async function runAction(url: string, method: 'GET' | 'POST' = 'POST') {
 		if (!url) return;
 
 		previewStatus.value = 'running…';
 
 		try {
 			const response = await fetch(url, {
-				method: 'POST',
+				method,
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(state),
+				// A GET carrying a body is refused by the browser before it is sent.
+				...(method === 'GET' ? {} : { body: JSON.stringify(state) }),
 			});
 
 			apply(await response.json(), 'ran');

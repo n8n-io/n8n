@@ -6,6 +6,8 @@ import type { HostWorkflow, UiBuilderHost } from '../host';
 export interface WebhookTarget {
 	label: string;
 	url: string;
+	/** The method the underlying Webhook node is configured for. Unknown until resolved. */
+	method?: 'GET' | 'POST';
 	workflowId?: string;
 }
 
@@ -32,9 +34,10 @@ export function useWebhookTargets(host: UiBuilderHost) {
 	 * those few among strangers. Reaching further afield is the picker's job.
 	 */
 	const localTargets = computed<WebhookTarget[]>(() =>
-		host.localWebhookPaths().map((path) => ({
-			label: path,
-			url: host.webhookUrlFor(path),
+		host.localWebhookPaths().map((entry) => ({
+			label: entry.path,
+			url: host.webhookUrlFor(entry.path),
+			method: entry.method,
 			workflowId: host.workflowId(),
 		})),
 	);
@@ -69,7 +72,7 @@ export function useWebhookTargets(host: UiBuilderHost) {
 	const pickerLoading = ref(false);
 	const eligible = ref<EligibleWorkflow[]>([]);
 
-	let settle: ((url: string | undefined) => void) | undefined;
+	let settle: ((target: WebhookTarget | undefined) => void) | undefined;
 	let scanning: Promise<void> | undefined;
 
 	/**
@@ -99,9 +102,10 @@ export function useWebhookTargets(host: UiBuilderHost) {
 			const found = workflows
 				.map((workflow) => ({
 					...workflow,
-					triggers: workflow.paths.map((path) => ({
-						label: `${path} — ${workflow.name}`,
-						url: host.webhookUrlFor(path),
+					triggers: workflow.paths.map((entry) => ({
+						label: `${entry.path} — ${workflow.name}`,
+						url: host.webhookUrlFor(entry.path),
+						method: entry.method,
 						workflowId: workflow.id,
 					})),
 				}))
@@ -141,27 +145,29 @@ export function useWebhookTargets(host: UiBuilderHost) {
 
 	/**
 	 * Resolves a promise rather than writing anywhere, so the step editor owns
-	 * its own steps and this stays a dialog the panel happens to host.
+	 * its own steps and this stays a dialog the panel happens to host. Resolves
+	 * with the whole target, not just its URL, so the method it is configured
+	 * for travels with the pick rather than being looked up separately.
 	 */
-	async function pickExternal(): Promise<string | undefined> {
+	async function pickExternal(): Promise<WebhookTarget | undefined> {
 		pickerQuery.value = '';
 		pickerOpen.value = true;
 		void loadEligible();
 
-		return await new Promise<string | undefined>((resolve) => {
+		return await new Promise<WebhookTarget | undefined>((resolve) => {
 			settle = resolve;
 		});
 	}
 
-	function closePicker(url?: string) {
+	function closePicker(target?: WebhookTarget) {
 		pickerOpen.value = false;
-		settle?.(url);
+		settle?.(target);
 		settle = undefined;
 	}
 
 	function pickTarget(target: WebhookTarget) {
 		knownTargets.value[target.url] = target;
-		closePicker(target.url);
+		closePicker(target);
 	}
 
 	// Dismissing the dialog any other way (Escape, the close button, a click

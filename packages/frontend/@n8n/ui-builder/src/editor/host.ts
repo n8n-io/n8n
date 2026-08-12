@@ -15,13 +15,19 @@ import type { InjectionKey } from 'vue';
  * standalone playground would need.
  */
 
+/** A Webhook trigger's path and the HTTP method it is configured to answer. */
+export interface WebhookPath {
+	/** Without a leading slash. */
+	path: string;
+	method: 'GET' | 'POST';
+}
+
 /** A workflow that has at least one Webhook trigger in it. */
 export interface HostWorkflow {
 	id: string;
 	name: string;
 	active: boolean;
-	/** Trigger paths, without a leading slash. */
-	paths: string[];
+	paths: WebhookPath[];
 }
 
 /** What an action's last run returned, and which node returned it. */
@@ -38,7 +44,7 @@ export interface UiBuilderHost {
 	 * Read inside a computed, so it must track its own reactive sources: the
 	 * panel expects a trigger added a moment ago to appear without a save.
 	 */
-	localWebhookPaths: () => string[];
+	localWebhookPaths: () => WebhookPath[];
 
 	/** The workflow being edited, if it has been saved. */
 	workflowId: () => string | undefined;

@@ -52,9 +52,9 @@ const props = defineProps<{
 	scope: UiScope;
 	disabled?: boolean;
 	labelFor: (url: string) => string;
-	browse: () => Promise<string | undefined>;
+	browse: () => Promise<WebhookTarget | undefined>;
 	createTrigger: (propName: string) => Promise<string | undefined>;
-	run: (url: string) => void;
+	run: (url: string, method?: 'GET' | 'POST') => void;
 	history: (url: string) => void;
 }>();
 

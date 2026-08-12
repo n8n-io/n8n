@@ -19,6 +19,7 @@ import type {
 	UiPageInfo,
 	UiWebhookStep,
 } from '../../core/types';
+import type { WebhookTarget } from '../composables/useWebhookTargets';
 
 /**
  * One action prop, edited as the chain of steps it is.
@@ -36,18 +37,18 @@ defineOptions({ name: 'UiActionEditor' });
 
 const props = defineProps<{
 	steps: UiActionStep[];
-	/** Webhook triggers to offer, already labelled. */
-	targets: Array<{ label: string; url: string }>;
+	/** Webhook triggers to offer, already labelled and carrying their configured method. */
+	targets: WebhookTarget[];
 	/** Pages a navigate step can go to. Empty in a single-page app. */
 	pages: UiPageInfo[];
 	disabled?: boolean;
 	/** How a URL that is not among `targets` should read. */
 	labelFor: (url: string) => string;
-	/** Opens the cross-workflow picker. Resolves with a URL, or nothing if dismissed. */
-	browse: () => Promise<string | undefined>;
+	/** Opens the cross-workflow picker. Resolves with a target, or nothing if dismissed. */
+	browse: () => Promise<WebhookTarget | undefined>;
 	/** Adds a Webhook and Respond pair to this workflow. Resolves with the new URL. */
 	create: () => Promise<string | undefined>;
-	run: (url: string) => void;
+	run: (url: string, method?: 'GET' | 'POST') => void;
 	history: (url: string) => void;
 }>();
 
@@ -104,24 +105,31 @@ const addItems = ACTION_KINDS.map((kind) => ({
 }));
 
 /** The step's own trigger stays in the list even when it lives in another workflow. */
-function optionsFor(url: string): Array<{ label: string; url: string }> {
+function optionsFor(url: string): WebhookTarget[] {
 	if (!url || props.targets.some((target) => target.url === url)) return props.targets;
 	return [...props.targets, { label: props.labelFor(url), url }];
 }
 
+/**
+ * Picking a target sets its method along with its URL, not just the URL: the
+ * whole point of picking from the list rather than typing a URL is that the
+ * step then matches what the trigger is actually configured for.
+ */
 async function onPick(index: number, value: string | undefined) {
 	if (value === BROWSE) {
-		const url = await props.browse();
-		if (url) patch(index, { url });
+		const target = await props.browse();
+		if (target) patch(index, { url: target.url, method: target.method ?? 'POST' });
 		return;
 	}
 
-	patch(index, { url: value ?? '' });
+	const target = props.targets.find((candidate) => candidate.url === value);
+	patch(index, { url: value ?? '', method: value ? (target?.method ?? 'POST') : 'POST' });
 }
 
 async function onCreate(index: number) {
 	const url = await props.create();
-	if (url) patch(index, { url });
+	// The pair the "+" button adds is always created as a POST trigger.
+	if (url) patch(index, { url, method: 'POST' });
 }
 </script>
 
@@ -211,7 +219,7 @@ async function onCreate(index: number) {
 						icon="play"
 						aria-label="Run this step now"
 						:disabled="disabled || !(step as UiWebhookStep).url"
-						@click="run((step as UiWebhookStep).url)"
+						@click="run((step as UiWebhookStep).url, (step as UiWebhookStep).method)"
 					/>
 				</N8nTooltip>
 

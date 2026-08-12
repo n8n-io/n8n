@@ -3,7 +3,12 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { UiBuilderPanel } from '@n8n/ui-builder';
-import type { HostExecutionOutput, HostWorkflow, UiBuilderHost } from '@n8n/ui-builder';
+import type {
+	HostExecutionOutput,
+	HostWorkflow,
+	UiBuilderHost,
+	WebhookPath,
+} from '@n8n/ui-builder';
 import { getNodeWebhookUrl, NodeConnectionTypes } from 'n8n-workflow';
 import type { INode, NodeParameterValueType } from 'n8n-workflow';
 import { computed } from 'vue';
@@ -46,23 +51,38 @@ const executionsStore = useExecutionsStore();
 const documentStore = injectWorkflowDocumentStore();
 const { addNodes, addConnections } = useCanvasOperations();
 
-function pathsOf(nodes: Array<{ type: string; parameters?: Record<string, unknown> }>): string[] {
+/**
+ * The method a Webhook node answers on. Matches the node's own default: an
+ * unset `httpMethod` means GET. "Multiple methods" mode has no one method to
+ * report, and a step needs exactly one, so it falls back to POST.
+ */
+function methodOf(node: { parameters?: Record<string, unknown> }): 'GET' | 'POST' {
+	if (node.parameters?.multipleMethods) return 'POST';
+	const method = node.parameters?.httpMethod;
+	return method === undefined || method === 'GET' ? 'GET' : 'POST';
+}
+
+function pathsOf(
+	nodes: Array<{ type: string; parameters?: Record<string, unknown> }>,
+): WebhookPath[] {
 	return nodes
 		.filter((node) => node.type === WEBHOOK_NODE_TYPE)
-		.map((node) => String(node.parameters?.path ?? '').replace(/^\//, ''))
-		.filter(Boolean);
+		.map((node) => ({
+			path: String(node.parameters?.path ?? '').replace(/^\//, ''),
+			method: methodOf(node),
+		}))
+		.filter((entry) => entry.path);
 }
 
 /**
  * A browser tab opened for this button only ever does a GET, so a Webhook
  * configured for another single method — or one left in "multiple methods"
  * mode, where there is no one method to point a tab at — doesn't qualify.
- * Matches the Webhook node's own default: an unset `httpMethod` means GET.
+ * `methodOf` already falls back to POST for "multiple methods", so a plain
+ * equality check covers both.
  */
 function isGetWebhook(node: INode): boolean {
-	if (node.parameters?.multipleMethods) return false;
-	const method = node.parameters?.httpMethod;
-	return method === undefined || method === 'GET';
+	return methodOf(node) === 'GET';
 }
 
 /**
