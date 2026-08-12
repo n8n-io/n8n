@@ -31,6 +31,10 @@ import {
 	summarizeWorkflowStructure,
 } from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
+import {
+	grantSessionWorkflowUpdate,
+	canSkipWorkflowUpdateHitl,
+} from './workflows/workflow-build-context';
 import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
@@ -205,16 +209,22 @@ const updateVersionAction = z.object({
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────
 
-const confirmationSuspendSchema = setupSuspendSchema.pick({
-	requestId: true,
-	message: true,
-	severity: true,
-});
+const confirmationSuspendSchema = setupSuspendSchema
+	.pick({
+		requestId: true,
+		message: true,
+		severity: true,
+		workflowId: true,
+	})
+	.partial({ workflowId: true });
 
 const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
-// Resume: union of standard confirmation (approved) and setup-specific fields.
-const resumeSchema = setupResumeSchema;
+// Resume: setup-specific fields plus optional session scope for generic approvals
+// (e.g. update "always allow" → persist `workflows:update:<id>`).
+const resumeSchema = setupResumeSchema.extend({
+	scope: z.enum(['once', 'session']).optional(),
+});
 
 interface WorkflowToolContext {
 	resumeData: z.infer<typeof resumeSchema> | undefined;
@@ -893,7 +903,10 @@ async function handleUpdate(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
+	// Skip HITL for session-created or always-allowed workflows; others still need approval.
+	const needsApproval =
+		context.permissions?.updateWorkflow !== 'always_allow' &&
+		!canSkipWorkflowUpdateHitl(context, input.workflowId);
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
@@ -901,11 +914,19 @@ async function handleUpdate(
 			requestId: nanoid(),
 			message: `Update workflow "${workflowName}" (ID: ${input.workflowId})?`,
 			severity: 'warning' as const,
+			// Carried on the confirmation so the UI can scope "always allow" per workflow
+			// even if tool-call args are incomplete on resume.
+			workflowId: input.workflowId,
 		});
 	}
 
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+
+	// "Always allow" — persist so later edits of this workflow skip HITL.
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await grantSessionWorkflowUpdate(context, input.workflowId);
 	}
 
 	if (!isWorkflowJson(input.workflow)) {
