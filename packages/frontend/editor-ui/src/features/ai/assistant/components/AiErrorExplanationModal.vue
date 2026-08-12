@@ -15,6 +15,8 @@ const props = defineProps<{
 const i18n = useI18n();
 const loading = ref(false);
 const failed = ref(false);
+const applying = ref(false);
+const applyFailed = ref(false);
 const explanation = ref<AiErrorExplanation>();
 let abortController: AbortController | undefined;
 let requestId = 0;
@@ -46,6 +48,7 @@ async function loadExplanation() {
 	const currentRequestId = ++requestId;
 	loading.value = true;
 	failed.value = false;
+	applyFailed.value = false;
 	explanation.value = undefined;
 
 	try {
@@ -60,6 +63,21 @@ async function loadExplanation() {
 		}
 	} finally {
 		if (currentRequestId === requestId) loading.value = false;
+	}
+}
+
+async function applyFix(close: () => void) {
+	if (!explanation.value) return;
+
+	applying.value = true;
+	applyFailed.value = false;
+	try {
+		await props.data.applyFix(explanation.value);
+		close();
+	} catch {
+		applyFailed.value = true;
+	} finally {
+		applying.value = false;
 	}
 }
 
@@ -111,10 +129,23 @@ watch(
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
+				<N8nText v-if="applyFailed" color="danger" size="small" :class="$style.applyError">
+					{{ i18n.baseText('aiAssistant.errorExplanation.applyError') }}
+				</N8nText>
 				<N8nButton v-if="failed" variant="subtle" @click="loadExplanation">
 					{{ i18n.baseText('generic.retry') }}
 				</N8nButton>
-				<N8nButton @click="close">{{ i18n.baseText('generic.close') }}</N8nButton>
+				<N8nButton variant="subtle" :disabled="applying" @click="close">
+					{{ i18n.baseText('generic.close') }}
+				</N8nButton>
+				<N8nButton
+					v-if="explanation"
+					:loading="applying"
+					data-test-id="apply-ai-error-fix-button"
+					@click="applyFix(close)"
+				>
+					{{ i18n.baseText('aiAssistant.errorExplanation.applyFix') }}
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>
@@ -136,39 +167,35 @@ watch(
 	gap: var(--spacing--xs);
 }
 
-.markdown {
-	> div {
-		* {
-			font-size: var(--font-size--sm);
-			line-height: var(--line-height--lg);
-		}
+.markdown:global(.n8n-markdown) {
+	p,
+	ul,
+	ol {
+		margin: 0 0 var(--spacing--2xs);
+	}
 
-		p,
-		ul,
-		ol {
-			margin-bottom: var(--spacing--xs);
-		}
+	pre {
+		width: fit-content;
+		max-width: 100%;
+		margin: 0 0 var(--spacing--2xs);
+		padding: 0;
+		background: transparent;
+	}
 
-		pre {
-			width: fit-content;
-			max-width: 100%;
-			margin: var(--spacing--xs) 0 var(--spacing--sm);
-			padding: var(--spacing--xs) var(--spacing--sm);
-		}
-
-		> :first-child {
-			margin-top: 0;
-		}
-
-		> :last-child {
-			margin-bottom: 0;
-		}
+	pre > code {
+		padding: var(--spacing--xs) var(--spacing--sm);
+		border-radius: var(--radius--lg);
 	}
 }
 
 .footer {
 	display: flex;
+	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+}
+
+.applyError {
+	margin-right: auto;
 }
 </style>

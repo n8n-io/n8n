@@ -1,4 +1,4 @@
-import { chatWithAssistant } from '@/features/ai/assistant/assistant.api';
+import { chatWithAssistant, replaceCode } from '@/features/ai/assistant/assistant.api';
 import { type VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { ASSISTANT_ENABLED_VIEWS } from './constants';
@@ -30,7 +30,8 @@ import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAI
 import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { v4 as uuid } from 'uuid';
-import type { AiErrorExplanation } from './errorExplanation.types';
+import type { AiErrorExplanation, AiErrorFix } from './errorExplanation.types';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
@@ -53,6 +54,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const assistantHelpers = useAIAssistantHelpers();
+	const nodeHelpers = useNodeHelpers();
 
 	const { suggestions, applyCodeDiff, undoCodeDiff } = useCodeDiff({
 		chatMessages,
@@ -359,12 +361,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		let fallbackText = '';
 		let detailedSuggestion = '';
 		let codeDiff: string | undefined;
+		let sessionId: string | undefined;
+		let suggestionId: string | undefined;
 
 		return await new Promise<AiErrorExplanation>((resolve, reject) => {
 			chatWithAssistant(
 				rootStore.restApiContext,
 				{ payload },
 				(response) => {
+					sessionId = response.sessionId ?? sessionId;
 					for (const message of response.messages) {
 						if (message.type === 'message' && message.role === 'assistant') {
 							fallbackText = message.text;
@@ -372,13 +377,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 							fallbackText = message.content;
 						} else if (message.type === 'agent-suggestion' && message.role === 'assistant') {
 							detailedSuggestion = message.text;
-						} else if (
-							message.type === 'code-diff' &&
-							message.role === 'assistant' &&
-							message.description
-						) {
-							detailedSuggestion = message.description;
+							codeDiff = undefined;
+							suggestionId = message.suggestionId;
+						} else if (message.type === 'code-diff' && message.role === 'assistant') {
+							if (message.description) detailedSuggestion = message.description;
 							codeDiff = message.codeDiff;
+							suggestionId = message.suggestionId;
 						}
 					}
 				},
@@ -388,12 +392,26 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						reject(new Error('AI Assistant returned no explanation'));
 						return;
 					}
-					resolve({ detailed, ...(codeDiff ? { codeDiff } : {}) });
+					resolve({
+						detailed,
+						...(codeDiff ? { codeDiff } : {}),
+						...(sessionId && suggestionId ? { fix: { sessionId, suggestionId } } : {}),
+					});
 				},
 				reject,
 				abortSignal,
 			);
 		});
+	}
+
+	async function applyErrorFix(workflowId: string, nodeId: string, fix: AiErrorFix): Promise<void> {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		const node = workflowDocumentStore.getNodeById(nodeId);
+		assert(node, 'Could not find the node to update');
+
+		const { parameters } = await replaceCode(rootStore.restApiContext, fix);
+		workflowDocumentStore.setNodeParameters({ name: node.name, value: parameters }, true);
+		nodeHelpers.updateNodeParameterIssuesByName(node.name);
 	}
 
 	async function initCredHelp(workflowId: string, credType: ICredentialType) {
@@ -838,6 +856,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		trackUserOpenedAssistant,
 		isNodeErrorActive,
 		explainError,
+		applyErrorFix,
 		initErrorHelper,
 		initSupportChat,
 		sendMessage,

@@ -1,4 +1,4 @@
-import { computed, watch } from 'vue';
+import { computed, nextTick, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -20,6 +20,8 @@ import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from './assistant.types';
 import { useI18n } from '@n8n/i18n';
+import { useFocusedNodesStore } from './focusedNodes.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
@@ -212,6 +214,39 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		await open({ mode: 'assistant' });
 	}
 
+	async function openBuilderForErrorFix(context: ChatRequest.ErrorContext, analysis: string) {
+		const builderStore = useBuilderStore();
+		if (!builderStore.isAIBuilderEnabled || useCollaborationStore().shouldBeReadOnly) {
+			throw new Error('AI Builder cannot update this workflow');
+		}
+
+		await Promise.all([builderStore.loadSessions(), builderStore.fetchBuilderCredits()]);
+		await open({ mode: 'builder', showCoachmark: false });
+		await nextTick();
+
+		if (builderStore.hasNoCreditsRemaining) return;
+
+		useCollaborationStore().requestWriteAccess();
+		useFocusedNodesStore().confirmNodes([context.node.id], 'context_menu');
+
+		const text = locale.baseText('aiAssistant.builder.errorFixMessage', {
+			interpolate: {
+				nodeName: context.node.name,
+				errorMessage: context.error.message,
+				analysis,
+			},
+		});
+		await builderStore.sendChatMessage({
+			text,
+			source: 'canvas',
+			type: 'execution',
+			errorMessage: context.error.message,
+			errorNodeType: context.node.type,
+			executionStatus: 'error',
+			mode: 'build',
+		});
+	}
+
 	// Watch route changes and close if panel can't be shown in current view
 	watch(
 		() => route?.name,
@@ -267,6 +302,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		updateWidth,
 		openWithCredHelp,
 		openWithErrorHelper,
+		openBuilderForErrorFix,
 		// Constants
 		DEFAULT_CHAT_WIDTH,
 		MIN_CHAT_WIDTH,

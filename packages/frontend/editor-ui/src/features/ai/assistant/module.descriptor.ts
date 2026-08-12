@@ -15,6 +15,7 @@ export const AiAssistantModule: FrontendModuleDescription = {
 				open: false,
 				data: {
 					loadExplanation: async () => ({ detailed: '' }),
+					applyFix: async () => {},
 				},
 			},
 		},

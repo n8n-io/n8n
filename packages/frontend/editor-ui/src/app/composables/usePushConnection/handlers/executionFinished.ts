@@ -26,7 +26,9 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { AI_ERROR_EXPLANATION_MODAL_KEY } from '@/features/ai/assistant/constants';
+import type { AiErrorExplanation } from '@/features/ai/assistant/errorExplanation.types';
 import { N8nInlineAskAssistantButton } from '@n8n/design-system';
 import {
 	SampleTemplates,
@@ -441,12 +443,11 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 					},
 					node: errorNode,
 				};
-				let notification: ReturnType<typeof toast.showMessage> | undefined;
 				const askAssistantButton = h(N8nInlineAskAssistantButton, {
 					size: 'small',
 					label: i18n.baseText('aiAssistant.errorExplanation.action'),
 					onClick: () => {
-						notification?.close();
+						notification.close();
 						const assistantStore = useAssistantStore();
 						const workflowId = workflowDocumentStore.workflowId;
 						useUIStore().openModalWithData({
@@ -454,12 +455,22 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 							data: {
 								loadExplanation: async (signal: AbortSignal) =>
 									await assistantStore.explainError(workflowId, errorContext, signal),
+								applyFix: async (explanation: AiErrorExplanation) => {
+									if (explanation.fix) {
+										await assistantStore.applyErrorFix(workflowId, errorNode.id, explanation.fix);
+										return;
+									}
+									await useChatPanelStore().openBuilderForErrorFix(
+										errorContext,
+										explanation.detailed,
+									);
+								},
 							},
 						});
 					},
 				});
 
-				notification = toast.showMessage({
+				const notification = toast.showMessage({
 					title,
 					message: h('div', [
 						message,
