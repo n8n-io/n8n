@@ -23,15 +23,20 @@ import (
 
 const (
 	listenAddr = ":5678"
-	n8nPort    = "5680"
-	n8nURL     = "http://127.0.0.1:" + n8nPort
-	imgDir     = "/tmp/n8n-img"
-	n8nLog     = "/tmp/n8n.log"
+	// not 5680: the cloud task-runner-launcher sidecar's health-check server
+	// binds 5680 in the shared pod network namespace (5679 = task broker)
+	n8nPort = "5690"
+	n8nURL  = "http://127.0.0.1:" + n8nPort
+	imgDir  = "/tmp/n8n-img"
+	n8nLog  = "/tmp/n8n.log"
 )
 
 var idleTimeout = 10 * time.Second
 
-var criuFlags = []string{"--tcp-established", "--file-locks", "--ext-unix-sk"}
+// --manage-cgroups=ignore: restored trees stay in the activator's current
+// cgroup instead of the paths recorded at dump time, so they can never
+// outlive the container (k8s restarts the container, not the pod netns)
+var criuFlags = []string{"--tcp-established", "--file-locks", "--ext-unix-sk", "--manage-cgroups=ignore"}
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "child" {
