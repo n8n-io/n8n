@@ -205,7 +205,9 @@ export class McpTrigger extends Node {
 
 		const node = context.getNode();
 		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
-		const instructions = (context.getNodeParameter('instructions', '') as string) || undefined;
+		// Coerce, since an expression can resolve this to a non-string (e.g. `{{ 123 }}`),
+		// which the MCP client would reject when validating the initialize result
+		const instructions = String(context.getNodeParameter('instructions', '') ?? '') || undefined;
 		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {

@@ -168,6 +168,40 @@ describe('McpTrigger', () => {
 			);
 		});
 
+		// An expression can resolve `instructions` to any type, but the MCP client
+		// only accepts a string in the initialize result
+		it.each([
+			{ label: 'a number', value: 123, expected: '123' },
+			{ label: 'a boolean', value: false, expected: 'false' },
+			{ label: 'null', value: null, expected: undefined },
+		])('should coerce instructions resolving to $label', async ({ value, expected }) => {
+			const req = createMockRequest({ path: '/webhook' });
+			const resp = createMockResponse();
+			const node = mock<INode>({
+				typeVersion: 2,
+				name: 'MCP Server Trigger',
+			});
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			mockContext.getNodeParameter.mockImplementation((name: string) =>
+				name === 'instructions' ? value : undefined,
+			);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalledWith(
+				req,
+				resp,
+				expect.any(String),
+				expect.any(String),
+				expect.any(Array),
+				expected,
+			);
+		});
+
 		it('should use n8n-mcp-server name for version 1', async () => {
 			const req = createMockRequest({ path: '/webhook/sse' });
 			const resp = createMockResponse();
