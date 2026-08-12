@@ -8,6 +8,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -126,6 +127,103 @@ type supervisorState struct {
 
 var sup supervisorState
 
+// passiveRoutes are served from cache while n8n is dumped instead of waking
+// it, so monitoring probes don't defeat scale-to-zero. While n8n runs they're
+// forwarded (and re-cached) but don't count as activity for the idle timer.
+var passiveRoutes = map[string]bool{
+	"/healthz":           true,
+	"/healthz/readiness": true,
+	"/metrics":           true,
+}
+
+type cachedResponse struct {
+	status      int
+	contentType string
+	body        []byte
+	fetchedAt   time.Time
+}
+
+var respCache = map[string]*cachedResponse{} // guarded by sup.mu
+
+func fetchRoute(path string) (*cachedResponse, error) {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(n8nURL + path)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return &cachedResponse{resp.StatusCode, resp.Header.Get("Content-Type"), body, time.Now()}, nil
+}
+
+// refreshCacheLocked snapshots the passive routes from a running n8n.
+// Caller holds sup.mu and guarantees state == running.
+func refreshCacheLocked() {
+	for path := range passiveRoutes {
+		c, err := fetchRoute(path)
+		if err != nil {
+			logf("cache refresh %s: %v", path, err)
+			continue
+		}
+		respCache[path] = c
+	}
+}
+
+func writeCached(w http.ResponseWriter, c *cachedResponse, suspended bool) {
+	if c.contentType != "" {
+		w.Header().Set("Content-Type", c.contentType)
+	}
+	state := "running"
+	if suspended {
+		state = "suspended"
+	}
+	w.Header().Set("X-Activator-State", state)
+	w.Header().Set("X-Activator-Cache-Age", time.Since(c.fetchedAt).Round(time.Millisecond).String())
+	w.WriteHeader(c.status)
+	w.Write(c.body)
+}
+
+// servePassive answers health/metrics without ever waking n8n: live (and
+// re-cached) while running, from cache while dumped.
+func servePassive(w http.ResponseWriter, r *http.Request) {
+	sup.mu.Lock()
+	if sup.state != running {
+		cached := respCache[r.URL.Path]
+		sup.mu.Unlock()
+		if cached == nil {
+			http.Error(w, "suspended and no cached response", http.StatusServiceUnavailable)
+			return
+		}
+		writeCached(w, cached, true)
+		return
+	}
+	sup.inflight++ // blocks dumps mid-request; deliberately no lastActivity update
+	sup.mu.Unlock()
+
+	c, err := fetchRoute(r.URL.Path)
+
+	sup.mu.Lock()
+	sup.inflight--
+	if err == nil {
+		respCache[r.URL.Path] = c
+	}
+	fallback := respCache[r.URL.Path]
+	sup.mu.Unlock()
+
+	if err != nil {
+		if fallback == nil {
+			http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		writeCached(w, fallback, false)
+		return
+	}
+	writeCached(w, c, false)
+}
+
 func supervisor() {
 	logf("starting n8n (idle timeout %v)", idleTimeout)
 	pid, err := startN8N()
@@ -136,9 +234,13 @@ func supervisor() {
 	sup.state = running
 	sup.lastActivity = time.Now()
 	waitHealthy(120 * time.Second)
+	// full readiness, not just /healthz: the initial cache snapshot must not
+	// capture the "n8n is starting up" placeholder responses
+	waitFor("/healthz/readiness", 120*time.Second)
 	logf("n8n healthy (pid %d), dumping until first request", pid)
 
 	sup.mu.Lock()
+	refreshCacheLocked()
 	if err := dumpLocked(); err != nil {
 		sup.mu.Unlock()
 		fatal("initial dump: %v\n--- dump.log tail ---\n%s", err, tail(imgDir+"/dump.log", 4000))
@@ -156,6 +258,10 @@ func supervisor() {
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && passiveRoutes[r.URL.Path] {
+			servePassive(w, r)
+			return
+		}
 		if err := ensureRunningAndTrack(); err != nil {
 			logf("wake failed for %s %s: %v\n--- restore.log tail ---\n%s", r.Method, r.URL.Path, err, tail(imgDir+"/restore.log", 4000))
 			http.Error(w, "restore failed: "+err.Error(), http.StatusServiceUnavailable)
@@ -182,6 +288,7 @@ func ensureRunningAndTrack() error {
 		if err := restoreLocked(); err != nil {
 			return err
 		}
+		refreshCacheLocked()
 		logf("restored on demand in %v", time.Since(t).Round(time.Millisecond))
 	}
 	sup.inflight++
@@ -201,6 +308,7 @@ func idleWatcher() {
 		sup.mu.Lock()
 		if sup.state == running && sup.inflight == 0 && time.Since(sup.lastActivity) > idleTimeout {
 			t := time.Now()
+			refreshCacheLocked() // snapshot last live state before freezing
 			if err := dumpLocked(); err != nil {
 				sup.mu.Unlock()
 				fatal("idle dump: %v\n--- dump.log tail ---\n%s", err, tail(imgDir+"/dump.log", 4000))
@@ -255,6 +363,7 @@ func startN8N() (int, error) {
 	cmd.Env = append(os.Environ(),
 		"N8N_PORT="+n8nPort,
 		"N8N_LISTEN_ADDRESS=127.0.0.1",  // only the activator proxy is reachable from outside
+		"N8N_METRICS=true",              // expose /metrics so the passive cache has something to serve
 		"N8N_DIAGNOSTICS_ENABLED=false", // fewer outbound sockets at dump time
 		"N8N_VERSION_NOTIFICATIONS_ENABLED=false",
 	)
@@ -287,10 +396,14 @@ func reapAll() {
 }
 
 func waitHealthy(timeout time.Duration) {
+	waitFor("/healthz", timeout)
+}
+
+func waitFor(path string, timeout time.Duration) {
 	client := &http.Client{Timeout: 500 * time.Millisecond}
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		resp, err := client.Get(n8nURL + "/healthz")
+		resp, err := client.Get(n8nURL + path)
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == 200 {
@@ -299,7 +412,7 @@ func waitHealthy(timeout time.Duration) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	fatal("healthz not ok within %v; n8n log tail:\n%s", timeout, tail(n8nLog, 2000))
+	fatal("%s not ok within %v; n8n log tail:\n%s", path, timeout, tail(n8nLog, 2000))
 }
 
 func duSh(dir string) string {
