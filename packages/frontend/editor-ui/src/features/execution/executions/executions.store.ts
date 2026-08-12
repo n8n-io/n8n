@@ -7,7 +7,7 @@ import type {
 	ExecutionStatus,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
+import type { ExecutionRedactionQueryDto, ExecutionsNlFilterResponseDto } from '@n8n/api-types';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
@@ -145,6 +145,15 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	function setFilters(value: ExecutionFilterType) {
 		filters.value = value;
+	}
+
+	/** Translates a natural-language query into a filter patch. See `resolveNlFilterPatch`. */
+	async function translateNlFilter(query: string): Promise<ExecutionsNlFilterResponseDto> {
+		return await makeRestApiRequest(rootStore.restApiContext, 'POST', '/ai/executions-filter', {
+			query,
+			now: new Date().toISOString(),
+			timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+		});
 	}
 
 	async function initialize(workflowId?: string) {
@@ -375,6 +384,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		initialize,
 		filters,
 		setFilters,
+		translateNlFilter,
 		executionsFilters,
 		currentExecutionsFilters,
 		allExecutions,

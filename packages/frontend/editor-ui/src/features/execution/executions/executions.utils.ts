@@ -1,3 +1,4 @@
+import type { ExecutionsNlFilterResponseDto } from '@n8n/api-types';
 import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
@@ -126,6 +127,89 @@ export const executionFilterToQueryFilter = (
 
 	return queryFilter;
 };
+
+/**
+ * The AI-translated filter carries names, not IDs — it has no access to the user's actual
+ * workflows/tags (see `ExecutionsNlFilterResponseDto`). Resolve each name against the caller's
+ * own lists: exact match first, then a substring fallback for a partial/paraphrased name. A name
+ * that resolves to nothing is silently dropped rather than surfaced as an error — the rest of the
+ * filter is still worth applying.
+ */
+function matchByName<T extends { id: string; name: string }>(
+	name: string,
+	items: T[],
+): T | undefined {
+	const normalized = name.trim().toLowerCase();
+	if (!normalized) return undefined;
+
+	return (
+		items.find((item) => item.name.toLowerCase() === normalized) ??
+		items.find((item) => item.name.toLowerCase().includes(normalized))
+	);
+}
+
+export type NlFilterResolutionContext = {
+	/** The user's real workflows (not the "All Workflows" pseudo-entry). */
+	workflows: Array<{ id: string; name: string }>;
+	annotationTags: Array<{ id: string; name: string }>;
+	/** Mirrors the `AdvancedExecutionFilters` gate already applied to the manual filter popover. */
+	annotationFiltersEnabled: boolean;
+};
+
+/**
+ * Turns an AI text-extraction result into a patch that can be merged onto the current
+ * `ExecutionFilterType`. Only includes keys the response actually resolved — callers should
+ * spread this onto the existing filters, not replace them wholesale.
+ */
+export function resolveNlFilterPatch(
+	response: ExecutionsNlFilterResponseDto,
+	context: NlFilterResolutionContext,
+): Partial<ExecutionFilterType> {
+	const patch: Partial<ExecutionFilterType> = {};
+
+	if (response.status) {
+		patch.status = response.status;
+	}
+
+	if (response.startDate) {
+		patch.startDate = response.startDate;
+	}
+
+	if (response.endDate) {
+		patch.endDate = response.endDate;
+	}
+
+	// `ExecutionFilterType.workflowId` only supports a single workflow — if the query named
+	// several, use the first one that actually resolves and drop the rest.
+	const workflowId = response.workflowNames
+		?.map((name) => matchByName(name, context.workflows)?.id)
+		.find((id): id is string => !!id);
+	if (workflowId) {
+		patch.workflowId = workflowId;
+	}
+
+	// Tags, rating, and highlighted data are enterprise-gated in the manual filter popover
+	// (`isAnnotationFiltersEnabled` in ExecutionsFilter.vue) — match that here rather than
+	// silently applying a filter the user couldn't have set by hand.
+	if (context.annotationFiltersEnabled) {
+		const annotationTagIds = response.annotationTagNames
+			?.map((name) => matchByName(name, context.annotationTags)?.id)
+			.filter((id): id is string => !!id);
+		if (annotationTagIds?.length) {
+			patch.annotationTags = annotationTagIds;
+		}
+
+		if (response.vote) {
+			patch.vote = response.vote;
+		}
+
+		if (response.metadata?.length) {
+			patch.metadata = response.metadata;
+		}
+	}
+
+	return patch;
+}
 
 let formPopupWindow = false;
 
