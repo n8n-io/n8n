@@ -52,6 +52,16 @@ export interface IntegrationDeltaResult {
 	changed: boolean;
 	/** The entry that was actually removed, for the caller's runtime teardown. */
 	removed?: AgentIntegrationConfig;
+	/**
+	 * Whether the row this delta was applied to was published.
+	 *
+	 * This write deliberately leaves `activeVersionId` alone, so a publish or
+	 * unpublish can land between the caller loading the agent and this write.
+	 * The row read here is the authority on that — callers gating runtime work on
+	 * publication state must use this rather than their own copy. `undefined`
+	 * when no row was read because the delta was empty.
+	 */
+	published?: boolean;
 }
 
 /** Retries cover a lost compare-and-set, which needs a fresh read to resolve. */
@@ -162,11 +172,13 @@ export class AgentIntegrationPersistenceService {
 				? current.find((entry) => matchesIntegrationRef(entry, remove))
 				: undefined;
 
+			const published = state.activeVersionId !== null;
+
 			// A removal of something already gone is not a failure — and with
 			// nothing to add there is no write left to make.
 			if (!add && !removed) {
 				agent.integrations = current;
-				return { agent, changed: false };
+				return { agent, changed: false, published };
 			}
 
 			const integrations = projectIntegrations(current, { add, remove });
@@ -202,7 +214,7 @@ export class AgentIntegrationPersistenceService {
 			await emitSetupCompleted?.();
 			this.recordIntegrationMutation(agent, current, context);
 
-			return { agent, changed: true, ...(removed ? { removed } : {}) };
+			return { agent, changed: true, published, ...(removed ? { removed } : {}) };
 		}
 
 		throw new OperationalError(

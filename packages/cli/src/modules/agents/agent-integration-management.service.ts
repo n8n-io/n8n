@@ -113,7 +113,9 @@ export class AgentIntegrationManagementService {
 		// save, or re-connecting the same credential — so a rollback has to know
 		// whether step 1 created this connection or merely replaced it.
 		const wasLive = !!add && this.chatService.getChatInstance(agent.id, add) !== undefined;
-		const connected = add ? await this.startRuntime(agent, add) : false;
+		let connected = add
+			? await this.startRuntime(agent, add, agent.activeVersionId !== null)
+			: false;
 
 		let result: IntegrationDeltaResult;
 		try {
@@ -134,6 +136,15 @@ export class AgentIntegrationManagementService {
 			throw error;
 		}
 
+		if (add && result.published !== undefined) {
+			connected = await this.reconcileRuntimeWithPublication(
+				agent,
+				add,
+				connected,
+				result.published,
+			);
+		}
+
 		if (remove) await this.releaseRemoved(agent, remove, result);
 		if (connected && add) {
 			await this.chatService.broadcastIntegrationChange(agent.id, add, 'connect');
@@ -143,15 +154,73 @@ export class AgentIntegrationManagementService {
 	}
 
 	/**
-	 * Start the runtime for an added channel, before anything durable changes.
+	 * Settle the runtime against the publication state the write actually read.
+	 *
+	 * Step 1 has to decide whether to connect before the write, so it can only go
+	 * on the caller's copy of `activeVersionId` — and this write deliberately
+	 * leaves that column alone, so a publish or unpublish can land in between.
+	 * Without this step the two races leak: an agent published mid-request would
+	 * keep a persisted channel that was never started, and one unpublished
+	 * mid-request would have a live channel — and a `connect` broadcast — while
+	 * unpublished, which must never receive events.
+	 */
+	private async reconcileRuntimeWithPublication(
+		agent: Agent,
+		add: AgentIntegrationConfig,
+		connected: boolean,
+		published: boolean,
+	): Promise<boolean> {
+		if (connected && !published) {
+			this.logger.info(
+				'[AgentIntegrationManagementService] Agent was unpublished while its channel connected — releasing the runtime',
+				{ agentId: agent.id, type: add.type },
+			);
+			// The entry stays persisted, so its thread subscriptions stay too —
+			// mirroring `unpublishAgent`, which preserves them for a later publish.
+			await this.chatService.disconnectChannel(agent.id, add, { deleteSubscriptions: false });
+			return false;
+		}
+
+		if (!connected && published) {
+			this.logger.info(
+				'[AgentIntegrationManagementService] Agent was published while its channel persisted — starting the runtime',
+				{ agentId: agent.id, type: add.type },
+			);
+			// The entry is already durable at this point, so a failure here leaves it
+			// persisted-but-not-live. That is the same contract `publishAgent` runs
+			// under via `syncToConfig`, and the next publish or restart picks it up.
+			try {
+				return await this.startRuntime(agent, add, true);
+			} catch (error) {
+				this.logger.warn(
+					'[AgentIntegrationManagementService] Could not start the runtime after a concurrent publish',
+					{ agentId: agent.id, type: add.type, error },
+				);
+				return false;
+			}
+		}
+
+		return connected;
+	}
+
+	/**
+	 * Start the runtime for an added channel.
 	 *
 	 * Unpublished agents never receive events, so their entry is persisted
 	 * without a connection — matching `syncToConfig`, which picks it up on
 	 * publish. They still get the pre-connect check, which is the only thing that
 	 * would have rejected an unusable credential.
+	 *
+	 * `published` is passed in rather than read off the entity: before the write
+	 * the only copy available is the caller's, and after it the write's own read
+	 * is authoritative.
 	 */
-	private async startRuntime(agent: Agent, add: AgentIntegrationConfig): Promise<boolean> {
-		if (agent.activeVersionId === null) {
+	private async startRuntime(
+		agent: Agent,
+		add: AgentIntegrationConfig,
+		published: boolean,
+	): Promise<boolean> {
+		if (!published) {
 			await this.chatService.validateBeforeConnect(agent.id, add, agent.projectId);
 			return false;
 		}

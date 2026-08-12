@@ -334,7 +334,8 @@ describe('AgentIntegrationPersistenceService', () => {
 				byUser,
 			);
 
-			expect(result).toEqual({ agent, changed: false });
+			expect(result.changed).toBe(false);
+			expect(result.removed).toBeUndefined();
 			expect(agentRepository.updateIntegrations).not.toHaveBeenCalled();
 			expect(telemetry.track).not.toHaveBeenCalled();
 		});
@@ -416,6 +417,38 @@ describe('AgentIntegrationPersistenceService', () => {
 			expect(row.integrations).toEqual([{ type: 'slack', credentialId: 'new' }]);
 			expect(result.changed).toBe(true);
 			expect(result.removed).toBeUndefined();
+		});
+	});
+
+	describe('publication state', () => {
+		it('reports the state of the row, not the entity the caller loaded', async () => {
+			// The caller loaded the agent while it was still a draft; a publish landed
+			// before this write.
+			const { service, agent, row } = setup({ versionId: 'v', activeVersionId: null });
+			agent.activeVersionId = null;
+			row.activeVersionId = 'version-1';
+
+			const result = await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'slack', credentialId: 'slack-1' } },
+				byUser,
+			);
+
+			expect(result.published).toBe(true);
+		});
+
+		it('reports an unpublished row even when the caller thought it was published', async () => {
+			const { service, agent, row } = setup({ versionId: 'v', activeVersionId: 'version-1' });
+			agent.activeVersionId = 'version-1';
+			row.activeVersionId = null;
+
+			const result = await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'slack', credentialId: 'slack-1' } },
+				byUser,
+			);
+
+			expect(result.published).toBe(false);
 		});
 	});
 

@@ -217,6 +217,86 @@ describe('AgentIntegrationManagementService', () => {
 		});
 	});
 
+	describe('publication state changing mid-request', () => {
+		it('starts the runtime when the agent was published while the request was in flight', async () => {
+			// Loaded as a draft, so step 1 only pre-validated; the write saw it published.
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ activeVersionId: null });
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				published: true,
+			});
+
+			await service.connect({ agent, user: user as never, integration });
+
+			expect(chatService.validateBeforeConnect).toHaveBeenCalled();
+			expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId);
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(chatService.connect),
+			);
+			expect(chatService.broadcastIntegrationChange).toHaveBeenCalledWith(
+				agent.id,
+				integration,
+				'connect',
+			);
+		});
+
+		it('does not report a connection when the post-publish start fails', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ activeVersionId: null });
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				published: true,
+			});
+			chatService.connect.mockRejectedValue(new Error('Slack connect failed'));
+
+			// The entry is already durable, so this must not fail the request.
+			await expect(
+				service.connect({ agent, user: user as never, integration }),
+			).resolves.toMatchObject({ integration });
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+		});
+
+		it('releases the runtime when the agent was unpublished while the request was in flight', async () => {
+			// Loaded as published, so step 1 connected; the write saw it unpublished.
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent();
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				published: false,
+			});
+
+			await service.connect({ agent, user: user as never, integration });
+
+			expect(chatService.connect).toHaveBeenCalled();
+			// An unpublished agent must not receive events, and must not be announced
+			// to peers as connected. Subscriptions survive for a later publish.
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration, {
+				deleteSubscriptions: false,
+			});
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+		});
+
+		it('leaves an unpublished agent alone when the write agrees it is unpublished', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ activeVersionId: null });
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				published: false,
+			});
+
+			await service.connect({ agent, user: user as never, integration });
+
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('removing a channel', () => {
 		it('removes persistence before tearing down the runtime channel', async () => {
 			const { service, persistenceService, chatService } = makeService();
