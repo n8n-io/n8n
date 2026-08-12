@@ -36,7 +36,10 @@ const lastTranslatedQuery = ref('');
 let requestId = 0;
 
 const isFocused = ref(false);
-/** Set by Escape and by picking an entry, so the dropdown stays shut while the input keeps focus. */
+/**
+ * Keeps the dropdown shut while the input still has focus — set by Escape, by picking an entry,
+ * and by submitting a query. Cleared on typing or blur.
+ */
 const isHistoryDismissed = ref(false);
 /** Index into `matchingQueries`; -1 means the text as typed, not a history entry. */
 const highlightedIndex = ref(-1);
@@ -147,6 +150,10 @@ function applyResponse(response: ExecutionsNlFilterResponseDto) {
 async function runTranslation() {
 	const trimmedQuery = query.value.trim();
 	if (!trimmedQuery || trimmedQuery === lastTranslatedQuery.value) return;
+
+	// Committing to a query settles what the user wanted, so the suggestions have served their
+	// purpose — get them off the executions list they're covering. Typing again reopens them.
+	isHistoryDismissed.value = true;
 
 	const currentRequestId = ++requestId;
 	isTranslating.value = true;
