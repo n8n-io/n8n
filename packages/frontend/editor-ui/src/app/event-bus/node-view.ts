@@ -43,6 +43,12 @@ export interface NodeViewEventBusEvents {
 
 	/** Command to unpublish current workflow */
 	unpublishWorkflow: never;
+
+	/**
+	 * Force-reload the open workflow from the API (e.g. Instance AI floating
+	 * panel applied an agent edit to the workflow currently on the canvas).
+	 */
+	reloadWorkflow: { workflowId: string };
 }
 
 export const nodeViewEventBus = createEventBus<NodeViewEventBusEvents>();

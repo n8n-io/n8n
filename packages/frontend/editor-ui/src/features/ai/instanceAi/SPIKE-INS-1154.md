@@ -42,8 +42,16 @@ bubble above it; clicking the circle opens the floating panel (~560×820)
 above the launcher. Double-click the panel header to reset position.
 
 1. Instance AI enabled, this branch, `pnpm dev`
-2. `?instanceAiDemoOffer=1` → wait ~3s → **Get help**
-3. Floating panel opens on the seeded thread; send another message to confirm SSE
+2. Open a **new empty workflow** (`?new=true`) → wait ~3s → **Build with AI** offer
+   (no workflow context chip — the route id is client-minted)
+3. Or `?instanceAiDemoOffer=1` → wait ~3s → demo offer
+4. Accept → floating panel opens; ask it to build → on `build-workflow` success the
+   route replaces to the real `/workflow/:id` (panel stays open)
+5. Further agent edits (`workflows` update / setup tools) force-reload the open
+   canvas — same idea as the assistant-page artifact `refreshKey`
+6. `verify-built-workflow` / agent `executions.run` paint that run on the open
+   canvas (node success/error), same as the artifact execution result
+7. Send another message to confirm SSE
 
 Or in console:
 

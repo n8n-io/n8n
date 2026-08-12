@@ -175,6 +175,7 @@ defineExpose({
 				<slot name="footer-start" />
 			</template>
 			<template #right-actions>
+				<slot name="right-actions" />
 				<N8nTooltip
 					v-if="showAttach"
 					:content="i18n.baseText('chatInputBase.button.attach')"

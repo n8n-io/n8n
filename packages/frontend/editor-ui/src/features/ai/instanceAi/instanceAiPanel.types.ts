@@ -1,5 +1,12 @@
 import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-types';
 
+/** A canvas node the user pinned as floating-panel composer context. */
+export type InstanceAiContextNode = {
+	nodeId: string;
+	nodeName: string;
+	nodeType: string;
+};
+
 /**
  * Contract for opening the Instance AI floating panel with a prefilled draft.
  * Shared by the proactive offer bubble and any future trigger that should open

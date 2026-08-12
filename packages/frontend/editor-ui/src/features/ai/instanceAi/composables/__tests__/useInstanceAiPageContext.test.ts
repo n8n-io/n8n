@@ -8,6 +8,7 @@ const { routeState, modalState } = vi.hoisted(() => ({
 	routeState: {
 		name: 'NodeViewExisting' as string,
 		params: { workflowId: 'wf-1' } as Record<string, string>,
+		query: {} as Record<string, string>,
 	},
 	modalState: {
 		open: false,
@@ -54,6 +55,7 @@ describe('useInstanceAiPageContext', () => {
 		setActivePinia(createPinia());
 		routeState.name = VIEWS.WORKFLOW;
 		routeState.params = { workflowId: 'wf-1' };
+		routeState.query = {};
 		modalState.open = false;
 		modalState.mode = null;
 		modalState.activeId = null;
@@ -70,6 +72,16 @@ describe('useInstanceAiPageContext', () => {
 				icon: 'workflow',
 			}),
 		]);
+	});
+
+	it('skips workflow context on a new unsaved canvas', () => {
+		routeState.params = { workflowId: 'client-minted-id' };
+		routeState.query = { new: 'true' };
+
+		const { attachments, chips } = useInstanceAiPageContext();
+
+		expect(attachments.value).toEqual([]);
+		expect(chips.value).toEqual([]);
 	});
 
 	it('includes executionId on execution preview routes', () => {

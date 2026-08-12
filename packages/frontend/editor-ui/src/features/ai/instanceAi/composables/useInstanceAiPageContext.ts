@@ -62,6 +62,10 @@ export function useInstanceAiPageContext() {
 		(): Extract<InstanceAiAttachment, { type: 'workflow' }> | null => {
 			if (!WORKFLOW_CONTEXT_VIEWS.has(String(route.name))) return null;
 
+			// Client-minted id on `?new=true` is not a persisted workflow yet — attaching
+			// it would point the agent at nothing. Wait until the canvas has a real id.
+			if (route.query.new === 'true' || route.query.new === '1') return null;
+
 			const id = routeWorkflowId.value;
 			if (!id || id === 'demo') return null;
 

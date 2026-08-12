@@ -12,7 +12,11 @@ export type { ProactiveOffer } from './instanceAiPanel.types';
  * attachment carries the `executionId`. The block is stripped before the text
  * is rendered, so the chat bubble stays plain language.
  */
-export const PROACTIVE_CONTEXT_TYPES = ['execution-error', 'credential-error'] as const;
+export const PROACTIVE_CONTEXT_TYPES = [
+	'execution-error',
+	'credential-error',
+	'focused-nodes',
+] as const;
 
 export type ProactiveContextType = (typeof PROACTIVE_CONTEXT_TYPES)[number];
 
@@ -125,7 +129,17 @@ const CONTEXT_CHIPS: Record<ProactiveContextType, { icon: IconName; labelKey: Ba
 		icon: 'key-round',
 		labelKey: 'instanceAi.proactive.context.credentialError',
 	},
+	'focused-nodes': {
+		icon: 'layers',
+		labelKey: 'instanceAi.proactive.context.focusedNodes',
+	},
 };
+
+/** Context types that land on the explain / debug / fix chooser. */
+export const PROACTIVE_ERROR_CONTEXT_TYPES = new Set<ProactiveContextType>([
+	'execution-error',
+	'credential-error',
+]);
 
 /**
  * Pill standing in for a stripped `<context>` block. Shared by the message
@@ -167,6 +181,11 @@ export function credentialErrorOfferKey(
 	errorMessage: string,
 ): string {
 	return `credential-error:${credentialType}:${credentialRef}:${errorFingerprint(errorMessage)}`;
+}
+
+/** One offer per new empty workflow canvas — a fresh id means a fresh invite. */
+export function emptyWorkflowOfferKey(workflowId: string): string {
+	return `empty-workflow:${workflowId}`;
 }
 
 export interface ExecutionErrorContext {
@@ -233,4 +252,30 @@ export function buildCredentialErrorSeedMessage(context: CredentialErrorContext)
 	});
 
 	return `${lead}\n\n${block}`;
+}
+
+/**
+ * Seeded draft for a brand-new empty canvas. No `<context>` block and no
+ * workflow attachment — the route id is client-minted until something is saved,
+ * so there is nothing useful to hand the agent yet.
+ */
+export function buildEmptyWorkflowSeedMessage(): string {
+	return useI18n().baseText('instanceAi.proactive.emptyWorkflow.prompt');
+}
+
+export type FocusedNodesContextInput = {
+	nodeName: string;
+	nodeType: string;
+};
+
+/**
+ * Machine-readable node focus for a user message. The FE shows individual node
+ * chips; this block is stripped from the bubble and tells the agent which
+ * canvas nodes the user pinned.
+ */
+export function buildFocusedNodesContextBlock(nodes: FocusedNodesContextInput[]): string {
+	if (nodes.length === 0) return '';
+
+	const list = nodes.map((node) => `${node.nodeName} (${node.nodeType})`).join(', ');
+	return buildContextBlock('focused-nodes', { nodes: list });
 }
