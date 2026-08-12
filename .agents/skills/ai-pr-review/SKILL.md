@@ -58,7 +58,9 @@ Hard rules:
 3. Build a context model: what problem is being solved, what behavior is
    promised by the description/ticket, which packages are affected, and which
    constraints apply. Read the surrounding source files in the checkout —
-   do not judge the diff in isolation.
+   do not judge the diff in isolation. If the checkout is not at the reviewed
+   head (e.g. reviewing a historical sha), use `git fetch origin <sha>` and
+   `git show <sha>:<path>` to read files at that state.
 4. Review the diff (see "What to review"). Read every file in this skill's
    `rules/` directory and apply each rule exactly as written, including its
    "Do NOT flag" carve-outs. When a rule points at another skill's docs (e.g.
@@ -102,6 +104,16 @@ Also check the failure-mode checklists from `human-like-code-review/SKILL.md`
 (memory leaks, edge cases, persistence/API contracts, readability, method
 size) — checked, not force-commented.
 
+**Outbound API payloads**: when the diff constructs or changes a request to an
+external service (HTTP bodies, query params, SDK calls — especially in nodes),
+verify the payload shape against the provider's documented schema. A wrong
+shape (CSV string where the API wants an array, string where it wants an
+object) is invisible to internal consistency checks and is a proven blind
+spot. If the provider docs are not fetchable, compare against existing working
+call sites for the same endpoint family and flag shape divergences,
+particularly when a value crosses from a form-encoded legacy API to a JSON
+one.
+
 **Alignment check** (fills the `alignment` field): does the diff do what the
 description/ticket promises — no more, no less? Flag undescribed behavior
 changes and unrelated edits. A mismatch alone usually means
@@ -116,6 +128,9 @@ changes and unrelated edits. A mismatch alone usually means
   gap faithfully copied from the old code may still be worth one finding —
   keep it `minor`, phrase it as a question, and say explicitly that it is not
   a regression and could be a follow-up.
+  An explicit `rules/*.md` detection rule outranks this carve-out: apply the
+  rule even when the flagged shape mirrors a local convention, but cap the
+  severity at `nit` and suggest the file-wide cleanup as a follow-up.
 - **Precision or silence**: every finding must either contain a concrete
   suggestion (a short snippet or a ```suggestion``` block the author can
   apply) or name the concrete direction. Never "this could be cleaner".
@@ -148,6 +163,11 @@ honest low confidence is more useful than an inflated one.
 | `insufficient_context` | The diff cannot be reviewed meaningfully: too large (>~5000 changed lines), mostly generated/lockfiles, or the description is missing and no ticket exists |
 
 There is deliberately no approving verdict.
+
+Confidence qualifier: when every `blocker`/`major` finding sits below 0.8
+confidence and is phrased as a question, prefer `needs_discussion` (if the
+concern is approach-level) or `minor_issues` over `needs_changes` — a
+low-confidence question should not read as a demand.
 
 ## Output contract (schema_version 1)
 
@@ -205,6 +225,9 @@ Field notes:
 - `stats.skipped_files`: files present in the diff you deliberately did not
   review (lockfiles, large generated artifacts); `[]` when every changed file
   was reviewed.
+- Do not invent extra fields; the validator tolerates unknown keys but nothing
+  consumes them. Extra context (e.g. a Linear ticket id) belongs in
+  `alignment.notes`.
 
 ## Line number rules
 
