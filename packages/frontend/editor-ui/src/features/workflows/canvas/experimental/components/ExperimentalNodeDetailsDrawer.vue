@@ -180,6 +180,10 @@ watch(
 	() => {
 		selectedInputNodeName.value = preferredInputNodeName.value;
 		isDataMaximized.value = false;
+		// Always land on Properties. Restoring the last tab makes the same click
+		// produce different results with nothing on screen to explain why, and
+		// configuring is the common case. Scroll and disclosure state still persist.
+		selectedTab.value = 'properties';
 	},
 	{ immediate: true },
 );
