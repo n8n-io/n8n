@@ -120,6 +120,22 @@ request becomes **exit-and-relaunch** — the harness exits with a
 extra environment variable. RPC mode becomes an option again if the sandbox
 service grows an interactive execution API (see Future Hardening).
 
+Relaunch does not lose context, because only the pi **process** exits — the
+sandbox stays up. Context survives in two places: the workspace files the
+harness wrote, and pi's persisted session (a JSONL file under
+`~/.pi/agent/sessions/`, relocatable via `--session-dir`). The relaunch
+resumes the session, so the harness continues with its full prior context;
+the new env var is the only thing that changed.
+
+**Verified against pi source (v0.84.1):** session resolution runs before
+the mode dispatch and honors `--continue` / `--session` / `--session-id`
+unconditionally, so session resume composes with one-shot JSON mode. The
+clean primitive is `--session-id <uuid>`: pi creates the session when the
+ID is new and opens it when it exists — so Instance AI generates one UUID
+per task and passes the same `--session-id` on every launch; the first exec
+creates the session, every relaunch resumes it deterministically. (Only
+`-r`/`--resume`, the interactive picker, needs a TTY.)
+
 ### Instruction layers
 
 Static instructions are baked; only the task changes per run.
@@ -233,9 +249,16 @@ mostly unused. What is reused is the request–card–paste–verify UX and the
 ### The wait state
 
 A mid-task credential request pauses the harness while already-injected
-credentials sit in the sandbox. Set a wait timeout: if the user does not
-respond in N minutes, destroy the sandbox and report the task as incomplete.
-The user can restart; secrets must not sit idle.
+credentials sit in the sandbox. The pi process has exited, but the sandbox
+**stays active** through the whole human-in-the-loop wait — its filesystem
+and pi's session file are the context the relaunch resumes. Set a wait
+timeout that spans the user's thinking time: if the user does not respond
+in N minutes, destroy the sandbox and report the task as incomplete. The
+user can restart; secrets must not sit idle.
+
+The rule in one line: **the pi process is disposable mid-task; the sandbox
+is disposable only at task end** — completion, wait timeout, abort, or
+crash.
 
 ```mermaid
 sequenceDiagram
@@ -250,7 +273,7 @@ sequenceDiagram
     IA->>U: approval or setup card (masked)
     U->>IA: approve / paste values
     Note over IA: testUrl probe (new credentials)
-    IA->>SB: relaunch pi exec, env += new credential
+    IA->>SB: relaunch pi exec (resume session), env += new credential
     SB->>SB: complete task
     SB->>SB: read-back verification
     SB->>IA: report_result (actions, evidence, links)
@@ -311,9 +334,20 @@ orchestrator when and how, an orchestration tool does the spawning.
   what "verified" means for this task. It also carries the routing rule —
   recurring work → workflow, run-once work → sandbox — with user override.
 - **A thin `run-one-off-task` orchestration tool** creates the sandbox,
-  bootstraps it, and starts pi as a background task. Per the engineering
-  rules, the tool validates input, calls the service, returns output — the
-  contract quality lives in the skill, not the tool.
+  bootstraps it, and runs pi **inline within the tool call**. Per the
+  engineering rules, the tool validates input, calls the service, returns
+  output — the contract quality lives in the skill, not the tool.
+
+**Inline first, background later.** Running the exec inline keeps the whole
+loop in one run: the tool returns a `needs_credential` outcome, the
+orchestrator calls the credential setup tool, that tool **suspends the run**
+(existing machinery — `suspend`/`resumeData` in `credentials.tool.ts`), the
+user answers the card, the run resumes, and the orchestrator calls
+`run-one-off-task` again, which relaunches pi in the still-active sandbox
+with the session resumed. One continuous conversation with a card in the
+middle. The background-task variant (as the workflow builder uses) is the
+later upgrade for tasks long enough that the user should keep chatting
+meanwhile.
 
 ### Streaming: reuse the event schema
 
@@ -345,17 +379,18 @@ answer to that.
 
 ### Abort and cleanup: three layers
 
-Background tasks already have two cancel paths: the global stop
-(`cancelRun` → `cancelBackgroundTasks(threadId)`) and the
-`cancel-background-task` tool for "stop that" requests. The sandbox harness
-runs as a background task and inherits both. The one-off addition: for this
-sandbox type, **cancellation is a security event** — aborting the exec
-kills the pi process, and the sandbox must be destroyed.
+Inline execution inherits run cancellation directly: the global stop aborts
+the run, the tool's abort signal kills the exec. The later background-task
+variant inherits the two existing task cancel paths
+(`cancelRun` → `cancelBackgroundTasks(threadId)` and the
+`cancel-background-task` tool). Either way, for this sandbox type
+**cancellation is a security event** — aborting the exec kills the pi
+process, and the sandbox must be destroyed.
 
-Destruction cannot rely on task-manager callbacks: the background task
-registry is in-memory, and `cancelTask` drops the callbacks without
-invoking `onSettled` (`background-task-manager.ts`). Cleanup therefore has
-three layers:
+Destruction cannot rely on manager callbacks: the background task registry
+is in-memory, and `cancelTask` drops the callbacks without invoking
+`onSettled` (`background-task-manager.ts`). Cleanup therefore has three
+layers:
 
 1. **`try/finally` in the task function itself.** The abort signal reaches
    the task body; the `finally` destroys the sandbox on every in-process
@@ -486,6 +521,8 @@ while the guardrails are young.
 | OAuth support | **From day one.** Refresh-then-inject, access token only, sandbox lifetime below token TTL. Google Sheets (OAuth) is the demo slice. |
 | Credential approval | **Thread-scoped lease.** Per-injection consent with one-click confirm inside the window; full approval after expiry. |
 | Report status | **Best-effort user summary, not an audit log.** Unclean stop → "task interrupted — external state unknown." |
+| Execution placement | **Inline in the tool call first**; the whole task loop, including credential HITL via suspend/resume, stays in one run. Background-task variant later for long tasks. |
+| HITL relaunch | **Resume the same pi session** via a per-task `--session-id <uuid>` (create-or-open semantics, verified in pi source) in the still-active sandbox. Only the pi process is disposable mid-task; the sandbox dies only at task end. |
 
 ## Future Hardening
 
