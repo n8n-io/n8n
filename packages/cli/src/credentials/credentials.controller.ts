@@ -1,4 +1,6 @@
 import {
+	BulkDeleteCredentialsDto,
+	BulkTransferCredentialsDto,
 	CreateCredentialDto,
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
@@ -31,6 +33,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
+import { CredentialBulkActionService } from './credential-bulk-action.service';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
@@ -65,6 +68,7 @@ export class CredentialsController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly credentialBulkActionService: CredentialBulkActionService,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -431,6 +435,26 @@ export class CredentialsController {
 		this.logger.debug('Credential OAuth token cleared', { credentialId });
 
 		return { success: true };
+	}
+
+	// ProjectScope cannot authorize IDs from several projects in a request body.
+	// CredentialBulkActionService verifies every requested credential before mutation.
+	@Post('/bulk/delete')
+	async bulkDelete(req: AuthenticatedRequest, _res: unknown, @Body body: BulkDeleteCredentialsDto) {
+		return await this.credentialBulkActionService.delete(req.user, body.credentialIds);
+	}
+
+	@Post('/bulk/transfer')
+	async bulkTransfer(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: BulkTransferCredentialsDto,
+	) {
+		return await this.credentialBulkActionService.transfer(
+			req.user,
+			body.credentialIds,
+			body.destinationProjectId,
+		);
 	}
 
 	@Delete('/:credentialId')

@@ -99,6 +99,12 @@ export { PushWorkFolderRequestDto } from './source-control/push-work-folder-requ
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
+export {
+	BulkDeleteCredentialsDto,
+	BulkTransferCredentialsDto,
+	type BulkCredentialActionResult,
+	type BulkCredentialActionResultItem,
+} from './credentials/bulk-credential-action.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
 	CreateVariableRequestDto,
