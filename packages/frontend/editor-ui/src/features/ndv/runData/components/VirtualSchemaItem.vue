@@ -1,10 +1,16 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { saveAs } from 'file-saver';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	fieldPathFromJsonPath,
+	isRenderedField,
+} from '@/features/ndv/runData/outputFieldRendering';
+import { BINARY_DATA_VIEW_MODAL_KEY, HTML_PREVIEW_MODAL_KEY } from '@/app/constants';
 import type { BinaryMetadata } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -18,6 +24,7 @@ type Props = {
 	depth?: number;
 	expression?: string;
 	value?: string;
+	rawValue?: string;
 	id: string;
 	icon: IconName;
 	collapsable?: boolean;
@@ -66,6 +73,23 @@ function viewBinaryData() {
 	});
 }
 
+const nodeTypesStore = useNodeTypesStore();
+
+/** The whole document, when the node type declares this field as HTML. */
+const htmlDocument = computed(() => {
+	if (!props.rawValue || !props.nodeType || !props.path) return '';
+
+	const nodeType = nodeTypesStore.getNodeType(props.nodeType);
+	return isRenderedField(nodeType, 'html', fieldPathFromJsonPath(props.path)) ? props.rawValue : '';
+});
+
+function viewHtml() {
+	useUIStore().openModalWithData({
+		name: HTML_PREVIEW_MODAL_KEY,
+		data: { html: htmlDocument.value, title: props.title },
+	});
+}
+
 const emit = defineEmits<{
 	click: [];
 }>();
@@ -109,11 +133,26 @@ const emit = defineEmits<{
 		</N8nTooltip>
 
 		<TextWithHighlights
+			v-if="!htmlDocument"
 			data-test-id="run-data-schema-item-value"
 			class="text"
 			:content="value"
 			:search="props.search"
 		/>
+		<N8nTooltip v-else :content="i18n.baseText('runData.htmlPreview.open')" placement="top">
+			<div
+				class="pill html-control-pill"
+				:class="{
+					'pill--highlight': highlight,
+					'pill--preview': preview,
+					'pill--locked': locked,
+				}"
+				data-test-id="run-data-schema-item-html"
+				@click="viewHtml"
+			>
+				<N8nIcon class="type-icon" icon="file-code" size="small" />
+			</div>
+		</N8nTooltip>
 		<div v-if="props.binaryData && !preview" class="binary-controls">
 			<div
 				class="pill binary-control-pill"
@@ -275,6 +314,14 @@ const emit = defineEmits<{
 }
 
 .binary-control-pill:hover .type-icon {
+	color: var(--color--primary);
+}
+
+.html-control-pill {
+	cursor: pointer;
+}
+
+.html-control-pill:hover .type-icon {
 	color: var(--color--primary);
 }
 </style>

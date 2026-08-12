@@ -133,6 +133,7 @@ export class Html implements INodeType {
 		version: [1, 1.1, 1.2],
 		subtitle: '={{ $parameter["operation"] }}',
 		description: 'Work with HTML',
+		outputFieldRendering: { html: 'html' },
 		defaults: {
 			name: 'HTML',
 		},

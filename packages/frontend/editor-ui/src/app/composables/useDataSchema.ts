@@ -289,6 +289,8 @@ export type RenderItem = {
 	depth?: number;
 	expression?: string;
 	value?: string;
+	/** The leaf's value before truncation, for a consumer that can show all of it. */
+	rawValue?: string;
 	collapsable?: boolean;
 	nodeName?: string;
 	nodeType?: INodeUi['type'];
@@ -492,6 +494,8 @@ export const useFlattenSchema = () => {
 					level,
 					depth,
 					value: !lastSuccessfulPreview ? shorten(schema.value, truncateLimit, 0) : '',
+					rawValue:
+						!lastSuccessfulPreview && typeof schema.value === 'string' ? schema.value : undefined,
 					id,
 					icon: getIconBySchemaType(schema.type),
 					collapsable: false,

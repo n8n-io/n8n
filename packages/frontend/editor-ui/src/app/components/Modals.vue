@@ -31,6 +31,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	BINARY_DATA_VIEW_MODAL_KEY,
+	HTML_PREVIEW_MODAL_KEY,
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
 	MIGRATE_WORKFLOW_MODAL_KEY,
@@ -100,6 +101,7 @@ import DeleteSecretsProviderModal from '@/features/integrations/secretsProviders
 import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
 import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
+import HtmlPreviewModal from '@/features/ndv/runData/components/HtmlPreviewModal.vue';
 import ImportWorkflowUrlModal from '@/app/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
 import MfaSetupModal from '@/features/core/auth/components/MfaSetupModal.vue';
@@ -509,6 +511,12 @@ const TrialIntroModal = defineAsyncComponent(
 		<ModalRoot :name="BINARY_DATA_VIEW_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<BinaryDataViewModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="HTML_PREVIEW_MODAL_KEY">
+			<template #default="{ data }">
+				<HtmlPreviewModal :data="data" />
 			</template>
 		</ModalRoot>
 

@@ -33,6 +33,7 @@ export class UiBuilder implements INodeType {
 		version: 1,
 		description: 'Serve a UI defined in this node as a web app',
 		respondsToWebhook: true,
+		outputFieldRendering: { html: 'html' },
 		defaults: {
 			name: 'UI Builder',
 		},

@@ -37,6 +37,7 @@ export const AI_GATEWAY_TOP_UP_MODAL_KEY = 'aiGatewayTopUp';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 export const BINARY_DATA_VIEW_MODAL_KEY = 'binaryDataView';
+export const HTML_PREVIEW_MODAL_KEY = 'htmlPreview';
 
 export const WORKFLOW_DESCRIPTION_MODAL_KEY = 'workflowDescription';
 export const WORKFLOW_PUBLISH_MODAL_KEY = 'workflowPublish';
