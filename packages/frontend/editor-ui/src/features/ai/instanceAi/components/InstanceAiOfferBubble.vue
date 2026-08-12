@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 defineProps<{
@@ -22,70 +22,118 @@ const i18n = useI18n();
 		aria-live="polite"
 		data-test-id="instance-ai-offer-bubble"
 	>
-		<div :class="$style.header">
-			<N8nIcon icon="sparkles" size="medium" :class="$style.headerIcon" />
-			<div :class="$style.copy">
-				<N8nText bold tag="span" :class="$style.title">{{ title }}</N8nText>
-				<N8nText v-if="detail" size="small" color="text-light" :class="$style.detail">
-					{{ detail }}
-				</N8nText>
-			</div>
-		</div>
-		<div :class="$style.actions">
-			<N8nButton
-				variant="outline"
-				size="small"
-				data-test-id="instance-ai-offer-bubble-dismiss"
-				@click="$emit('dismiss')"
-			>
-				{{ i18n.baseText('instanceAi.proactiveOffer.dismiss') }}
-			</N8nButton>
-			<N8nButton
-				variant="solid"
-				size="small"
-				icon="sparkles"
+		<div :class="$style.bubble">
+			<button
+				type="button"
+				:class="$style.message"
 				data-test-id="instance-ai-offer-bubble-accept"
 				@click="$emit('accept')"
 			>
-				{{ i18n.baseText('instanceAi.proactiveOffer.accept') }}
-			</N8nButton>
+				<div :class="$style.agentRow">
+					<span :class="$style.avatar" aria-hidden="true">
+						<N8nIcon icon="sparkles" size="small" />
+					</span>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('aiAssistant.name') }}
+					</N8nText>
+				</div>
+				<N8nText bold tag="span" :class="$style.title">{{ title }}</N8nText>
+				<N8nText v-if="detail" tag="span" size="small" color="text-light" :class="$style.detail">
+					{{ detail }}
+				</N8nText>
+			</button>
+			<N8nIconButton
+				:class="$style.dismiss"
+				icon="x"
+				variant="ghost"
+				size="small"
+				:aria-label="i18n.baseText('instanceAi.proactiveOffer.dismiss')"
+				data-test-id="instance-ai-offer-bubble-dismiss"
+				@click.stop="$emit('dismiss')"
+			/>
+			<span :class="$style.tail" aria-hidden="true" />
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 .root {
-	position: fixed;
-	right: var(--spacing--md);
-	bottom: var(--spacing--md);
-	z-index: var(--ask-assistant-floating-button--z);
-	width: min(22rem, calc(100vw - 2 * var(--spacing--md)));
+	/* Positioned by the launcher dock. */
+	width: 100%;
+	filter: drop-shadow(0 4px 14px var(--color--black-alpha-100));
+}
+
+.bubble {
+	position: relative;
 	border: var(--border);
-	border-radius: var(--radius--lg);
-	overflow: hidden;
+	border-radius: var(--radius--lg) var(--radius--lg) var(--radius--lg) var(--radius--md);
 	background-color: var(--color--background--light-3);
-	box-shadow: var(--shadow--light);
 }
 
-.header {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm);
+/* Speech-bubble tip aimed at the launcher circle (bottom-right). */
+.tail {
+	position: absolute;
+	right: var(--spacing--lg);
+	bottom: calc(-1 * var(--spacing--xs));
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
+	background-color: var(--color--background--light-3);
+	border-right: var(--border);
 	border-bottom: var(--border);
+	transform: rotate(45deg);
 }
 
-.headerIcon {
-	flex-shrink: 0;
-	margin-top: var(--spacing--5xs);
-	color: var(--color--primary);
-}
-
-.copy {
+.message {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--5xs);
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
+	width: 100%;
 	min-width: 0;
+	margin: 0;
+	padding: var(--spacing--sm) var(--spacing--2xl) var(--spacing--sm) var(--spacing--sm);
+	border: none;
+	background: transparent;
+	text-align: left;
+	cursor: pointer;
+	color: inherit;
+	font: inherit;
+
+	&:hover {
+		background-color: var(--color--background);
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--color--primary);
+		outline-offset: -2px;
+		border-radius: inherit;
+	}
+}
+
+.dismiss {
+	position: absolute;
+	top: var(--spacing--3xs);
+	right: var(--spacing--3xs);
+	z-index: 1;
+}
+
+.agentRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	margin-bottom: var(--spacing--5xs);
+}
+
+.avatar {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.25rem;
+	height: 1.25rem;
+	border-radius: 50%;
+	color: var(--button--color--text--primary);
+	background: var(--color--primary);
+	flex-shrink: 0;
 }
 
 .title {
@@ -94,12 +142,5 @@ const i18n = useI18n();
 
 .detail {
 	min-width: 0;
-}
-
-.actions {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
 }
 </style>

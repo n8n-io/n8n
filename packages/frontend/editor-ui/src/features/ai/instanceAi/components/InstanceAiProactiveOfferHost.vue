@@ -3,14 +3,17 @@ import { computed, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute } from 'vue-router';
 
-import InstanceAiOfferBubble from './InstanceAiOfferBubble.vue';
 import { useInstanceAiProactiveOffer } from '../composables/useInstanceAiProactiveOffer';
 import { INSTANCE_AI_DEMO_OFFER_QUERY } from '../constants';
 import type { ProactiveOffer } from '../instanceAiPanel.types';
 
+/**
+ * Raises the demo offer from the query flag. The Intercom-style dock
+ * (`InstanceAiLauncherDock`) owns bubble + launcher + panel rendering.
+ */
 const i18n = useI18n();
 const route = useRoute();
-const { activeOffer, raise, accept, dismiss } = useInstanceAiProactiveOffer();
+const { raise } = useInstanceAiProactiveOffer();
 
 const demoOffer = computed<ProactiveOffer>(() => ({
 	key: 'demo:hardcoded',
@@ -32,11 +35,6 @@ watch(
 </script>
 
 <template>
-	<InstanceAiOfferBubble
-		v-if="activeOffer"
-		:title="activeOffer.title"
-		:detail="activeOffer.detail"
-		@accept="accept"
-		@dismiss="dismiss"
-	/>
+	<!-- Demo trigger only; UI lives in InstanceAiLauncherDock. -->
+	<span v-once />
 </template>
