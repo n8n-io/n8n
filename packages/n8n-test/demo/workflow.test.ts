@@ -12,3 +12,9 @@ test('workflow happy day', async () => {
 
 	expect(output['test-output']).toBe('Hello world');
 });
+
+test('workflow unhappy day', async () => {
+	nock('https://test-endpoint.com').get('/test').reply(500);
+
+	await expect(runWorkflow(workflowJson)).rejects.toThrowError();
+});
