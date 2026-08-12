@@ -181,7 +181,7 @@ describe('CredentialsView', () => {
 			const { getByRole, getByTestId } = renderComponent();
 			await flushPromises();
 			credentialsStore.fetchAllCredentials.mockClear();
-			await userEvent.click(getByRole('checkbox', { name: 'Select all shown' }));
+			await userEvent.click(getByRole('checkbox', { name: 'Select all' }));
 			await flushPromises();
 
 			expect(getByTestId('selected-items-info')).toHaveTextContent('2 selected');
@@ -198,7 +198,7 @@ describe('CredentialsView', () => {
 			const { getByRole, getByTestId } = renderComponent();
 			await flushPromises();
 			credentialsStore.fetchAllCredentials.mockClear();
-			await userEvent.click(getByRole('checkbox', { name: 'Select all shown' }));
+			await userEvent.click(getByRole('checkbox', { name: 'Select all' }));
 			await flushPromises();
 
 			expect(getByTestId('selection-no-actions')).toHaveTextContent('No actions available');
@@ -212,7 +212,7 @@ describe('CredentialsView', () => {
 
 			const { getByRole, getByTestId } = renderComponent();
 			await flushPromises();
-			await userEvent.click(getByRole('checkbox', { name: 'Select up to 100 shown' }));
+			await userEvent.click(getByRole('checkbox', { name: 'Select all' }));
 
 			expect(getByTestId('selected-items-info')).toHaveTextContent('100 selected (maximum)');
 		});

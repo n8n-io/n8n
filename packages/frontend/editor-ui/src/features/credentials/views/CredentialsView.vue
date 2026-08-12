@@ -442,14 +442,7 @@ onMounted(() => {
 				v-if="resources.length"
 				:model-value="selection.isPageChecked(resources)"
 				:indeterminate="selection.isPageIndeterminate(resources)"
-				:label="
-					i18n.baseText(
-						resources.length > MAX_SELECTED_CREDENTIALS
-							? 'credentials.bulkActions.selectUpToLimit'
-							: 'credentials.bulkActions.selectAllShown',
-						{ interpolate: { limit: String(MAX_SELECTED_CREDENTIALS) } },
-					)
-				"
+				:label="i18n.baseText('credentials.bulkActions.selectAll')"
 				:class="$style.selectAllCheckbox"
 				data-test-id="select-all-credentials-checkbox"
 				@update:model-value="selection.togglePage(resources, $event)"
