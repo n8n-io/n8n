@@ -322,7 +322,8 @@ report as a hint — knowledge reuse without any workflow machinery.
 ## Instance AI Integration
 
 The existing architecture has slots for every integration point. Nothing new
-is invented at the protocol level.
+is invented at the protocol level. The frozen implementation contracts
+between workstreams live in `src/one-off-task/contracts.ts`.
 
 ### Skill plus tool
 
