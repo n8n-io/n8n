@@ -278,7 +278,7 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
-	 * Re-asserts under the lock what `create`'s pre-lock checks established: the
+	 * Re-asserts under the lock what the caller's pre-lock checks established: the
 	 * workflow still exists, is unarchived, and still belongs to the same project.
 	 * Access is not re-checked — the races this guards against are archive and
 	 * transfer, both of which these two reads cover.
@@ -542,6 +542,11 @@ export class WorkflowReviewRequestService {
 				if (!currentRow) {
 					throw new NotFoundError('Could not find review request');
 				}
+
+				// Archive and transfer run in after hooks, so they commit before queueing
+				// on this lock — the pre-lock check can already be stale here.
+				await this.assertWorkflowStillReviewable(currentRow.workflowId, current.projectId, ctx);
+
 				if (currentRow.workflowVersionId === dto.workflowVersionId) {
 					// A concurrent sync won the lock and already re-pinned this version
 					// but our rename or re-description can still be pending — apply it
@@ -726,6 +731,10 @@ export class WorkflowReviewRequestService {
 				if (!currentRow) {
 					throw new NotFoundError('Could not find review request');
 				}
+
+				// Archive and transfer run in after hooks, so they commit before queueing
+				// on this lock — the pre-lock check can already be stale here.
+				await this.assertWorkflowStillReviewable(currentRow.workflowId, current.projectId, ctx);
 
 				current.decision = dto.decision;
 				current.updatedById = user.id;

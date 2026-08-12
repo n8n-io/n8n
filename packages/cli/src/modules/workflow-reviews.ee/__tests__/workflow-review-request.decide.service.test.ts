@@ -2,6 +2,7 @@ import type { DecideWorkflowReviewRequestDto } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import type {
 	DbLockService,
+	Project,
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	User,
@@ -24,6 +25,7 @@ import { DbLock } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -57,6 +59,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+	const workflowEntityRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
@@ -81,7 +84,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		workflowFinderService,
 		workflowHistoryService,
 		workflowHistoryRepository,
-		mock<WorkflowRepository>(),
+		workflowEntityRepository,
 		sharedWorkflowRepository,
 		publishHistoryRepository,
 		requestRepository,
@@ -130,6 +133,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 		workflowRepository.findByRequestId.mockResolvedValue([pinnedRow()]);
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<WorkflowEntity>({ isArchived: false }),
+		);
+		workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: false });
+		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
+			mock<Project>({ id: projectId }),
 		);
 		authorRepository.isAuthor.mockResolvedValue(false);
 		reviewerRepository.isReviewer.mockResolvedValue(true);
@@ -408,6 +415,23 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+	});
+
+	it('refuses to approve a workflow archived while the decision waited for the lock', async () => {
+		mockSuccessfulDecidePath();
+		// The pre-lock lookups still see a live workflow; only the in-lock re-read
+		// sees the archive that committed while this decision queued.
+		workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: true });
+
+		await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
+			BadRequestError,
+		);
+
+		// Nothing may reach the activity feed: an approval entry here would durably
+		// assert a decision on a workflow that had already left the reviewable state.
+		expect(activityRepository.createActivity).not.toHaveBeenCalled();
+		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
+		expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('reports and publishes the version re-pinned by a concurrent sync that won the lock', async () => {

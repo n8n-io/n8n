@@ -3,6 +3,7 @@ import type { LicenseState, Logger } from '@n8n/backend-common';
 import { DbLock } from '@n8n/db';
 import type {
 	DbLockService,
+	Project,
 	SharedWorkflowRepository,
 	User,
 	UserRepository,
@@ -41,6 +42,7 @@ import { WorkflowReviewRequestService } from '../workflow-review-request.service
 const user = mock<User>({ id: 'user-1' });
 
 const requestId = 'req-1';
+const projectId = 'proj-1';
 const dto: UpdateWorkflowReviewRequestVersionDto = {
 	workflowId: 'wf-1',
 	workflowVersionId: 'ver-2',
@@ -52,6 +54,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+	const workflowEntityRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
@@ -76,7 +79,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		workflowFinderService,
 		workflowHistoryService,
 		workflowHistoryRepository,
-		mock<WorkflowRepository>(),
+		workflowEntityRepository,
 		sharedWorkflowRepository,
 		publishHistoryRepository,
 		requestRepository,
@@ -95,6 +98,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>
 		mock<WorkflowReviewRequest>({
 			id: requestId,
+			projectId,
 			state: 'open',
 			decision: 'pending',
 			createdAt: new Date('2026-07-20T10:00:00.000Z'),
@@ -113,6 +117,10 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		]);
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<WorkflowEntity>({ isArchived: false }),
+		);
+		workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: false });
+		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
+			mock<Project>({ id: projectId }),
 		);
 		workflowHistoryService.findVersion.mockResolvedValue(mock());
 		workflowHistoryRepository.updateVersionMetadata.mockResolvedValue(1);
@@ -303,6 +311,21 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		expect(authorRepository.addAuthorIfMissing).not.toHaveBeenCalled();
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+	});
+
+	it('refuses to re-pin a workflow archived while the update waited for the lock', async () => {
+		mockSuccessfulUpdatePath();
+		// The pre-lock lookups still see a live workflow; only the in-lock re-read
+		// sees the archive that committed while this update queued.
+		workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: true });
+
+		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(BadRequestError);
+
+		// Nothing may reach the activity feed: a version_updated entry here would
+		// durably assert a re-pin on a workflow that can no longer be reviewed.
+		expect(activityRepository.createActivity).not.toHaveBeenCalled();
+		expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
+		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFoundError when the request disappears between check and lock', async () => {
