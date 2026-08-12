@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	INode,
 	IProjectFilesService,
@@ -7,6 +8,7 @@ import {
 	NodeOperationError,
 	ProjectFileMetadata,
 	ProjectFilesConflictMode,
+	ProjectFilesOperation,
 	ProjectFilesProxyProvider,
 	Workflow,
 } from 'n8n-workflow';
@@ -15,6 +17,7 @@ import type { Readable } from 'node:stream';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
+import { Telemetry } from '@/telemetry';
 
 import { FileStorageValidationError } from './errors/file-storage-validation.error';
 import { ProjectFileNameConflictError } from './errors/project-file-name-conflict.error';
@@ -48,13 +51,25 @@ const toMetadata = (file: ProjectFile): ProjectFileMetadata => ({
  */
 @Service()
 export class ProjectFilesProxyService implements ProjectFilesProxyProvider {
+	/** first-use-per-workflow tracking for the node-executed event (per instance runtime). */
+	private readonly trackedExecutions = new Set<string>();
+
 	constructor(
 		private readonly projectFileService: ProjectFileService,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = this.logger.scoped('file-storage');
+	}
+
+	private trackFirstUse(workflowId: string, operation: ProjectFilesOperation): void {
+		const key = `${workflowId}:${operation}`;
+		if (this.trackedExecutions.has(key)) return;
+		if (this.trackedExecutions.size > 10_000) this.trackedExecutions.clear();
+		this.trackedExecutions.add(key);
+		this.telemetry.track(TELEMETRY_EVENT.FILES.FILES_NODE_EXECUTED, { operation });
 	}
 
 	private checkInstanceWriteAccess(): void {
@@ -85,12 +100,18 @@ export class ProjectFilesProxyService implements ProjectFilesProxyProvider {
 		this.validateRequest(node);
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
-		return this.makeProjectFilesOperations(projectId, node);
+		return this.makeProjectFilesOperations(projectId, node, workflow.id);
 	}
 
-	private makeProjectFilesOperations(projectId: string, node: INode): IProjectFilesService {
+	private makeProjectFilesOperations(
+		projectId: string,
+		node: INode,
+		workflowId: string,
+	): IProjectFilesService {
 		const projectFileService = this.projectFileService;
 		const checkInstanceWriteAccess = () => this.checkInstanceWriteAccess();
+		const trackFirstUse = (operation: ProjectFilesOperation) =>
+			this.trackFirstUse(workflowId, operation);
 		const asNodeError = (error: unknown): never => {
 			if (
 				error instanceof ProjectFileNotFoundError ||
@@ -108,6 +129,7 @@ export class ProjectFilesProxyService implements ProjectFilesProxyProvider {
 			},
 
 			async getManyAndCount(options: ListProjectFilesOptions = {}) {
+				trackFirstUse('getMany');
 				const { count, data } = await projectFileService.getManyAndCount({
 					skip: options.skip,
 					take: options.take,
@@ -124,6 +146,7 @@ export class ProjectFilesProxyService implements ProjectFilesProxyProvider {
 			},
 
 			async download(fileId: string) {
+				trackFirstUse('download');
 				try {
 					const { file, stream } = await projectFileService.download(fileId, projectId);
 					return { metadata: toMetadata(file), stream };
@@ -139,6 +162,7 @@ export class ProjectFilesProxyService implements ProjectFilesProxyProvider {
 				conflictMode: ProjectFilesConflictMode,
 			) {
 				checkInstanceWriteAccess();
+				trackFirstUse('upload');
 				try {
 					const file = await projectFileService.upload(
 						projectId,
@@ -155,6 +179,7 @@ export class ProjectFilesProxyService implements ProjectFilesProxyProvider {
 
 			async deleteFile(fileId: string) {
 				checkInstanceWriteAccess();
+				trackFirstUse('deleteFile');
 				try {
 					const file = await projectFileService.deleteFile(fileId, projectId);
 					return { name: file.name };

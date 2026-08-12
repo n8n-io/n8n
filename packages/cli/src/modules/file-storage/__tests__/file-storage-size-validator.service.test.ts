@@ -39,11 +39,14 @@ describe('FileStorageSizeValidator', () => {
 				validator.validateSize(fetchSizeFn, 'node-write', new Date('2026-01-01T00:00:00Z')),
 			).rejects.toThrow('File storage limit exceeded: 150MB used, limit is 100MB');
 
-			expect(telemetry.track).toHaveBeenCalledWith('User hit file storage limit', {
-				total_bytes: 150 * 1024 * 1024,
-				max_bytes: 100 * 1024 * 1024,
-				surface: 'node-write',
-			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'User hit file storage limit' }),
+				{
+					total_bytes: 150 * 1024 * 1024,
+					max_bytes: 100 * 1024 * 1024,
+					surface: 'node-write',
+				},
+			);
 		});
 	});
 

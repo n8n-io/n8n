@@ -17,6 +17,14 @@ export class FileStorageModule implements ModuleInterface {
 		);
 		await Container.get(FileStorageUploadCleanupService).start();
 
+		const { ProjectFileOrphanSweeperService } = await import(
+			'./project-file-orphan-sweeper.service.js'
+		);
+		Container.get(ProjectFileOrphanSweeperService).start();
+
+		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
+		registerFavoriteResolver();
+
 		const { ProjectFileService } = await import('./file-storage.service.js');
 		const { OwnershipTransferHandlerRegistry } = await import(
 			'@/services/ownership-transfer/ownership-transfer-handler.registry.js'
@@ -42,6 +50,11 @@ export class FileStorageModule implements ModuleInterface {
 			'./file-storage-upload-cleanup.service.js'
 		);
 		await Container.get(FileStorageUploadCleanupService).shutdown();
+
+		const { ProjectFileOrphanSweeperService } = await import(
+			'./project-file-orphan-sweeper.service.js'
+		);
+		Container.get(ProjectFileOrphanSweeperService).shutdown();
 	}
 
 	async entities() {

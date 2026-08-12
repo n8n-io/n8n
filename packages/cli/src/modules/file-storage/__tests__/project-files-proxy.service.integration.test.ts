@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { Telemetry } from '@/telemetry';
 
 import { ProjectFileNotFoundError } from '../errors/project-file-not-found.error';
 import type { ProjectFileService } from '../file-storage.service';
@@ -51,6 +52,7 @@ describe('ProjectFilesProxyService', () => {
 			ownershipServiceMock,
 			mock<Logger>(),
 			sourceControlPreferencesServiceMock,
+			mock<Telemetry>(),
 		);
 
 		workflow = mock<Workflow>({ id: 'workflow-id' });

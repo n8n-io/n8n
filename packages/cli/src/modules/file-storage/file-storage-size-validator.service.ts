@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { Telemetry } from '@/telemetry';
 
@@ -54,7 +55,7 @@ export class FileStorageSizeValidator {
 	): Promise<void> {
 		const size = await this.getCachedSizeData(fetchSizeFn, now);
 		if (size.totalBytes >= this.globalConfig.fileStorage.maxSize) {
-			this.telemetry.track('User hit file storage limit', {
+			this.telemetry.track(TELEMETRY_EVENT.FILES.USER_HIT_FILE_STORAGE_LIMIT, {
 				total_bytes: size.totalBytes,
 				max_bytes: this.globalConfig.fileStorage.maxSize,
 				surface,
