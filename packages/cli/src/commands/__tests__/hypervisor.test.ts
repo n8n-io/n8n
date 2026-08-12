@@ -47,6 +47,7 @@ describe('Hypervisor', () => {
 			N8N_TRANSPORT_INSTANCE_REGISTRY: 'ipc',
 			N8N_TRANSPORT_PUBSUB: 'ipc',
 			N8N_TRANSPORT_CACHE: 'ipc',
+			N8N_TRANSPORT_QUEUE: 'ipc',
 		};
 		const workerEnv = {
 			N8N_HYPERVISOR_ROLE: 'worker',
@@ -55,6 +56,7 @@ describe('Hypervisor', () => {
 			N8N_TRANSPORT_INSTANCE_REGISTRY: 'ipc',
 			N8N_TRANSPORT_PUBSUB: 'ipc',
 			N8N_TRANSPORT_CACHE: 'ipc',
+			N8N_TRANSPORT_QUEUE: 'ipc',
 		};
 		expect(mockedCluster.fork).toHaveBeenNthCalledWith(1, mainEnv);
 		expect(mockedCluster.fork).toHaveBeenNthCalledWith(2, mainEnv);

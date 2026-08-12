@@ -158,9 +158,10 @@ export abstract class BaseCommand<F = never> {
 		// defaults to an inert `NoopMessageTransport`, and this is the single call site that opts a
 		// deployment into `RedisMessageTransport` or `HypervisorMessageTransport` instead. The
 		// decision comes from `TransportModeService` (explicit `N8N_TRANSPORT_PUBSUB`, defaulting
-		// to `redis`), the same mechanism `Start.leaderElection()` uses for `leaderElection` - not
-		// re-derived here. Redis remains required for the execution queue regardless of this
-		// setting, so this swap alone doesn't yet let a real deployment drop Redis.
+		// to `redis`), the same mechanism `Start.leaderElection()` uses for `leaderElection` and
+		// `ScalingService.setupQueue()` uses for the execution queue - not re-derived here. Redis
+		// remains required for locking in queue mode (`useRedisForLocking` above), so dropping
+		// Redis entirely still waits on the locking/cache facet.
 		const transportModeService = Container.get(TransportModeService);
 		if (transportModeService.resolve('pubsub') === 'redis') {
 			const { RedisMessageTransport } = await import(

@@ -56,5 +56,11 @@ export class TransportModeService {
 				'N8N_TRANSPORT_CACHE=ipc requires running under `n8n hypervisor` (no IPC channel otherwise).',
 			);
 		}
+
+		if (this.resolve('queue') === 'ipc' && !this.isUnderHypervisor()) {
+			throw new UserError(
+				'N8N_TRANSPORT_QUEUE=ipc requires running under `n8n hypervisor` (no IPC channel otherwise).',
+			);
+		}
 	}
 }

@@ -7,7 +7,7 @@ import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonStringify, UnexpectedError, UserError } from 'n8n-workflow';
+import { jsonStringify, UnexpectedError } from 'n8n-workflow';
 import type { IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
@@ -57,15 +57,12 @@ export class ScalingService {
 
 		const mode = this.transportModeService.resolve('queue');
 		if (mode === 'ipc') {
-			// No cross-process ipc queue implementation exists yet; the cluster
-			// primary must broker it. Fail fast instead of silently using Redis.
-			throw new UserError(
-				'N8N_TRANSPORT_QUEUE=ipc is not implemented yet. Unset it or use "redis".',
-			);
+			const { IpcJobQueue } = await import('./queue/ipc-job-queue.js');
+			this.jobQueue = Container.get(IpcJobQueue);
+		} else {
+			const { BullJobQueue } = await import('./queue/bull-job-queue.js');
+			this.jobQueue = Container.get(BullJobQueue);
 		}
-
-		const { BullJobQueue } = await import('./queue/bull-job-queue.js');
-		this.jobQueue = Container.get(BullJobQueue);
 		await this.jobQueue.start();
 
 		this.registerListeners();
@@ -74,30 +71,37 @@ export class ScalingService {
 
 		this.scheduleQueueMetrics();
 
-		const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
-			'@n8n/n8n-nodes-langchain/mcp/core'
-		);
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+		// The MCP session store needs a cross-process KV, which today only the
+		// Redis-backed Publisher provides. Skip it under ipc until the KV facet
+		// is ported to the hypervisor channel (cache service work).
+		if (mode === 'redis') {
+			const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
+				'@n8n/n8n-nodes-langchain/mcp/core'
+			);
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 
-		const publisher = Container.get(Publisher);
+			const publisher = Container.get(Publisher);
 
-		const MCP_SESSION_TTL = 86400;
-		const getMcpSessionKey = (sessionId: string) =>
-			`${this.globalConfig.redis.prefix}:mcp-session:${sessionId}`;
+			const MCP_SESSION_TTL = 86400;
+			const getMcpSessionKey = (sessionId: string) =>
+				`${this.globalConfig.redis.prefix}:mcp-session:${sessionId}`;
 
-		const mcpServer = McpServer.instance(this.logger);
-		const redisStore = new RedisSessionStore(
-			{
-				set: async (key, value, ttl) => await publisher.set(key, value, ttl),
-				get: async (key) => await publisher.get(key),
-				clear: async (key) => await publisher.clear(key),
-			},
-			getMcpSessionKey,
-			MCP_SESSION_TTL,
-		);
+			const mcpServer = McpServer.instance(this.logger);
+			const redisStore = new RedisSessionStore(
+				{
+					set: async (key, value, ttl) => await publisher.set(key, value, ttl),
+					get: async (key) => await publisher.get(key),
+					clear: async (key) => await publisher.clear(key),
+				},
+				getMcpSessionKey,
+				MCP_SESSION_TTL,
+			);
 
-		mcpServer.setSessionStore(redisStore);
-		mcpServer.setExecutionStrategy(new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()));
+			mcpServer.setSessionStore(redisStore);
+			mcpServer.setExecutionStrategy(
+				new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()),
+			);
+		}
 
 		this.logger.debug('Queue setup completed');
 	}

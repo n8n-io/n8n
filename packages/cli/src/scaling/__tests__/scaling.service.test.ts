@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,6 +12,7 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import type { JobProcessor } from '../job-processor';
 import { BullJobQueue } from '../queue/bull-job-queue';
+import { IpcJobQueue } from '../queue/ipc-job-queue';
 import type { QueueJob } from '../queue/job-queue.interface';
 import { ScalingService } from '../scaling.service';
 import type { JobData, JobMessage } from '../scaling.types';
@@ -71,9 +72,10 @@ describe('ScalingService', () => {
 		},
 	});
 
-	// ScalingService resolves the Bull-backed queue from the container; this
-	// registers a mock there so no real Bull queue is ever constructed.
+	// ScalingService resolves the queue implementations from the container; these
+	// register mocks there so no real Bull queue or IPC channel is ever created.
 	const jobQueue = mockInstance(BullJobQueue);
+	const ipcJobQueue = mockInstance(IpcJobQueue);
 
 	const instanceSettings = Container.get(InstanceSettings);
 	const jobProcessor = mock<JobProcessor>();
@@ -193,11 +195,14 @@ describe('ScalingService', () => {
 		});
 
 		describe('if transport mode is ipc', () => {
-			it('should throw, as no ipc queue implementation exists yet', async () => {
+			it('should use the ipc queue instead of Bull', async () => {
 				transportModeService.resolve.mockReturnValue('ipc');
 
-				await expect(scalingService.setupQueue()).rejects.toThrowError(UserError);
+				await scalingService.setupQueue();
+
+				expect(ipcJobQueue.start).toHaveBeenCalled();
 				expect(jobQueue.start).not.toHaveBeenCalled();
+				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 			});
 		});
 	});

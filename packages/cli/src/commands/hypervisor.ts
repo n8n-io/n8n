@@ -9,6 +9,7 @@ import type { Readable } from 'node:stream';
 import { InstanceRegistryHost } from '@/modules/instance-registry/storage/ipc-instance-storage';
 import { LeaderElectionHost } from '@/scaling/hypervisor-leader-election';
 import { HypervisorMessageRouter } from '@/scaling/hypervisor-message-router';
+import { JobQueueHost } from '@/scaling/queue/ipc-job-queue';
 import { PubSubHost } from '@/scaling/transport/hypervisor-message-transport';
 import { CacheHost } from '@/services/cache/ipc.cache-manager';
 
@@ -49,6 +50,7 @@ export class Hypervisor extends BaseCommand {
 			router.register(Container.get(InstanceRegistryHost));
 			router.register(Container.get(PubSubHost));
 			router.register(Container.get(CacheHost));
+			router.register(Container.get(JobQueueHost));
 			cluster.on('message', (worker, message) => router.handleMessage(worker, message));
 
 			for (const role of ['main', 'main', 'worker', 'worker'] as const) {
@@ -59,6 +61,7 @@ export class Hypervisor extends BaseCommand {
 					N8N_TRANSPORT_INSTANCE_REGISTRY: 'ipc',
 					N8N_TRANSPORT_PUBSUB: 'ipc',
 					N8N_TRANSPORT_CACHE: 'ipc',
+					N8N_TRANSPORT_QUEUE: 'ipc',
 				});
 				const childTag = `[${role} pid=${child.process.pid}]`;
 				forwardPrefixed(child.process.stdout, process.stdout, childTag);

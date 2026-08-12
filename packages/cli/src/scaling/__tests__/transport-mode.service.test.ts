@@ -83,5 +83,19 @@ describe('TransportModeService', () => {
 
 			expect(() => service.validateAtBoot()).not.toThrow();
 		});
+
+		it('throws when queue=ipc without a hypervisor', () => {
+			delete process.env.N8N_HYPERVISOR_MODE;
+			const service = makeService({ ...allRedis, queue: 'ipc' });
+
+			expect(() => service.validateAtBoot()).toThrow('requires running under `n8n hypervisor`');
+		});
+
+		it('passes when queue=ipc under a hypervisor', () => {
+			process.env.N8N_HYPERVISOR_MODE = '1';
+			const service = makeService({ ...allRedis, queue: 'ipc' });
+
+			expect(() => service.validateAtBoot()).not.toThrow();
+		});
 	});
 });
