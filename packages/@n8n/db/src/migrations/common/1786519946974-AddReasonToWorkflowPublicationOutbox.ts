@@ -30,7 +30,8 @@ export class AddReasonToWorkflowPublicationOutbox1786519946974 implements Revers
 		);
 	}
 
-	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
+	async down({ schemaBuilder: { dropColumns, dropEnumCheck } }: MigrationContext) {
+		await dropEnumCheck(tableName, columnName, { recreatesOnSqlite: true });
 		await dropColumns(tableName, [columnName], { recreatesOnSqlite: true });
 	}
 }
