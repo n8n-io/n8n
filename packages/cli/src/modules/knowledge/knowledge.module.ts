@@ -1,5 +1,6 @@
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 
 /**
  * Knowledge connectors: index external and internal data sources into a vector
@@ -11,12 +12,17 @@ import { BackendModule, OnShutdown } from '@n8n/decorators';
 @BackendModule({ name: 'knowledge', instanceTypes: ['main'] })
 export class KnowledgeModule implements ModuleInterface {
 	async init() {
-		// Controllers, the indexing/sync services and the MCP tool are registered
-		// here in a later wave; this wave ships the DB layer and connector contract only.
+		await import('./knowledge.controller.js');
+
+		const { KnowledgeSyncService } = await import('./knowledge-sync.service.js');
+		Container.get(KnowledgeSyncService).start();
 	}
 
 	@OnShutdown()
-	async shutdown() {}
+	async shutdown() {
+		// The sync service registers its own shutdown hook, which stops the timer
+		// and aborts in-flight runs.
+	}
 
 	async entities() {
 		const { KnowledgeSource } = await import('./database/entities/knowledge-source.entity.js');
@@ -27,6 +33,11 @@ export class KnowledgeModule implements ModuleInterface {
 	}
 
 	async settings() {
-		return { enabled: true };
+		const { KnowledgeSettingsService } = await import('./knowledge-settings.service.js');
+
+		return {
+			enabled: true,
+			configured: await Container.get(KnowledgeSettingsService).isConfigured(),
+		};
 	}
 }

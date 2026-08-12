@@ -53,7 +53,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
-import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { areAgentToolsAvailable, areKnowledgeToolsAvailable } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
 	McpClientInfo,
@@ -76,6 +76,7 @@ import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
+import { createSearchKnowledgeTool } from './tools/knowledge/search-knowledge.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
@@ -581,6 +582,22 @@ export class McpService {
 
 		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
 		registerIfAllowed(addDataTableRowsTool);
+
+		// Knowledge search, only when the optional knowledge module is enabled.
+		// The service is imported lazily so an instance running without the
+		// module never loads it.
+		if (areKnowledgeToolsAvailable(this.moduleRegistry)) {
+			const { KnowledgeSearchService } = await import(
+				'@/modules/knowledge/knowledge-search.service.js'
+			);
+
+			const searchKnowledgeTool = createSearchKnowledgeTool(
+				user,
+				() => Container.get(KnowledgeSearchService),
+				this.telemetry,
+			);
+			registerIfAllowed(searchKnowledgeTool);
+		}
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {

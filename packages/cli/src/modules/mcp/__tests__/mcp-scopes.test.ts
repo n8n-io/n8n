@@ -36,7 +36,13 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 
-import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import {
+	AGENT_TOOLS,
+	BUILDER_TOOLS,
+	getAllowedToolNames,
+	KNOWLEDGE_TOOLS,
+	TOOLS_BY_SCOPE,
+} from '../mcp-scopes';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
@@ -157,9 +163,10 @@ describe('McpService scope enforcement', () => {
 		const registered = getRegisteredToolNames(server);
 
 		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts.
+		// drift guard lives in agent-tools.service.test.ts. Knowledge tools are
+		// likewise gated on their optional module.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
-			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
+			(name) => !registered.has(name) && !AGENT_TOOLS.has(name) && !KNOWLEDGE_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});

@@ -338,4 +338,17 @@ export {
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 
+export {
+	UpdateKnowledgeSettingsDto,
+	knowledgeEmbeddingSettingsSchema,
+	knowledgeVectorStoreSettingsSchema,
+} from './knowledge/update-knowledge-settings.dto';
+export {
+	CreateKnowledgeSourceDto,
+	knowledgeSourceTypeSchema,
+} from './knowledge/create-knowledge-source.dto';
+export { UpdateKnowledgeSourceDto } from './knowledge/update-knowledge-source.dto';
+export { SyncKnowledgeSourceDto } from './knowledge/sync-knowledge-source.dto';
+export { SearchKnowledgeDto } from './knowledge/search-knowledge.dto';
+
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';

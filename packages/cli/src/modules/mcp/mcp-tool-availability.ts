@@ -7,3 +7,8 @@ export function areAgentToolsAvailable(
 ): boolean {
 	return globalConfig.endpoints.mcpBuilderEnabled && moduleRegistry.isActive('agents');
 }
+
+/** The knowledge module is opt-in, so its tool only exists where it is enabled. */
+export function areKnowledgeToolsAvailable(moduleRegistry: ModuleRegistry): boolean {
+	return moduleRegistry.isActive('knowledge');
+}

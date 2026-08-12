@@ -35,6 +35,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'dataTable:write',
 	'project:read',
 	'tag:read',
+	'knowledge:read',
 ] as const;
 
 export type McpScope = (typeof MCP_INSTANCE_SCOPES)[number];

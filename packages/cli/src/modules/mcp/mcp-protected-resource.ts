@@ -9,7 +9,7 @@ import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
 import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
-import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { areAgentToolsAvailable, areKnowledgeToolsAvailable } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 
@@ -19,6 +19,7 @@ import { McpSettingsService } from './mcp.settings.service';
  */
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
+const KNOWLEDGE_SCOPE = 'knowledge:read';
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -55,8 +56,19 @@ export class McpProtectedResource implements ProtectedResource {
 	) {}
 
 	get scopes(): string[] {
-		if (areAgentToolsAvailable(this.globalConfig, this.moduleRegistry)) return SUPPORTED_SCOPES;
-		return SUPPORTED_SCOPES.filter((scope) => !AGENT_SCOPES.has(scope));
+		// A scope whose tools this instance cannot expose is never offered on the
+		// consent screen.
+		const unavailable = new Set<string>();
+
+		if (!areAgentToolsAvailable(this.globalConfig, this.moduleRegistry)) {
+			for (const scope of AGENT_SCOPES) unavailable.add(scope);
+		}
+
+		if (!areKnowledgeToolsAvailable(this.moduleRegistry)) unavailable.add(KNOWLEDGE_SCOPE);
+
+		if (unavailable.size === 0) return SUPPORTED_SCOPES;
+
+		return SUPPORTED_SCOPES.filter((scope) => !unavailable.has(scope));
 	}
 
 	/**

@@ -179,5 +179,6 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "roleMappingRule:delete",
   "roleMappingRule:list",
   "otel:manage",
+  "knowledge:manage",
 ]
 `;

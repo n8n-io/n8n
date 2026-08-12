@@ -43,6 +43,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('search_nodes');
 			expect(scopeTools['agent:read']).toContain('search_agents');
 			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
+			expect(scopeTools['knowledge:read']).toContain('search_knowledge');
 		});
 
 		it('should drop tools this instance does not expose', () => {
@@ -76,6 +77,15 @@ describe('McpProtectedResource', () => {
 			expect(resource.scopes).not.toContain('agent:write');
 			expect(resource.getScopeTools()).not.toHaveProperty('agent:read');
 			expect(resource.getScopeTools()).not.toHaveProperty('agent:write');
+		});
+
+		it('should drop the knowledge scope when the knowledge module is inactive', () => {
+			moduleRegistry.isActive.mockImplementation((module: string) => module !== 'knowledge');
+
+			expect(resource.scopes).not.toContain('knowledge:read');
+			expect(resource.getScopeTools()).not.toHaveProperty('knowledge:read');
+			// unrelated scopes are untouched
+			expect(resource.scopes).toContain('workflow:read');
 		});
 	});
 

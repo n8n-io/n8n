@@ -85,7 +85,15 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	],
 	'project:read': ['search_projects', 'search_folders'],
 	'tag:read': ['list_workflow_tags'],
+	'knowledge:read': ['search_knowledge'],
 };
+
+/**
+ * Tools only registered while the optional `knowledge` module is active. Kept
+ * out of the "everything is registered" drift guard for the same reason as
+ * AGENT_TOOLS: the module is off in that test's environment.
+ */
+export const KNOWLEDGE_TOOLS: ReadonlySet<string> = new Set(TOOLS_BY_SCOPE['knowledge:read']);
 
 /**
  * Tools only registered when the workflow builder is enabled
