@@ -24,6 +24,7 @@ import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { EvaluationComparePage } from './EvaluationComparePage';
 import { ExecutionsPage } from './ExecutionsPage';
+import { FilesPage } from './FilesPage';
 import { InstanceAiPage } from './InstanceAiPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
@@ -58,6 +59,7 @@ import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
 import { DataTableComposer } from '../composables/DataTablesComposer';
 import { ExecutionsComposer } from '../composables/ExecutionsComposer';
+import { FilesComposer } from '../composables/FilesComposer';
 import { MfaComposer } from '../composables/MfaComposer';
 import { NodeDetailsViewComposer } from '../composables/NodeDetailsViewComposer';
 import { OidcComposer } from '../composables/OidcComposer';
@@ -108,6 +110,7 @@ export class n8nPage {
 	readonly sideBar: SidebarPage;
 	readonly dataTable: DataTableView;
 	readonly dataTableDetails: DataTableDetails;
+	readonly files: FilesPage;
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
@@ -149,6 +152,7 @@ export class n8nPage {
 	readonly templatesComposer: TemplatesComposer;
 	readonly start: TestEntryComposer;
 	readonly dataTableComposer: DataTableComposer;
+	readonly filesComposer: FilesComposer;
 
 	// Helpers
 	readonly navigate: NavigationHelper;
@@ -194,6 +198,7 @@ export class n8nPage {
 		this.workflowSharingModal = new WorkflowSharingModal(page);
 		this.dataTable = new DataTableView(page);
 		this.dataTableDetails = new DataTableDetails(page);
+		this.files = new FilesPage(page);
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
 		this.securitySettings = new SecuritySettingsPage(page);
@@ -232,6 +237,7 @@ export class n8nPage {
 		this.templatesComposer = new TemplatesComposer(this);
 		this.start = new TestEntryComposer(this);
 		this.dataTableComposer = new DataTableComposer(this);
+		this.filesComposer = new FilesComposer(this);
 
 		// Helpers
 		this.navigate = new NavigationHelper(page);

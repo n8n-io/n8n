@@ -137,7 +137,13 @@ const onConfirm = async () => {
 				>
 					{{ i18n.baseText('files.replace.downloadCurrent') }}
 				</N8nLink>
-				<input ref="fileInputRef" type="file" :class="$style.hiddenInput" @change="onFilePicked" />
+				<input
+					ref="fileInputRef"
+					type="file"
+					:class="$style.hiddenInput"
+					data-test-id="replace-file-input"
+					@change="onFilePicked"
+				/>
 			</div>
 		</template>
 		<template #footer>
