@@ -44,6 +44,23 @@ import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { describeStructuredOutputError } from './utils/structured-output-error';
 
+function getFinalWorkflowResponse(messageRecord: MessageRecord): string {
+	let lastToolCallIndex = -1;
+	for (let index = messageRecord.timeline.length - 1; index >= 0; index--) {
+		if (messageRecord.timeline[index]?.type === 'tool-call') {
+			lastToolCallIndex = index;
+			break;
+		}
+	}
+	if (lastToolCallIndex === -1) return messageRecord.assistantResponse;
+
+	return messageRecord.timeline
+		.slice(lastToolCallIndex + 1)
+		.filter((event) => event.type === 'text')
+		.map((event) => event.content)
+		.join('');
+}
+
 /**
  * Executes agents invoked from inside a workflow execution (the AI Agent node
  * or a "Message an Agent" tool call): non-streaming runs against isolated
@@ -354,9 +371,14 @@ export class AgentWorkflowExecutionService {
 			}
 		}
 
+		const messageRecord = recorder.getMessageRecord();
+
 		return {
 			recorder,
-			messageRecord: recorder.getMessageRecord(),
+			messageRecord: {
+				...messageRecord,
+				assistantResponse: getFinalWorkflowResponse(messageRecord),
+			},
 			structuredOutput,
 			toolCalls,
 			streamError,
