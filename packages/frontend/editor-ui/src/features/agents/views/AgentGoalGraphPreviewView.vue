@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nIconButton, N8nText } from '@n8n/design-system';
+import { useLocalStorage } from '@vueuse/core';
+import { N8nIconButton, N8nResizeWrapper, N8nText, type ResizeData } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 
+import { LOCAL_STORAGE_AGENT_GOAL_PREVIEW_CHAT_WIDTH } from '@/app/constants';
 import { getAgent } from '../composables/useAgentApi';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
@@ -41,6 +43,16 @@ const { config, fetchConfig } = useAgentConfig();
 
 const goals = computed(() => config.value?.goals ?? []);
 const slots = computed(() => config.value?.slots ?? []);
+
+// The chat panel is a resizable right-docked column; the graph fills the rest.
+// N8nResizeWrapper emits the clamped new width, so we just persist it.
+const CHAT_MIN_WIDTH = 320;
+const CHAT_MAX_WIDTH = 760;
+const chatWidth = useLocalStorage(LOCAL_STORAGE_AGENT_GOAL_PREVIEW_CHAT_WIDTH, 420);
+
+function onChatResize(data: ResizeData) {
+	chatWidth.value = data.width;
+}
 
 // The chat panel owns the run; its live goal-graph snapshot drives the canvas.
 const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
@@ -82,7 +94,17 @@ function close() {
 			<AgentGoalGraphCanvas :goals="goals" :slots="slots" :state="liveState" />
 		</section>
 
-		<aside :class="$style.chat">
+		<N8nResizeWrapper
+			:class="$style.chat"
+			:style="{ width: `${chatWidth}px` }"
+			:width="chatWidth"
+			:supported-directions="['left']"
+			:min-width="CHAT_MIN_WIDTH"
+			:max-width="CHAT_MAX_WIDTH"
+			:grid-size="8"
+			outset
+			@resize="onChatResize"
+		>
 			<header :class="$style.header">
 				<N8nText :bold="true" :class="$style.title">
 					{{ agent?.name || i18n.baseText('agents.goalGraph.preview.title') }}
@@ -123,7 +145,7 @@ function close() {
 					:connected-triggers="[]"
 				/>
 			</div>
-		</aside>
+		</N8nResizeWrapper>
 	</div>
 </template>
 
@@ -136,7 +158,8 @@ function close() {
 	overflow: hidden;
 }
 
-/* Goal graph fills the page; the chat sits beside it as a fixed-width panel. */
+/* Goal graph fills the page; the chat is a resizable right-docked panel whose
+   width is driven by the inline style bound to `chatWidth`. */
 .graph {
 	flex: 1;
 	min-width: 0;
@@ -145,7 +168,7 @@ function close() {
 }
 
 .chat {
-	flex: 0 0 30rem;
+	flex: 0 0 auto;
 	max-width: 100%;
 	min-height: 0;
 	display: flex;
