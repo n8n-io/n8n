@@ -82,6 +82,7 @@ const renderComponent = createComponentRenderer(WorkflowReviewRequestsView, {
 							data-test-id="request-changes"
 							@click="$emit('decide', { decision: 'changes_requested', note: 'needs work' })"
 						/>
+						<button data-test-id="comment-posted" @click="$emit('comment-posted')" />
 					</div>`,
 			},
 		},
@@ -693,6 +694,88 @@ describe('WorkflowReviewRequestsView', () => {
 
 			expect(activityStore.fetchFeed).not.toHaveBeenCalled();
 			expect(activityStore.clearDecisionNote).not.toHaveBeenCalled();
+		});
+
+		// Following the approved review to the closed tab would also switch the feed back,
+		// throwing away the comment and note the viewer started on the review they moved to.
+		it('keeps the viewer on the review they moved to when the approval lands', async () => {
+			let resolveDecision!: () => void;
+			store.decideOnReview.mockImplementationOnce(
+				async () =>
+					await new Promise<DecideWorkflowReviewRequestResponse>((resolve) => {
+						resolveDecision = () => resolve(decisionResponse());
+					}),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+			getByTestId('approve-review').click();
+			await router.replace('/workflow-review-requests/req-2');
+			await waitAllPromises();
+
+			resolveDecision();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.fullPath).toBe('/workflow-review-requests/req-2');
+		});
+
+		it('shows no publish toast once the viewer has left the page', async () => {
+			let resolveDecision!: () => void;
+			store.decideOnReview.mockImplementationOnce(
+				async () =>
+					await new Promise<DecideWorkflowReviewRequestResponse>((resolve) => {
+						resolveDecision = () =>
+							resolve(
+								decisionResponse({
+									autoPublish: { status: 'failed', message: 'Version not found' },
+								}),
+							);
+					}),
+			);
+
+			const { getByTestId, unmount } = renderComponent();
+			await waitAllPromises();
+			getByTestId('approve-review').click();
+			unmount();
+
+			resolveDecision();
+			await waitAllPromises();
+
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('shows no failure toast once the viewer has left the page', async () => {
+			let rejectDecision!: (error: Error) => void;
+			store.decideOnReview.mockImplementationOnce(
+				async () =>
+					await new Promise<DecideWorkflowReviewRequestResponse>((_resolve, reject) => {
+						rejectDecision = reject;
+					}),
+			);
+
+			const { getByTestId, unmount } = renderComponent();
+			await waitAllPromises();
+			getByTestId('approve-review').click();
+			unmount();
+
+			rejectDecision(new Error('conflict'));
+			await waitAllPromises();
+
+			expect(showError).not.toHaveBeenCalled();
+			expect(store.fetchList).not.toHaveBeenCalled();
+		});
+
+		// The tab write is reached from a resolved post too, by which time the viewer may be
+		// on a page where `tab` means something else entirely.
+		it('leaves the query of another page alone when a comment lands late', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await router.replace('/settings/roles?tab=roles');
+			getByTestId('comment-posted').click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.fullPath).toBe('/settings/roles?tab=roles');
 		});
 
 		it('locks the decision actions while a decision is in flight', async () => {
