@@ -65,6 +65,7 @@ export function useInstanceAiProactiveOffer(): {
 	raise: (offer: ProactiveOffer) => void;
 	accept: () => Promise<boolean>;
 	dismiss: () => void;
+	retract: (key: string) => void;
 	clear: () => void;
 } {
 	const panelStore = useInstanceAiPanelStore();
@@ -139,11 +140,22 @@ export function useInstanceAiProactiveOffer(): {
 		writeDismissedKeys(dismissedKeys);
 	}
 
+	/**
+	 * Withdraw an offer whose problem resolved itself (e.g. the credential test
+	 * now passes). Keyed so a trigger can only retract its own offer — the
+	 * pipeline is shared, and clearing blindly would swallow another surface's.
+	 */
+	function retract(key: string): void {
+		if (pendingOffer?.key === key) clearDwell();
+		if (activeOffer.value?.key === key) clearActiveOffer();
+	}
+
 	return {
 		activeOffer,
 		raise,
 		accept,
 		dismiss,
+		retract,
 		clear: clearActiveOffer,
 	};
 }

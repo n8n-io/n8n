@@ -167,6 +167,54 @@ describe('useInstanceAiProactiveOffer', () => {
 		expect(activeOffer.value).toBeNull();
 	});
 
+	it('retract cancels an offer still in its dwell', () => {
+		const { activeOffer, raise, retract } = useInstanceAiProactiveOffer();
+
+		raise(offer);
+		retract(offer.key);
+		vi.advanceTimersByTime(INSTANCE_AI_PROACTIVE_OFFER_DWELL_MS);
+
+		expect(activeOffer.value).toBeNull();
+	});
+
+	it('retract withdraws an offer already on screen', () => {
+		const { activeOffer, raise, retract } = useInstanceAiProactiveOffer();
+
+		raise(offer);
+		vi.advanceTimersByTime(INSTANCE_AI_PROACTIVE_OFFER_DWELL_MS);
+		expect(activeOffer.value).toEqual(offer);
+
+		retract(offer.key);
+
+		expect(activeOffer.value).toBeNull();
+	});
+
+	it('retract leaves another trigger’s offer alone', () => {
+		const { activeOffer, raise, retract } = useInstanceAiProactiveOffer();
+
+		raise(offer);
+		vi.advanceTimersByTime(INSTANCE_AI_PROACTIVE_OFFER_DWELL_MS);
+
+		// The pipeline is shared, so retracting by the wrong key must be a no-op.
+		retract('credential-error:other:cred-9:boom');
+
+		expect(activeOffer.value).toEqual(offer);
+	});
+
+	it('retract does not mark the offer dismissed, so the problem can offer again', () => {
+		const { activeOffer, raise, retract } = useInstanceAiProactiveOffer();
+
+		raise(offer);
+		retract(offer.key);
+
+		// `offeredKeys` still holds the key only once shown; a retracted offer that
+		// never surfaced may come back if the same problem recurs.
+		raise(offer);
+		vi.advanceTimersByTime(INSTANCE_AI_PROACTIVE_OFFER_DWELL_MS);
+
+		expect(activeOffer.value).toEqual(offer);
+	});
+
 	it('is inert when Instance AI is unavailable', () => {
 		mocks.instanceAiAvailable = false;
 		const { activeOffer, raise } = useInstanceAiProactiveOffer();

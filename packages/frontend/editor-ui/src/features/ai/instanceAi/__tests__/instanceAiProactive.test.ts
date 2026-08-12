@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
 	CONTEXT_VALUE_MAX_LENGTH,
 	buildContextBlock,
-	buildCredentialErrorOffer,
 	buildCredentialErrorSeedMessage,
 	buildExecutionErrorSeedMessage,
 	credentialErrorOfferKey,
@@ -152,6 +151,15 @@ describe('stripContextBlocks', () => {
 		expect(stripContextBlocks('Just a message')).toBe('Just a message');
 	});
 
+	it('tolerates a message whose content has not arrived', () => {
+		// Runs per render across the whole transcript — throwing here breaks it.
+		expect(stripContextBlocks(undefined)).toBe('');
+		expect(stripContextBlocks(null)).toBe('');
+		expect(stripContextBlocks('')).toBe('');
+		expect(getContextBlockType(undefined)).toBeNull();
+		expect(hasContextBlock(undefined)).toBe(false);
+	});
+
 	it('does not touch unrelated angle brackets', () => {
 		expect(stripContextBlocks('Use <b> tags and a < b comparison')).toBe(
 			'Use <b> tags and a < b comparison',
@@ -281,41 +289,8 @@ describe('buildExecutionErrorSeedMessage', () => {
 	});
 });
 
-describe('buildCredentialErrorOffer', () => {
-	const context = {
-		credentialType: 'slackApi',
-		displayName: 'Slack API',
-		nodeName: 'Send message',
-		errorMessage: 'invalid_auth',
-		credentialId: 'cred-1',
-	};
-
-	it('keys the offer by credential and error so an identical failure does not re-offer', () => {
-		expect(buildCredentialErrorOffer(context).key).toBe(
-			'credential-error:slackApi:cred-1:invalid_auth',
-		);
-	});
-
-	it('falls back to the display name when there is no credential id yet', () => {
-		const { credentialId, ...withoutId } = context;
-
-		expect(buildCredentialErrorOffer(withoutId).key).toBe(
-			'credential-error:slackApi:Slack API:invalid_auth',
-		);
-	});
-
-	it('carries the seeded message and the proactive source', () => {
-		const offer = buildCredentialErrorOffer(context);
-
-		expect(offer.source).toBe('proactive_offer');
-		expect(offer.message).toContain('<context type="credential-error">');
-		expect(offer.title).toBe('instanceAi.proactiveOffer.credentialError.title');
-		expect(offer.detail).toBe('instanceAi.proactiveOffer.credentialError.detail');
-	});
-});
-
 describe('buildCredentialErrorSeedMessage', () => {
-	it('asks for an explanation rather than a fix', () => {
+	it('drafts a short ask, leaving the detail to the context block and chip', () => {
 		const message = buildCredentialErrorSeedMessage({
 			credentialType: 'slackApi',
 			displayName: 'Slack API',
@@ -323,23 +298,8 @@ describe('buildCredentialErrorSeedMessage', () => {
 			errorMessage: 'invalid_auth',
 		});
 
-		// The agent cannot resolve a 401 — it never sees the user's API key.
-		expect(stripContextBlocks(message)).toBe(
-			'instanceAi.proactive.credentialError.prompt:{"displayName":"Slack API","nodeName":"Send message"}',
-		);
-	});
-
-	it('drops the node from the lead sentence outside the editor', () => {
-		const message = buildCredentialErrorSeedMessage({
-			credentialType: 'slackApi',
-			displayName: 'Slack API',
-			errorMessage: 'invalid_auth',
-		});
-
-		expect(stripContextBlocks(message)).toBe(
-			'instanceAi.proactive.credentialError.promptNoNode:{"displayName":"Slack API"}',
-		);
-		expect(message).not.toContain('node:');
+		// Asks for an explanation, not a fix: the agent never sees the user's API key.
+		expect(stripContextBlocks(message)).toBe('instanceAi.proactive.credentialError.prompt');
 	});
 
 	it('carries the credential id when one exists so the agent can read it', () => {
@@ -353,6 +313,16 @@ describe('buildCredentialErrorSeedMessage', () => {
 		expect(message).toContain('credential id: cred-1');
 	});
 
+	it('omits the node outside the editor', () => {
+		const message = buildCredentialErrorSeedMessage({
+			credentialType: 'slackApi',
+			displayName: 'Slack API',
+			errorMessage: 'invalid_auth',
+		});
+
+		expect(message).not.toContain('node:');
+	});
+
 	it('carries only the credential type, display name, node and auth error', () => {
 		const message = buildCredentialErrorSeedMessage({
 			credentialType: 'slackApi',
@@ -361,9 +331,6 @@ describe('buildCredentialErrorSeedMessage', () => {
 			errorMessage: 'invalid_auth',
 		});
 
-		expect(stripContextBlocks(message)).toBe(
-			'instanceAi.proactive.credentialError.prompt:{"displayName":"My Slack account","nodeName":"Send message"}',
-		);
 		expect(message).toContain('credential: My Slack account (type: slackApi)');
 		expect(message).toContain('node: Send message');
 		expect(message).toContain('message: invalid_auth');

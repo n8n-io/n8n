@@ -1,8 +1,6 @@
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
-import type { ProactiveOffer } from './instanceAiPanel.types';
-
 export type { ProactiveOffer } from './instanceAiPanel.types';
 
 /**
@@ -58,8 +56,14 @@ export function buildContextBlock(type: ProactiveContextType, fields: ContextFie
 	return `<${CONTEXT_TAG} type="${type}">\n${body}\n</${CONTEXT_TAG}>`;
 }
 
-/** Strip every context block so the message renders as the plain-language text alone. */
-export function stripContextBlocks(text: string): string {
+/**
+ * Strip every context block so the message renders as the plain-language text
+ * alone. Total on purpose: it runs per message render, and a message whose
+ * `content` hasn't arrived yet must not break the transcript.
+ */
+export function stripContextBlocks(text: string | undefined | null): string {
+	if (!text) return '';
+
 	return text
 		.replace(CONTEXT_BLOCK_REGEX, '')
 		.replace(DANGLING_CONTEXT_BLOCK_REGEX, '')
@@ -67,20 +71,22 @@ export function stripContextBlocks(text: string): string {
 		.trim();
 }
 
+export function hasContextBlock(text: string | undefined | null): boolean {
+	return Boolean(text) && /<context\b[^>]*>/i.test(text as string);
+}
+
+/** Type of the first block, used to pick the chip shown in place of the markup. */
+export function getContextBlockType(text: string | undefined | null): ProactiveContextType | null {
+	if (!text) return null;
+
+	const type = CONTEXT_TYPE_ATTRIBUTE_REGEX.exec(text)?.[1];
+	return PROACTIVE_CONTEXT_TYPES.find((known) => known === type) ?? null;
+}
+
 /** Pull complete context blocks out so a user-edited lead can reattach them on send. */
 export function extractContextBlocks(text: string): string {
 	const blocks = text.match(/<context\b[^>]*>[\s\S]*?<\/context>/gi);
 	return blocks?.join('\n\n') ?? '';
-}
-
-export function hasContextBlock(text: string): boolean {
-	return /<context\b[^>]*>/i.test(text);
-}
-
-/** Type of the first block, used to pick the chip shown in place of the markup. */
-export function getContextBlockType(text: string): ProactiveContextType | null {
-	const type = CONTEXT_TYPE_ATTRIBUTE_REGEX.exec(text)?.[1];
-	return PROACTIVE_CONTEXT_TYPES.find((known) => known === type) ?? null;
 }
 
 /** Read one `key: value` line from the first context block body. */
@@ -206,7 +212,9 @@ export function buildExecutionErrorSeedMessage(context: ExecutionErrorContext): 
 }
 
 /**
- * Seeded message for a credential that failed to authenticate.
+ * Draft for a credential that failed to authenticate: a short ask the transcript
+ * can stand on once the block is stripped (the credential and error show as a
+ * chip), followed by the machine-readable context.
  *
  * Asks for an explanation, not a fix: the agent cannot resolve a 401 because it
  * cannot see the user's API key. Its value here is saying what the error means
@@ -215,13 +223,7 @@ export function buildExecutionErrorSeedMessage(context: ExecutionErrorContext): 
 export function buildCredentialErrorSeedMessage(context: CredentialErrorContext): string {
 	const i18n = useI18n();
 
-	const lead = context.nodeName
-		? i18n.baseText('instanceAi.proactive.credentialError.prompt', {
-				interpolate: { displayName: context.displayName, nodeName: context.nodeName },
-			})
-		: i18n.baseText('instanceAi.proactive.credentialError.promptNoNode', {
-				interpolate: { displayName: context.displayName },
-			});
+	const lead = i18n.baseText('instanceAi.proactive.credentialError.prompt');
 
 	const block = buildContextBlock('credential-error', {
 		credential: `${context.displayName} (type: ${context.credentialType})`,
@@ -231,25 +233,4 @@ export function buildCredentialErrorSeedMessage(context: CredentialErrorContext)
 	});
 
 	return `${lead}\n\n${block}`;
-}
-
-/**
- * The full offer for a failed credential test. Owned here rather than in the
- * credentials feature so the copy, the dedupe key and the context block stay in
- * one place.
- */
-export function buildCredentialErrorOffer(context: CredentialErrorContext): ProactiveOffer {
-	const i18n = useI18n();
-
-	return {
-		key: credentialErrorOfferKey(
-			context.credentialType,
-			context.credentialId || context.displayName,
-			context.errorMessage,
-		),
-		title: i18n.baseText('instanceAi.proactiveOffer.credentialError.title'),
-		detail: i18n.baseText('instanceAi.proactiveOffer.credentialError.detail'),
-		message: buildCredentialErrorSeedMessage(context),
-		source: 'proactive_offer',
-	};
 }

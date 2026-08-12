@@ -269,7 +269,7 @@ watch(inputText, (text) => {
 watch(
 	() => props.prefillText,
 	(text, previous) => {
-		if (text == null || text === previous) return;
+		if (text === null || text === undefined || text === previous) return;
 		inputText.value = text;
 		void nextTick(() => focus());
 	},

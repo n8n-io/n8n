@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
+import { toValue } from 'vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STORES } from '@n8n/stores';
@@ -39,16 +40,15 @@ vi.mock('@n8n/i18n', async () => {
 	};
 });
 
-const raiseProactiveOffer = vi.hoisted(() => vi.fn());
+/**
+ * The offer's restraint rules (dwell, dedupe, retract) belong to
+ * `useInstanceAiCredentialErrorOffer` and are tested there. Here we only pin what
+ * the form decides: which failures are worth reporting at all.
+ */
+const credentialErrorOfferSource = vi.hoisted(() => vi.fn());
 
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiProactiveOffer', () => ({
-	useInstanceAiProactiveOffer: () => ({
-		raise: raiseProactiveOffer,
-		activeOffer: { value: null },
-		accept: vi.fn(),
-		dismiss: vi.fn(),
-		clear: vi.fn(),
-	}),
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiCredentialErrorOffer', () => ({
+	useInstanceAiCredentialErrorOffer: credentialErrorOfferSource,
 }));
 
 const mockCredentialType: ICredentialType = {
@@ -1248,39 +1248,32 @@ describe('CredentialConfig', () => {
 			authError: '',
 		};
 
+		/** What the form is currently reporting to the offer composable. */
+		function reportedFailure() {
+			return toValue(credentialErrorOfferSource.mock.calls.at(-1)?.[0]);
+		}
+
 		beforeEach(() => {
-			raiseProactiveOffer.mockClear();
+			credentialErrorOfferSource.mockClear();
 		});
 
-		it('offers to explain the error when a test failure sets authError', async () => {
+		it('reports the failure once a test failure sets authError', async () => {
 			const { rerender } = renderComponent({ props: failingTestProps });
 
-			await rerender({ authError: '401 Unauthorized — check your credentials' });
+			expect(reportedFailure()).toBeNull();
 
-			expect(raiseProactiveOffer).toHaveBeenCalledTimes(1);
-			const offer = raiseProactiveOffer.mock.calls[0][0];
-			expect(offer.key).toBe(
-				'credential-error:testCredential:cred-1:401 unauthorized — check your credentials',
-			);
-			expect(offer.source).toBe('proactive_offer');
+			await rerender({ authError: '401 Unauthorized \u2014 check your credentials' });
+
+			expect(reportedFailure()).toEqual({
+				credentialType: 'testCredential',
+				displayName: 'Test Credential',
+				nodeName: undefined,
+				errorMessage: '401 Unauthorized \u2014 check your credentials',
+				credentialId: 'cred-1',
+			});
 		});
 
-		it('seeds the error context without promising a fix', async () => {
-			const { rerender } = renderComponent({ props: failingTestProps });
-
-			await rerender({ authError: '401 Unauthorized' });
-
-			const { message, title, detail } = raiseProactiveOffer.mock.calls[0][0];
-			expect(message).toContain('Explain what the error means and what I need to change');
-			expect(message).toContain('<context type="credential-error">');
-			expect(message).toContain('credential: Test Credential (type: testCredential)');
-			expect(message).toContain('message: 401 Unauthorized');
-			// An explain scenario: the agent can't resolve a 401 without the user's key.
-			expect(title).toBe('I can explain this error');
-			expect(detail).toBe("I'll walk you through what the failed test means and what to check.");
-		});
-
-		it('never carries credential data', async () => {
+		it('never reports credential data', async () => {
 			const { rerender } = renderComponent({
 				props: {
 					...failingTestProps,
@@ -1290,7 +1283,7 @@ describe('CredentialConfig', () => {
 
 			await rerender({ authError: '401 Unauthorized' });
 
-			expect(raiseProactiveOffer.mock.calls[0][0].message).not.toContain('sk-super-secret');
+			expect(JSON.stringify(reportedFailure())).not.toContain('sk-super-secret');
 		});
 
 		it('names the node the credential is being configured for', async () => {
@@ -1308,10 +1301,10 @@ describe('CredentialConfig', () => {
 
 			await rerender({ authError: '401 Unauthorized' });
 
-			expect(raiseProactiveOffer.mock.calls[0][0].message).toContain('node: Send message');
+			expect(reportedFailure()?.nodeName).toBe('Send message');
 		});
 
-		it('raises nothing for a background auto-test failure', async () => {
+		it('reports nothing for a background auto-test failure', async () => {
 			// `useCredentialTestInBackground` auto-tests while the user is still typing
 			// the API key. It records into the store and never touches `authError`, so
 			// no offer may come out of it.
@@ -1322,36 +1315,39 @@ describe('CredentialConfig', () => {
 			const { rerender } = renderComponent({ pinia, props: failingTestProps });
 			await rerender({ credentialData: { apiKey: 'partially-typed' } });
 
-			expect(raiseProactiveOffer).not.toHaveBeenCalled();
+			expect(reportedFailure()).toBeNull();
 		});
 
-		it('raises nothing while the validation warning replaces the error banner', async () => {
+		it('reports nothing while the validation warning replaces the error banner', async () => {
 			const { rerender } = renderComponent({
 				props: { ...failingTestProps, showValidationWarning: true },
 			});
 
 			await rerender({ authError: '401 Unauthorized' });
 
-			expect(raiseProactiveOffer).not.toHaveBeenCalled();
+			expect(reportedFailure()).toBeNull();
 		});
 
-		it('raises nothing for a user who cannot edit the credential', async () => {
+		it('reports nothing for a user who cannot edit the credential', async () => {
 			const { rerender } = renderComponent({
 				props: { ...failingTestProps, credentialPermissions: { read: true } },
 			});
 
 			await rerender({ authError: '401 Unauthorized' });
 
-			expect(raiseProactiveOffer).not.toHaveBeenCalled();
+			expect(reportedFailure()).toBeNull();
 		});
 
-		it('stops offering once the credential test passes', async () => {
+		it('stops reporting once the credential test passes', async () => {
+			// Clearing the report is what withdraws an offer still in its dwell.
 			const { rerender } = renderComponent({ props: failingTestProps });
 
 			await rerender({ authError: '401 Unauthorized' });
+			expect(reportedFailure()).not.toBeNull();
+
 			await rerender({ authError: '' });
 
-			expect(raiseProactiveOffer).toHaveBeenCalledTimes(1);
+			expect(reportedFailure()).toBeNull();
 		});
 	});
 });
