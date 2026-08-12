@@ -3,6 +3,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { migrateSlotAccess } from '@n8n/api-types';
 
 import { deriveGoalStatuses } from './derive-status';
+import { ensureExpressionIsolate } from './expressions';
 import { createFillSlotTool } from './fill-slot-tool';
 import type { GoalGraphStateService } from './goal-graph-state.service';
 import { buildGoalGraphPrompt } from './prompt';
@@ -93,6 +94,9 @@ export function createGoalGraphRuntime(options: {
 		},
 
 		async ensureLoaded(threadId) {
+			// The sync hooks below evaluate n8n expressions — under the VM
+			// expression engine that needs an isolate acquired up front.
+			await ensureExpressionIsolate();
 			await stateService.ensureLoaded(agentId, threadId, definition);
 		},
 

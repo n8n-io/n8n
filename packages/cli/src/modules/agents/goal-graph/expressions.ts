@@ -71,6 +71,19 @@ export interface GoalExpressionContext {
 }
 
 /**
+ * With the VM expression engine (the server default), evaluation requires an
+ * isolate acquired for the evaluating `Expression` instance — synchronous
+ * evaluation throws `IsolateError` otherwise. Acquire one for the shared stub
+ * workflow and hold it; goal-graph hooks are synchronous, so this must run
+ * before evaluation starts (awaited from `GoalGraphRuntime.ensureLoaded` at
+ * run start). Idempotent: re-acquiring while held is a no-op, re-acquiring
+ * after a pool reclaim restores the isolate, and the legacy engine ignores it.
+ */
+export async function ensureExpressionIsolate(): Promise<void> {
+	await getStubWorkflow().expression.acquireIsolate();
+}
+
+/**
  * Evaluate a goal-graph expression. Accepts both `={{ … }}` and `{{ … }}`
  * forms (the leading `=` is added when missing). Returns `undefined` on any
  * evaluation error.
