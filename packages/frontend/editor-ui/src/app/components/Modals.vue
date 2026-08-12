@@ -19,7 +19,6 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_DIFF_MODAL_KEY,
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
-	WORKFLOW_HISTORY_VERSION_RESTORE,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -108,7 +107,6 @@ import WorkflowTagsManager from '@/features/shared/tags/components/TagsManager/W
 import WhatsNewModal from '@/app/components/WhatsNewModal.vue';
 import WorkflowActivationConflictingWebhookModal from '@/app/components/WorkflowActivationConflictingWebhookModal.vue';
 import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
-import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
 import WorkflowVersionFormModal, {
 	type WorkflowVersionFormModalData,
@@ -330,16 +328,6 @@ const TrialIntroModal = defineAsyncComponent(
 			<template #default="{ modalName, data }">
 				<DebugPaywallModal
 					data-test-id="debug-paywall-modal"
-					:modal-name="modalName"
-					:data="data"
-				/>
-			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="WORKFLOW_HISTORY_VERSION_RESTORE">
-			<template #default="{ modalName, data }">
-				<WorkflowHistoryVersionRestoreModal
-					data-test-id="workflow-history-version-restore-modal"
 					:modal-name="modalName"
 					:data="data"
 				/>
