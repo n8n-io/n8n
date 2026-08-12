@@ -131,6 +131,55 @@ describe('WorkflowNodeSearchService', () => {
 		expect(await service.search(member, 'slack')).toHaveLength(1);
 	});
 
+	it('matches on credential name', async () => {
+		// ARRANGE
+		const member = await createMember();
+		await createWorkflow(
+			{
+				name: 'CRM',
+				nodes: [
+					node('Notify', { credentials: { slackApi: { id: 'c1', name: 'My Slack account' } } }),
+				],
+			},
+			member,
+		);
+
+		// ACT
+		const results = await service.search(member, 'slack account');
+
+		// ASSERT
+		expect(results).toHaveLength(1);
+		expect(results[0].nodeName).toBe('Notify');
+	});
+
+	// The DB prefilter matches the raw JSON blob, which contains fields the
+	// in-memory matcher deliberately skips (node ids, positions, webhookIds).
+	// A hit older than a full batch of such blob-only candidates must still be
+	// found — a fixed candidate cap silently returned nothing here.
+	it('finds hits beyond a full batch of blob-only false positives', async () => {
+		// ARRANGE — the real hit is oldest, then 100 newer workflows that match the
+		// blob only via node id and fill the first keyset batch entirely.
+		const member = await createMember();
+		await createWorkflow({ name: 'Real hit', nodes: [node('needle hit')] }, member);
+		await new Promise((resolve) => setTimeout(resolve, 10)); // decoys must sort newer
+		await Promise.all(
+			Array.from(
+				{ length: 100 },
+				async (_, i) =>
+					await createWorkflow(
+						{ name: `Decoy ${i}`, nodes: [node(`decoy ${i}`, { id: `needle-${i}` })] },
+						member,
+					),
+			),
+		);
+
+		// ACT
+		const results = await service.search(member, 'needle');
+
+		// ASSERT
+		expect(results.map((r) => r.workflowName)).toContain('Real hit');
+	});
+
 	it('matches parameter values and returns a sticky preview around the match', async () => {
 		// ARRANGE
 		const member = await createMember();

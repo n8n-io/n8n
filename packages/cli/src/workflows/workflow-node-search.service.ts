@@ -13,12 +13,20 @@ import { RoleService } from '@/services/role.service';
 const MAX_RESULTS = 50;
 const PER_WORKFLOW_CAP = 5;
 
+/** Workflows hydrated and matched in memory per batch of the keyset scan. */
+const BATCH_SIZE = 100;
+
 /**
- * Workflows scanned before matching nodes in memory. Filling MAX_RESULTS needs
- * at most 50 workflows (1 hit each), so this leaves 2x headroom for workflows
- * that match the raw JSON but yield no node hit.
+ * Safety rail, not a correctness cap: stop scanning after this many candidate
+ * workflows even if MAX_RESULTS was not filled. Only reachable when the DB
+ * prefilter keeps matching workflows whose nodes yield no in-memory hit — the
+ * blob contains fields nodeMatches deliberately skips (node ids, positions,
+ * webhookIds). In practice the loop ends after 1-2 batches; this bounds the
+ * pathological query at 20 batches instead of hydrating the whole table.
+ * ponytail: raise or replace with a real search index (workflow_dependency)
+ * if instances outgrow it.
  */
-const MAX_CANDIDATE_WORKFLOWS = 100;
+const MAX_SCANNED_WORKFLOWS = 2000;
 
 const STICKY_PREVIEW_MAX_LENGTH = 200;
 const STICKY_PREVIEW_LEAD_IN = 40;
@@ -73,56 +81,74 @@ export class WorkflowNodeSearchService {
 			this.roleService.rolesWithScope('workflow', scopes),
 		]);
 
-		const workflows = await this.workflowRepository.getManyWithSharingSubquery(
-			user,
-			{ scopes, projectRoles, workflowRoles },
-			{
-				filter: { nodeContent: query },
-				// Deliberately no `ownedBy`. Requesting it joins `shared`+`project`, and
-				// TypeORM then paginates joined queries through a separate DISTINCT pass
-				// with no LIMIT on the filtering query — which stops the `updatedAt`
-				// index from short-circuiting the scan. Owner projects are fetched below
-				// for the few workflows that actually produced hits.
-				// `updatedAt` is selected because it is the ORDER BY column.
-				select: { name: true, isArchived: true, nodes: true, updatedAt: true },
-				take: MAX_CANDIDATE_WORKFLOWS,
-				sortBy: 'updatedAt:desc',
-			},
-		);
-
 		const queryLower = query.toLowerCase();
 		const results: NodeSearchHit[] = [];
 
-		for (const workflow of workflows) {
-			if (results.length >= MAX_RESULTS) break;
+		// Keyset scan: batches continue from an (updatedAt, id) cursor until
+		// MAX_RESULTS is filled or candidates run out. Total DB work is bounded by
+		// one full LIKE scan — the same floor a no-match query already pays — while
+		// hydration to Node stays bounded per batch. A fixed candidate cap here
+		// silently dropped hits older than one batch of blob-only false positives.
+		let cursor: { updatedAt: Date; id: string } | undefined;
+		let scanned = 0;
 
-			const matchedNodes = (workflow.nodes ?? []).filter((node) =>
-				this.nodeMatches(node, queryLower),
+		while (results.length < MAX_RESULTS && scanned < MAX_SCANNED_WORKFLOWS) {
+			const workflows = await this.workflowRepository.getManyWithSharingSubquery(
+				user,
+				{ scopes, projectRoles, workflowRoles },
+				{
+					filter: { nodeContent: query },
+					// Deliberately no `ownedBy`. Requesting it joins `shared`+`project`, and
+					// TypeORM then paginates joined queries through a separate DISTINCT pass
+					// with no LIMIT on the filtering query — which stops the `updatedAt`
+					// index from short-circuiting the scan. Owner projects are fetched below
+					// for the few workflows that actually produced hits.
+					// `updatedAt` is selected because it is the ORDER BY and cursor column.
+					select: { name: true, isArchived: true, nodes: true, updatedAt: true },
+					take: BATCH_SIZE,
+					sortBy: 'updatedAt:desc',
+				},
+				cursor,
 			);
-			if (matchedNodes.length === 0) continue;
+			if (workflows.length === 0) break;
+			scanned += workflows.length;
 
-			const remainingGlobal = MAX_RESULTS - results.length;
-			const take = matchedNodes.slice(0, Math.min(PER_WORKFLOW_CAP, remainingGlobal));
+			for (const workflow of workflows) {
+				if (results.length >= MAX_RESULTS) break;
 
-			for (const node of take) {
-				const isSticky = node.type === STICKY_NODE_TYPE;
-				results.push({
-					workflowId: workflow.id,
-					workflowName: workflow.name,
-					projectName: '',
-					isArchived: workflow.isArchived,
-					nodeId: node.id,
-					nodeName: node.name,
-					nodeType: node.type,
-					disabled: node.disabled === true,
-					isSticky,
-					...(isSticky && typeof node.parameters?.content === 'string'
-						? {
-								stickyPreview: this.buildStickyPreview(node.parameters.content, queryLower),
-							}
-						: {}),
-				});
+				const matchedNodes = (workflow.nodes ?? []).filter((node) =>
+					this.nodeMatches(node, queryLower),
+				);
+				if (matchedNodes.length === 0) continue;
+
+				const remainingGlobal = MAX_RESULTS - results.length;
+				const take = matchedNodes.slice(0, Math.min(PER_WORKFLOW_CAP, remainingGlobal));
+
+				for (const node of take) {
+					const isSticky = node.type === STICKY_NODE_TYPE;
+					results.push({
+						workflowId: workflow.id,
+						workflowName: workflow.name,
+						projectName: '',
+						isArchived: workflow.isArchived,
+						nodeId: node.id,
+						nodeName: node.name,
+						nodeType: node.type,
+						disabled: node.disabled === true,
+						isSticky,
+						...(isSticky && typeof node.parameters?.content === 'string'
+							? {
+									stickyPreview: this.buildStickyPreview(node.parameters.content, queryLower),
+								}
+							: {}),
+					});
+				}
 			}
+
+			// A short batch means the scan is exhausted.
+			if (workflows.length < BATCH_SIZE) break;
+			const last = workflows[workflows.length - 1];
+			cursor = { updatedAt: last.updatedAt, id: last.id };
 		}
 
 		await this.attachProjectNames(results);
@@ -150,6 +176,13 @@ export class WorkflowNodeSearchService {
 		if (node.name?.toLowerCase().includes(queryLower)) return true;
 		if (node.type?.toLowerCase().includes(queryLower)) return true;
 		if (node.notes?.toLowerCase().includes(queryLower)) return true;
+		// Credential names are part of the blob the DB prefilter matches. Without
+		// this, a credential-name query turns every workflow using that credential
+		// into a scanned-but-hitless candidate — and finding the credential is
+		// useful in its own right.
+		if (node.credentials && JSON.stringify(node.credentials).toLowerCase().includes(queryLower)) {
+			return true;
+		}
 		// Parameters were just deserialised from the JSON column, so stringify cannot throw.
 		if (node.parameters && JSON.stringify(node.parameters).toLowerCase().includes(queryLower)) {
 			return true;

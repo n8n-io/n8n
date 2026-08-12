@@ -11,6 +11,7 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -888,6 +889,11 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	 * drive from `shared_workflow` and sort every match in a temp B-tree; `EXISTS`
 	 * keeps it driving from `workflow`, so an `ORDER BY updatedAt` + `LIMIT` can
 	 * short-circuit on the index instead of scanning the whole table.
+	 *
+	 * `cursor` enables keyset pagination: pass the `updatedAt`/`id` of the last
+	 * row of the previous batch to continue the scan where it stopped, without
+	 * OFFSET re-scanning skipped rows. Requires `sortBy: 'updatedAt:desc'`;
+	 * `id DESC` is always appended as a tiebreak since `updatedAt` is not unique.
 	 */
 	async getManyWithSharingSubquery(
 		user: User,
@@ -897,6 +903,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			workflowRoles?: string[];
 		},
 		options: ListQuery.Options = {},
+		cursor?: { updatedAt: Date; id: string },
 	): Promise<WorkflowEntity[]> {
 		const qb = this.getManyQueryWithSharingSubquery(
 			user,
@@ -905,6 +912,19 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			undefined,
 			'exists',
 		);
+
+		qb.addOrderBy('workflow.id', 'DESC');
+		if (cursor) {
+			qb.andWhere(
+				'(workflow.updatedAt < :cursorUpdatedAt OR (workflow.updatedAt = :cursorUpdatedAt AND workflow.id < :cursorId))',
+				{
+					// Stringified for the raw comparison; same pattern as execution.repository.
+					// String() narrows DateUtils' `any` return — always a string for a Date input.
+					cursorUpdatedAt: String(DateUtils.mixedDateToUtcDatetimeString(cursor.updatedAt)),
+					cursorId: cursor.id,
+				},
+			);
+		}
 
 		if (this.globalConfig.database.type !== 'postgresdb') return await qb.getMany();
 
