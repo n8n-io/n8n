@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { ICredentialContext } from 'n8n-workflow';
+import type { ICredentialContext, OAuthResourceGrant } from 'n8n-workflow';
 import { ITokenIdentifier } from './identifier-interface';
 import { AuthService } from '@/auth/auth.service';
 import { z } from 'zod';
@@ -17,9 +17,21 @@ const RequestBoundMetadataSchema = z.object({
 	browserId: z.string().optional(),
 });
 
+/**
+ * Declared here rather than shared from `n8n-workflow`: that package is on a different
+ * zod major, so its schemas cannot compose into the union below. `satisfies` keeps this
+ * in step with the {@link OAuthResourceGrant} type it validates.
+ */
+const OAuthResourceGrantSchema = z.object({
+	audiences: z.array(z.string()).min(1),
+	executeAccessWorkflowId: z.string().optional(),
+}) satisfies z.ZodType<OAuthResourceGrant, z.ZodTypeDef, unknown>;
+
 const N8nOAuthMetadataSchema = z.object({
 	source: z.literal('n8n-oauth'),
 	resource: z.string(),
+	/** Absent for contexts sealed before grants existed, and for long-lived resources. */
+	grant: OAuthResourceGrantSchema.optional(),
 });
 
 const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
@@ -68,9 +80,12 @@ export class N8NIdentifier implements ITokenIdentifier {
 		}
 
 		if (metadataResult.data.source === 'n8n-oauth') {
+			// Looked up afresh on every access, so by now the resource may be gone — the
+			// sealed grant carries what the gate needs in that case.
 			const user = await this.oauthTokenVerifierProxy.verifyOAuthAccessToken(
 				context.identity,
 				metadataResult.data.resource,
+				metadataResult.data.grant,
 			);
 			if (!user?.user) {
 				throw new CredentialResolverError(

@@ -282,7 +282,7 @@ catalogs:
     '@typescript/native': 'npm:typescript@7.0.2'
     typescript: 'npm:@typescript/typescript6@6.0.2'
   undici-v6:
-    undici: ^6.27.0
+    undici: ^6.28.0
   undici-v7:
     undici: ^7.29.0
 

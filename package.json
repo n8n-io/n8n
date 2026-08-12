@@ -180,6 +180,7 @@
       "@xmldom/xmldom": "0.8.13",
       "yaml@<=2.8.3": "2.8.3",
       "axios": "catalog:",
+      "fast-xml-builder": "1.2.1",
       "fast-xml-parser": "5.7.2",
       "postcss@<=8.5.9": "8.5.10",
       "@anthropic-ai/sdk@<=0.91.1": "0.91.1",
