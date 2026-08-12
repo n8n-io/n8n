@@ -55,6 +55,15 @@ function normalizeVersionDescription(description: string | undefined): string | 
 	return description.trim() || null;
 }
 
+/** What the caller was trying to do, so a refusal names that action rather than another. */
+type ReviewableWorkflowAction = 'submit' | 'review' | 'update';
+
+const BLOCKED_ACTION_TEXT: Record<ReviewableWorkflowAction, string> = {
+	submit: 'submitted for review',
+	review: 'reviewed',
+	update: 'updated',
+};
+
 /**
  * The workflow-scoped review request lifecycle: listing a workflow's reviews,
  * resolving its eligible reviewers, opening a review, re-pinning it to a new
@@ -286,16 +295,14 @@ export class WorkflowReviewRequestService {
 	 * Every read is threaded with `ctx` so it runs on the lock transaction's own
 	 * connection. A read that checks out a second connection here deadlocks against
 	 * the transaction holding the first one (see the same note in `decide`).
-	 *
-	 * `blockedAction` names the caller's action in both messages, so a reviewer is
-	 * not told their approval "cannot be submitted for review".
 	 */
 	private async assertWorkflowStillReviewable(
 		workflowId: string,
 		expectedProjectId: string,
 		ctx: OperationContext,
-		blockedAction = 'submitted for review',
+		action: ReviewableWorkflowAction,
 	): Promise<void> {
+		const blockedAction = BLOCKED_ACTION_TEXT[action];
 		const workflow = await this.workflowRepository.findArchivedState(workflowId, ctx);
 		if (!workflow) {
 			throw new NotFoundError('Could not find workflow');
@@ -377,7 +384,7 @@ export class WorkflowReviewRequestService {
 			async (ctx) => {
 				// without this, a create that lost the race opens a review on an archived
 				// or moved workflow.
-				await this.assertWorkflowStillReviewable(workflowId, project.id, ctx);
+				await this.assertWorkflowStillReviewable(workflowId, project.id, ctx, 'submit');
 
 				const existing = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
 					workflowId,
@@ -423,8 +430,9 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
-				// Records the opening version: history pruning can null the pin, after which
-				// the version a review opened on is no longer recoverable.
+				// Records the opening version: the pin only ever holds the current one, and
+				// pruning spares it only while the review is open, so a re-pin or a close
+				// leaves the original prunable and its `SET NULL` erases the last trace.
 				await this.activityRepository.createActivity(
 					{
 						workflowReviewRequestId: created.id,
@@ -553,7 +561,7 @@ export class WorkflowReviewRequestService {
 					currentRow.workflowId,
 					current.projectId,
 					ctx,
-					'updated',
+					'update',
 				);
 
 				if (currentRow.workflowVersionId === dto.workflowVersionId) {
@@ -749,7 +757,7 @@ export class WorkflowReviewRequestService {
 					currentRow.workflowId,
 					current.projectId,
 					ctx,
-					'reviewed',
+					'review',
 				);
 
 				current.decision = dto.decision;
