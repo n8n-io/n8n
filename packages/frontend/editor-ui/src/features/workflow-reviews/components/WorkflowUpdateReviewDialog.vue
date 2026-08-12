@@ -211,6 +211,7 @@ const submit = async () => {
 			workflowVersionDescription: trimmedVersionDescription,
 			description: trimmedReviewDescription,
 		});
+		if (props.workflowId !== workflowId) return;
 
 		applyVersionMetadata(workflowVersionId, trimmedVersionName, trimmedVersionDescription);
 
