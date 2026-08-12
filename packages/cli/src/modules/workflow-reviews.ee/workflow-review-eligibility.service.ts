@@ -2,6 +2,7 @@ import type { WorkflowReviewDecisionIneligibilityReason } from '@n8n/api-types';
 import {
 	ProjectRelationRepository,
 	WorkflowReviewRequestAuthorRepository,
+	WorkflowReviewRequestReviewerRepository,
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -30,6 +31,7 @@ export class WorkflowReviewEligibilityService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
+		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
@@ -51,10 +53,10 @@ export class WorkflowReviewEligibilityService {
 
 	/**
 	 * `canDecide` is an advisory read-time snapshot of whether the viewer could decide
-	 * the request, mirroring `decide()`'s authorization checks in order (publish on the
-	 * pinned workflow first, then authorship) so the surfaced reason matches the error
-	 * the endpoint would return. The endpoint remains the source of truth and re-checks
-	 * under its lock.
+	 * the request, mirroring `decide()`'s authorization checks in order (read on the
+	 * pinned workflow, then admin / author / assignee) so the surfaced reason matches
+	 * the error the endpoint would return. The endpoint remains the source of truth
+	 * and re-checks under its lock.
 	 *
 	 * Deliberately viewer-scoped: `decide()`'s `assertRequestUpdatable` lifecycle
 	 * guard is not mirrored here. It is shared with the update path and is not
@@ -73,36 +75,53 @@ export class WorkflowReviewEligibilityService {
 		if (!pinnedWorkflowId) {
 			return {
 				canDecide: false,
-				decisionIneligibilityReason: 'missing_publish_permission',
+				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
 			};
 		}
 
 		const [workflow, isAuthor] = await Promise.all([
-			this.workflowFinderService.findWorkflowForUser(pinnedWorkflowId, user, ['workflow:publish']),
+			this.workflowFinderService.findWorkflowForUser(pinnedWorkflowId, user, ['workflow:read']),
 			this.workflowReviewRequestAuthorRepository.isAuthor(
 				{ workflowReviewRequestId: request.id, userId: user.id },
 				{},
 			),
 		]);
 
-		// Authorship is history; access is not. An author keeps commenting only while they
-		// can still read the pinned workflow — `workflow:read`, not `workflow:publish`, so a
-		// personal-project requester is not locked out of their own review.
-		const canComment = isAuthor ? canReadPinnedWorkflow : Boolean(workflow);
-
 		if (!workflow) {
 			return {
 				canDecide: false,
-				decisionIneligibilityReason: 'missing_publish_permission',
-				canComment,
+				decisionIneligibilityReason: 'missing_permission',
+				// Authorship still resolves — an author keeps commenting only while they
+				// can still read the pinned workflow.
+				canComment: isAuthor ? canReadPinnedWorkflow : false,
 			};
 		}
 
-		if (isAuthor && !(await this.hasAdminOverride(user, request.projectId))) {
-			return { canDecide: false, decisionIneligibilityReason: 'author', canComment };
+		if (await this.hasAdminOverride(user, request.projectId)) {
+			return { canDecide: true, decisionIneligibilityReason: null, canComment: true };
 		}
 
-		return { canDecide: true, decisionIneligibilityReason: null, canComment };
+		if (isAuthor) {
+			return {
+				canDecide: false,
+				decisionIneligibilityReason: 'author',
+				canComment: canReadPinnedWorkflow,
+			};
+		}
+
+		const isAssignedReviewer = await this.workflowReviewRequestReviewerRepository.isReviewer(
+			{ workflowReviewRequestId: request.id, userId: user.id },
+			{},
+		);
+		if (!isAssignedReviewer) {
+			return {
+				canDecide: false,
+				decisionIneligibilityReason: 'missing_reviewer_permission',
+				canComment: false,
+			};
+		}
+
+		return { canDecide: true, decisionIneligibilityReason: null, canComment: true };
 	}
 }

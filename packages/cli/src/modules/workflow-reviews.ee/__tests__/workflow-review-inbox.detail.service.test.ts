@@ -272,7 +272,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 
 		it('checks what the viewer may do against the workflow under review, even one they cannot open', async () => {
-			// The requester keeps their record after losing read access to the covered
+			// The requester keeps their record after losing view access to the covered
 			// workflow — eligibility must still be checked against that pinned row.
 			accessService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest(),
@@ -282,7 +282,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			});
 			eligibilityService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
-				decisionIneligibilityReason: 'missing_publish_permission',
+				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
 			});
 
@@ -296,7 +296,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			});
 			expect(detail.workflows).toEqual([]);
 			expect(detail.viewerCanDecide).toBe(false);
-			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_publish_permission');
+			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_permission');
 			expect(detail.viewerCanComment).toBe(false);
 		});
 
