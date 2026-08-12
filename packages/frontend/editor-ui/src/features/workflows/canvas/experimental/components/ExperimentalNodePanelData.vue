@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import InputPanel from '@/features/ndv/panel/components/InputPanel.vue';
+import TriggerPanel from '@/features/ndv/panel/components/TriggerPanel.vue';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import OutputPanel from '@/features/ndv/panel/components/OutputPanel.vue';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -20,6 +22,22 @@ const emit = defineEmits<{
 }>();
 
 const ndvStore = injectNDVStore();
+const nodeTypesStore = useNodeTypesStore();
+
+// Mirrors the modal: a trigger's "input" is the listen-for-event flow, not upstream data.
+const nodeTypeDescription = computed(() =>
+	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
+);
+const showTriggerPanel = computed(() => {
+	const override = nodeTypeDescription.value?.triggerPanel;
+	if (typeof override === 'boolean') return override;
+
+	const isTrigger = nodeTypeDescription.value?.group.includes('trigger') ?? false;
+	const isWebhookBased = !!nodeTypeDescription.value?.webhooks?.length;
+	const isPolling = !!nodeTypeDescription.value?.polling;
+
+	return !props.isReadOnly && isTrigger && (isWebhookBased || isPolling || !!override);
+});
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 const workflowRunData = computed(
@@ -42,8 +60,14 @@ function setDisplayMode(pane: 'input' | 'output', mode: IRunDataDisplayMode) {
 
 <template>
 	<div :class="$style.component">
+		<TriggerPanel
+			v-if="tab === 'input' && showTriggerPanel"
+			:node-name="node.name"
+			:push-ref="ndvStore.pushRef"
+			@execute="emit('execute')"
+		/>
 		<InputPanel
-			v-if="tab === 'input'"
+			v-else-if="tab === 'input'"
 			:run-index="inputRun"
 			:active-node-name="node.name"
 			:current-node-name="inputNodeName"
