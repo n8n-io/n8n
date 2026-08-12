@@ -111,7 +111,6 @@ describe('ScalingService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		// @ts-expect-error readonly property
 		instanceSettings.instanceType = 'main';
 		instanceSettings.markAsLeader();
 
@@ -175,7 +174,6 @@ describe('ScalingService', () => {
 
 		describe('if worker', () => {
 			it('should set up queue + listeners', async () => {
-				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
 
 				await scalingService.setupQueue();
@@ -188,7 +186,6 @@ describe('ScalingService', () => {
 
 		describe('webhook', () => {
 			it('should set up a queue + listeners', async () => {
-				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'webhook';
 
 				await scalingService.setupQueue();
@@ -202,7 +199,6 @@ describe('ScalingService', () => {
 
 	describe('setupWorker', () => {
 		it('should set up a worker with concurrency', async () => {
-			// @ts-expect-error readonly property
 			instanceSettings.instanceType = 'worker';
 			await scalingService.setupQueue();
 			const concurrency = 5;
@@ -219,7 +215,6 @@ describe('ScalingService', () => {
 		});
 
 		it('should throw if called before queue is ready', async () => {
-			// @ts-expect-error readonly property
 			instanceSettings.instanceType = 'worker';
 
 			expect(() => scalingService.setupWorker(5)).toThrow();
@@ -229,10 +224,9 @@ describe('ScalingService', () => {
 	describe('stop', () => {
 		describe('if main', () => {
 			it('should pause queue, stop queue recovery and queue metrics', async () => {
-				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'main';
 				await scalingService.setupQueue();
-				// @ts-expect-error readonly property
+				// @ts-expect-error private property, and a plain number stands in for the Timeout
 				scalingService.queueRecoveryContext.timeout = 1;
 				vi.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
 
@@ -247,7 +241,6 @@ describe('ScalingService', () => {
 
 		describe('if worker', () => {
 			it('should pause queue and wait for running jobs to finish', async () => {
-				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
 				await scalingService.setupQueue();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
