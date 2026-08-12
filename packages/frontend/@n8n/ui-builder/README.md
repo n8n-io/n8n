@@ -11,19 +11,23 @@ A UI Builder node holds a definition. A stock workflow serves it, and the same
 workflow holds the actions it calls, one chain per action:
 
 ```
-[Webhook GET /orders-app] -> [UI Builder]  -> [Respond to Webhook]
-[Webhook POST /loadOrders] -> [Code: Load] -> [Respond to Webhook]
-[Webhook POST /saveOrder]  -> [Code: Save] -> [Respond to Webhook]
+[API Router /orders-app]  GET  /           -> [UI Builder]
+                          POST /loadOrders -> [Code: Load]
+                          POST /saveOrder  -> [Code: Save]
 ```
+
+No Respond to Webhook nodes: the UI Builder node answers with the page itself
+(`text/html`), and the router's default **Respond: Automatically** returns the
+last node's JSON on the branches that end in a Code node.
 
 The page loads this package's bundle, which walks the definition and renders it.
 Interactions POST the app's whole state to a webhook; whatever partial comes back
 is deep-merged into state and the view re-renders. One primitive covers both
 fetching and mutating.
 
-On the workflow side the state arrives as the request body, so a Webhook node
-hands it to the next node at `$json.body`, not `$json`: its own output is
-`{ headers, params, query, body }`.
+On the workflow side the state arrives as the request body, so the trigger hands
+it to the next node at `$json.body`, not `$json`: an API Router's own output is
+`{ route, params, query, body, headers }`.
 
 ## Response envelope
 
@@ -46,8 +50,8 @@ exclusive. Three messages show at once, the oldest dropping off past that, since
 beyond that the stack covers the app it is reporting on.
 
 `ok` is the only discriminator. A body without it is taken to be the state
-partial itself, which is what the simplest possible Respond to Webhook returns,
-so the envelope is opt-in per action.
+partial itself, which is what the last node of the simplest possible action chain
+returns, so the envelope is opt-in per action.
 
 ## Definition format
 

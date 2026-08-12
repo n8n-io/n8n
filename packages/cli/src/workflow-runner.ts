@@ -696,9 +696,14 @@ export class WorkflowRunner {
 	): boolean {
 		if (forceFullExecutionData) return true;
 
+		const responseMode = this.activeExecutions.getResponseMode(executionId);
+
 		return (
 			executionMode === 'integrated' ||
-			this.activeExecutions.getResponseMode(executionId) === 'lastNode' ||
+			responseMode === 'lastNode' ||
+			// `responseNode` falls back to the last node's data when no Respond node
+			// answered, so the data is only needed on that (rare) branch.
+			(responseMode === 'responseNode' && !this.activeExecutions.hasResponded(executionId)) ||
 			this.externalHooks.hasHook('workflow.postExecute')
 		);
 	}

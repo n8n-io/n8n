@@ -74,7 +74,7 @@ describe('WebhookTriggerRegistrar', () => {
 
 		expect(webhookService.storeWebhook).toHaveBeenCalledWith(
 			expect.objectContaining({
-				webhookPath: 'team/:id',
+				webhookPath: 'hook-id/team/:id',
 				webhookId: 'hook-id',
 				pathLength: 2,
 			}),
@@ -317,12 +317,12 @@ describe('WebhookTriggerRegistrar', () => {
 			const workflow = createWorkflow([
 				node('webhook-node', 'webhook', { name: 'Webhook', webhookId: 'hook-id' }),
 			]);
-			// Desired path has surrounding slashes; the stored row is already normalized.
+			// Desired path has surrounding slashes and no namespace; the stored row has both applied.
 			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
 				desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: '/team/:id/' }),
 			]);
 			webhookService.getRegisteredWebhooks.mockResolvedValue([
-				{ node: 'Webhook', method: 'GET', webhookPath: 'team/:id' } as WebhookEntity,
+				{ node: 'Webhook', method: 'GET', webhookPath: 'hook-id/team/:id' } as WebhookEntity,
 			]);
 
 			const result = await registrar.getNodesWithUnregisteredWebhooks(

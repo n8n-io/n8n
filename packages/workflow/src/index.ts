@@ -90,6 +90,7 @@ export {
 	isFilterValue,
 	isNodeConnectionType,
 	isBinaryValue,
+	isWebhookRoute,
 } from './type-guards';
 
 export {

@@ -31,9 +31,14 @@ export function resolveValue(value: unknown, scope: UiScope): unknown {
 	if (!isExpression(value)) return value;
 
 	try {
-		return tournament.execute(value.slice(1), { ...scope });
+		return evaluateExpression(value, scope);
 	} catch (error) {
 		console.warn('[ui-builder] failed to resolve', value, error);
 		return undefined;
 	}
+}
+
+/** The same evaluation, throwing, for callers that need to show why it failed. */
+export function evaluateExpression(source: string, scope: UiScope): unknown {
+	return tournament.execute(source.startsWith('=') ? source.slice(1) : source, { ...scope });
 }

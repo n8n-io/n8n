@@ -1,11 +1,16 @@
-import { EditorView } from '@codemirror/view';
-import userEvent from '@testing-library/user-event';
-import { expressionCloseBrackets } from './expressionCloseBrackets';
-import { n8nAutocompletion, n8nLang } from './n8nLang';
 import { completionStatus } from '@codemirror/autocomplete';
 import { EditorSelection } from '@codemirror/state';
-import { setActivePinia } from 'pinia';
-import { createTestingPinia } from '@pinia/testing';
+import { EditorView } from '@codemirror/view';
+import userEvent from '@testing-library/user-event';
+
+import type { ExpressionCompletionSource } from '../types';
+import { expressionCloseBrackets } from './expressionCloseBrackets';
+import { n8nAutocompletion, n8nLang } from './n8nLang';
+
+const alwaysCompletes: ExpressionCompletionSource = () => ({
+	from: 0,
+	options: [{ label: '$json' }],
+});
 
 describe('expressionCloseBrackets', () => {
 	const editors: EditorView[] = [];
@@ -14,15 +19,11 @@ describe('expressionCloseBrackets', () => {
 		document.body.appendChild(parent);
 		const editor = new EditorView({
 			parent,
-			extensions: [expressionCloseBrackets(), n8nLang(), n8nAutocompletion()],
+			extensions: [expressionCloseBrackets(), n8nLang([alwaysCompletes]), n8nAutocompletion()],
 		});
 		editors.push(editor);
 		return editor;
 	};
-
-	beforeEach(() => {
-		setActivePinia(createTestingPinia());
-	});
 
 	afterEach(() => {
 		editors.splice(0).forEach((editor) => editor.destroy());

@@ -10,17 +10,18 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, toRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, reactive, ref, toRef } from 'vue';
 
-import UiRenderer from '../renderer/UiRenderer.vue';
 import type { UiScope } from '../core/types';
+import { createScopeRegistry, UiScopeRegistryKey } from '../renderer/scope-registry';
+import UiRenderer from '../renderer/UiRenderer.vue';
 import { useActionPreview } from './composables/useActionPreview';
 import { useOutline } from './composables/useOutline';
 import { usePages } from './composables/usePages';
 import { useUiBuilderLayout } from './composables/useUiBuilderLayout';
 import { useUiDocument } from './composables/useUiDocument';
 import { useWebhookTargets } from './composables/useWebhookTargets';
-import type { UiBuilderHost } from './host';
+import { UiTooltipParentKey, type UiBuilderHost } from './host';
 import InspectorPane from './panes/InspectorPane.vue';
 import OutlinePane from './panes/OutlinePane.vue';
 import PagesPane from './panes/PagesPane.vue';
@@ -151,6 +152,20 @@ const canvasScope = computed<UiScope>(() => ({
 		? { path: editingPage.value.path, params: {}, pageId: editingPage.value.id }
 		: undefined,
 }));
+
+const scopeRegistry = createScopeRegistry();
+provide(UiScopeRegistryKey, scopeRegistry);
+provide(UiTooltipParentKey, () => props.host.tooltipContainer?.());
+
+/**
+ * What the inspector previews and completes against: the scope the selected
+ * node is actually being rendered with, which carries `$item` and `$index` when
+ * it sits inside a repeat. Falls back to the page scope before the canvas has
+ * rendered it.
+ */
+const inspectorScope = computed<UiScope>(
+	() => scopeRegistry.scopeFor(selectedId.value) ?? canvasScope.value,
+);
 
 /**
  * The real production URL of the Webhook that serves this page, when the host
@@ -386,6 +401,7 @@ function onEscape(event: KeyboardEvent) {
 						:descriptors="inspectorProps"
 						:pages="pages"
 						:targets="localTargets"
+						:scope="inspectorScope"
 						:disabled="readOnly"
 						:label-for="labelForUrl"
 						:browse="pickExternal"

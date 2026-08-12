@@ -1,125 +1,270 @@
 {
 	"id": "uiBuilderDemoApp",
-	"name": "UI Builder demo \u2014 Orders",
+	"name": "UI Builder demo — Orders",
 	"nodes": [
 		{
 			"parameters": {
-				"path": "orders-app",
-				"responseMode": "responseNode",
+				"basePath": "orders-app",
+				"endpoints": {
+					"endpoint": [
+						{
+							"method": "GET",
+							"path": "/"
+						},
+						{
+							"method": "POST",
+							"path": "/loadOrders"
+						},
+						{
+							"method": "POST",
+							"path": "/saveOrder"
+						}
+					]
+				},
 				"options": {}
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000001",
-			"name": "Webhook",
-			"type": "n8n-nodes-base.webhook",
-			"typeVersion": 2,
-			"position": [0, 0],
+			"name": "API Router",
+			"type": "n8n-nodes-base.apiRouter",
+			"typeVersion": 1,
+			"position": [
+				-240,
+				240
+			],
 			"webhookId": "6a1f0a10-0000-4000-8000-000000000001"
 		},
 		{
 			"parameters": {
+				"resource": "table",
+				"operation": "create",
+				"tableName": "orders",
+				"columns": {
+					"column": [
+						{
+							"name": "name",
+							"type": "string"
+						},
+						{
+							"name": "qty",
+							"type": "number"
+						}
+					]
+				},
+				"options": {
+					"createIfNotExists": true
+				}
+			},
+			"id": "6a1f0a10-0000-4000-8000-000000000003",
+			"name": "Ensure orders table",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1.1,
+			"position": [
+				80,
+				-40
+			],
+			"notes": "Serving the page is the one request that always happens first, so the app needs no setup"
+		},
+		{
+			"parameters": {
 				"title": "Orders",
-				"definition": "{\n  \"id\": \"frame-1\",\n  \"type\": \"frame\",\n  \"props\": {\n    \"defaultPage\": \"/\"\n  },\n  \"tree\": {\n    \"header\": [\n      {\n        \"id\": \"stack-nav\",\n        \"type\": \"stack\",\n        \"props\": {\n          \"direction\": \"horizontal\",\n          \"gap\": 12\n        },\n        \"tree\": {\n          \"default\": [\n            {\n              \"id\": \"heading-app\",\n              \"type\": \"heading\",\n              \"props\": {\n                \"text\": \"Orders\",\n                \"level\": 3\n              },\n              \"tree\": {}\n            },\n            {\n              \"id\": \"repeat-nav\",\n              \"type\": \"repeat\",\n              \"props\": {\n                \"items\": \"={{ $pages }}\",\n                \"direction\": \"horizontal\",\n                \"gap\": 8\n              },\n              \"tree\": {\n                \"default\": [\n                  {\n                    \"id\": \"button-nav\",\n                    \"type\": \"button\",\n                    \"props\": {\n                      \"label\": \"={{ $item.title }}\",\n                      \"variant\": \"tertiary\",\n                      \"onClick\": [\n                        {\n                          \"kind\": \"navigate\",\n                          \"to\": \"={{ $item.path }}\"\n                        }\n                      ]\n                    },\n                    \"tree\": {}\n                  }\n                ]\n              }\n            }\n          ]\n        }\n      }\n    ],\n    \"default\": [\n      {\n        \"id\": \"page-orders\",\n        \"type\": \"page\",\n        \"props\": {\n          \"path\": \"/\",\n          \"title\": \"Orders\",\n          \"onEnter\": [\n            {\n              \"kind\": \"webhook\",\n              \"url\": \"http://localhost:5678/webhook/loadOrders\",\n              \"method\": \"POST\"\n            }\n          ]\n        },\n        \"tree\": {\n          \"default\": [\n            {\n              \"id\": \"heading-orders\",\n              \"type\": \"heading\",\n              \"props\": {\n                \"text\": \"Orders\",\n                \"level\": 2\n              },\n              \"tree\": {}\n            },\n            {\n              \"id\": \"table-1\",\n              \"type\": \"table\",\n              \"props\": {\n                \"rows\": \"={{ $state.orders }}\",\n                \"columns\": \"name,qty\",\n                \"onMount\": []\n              },\n              \"tree\": {}\n            }\n          ]\n        }\n      },\n      {\n        \"id\": \"page-new\",\n        \"type\": \"page\",\n        \"props\": {\n          \"path\": \"/new\",\n          \"title\": \"New order\",\n          \"onEnter\": []\n        },\n        \"tree\": {\n          \"default\": [\n            {\n              \"id\": \"heading-new\",\n              \"type\": \"heading\",\n              \"props\": {\n                \"text\": \"New order\",\n                \"level\": 2\n              },\n              \"tree\": {}\n            },\n            {\n              \"id\": \"stack-form\",\n              \"type\": \"stack\",\n              \"props\": {\n                \"direction\": \"horizontal\",\n                \"gap\": 8\n              },\n              \"tree\": {\n                \"default\": [\n                  {\n                    \"id\": \"input-1\",\n                    \"type\": \"input\",\n                    \"props\": {\n                      \"value\": \"={{ $state.form.name }}\",\n                      \"model\": \"form.name\",\n                      \"placeholder\": \"Order name\"\n                    },\n                    \"tree\": {}\n                  },\n                  {\n                    \"id\": \"button-add\",\n                    \"type\": \"button\",\n                    \"props\": {\n                      \"label\": \"Add\",\n                      \"variant\": \"primary\",\n                      \"onClick\": [\n                        {\n                          \"kind\": \"webhook\",\n                          \"url\": \"http://localhost:5678/webhook/saveOrder\",\n                          \"method\": \"POST\"\n                        },\n                        {\n                          \"kind\": \"notify\",\n                          \"message\": \"Order added\",\n                          \"type\": \"success\"\n                        },\n                        {\n                          \"kind\": \"navigate\",\n                          \"to\": \"/\"\n                        }\n                      ]\n                    },\n                    \"tree\": {}\n                  }\n                ]\n              }\n            }\n          ]\n        }\n      }\n    ],\n    \"footer\": [\n      {\n        \"id\": \"text-footer\",\n        \"type\": \"text\",\n        \"props\": {\n          \"text\": \"={{ $state.orders ? $state.orders.length + \\\" orders\\\" : \\\"\\\" }}\"\n        },\n        \"tree\": {}\n      }\n    ]\n  }\n}"
+				"definition": "{\n  \"id\": \"frame-1\",\n  \"type\": \"frame\",\n  \"props\": {\n    \"defaultPage\": \"/\"\n  },\n  \"tree\": {\n    \"header\": [\n      {\n        \"id\": \"stack-nav\",\n        \"type\": \"stack\",\n        \"props\": {\n          \"direction\": \"horizontal\",\n          \"gap\": 12\n        },\n        \"tree\": {\n          \"default\": [\n            {\n              \"id\": \"heading-app\",\n              \"type\": \"heading\",\n              \"props\": {\n                \"text\": \"Orders\",\n                \"level\": 3\n              },\n              \"tree\": {}\n            },\n            {\n              \"id\": \"repeat-nav\",\n              \"type\": \"repeat\",\n              \"props\": {\n                \"items\": \"={{ $pages }}\",\n                \"direction\": \"horizontal\",\n                \"gap\": 8\n              },\n              \"tree\": {\n                \"default\": [\n                  {\n                    \"id\": \"button-nav\",\n                    \"type\": \"button\",\n                    \"props\": {\n                      \"label\": \"={{ $item.title }}\",\n                      \"variant\": \"tertiary\",\n                      \"onClick\": [\n                        {\n                          \"kind\": \"navigate\",\n                          \"to\": \"={{ $item.path }}\"\n                        }\n                      ]\n                    },\n                    \"tree\": {}\n                  }\n                ]\n              }\n            }\n          ]\n        }\n      }\n    ],\n    \"default\": [\n      {\n        \"id\": \"page-orders\",\n        \"type\": \"page\",\n        \"props\": {\n          \"path\": \"/\",\n          \"title\": \"Orders\",\n          \"onEnter\": [\n            {\n              \"kind\": \"webhook\",\n              \"url\": \"http://localhost:5678/webhook/orders-app/loadOrders\",\n              \"method\": \"POST\"\n            }\n          ]\n        },\n        \"tree\": {\n          \"default\": [\n            {\n              \"id\": \"heading-orders\",\n              \"type\": \"heading\",\n              \"props\": {\n                \"text\": \"Orders\",\n                \"level\": 2\n              },\n              \"tree\": {}\n            },\n            {\n              \"id\": \"table-1\",\n              \"type\": \"table\",\n              \"props\": {\n                \"rows\": \"={{ $state.orders }}\",\n                \"columns\": \"name,qty\",\n                \"onMount\": []\n              },\n              \"tree\": {}\n            }\n          ]\n        }\n      },\n      {\n        \"id\": \"page-new\",\n        \"type\": \"page\",\n        \"props\": {\n          \"path\": \"/new\",\n          \"title\": \"New order\",\n          \"onEnter\": []\n        },\n        \"tree\": {\n          \"default\": [\n            {\n              \"id\": \"heading-new\",\n              \"type\": \"heading\",\n              \"props\": {\n                \"text\": \"New order\",\n                \"level\": 2\n              },\n              \"tree\": {}\n            },\n            {\n              \"id\": \"stack-form\",\n              \"type\": \"stack\",\n              \"props\": {\n                \"direction\": \"horizontal\",\n                \"gap\": 8\n              },\n              \"tree\": {\n                \"default\": [\n                  {\n                    \"id\": \"input-1\",\n                    \"type\": \"input\",\n                    \"props\": {\n                      \"value\": \"={{ $state.form.name }}\",\n                      \"model\": \"form.name\",\n                      \"placeholder\": \"Order name\"\n                    },\n                    \"tree\": {}\n                  },\n                  {\n                    \"id\": \"input-qty\",\n                    \"type\": \"input\",\n                    \"props\": {\n                      \"value\": \"={{ $state.form.qty }}\",\n                      \"model\": \"form.qty\",\n                      \"placeholder\": \"Qty\"\n                    },\n                    \"tree\": {}\n                  },\n                  {\n                    \"id\": \"button-add\",\n                    \"type\": \"button\",\n                    \"props\": {\n                      \"label\": \"Add\",\n                      \"variant\": \"primary\",\n                      \"onClick\": [\n                        {\n                          \"kind\": \"webhook\",\n                          \"url\": \"http://localhost:5678/webhook/orders-app/saveOrder\",\n                          \"method\": \"POST\"\n                        },\n                        {\n                          \"kind\": \"notify\",\n                          \"message\": \"Order added\",\n                          \"type\": \"success\"\n                        },\n                        {\n                          \"kind\": \"navigate\",\n                          \"to\": \"/\"\n                        }\n                      ]\n                    },\n                    \"tree\": {}\n                  }\n                ]\n              }\n            }\n          ]\n        }\n      }\n    ],\n    \"footer\": [\n      {\n        \"id\": \"text-footer\",\n        \"type\": \"text\",\n        \"props\": {\n          \"text\": \"={{ $state.orders ? $state.orders.length + \\\" orders\\\" : \\\"\\\" }}\"\n        },\n        \"tree\": {}\n      }\n    ]\n  }\n}"
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000002",
 			"name": "UI Builder",
 			"type": "n8n-nodes-base.uiBuilder",
 			"typeVersion": 1,
-			"position": [260, 0]
+			"position": [
+				320,
+				-40
+			]
 		},
 		{
 			"parameters": {
-				"respondWith": "text",
-				"responseBody": "={{ $json.html }}",
-				"options": {
-					"responseHeaders": {
-						"entries": [
-							{
-								"name": "content-type",
-								"value": "text/html; charset=utf-8"
-							}
-						]
-					}
-				}
-			},
-			"id": "6a1f0a10-0000-4000-8000-000000000003",
-			"name": "Respond to Webhook",
-			"type": "n8n-nodes-base.respondToWebhook",
-			"typeVersion": 1.1,
-			"position": [520, 0]
-		},
-		{
-			"parameters": {
-				"httpMethod": "POST",
-				"path": "loadOrders",
-				"responseMode": "responseNode",
-				"options": {}
+				"resource": "row",
+				"operation": "get",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "orders"
+				},
+				"matchType": "allConditions",
+				"filters": {},
+				"returnAll": true
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000011",
-			"name": "Webhook loadOrders",
-			"type": "n8n-nodes-base.webhook",
-			"typeVersion": 2,
-			"position": [0, 240],
-			"webhookId": "6a1f0a10-0000-4000-8000-000000000011"
+			"name": "Get orders",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1.1,
+			"position": [
+				80,
+				200
+			],
+			"alwaysOutputData": true
 		},
 		{
 			"parameters": {
-				"jsCode": "// The app posts its whole state; the reply is an envelope whose `state` is a\n// partial that gets deep-merged.\nconst store = $getWorkflowStaticData('global');\nstore.orders = store.orders ?? [\n  { name: 'Widget', qty: 3 },\n  { name: 'Sprocket', qty: 1 },\n];\n\nreturn [{ json: { ok: true, state: { orders: store.orders, form: { name: '' } } } }];"
+				"jsCode": "// A data table row carries id/createdAt/updatedAt alongside the columns, and an\n// empty table arrives as one blank item because the read node always outputs.\nconst orders = $input\n  .all()\n  .map((item) => item.json)\n  .filter((row) => typeof row.name === 'string')\n  .map((row) => ({ name: row.name, qty: row.qty }));\n\n// The app posts its whole state; the reply is an envelope whose `state` is a\n// partial that gets deep-merged.\nreturn [{ json: { ok: true, state: { orders, form: { name: '', qty: '' } } } }];"
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000012",
-			"name": "Load",
+			"name": "Load response",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [260, 240]
+			"position": [
+				320,
+				200
+			]
 		},
 		{
 			"parameters": {
-				"respondWith": "firstIncomingItem",
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 3
+					},
+					"conditions": [
+						{
+							"id": "name-not-empty",
+							"leftValue": "={{ ($json.body?.form?.name ?? '').trim() }}",
+							"rightValue": "",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty",
+								"singleValue": true
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"looseTypeValidation": false,
 				"options": {}
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000013",
-			"name": "Respond load",
-			"type": "n8n-nodes-base.respondToWebhook",
-			"typeVersion": 1.1,
-			"position": [520, 240]
+			"name": "Check name",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"position": [
+				80,
+				440
+			],
+			"notes": "The API Router hands the app's whole state to $json.body, so the typed name is at body.form.name"
 		},
 		{
 			"parameters": {
-				"httpMethod": "POST",
-				"path": "saveOrder",
-				"responseMode": "responseNode",
+				"resource": "row",
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "orders"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"name": "={{ $json.body.form.name.trim() }}",
+						"qty": "={{ Number($json.body.form.qty) || 1 }}"
+					},
+					"matchingColumns": [],
+					"schema": [
+						{
+							"id": "name",
+							"displayName": "name",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "qty",
+							"displayName": "qty",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "number",
+							"canBeUsedToMatch": true
+						}
+					],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
 				"options": {}
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000014",
-			"name": "Webhook saveOrder",
-			"type": "n8n-nodes-base.webhook",
-			"typeVersion": 2,
-			"position": [0, 480],
-			"webhookId": "6a1f0a10-0000-4000-8000-000000000014"
+			"name": "Add order",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1.1,
+			"position": [
+				320,
+				380
+			]
 		},
 		{
 			"parameters": {
-				"jsCode": "// The Webhook node does not pass the posted body straight through: its output is\n// { headers, params, query, body }, so the app's whole state is at $json.body\n// and the typed name is at body.form.name.\nconst store = $getWorkflowStaticData('global');\nstore.orders = store.orders ?? [\n  { name: 'Widget', qty: 3 },\n  { name: 'Sprocket', qty: 1 },\n];\n\nconst state = $json.body ?? {};\nconst name = (state.form?.name ?? '').trim();\n\n// The failure path. `ok: false` raises a toast from the error message, and the\n// state partial still comes back, so rejecting an action and correcting the\n// client's view are not exclusive.\nif (!name) {\n  return [{ json: {\n    ok: false,\n    error: { code: 'VALIDATION_ERROR', message: 'Enter an order name' },\n    state: { orders: store.orders },\n  } }];\n}\n\nstore.orders.push({ name, qty: 1 });\n\n// Clearing form.name is what makes the input empty again after a save. No\n// toast: the button's own action chain says \"Order added\" after this returns,\n// which is the client's job now that an action can do more than one thing.\nreturn [{ json: {\n  ok: true,\n  state: { orders: store.orders, form: { name: '' } },\n} }];"
+				"resource": "row",
+				"operation": "get",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "orders"
+				},
+				"matchType": "allConditions",
+				"filters": {},
+				"returnAll": true
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000015",
-			"name": "Save",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
-			"position": [260, 480]
+			"name": "Read back orders",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1.1,
+			"position": [
+				540,
+				440
+			],
+			"alwaysOutputData": true,
+			"notes": "Both branches land here, so a rejected save still corrects the client view"
 		},
 		{
 			"parameters": {
-				"respondWith": "firstIncomingItem",
-				"options": {}
+				"jsCode": "// A data table row carries id/createdAt/updatedAt alongside the columns, and an\n// empty table arrives as one blank item because the read node always outputs.\nconst orders = $input\n  .all()\n  .map((item) => item.json)\n  .filter((row) => typeof row.name === 'string')\n  .map((row) => ({ name: row.name, qty: row.qty }));\n\nconst name = ($('API Router').first().json.body?.form?.name ?? '').trim();\n\n// The failure path. `ok: false` raises a toast from the error message, and the\n// state partial still comes back, so rejecting an action and correcting the\n// client's view are not exclusive.\nif (!name) {\n  return [{ json: {\n    ok: false,\n    error: { code: 'VALIDATION_ERROR', message: 'Enter an order name' },\n    state: { orders },\n  } }];\n}\n\n// Clearing the form is what makes the inputs empty again after a save. No\n// toast: the button's own action chain says \"Order added\" after this returns,\n// which is the client's job now that an action can do more than one thing.\nreturn [{ json: {\n  ok: true,\n  state: { orders, form: { name: '', qty: '' } },\n} }];"
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000016",
-			"name": "Respond save",
-			"type": "n8n-nodes-base.respondToWebhook",
-			"typeVersion": 1.1,
-			"position": [520, 480]
+			"name": "Save response",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				760,
+				440
+			]
 		}
 	],
 	"connections": {
-		"Webhook": {
+		"API Router": {
+			"main": [
+				[
+					{
+						"node": "Ensure orders table",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Get orders",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Check name",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Ensure orders table": {
 			"main": [
 				[
 					{
@@ -130,55 +275,51 @@
 				]
 			]
 		},
-		"UI Builder": {
+		"Get orders": {
 			"main": [
 				[
 					{
-						"node": "Respond to Webhook",
+						"node": "Load response",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Webhook loadOrders": {
+		"Check name": {
 			"main": [
 				[
 					{
-						"node": "Load",
+						"node": "Add order",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Read back orders",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Load": {
+		"Add order": {
 			"main": [
 				[
 					{
-						"node": "Respond load",
+						"node": "Read back orders",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Webhook saveOrder": {
+		"Read back orders": {
 			"main": [
 				[
 					{
-						"node": "Save",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Save": {
-			"main": [
-				[
-					{
-						"node": "Respond save",
+						"node": "Save response",
 						"type": "main",
 						"index": 0
 					}

@@ -40,6 +40,10 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'ui-builder', 'src'),
 	},
 	{
+		find: '@n8n/expression-editor',
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'expression-editor', 'src'),
+	},
+	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
 	},

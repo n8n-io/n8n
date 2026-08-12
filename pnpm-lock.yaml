@@ -109,7 +109,7 @@ catalogs:
       specifier: 0.20.3
       version: 0.20.3
     '@iconify-json/lucide':
-      specifier: ^1.2.112
+      specifier: ^1.2.114
       version: 1.2.114
     '@iconify-json/mdi':
       specifier: ^1.1.63
@@ -5333,6 +5333,112 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
+  packages/frontend/@n8n/expression-editor:
+    dependencies:
+      '@codemirror/autocomplete':
+        specifier: 'catalog:'
+        version: 6.20.0
+      '@codemirror/commands':
+        specifier: 'catalog:'
+        version: 6.10.1
+      '@codemirror/lang-javascript':
+        specifier: 'catalog:'
+        version: 6.2.4
+      '@codemirror/language':
+        specifier: 'catalog:'
+        version: 6.12.1
+      '@codemirror/state':
+        specifier: 'catalog:'
+        version: 6.5.3
+      '@codemirror/view':
+        specifier: 'catalog:'
+        version: 6.39.8
+      '@lezer/common':
+        specifier: ^1.2.0
+        version: 1.2.1
+      '@lezer/highlight':
+        specifier: 'catalog:'
+        version: 1.2.3(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
+      '@n8n/codemirror-lang':
+        specifier: workspace:*
+        version: link:../../../@n8n/codemirror-lang
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../composables
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../design-system
+      '@n8n/frontend-utils':
+        specifier: workspace:*
+        version: link:../frontend-utils
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+    devDependencies:
+      '@iconify-json/lucide':
+        specifier: 'catalog:'
+        version: 1.2.114
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@testing-library/jest-dom':
+        specifier: catalog:frontend
+        version: 6.6.3
+      '@testing-library/user-event':
+        specifier: catalog:frontend
+        version: 14.6.1(@testing-library/dom@10.4.0)
+      '@testing-library/vue':
+        specifier: catalog:frontend
+        version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 5.2.4(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      cross-env:
+        specifier: 'catalog:'
+        version: 7.0.3
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.0.1
+      sass-embedded:
+        specifier: 'catalog:'
+        version: 1.98.0
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.2
+      unplugin-icons:
+        specifier: ^0.19.0
+        version: 0.19.0(@vue/compiler-sfc@3.5.26)
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+
   packages/frontend/@n8n/frontend-constants:
     devDependencies:
       '@n8n/eslint-config':
@@ -5767,6 +5873,12 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../design-system
+      '@n8n/expression-editor':
+        specifier: workspace:*
+        version: link:../expression-editor
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@n8n/tournament':
         specifier: workspace:*
         version: link:../../../@n8n/tournament
@@ -5777,6 +5889,12 @@ importers:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
     devDependencies:
+      '@codemirror/autocomplete':
+        specifier: 'catalog:'
+        version: 6.20.0
+      '@codemirror/state':
+        specifier: 'catalog:'
+        version: 6.5.3
       '@iconify-json/lucide':
         specifier: 'catalog:'
         version: 1.2.114
@@ -5927,9 +6045,6 @@ importers:
       '@n8n/telemetry':
         specifier: workspace:*
         version: link:../../@n8n/telemetry
-      '@n8n/ui-builder':
-        specifier: workspace:*
-        version: link:../@n8n/ui-builder
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../@n8n/utils
@@ -6162,6 +6277,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
+      '@n8n/expression-editor':
+        specifier: workspace:*
+        version: link:../@n8n/expression-editor
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../../testing/janitor
@@ -6171,6 +6289,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../@n8n/typescript-config
+      '@n8n/ui-builder':
+        specifier: workspace:*
+        version: link:../@n8n/ui-builder
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../@n8n/vitest-config
@@ -6400,6 +6521,12 @@ importers:
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12
+      ajv:
+        specifier: 8.18.0
+        version: 8.18.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.18.0)
       alasql:
         specifier: 4.4.0
         version: 4.4.0(encoding@0.1.13)
@@ -26736,7 +26863,7 @@ snapshots:
     dependencies:
       call-me-maybe: 1.0.1
       cross-spawn: 7.0.6
-      string-argv: 0.3.1
+      string-argv: 0.3.2
       type-detect: 4.1.0
 
   '@jsdevtools/ono@7.1.3': {}

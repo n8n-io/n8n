@@ -1,3 +1,5 @@
+import type { InjectionKey } from 'vue';
+
 /**
  * What the authoring panel needs from whatever is hosting it.
  *
@@ -66,4 +68,15 @@ export interface UiBuilderHost {
 
 	/** The output of the last node to run in that workflow's most recent execution. */
 	lastExecutionOutput: (workflowId: string) => Promise<HostExecutionOutput | undefined>;
+
+	/**
+	 * Where the expression editor parents its autocomplete tooltip. The host owns
+	 * both the stacking context that keeps it clear of the panel's scrolling
+	 * panes and the styling for what lands in it.
+	 */
+	tooltipContainer?: () => HTMLElement | undefined;
 }
+
+/** The resolved `tooltipContainer`, for the fields that open an editor. */
+export const UiTooltipParentKey: InjectionKey<() => HTMLElement | undefined> =
+	Symbol('uiTooltipParent');

@@ -1,13 +1,15 @@
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import basicAuth from 'basic-auth';
-import { rm } from 'fs/promises';
+import { createWriteStream } from 'fs';
+import { rm, stat } from 'fs/promises';
 import jwt from 'jsonwebtoken';
-import { WorkflowConfigurationError } from 'n8n-workflow';
+import { NodeOperationError, WorkflowConfigurationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
 	IDataObject,
 	ICredentialDataDecryptedObject,
+	IWebhookResponseData,
 	MultiPartFormData,
 	INode,
 	NodeTypeAndVersion,
@@ -15,6 +17,9 @@ import type {
 import * as a from 'node:assert';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BlockList, isIPv6 } from 'node:net';
+import { pipeline } from 'stream/promises';
+import { file as tmpFile } from 'tmp-promise';
+import { v4 as uuid } from 'uuid';
 
 import { WebhookAuthorizationError } from './error';
 
@@ -375,6 +380,48 @@ export async function validateWebhookAuthentication(
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
 		}
+	}
+}
+
+export async function handleBinaryData(
+	context: IWebhookFunctions,
+	prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
+): Promise<IWebhookResponseData> {
+	const req = context.getRequestObject();
+	const options = context.getNodeParameter('options', {}) as IDataObject;
+
+	// TODO: create empty binaryData placeholder, stream into that path, and then finalize the binaryData
+	const binaryFile = await tmpFile({ prefix: 'n8n-webhook-' });
+
+	try {
+		await pipeline(req, createWriteStream(binaryFile.path));
+
+		const returnItem: INodeExecutionData = {
+			json: {
+				headers: req.headers,
+				params: req.params,
+				query: req.query,
+				body: {},
+			},
+		};
+
+		const stats = await stat(binaryFile.path);
+		if (stats.size) {
+			const binaryPropertyName = (options.binaryPropertyName ?? 'data') as string;
+			const fileName = req.contentDisposition?.filename ?? uuid();
+			const binaryData = await context.nodeHelpers.copyBinaryFile(
+				binaryFile.path,
+				fileName,
+				req.contentType ?? 'application/octet-stream',
+			);
+			returnItem.binary = { [binaryPropertyName]: binaryData };
+		}
+
+		return { workflowData: prepareOutput(returnItem) };
+	} catch (error) {
+		throw new NodeOperationError(context.getNode(), error as Error);
+	} finally {
+		await binaryFile.cleanup();
 	}
 }
 

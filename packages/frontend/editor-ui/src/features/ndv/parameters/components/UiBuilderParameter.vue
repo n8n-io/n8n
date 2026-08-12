@@ -8,6 +8,7 @@ import { getNodeWebhookUrl, NodeConnectionTypes } from 'n8n-workflow';
 import type { INode, NodeParameterValueType } from 'n8n-workflow';
 import { computed } from 'vue';
 
+import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/app/constants';
 import { RESPOND_TO_WEBHOOK_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -225,6 +226,10 @@ const host: UiBuilderHost = {
 
 		return { node, json: runs?.[runs.length - 1]?.data?.main?.[0]?.[0]?.json };
 	},
+
+	// `window.document`: the UI document being edited is `document` in this scope.
+	tooltipContainer: () =>
+		window.document.getElementById(CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID) ?? undefined,
 };
 
 function onUpdate(json: string) {

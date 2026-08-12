@@ -60,6 +60,14 @@ export default defineConfig({
 				find: /^@n8n\/design-system(.+)$/,
 				replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
 			},
+			{
+				find: /^@n8n\/i18n(.*)$/,
+				replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src$1'),
+			},
+			{
+				find: '@n8n/expression-editor',
+				replacement: resolve(packagesDir, 'frontend', '@n8n', 'expression-editor', 'src'),
+			},
 		],
 	},
 	define: {

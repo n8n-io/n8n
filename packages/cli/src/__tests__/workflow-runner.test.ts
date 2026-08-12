@@ -753,11 +753,23 @@ describe('needsFullExecutionData', () => {
 	it('should return false when forceFullExecutionData is undefined and mode is not integrated', () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'getResponseMode').mockReturnValue('responseNode');
+		vi.spyOn(activeExecutions, 'hasResponded').mockReturnValue(true);
 
 		// @ts-expect-error Private method
 		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
 
 		expect(result).toBe(false);
+	});
+
+	it('should return true for responseNode when no Respond node answered', () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'getResponseMode').mockReturnValue('responseNode');
+		vi.spyOn(activeExecutions, 'hasResponded').mockReturnValue(false);
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
+
+		expect(result).toBe(true);
 	});
 
 	it('should return true when mode is integrated', () => {

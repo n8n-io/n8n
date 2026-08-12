@@ -10,6 +10,7 @@ import {
 	type ResourceMapperValue,
 	nodeConnectionTypes,
 	type IBinaryData,
+	type IWebhookRoute,
 } from './interfaces';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
@@ -107,4 +108,11 @@ export const isBinaryValue = (value: unknown): value is IBinaryData => {
 		'mimeType' in value &&
 		('data' in value || 'id' in value)
 	);
+};
+
+export const isWebhookRoute = (value: unknown): value is IWebhookRoute => {
+	if (typeof value !== 'object' || value === null) return false;
+	const { path, httpMethod } = value as Partial<IWebhookRoute>;
+	if (typeof path !== 'string') return false;
+	return typeof httpMethod === 'string' || Array.isArray(httpMethod);
 };

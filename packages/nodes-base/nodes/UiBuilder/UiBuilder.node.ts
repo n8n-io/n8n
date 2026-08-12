@@ -27,11 +27,12 @@ export class UiBuilder implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'UI Builder',
 		name: 'uiBuilder',
-		icon: 'fa:window-maximize',
+		icon: 'fa:panels-top-left',
 		iconColor: 'purple',
 		group: ['output'],
 		version: 1,
 		description: 'Serve a UI defined in this node as a web app',
+		respondsToWebhook: true,
 		defaults: {
 			name: 'UI Builder',
 		},
@@ -112,8 +113,7 @@ export class UiBuilder implements INodeType {
 			if (authenticate) {
 				const ttl = this.getNodeParameter('tokenTtl', i, 3600) as number;
 				const credential = (await this.getCredentials('jwtAuth')) as JwtAuthCredential;
-				const key =
-					credential.keyType === 'pemKey' ? credential.privateKey : credential.secret;
+				const key = credential.keyType === 'pemKey' ? credential.privateKey : credential.secret;
 
 				if (!key) {
 					throw new NodeOperationError(
@@ -133,12 +133,22 @@ export class UiBuilder implements INodeType {
 				});
 			}
 
-			// The page goes out as data, for a Respond to Webhook node to return.
-			// Keeping the node itself off the response path means the serving
-			// workflow is made of nothing but stock parts.
 			returnData.push({
 				json: { html: getAppPage(title, definition, token) },
 				pairedItem: { item: i },
+			});
+		}
+
+		// This node is the only thing that knows the page is HTML, so it answers the
+		// request itself rather than leaving a Respond to Webhook node to say so.
+		// `sendResponse` is a no-op when nothing is waiting on a response, which is
+		// what makes a manual run, or a branch that responds some other way, safe.
+		const [first] = returnData;
+		if (first !== undefined) {
+			await this.sendResponse({
+				statusCode: 200,
+				headers: { 'content-type': 'text/html; charset=utf-8' },
+				body: first.json.html as string,
 			});
 		}
 

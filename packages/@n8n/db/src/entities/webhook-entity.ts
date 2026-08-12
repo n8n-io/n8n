@@ -22,26 +22,21 @@ export class WebhookEntity {
 	@Column({ nullable: true })
 	pathLength?: number;
 
-	/**
-	 * Unique section of webhook path.
-	 *
-	 * - Static: `${uuid}` or `user/defined/path`
-	 * - Dynamic: `${uuid}/user/:id/posts`
-	 *
-	 * Appended to `${instanceUrl}/webhook/` or `${instanceUrl}/test-webhook/`.
-	 */
-	private get uniquePath() {
-		return this.webhookPath.includes(':')
-			? [this.webhookId, this.webhookPath].join('/')
-			: this.webhookPath;
-	}
-
 	get cacheKey() {
-		return `webhook:${this.method}-${this.uniquePath}`;
+		return `webhook:${this.method}-${this.webhookPath}`;
 	}
 
+	/**
+	 * Static segments available for scoring a template against a request, with
+	 * the namespace segment dropped: it is matched separately by `webhookId`
+	 * equality, and the request path the caller compares against has already had
+	 * it stripped.
+	 */
 	get staticSegments() {
-		return this.webhookPath.split('/').filter((s) => !s.startsWith(':'));
+		return this.webhookPath
+			.split('/')
+			.slice(1)
+			.filter((s) => !s.startsWith(':'));
 	}
 
 	/**

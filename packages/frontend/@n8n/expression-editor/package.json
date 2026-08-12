@@ -1,0 +1,72 @@
+{
+  "name": "@n8n/expression-editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The n8n expression input: CodeMirror editor, resolved preview and fixed/expression switch, with resolution and autocomplete injected by the host",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "build": "cross-env vite build",
+    "build:unchecked": "pnpm run build",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:dev": "vitest --silent=false",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix"
+  },
+  "types": "./dist/index.d.ts",
+  "main": "./dist/expression-editor.umd.js",
+  "module": "./dist/expression-editor.es.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/expression-editor.es.js",
+      "require": "./dist/expression-editor.umd.js"
+    },
+    "./*": {
+      "import": "./*",
+      "require": "./*"
+    }
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "catalog:",
+    "@codemirror/commands": "catalog:",
+    "@codemirror/lang-javascript": "catalog:",
+    "@codemirror/language": "catalog:",
+    "@codemirror/state": "catalog:",
+    "@codemirror/view": "catalog:",
+    "@lezer/common": "catalog:",
+    "@lezer/highlight": "catalog:",
+    "@n8n/codemirror-lang": "workspace:*",
+    "@n8n/composables": "workspace:*",
+    "@n8n/design-system": "workspace:*",
+    "@n8n/frontend-utils": "workspace:*",
+    "@n8n/i18n": "workspace:*",
+    "@vueuse/core": "catalog:frontend",
+    "lodash": "catalog:",
+    "n8n-workflow": "workspace:*",
+    "vue": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "catalog:",
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@testing-library/jest-dom": "catalog:frontend",
+    "@testing-library/user-event": "catalog:frontend",
+    "@testing-library/vue": "catalog:frontend",
+    "@types/lodash": "catalog:",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "cross-env": "catalog:",
+    "rimraf": "catalog:",
+    "sass-embedded": "catalog:",
+    "typescript": "catalog:",
+    "unplugin-icons": "^0.19.0",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:frontend"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "LicenseRef-n8n-sustainable-use"
+}

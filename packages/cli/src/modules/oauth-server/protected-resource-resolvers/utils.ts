@@ -72,7 +72,10 @@ export function resourceUrlToWebhookPath(
  * since a static path may contain a colon that is not a route parameter.
  */
 export function webhookResourcePath(webhookPath: string, webhookId?: string): string {
-	return webhookId ? `${webhookId}/${webhookPath}` : webhookPath;
+	if (!webhookId) return webhookPath;
+	// Stored rows already carry the namespace; `IWebhookData.path` does not.
+	if (webhookPath === webhookId || webhookPath.startsWith(`${webhookId}/`)) return webhookPath;
+	return `${webhookId}/${webhookPath}`;
 }
 
 /**

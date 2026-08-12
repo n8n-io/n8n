@@ -5,7 +5,6 @@ import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import {
 	Workflow,
-	CHAT_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	nodeParametersAreStatic,
 	webhookDescriptionIsNativelyResolvable,
@@ -24,6 +23,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 import { authAllowlistedNodes } from './constants';
 import { matchesExpectedNodeType } from './node-type-matcher';
 import type { ExpectedWebhookNodeType } from './node-type-matcher';
+import { applyWebhookNamespace, pickWebhookNamespace, templateSegments } from './webhook-path';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type {
 	IWebhookResponseCallbackData,
@@ -62,18 +62,11 @@ export class LiveWebhooks implements IWebhookManager {
 			relations: { activeVersion: true },
 		});
 
-		const isChatWebhookNode = (type: string, webhookId?: string) =>
-			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/chat` === path;
-
-		const nodes = workflowData?.activeVersion?.nodes;
-		const webhookNode = nodes?.find(
-			({ type, parameters, typeVersion, webhookId }) =>
-				(parameters?.path === path &&
-					(parameters?.httpMethod ?? 'GET') === httpMethod &&
-					'webhook' in this.nodeTypes.getByNameAndVersion(type, typeVersion)) ||
-				// Chat Trigger has doesn't have configurable path and is always using POST, so
-				// we need to use webhookId for matching
-				isChatWebhookNode(type, webhookId),
+		// The row already names the node that serves this path, so there is no need
+		// to re-derive it by comparing raw parameters — which only ever matched
+		// nodes whose `path` parameter is the whole request path.
+		const webhookNode = workflowData?.activeVersion?.nodes?.find(
+			({ name }) => name === webhook.node,
 		);
 
 		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
@@ -100,12 +93,12 @@ export class LiveWebhooks implements IWebhookManager {
 		response.locals.workflowId = webhook.workflowId;
 
 		if (webhook.isDynamic) {
+			// Both sides drop their first segment: the request's namespace and the
+			// template's, which the row matched on via `webhookId`.
 			const pathElements = path.split('/').slice(1);
 
-			// extracting params from path
-			webhook.webhookPath.split('/').forEach((ele, index) => {
+			templateSegments(webhook.webhookPath).forEach((ele, index) => {
 				if (ele.startsWith(':')) {
-					// write params to req.params
 					request.params[ele.slice(1)] = pathElements[index];
 				}
 			});
@@ -147,7 +140,12 @@ export class LiveWebhooks implements IWebhookManager {
 		try {
 			const webhookData = this.webhookService
 				.getNodeWebhooks(workflow, startNode as INode, additionalData)
-				.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
+				.find(
+					(w) =>
+						w.httpMethod === httpMethod &&
+						applyWebhookNamespace(w.path, pickWebhookNamespace(w.namespace, w.webhookId)) ===
+							webhook.webhookPath,
+				) as IWebhookData;
 
 			if (
 				expectedNodeType &&

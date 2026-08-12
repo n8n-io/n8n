@@ -9,14 +9,25 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodePropertyOptions } from 'n8n-workflow';
 import { computed, reactive } from 'vue';
 
 import PaneShell from './PaneShell.vue';
 import UiActionEditor from './UiActionEditor.vue';
+import UiValueField from './UiValueField.vue';
 import { normaliseAction } from '../../core/actions';
 import { pageLabel } from '../../core/pages';
-import type { UiActionStep, UiNode, UiPageInfo, UiRegion } from '../../core/types';
+import {
+	ACTION_PROP_TYPE,
+	ROUTE_PROP_TYPE,
+	STATE_PATH_PROP_TYPE,
+	type UiActionStep,
+	type UiNode,
+	type UiPageInfo,
+	type UiProperty,
+	type UiRegion,
+	type UiScope,
+} from '../../core/types';
 import { getComponentDef } from '../../kit';
 import type { WebhookTarget } from '../composables/useWebhookTargets';
 
@@ -34,9 +45,11 @@ defineOptions({ name: 'InspectorPane' });
 const props = defineProps<{
 	node?: UiNode;
 	pseudo?: UiRegion;
-	descriptors: INodeProperties[];
+	descriptors: UiProperty[];
 	pages: UiPageInfo[];
 	targets: WebhookTarget[];
+	/** What the selected node is being rendered with, so the preview matches the canvas. */
+	scope: UiScope;
 	disabled?: boolean;
 	labelFor: (url: string) => string;
 	browse: () => Promise<string | undefined>;
@@ -70,21 +83,24 @@ function valueOf(name: string): string {
 	return String(props.node?.props[name] ?? '');
 }
 
-/**
- * Every value prop takes an expression, and nothing on screen said so: an
- * author had to know the syntax before they could discover it. The placeholder
- * carries it, keyed to the prop's own type so the example is one you might
- * actually write.
- */
-function placeholderFor(descriptor: INodeProperties): string {
-	if (descriptor.type === 'statePath') return 'form.name';
-	if (descriptor.type === 'number') return '={{ $state.count }}';
-	return '={{ $state.title }}';
+const EDITED_BY_KIND: ReadonlyArray<UiProperty['type']> = [
+	'options',
+	'boolean',
+	ACTION_PROP_TYPE,
+	ROUTE_PROP_TYPE,
+	STATE_PATH_PROP_TYPE,
+];
+
+/** Everything else falls through to a value field, which can hold an expression. */
+function hasOwnEditor(descriptor: UiProperty): boolean {
+	return EDITED_BY_KIND.includes(descriptor.type);
 }
 
-/** A bound prop reads as an expression, so the field says which mode it is in. */
-function isBound(name: string): boolean {
-	return valueOf(name).startsWith('=');
+/** Collections and nested properties can sit in `options` too; only real choices render. */
+function choicesOf(descriptor: UiProperty): INodePropertyOptions[] {
+	return (descriptor.options ?? []).filter(
+		(option): option is INodePropertyOptions => 'value' in option,
+	);
 }
 </script>
 
@@ -98,6 +114,16 @@ function isBound(name: string): boolean {
 			<N8nSectionHeader v-else :title="selectedDef?.label ?? node.type" bordered />
 
 			<div v-for="descriptor in descriptors" :key="descriptor.name" class="ui-field">
+				<!-- Renders its own label, so the fixed/expression toggle can sit in it. -->
+				<UiValueField
+					v-if="!hasOwnEditor(descriptor)"
+					:descriptor="descriptor"
+					:model-value="node.props[descriptor.name]"
+					:scope="scope"
+					:disabled="disabled"
+					@update="emit('setProp', descriptor.name, $event)"
+				/>
+
 				<!--
 					An action is a chain of steps, not one value, so it gets its own
 					subpanel rather than sharing the plain label row every other prop
@@ -146,10 +172,10 @@ function isBound(name: string): boolean {
 						@update:model-value="emit('setProp', descriptor.name, $event)"
 					>
 						<N8nOption
-							v-for="option in descriptor.options ?? []"
-							:key="String((option as { value: unknown }).value)"
-							:label="(option as { name: string }).name"
-							:value="(option as { value: unknown }).value"
+							v-for="option in choicesOf(descriptor)"
+							:key="String(option.value)"
+							:label="option.name"
+							:value="option.value"
 						/>
 					</N8nSelect>
 
@@ -182,23 +208,15 @@ function isBound(name: string): boolean {
 						/>
 					</N8nSelect>
 
-					<div class="ui-value-field">
-						<N8nInput
-							:model-value="valueOf(descriptor.name)"
-							:disabled="disabled"
-							size="small"
-							:placeholder="placeholderFor(descriptor)"
-							@update:model-value="emit('setProp', descriptor.name, $event)"
-						/>
-
-						<span
-							v-if="descriptor.type !== 'statePath'"
-							class="ui-value-field__mode"
-							:class="{ 'ui-value-field__mode--bound': isBound(descriptor.name) }"
-						>
-							{{ isBound(descriptor.name) ? 'expression' : 'fixed' }}
-						</span>
-					</div>
+					<!-- A dotted path into state, written as text: never an expression. -->
+					<N8nInput
+						v-else
+						:model-value="valueOf(descriptor.name)"
+						:disabled="disabled"
+						size="small"
+						placeholder="form.name"
+						@update:model-value="emit('setProp', descriptor.name, $event)"
+					/>
 				</N8nInputLabel>
 			</div>
 		</template>
@@ -250,28 +268,6 @@ function isBound(name: string): boolean {
 
 .ui-field {
 	margin: var(--spacing--xs) 0;
-}
-
-.ui-value-field {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-/*
- * Which mode the field is in, rather than a control to switch it: the syntax
- * is the switch, and a label that lit up when you typed `=` teaches it faster
- * than a toggle would.
- */
-.ui-value-field__mode {
-	flex-shrink: 0;
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
-	font-variant: small-caps;
-}
-
-.ui-value-field__mode--bound {
-	color: var(--color--primary);
 }
 
 .ui-inspector-empty {

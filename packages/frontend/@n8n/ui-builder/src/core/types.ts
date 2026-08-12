@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, NodePropertyTypes } from 'n8n-workflow';
 import type { Component } from 'vue';
 
 /**
@@ -157,7 +157,7 @@ export interface UiComponentDef {
 	type: string;
 	label: string;
 	component: Component;
-	props: INodeProperties[];
+	props: UiProperty[];
 	/**
 	 * An icon shown wherever the outline and inspector name this component,
 	 * for the rare def whose type is worth telling apart from an ordinary one
@@ -201,3 +201,12 @@ export const ACTION_PROP_TYPE = 'action';
 export const STATE_PATH_PROP_TYPE = 'statePath';
 /** A page path, picked from the pages the document holds rather than typed. */
 export const ROUTE_PROP_TYPE = 'route';
+
+/** n8n's own kinds, plus the three this format adds. */
+export type UiPropertyType =
+	| NodePropertyTypes
+	| typeof ACTION_PROP_TYPE
+	| typeof STATE_PATH_PROP_TYPE
+	| typeof ROUTE_PROP_TYPE;
+
+export type UiProperty = Omit<INodeProperties, 'type'> & { type: UiPropertyType };

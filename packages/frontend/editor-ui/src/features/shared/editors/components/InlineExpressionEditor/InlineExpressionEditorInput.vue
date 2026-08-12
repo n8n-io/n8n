@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { history } from '@codemirror/commands';
-import { type EditorState, Prec, type SelectionRange } from '@codemirror/state';
-import { dropCursor, EditorView, keymap } from '@codemirror/view';
-import { computed, ref, watch } from 'vue';
+import { keymap } from '@codemirror/view';
+import { Prec, type EditorState, type SelectionRange } from '@codemirror/state';
+import { computed, useTemplateRef } from 'vue';
+import { ExpressionEditorInput } from '@n8n/expression-editor';
+import type { Segment } from '@n8n/expression-editor';
+import type { IDataObject } from 'n8n-workflow';
 
-import { useExpressionEditor } from '../../composables/useExpressionEditor';
 import { mappingDropCursor } from '../../plugins/codemirror/dragAndDrop';
 import { editorKeymap } from '../../plugins/codemirror/keymap';
-import { n8nAutocompletion, n8nLang } from '../../plugins/codemirror/n8nLang';
-import { infoBoxTooltips } from '../../plugins/codemirror/tooltips/InfoBoxTooltip';
-import type { Segment } from '@/app/types/expressions';
-import type { IDataObject } from 'n8n-workflow';
-import { inputTheme } from './theme';
-import { onKeyStroke } from '@vueuse/core';
-import { expressionCloseBrackets } from '../../plugins/codemirror/expressionCloseBrackets';
+import {
+	infoBoxTooltips,
+	closeCursorInfoBox,
+} from '../../plugins/codemirror/tooltips/InfoBoxTooltip';
+import { n8nCompletionSourceFns } from '../../plugins/codemirror/completions/addCompletions';
+import { useNdvExpressionEditorHost } from '../../composables/useNdvExpressionEditorHost';
 
 type Props = {
 	modelValue: string;
@@ -35,107 +35,45 @@ const emit = defineEmits<{
 	focus: [];
 }>();
 
-const root = ref<HTMLElement>();
+const input = useTemplateRef('input');
+
+const { resolver, staticExtensions, trackAutocomplete } = useNdvExpressionEditorHost({
+	additionalData: computed(() => props.additionalData),
+	autocompleteTelemetry: computed(() => ({ enabled: true, parameterPath: props.path })),
+});
+
+trackAutocomplete(() => input.value?.editor);
+
 const extensions = computed(() => [
 	Prec.highest(keymap.of(editorKeymap)),
-	n8nLang(),
-	n8nAutocompletion(),
-	inputTheme({ isReadOnly: props.isReadOnly, rows: props.rows }),
-	history(),
 	mappingDropCursor(),
-	dropCursor(),
-	expressionCloseBrackets(),
-	EditorView.lineWrapping,
 	infoBoxTooltips(),
 ]);
-const editorValue = computed(() => props.modelValue);
-
-// Exit expression editor when pressing Backspace in empty field
-onKeyStroke(
-	'Backspace',
-	() => {
-		if (props.modelValue === '') emit('update:model-value', { value: '', segments: [] });
-	},
-	{ target: root },
-);
-
-const {
-	editor: editorRef,
-	segments,
-	selection,
-	readEditorValue,
-	setCursorPosition,
-	hasFocus,
-	focus,
-} = useExpressionEditor({
-	editorRef: root,
-	editorValue,
-	extensions,
-	disableSearchDialog: true,
-	isReadOnly: computed(() => props.isReadOnly),
-	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
-	additionalData: props.additionalData,
-	initialCursorPosition: 'lastExpression',
-});
-
-watch(segments.display, (newSegments) => {
-	emit('update:model-value', {
-		value: '=' + readEditorValue(),
-		segments: newSegments,
-	});
-});
-
-watch(selection, (newSelection: SelectionRange) => {
-	if (editorRef.value) {
-		emit('update:selection', {
-			state: editorRef.value.state,
-			selection: newSelection,
-		});
-	}
-});
-
-watch(hasFocus, (focused) => {
-	if (focused) emit('focus');
-});
 
 defineExpose({
-	editor: editorRef,
-	setCursorPosition,
-	focus: () => {
-		if (!hasFocus.value) {
-			focus();
-			requestAnimationFrame(() => {
-				setCursorPosition('lastExpression');
-			});
-		}
+	get editor() {
+		return input.value?.editor;
 	},
-	selectAll: () => {
-		editorRef.value?.dispatch({
-			selection: selection.value.extend(0, editorRef.value?.state.doc.length),
-		});
-	},
+	setCursorPosition: (pos: number | 'lastExpression' | 'end') =>
+		input.value?.setCursorPosition(pos),
+	focus: () => input.value?.focus(),
+	selectAll: () => input.value?.selectAll(),
 });
 </script>
 
 <template>
-	<div ref="root" title="" data-test-id="inline-expression-editor-input"></div>
+	<ExpressionEditorInput
+		ref="input"
+		:model-value="modelValue"
+		:resolver="resolver"
+		:completion-sources="n8nCompletionSourceFns"
+		:extensions="extensions"
+		:static-extensions="staticExtensions"
+		:rows="rows"
+		:is-read-only="isReadOnly"
+		:on-editor-blur="closeCursorInfoBox"
+		@update:model-value="emit('update:model-value', $event)"
+		@update:selection="emit('update:selection', $event)"
+		@focus="emit('focus')"
+	/>
 </template>
-
-<style lang="scss" scoped>
-:deep(.cm-editor) {
-	padding-left: 0;
-}
-:deep(.cm-content) {
-	padding-left: var(--spacing--2xs);
-
-	&[aria-readonly='true'] {
-		background-color: var(--input--color--background--disabled, var(--color--background--light-2));
-		border-color: var(--input--border-color--disabled, var(--border-color));
-		color: var(--input--color--disabled, var(--color--text));
-		cursor: not-allowed;
-
-		border-top-left-radius: 0;
-		border-bottom-left-radius: 0;
-	}
-}
-</style>

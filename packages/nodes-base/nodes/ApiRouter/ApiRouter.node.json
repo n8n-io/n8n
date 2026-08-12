@@ -1,0 +1,17 @@
+{
+	"node": "n8n-nodes-base.apiRouter",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+			}
+		]
+	},
+	"alias": ["HTTP", "API", "REST", "Router", "Endpoint", "OpenAPI"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}

@@ -6,6 +6,7 @@ import { HookContext, WebhookContext } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	isNodeClassInstance,
+	isWebhookRoute,
 	NodeHelpers,
 	resolveWebhookDescriptionField,
 	UnexpectedError,
@@ -28,6 +29,7 @@ import type {
 import { NodeTypes } from '@/node-types';
 import { CacheService } from '@/services/cache/cache.service';
 
+import { applyWebhookNamespace, pickWebhookNamespace, trimWebhookPath } from './webhook-path';
 import type { Method } from './webhook.types';
 
 @Service()
@@ -305,10 +307,12 @@ export class WebhookService {
 		return path.startsWith(':') || path.includes('/:');
 	}
 
+	/** The path as stored and as it appears in the URL: namespaced when dynamic. */
 	getWebhookPath(webhook: IWebhookData): string {
-		return [webhook.path.includes(':') ? webhook.webhookId : undefined, webhook.path]
-			.filter((part) => !!part)
-			.join('/');
+		return applyWebhookNamespace(
+			webhook.path,
+			pickWebhookNamespace(webhook.namespace, webhook.webhookId),
+		);
 	}
 
 	/**
@@ -335,93 +339,148 @@ export class WebhookService {
 		const workflowId = workflow.id || '__UNSAVED__';
 
 		const returnData: IWebhookData[] = [];
-		for (const webhookDescription of nodeType.description.webhooks) {
-			if (ignoreRestartWebhooks && webhookDescription.restartWebhook === true) {
+		for (const baseDescription of nodeType.description.webhooks) {
+			if (ignoreRestartWebhooks && baseDescription.restartWebhook === true) {
 				continue;
 			}
 
-			let nodeWebhookPath = this.evaluateDescriptionProperty(
-				workflow,
-				node,
-				webhookDescription,
-				'path',
-			);
-			if (nodeWebhookPath === undefined || nodeWebhookPath === null) {
-				this.logger.error(
-					`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`,
+			for (const webhookDescription of this.expandRoutes(workflow, node, baseDescription)) {
+				returnData.push(
+					...this.buildWebhookData(workflow, node, webhookDescription, additionalData, workflowId),
 				);
-				continue;
 			}
-
-			nodeWebhookPath = nodeWebhookPath.toString().trim();
-
-			if (nodeWebhookPath.startsWith('/')) {
-				nodeWebhookPath = nodeWebhookPath.slice(1);
-			}
-			if (nodeWebhookPath.endsWith('/')) {
-				nodeWebhookPath = nodeWebhookPath.slice(0, -1);
-			}
-
-			const isFullPath = this.evaluateDescriptionProperty(
-				workflow,
-				node,
-				webhookDescription,
-				'isFullPath',
-				false,
-			) as boolean;
-			const restartWebhook = this.evaluateDescriptionProperty(
-				workflow,
-				node,
-				webhookDescription,
-				'restartWebhook',
-				false,
-			) as boolean;
-			const path = NodeHelpers.getNodeWebhookPath(
-				workflowId,
-				node,
-				nodeWebhookPath,
-				isFullPath,
-				restartWebhook,
-			);
-
-			const webhookMethods = this.evaluateDescriptionProperty(
-				workflow,
-				node,
-				webhookDescription,
-				'httpMethod',
-				'GET',
-			);
-
-			if (webhookMethods === undefined) {
-				this.logger.error(
-					`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
-				);
-				continue;
-			}
-
-			let webhookId: string | undefined;
-
-			if (this.isDynamicPath(path) && node.webhookId) {
-				webhookId = node.webhookId;
-			}
-
-			String(webhookMethods)
-				.split(',')
-				.forEach((httpMethod) => {
-					if (!httpMethod) return;
-					returnData.push({
-						httpMethod: httpMethod.trim() as IHttpRequestMethods,
-						node: node.name,
-						path,
-						webhookDescription,
-						workflowId,
-						workflowExecuteAdditionalData: additionalData,
-						webhookId,
-					});
-				});
 		}
 
 		return returnData;
+	}
+
+	/**
+	 * A description declaring `routes` stands in for one description per route, so
+	 * that response options resolve per route rather than per node.
+	 */
+	private expandRoutes(
+		workflow: Workflow,
+		node: INode,
+		baseDescription: IWebhookDescription,
+	): IWebhookDescription[] {
+		if (typeof baseDescription.routes !== 'string') return [baseDescription];
+
+		const resolved = this.evaluateDescriptionProperty(workflow, node, baseDescription, 'routes');
+		if (!Array.isArray(resolved)) return [];
+
+		return resolved.filter(isWebhookRoute).map((route, index) => ({
+			...baseDescription,
+			routes: undefined,
+			name: route.name ?? `${baseDescription.name}:${index}`,
+			path: route.path,
+			httpMethod: Array.isArray(route.httpMethod) ? route.httpMethod.join(',') : route.httpMethod,
+			...(route.responseMode !== undefined && { responseMode: route.responseMode }),
+			...(route.responseCode !== undefined && { responseCode: String(route.responseCode) }),
+			...(route.responseData !== undefined && { responseData: route.responseData }),
+		}));
+	}
+
+	private buildWebhookData(
+		workflow: Workflow,
+		node: INode,
+		webhookDescription: IWebhookDescription,
+		additionalData: IWorkflowExecuteAdditionalData,
+		workflowId: string,
+	): IWebhookData[] {
+		const returnData: IWebhookData[] = [];
+
+		const rawPath = this.evaluateDescriptionProperty(workflow, node, webhookDescription, 'path');
+		if (rawPath === undefined || rawPath === null) {
+			this.logger.error(
+				`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`,
+			);
+			return returnData;
+		}
+
+		const nodeWebhookPath = trimWebhookPath(rawPath.toString());
+
+		const isFullPath = this.evaluateDescriptionProperty(
+			workflow,
+			node,
+			webhookDescription,
+			'isFullPath',
+			false,
+		) as boolean;
+		const restartWebhook = this.evaluateDescriptionProperty(
+			workflow,
+			node,
+			webhookDescription,
+			'restartWebhook',
+			false,
+		) as boolean;
+		const path = NodeHelpers.getNodeWebhookPath(
+			workflowId,
+			node,
+			nodeWebhookPath,
+			isFullPath,
+			restartWebhook,
+		);
+
+		const webhookMethods = this.evaluateDescriptionProperty(
+			workflow,
+			node,
+			webhookDescription,
+			'httpMethod',
+			'GET',
+		);
+
+		if (webhookMethods === undefined) {
+			this.logger.error(
+				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
+			);
+			return returnData;
+		}
+
+		const namespace = this.resolveNamespace(workflow, node, webhookDescription, path);
+
+		String(webhookMethods)
+			.split(',')
+			.forEach((httpMethod) => {
+				if (!httpMethod) return;
+				returnData.push({
+					httpMethod: httpMethod.trim() as IHttpRequestMethods,
+					node: node.name,
+					path,
+					webhookDescription,
+					workflowId,
+					workflowExecuteAdditionalData: additionalData,
+					webhookId: namespace,
+					namespace,
+				});
+			});
+
+		return returnData;
+	}
+
+	/**
+	 * Namespace of a `:param` path. Falls back to the node's `webhookId` so paths
+	 * that predate the `namespace` field keep the URL they already had.
+	 */
+	private resolveNamespace(
+		workflow: Workflow,
+		node: INode,
+		webhookDescription: IWebhookDescription,
+		path: string,
+	): string | undefined {
+		if (!this.isDynamicPath(path)) return undefined;
+
+		if (typeof webhookDescription.namespace === 'string') {
+			const resolved = this.evaluateDescriptionProperty(
+				workflow,
+				node,
+				webhookDescription,
+				'namespace',
+			);
+			const namespace = resolved === undefined ? '' : trimWebhookPath(String(resolved));
+			if (namespace) return namespace;
+		}
+
+		return node.webhookId;
 	}
 
 	/**

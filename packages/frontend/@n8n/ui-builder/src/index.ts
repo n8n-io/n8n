@@ -1,6 +1,11 @@
 export { default as UiRenderer } from './renderer/UiRenderer.vue';
+export {
+	createScopeRegistry,
+	UiScopeRegistryKey,
+	type UiScopeRegistry,
+} from './renderer/scope-registry';
 export { KIT, getComponentDef } from './kit';
-export { resolveValue, isExpression } from './core/expressions';
+export { evaluateExpression, resolveValue, isExpression } from './core/expressions';
 export { deepMerge, writePath } from './core/state';
 export { actionKey, createLoadingTracker } from './core/loading';
 export { readResponse } from './core/envelope';
