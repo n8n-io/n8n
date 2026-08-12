@@ -144,6 +144,9 @@ function unmatchedAccountText(email: string | null): string {
 		: "I couldn't find an n8n account for your Slack profile on this instance. Ask your admin to invite you.";
 }
 
+const GENERIC_FAILURE_TEXT =
+	'Something went wrong on my side. Nothing in your instance was changed.';
+
 @Service()
 export class SlackRunner {
 	private readonly refusedSlackUserIds = new Set<string>();
@@ -181,13 +184,7 @@ export class SlackRunner {
 			await this.run(install, parsed.teamId, parsed.event, dispatch, channelId);
 		} catch (error) {
 			this.logger.warn('Slack runner failed to process an event', { error });
-			try {
-				await this.webClient.postMessage(install.botToken, {
-					channel: channelId,
-					threadTs: dispatch.threadTs,
-					text: 'Something went wrong on my side. Nothing in your instance was changed.',
-				});
-			} catch {}
+			await this.postGenericFailure(install, channelId, dispatch.threadTs);
 		}
 	}
 
@@ -222,11 +219,15 @@ export class SlackRunner {
 		dispatch: Extract<SlackDispatch, { action: 'run' }>,
 		channelId: string,
 	): Promise<void> {
-		const user = await this.resolveAuthorizedUser(install.botToken, dispatch.authorSlackUserId);
-		if (!user) {
+		const resolution = await this.resolveAuthorizedUser(
+			install.botToken,
+			dispatch.authorSlackUserId,
+		);
+		if (!resolution) {
 			await this.refuseUnauthorized(install, teamId, dispatch, channelId);
 			return;
 		}
+		const { user, tz } = resolution;
 
 		if (!this.settings.isInstanceAiEnabled()) return;
 
@@ -238,6 +239,7 @@ export class SlackRunner {
 			this.logger.warn('Slack runner could not resolve a personal project for the matched user', {
 				userId: user.id,
 			});
+			await this.postGenericFailure(install, channelId, dispatch.threadTs);
 			return;
 		}
 
@@ -288,17 +290,21 @@ export class SlackRunner {
 			finalPrompt,
 			undefined,
 			undefined,
-			undefined,
+			tz ?? undefined,
 			undefined,
 		);
 	}
 
-	private async resolveAuthorizedUser(botToken: string, slackUserId: string): Promise<User | null> {
-		const user = await this.identity.resolve(botToken, slackUserId);
-		if (!user || user.disabled) return null;
+	private async resolveAuthorizedUser(
+		botToken: string,
+		slackUserId: string,
+	): Promise<{ user: User; tz: string | null } | null> {
+		const resolution = await this.identity.resolve(botToken, slackUserId);
+		if (!resolution || resolution.user.disabled) return null;
 		const hasInstanceAiMessageScope =
-			user.role?.scopes?.some((scope) => scope.slug === INSTANCE_AI_MESSAGE_SCOPE) ?? false;
-		return hasInstanceAiMessageScope ? user : null;
+			resolution.user.role?.scopes?.some((scope) => scope.slug === INSTANCE_AI_MESSAGE_SCOPE) ??
+			false;
+		return hasInstanceAiMessageScope ? resolution : null;
 	}
 
 	private async refuseUnauthorized(
@@ -331,6 +337,20 @@ export class SlackRunner {
 				email,
 			});
 		}
+	}
+
+	private async postGenericFailure(
+		install: SlackInstall,
+		channelId: string,
+		threadTs: string,
+	): Promise<void> {
+		try {
+			await this.webClient.postMessage(install.botToken, {
+				channel: channelId,
+				threadTs,
+				text: GENERIC_FAILURE_TEXT,
+			});
+		} catch {}
 	}
 
 	private async withHistoryBackfill(

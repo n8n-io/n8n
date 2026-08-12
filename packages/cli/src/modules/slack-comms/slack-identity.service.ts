@@ -2,19 +2,27 @@ import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-export interface SlackEmailLookup {
-	getUserEmail(botToken: string, slackUserId: string): Promise<string | null>;
+export interface SlackUserLookup {
+	getUserInfo(
+		botToken: string,
+		slackUserId: string,
+	): Promise<{ email: string | null; tz: string | null }>;
+}
+
+export interface SlackIdentityResolution {
+	user: User;
+	tz: string | null;
 }
 
 @Service()
 export class SlackIdentityService {
 	constructor(
-		private readonly emailLookup: SlackEmailLookup,
+		private readonly userLookup: SlackUserLookup,
 		private readonly userRepository: UserRepository,
 	) {}
 
-	async resolve(botToken: string, slackUserId: string): Promise<User | null> {
-		const email = await this.emailLookup.getUserEmail(botToken, slackUserId);
+	async resolve(botToken: string, slackUserId: string): Promise<SlackIdentityResolution | null> {
+		const { email, tz } = await this.userLookup.getUserInfo(botToken, slackUserId);
 		if (!email) return null;
 
 		const user = await this.userRepository.findOne({
@@ -25,6 +33,6 @@ export class SlackIdentityService {
 		if (user.disabled) return null;
 		if (user.password === null) return null;
 
-		return user;
+		return { user, tz };
 	}
 }

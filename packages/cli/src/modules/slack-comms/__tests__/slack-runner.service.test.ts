@@ -10,7 +10,7 @@ import type { InstanceAiMemoryService } from '@/modules/instance-ai/instance-ai-
 import type { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
 import type { InstanceAiService } from '@/modules/instance-ai/instance-ai.service';
 
-import type { SlackIdentityService } from '../slack-identity.service';
+import type { SlackIdentityResolution, SlackIdentityService } from '../slack-identity.service';
 import type { SlackInstallProvider } from '../slack-install.provider';
 import type { SlackRunRenderer, SlackUnmatchedMentionContext } from '../slack-runner.service';
 import { SlackRunner } from '../slack-runner.service';
@@ -71,6 +71,13 @@ function buildUser(overrides: Partial<User> = {}): User {
 	return mock<User>({ id: 'u1', disabled: false, role: buildRole(true), ...overrides });
 }
 
+function identityResolution(
+	userOverrides: Partial<User> = {},
+	tz: string | null = null,
+): SlackIdentityResolution {
+	return { user: buildUser(userOverrides), tz };
+}
+
 function ensureThreadResponse(created: boolean): InstanceAiEnsureThreadResponse {
 	return {
 		thread: {
@@ -126,7 +133,7 @@ describe('SlackRunner', () => {
 			botUserId: 'B1',
 			errorChannelId: null,
 		});
-		identity.resolve.mockResolvedValue(buildUser());
+		identity.resolve.mockResolvedValue(identityResolution());
 		projects.getPersonalProjectForUser.mockResolvedValue(mock<Project>({ id: 'p1' }));
 		registry.threadIdFor.mockReturnValue('uuid-1');
 		registry.isSubscribed.mockReturnValue(false);
@@ -211,17 +218,16 @@ describe('SlackRunner', () => {
 		);
 	});
 
-	// Requirement 2 — controller guards replicated: revalidate (disabled, scope), settings, non-empty prompt.
 	describe('controller guards', () => {
 		it('refuses a disabled user even though their email matched', async () => {
-			identity.resolve.mockResolvedValue(buildUser({ disabled: true }));
+			identity.resolve.mockResolvedValue(identityResolution({ disabled: true }));
 			await runner.handle(mention());
 			expect(webClient.postEphemeral).toHaveBeenCalled();
 			expect(instanceAi.startRun).not.toHaveBeenCalled();
 		});
 
 		it('refuses a matched user without the instanceAi:message scope', async () => {
-			identity.resolve.mockResolvedValue(buildUser({ role: buildRole(false) }));
+			identity.resolve.mockResolvedValue(identityResolution({ role: buildRole(false) }));
 			await runner.handle(mention());
 			expect(webClient.postEphemeral).toHaveBeenCalled();
 			expect(instanceAi.startRun).not.toHaveBeenCalled();
@@ -239,9 +245,20 @@ describe('SlackRunner', () => {
 			await runner.handle(mention({ text: '<@B1>' }));
 			expect(instanceAi.startRun).not.toHaveBeenCalled();
 		});
+
+		it('posts a generic failure message when the matched user has no personal project', async () => {
+			projects.getPersonalProjectForUser.mockResolvedValue(null);
+			await runner.handle(mention());
+			expect(instanceAi.startRun).not.toHaveBeenCalled();
+			expect(webClient.postMessage).toHaveBeenCalledWith(
+				'x',
+				expect.objectContaining({
+					text: 'Something went wrong on my side. Nothing in your instance was changed.',
+				}),
+			);
+		});
 	});
 
-	// Requirement 3 — hasActiveRun covers active AND suspended; startRun must never overwrite live state.
 	describe('active and suspended runs', () => {
 		it('replies that a run is already active without starting a new one', async () => {
 			instanceAi.hasActiveRun.mockReturnValue(true);
@@ -266,7 +283,6 @@ describe('SlackRunner', () => {
 		});
 	});
 
-	// Requirement 4 — dispatch table, refusal dedupe, and the admin-DM seam.
 	describe('dispatch table', () => {
 		it('runs for a DM without requiring a mention or subscription', async () => {
 			await runner.handle(dm());
@@ -322,14 +338,12 @@ describe('SlackRunner', () => {
 		});
 	});
 
-	// Requirement 5 — subscribe() doubles as the idle-clock touch on every handled message.
 	it('touches the idle clock on a plain reply in an already-subscribed thread', async () => {
 		registry.isSubscribed.mockReturnValue(true);
 		await runner.handle(threadReply());
 		expect(registry.subscribe).toHaveBeenCalledWith('1.1');
 	});
 
-	// Requirement 6 — thread-history backfill, sanitised against delimiter spoofing and length.
 	describe('thread history backfill', () => {
 		it('prepends a sanitised transcript on the first mention inside a pre-existing thread', async () => {
 			memory.ensureThread.mockResolvedValue(ensureThreadResponse(true));
@@ -375,7 +389,6 @@ describe('SlackRunner', () => {
 		});
 	});
 
-	// Requirement 7 — mention stripping must handle all three Slack mention forms.
 	it('strips <@U..>, <@!U..> and <@U..|name> mention forms from the prompt', async () => {
 		await runner.handle(mention({ text: '<@B1> hi <@!B1> and <@B1|Bot Name> too' }));
 		expect(instanceAi.startRun).toHaveBeenCalledWith(
@@ -389,7 +402,36 @@ describe('SlackRunner', () => {
 		);
 	});
 
-	// Requirement 8 — attach the renderer before starting the run; failures never escape handle().
+	describe('timezone', () => {
+		it("forwards the caller timezone from Slack as startRun's sixth argument", async () => {
+			identity.resolve.mockResolvedValue(identityResolution({}, 'Europe/Lisbon'));
+			await runner.handle(mention());
+			expect(instanceAi.startRun).toHaveBeenCalledWith(
+				expect.anything(),
+				'uuid-1',
+				'hi',
+				undefined,
+				undefined,
+				'Europe/Lisbon',
+				undefined,
+			);
+		});
+
+		it('passes undefined for the timezone when Slack has none on record', async () => {
+			identity.resolve.mockResolvedValue(identityResolution({}, null));
+			await runner.handle(mention());
+			expect(instanceAi.startRun).toHaveBeenCalledWith(
+				expect.anything(),
+				'uuid-1',
+				'hi',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+			);
+		});
+	});
+
 	describe('renderer attach and failure handling', () => {
 		it('attaches the renderer before starting the run', async () => {
 			await runner.handle(mention());

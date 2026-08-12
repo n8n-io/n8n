@@ -1,13 +1,13 @@
 import type { User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { SlackEmailLookup } from '../slack-identity.service';
+import type { SlackUserLookup } from '../slack-identity.service';
 import { SlackIdentityService } from '../slack-identity.service';
 
 describe('SlackIdentityService', () => {
-	const emailLookup = mock<SlackEmailLookup>();
+	const userLookup = mock<SlackUserLookup>();
 	const userRepository = mock<UserRepository>();
-	const service = new SlackIdentityService(emailLookup, userRepository);
+	const service = new SlackIdentityService(userLookup, userRepository);
 
 	const buildUser = (overrides: Partial<User>): User => Object.assign(mock<User>(), overrides);
 
@@ -15,26 +15,39 @@ describe('SlackIdentityService', () => {
 		vi.resetAllMocks();
 	});
 
-	it('resolves a matching enabled user', async () => {
-		emailLookup.getUserEmail.mockResolvedValue('a@acme.com');
+	it('resolves a matching enabled user, alongside their timezone', async () => {
+		userLookup.getUserInfo.mockResolvedValue({ email: 'a@acme.com', tz: 'Europe/Lisbon' });
 		userRepository.findOne.mockResolvedValue(
 			buildUser({ id: 'u1', disabled: false, password: 'hash' }),
 		);
 
-		await expect(service.resolve('xoxb', 'U1')).resolves.toEqual(
-			expect.objectContaining({ id: 'u1' }),
+		await expect(service.resolve('xoxb', 'U1')).resolves.toEqual({
+			user: expect.objectContaining({ id: 'u1' }),
+			tz: 'Europe/Lisbon',
+		});
+	});
+
+	it('resolves with a null timezone when Slack has none', async () => {
+		userLookup.getUserInfo.mockResolvedValue({ email: 'a@acme.com', tz: null });
+		userRepository.findOne.mockResolvedValue(
+			buildUser({ id: 'u1', disabled: false, password: 'hash' }),
 		);
+
+		await expect(service.resolve('xoxb', 'U1')).resolves.toEqual({
+			user: expect.objectContaining({ id: 'u1' }),
+			tz: null,
+		});
 	});
 
 	it('refuses when no n8n user has that email', async () => {
-		emailLookup.getUserEmail.mockResolvedValue('nobody@x.com');
+		userLookup.getUserInfo.mockResolvedValue({ email: 'nobody@x.com', tz: null });
 		userRepository.findOne.mockResolvedValue(null);
 
 		await expect(service.resolve('xoxb', 'U1')).resolves.toBeNull();
 	});
 
 	it('refuses a disabled user', async () => {
-		emailLookup.getUserEmail.mockResolvedValue('a@acme.com');
+		userLookup.getUserInfo.mockResolvedValue({ email: 'a@acme.com', tz: null });
 		userRepository.findOne.mockResolvedValue(
 			buildUser({ id: 'u1', disabled: true, password: 'hash' }),
 		);
@@ -43,7 +56,7 @@ describe('SlackIdentityService', () => {
 	});
 
 	it('refuses a shell user who has never set a password', async () => {
-		emailLookup.getUserEmail.mockResolvedValue('a@acme.com');
+		userLookup.getUserInfo.mockResolvedValue({ email: 'a@acme.com', tz: null });
 		userRepository.findOne.mockResolvedValue(
 			buildUser({ id: 'u1', disabled: false, password: null }),
 		);
@@ -52,13 +65,13 @@ describe('SlackIdentityService', () => {
 	});
 
 	it('refuses when Slack returns no email', async () => {
-		emailLookup.getUserEmail.mockResolvedValue(null);
+		userLookup.getUserInfo.mockResolvedValue({ email: null, tz: 'Europe/Lisbon' });
 
 		await expect(service.resolve('xoxb', 'U1')).resolves.toBeNull();
 	});
 
 	it('lowercases the email before matching', async () => {
-		emailLookup.getUserEmail.mockResolvedValue('A@Acme.COM');
+		userLookup.getUserInfo.mockResolvedValue({ email: 'A@Acme.COM', tz: null });
 		userRepository.findOne.mockResolvedValue(
 			buildUser({ id: 'u1', disabled: false, password: 'h' }),
 		);
