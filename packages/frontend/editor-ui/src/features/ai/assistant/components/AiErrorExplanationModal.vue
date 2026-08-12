@@ -19,6 +19,27 @@ const explanation = ref<AiErrorExplanation>();
 let abortController: AbortController | undefined;
 let requestId = 0;
 
+const markdownOptions = {
+	markdown: {
+		html: false,
+		linkify: false,
+		typographer: false,
+		breaks: true,
+	},
+	linkAttributes: {
+		attrs: {
+			target: '_blank',
+			rel: 'noopener',
+		},
+	},
+	tasklists: {
+		enabled: true,
+		label: true,
+		labelAfter: false,
+	},
+	youtube: {},
+};
+
 async function loadExplanation() {
 	abortController?.abort();
 	abortController = new AbortController();
@@ -75,7 +96,11 @@ watch(
 				<N8nText>{{ i18n.baseText('aiAssistant.errorExplanation.error') }}</N8nText>
 			</div>
 			<div v-else-if="explanation" :class="$style.content">
-				<N8nMarkdown :content="explanation.detailed" :class="$style.markdown" />
+				<N8nMarkdown
+					:content="explanation.detailed"
+					:options="markdownOptions"
+					:class="$style.markdown"
+				/>
 				<N8nCodeDiff
 					v-if="explanation.codeDiff"
 					:title="i18n.baseText('aiAssistant.errorExplanation.codeDiff')"
@@ -125,8 +150,10 @@ watch(
 		}
 
 		pre {
+			width: fit-content;
+			max-width: 100%;
 			margin: var(--spacing--xs) 0 var(--spacing--sm);
-			padding: var(--spacing--sm);
+			padding: var(--spacing--xs) var(--spacing--sm);
 		}
 
 		> :first-child {
