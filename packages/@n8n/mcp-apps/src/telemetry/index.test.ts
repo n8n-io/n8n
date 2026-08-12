@@ -25,11 +25,11 @@ function getCalls(method: string): unknown[][] {
 
 describe('McpAppTelemetry', () => {
 	beforeEach(() => {
-		delete window.rudderanalytics;
+		Reflect.deleteProperty(window, 'rudderanalytics');
 	});
 
 	afterEach(() => {
-		delete window.rudderanalytics;
+		Reflect.deleteProperty(window, 'rudderanalytics');
 	});
 
 	it('loads RudderStack and dispatches enriched events when enabled', () => {

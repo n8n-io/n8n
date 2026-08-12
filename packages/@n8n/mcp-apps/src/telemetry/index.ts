@@ -7,7 +7,7 @@ import { sanitizeTelemetryProperties } from './sanitize';
 import type { RudderStack } from './types';
 
 function loadRudderStack(writeKey: string, dataPlaneUrl: string, options: object): void {
-	const stub = (window.rudderanalytics ?? []) as RudderStack;
+	const stub = window.rudderanalytics ?? [];
 	window.rudderanalytics = stub;
 
 	stub.methods = [

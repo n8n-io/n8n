@@ -2848,6 +2848,24 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
+      '@vue-flow/controls':
+        specifier: 1.1.3
+        version: 1.1.3(@vue-flow/core@1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2)))(vue@3.5.26(@typescript/typescript6@6.0.2))
+      '@vue-flow/core':
+        specifier: 1.48.0
+        version: 1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2))
+      '@vue-flow/minimap':
+        specifier: 1.5.4
+        version: 1.5.4(@vue-flow/core@1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2)))(vue@3.5.26(@typescript/typescript6@6.0.2))
+      '@vue-flow/node-resizer':
+        specifier: 1.5.0
+        version: 1.5.0(@vue-flow/core@1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2)))(vue@3.5.26(@typescript/typescript6@6.0.2))
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+      pinia:
+        specifier: catalog:frontend
+        version: 2.2.4(@typescript/typescript6@6.0.2)(vue@3.5.26(@typescript/typescript6@6.0.2))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(@typescript/typescript6@6.0.2)
@@ -2861,6 +2879,9 @@ importers:
       '@iconify-json/lucide':
         specifier: 'catalog:'
         version: 1.2.114
+      '@iconify-json/mdi':
+        specifier: 'catalog:'
+        version: 1.1.63
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@3.25.76)
@@ -2885,6 +2906,9 @@ importers:
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
+      n8n-editor-ui:
+        specifier: workspace:*
+        version: link:../../frontend/editor-ui
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
@@ -31491,10 +31515,26 @@ snapshots:
       '@vue-flow/core': 1.48.0(vue@3.5.26(typescript@6.0.2))
       vue: 3.5.26(typescript@6.0.2)
 
+  '@vue-flow/controls@1.1.3(@vue-flow/core@1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2)))(vue@3.5.26(@typescript/typescript6@6.0.2))':
+    dependencies:
+      '@vue-flow/core': 1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2))
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
+
   '@vue-flow/controls@1.1.3(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))':
     dependencies:
       '@vue-flow/core': 1.48.0(vue@3.5.26(typescript@6.0.2))
       vue: 3.5.26(typescript@6.0.2)
+
+  '@vue-flow/core@1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2))':
+    dependencies:
+      '@vueuse/core': 10.11.0(vue@3.5.26(@typescript/typescript6@6.0.2))
+      d3-drag: 3.0.0
+      d3-interpolate: 3.0.1
+      d3-selection: 3.0.0
+      d3-zoom: 3.0.0
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
+    transitivePeerDependencies:
+      - '@vue/composition-api'
 
   '@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2))':
     dependencies:
@@ -31507,12 +31547,26 @@ snapshots:
     transitivePeerDependencies:
       - '@vue/composition-api'
 
+  '@vue-flow/minimap@1.5.4(@vue-flow/core@1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2)))(vue@3.5.26(@typescript/typescript6@6.0.2))':
+    dependencies:
+      '@vue-flow/core': 1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2))
+      d3-selection: 3.0.0
+      d3-zoom: 3.0.0
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
+
   '@vue-flow/minimap@1.5.4(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))':
     dependencies:
       '@vue-flow/core': 1.48.0(vue@3.5.26(typescript@6.0.2))
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
       vue: 3.5.26(typescript@6.0.2)
+
+  '@vue-flow/node-resizer@1.5.0(@vue-flow/core@1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2)))(vue@3.5.26(@typescript/typescript6@6.0.2))':
+    dependencies:
+      '@vue-flow/core': 1.48.0(vue@3.5.26(@typescript/typescript6@6.0.2))
+      d3-drag: 3.0.0
+      d3-selection: 3.0.0
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
 
   '@vue-flow/node-resizer@1.5.0(@vue-flow/core@1.48.0(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))':
     dependencies:
@@ -31684,6 +31738,16 @@ snapshots:
       - '@vue/composition-api'
       - vue
 
+  '@vueuse/core@10.11.0(vue@3.5.26(@typescript/typescript6@6.0.2))':
+    dependencies:
+      '@types/web-bluetooth': 0.0.20
+      '@vueuse/metadata': 10.11.0
+      '@vueuse/shared': 10.11.0(vue@3.5.26(@typescript/typescript6@6.0.2))
+      vue-demi: 0.14.10(vue@3.5.26(@typescript/typescript6@6.0.2))
+    transitivePeerDependencies:
+      - '@vue/composition-api'
+      - vue
+
   '@vueuse/core@10.11.0(vue@3.5.26(typescript@6.0.2))':
     dependencies:
       '@types/web-bluetooth': 0.0.20
@@ -31727,6 +31791,13 @@ snapshots:
   '@vueuse/metadata@14.3.0': {}
 
   '@vueuse/metadata@9.13.0': {}
+
+  '@vueuse/shared@10.11.0(vue@3.5.26(@typescript/typescript6@6.0.2))':
+    dependencies:
+      vue-demi: 0.14.10(vue@3.5.26(@typescript/typescript6@6.0.2))
+    transitivePeerDependencies:
+      - '@vue/composition-api'
+      - vue
 
   '@vueuse/shared@10.11.0(vue@3.5.26(typescript@6.0.2))':
     dependencies:
@@ -39013,6 +39084,14 @@ snapshots:
 
   pify@2.3.0: {}
 
+  pinia@2.2.4(@typescript/typescript6@6.0.2)(vue@3.5.26(@typescript/typescript6@6.0.2)):
+    dependencies:
+      '@vue/devtools-api': 6.6.4
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
+      vue-demi: 0.14.10(vue@3.5.26(@typescript/typescript6@6.0.2))
+    optionalDependencies:
+      typescript: '@typescript/typescript6@6.0.2'
+
   pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)):
     dependencies:
       '@vue/devtools-api': 6.6.4
@@ -42455,6 +42534,10 @@ snapshots:
   vue-component-type-helpers@2.2.12: {}
 
   vue-component-type-helpers@3.3.9: {}
+
+  vue-demi@0.14.10(vue@3.5.26(@typescript/typescript6@6.0.2)):
+    dependencies:
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
 
   vue-demi@0.14.10(vue@3.5.26(typescript@6.0.2)):
     dependencies:

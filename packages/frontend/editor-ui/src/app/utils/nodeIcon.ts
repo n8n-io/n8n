@@ -111,7 +111,10 @@ const getNodeIconColor = (nodeType: IconNodeType): string | undefined => {
 };
 
 const prefixBaseUrl = (url: string): string => {
-	if (/^(https?:)?\/\//.test(url)) return url;
+	// Absolute (incl. protocol-relative) URLs and data URIs must not be
+	// prefixed — data URIs appear when node type icons are delivered inline,
+	// e.g. to the MCP workflow preview app.
+	if (/^(https?:)?\/\//.test(url) || url.startsWith('data:')) return url;
 	return useRootStore().baseUrl + url;
 };
 

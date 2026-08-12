@@ -6,19 +6,46 @@
 		"moduleResolution": "bundler",
 		"target": "ES2022",
 		"lib": ["ES2023", "DOM", "DOM.Iterable"],
-		"rootDirs": [".", "../../frontend/@n8n/design-system/src"],
+		"rootDirs": [".", "../../frontend/@n8n/design-system/src", "../../frontend/editor-ui/src"],
 		"types": [
 			"node",
 			"vitest/globals",
 			"vite/client",
 			"unplugin-icons/types/vue",
+			"vite-svg-loader",
 			"../../frontend/@n8n/design-system/src/shims-modules.d.ts"
 		],
 		"skipLibCheck": true,
+		// editor-ui sources (pulled in for the embedded workflow canvas) are
+		// written against tsconfig.frontend.json, which disables this option.
+		"useUnknownInCatchVariables": false,
+		"allowJs": true,
 		"paths": {
 			"@mcp-apps/*": ["./src/*"],
-			"@n8n/design-system*": ["../../frontend/@n8n/design-system/src*"]
+			"@n8n/design-system*": ["../../frontend/@n8n/design-system/src*"],
+			"@/*": ["../../frontend/editor-ui/src/*"],
+			"@n8n/rest-api-client*": ["../../frontend/@n8n/rest-api-client/src*"],
+			"@n8n/composables*": ["../../frontend/@n8n/composables/src*"],
+			"@n8n/constants*": ["../constants/src*"],
+			"@n8n/frontend-module-sdk": ["../../frontend/@n8n/frontend-module-sdk/src/index.ts"],
+			"@n8n/frontend-utils*": ["../../frontend/@n8n/frontend-utils/src*"],
+			"@n8n/frontend-constants*": ["../../frontend/@n8n/frontend-constants/src*"],
+			"@n8n/chat*": ["../../frontend/@n8n/chat/src*"],
+			"@n8n/chat-hub*": ["../chat-hub/src*"],
+			"@n8n/i18n*": ["../../frontend/@n8n/i18n/src*"],
+			"@n8n/stores*": ["../../frontend/@n8n/stores/src*"],
+			"@n8n/telemetry": ["../telemetry/src/index.ts"],
+			"@n8n/telemetry*": ["../telemetry/src*"],
+			"@n8n/api-types*": ["../api-types/src*"],
+			"@n8n/expression-runtime": ["../../frontend/editor-ui/vite/expression-runtime-stub.ts"]
 		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.vue"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.vue",
+		"vite/**/*.ts",
+		// Ambient declarations for editor-ui sources (svg modules, globals),
+		// required since the embedded canvas pulls those sources in.
+		"../../frontend/editor-ui/src/**/*.d.ts"
+	]
 }

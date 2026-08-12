@@ -1,11 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerWorkflowPreviewApp } from './workflow-preview';
-import {
-	RESOURCE_MIME_TYPE,
-	WORKFLOW_PREVIEW_APP_URI,
-	WORKFLOW_PREVIEW_FRAME_DOMAINS,
-} from '../constants';
+import { RESOURCE_MIME_TYPE, WORKFLOW_PREVIEW_APP_URI } from '../constants';
 import { loadAppHtml } from '../resource-loader';
 import { MCP_APP_TELEMETRY_GLOBAL, type McpAppTelemetryConfig } from '../telemetry-config';
 
@@ -66,7 +62,6 @@ describe('registerWorkflowPreviewApp', () => {
 					captured = { name, uri, metadata, callback };
 					return undefined as never;
 				},
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			} as any,
 			{
 				instanceOrigin,
@@ -88,7 +83,7 @@ describe('registerWorkflowPreviewApp', () => {
 		expect(captured.metadata._meta).toEqual({
 			ui: {
 				csp: {
-					frameDomains: [...WORKFLOW_PREVIEW_FRAME_DOMAINS],
+					frameDomains: [],
 					resourceDomains: ['https://cdn-rs.n8n.io'],
 					connectDomains: [instanceOrigin],
 				},
@@ -105,14 +100,14 @@ describe('registerWorkflowPreviewApp', () => {
 		expect(content.uri).toBe(WORKFLOW_PREVIEW_APP_URI);
 		expect(content.mimeType).toBe(RESOURCE_MIME_TYPE);
 		expect(content.text).toContain('<html');
-		expect(content._meta?.ui?.csp?.frameDomains).toEqual([...WORKFLOW_PREVIEW_FRAME_DOMAINS]);
+		expect(content._meta?.ui?.csp?.frameDomains).toEqual([]);
 		expect(loadAppHtml).toHaveBeenCalledWith('workflow-preview.html');
 	});
 
 	it('declares CSP for the RudderStack CDN and the instance origin', async () => {
 		const { _meta } = (await captured.callback()).contents[0];
 		const csp = _meta?.ui?.csp;
-		expect(csp?.frameDomains).toEqual([...WORKFLOW_PREVIEW_FRAME_DOMAINS]);
+		expect(csp?.frameDomains).toEqual([]);
 		expect(csp?.resourceDomains).toEqual(['https://cdn-rs.n8n.io']);
 		expect(csp?.connectDomains).toEqual([instanceOrigin]);
 		expect(_meta?.ui?.prefersBorder).toBe(false);
@@ -130,14 +125,13 @@ describe('registerWorkflowPreviewApp', () => {
 					captured = { name, uri, metadata, callback };
 					return undefined as never;
 				},
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			} as any,
 			{ telemetry },
 		);
 
 		const { _meta } = (await captured.callback()).contents[0];
 		const csp = _meta?.ui?.csp;
-		expect(csp?.frameDomains).toEqual([...WORKFLOW_PREVIEW_FRAME_DOMAINS]);
+		expect(csp?.frameDomains).toEqual([]);
 		expect(csp?.resourceDomains).toEqual([]);
 		expect(csp?.connectDomains).toEqual([]);
 		expect(_meta?.ui?.prefersBorder).toBe(false);

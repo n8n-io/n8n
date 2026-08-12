@@ -2,8 +2,6 @@ import type { App, McpUiHostContext } from '@modelcontextprotocol/ext-apps';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, shallowRef } from 'vue';
 
-import { WORKFLOW_PREVIEW_ORIGIN } from '@mcp-apps/server/constants';
-
 import {
 	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
 	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
@@ -30,11 +28,11 @@ vi.mock('@mcp-apps/i18n', () => ({
 	}),
 }));
 
-const DEFAULT_WORKFLOW_DEMO_URL = `${WORKFLOW_PREVIEW_ORIGIN}/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots`;
 type WorkflowDetailsResult = {
 	isError: false;
 	structuredContent: {
 		workflow: { id: string; nodes: unknown[]; connections: Record<string, unknown> };
+		nodeTypes?: unknown;
 	};
 };
 
@@ -80,13 +78,11 @@ describe('useWorkflowPreview', () => {
 		await nextTick();
 
 		expect(preview.workflowUrl.value).toBe('https://n8n.example.com/workflow/abc123');
-		expect(preview.previewUrl.value).toBe(DEFAULT_WORKFLOW_DEMO_URL);
 
 		toolResult.value = { url: 'javascript:alert(1)' };
 		await nextTick();
 
 		expect(preview.workflowUrl.value).toBeUndefined();
-		expect(preview.previewUrl.value).toBeUndefined();
 	});
 
 	it('clears stale workflow URL state when a rerun returns no URL', async () => {
@@ -101,13 +97,11 @@ describe('useWorkflowPreview', () => {
 		await nextTick();
 
 		expect(preview.workflowUrl.value).toBe('https://n8n.example.com/workflow/abc123');
-		expect(preview.previewUrl.value).toBe(DEFAULT_WORKFLOW_DEMO_URL);
 
 		toolResult.value = { name: 'Failed rerun' };
 		await nextTick();
 
 		expect(preview.workflowUrl.value).toBeUndefined();
-		expect(preview.previewUrl.value).toBeUndefined();
 	});
 
 	it('ignores stale workflow detail responses when a newer rerun starts', async () => {
@@ -139,11 +133,11 @@ describe('useWorkflowPreview', () => {
 		expect(callServerTool).toHaveBeenCalledTimes(2);
 		expect(callServerTool).toHaveBeenNthCalledWith(1, {
 			name: 'get_workflow_details',
-			arguments: { workflowId: 'first' },
+			arguments: { workflowId: 'first', includeNodeTypes: true },
 		});
 		expect(callServerTool).toHaveBeenNthCalledWith(2, {
 			name: 'get_workflow_details',
-			arguments: { workflowId: 'second' },
+			arguments: { workflowId: 'second', includeNodeTypes: true },
 		});
 		expect(preview.previewWorkflow.value).toBeUndefined();
 
@@ -209,7 +203,40 @@ describe('useWorkflowPreview', () => {
 		expect(preview.previewWorkflow.value?.id).toBe('rerun');
 	});
 
-	it('tracks preview rendered successfully only after the workflow is sent to the iframe', async () => {
+	it('extracts node types from the workflow details response, skipping invalid entries', async () => {
+		const validNodeType = {
+			name: 'n8n-nodes-base.set',
+			displayName: 'Edit Fields (Set)',
+			version: 3.4,
+			group: ['input'],
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [],
+		};
+		const callServerTool = vi.fn().mockResolvedValue({
+			isError: false,
+			structuredContent: {
+				workflow: { id: 'abc123', nodes: [], connections: {} },
+				nodeTypes: [validNodeType, { name: 'missing-fields' }, 'not-an-object'],
+			},
+		});
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool } as unknown as App),
+			hostContext: ref<McpUiHostContext>(),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await flushPromises();
+
+		expect(preview.previewNodeTypes.value).toEqual([validNodeType]);
+	});
+
+	it('tracks preview rendered successfully only after the canvas has rendered', async () => {
 		const callServerTool = vi.fn().mockResolvedValue({
 			isError: false,
 			structuredContent: { workflow: { id: 'abc123', nodes: [], connections: {} } },
@@ -273,42 +300,6 @@ describe('useWorkflowPreview', () => {
 		);
 	});
 
-	it('tracks preview render failure when the preview iframe is not supported', async () => {
-		const callServerTool = vi.fn().mockResolvedValue({
-			isError: false,
-			structuredContent: { workflow: { id: 'abc123', nodes: [], connections: {} } },
-		});
-		const toolResult = shallowRef<unknown>();
-		const preview = useWorkflowPreview({
-			app: shallowRef({ callServerTool } as unknown as App),
-			appSlug: 'workflow-preview',
-			hostContext: ref<McpUiHostContext>(),
-			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
-			toolResult,
-		});
-
-		toolResult.value = {
-			url: 'https://n8n.example.com/workflow/abc123',
-			workflowId: 'abc123',
-		};
-		await flushPromises();
-
-		preview.handlePreviewError('Preview not supported');
-		await nextTick();
-
-		expect(telemetryTrack).toHaveBeenCalledWith(
-			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
-			{
-				app: 'workflow-preview',
-				mcp_client_name: 'Claude Desktop',
-				mcp_client_version: '1.2.3',
-				preview_status: 'error',
-				reason: WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_NOT_SUPPORTED,
-				workflow_id: 'abc123',
-			},
-		);
-	});
-
 	it('tracks preview render failure when workflow details cannot be loaded', async () => {
 		const callServerTool = vi.fn().mockResolvedValue({ isError: true });
 		const toolResult = shallowRef<unknown>();
@@ -350,7 +341,7 @@ describe('useWorkflowPreview', () => {
 		);
 	});
 
-	it('tracks preview crashes reported by the preview iframe', async () => {
+	it('tracks preview crashes reported by the embedded canvas', async () => {
 		const callServerTool = vi.fn().mockResolvedValue({
 			isError: false,
 			structuredContent: { workflow: { id: 'abc123', nodes: [], connections: {} } },
@@ -370,16 +361,16 @@ describe('useWorkflowPreview', () => {
 		};
 		await flushPromises();
 
-		preview.handlePreviewCrash('iframe crashed with Authorization: Bearer abc.def-ghi_jkl/mno=');
+		preview.handlePreviewCrash('canvas crashed with Authorization: Bearer abc.def-ghi_jkl/mno=');
 		await nextTick();
 
 		expect(telemetryTrack).toHaveBeenCalledWith(WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_CRASHED, {
 			app: 'workflow-preview',
-			error_message: 'iframe crashed with Authorization: [REDACTED]',
+			error_message: 'canvas crashed with Authorization: [REDACTED]',
 			mcp_client_name: 'Claude Desktop',
 			mcp_client_version: '1.2.3',
 			preview_status: 'visible',
-			source: 'preview_iframe_error',
+			source: 'preview_canvas_error',
 			workflow_id: 'abc123',
 		});
 		expect(telemetryTrack).toHaveBeenCalledWith(

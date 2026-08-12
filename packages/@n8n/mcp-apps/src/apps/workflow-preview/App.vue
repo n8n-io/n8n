@@ -54,17 +54,15 @@ useMcpHostContextStyles(hostContext);
 const {
 	workflowUrl,
 	workflowName,
-	previewUrl,
 	previewWorkflow,
+	previewNodeTypes,
 	previewError,
 	previewLoading,
 	previewSent,
-	previewTheme,
 	ariaLabel,
 	isPreviewVisible,
 	nodeCountLabel,
 	handlePreviewCrash,
-	handlePreviewError,
 	handleOpenWorkflow,
 } = useWorkflowPreview({
 	app,
@@ -81,22 +79,20 @@ const {
 		:label="ariaLabel"
 	>
 		<WorkflowPreviewCard
-			v-if="isPreviewVisible && workflowUrl && previewUrl && previewWorkflow"
+			v-if="isPreviewVisible && workflowUrl && previewWorkflow"
 			:workflow="previewWorkflow"
+			:node-types="previewNodeTypes"
 			:workflow-url="workflowUrl"
 			:workflow-name="workflowName"
 			:node-count-label="nodeCountLabel"
-			:preview-url="previewUrl"
-			:preview-sent="previewSent"
-			:preview-theme="previewTheme"
+			:preview-rendered="previewSent"
 			@open="handleOpenWorkflow(WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.PREVIEW_HEADER)"
 			@preview-crash="handlePreviewCrash"
-			@preview-error="handlePreviewError"
-			@preview-sent-change="previewSent = $event"
+			@preview-rendered-change="previewSent = $event"
 		/>
 
 		<McpFallbackCard
-			v-else-if="workflowUrl && !previewError && (previewLoading || previewUrl)"
+			v-else-if="workflowUrl && !previewError && previewLoading"
 			:description="t('workflowPreview.loadingPreview')"
 			loading
 		>

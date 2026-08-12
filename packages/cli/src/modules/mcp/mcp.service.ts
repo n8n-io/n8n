@@ -33,6 +33,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
@@ -201,6 +202,7 @@ export class McpService {
 		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly projectRepository: ProjectRepository,
 		private readonly folderRepository: FolderRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -472,6 +474,7 @@ export class McpService {
 			this.roleService,
 			this.projectService,
 			this.urlService.getTestWebhookBaseUrl(),
+			this.loadNodesAndCredentials,
 		);
 		registerIfAllowed(workflowDetailsTool);
 

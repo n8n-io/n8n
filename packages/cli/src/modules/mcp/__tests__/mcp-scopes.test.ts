@@ -18,6 +18,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
@@ -118,6 +119,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(NodeCatalogService),
 			mockInstance(WorkflowCreationService),
 			mockInstance(NodeTypes),
+			mockInstance(LoadNodesAndCredentials),
 			mockInstance(ProjectRepository),
 			mockInstance(FolderRepository),
 			mockInstance(SharedWorkflowRepository),

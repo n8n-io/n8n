@@ -1,127 +1,45 @@
 <script setup lang="ts">
-import { N8nSpinner } from '@n8n/design-system';
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { onErrorCaptured } from 'vue';
 
-import type { WorkflowPreviewData } from '@mcp-apps/apps/workflow-preview/types';
+import type {
+	WorkflowPreviewData,
+	WorkflowPreviewNodeType,
+} from '@mcp-apps/apps/workflow-preview/types';
 import { useI18n } from '@mcp-apps/i18n';
-import { readJsonMessage } from '@mcp-apps/utils/post-message';
 
 import OpenInN8nButton from '../open-in-n8n-button.vue';
+import WorkflowCanvasHost from './workflow-canvas-host.vue';
 
-const props = defineProps<{
+defineProps<{
 	workflow: WorkflowPreviewData;
+	nodeTypes: WorkflowPreviewNodeType[];
 	workflowUrl: string;
 	workflowName?: string;
 	nodeCountLabel?: string;
-	previewUrl: string;
-	previewSent: boolean;
-	previewTheme?: 'light' | 'dark';
+	previewRendered: boolean;
 }>();
 
 const emit = defineEmits<{
 	open: [];
 	previewCrash: [message?: string];
-	previewError: [message: string];
-	previewSentChange: [value: boolean];
+	previewRenderedChange: [value: boolean];
 }>();
 
 const { t } = useI18n();
 
-// Give the embedded editor enough time to load and emit its postMessage handshake.
-const PREVIEW_READY_TIMEOUT_MS = 8000;
-const previewReady = ref(false);
-const previewReadyOrigin = ref<string>();
-const iframeRef = ref<HTMLIFrameElement>();
-let previewReadyTimeout: ReturnType<typeof setTimeout> | undefined;
-
-watch(
-	() => [props.previewUrl, props.workflow] as const,
-	() => {
-		previewReady.value = false;
-		previewReadyOrigin.value = undefined;
-		emit('previewSentChange', false);
-		clearPreviewReadyTimeout();
-
-		previewReadyTimeout = setTimeout(() => {
-			if (!previewReady.value) {
-				emit('previewError', t('workflowPreview.error.previewUnavailable'));
-			}
-		}, PREVIEW_READY_TIMEOUT_MS);
-	},
-	{ immediate: true },
-);
-
-watch([previewReady, () => props.workflow], () => {
-	void maybeSendWorkflowToPreview();
-});
-
-function clearPreviewReadyTimeout() {
-	if (!previewReadyTimeout) return;
-	clearTimeout(previewReadyTimeout);
-	previewReadyTimeout = undefined;
+function handleCanvasReady() {
+	emit('previewRenderedChange', true);
 }
 
-async function maybeSendWorkflowToPreview() {
-	const iframe = iframeRef.value;
-	const previewOrigin = previewReadyOrigin.value;
-	if (!iframe?.contentWindow || !previewOrigin || !previewReady.value || props.previewSent) {
-		return;
-	}
-
-	await nextTick();
-	iframe.contentWindow.postMessage(
-		JSON.stringify({
-			command: 'openWorkflow',
-			workflow: props.workflow,
-			canOpenNDV: false,
-			hideNodeIssues: true,
-			suppressNotifications: true,
-		}),
-		previewOrigin,
-	);
-	emit('previewSentChange', true);
+function handleCanvasError(error: unknown) {
+	emit('previewCrash', error instanceof Error ? error.message : undefined);
 }
 
-function getPreviewOrigin() {
-	try {
-		return new URL(props.previewUrl).origin;
-	} catch {
-		return undefined;
-	}
-}
-
-function handlePreviewMessage(event: MessageEvent) {
-	if (event.source !== iframeRef.value?.contentWindow) return;
-
-	const message = readJsonMessage(event.data);
-	if (!message) return;
-
-	if (message.command === 'n8nReady') {
-		if (event.origin === 'null') return;
-
-		previewReadyOrigin.value = event.origin;
-		previewReady.value = true;
-		clearPreviewReadyTimeout();
-	} else if (message.command === 'error') {
-		if (event.origin !== previewReadyOrigin.value && event.origin !== getPreviewOrigin()) return;
-
-		emit('previewCrash', getPreviewErrorMessage(message));
-	}
-}
-
-function getPreviewErrorMessage(message: Record<string, unknown>) {
-	if (typeof message.message === 'string') return message.message;
-	if (typeof message.error === 'string') return message.error;
-	return undefined;
-}
-
-onMounted(() => {
-	window.addEventListener('message', handlePreviewMessage);
-});
-
-onBeforeUnmount(() => {
-	window.removeEventListener('message', handlePreviewMessage);
-	clearPreviewReadyTimeout();
+// The embedded canvas is a large component subtree; treat any rendering error
+// in it as a preview crash so the app can fall back to the open-workflow card.
+onErrorCaptured((error) => {
+	handleCanvasError(error);
+	return false;
 });
 </script>
 
@@ -137,14 +55,12 @@ onBeforeUnmount(() => {
 			</div>
 			<OpenInN8nButton @click="emit('open')" />
 		</header>
-		<div class="iframe-shell">
-			<N8nSpinner v-if="!previewSent" class="preview-spinner" type="ring" />
-			<iframe
-				ref="iframeRef"
-				class="preview-frame"
-				:class="{ 'is-ready': previewSent }"
-				:src="previewUrl"
-				:title="t('workflowPreview.frameTitle')"
+		<div class="canvas-shell" :class="{ 'is-ready': previewRendered }">
+			<WorkflowCanvasHost
+				:workflow="workflow"
+				:node-types="nodeTypes"
+				@ready="handleCanvasReady"
+				@error="handleCanvasError"
 			/>
 		</div>
 	</section>
@@ -198,31 +114,17 @@ onBeforeUnmount(() => {
 	color: var(--text-color--subtler);
 }
 
-.iframe-shell {
+.canvas-shell {
 	position: relative;
 	flex: 1;
+	height: 320px;
 	min-height: 280px;
 	background: var(--canvas--color--background);
-}
-
-.preview-frame {
-	width: 100%;
-	height: 100%;
-	min-height: 280px;
-	border: 0;
 	opacity: 0;
 	transition: opacity var(--duration--snappy) var(--easing--ease-out);
 }
 
-.preview-frame.is-ready {
+.canvas-shell.is-ready {
 	opacity: 1;
-}
-
-.preview-spinner {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	z-index: 1;
 }
 </style>

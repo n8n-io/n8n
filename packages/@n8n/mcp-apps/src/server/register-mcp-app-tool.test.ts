@@ -16,7 +16,6 @@ describe('registerMcpAppTool', () => {
 		const server = createServerMock();
 
 		registerMcpAppTool(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			server as any,
 			'tool-with-modern-meta',
 			{
@@ -41,7 +40,6 @@ describe('registerMcpAppTool', () => {
 		const server = createServerMock();
 
 		registerMcpAppTool(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			server as any,
 			'tool-with-legacy-meta',
 			{
@@ -67,7 +65,6 @@ describe('registerMcpAppTool', () => {
 		const customUri = 'ui://example/custom.html';
 
 		registerMcpAppTool(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			server as any,
 			'tool-with-both-meta',
 			{
@@ -93,7 +90,6 @@ describe('registerMcpAppTool', () => {
 		const handler = vi.fn() as unknown as Parameters<typeof registerMcpAppTool>[3];
 
 		registerMcpAppTool(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			server as any,
 			'my-tool',
 			{

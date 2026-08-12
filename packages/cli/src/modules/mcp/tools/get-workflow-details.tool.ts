@@ -14,6 +14,7 @@ import type {
 	WorkflowDetailsResult,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
+import { buildPreviewNodeTypes, type NodeIconResolver } from './preview-node-types.utils';
 import {
 	sanitizeNodeCredentials,
 	toNodeGroupSummary,
@@ -30,6 +31,12 @@ const inputSchema = {
 		.default('full')
 		.describe(
 			"Level of detail to return. 'full' (default) includes the complete workflow payload. 'execution' returns only the workflow metadata and trigger information needed to run it — prefer it when the goal is just to execute the workflow via execute_workflow.",
+		),
+	includeNodeTypes: z
+		.boolean()
+		.default(false)
+		.describe(
+			'Include trimmed node type descriptions (with inlined icons) for the node types used in the workflow. Intended for preview UIs rendering the workflow graph; adds no value for LLM reasoning. Only honored when detailLevel is full.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -91,6 +98,7 @@ export const createWorkflowDetailsTool = (
 	roleService: RoleService,
 	projectService: ProjectService,
 	testBaseWebhookUrl: string = baseWebhookUrl,
+	iconResolver?: NodeIconResolver,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'get_workflow_details',
@@ -111,9 +119,11 @@ export const createWorkflowDetailsTool = (
 		handler: async ({
 			workflowId,
 			detailLevel,
+			includeNodeTypes,
 		}: {
 			workflowId: string;
 			detailLevel: WorkflowDetailsLevel;
+			includeNodeTypes: boolean;
 		}) => {
 			const parameters = { workflowId, detailLevel };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
@@ -136,6 +146,14 @@ export const createWorkflowDetailsTool = (
 					testBaseWebhookUrl,
 				);
 
+				// Node types (icons included) are preview-rendering data: expose them
+				// through structuredContent only, so the LLM-visible text content does
+				// not pay their token cost.
+				const previewNodeTypes =
+					includeNodeTypes && detailLevel === 'full' && iconResolver && payload.workflow.nodes
+						? await buildPreviewNodeTypes(payload.workflow.nodes, nodeTypes, iconResolver)
+						: undefined;
+
 				// Track successful execution
 				telemetryPayload.results = {
 					success: true,
@@ -150,7 +168,9 @@ export const createWorkflowDetailsTool = (
 
 				return {
 					content: [{ type: 'text', text: JSON.stringify(payload) }],
-					structuredContent: payload,
+					structuredContent: previewNodeTypes
+						? { ...payload, nodeTypes: previewNodeTypes }
+						: payload,
 				};
 			} catch (error) {
 				// Track failed execution

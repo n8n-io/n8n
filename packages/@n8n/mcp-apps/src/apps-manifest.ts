@@ -18,7 +18,22 @@ export const MCP_APPS = {
 		htmlFile: 'workflow-preview.html',
 	},
 } as const;
+
+/**
+ * Dev-only harnesses, built with the same Vite setup (`--mode <id>`) but
+ * emitted to `dist/dev-apps/` and never registered as MCP resources.
+ * `canvas-spike` renders the embedded editor-ui canvas with a hardcoded
+ * workflow so the canvas integration can be iterated on in a plain browser
+ * tab, without an MCP host.
+ */
+export const DEV_APPS = {
+	'canvas-spike': {
+		entry: 'canvas-spike',
+		htmlFile: 'canvas-spike.html',
+	},
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type McpAppId = keyof typeof MCP_APPS;
 export type McpAppHtmlFileName = (typeof MCP_APPS)[McpAppId]['htmlFile'];
+export type DevAppId = keyof typeof DEV_APPS;

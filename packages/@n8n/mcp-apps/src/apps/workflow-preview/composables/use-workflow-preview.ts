@@ -20,9 +20,13 @@ import {
 	type WorkflowPreviewRenderFailureReason,
 	type WorkflowPreviewToolCallOutcome,
 } from '../constants';
-import { isWorkflowPreviewData, isWorkflowResult } from '../type-guards';
-import type { WorkflowPreviewData } from '../types';
-import { applyWorkflowDemoTheme, isAllowedWorkflowUrl, resolveWorkflowDemoUrl } from '../utils/url';
+import {
+	isWorkflowPreviewData,
+	isWorkflowResult,
+	toWorkflowPreviewNodeTypes,
+} from '../type-guards';
+import type { WorkflowPreviewData, WorkflowPreviewNodeType } from '../types';
+import { isAllowedWorkflowUrl } from '../utils/url';
 
 type UseWorkflowPreviewOptions = {
 	app: Readonly<ShallowRef<App | undefined>>;
@@ -46,11 +50,12 @@ export function useWorkflowPreview({
 	const workflowId = ref<string>();
 	const workflowName = ref<string>();
 	const workflowNodeCount = ref<number>();
-	const previewBaseUrl = ref<string>();
 	const previewWorkflow = shallowRef<WorkflowPreviewData>();
+	const previewNodeTypes = shallowRef<WorkflowPreviewNodeType[]>([]);
 	const previewError = ref<string>();
 	const previewFailureReason = ref<WorkflowPreviewRenderFailureReason>();
 	const previewLoading = ref(false);
+	// True once the embedded canvas has rendered the workflow graph.
 	const previewSent = ref(false);
 	const previewTheme = computed(() => hostContext.value?.theme);
 	const workflowDetailsRevision = ref(0);
@@ -65,11 +70,7 @@ export function useWorkflowPreview({
 				: t('workflowPreview.ariaLabel.creating'),
 	);
 
-	const previewUrl = ref<string>();
-
-	const isPreviewVisible = computed(
-		() => !!previewUrl.value && !!previewWorkflow.value && !previewError.value,
-	);
+	const isPreviewVisible = computed(() => !!previewWorkflow.value && !previewError.value);
 	const previewRenderFailureReason = computed<WorkflowPreviewRenderFailureReason | undefined>(
 		() => {
 			if (!workflowUrl.value || previewSent.value) return undefined;
@@ -78,9 +79,6 @@ export function useWorkflowPreview({
 					previewFailureReason.value ??
 					WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.WORKFLOW_DETAILS_UNAVAILABLE
 				);
-			}
-			if (!previewLoading.value && !previewUrl.value) {
-				return WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_NOT_SUPPORTED;
 			}
 
 			return undefined;
@@ -107,10 +105,6 @@ export function useWorkflowPreview({
 
 	watch(toolResult, (structuredContent) => {
 		applyToolResult(structuredContent);
-	});
-
-	watch(previewTheme, () => {
-		previewUrl.value = buildPreviewUrl();
 	});
 
 	watch([previewRenderFailureReason, workflowDetailsRevision], ([reason, revision]) => {
@@ -204,15 +198,11 @@ export function useWorkflowPreview({
 		return 'fallback';
 	}
 
-	function handlePreviewError(message: string) {
-		setPreviewError(message, WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_NOT_SUPPORTED);
-	}
-
 	function handlePreviewCrash(message?: string) {
 		telemetry.track(WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_CRASHED, {
 			...getPreviewTelemetryPayload(),
 			...(message ? { error_message: sanitizeTelemetryErrorMessage(message) } : {}),
-			source: WORKFLOW_PREVIEW_CRASH_SOURCES.PREVIEW_IFRAME_ERROR,
+			source: WORKFLOW_PREVIEW_CRASH_SOURCES.PREVIEW_CANVAS_ERROR,
 		});
 		setPreviewError(
 			t('workflowPreview.error.previewUnavailable'),
@@ -239,7 +229,7 @@ export function useWorkflowPreview({
 		try {
 			const result = await mcpApp.callServerTool({
 				name: WORKFLOW_PREVIEW_TOOL_NAMES.GET_WORKFLOW_DETAILS,
-				arguments: { workflowId: id },
+				arguments: { workflowId: id, includeNodeTypes: true },
 			});
 
 			if (!isLatestPreviewLoadRequest(requestId)) {
@@ -281,6 +271,7 @@ export function useWorkflowPreview({
 				return;
 			}
 
+			previewNodeTypes.value = toWorkflowPreviewNodeTypes(structuredContent?.nodeTypes);
 			previewWorkflow.value = workflow;
 			trackPreviewToolCallCompleted({
 				outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.SUCCESS,
@@ -321,6 +312,7 @@ export function useWorkflowPreview({
 	function resetPreviewState() {
 		latestPreviewLoadRequestId += 1;
 		previewWorkflow.value = undefined;
+		previewNodeTypes.value = [];
 		previewError.value = undefined;
 		previewFailureReason.value = undefined;
 		previewLoading.value = false;
@@ -335,15 +327,8 @@ export function useWorkflowPreview({
 		const candidateUrl = structuredContent.url;
 		if (isAllowedWorkflowUrl(candidateUrl)) {
 			workflowUrl.value = candidateUrl;
-			previewBaseUrl.value = resolveWorkflowDemoUrl({
-				workflowUrl: candidateUrl,
-				previewUrl: structuredContent.previewUrl,
-			});
-			previewUrl.value = buildPreviewUrl();
 		} else {
 			workflowUrl.value = undefined;
-			previewBaseUrl.value = undefined;
-			previewUrl.value = undefined;
 
 			if (candidateUrl !== undefined) {
 				console.warn('[n8n MCP App] Ignoring unexpected workflow URL in tool result', {
@@ -368,19 +353,11 @@ export function useWorkflowPreview({
 		}
 	}
 
-	function buildPreviewUrl() {
-		return applyWorkflowDemoTheme({
-			previewUrl: previewBaseUrl.value,
-			workflowUrl: workflowUrl.value,
-			theme: previewTheme.value,
-		});
-	}
-
 	return {
 		workflowUrl,
 		workflowName,
-		previewUrl,
 		previewWorkflow,
+		previewNodeTypes,
 		previewError,
 		previewLoading,
 		previewSent,
@@ -389,7 +366,6 @@ export function useWorkflowPreview({
 		isPreviewVisible,
 		nodeCountLabel,
 		handlePreviewCrash,
-		handlePreviewError,
 		handleOpenWorkflow,
 	};
 }

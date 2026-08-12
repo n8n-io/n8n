@@ -1,10 +1,6 @@
 import type { McpUiResourceMeta } from '@modelcontextprotocol/ext-apps';
 
-import {
-	RESOURCE_MIME_TYPE,
-	WORKFLOW_PREVIEW_APP_URI,
-	WORKFLOW_PREVIEW_FRAME_DOMAINS,
-} from '../constants';
+import { RESOURCE_MIME_TYPE, WORKFLOW_PREVIEW_APP_URI } from '../constants';
 import { loadAppHtml } from '../resource-loader';
 import {
 	injectTelemetryConfig,
@@ -45,7 +41,10 @@ export interface RegisterWorkflowPreviewAppOptions {
 function getWorkflowPreviewUiMeta(instanceOrigin?: string): McpUiResourceMeta {
 	return {
 		csp: {
-			frameDomains: [...WORKFLOW_PREVIEW_FRAME_DOMAINS],
+			// The workflow graph is rendered by the bundled editor canvas, so the
+			// app needs no frame domains — a deliberately empty list, since MCP
+			// hosts scrutinize frame-src allowances.
+			frameDomains: [],
 			resourceDomains: instanceOrigin ? [RUDDERSTACK_CDN_ORIGIN] : [],
 			connectDomains: instanceOrigin ? [instanceOrigin] : [],
 		},

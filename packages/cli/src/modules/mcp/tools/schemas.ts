@@ -148,6 +148,23 @@ export const toNodeGroupSummary = (
 
 const FULL_DETAIL_ONLY_NOTE = "Only included when detailLevel is 'full'.";
 
+/**
+ * Trimmed node type description for canvas preview rendering (see
+ * `PreviewNodeType` in preview-node-types.utils.ts). Loose by design: the
+ * exact `INodeTypeDescription` field shapes are owned by n8n-workflow.
+ */
+export const previewNodeTypeSchema = z
+	.object({
+		name: z.string(),
+		displayName: z.string(),
+		version: z.union([z.number(), z.array(z.number())]),
+		group: z.array(z.string()),
+		inputs: z.unknown(),
+		outputs: z.unknown(),
+		properties: z.array(z.unknown()),
+	})
+	.passthrough();
+
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z
 		.object({
@@ -213,5 +230,11 @@ export const workflowDetailsOutputSchema = z.object({
 		.optional()
 		.describe(
 			"Trigger info for the published (active) version, which production executions via execute_workflow run. Only present when it differs from the draft's triggerInfo.",
+		),
+	nodeTypes: z
+		.array(previewNodeTypeSchema)
+		.optional()
+		.describe(
+			'Trimmed node type descriptions (with icons inlined as data URIs) for the node types used in the workflow. Only present when includeNodeTypes is true; intended for preview UIs rendering the workflow graph, not for LLM reasoning.',
 		),
 });

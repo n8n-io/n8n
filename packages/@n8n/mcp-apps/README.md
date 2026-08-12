@@ -19,9 +19,11 @@ helpers used by `packages/cli` to register them as MCP resources and tools.
 
 Today the package ships a single app, `workflow-preview`, which is rendered
 after the `create_workflow_from_code` MCP tool returns. It loads the sanitized
-workflow graph through the existing `get_workflow_details` MCP tool, renders the
-existing n8n demo canvas in an iframe, and keeps a button to open the freshly
-created workflow in n8n. New apps can be added alongside it (see
+workflow graph (plus trimmed node type descriptions with inlined icons)
+through the existing `get_workflow_details` MCP tool, renders it with the
+editor-ui workflow canvas bundled directly into the app — no iframe, no
+external preview service — and keeps a button to open the freshly created
+workflow in n8n. New apps can be added alongside it (see
 [Adding a new app](#adding-a-new-app)).
 
 ## Package layout
@@ -32,7 +34,7 @@ src/
   apps/                     # Vue UI apps, each built into a standalone HTML
     workflow-preview/
       App.vue               # root component
-      main.ts               # mounts App with i18n
+      main.ts               # mounts App with i18n, Pinia, design system
       index.html            # entry HTML (built into dist/apps/<app>.html)
       tokens.scss           # design tokens / global styles
       types.ts              # workflow preview data types
@@ -41,8 +43,10 @@ src/
         use-workflow-preview.ts # workflow preview state and host tool handling
       utils/
         url.ts              # defense-in-depth URL validation
+    canvas-spike/           # dev harness: embedded canvas with hardcoded data
   components/               # reusable MCP app Vue components
     workflow-preview/       # workflow-preview-specific reusable components
+      workflow-canvas-host.vue # hosts the editor-ui canvas (scoped stores)
   composables/              # reusable MCP host/runtime composables
   i18n/                     # vue-i18n setup + host locale resolution
   locales/                  # flat-key locale files (en.json, …)
@@ -52,7 +56,7 @@ src/
     register-mcp-app-tool.ts
     resource-loader.ts      # lazy reads built HTML from dist/apps
     index.ts                # public entry: @n8n/mcp-apps/server
-  utils/                    # framework-agnostic client helpers
+vite/                       # build-time stubs (see vite.config.mts)
 ```
 
 `apps-manifest.ts` is the canonical registry of MCP apps. Both the Vite
@@ -85,15 +89,36 @@ URL handling is locked down by `isAllowedWorkflowUrl` in
 host are accepted, both when reading the tool result and right before calling
 `openLink`. This is defense in depth on top of the host's own validation.
 
-The workflow preview iframe loads the shared n8n preview service
-(`WORKFLOW_PREVIEW_ORIGIN`). The preview is instance-agnostic: the workflow
-graph is pushed into the iframe via `postMessage` rather than fetched from the
-instance, so a single origin renders both cloud and self-hosted workflows. The
-resource metadata therefore declares exactly one `frameDomains` entry — the
-preview-service origin. Keep this list narrow: MCP hosts (e.g. the ChatGPT
-connector review) reject broad or wildcard frame domains. The framed server's
-own frame policy still applies, so the app falls back to the open-workflow
-button when the preview cannot load.
+## Embedded workflow canvas
+
+The workflow preview renders the graph with the real editor-ui canvas,
+compiled into the app bundle from editor-ui sources (via the `@/` alias in
+`vite.config.mts`, mirroring editor-ui's own alias set). The pieces:
+
+- `workflow-canvas-host.vue` follows the same host pattern as editor-ui's
+  `WorkflowPreviewHost.vue`: it hydrates a scoped, synthetic workflow
+  document store, provides `WorkflowDocumentStoreKey` /
+  `EditorEnabledFeaturesKey` (read-only), seeds the node types store, and
+  renders `WorkflowCanvas` with editing disabled.
+- Node type descriptions come from `get_workflow_details` called with
+  `includeNodeTypes: true`. The server trims each description to what
+  rendering needs — identity, connection shape, visuals, and `properties`
+  reduced to the structural fields parameter-default resolution needs (so
+  subtitles and expression-driven inputs/outputs still evaluate) — and
+  inlines icons as data URIs so the sandboxed app needs no network access to
+  the instance. Descriptions are shipped under the workflow node's
+  fully-qualified `type` (runtime descriptions carry short names).
+- Unknown node types (e.g. uninstalled community nodes) render as
+  placeholder nodes; the graph still lays out.
+- The experimental in-canvas NDV is alias-stubbed at build time
+  (`vite/empty-component-stub.ts`) to keep the NDV/CodeMirror subtree out of
+  the bundle.
+- The resource metadata declares no `frameDomains` — nothing is framed.
+
+The `canvas-spike` dev app renders the same host component with hardcoded
+data. Build it with `pnpm vite build --mode canvas-spike` (output in
+`dist/dev-apps/`) and open the HTML directly in a browser to iterate on the
+canvas without an MCP host.
 
 ## Internationalization
 
