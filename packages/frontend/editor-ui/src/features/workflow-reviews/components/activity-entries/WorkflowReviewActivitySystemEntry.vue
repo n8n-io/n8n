@@ -32,9 +32,10 @@ const closedReasonKeys: Record<WorkflowReviewClosedReason, BaseTextKey> = {
 };
 
 /**
- * `null` only for a `review.closed` whose payload did not parse: its sentence *is* the
- * stored reason. The other four say what happened from the type alone, so an unparseable
- * payload costs them nothing but the note.
+ * `null` for the two types whose payload the sentence cannot do without: `review.closed`,
+ * whose sentence *is* the stored reason, and `review.changes_requested`, where a note is
+ * required on the way in, so a missing one means the payload did not parse. The rest say
+ * what happened from the type alone.
  */
 const content = computed<{ text: string; note: string | null; testId: string } | null>(() => {
 	const entry = props.entry;
@@ -46,9 +47,10 @@ const content = computed<{ text: string; note: string | null; testId: string } |
 				testId: 'workflow-review-activity-opened',
 			};
 		case 'review.changes_requested':
+			if (!entry.data) return null;
 			return {
 				text: i18n.baseText('workflowReviews.detail.activity.changesRequested'),
-				note: entry.data?.note ?? null,
+				note: entry.data.note,
 				testId: 'workflow-review-activity-changes-requested',
 			};
 		case 'review.approved':
@@ -102,12 +104,7 @@ const actorName = computed(() =>
 					{{ actorName }}
 					<!-- Inside the name so it disappears with it, rather than leaving a dangling
 						separator on the actorless entries. -->
-					<span
-						aria-hidden="true"
-						:class="$style.separator"
-						data-test-id="workflow-review-activity-separator"
-						>|</span
-					>
+					<span aria-hidden="true" :class="$style.separator">|</span>
 				</N8nText>
 			</template>
 			<N8nText size="medium" color="text-light" :class="$style.line" :data-test-id="content.testId">

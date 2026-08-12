@@ -653,15 +653,20 @@ describe('WorkflowReviewRequestsView', () => {
 		});
 
 		it('shows the submitted decision in the feed and drops the note behind it', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ state: 'open', decision: 'changes_requested' }),
+			);
+
 			const { getByTestId } = renderComponent();
 			await waitAllPromises();
 			activityStore.fetchFeed.mockClear();
 
-			getByTestId('approve-review').click();
+			getByTestId('request-changes').click();
 			await waitAllPromises();
 
 			expect(activityStore.fetchFeed).toHaveBeenCalledWith('req-1');
-			expect(activityStore.clearDecisionNote).toHaveBeenCalled();
+			// The note it submitted, so a note typed while the decision was in flight survives.
+			expect(activityStore.clearDecisionNote).toHaveBeenCalledWith('needs work');
 		});
 
 		// Otherwise the late refetch of the decided review wipes the feed of the one the

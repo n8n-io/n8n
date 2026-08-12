@@ -40,7 +40,7 @@ vi.mock('./WorkflowReviewDetailMetadata.vue', () => ({
 }));
 
 // The real popover cannot open in jsdom (Reka UI), so expose what this component passes
-// down as attributes and let a button stand in for the decision it emits back.
+// down as attributes and let a button stand in for the comment it reports back.
 vi.mock('./WorkflowReviewDecisionPopover.vue', () => ({
 	default: {
 		name: 'WorkflowReviewDecisionPopover',
@@ -48,12 +48,9 @@ vi.mock('./WorkflowReviewDecisionPopover.vue', () => ({
 		template: `
 			<div
 				data-test-id="workflow-review-decision-popover"
-				:data-deciding="deciding"
 				:data-can-decide="viewerCanDecide"
-				:data-can-comment="viewerCanComment"
 				:data-ineligibility-hint="ineligibilityHint"
 			>
-				<button data-test-id="emit-decision" @click="$emit('decide', { decision: 'approved' })" />
 				<button data-test-id="emit-comment-posted" @click="$emit('comment-posted')" />
 			</div>`,
 	},
@@ -263,16 +260,6 @@ describe('WorkflowReviewDetailTabs', () => {
 	});
 
 	describe('decision actions', () => {
-		it('passes the decision the reviewer submitted up to the view', () => {
-			const { getByTestId, emitted } = renderComponent({
-				props: { review: makeDetail(), tab: 'activity', deciding: false },
-			});
-
-			getByTestId('emit-decision').click();
-
-			expect(emitted('decide')).toEqual([[{ decision: 'approved' }]]);
-		});
-
 		// The trigger lives outside the tab panel, so a comment posted from the Changes tab
 		// would otherwise succeed with nothing to show for it.
 		it('switches to the activity tab once a comment was posted from the popover', () => {
@@ -303,17 +290,6 @@ describe('WorkflowReviewDetailTabs', () => {
 			});
 
 			expect(queryByTestId('workflow-review-decision-popover')).not.toBeInTheDocument();
-		});
-
-		it('locks the decision actions while a decision is in flight', () => {
-			const { getByTestId } = renderComponent({
-				props: { review: makeDetail(), tab: 'activity', deciding: true },
-			});
-
-			expect(getByTestId('workflow-review-decision-popover')).toHaveAttribute(
-				'data-deciding',
-				'true',
-			);
 		});
 
 		it('leaves the decision actions open with no hint when the viewer can decide', () => {

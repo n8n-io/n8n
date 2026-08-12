@@ -29,7 +29,7 @@ describe('WorkflowReviewCommentComposer', () => {
 		store = mockedStore(useReviewActivityStore);
 		store.posting = false;
 		store.draft = '';
-		store.postComment.mockResolvedValue(undefined);
+		store.postComment.mockResolvedValue(true);
 	});
 
 	it('keeps a half-typed comment when the composer is unmounted and shown again', async () => {
@@ -94,8 +94,8 @@ describe('WorkflowReviewCommentComposer', () => {
 		let resolvePost!: () => void;
 		store.postComment.mockImplementation(
 			async () =>
-				await new Promise<void>((resolve) => {
-					resolvePost = resolve;
+				await new Promise<boolean>((resolve) => {
+					resolvePost = () => resolve(true);
 				}),
 		);
 		const { getByTestId, getByRole } = renderComponent({ props: { canComment: true } });

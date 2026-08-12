@@ -2,7 +2,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 
 import { useReviewActivityStore } from '../reviewActivity.store';
 import WorkflowReviewDecisionPopover from './WorkflowReviewDecisionPopover.vue';
@@ -70,7 +70,7 @@ describe('WorkflowReviewDecisionPopover', () => {
 		store = mockedStore(useReviewActivityStore);
 		store.decisionNote = '';
 		store.posting = false;
-		store.postComment.mockResolvedValue(undefined);
+		store.postComment.mockResolvedValue(true);
 	});
 
 	it('needs a note before the reviewer can request changes or comment', async () => {
@@ -90,6 +90,19 @@ describe('WorkflowReviewDecisionPopover', () => {
 		expect(requestChanges).not.toBeDisabled();
 		expect(getByTestId('workflow-review-decision-comment-button')).not.toBeDisabled();
 		expect(tooltipOf(requestChanges)).toHaveAttribute('data-disabled', 'true');
+	});
+
+	it.each<[string, { viewerCanComment?: boolean }, boolean]>([
+		['a viewer who is not allowed to comment', { viewerCanComment: false }, false],
+		['a comment that is already being posted', {}, true],
+	])('offers no Comment button to %s, note or not', async (_label, props, posting) => {
+		store.posting = posting;
+
+		const { getByTestId } = renderComponent({ props });
+
+		await userEvent.type(getByTestId('workflow-review-decision-note'), 'Just a thought');
+
+		expect(getByTestId('workflow-review-decision-comment-button')).toBeDisabled();
 	});
 
 	it('submits a change request with the note', async () => {
@@ -120,7 +133,7 @@ describe('WorkflowReviewDecisionPopover', () => {
 		expect(emitted('decide')).toEqual([[{ decision: 'approved' }]]);
 	});
 
-	it('dismisses itself once a decision is submitted', async () => {
+	it('clears its open state once a decision is submitted', async () => {
 		const { getByTestId } = renderComponent();
 
 		await userEvent.click(getByTestId('open-popover'));
@@ -139,8 +152,44 @@ describe('WorkflowReviewDecisionPopover', () => {
 
 		expect(store.postComment).toHaveBeenCalledWith('Just a thought');
 		expect(emitted('comment-posted')).toHaveLength(1);
-		expect(store.decisionNote).toBe('');
+		expect(store.clearDecisionNote).toHaveBeenCalledWith('Just a thought');
 		expect(emitted('decide')).toBeUndefined();
+	});
+
+	// The note is only dropped after the post comes back, by which time the viewer may be
+	// typing the next one. Whether that text is theirs to drop is the store's rule.
+	it('drops the note it posted, not whatever the viewer typed meanwhile', async () => {
+		let resolvePost!: (landed: boolean) => void;
+		store.postComment.mockReturnValue(
+			new Promise((resolve) => {
+				resolvePost = resolve;
+			}),
+		);
+
+		const { getByTestId, emitted } = renderComponent();
+
+		await userEvent.type(getByTestId('workflow-review-decision-note'), 'Just a thought');
+		await userEvent.click(getByTestId('workflow-review-decision-comment-button'));
+
+		store.decisionNote = 'and one more thing';
+		resolvePost(true);
+		await waitAllPromises();
+
+		expect(store.clearDecisionNote).toHaveBeenCalledWith('Just a thought');
+		expect(emitted('comment-posted')).toHaveLength(1);
+	});
+
+	// The comment is written either way, but it says nothing about the review now on screen.
+	it('leaves the review the viewer moved to alone when the comment lands late', async () => {
+		store.postComment.mockResolvedValue(false);
+
+		const { getByTestId, emitted } = renderComponent();
+
+		await userEvent.type(getByTestId('workflow-review-decision-note'), 'Just a thought');
+		await userEvent.click(getByTestId('workflow-review-decision-comment-button'));
+
+		expect(store.clearDecisionNote).not.toHaveBeenCalled();
+		expect(emitted('comment-posted')).toBeUndefined();
 	});
 
 	it('keeps the note when the comment could not be posted', async () => {
@@ -153,7 +202,7 @@ describe('WorkflowReviewDecisionPopover', () => {
 		await userEvent.click(getByTestId('workflow-review-decision-comment-button'));
 
 		expect(showError).toHaveBeenCalledWith(error, 'Could not post comment');
-		expect(store.decisionNote).toBe('Just a thought');
+		expect(store.clearDecisionNote).not.toHaveBeenCalled();
 		expect(getByTestId('workflow-review-decision-note')).toHaveValue('Just a thought');
 		expect(emitted('comment-posted')).toBeUndefined();
 	});
@@ -186,7 +235,16 @@ describe('WorkflowReviewDecisionPopover', () => {
 			'data-content',
 			'You contributed a version to this review.',
 		);
-		expect(tooltipOf(trigger)).toHaveAttribute('data-disabled', 'false');
+	});
+
+	// A wrapper around the trigger takes the popover's own trigger props with it: the click,
+	// the expanded state a screen reader announces, and focus coming back on close.
+	it('hands a reviewer who may decide the trigger itself rather than a wrapper', () => {
+		const { getByTestId } = renderComponent();
+
+		expect(
+			getByTestId('workflow-review-decision-trigger').closest('[data-test-id="decision-tooltip"]'),
+		).toBeNull();
 	});
 
 	it('keeps the reviewer out while their decision is in flight', () => {

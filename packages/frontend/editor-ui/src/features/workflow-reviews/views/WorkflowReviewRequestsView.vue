@@ -165,7 +165,7 @@ async function onDecide(id: string, input: WorkflowReviewDecisionInput) {
 		// above lets the viewer pick another review meanwhile, and `fetchFeed` of the old one
 		// would wipe its feed and discard the newer review's in-flight page.
 		if (selectedReviewId.value === id) {
-			activityStore.clearDecisionNote();
+			activityStore.clearDecisionNote(input.note ?? '');
 			void activityStore.fetchFeed(id);
 		}
 		if (state === 'closed') {

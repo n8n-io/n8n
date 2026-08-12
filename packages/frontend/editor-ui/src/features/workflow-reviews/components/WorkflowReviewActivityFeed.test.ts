@@ -320,10 +320,19 @@ describe('WorkflowReviewActivityFeed', () => {
 			}
 		});
 
-		// The only entry whose sentence *is* its payload, so it is the only one that
-		// cannot degrade to the same sentence with a piece missing.
-		it('shows a placeholder for a closed review that no longer says why', async () => {
-			store.entries = [{ ...systemEntry, type: 'review.closed', data: null }];
+		// The two entries whose payload the sentence cannot do without: the close reason, and
+		// the note a change request is asked for in the first place.
+		it.each<[string, WorkflowReviewActivityEntry]>([
+			[
+				'a closed review that no longer says why',
+				{ ...systemEntry, type: 'review.closed', data: null },
+			],
+			[
+				'a change request whose note can no longer be read',
+				{ ...systemEntry, type: 'review.changes_requested', data: null },
+			],
+		])('shows a placeholder for %s', async (_label, entry) => {
+			store.entries = [entry];
 
 			const { getByTestId, queryByTestId } = renderComponent();
 			await nextTick();
@@ -332,6 +341,7 @@ describe('WorkflowReviewActivityFeed', () => {
 				"This activity entry can't be displayed.",
 			);
 			expect(queryByTestId('workflow-review-activity-closed')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-review-activity-changes-requested')).not.toBeInTheDocument();
 		});
 
 		// No component is registered for this type yet, which is why the registry stays partial.
@@ -363,7 +373,6 @@ describe('WorkflowReviewActivityFeed', () => {
 			await nextTick();
 
 			expect(getByTestId('workflow-review-activity-actor')).toHaveTextContent('Ada Lovelace');
-			expect(getByTestId('workflow-review-activity-separator')).toBeInTheDocument();
 		});
 
 		// The actor is missing for two different reasons, and a deleted approver must not
@@ -392,7 +401,6 @@ describe('WorkflowReviewActivityFeed', () => {
 			await nextTick();
 
 			expect(queryByTestId('workflow-review-activity-actor')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-review-activity-separator')).not.toBeInTheDocument();
 		});
 	});
 });

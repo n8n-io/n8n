@@ -102,7 +102,7 @@ describe('useReviewActivityStore', () => {
 		const store = useReviewActivityStore();
 		await store.fetchFeed('req-1');
 
-		await store.postComment('hi');
+		await expect(store.postComment('hi')).resolves.toBe(true);
 
 		expect(store.entries.map((entry) => entry.id)).toEqual(['3', '4', '5']);
 
@@ -363,8 +363,10 @@ describe('useReviewActivityStore', () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['2']));
 		await store.fetchFeed('req-2');
 		resolvePost(makeEntry('9'));
-		await pending;
 
+		// Reported to the caller too: clearing a draft or switching tabs on the back of this
+		// post would hit the review the viewer is reading now.
+		await expect(pending).resolves.toBe(false);
 		expect(store.entries.map((entry) => entry.id)).toEqual(['2']);
 	});
 
@@ -379,20 +381,26 @@ describe('useReviewActivityStore', () => {
 
 		expect(store.draft).toBe('');
 		expect(store.decisionNote).toBe('');
-	});
 
-	it('drops the decision note once the decision was submitted', async () => {
-		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
-		const store = useReviewActivityStore();
-		await store.fetchFeed('req-1');
+		// The composer is on screen at the same time, so dropping the note must leave the
+		// comment the viewer is writing alone.
 		store.draft = 'half a comment';
 		store.decisionNote = 'needs work';
-
 		store.clearDecisionNote();
-
-		expect(store.decisionNote).toBe('');
-		// The composer is on screen at the same time and is a separate draft.
 		expect(store.draft).toBe('half a comment');
+	});
+
+	// Both the decision and the comment paths clear the note after awaiting a request, by
+	// which time the viewer may have typed the next one.
+	it('keeps a note typed while the submitted one was still in flight', () => {
+		const store = useReviewActivityStore();
+		store.decisionNote = 'and one more thing';
+
+		store.clearDecisionNote('needs work');
+		expect(store.decisionNote).toBe('and one more thing');
+
+		store.clearDecisionNote('and one more thing');
+		expect(store.decisionNote).toBe('');
 	});
 
 	it('reports a failed comment to the composer, not as a feed error', async () => {

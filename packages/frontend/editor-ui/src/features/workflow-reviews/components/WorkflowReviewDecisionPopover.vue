@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { WORKFLOW_REVIEW_COMMENT_MAX_LENGTH } from '@n8n/api-types';
+import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -33,11 +33,7 @@ const noteInputId = useId();
 const note = computed(() => decisionNote.value.trim());
 
 const commentDisabled = computed(
-	() =>
-		posting.value ||
-		note.value.length === 0 ||
-		decisionNote.value.length > WORKFLOW_REVIEW_COMMENT_MAX_LENGTH ||
-		!props.viewerCanComment,
+	() => posting.value || note.value.length === 0 || !props.viewerCanComment,
 );
 
 function submitDecision(input: WorkflowReviewDecisionInput) {
@@ -46,7 +42,6 @@ function submitDecision(input: WorkflowReviewDecisionInput) {
 }
 
 function onRequestChanges() {
-	if (!note.value) return;
 	submitDecision({ decision: 'changes_requested', note: note.value });
 }
 
@@ -58,15 +53,15 @@ function onApprove() {
 }
 
 async function onComment() {
-	const submitted = decisionNote.value;
-	const body = submitted.trim();
-	if (!body) return;
+	const body = note.value;
 
 	isOpen.value = false;
 	try {
-		await store.postComment(body);
-		// Don't clear text typed while the post was in flight.
-		if (decisionNote.value === submitted) decisionNote.value = '';
+		// A comment that landed after the viewer moved on says nothing about the review they
+		// are reading now, so neither its note nor its tab may be touched.
+		if (!(await store.postComment(body))) return;
+
+		store.clearDecisionNote(body);
 		// The trigger sits outside the tab panel, so a comment posted from the Changes tab
 		// would otherwise land nowhere the viewer can see.
 		emit('comment-posted');
@@ -77,9 +72,8 @@ async function onComment() {
 </script>
 
 <template>
-	<!-- 480px deviates from Figma's 440px on purpose: the three icon+label buttons need
-		~411-425px, and 440px minus the `--spacing--xs` padding leaves 416px, minus the two
-		gaps 400px. N8nPopover sets a fixed width, so the row would spill rather than wrap. -->
+	<!-- 480px deviates from Figma's 440px on purpose: the three icon+label buttons do not fit
+		in 440px, and N8nPopover sets a fixed width, so the row would spill rather than wrap. -->
 	<N8nPopover
 		v-model:open="isOpen"
 		side="bottom"
@@ -89,12 +83,14 @@ async function onComment() {
 		:content-class="$style.popover"
 	>
 		<template #trigger>
-			<!-- The span is load-bearing: `PopoverTrigger :as-child` puts the click handler on
-				its first child, and N8nTooltip only re-binds attrs in its own `as-child` branch.
-				Its other branch renders a `TooltipTrigger as="span"`, which is what makes the
-				hint fire over a natively disabled button. -->
-			<span>
-				<N8nTooltip :disabled="!ineligibilityHint" :content="ineligibilityHint" :show-after="300">
+			<!-- Wrapped only while the viewer may not decide: N8nTooltip does not forward attrs
+				on this branch, so the trigger props land on the span — which is what makes the
+				hint fire over a natively disabled button, and this trigger cannot open anything
+				anyway. An enabled trigger has to stay the bare button, or it loses `aria-expanded`
+				and the focus it gets back on close; the general fix belongs in `N8nPopover`,
+				alongside the deferred accessible name for its dialog. -->
+			<span v-if="ineligibilityHint">
+				<N8nTooltip :content="ineligibilityHint" :show-after="300">
 					<N8nButton
 						size="small"
 						:disabled="deciding || !viewerCanDecide"
@@ -105,6 +101,15 @@ async function onComment() {
 					</N8nButton>
 				</N8nTooltip>
 			</span>
+			<N8nButton
+				v-else
+				size="small"
+				:disabled="deciding || !viewerCanDecide"
+				data-test-id="workflow-review-decision-trigger"
+			>
+				{{ i18n.baseText('workflowReviews.detail.decision.trigger') }}
+				<N8nIcon icon="chevron-down" />
+			</N8nButton>
 		</template>
 		<template #content>
 			<div :class="$style.content" data-test-id="workflow-review-decision-popover">
@@ -116,7 +121,7 @@ async function onComment() {
 					v-model="decisionNote"
 					type="textarea"
 					:rows="3"
-					:maxlength="WORKFLOW_REVIEW_COMMENT_MAX_LENGTH"
+					:maxlength="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
 					:placeholder="i18n.baseText('workflowReviews.detail.decision.note.placeholder')"
 					data-test-id="workflow-review-decision-note"
 				/>
@@ -124,11 +129,13 @@ async function onComment() {
 					<N8nButton
 						variant="outline"
 						size="small"
-						icon="message-square"
 						:disabled="commentDisabled"
 						data-test-id="workflow-review-decision-comment-button"
 						@click="onComment"
 					>
+						<template #icon>
+							<N8nIcon icon="message-square" />
+						</template>
 						{{ i18n.baseText('workflowReviews.detail.decision.comment') }}
 					</N8nButton>
 					<N8nTooltip
@@ -139,21 +146,25 @@ async function onComment() {
 						<N8nButton
 							variant="outline"
 							size="small"
-							icon="refresh-cw"
 							:disabled="!note"
 							data-test-id="workflow-review-decision-request-changes-button"
 							@click="onRequestChanges"
 						>
+							<template #icon>
+								<N8nIcon icon="refresh-cw" />
+							</template>
 							{{ i18n.baseText('workflowReviews.detail.decision.requestChanges') }}
 						</N8nButton>
 					</N8nTooltip>
 					<N8nButton
 						variant="outline"
 						size="small"
-						icon="check"
 						data-test-id="workflow-review-decision-approve-button"
 						@click="onApprove"
 					>
+						<template #icon>
+							<N8nIcon icon="check" />
+						</template>
 						{{ i18n.baseText('workflowReviews.detail.decision.approveAndPublish') }}
 					</N8nButton>
 				</div>
