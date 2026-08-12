@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 
 import PaneShell from './PaneShell.vue';
 import type { OutlineRow } from '../composables/useOutline';
@@ -15,14 +15,17 @@ defineProps<{
 	rows: OutlineRow[];
 	count: number;
 	selectedId?: string;
+	selectedRegion?: { id: string; region: string };
 	disabled?: boolean;
 	indentOf: (depth: number) => Record<string, string>;
 }>();
 
 const emit = defineEmits<{
 	select: [id: string];
+	selectRegion: [ref: { id: string; region: string }];
 	move: [id: string, delta: number];
 	remove: [id: string];
+	toggleCollapsed: [id: string];
 }>();
 </script>
 
@@ -37,6 +40,41 @@ const emit = defineEmits<{
 				{{ row.label }}
 			</div>
 
+			<!--
+				A fixed pseudo-component (the frame's header, pages or footer): a full
+				peer of the node row below it, disclosure, icon and bold label
+				included, but selects a region rather than a node and offers no
+				move/delete controls, the same as the root.
+			-->
+			<div
+				v-else-if="row.kind === 'pseudo'"
+				class="ui-outline__row"
+				:class="{
+					'ui-outline__row--selected':
+						selectedRegion?.id === row.nodeId && selectedRegion?.region === row.region,
+				}"
+			>
+				<button
+					type="button"
+					class="ui-outline__label"
+					:style="indentOf(row.depth)"
+					@click="emit('selectRegion', { id: row.nodeId, region: row.region })"
+				>
+					<N8nIconButton
+						v-if="row.hasChildren"
+						variant="ghost"
+						size="xsmall"
+						:icon="row.collapsed ? 'chevron-right' : 'chevron-down'"
+						:aria-label="row.collapsed ? 'Expand' : 'Collapse'"
+						class="ui-outline__disclosure"
+						@click.stop="emit('toggleCollapsed', row.key)"
+					/>
+					<span v-else class="ui-outline__disclosure-spacer" />
+					<N8nIcon v-if="row.icon" :icon="row.icon" size="small" class="ui-outline__icon" />
+					<span class="ui-outline__name">{{ row.label }}</span>
+				</button>
+			</div>
+
 			<div
 				v-else
 				class="ui-outline__row"
@@ -48,6 +86,17 @@ const emit = defineEmits<{
 					:style="indentOf(row.depth)"
 					@click="emit('select', row.id)"
 				>
+					<N8nIconButton
+						v-if="row.hasChildren"
+						variant="ghost"
+						size="xsmall"
+						:icon="row.collapsed ? 'chevron-right' : 'chevron-down'"
+						:aria-label="row.collapsed ? 'Expand' : 'Collapse'"
+						class="ui-outline__disclosure"
+						@click.stop="emit('toggleCollapsed', row.id)"
+					/>
+					<span v-else class="ui-outline__disclosure-spacer" />
+					<N8nIcon v-if="row.icon" :icon="row.icon" size="small" class="ui-outline__icon" />
 					<span class="ui-outline__name">{{ row.label }}</span>
 					<span class="ui-outline__id">{{ row.id }}</span>
 				</button>
@@ -131,6 +180,32 @@ const emit = defineEmits<{
 
 .ui-outline__name {
 	white-space: nowrap;
+}
+
+/*
+ * Sized to the disclosure button it stands in for, so a leaf row's label
+ * lines up with an expandable one instead of shifting left.
+ */
+.ui-outline__disclosure,
+.ui-outline__disclosure-spacer {
+	flex-shrink: 0;
+}
+
+.ui-outline__disclosure-spacer {
+	width: var(--height--xs);
+}
+
+/*
+ * An icon marks a row that is fixed rather than composed: the app frame, and
+ * its header/pages/footer pseudo-components below it.
+ */
+.ui-outline__icon {
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+}
+
+.ui-outline__row:has(.ui-outline__icon) .ui-outline__name {
+	font-weight: var(--font-weight--medium);
 }
 
 .ui-outline__id {

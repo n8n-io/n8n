@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	ancestorsOf,
 	createEmptyDocument,
 	createNode,
 	findNode,
@@ -142,6 +143,33 @@ describe('findNode and findPlacement', () => {
 	it('finds nothing for an id the document does not hold', () => {
 		expect(findNode(createEmptyDocument(), 'nope')).toBeUndefined();
 		expect(findPlacement(createEmptyDocument(), 'nope')).toBeUndefined();
+	});
+});
+
+describe('ancestorsOf', () => {
+	it('gives the root an empty chain', () => {
+		expect(ancestorsOf(createEmptyDocument(), 'page')).toEqual([]);
+	});
+
+	it('gives a direct child of the root the root alone', () => {
+		const root = createEmptyDocument();
+		root.tree[DEFAULT_REGION] = [leaf('text-1')];
+
+		expect(ancestorsOf(root, 'text-1')).toEqual([root]);
+	});
+
+	it('orders a deeper chain from the root down', () => {
+		const root = createEmptyDocument();
+		const stack: UiNode = { id: 'stack-1', type: 'stack', props: {}, tree: { default: [] } };
+		const card: UiNode = { id: 'card-1', type: 'card', props: {}, tree: { default: [leaf('t')] } };
+		stack.tree.default = [card];
+		root.tree[DEFAULT_REGION] = [stack];
+
+		expect(ancestorsOf(root, 't')).toEqual([root, stack, card]);
+	});
+
+	it('finds nothing for an id the document does not hold', () => {
+		expect(ancestorsOf(createEmptyDocument(), 'gone')).toBeUndefined();
 	});
 });
 

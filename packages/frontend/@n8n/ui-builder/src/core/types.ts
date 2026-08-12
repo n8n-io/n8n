@@ -15,6 +15,19 @@ export const DEFAULT_REGION = 'default';
 export interface UiRegion {
 	name: string;
 	label: string;
+	/**
+	 * The icon the outline and inspector show this region with, when the
+	 * component has more than one region and each therefore reads as a
+	 * pseudo-component in its own right (see `useOutline`'s `flatten`) rather
+	 * than as a plain heading above its children. Absent falls back to the
+	 * component's own icon, if it has one, so the row still looks like a
+	 * component rather than a bare heading.
+	 *
+	 * A component with only one region is never shown this way regardless of
+	 * this field: selecting the node already means selecting its one slot, so a
+	 * pseudo row under it would only repeat what the node row says.
+	 */
+	icon?: string;
 }
 
 /** A node's children, split by the region they sit in. */
@@ -69,7 +82,7 @@ export interface UiNotifyStep {
 	type?: UiToast['type'];
 }
 
-/** Change the current page. Only means anything inside a shell. */
+/** Change the current page. Only means anything inside a frame. */
 export interface UiNavigateStep {
 	kind: 'navigate';
 	/** A page path, or an expression producing one. */
@@ -145,6 +158,12 @@ export interface UiComponentDef {
 	label: string;
 	component: Component;
 	props: INodeProperties[];
+	/**
+	 * An icon shown wherever the outline and inspector name this component,
+	 * for the rare def whose type is worth telling apart from an ordinary one
+	 * at a glance rather than only by its label.
+	 */
+	icon?: string;
 	/**
 	 * The drop points this component offers, in the order the editor should show
 	 * them. Absent means the component takes no children at all.

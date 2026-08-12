@@ -7,19 +7,19 @@ import type { UiComponentDef } from '../core/types';
 import { BUTTON_DEF } from './UiButton.descriptor';
 import { CARD_DEF } from './UiCard.descriptor';
 import { DEBUG_DEF } from './UiDebug.descriptor';
+import { FRAME_DEF } from './UiFrame.descriptor';
 import { HEADING_DEF } from './UiHeading.descriptor';
 import { IF_DEF } from './UiIf.descriptor';
 import { INPUT_DEF } from './UiInput.descriptor';
 import { PAGE_DEF } from './UiPage.descriptor';
 import { REPEAT_DEF } from './UiRepeat.descriptor';
-import { SHELL_DEF } from './UiShell.descriptor';
 import { STACK_DEF } from './UiStack.descriptor';
 import { TABLE_DEF } from './UiTable.descriptor';
 import { TEXT_DEF } from './UiText.descriptor';
 
 // The order here is the order the palette shows.
 export const KIT: UiComponentDef[] = [
-	SHELL_DEF,
+	FRAME_DEF,
 	PAGE_DEF,
 	STACK_DEF,
 	CARD_DEF,

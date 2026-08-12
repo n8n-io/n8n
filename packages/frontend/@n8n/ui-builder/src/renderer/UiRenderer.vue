@@ -107,7 +107,7 @@ const iterations = computed<UiScope[]>(() => {
 
 /**
  * The children to render in a region. Ordinary regions render all of them; the
- * paged region of a shell renders the one page the route names, so a header and
+ * paged region of a frame renders the one page the route names, so a header and
  * a footer stay put while the content swaps.
  */
 function childrenOf(region: string): UiNode[] {
