@@ -71,9 +71,15 @@ watch(
 	{ flush: 'post' },
 );
 
-// `loadMore` is a no-op with no cursor, so a failed first page has to refetch.
-function retryInitialLoad() {
-	if (store.currentReviewId) void store.fetchFeed(store.currentReviewId);
+// `loadMore` is a no-op with no cursor, so a failed first page has to refetch. Shared by both
+// error rows: posting onto a failed feed moves the viewer from the first to the second, which
+// would otherwise hit that dead end and leave the earlier activity unreachable.
+function retry() {
+	if (!store.nextCursor) {
+		if (store.currentReviewId) void store.fetchFeed(store.currentReviewId);
+		return;
+	}
+	void store.loadMore();
 }
 
 // Entries may already be loaded on mount (Changes -> Activity round trip).
@@ -98,7 +104,7 @@ onMounted(() => {
 				size="mini"
 				variant="ghost"
 				data-test-id="workflow-review-activity-retry"
-				@click="retryInitialLoad()"
+				@click="retry()"
 			>
 				{{ i18n.baseText('generic.retry') }}
 			</N8nButton>
@@ -116,7 +122,9 @@ onMounted(() => {
 				:class="$style.sentinel"
 				data-test-id="workflow-review-activity-load-more-sentinel"
 			/>
-			<N8nLoading v-if="loadingMore" :loading="true" :rows="1" />
+			<!-- `loading` too: a retry that keeps a posted comment on screen leaves this the
+				only place a refetch can show progress. -->
+			<N8nLoading v-if="loadingMore || loading" :loading="true" :rows="1" />
 			<div v-if="error" :class="$style.errorRow">
 				<N8nText color="text-light" size="small">
 					{{ i18n.baseText('workflowReviews.detail.activity.error.load') }}
@@ -125,7 +133,7 @@ onMounted(() => {
 					size="mini"
 					variant="ghost"
 					data-test-id="workflow-review-activity-load-more-retry"
-					@click="store.loadMore()"
+					@click="retry()"
 				>
 					{{ i18n.baseText('generic.retry') }}
 				</N8nButton>
