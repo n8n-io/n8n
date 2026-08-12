@@ -17,21 +17,32 @@
 		// needs `privileged: true` on the n8n service (compose-based config)
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
 	},
-	"forwardPorts": [8080, 5678, 8787],
-	"portsAttributes": {
-		"8787": { "label": "agent-broker" }
+	"forwardPorts": [8080, 5678],
+	// Grant the codespace's own GitHub token read access to the private skills
+	// marketplace (same org), so Claude can install it with the codespace's normal
+	// git auth — no extra PAT. Each user authorizes this once at codespace creation.
+	"customizations": {
+		"codespaces": {
+			"repositories": {
+				"n8n-io/n8n-claude-skills": { "permissions": { "contents": "read" } }
+			}
+		}
 	},
 	// Runs in prebuilds, so a fresh codespace starts with deps installed and the build warm
 	"onCreateCommand": "corepack install && pnpm install && (pnpm build > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log) && pnpm --filter=n8n-playwright exec playwright install chromium",
-	// Start the broker on each container start. `bash -lc` loads the secrets shim, so the
-	// broker gets AGENT_BROKER_TOKEN. tmux detaches it, so it does not block startup.
-	"postStartCommand": "tmux new-session -d -s broker 'bash -lc \"node /workspaces/n8n/.devcontainer/codespaces/agent-broker.mjs >> /tmp/agent-broker.log 2>&1\"' || true",
+	// On each container start: install the private skills marketplace into Claude
+	// (best-effort) and start the poll worker. `bash -lc` loads the secrets shim,
+	// so the worker gets its token. Logs: /tmp/post-start.log, /tmp/agent-worker.log.
+	"postStartCommand": "bash -lc 'node /workspaces/n8n/.devcontainer/codespaces/post-start.mjs >> /tmp/post-start.log 2>&1' || true",
 	"secrets": {
 		"ANTHROPIC_API_KEY": {
 			"description": "Anthropic API key for Claude Code / OpenCode sessions"
 		},
-		"AGENT_BROKER_TOKEN": {
-			"description": "Bearer token the agent broker requires on every request (see .devcontainer/codespaces/agent-broker.mjs)"
+		"AGENT_WORKER_TOKEN": {
+			"description": "The shared bearer token. The poll worker sends it to n8n on each dequeue. See .devcontainer/codespaces/agent-worker.mjs."
+		},
+		"N8N_DEQUEUE_URL": {
+			"description": "n8n webhook the poll worker calls to claim a pending turn"
 		},
 		"CLAUDE_CODE_OAUTH_TOKEN": {
 			"description": "Alternative to an API key: token from `claude setup-token` (Max subscription)"
