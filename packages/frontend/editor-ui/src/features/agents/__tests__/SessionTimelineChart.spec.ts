@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import SessionTimelineChart from '../components/SessionTimelineChart.vue';
 import type { TimelineItem } from '../session-timeline.types';
@@ -23,6 +23,15 @@ function mountChart(overrides: Partial<InstanceType<typeof SessionTimelineChart>
 			visibleKinds: new Set<string>(),
 			selectedIndex: null,
 			...overrides,
+		},
+		global: {
+			stubs: {
+				N8nHoverCard: {
+					props: ['open'],
+					template:
+						'<div data-test-id="timeline-hover-card" :data-open="open"><slot name="content" /></div>',
+				},
+			},
 		},
 	});
 }
@@ -97,5 +106,40 @@ describe('SessionTimelineChart', () => {
 		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
 		const idle = w.find('[data-test-id="timeline-idle"]');
 		expect(idle.text()).toContain('Idle');
+	});
+
+	it('reveals event details on keyboard focus and hides them on blur', async () => {
+		vi.useFakeTimers();
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'agent',
+					content: 'Keyboard details',
+					timestamp: 1000,
+					endTimestamp: 1500,
+				}),
+			],
+		});
+
+		try {
+			const block = w.get('[data-test-id="timeline-block"]');
+			const hoverCard = w.get('[data-test-id="timeline-hover-card"]');
+
+			await block.trigger('focus');
+			await vi.runAllTimersAsync();
+			expect(hoverCard.attributes('data-open')).toBe('true');
+			expect(hoverCard.text()).toContain('Keyboard details');
+			expect(hoverCard.text()).toContain('500ms');
+
+			await block.trigger('mouseleave');
+			expect(hoverCard.attributes('data-open')).toBe('true');
+
+			await block.trigger('blur');
+			expect(hoverCard.attributes('data-open')).toBe('false');
+			expect(hoverCard.text()).not.toContain('Keyboard details');
+		} finally {
+			w.unmount();
+			vi.useRealTimers();
+		}
 	});
 });

@@ -203,6 +203,45 @@ describe('step execution (integration)', () => {
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
+	it('runs a fan-in once, with each input slot fed by its branch', async () => {
+		const diamondGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+				{ id: 'node-m', name: 'M', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-m', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-b', to: 'node-m', outputIndex: 0, inputIndex: 1 },
+			],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution } = await runWorkflow(
+			executor,
+			{ body: { name: 'ada' } },
+			{ workflowId: 'wf-diamond', graph: diamondGraph },
+		);
+
+		// the merge ran exactly once, after both branches, one slot per branch
+		const merge = requests.filter(({ node }) => node.id === 'node-m');
+		expect(merge).toHaveLength(1);
+		expect(merge[0].inputs).toEqual([[{ json: { ran: 'node-a' } }], [{ json: { ran: 'node-b' } }]]);
+
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
+	});
+
 	it('is idempotent across duplicate step:ready deliveries', async () => {
 		const { executionStore, stepStore } = stores();
 		const execute = vi.fn().mockResolvedValue({ outputs: [[{ json: { n: 1 } }]] });

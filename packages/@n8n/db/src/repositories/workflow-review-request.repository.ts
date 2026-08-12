@@ -9,7 +9,7 @@ import {
 	type WorkflowReviewRequestDecision,
 	type WorkflowReviewRequestState,
 } from '../entities/workflow-review-request.ee';
-import type { OperationContext } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 /**
  * Keyset pagination boundary. The caller carries `createdAt`/`id` in the cursor
@@ -55,8 +55,8 @@ export type InboxStateCounts = {
 
 @Service()
 export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowReviewRequest> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowReviewRequest, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowReviewRequest, dataSource.manager, transactionRunner);
 	}
 
 	async createRequest(

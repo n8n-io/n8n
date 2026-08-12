@@ -1,23 +1,12 @@
-import { ControllerRegistryMetadata } from '@n8n/decorators';
-import { Container } from '@n8n/di';
+import { getRouteCases } from '@test/controller-route-metadata';
+
+export {
+	getControllerMetadata,
+	getRouteCases,
+	getRoutesByHandlerName,
+} from '@test/controller-route-metadata';
 
 type ControllerClass = new (...args: never[]) => unknown;
-
-export function getControllerMetadata(Controller: ControllerClass) {
-	return Container.get(ControllerRegistryMetadata).getControllerMetadata(Controller as never);
-}
-
-export function getRouteCases(Controller: ControllerClass) {
-	const metadata = getControllerMetadata(Controller);
-	return Array.from(metadata.routes.entries()).map(([handlerName, route]) => ({
-		handlerName,
-		route,
-	}));
-}
-
-export function getRoutesByHandlerName(Controller: ControllerClass) {
-	return new Map(getRouteCases(Controller).map(({ handlerName, route }) => [handlerName, route]));
-}
 
 export function expectProjectScopedAgentRoutes(
 	Controller: ControllerClass,

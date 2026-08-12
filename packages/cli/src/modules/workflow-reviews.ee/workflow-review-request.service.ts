@@ -44,7 +44,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { WorkflowReviewDecisionEligibilityService } from './workflow-review-decision-eligibility.service';
+import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toEligibleReviewer } from './workflow-review.mapper';
 
@@ -76,7 +76,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly userRepository: UserRepository,
-		private readonly decisionEligibilityService: WorkflowReviewDecisionEligibilityService,
+		private readonly eligibilityService: WorkflowReviewEligibilityService,
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
@@ -346,22 +346,24 @@ export class WorkflowReviewRequestService {
 			throw new NotFoundError('Could not find workflow');
 		}
 
-		const reviewerUserIds = [...new Set(dto.reviewerUserIds ?? [])];
-		if (reviewerUserIds.length > 0) {
-			if (reviewerUserIds.includes(user.id)) {
-				throw new BadRequestError('You cannot assign yourself as a reviewer');
-			}
+		const reviewerUserIds = [...new Set(dto.reviewerUserIds)];
+		if (reviewerUserIds.length === 0) {
+			throw new BadRequestError('You must assign at least one reviewer');
+		}
 
-			const eligibleIds = new Set(
-				(await this.findEligibleReviewers(project.id, user.id)).map((reviewer) => reviewer.id),
+		if (reviewerUserIds.includes(user.id)) {
+			throw new BadRequestError('You cannot assign yourself as a reviewer');
+		}
+
+		const eligibleIds = new Set(
+			(await this.findEligibleReviewers(project.id, user.id)).map((reviewer) => reviewer.id),
+		);
+		// The requester can already enumerate the eligible set, so listing ids leaks nothing
+		const ineligibleIds = reviewerUserIds.filter((id) => !eligibleIds.has(id));
+		if (ineligibleIds.length > 0) {
+			throw new BadRequestError(
+				`These users are not eligible to review this workflow: ${ineligibleIds.join(', ')}`,
 			);
-			// The requester can already enumerate the eligible set, so listing ids leaks nothing
-			const ineligibleIds = reviewerUserIds.filter((id) => !eligibleIds.has(id));
-			if (ineligibleIds.length > 0) {
-				throw new BadRequestError(
-					`These users are not eligible to review this workflow: ${ineligibleIds.join(', ')}`,
-				);
-			}
 		}
 
 		const request = await this.dbLockService.withLockContext(
@@ -410,12 +412,10 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
-				if (reviewerUserIds.length > 0) {
-					await this.workflowReviewRequestReviewerRepository.addReviewers(
-						{ workflowReviewRequestId: created.id, userIds: reviewerUserIds },
-						ctx,
-					);
-				}
+				await this.workflowReviewRequestReviewerRepository.addReviewers(
+					{ workflowReviewRequestId: created.id, userIds: reviewerUserIds },
+					ctx,
+				);
 
 				return created;
 			},
@@ -626,7 +626,7 @@ export class WorkflowReviewRequestService {
 		// Resolved before the lock: this query must not run inside the lock
 		// transaction, where it would need a second pooled connection while the
 		// transaction holds one — a deadlock on a single-connection pool.
-		const hasAdminOverride = await this.decisionEligibilityService.hasAdminOverride(
+		const hasAdminOverride = await this.eligibilityService.hasAdminOverride(
 			user,
 			request.projectId,
 		);
