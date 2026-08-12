@@ -116,23 +116,12 @@ const parentNodeNames = computed(() =>
 	workflowDocumentStore.value.getParentNodesByDepth(props.node.name, 1).map(({ name }) => name),
 );
 
-// A trigger with no upstream node has nothing to show in Input — the tab would
-// only ever offer an empty parent-node selector.
-const hasInput = computed(() => parentNodeNames.value.length > 0);
-
-const tabs = computed<Array<ITab<NodePanelTab>>>(() =>
-	[
-		{ value: 'properties' as const, label: i18n.baseText('nodePanel.properties') },
-		...(hasInput.value ? [{ value: 'input' as const, label: i18n.baseText('ndv.input') }] : []),
-		{ value: 'output' as const, label: i18n.baseText('ndv.output') },
-		{ value: 'settings' as const, label: i18n.baseText('nodePanel.settings') },
-	].map((tab) => tab as ITab<NodePanelTab>),
-);
-
-// Never strand the panel on a tab that no longer exists.
-watch(hasInput, (has) => {
-	if (!has && selectedTab.value === 'input') selectedTab.value = 'properties';
-});
+const tabs = computed<Array<ITab<NodePanelTab>>>(() => [
+	{ value: 'properties', label: i18n.baseText('nodePanel.properties') },
+	{ value: 'input', label: i18n.baseText('ndv.input') },
+	{ value: 'output', label: i18n.baseText('ndv.output') },
+	{ value: 'settings', label: i18n.baseText('nodePanel.settings') },
+]);
 
 const workflowRunData = computed(
 	() => workflowExecutionStateStore.value.activeExecution?.data?.resultData?.runData,

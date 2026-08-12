@@ -105,6 +105,9 @@ type Props = {
 	flattenSingleValueCollections?: boolean;
 	noticeTheme?: 'warning' | 'info';
 	useParameterDefaultsForMissingValues?: boolean;
+	// Parameters the host is merely hiding (e.g. behind progressive disclosure)
+	// rather than removing. Their values must survive leaving `parameters`.
+	retainedParameterNames?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -304,12 +307,17 @@ throttledWatch(
 		const newParameterNames = parameterItems.value.map((paramData) => paramData.parameter.name);
 
 		// Clean up removed parameters - emit valueChanged for parameters that no longer display
-		// This handles the edge-case when a parameter display depends on another field with an expression
+		// This handles the edge-case when a parameter display depends on another field with an expression.
+		// Parameters the host is only hiding (progressive disclosure) are still part of the node, so
+		// clearing them here would silently discard values the user has set.
 		for (const parameter of previousParameterNames) {
-			if (!newParameterNames.includes(parameter)) {
+			if (
+				!newParameterNames.includes(parameter) &&
+				!props.retainedParameterNames?.includes(parameter)
+			) {
 				emit('valueChanged', {
 					name: `${props.path}.${parameter}`,
-					node: ndvStore.value.activeNode?.name || '',
+					node: props.node?.name ?? ndvStore.value.activeNode?.name ?? '',
 					value: undefined,
 				});
 			}

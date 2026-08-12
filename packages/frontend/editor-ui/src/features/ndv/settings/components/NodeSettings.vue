@@ -360,6 +360,18 @@ const setParametersCount = computed(
 	() => parametersByTab.value.params.filter((parameter) => isParameterChanged(parameter)).length,
 );
 
+// Folding a parameter away is presentational — ParameterInputList must not treat
+// it as a displayOptions removal and clear the value.
+const retainedParameterNames = computed(() =>
+	props.progressiveDisclosure ? parametersByTab.value.params.map(({ name }) => name) : undefined,
+);
+const retainedNodeTypeSettingNames = computed(() =>
+	props.progressiveDisclosure ? parametersByTab.value.settings.map(({ name }) => name) : undefined,
+);
+const retainedCommonSettingNames = computed(() =>
+	props.progressiveDisclosure ? nodeSettings.value.map(({ name }) => name) : undefined,
+);
+
 const visibleNodeTypeSettings = computed(() =>
 	parametersByTab.value.settings.filter((parameter) => isParameterInitiallyVisible(parameter)),
 );
@@ -902,6 +914,7 @@ function handleSelectAction(params: INodeParameters) {
 				<ParameterInputList
 					v-if="nodeValuesInitialized"
 					:parameters="displayedParameters"
+					:retained-parameter-names="retainedParameterNames"
 					:hide-delete="true"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
@@ -1002,6 +1015,7 @@ function handleSelectAction(params: INodeParameters) {
 						</N8nText>
 						<ParameterInputList
 							:parameters="displayedNodeTypeSettings"
+							:retained-parameter-names="retainedNodeTypeSettingNames"
 							:node-values="nodeValues"
 							:is-read-only="isReadOnly"
 							:hide-delete="true"
@@ -1015,6 +1029,7 @@ function handleSelectAction(params: INodeParameters) {
 						/>
 						<ParameterInputList
 							:parameters="displayedCommonSettings"
+							:retained-parameter-names="retainedCommonSettingNames"
 							:hide-delete="true"
 							:node-values="nodeValues"
 							:is-read-only="isReadOnly"
