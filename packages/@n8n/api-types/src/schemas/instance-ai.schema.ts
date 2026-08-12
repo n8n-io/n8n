@@ -1098,6 +1098,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `assistant_page` — first message typed on the Instance AI empty/home page
+ * - `proactive_offer` — user accepted a proactive floating-panel offer
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
  */
@@ -1112,6 +1113,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_builder_page',
 	'agent_preview',
 	'assistant_page',
+	'proactive_offer',
 	'evals',
 	'playwright',
 ] as const;
