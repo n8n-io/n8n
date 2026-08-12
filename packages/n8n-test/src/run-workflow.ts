@@ -17,6 +17,8 @@ import { createRunExecutionData, UnexpectedError, Workflow } from 'n8n-workflow'
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
+import { createMockNodeType, getNodeMocks, MOCK_NODE_TYPE, withMockNodeType } from './mock-node';
+
 /**
  * The shape a workflow export (`workflow.json`) is consumed as. Deliberately looser than
  * `IWorkflowBase` (e.g. `position` is `number[]`) so a plain JSON import needs no casting
@@ -68,15 +70,26 @@ export async function runWorkflow(
 ): Promise<IDataObject> {
 	const { nodeTypes, credentialsHelper } = await loadEngineComponents();
 
+	// Nodes mocked via mockNode() get their type swapped for the in-process stand-in;
+	// everything else resolves to the real implementation.
+	const mocks = getNodeMocks(workflowJson);
+	const effectiveNodeTypes = mocks?.size
+		? withMockNodeType(nodeTypes, createMockNodeType(mocks))
+		: nodeTypes;
+
 	const workflow = new Workflow({
 		id: workflowJson.id ?? 'n8n-test',
 		name: workflowJson.name,
 		nodes: workflowJson.nodes.map(
-			(node): INode => ({ ...node, position: [node.position[0], node.position[1]] }),
+			(node): INode => ({
+				...node,
+				position: [node.position[0], node.position[1]],
+				...(mocks?.has(node.name) ? { type: MOCK_NODE_TYPE, typeVersion: 1 } : {}),
+			}),
 		),
 		// Runtime-identical; only the JSON-widened literal types differ (see WorkflowJson).
 		connections: workflowJson.connections as IConnections,
-		nodeTypes,
+		nodeTypes: effectiveNodeTypes,
 		settings: workflowJson.settings as IWorkflowSettings | undefined,
 		active: false,
 	});
