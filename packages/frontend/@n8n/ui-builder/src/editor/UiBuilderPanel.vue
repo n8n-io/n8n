@@ -256,6 +256,63 @@ function onEscape(event: KeyboardEvent) {
 		@escape-key-down="onEscape"
 	>
 		<div class="ui-builder">
+			<header class="ui-builder__header">
+				<div class="ui-builder__header-content">
+					<N8nText v-if="editingPage" size="small" bold>
+						{{ editingPage.title || editingPage.path }}
+					</N8nText>
+					<N8nText v-else size="small" bold>UI Builder</N8nText>
+
+					<N8nText v-if="previewStatus" size="small" color="text-light">
+						preview: {{ previewStatus }}
+					</N8nText>
+				</div>
+
+				<div class="ui-builder__header-actions">
+					<N8nTooltip content="Docs aren't wired up yet">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="book-open"
+							aria-label="Documentation (not yet available)"
+							disabled
+						/>
+					</N8nTooltip>
+
+					<N8nTooltip :content="previewMode ? 'Back to editing' : 'Preview without editing chrome'">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							:icon="previewMode ? 'eye-off' : 'eye'"
+							:aria-label="previewMode ? 'Back to editing' : 'Preview without editing chrome'"
+							@click="previewMode = !previewMode"
+						/>
+					</N8nTooltip>
+
+					<N8nTooltip :content="liveWebhookTooltip">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="external-link"
+							:aria-label="liveWebhookTooltip"
+							:disabled="!liveWebhookUrl"
+							@click="openLiveWebhook"
+						/>
+					</N8nTooltip>
+
+					<N8nTooltip content="Delete the selected component">
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="trash-2"
+							aria-label="Delete the selected component"
+							:disabled="readOnly || previewMode || !selectedId || selectedId === doc.id"
+							@click="deleteSelected"
+						/>
+					</N8nTooltip>
+				</div>
+			</header>
+
 			<div class="ui-builder__layout">
 				<N8nResizeWrapper
 					class="ui-builder__resizer"
@@ -323,51 +380,6 @@ function onEscape(event: KeyboardEvent) {
 				</N8nResizeWrapper>
 
 				<section class="ui-builder__canvas">
-					<div class="ui-builder__toolbar">
-						<!-- Which page is on screen, since the canvas shows one at a time. -->
-						<N8nText v-if="editingPage" size="small" color="text-light">
-							{{ editingPage.title || editingPage.path }}
-						</N8nText>
-
-						<N8nText v-if="previewStatus" size="small" color="text-light">
-							preview: {{ previewStatus }}
-						</N8nText>
-
-						<N8nTooltip
-							:content="previewMode ? 'Back to editing' : 'Preview without editing chrome'"
-						>
-							<N8nIconButton
-								variant="ghost"
-								size="small"
-								:icon="previewMode ? 'eye-off' : 'eye'"
-								:aria-label="previewMode ? 'Back to editing' : 'Preview without editing chrome'"
-								@click="previewMode = !previewMode"
-							/>
-						</N8nTooltip>
-
-						<N8nTooltip :content="liveWebhookTooltip">
-							<N8nIconButton
-								variant="ghost"
-								size="small"
-								icon="external-link"
-								:aria-label="liveWebhookTooltip"
-								:disabled="!liveWebhookUrl"
-								@click="openLiveWebhook"
-							/>
-						</N8nTooltip>
-
-						<N8nTooltip content="Delete the selected component">
-							<N8nIconButton
-								variant="ghost"
-								size="small"
-								icon="trash-2"
-								aria-label="Delete the selected component"
-								:disabled="readOnly || previewMode || !selectedId || selectedId === doc.id"
-								@click="deleteSelected"
-							/>
-						</N8nTooltip>
-					</div>
-
 					<div class="ui-builder__surface">
 						<UiRenderer
 							:node="doc"
@@ -437,13 +449,45 @@ function onEscape(event: KeyboardEvent) {
 	max-height: 100%;
 	min-height: 0;
 	overflow: hidden;
-	/*
-	 * There is no header row any more to clear the dialog's absolutely
-	 * positioned close button, so the layout itself is inset by exactly the
-	 * amount the button pokes into the content area.
-	 */
-	padding-top: var(--spacing--sm);
-	padding-right: var(--spacing--sm);
+}
+
+/*
+ * NDV-style top bar: a page/status label on the left, the builder's controls
+ * on the right, styled after `NDVHeader.vue` so the two authoring surfaces
+ * read as the same family. Also carries what the removed `N8nDialogHeader`
+ * used to: `padding-right` clears the dialog's absolutely positioned close
+ * button.
+ */
+.ui-builder__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	padding-right: var(--spacing--xl);
+	border-radius: var(--radius);
+	background: var(--color--background--light-3);
+}
+
+.ui-builder__header-content {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-left: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.ui-builder__header-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+/* One divider per control, matching `NDVHeader`'s `.actions` treatment. */
+.ui-builder__header-actions > *:not(:last-child) {
+	border-right: var(--border);
+	padding-right: var(--spacing--2xs);
 }
 
 .ui-builder__layout {
@@ -475,6 +519,24 @@ function onEscape(event: KeyboardEvent) {
 
 .ui-builder__resizer :deep(.ui-pane):not(.ui-builder__pages) {
 	height: 100%;
+}
+
+/*
+ * `N8nResizeWrapper`'s own drag handle (`[data-test-id="resize-handle"]`) is
+ * an invisible hit-area by design — a cursor swap, nothing painted. Scoped
+ * here rather than in the shared component, so this doesn't change the
+ * handle everywhere it's used (e.g. the NDV's own panel resize): a thin line
+ * appears only on hover, so a column boundary reads as draggable instead of
+ * as a hairline gap between two bordered panes.
+ */
+.ui-builder__resizer :deep([data-test-id='resize-handle']) {
+	background: var(--color--primary);
+	opacity: 0;
+	transition: opacity 80ms ease;
+}
+
+.ui-builder__resizer:hover :deep([data-test-id='resize-handle']) {
+	opacity: 1;
 }
 
 .ui-builder__column {
@@ -512,17 +574,6 @@ function onEscape(event: KeyboardEvent) {
 	border-radius: var(--radius);
 	background: var(--background--surface);
 	overflow: hidden;
-}
-
-.ui-builder__toolbar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-bottom: var(--border);
-	background: var(--color--foreground--tint-2);
 }
 
 .ui-builder__surface {
