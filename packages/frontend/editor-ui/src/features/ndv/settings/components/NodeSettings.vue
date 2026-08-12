@@ -1052,15 +1052,9 @@ function handleSelectAction(params: INodeParameters) {
 						:label="
 							hiddenSetParametersCount > 0
 								? i18n.baseText('nodePanel.showAllSettingsSomeSet', {
-										interpolate: {
-											count: disclosedParameters.length,
-											setCount: hiddenSetParametersCount,
-										},
+										interpolate: { setCount: hiddenSetParametersCount },
 									})
-								: i18n.baseText('nodePanel.showAllSettings', {
-										adjustToNumber: disclosedParameters.length,
-										interpolate: { count: disclosedParameters.length },
-									})
+								: i18n.baseText('nodePanel.showAllSettings')
 						"
 						@click="emit('showAllSettingsChanged', true)"
 					/>
