@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	ContextMenuContent,
@@ -124,17 +124,28 @@ async function handleCopyLink(tab: ArtifactTab) {
 
 <template>
 	<div :class="$style.header">
-		<N8nIconButton
-			v-if="previewToggleLabel"
-			icon="panel-right"
-			variant="ghost"
-			size="medium"
-			:aria-label="previewToggleLabel"
-			:title="previewToggleLabel"
-			:aria-pressed="true"
-			data-test-id="instance-ai-artifacts-preview-toggle"
-			@click="emit('togglePreview')"
-		/>
+		<N8nTooltip v-if="previewToggleLabel" :content="previewToggleLabel">
+			<N8nIconButton
+				icon="panel-right"
+				variant="ghost"
+				size="medium"
+				:aria-label="previewToggleLabel"
+				:aria-pressed="true"
+				data-test-id="instance-ai-artifacts-preview-toggle"
+				@click="emit('togglePreview')"
+			/>
+		</N8nTooltip>
+		<N8nTooltip :content="sizeToggleLabel" :disabled="isExpandDisabled">
+			<N8nIconButton
+				:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
+				variant="ghost"
+				size="medium"
+				:disabled="isExpandDisabled"
+				:aria-label="sizeToggleLabel"
+				data-test-id="instance-ai-preview-expand-toggle"
+				@click="handleToggleExpanded"
+			/>
+		</N8nTooltip>
 		<TabsList
 			ref="tabListRef"
 			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
@@ -154,26 +165,20 @@ async function handleCopyLink(tab: ArtifactTab) {
 					<ContextMenuContent :class="$style.contextMenu">
 						<ContextMenuItem :class="$style.contextMenuItem" @select="handleOpenInEditor(tab)">
 							<N8nIcon icon="external-link" size="small" />
-							<span>{{ i18n.baseText('instanceAi.previewTabBar.openInEditor') }}</span>
+							<N8nText size="small" tag="span">
+								{{ i18n.baseText('instanceAi.previewTabBar.openInEditor') }}
+							</N8nText>
 						</ContextMenuItem>
 						<ContextMenuItem :class="$style.contextMenuItem" @select="handleCopyLink(tab)">
 							<N8nIcon icon="link" size="small" />
-							<span>{{ i18n.baseText('instanceAi.previewTabBar.copyLink') }}</span>
+							<N8nText size="small" tag="span">
+								{{ i18n.baseText('instanceAi.previewTabBar.copyLink') }}
+							</N8nText>
 						</ContextMenuItem>
 					</ContextMenuContent>
 				</ContextMenuPortal>
 			</ContextMenuRoot>
 		</TabsList>
-		<N8nIconButton
-			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
-			variant="ghost"
-			size="medium"
-			:disabled="isExpandDisabled"
-			:aria-label="sizeToggleLabel"
-			:title="isExpandDisabled ? undefined : sizeToggleLabel"
-			data-test-id="instance-ai-preview-expand-toggle"
-			@click="handleToggleExpanded"
-		/>
 	</div>
 </template>
 
@@ -222,6 +227,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	}
 }
 
+/** TODO: Update N8nTabs to allow custom tab content so we can use context menu there, instead of custom tabs DS-619 **/
 .tab {
 	flex: 0 1 auto;
 	min-width: 64px;
@@ -229,7 +235,6 @@ async function handleCopyLink(tab: ArtifactTab) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
 	color: var(--text-color--subtle);
 	background-color: transparent;
 	border: none;
@@ -238,7 +243,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	cursor: pointer;
 
 	&:hover {
-		background-color: light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+		color: var(--text-color);
 	}
 
 	:global(.n8n-icon) {
@@ -246,7 +251,6 @@ async function handleCopyLink(tab: ArtifactTab) {
 	}
 
 	&[data-state='active'] {
-		/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
 		color: var(--text-color);
 	}
 
