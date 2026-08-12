@@ -34,9 +34,9 @@ const generatePublishDescriptionSchema = z.object({
 	hasMeaningfulChanges: z
 		.boolean()
 		.describe(
-			'False only when comparing two versions and the current version has no meaningful ' +
-				'difference from the previous one (cosmetic-only changes like node position or ' +
-				'renaming without behavior changes). Always true when summarizing a first publish.',
+			'False only when comparing two versions and the current version is identical to the ' +
+				'previous one — no difference in nodes, parameters, positions, names, connections, ' +
+				'or sticky notes. Always true when summarizing a first publish.',
 		),
 	description: z
 		.string()
@@ -47,20 +47,30 @@ const generatePublishDescriptionSchema = z.object({
 });
 
 /**
- * Renders a workflow's structure (nodes, parameters, connections) as compact
- * text for an LLM prompt. Sticky notes are excluded — they document the
- * workflow, they aren't part of its logic. Node parameters are included
- * (like n8n's AI workflow builder does when feeding node config to an LLM) —
- * credentials are a separate `node.credentials` reference field, never
- * embedded in `parameters`, so this doesn't leak secrets, and without them
- * a parameter-only edit (e.g. changing an HTTP node's URL) is invisible to
- * the diff.
+ * Renders a workflow's structure (nodes, parameters, positions, connections,
+ * and sticky notes) as compact text for an LLM prompt. Node parameters are
+ * included (like n8n's AI workflow builder does when feeding node config to
+ * an LLM) — credentials are a separate `node.credentials` reference field,
+ * never embedded in `parameters`, so this doesn't leak secrets, and without
+ * them a parameter-only edit (e.g. changing an HTTP node's URL) is invisible
+ * to the diff. Position and sticky notes are included so that renames, moves,
+ * and note additions surface as real changes rather than being invisible to
+ * the comparison.
  */
 function summarizeWorkflowStructure(nodes: INode[], connections: IConnections): string {
+	const stickyNotes = nodes.filter((node) => node.type === STICKY_NOTE_TYPE);
 	const realNodes = nodes.filter((node) => node.type !== STICKY_NOTE_TYPE);
+
 	const nodeLines = realNodes.map((node) => {
+		const [x, y] = node.position;
 		const parameters = JSON.stringify(node.parameters);
-		return `- ${node.name} (${node.type}${node.disabled ? ', disabled' : ''}) | ${parameters}`;
+		return `- ${node.name} (${node.type}${node.disabled ? ', disabled' : ''}) @ (${x}, ${y}) | ${parameters}`;
+	});
+
+	const stickyLines = stickyNotes.map((node) => {
+		const [x, y] = node.position;
+		const content = typeof node.parameters.content === 'string' ? node.parameters.content : '';
+		return `- @ (${x}, ${y}) | ${content}`;
 	});
 
 	const realNodeNames = new Set(realNodes.map((node) => node.name));
@@ -80,6 +90,8 @@ function summarizeWorkflowStructure(nodes: INode[], connections: IConnections): 
 	return [
 		'Nodes:',
 		nodeLines.length > 0 ? nodeLines.join('\n') : '(none)',
+		'Sticky notes:',
+		stickyLines.length > 0 ? stickyLines.join('\n') : '(none)',
 		'Connections:',
 		connectionLines.length > 0 ? connectionLines.join('\n') : '(none)',
 	].join('\n');
@@ -433,12 +445,11 @@ export class WorkflowHistoryService {
 			? [
 					'You are drafting a short changelog-style description for a new published version of an',
 					'automation workflow. Compare the previous published version to the current version below',
-					'and summarize the meaningful changes: nodes added/removed, parameter changes (URLs,',
+					'and summarize the changes: nodes added/removed/renamed/moved, parameter changes (URLs,',
 					'expressions, conditions, request bodies, etc.), logic changes, trigger changes, connection',
-					'rewiring. Ignore purely cosmetic changes such as node position or renaming without a',
-					'behavior change. If, after that comparison, there is no meaningful difference, set',
-					'hasMeaningfulChanges to false and leave description empty — do not invent a description',
-					'for a cosmetic-only or no-op change.',
+					'rewiring, and sticky notes added/removed/edited. If, after that comparison, the two',
+					'versions are identical, set hasMeaningfulChanges to false and leave description empty —',
+					'do not invent a description for a no-op change.',
 					'',
 					'<previous_version>',
 					summarizeWorkflowStructure(previousVersion.nodes, previousVersion.connections),
