@@ -23,6 +23,7 @@ const i18n = useI18n();
 
 interface SlotRow {
 	name: string;
+	displayName: string;
 	type: AgentSlotConfig['type'];
 	source: AgentSlotConfig['source'];
 	description: string;
@@ -32,6 +33,7 @@ interface SlotRow {
 function toRow(slot: AgentSlotConfig): SlotRow {
 	return {
 		name: slot.name,
+		displayName: slot.displayName ?? '',
 		type: slot.type,
 		source: slot.source,
 		description: slot.description ?? '',
@@ -83,10 +85,12 @@ function parseInitialValue(text: string): unknown {
 
 function buildSlots(): AgentSlotConfig[] {
 	return rows.value.map((row) => {
+		const displayName = row.displayName.trim();
 		const description = row.description.trim();
 		const initialValue = parseInitialValue(row.initialValueText);
 		return {
 			name: row.name,
+			...(displayName ? { displayName } : {}),
 			type: row.type,
 			source: row.source,
 			...(description ? { description } : {}),
@@ -137,6 +141,9 @@ function removeSlot(index: number) {
 				{{ i18n.baseText('agents.builder.goals.slots.name') }}
 			</N8nText>
 			<N8nText size="xsmall" color="text-light">
+				{{ i18n.baseText('agents.builder.goals.slots.displayName') }}
+			</N8nText>
+			<N8nText size="xsmall" color="text-light">
 				{{ i18n.baseText('agents.builder.goals.slots.type') }}
 			</N8nText>
 			<N8nText size="xsmall" color="text-light">
@@ -159,6 +166,13 @@ function removeSlot(index: number) {
 					:disabled="props.disabled"
 					data-testid="agent-slot-name"
 					@update:model-value="updateRow(index, { name: String($event) })"
+				/>
+				<N8nInput
+					:model-value="row.displayName"
+					size="small"
+					:disabled="props.disabled"
+					data-testid="agent-slot-display-name"
+					@update:model-value="updateRow(index, { displayName: String($event) })"
 				/>
 				<N8nSelect
 					:model-value="row.type"
@@ -230,7 +244,7 @@ function removeSlot(index: number) {
 
 .grid {
 	display: grid;
-	grid-template-columns: 1fr 100px 90px 1.5fr 1fr 30px;
+	grid-template-columns: 1fr 1fr 90px 80px 1.4fr 1fr 30px;
 	gap: var(--spacing--2xs);
 	align-items: center;
 }

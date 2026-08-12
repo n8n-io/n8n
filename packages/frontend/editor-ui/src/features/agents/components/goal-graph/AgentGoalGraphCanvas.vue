@@ -554,7 +554,9 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 			<div v-show="!panelCollapsed" :class="$style.slotList">
 				<div v-for="slot in props.slots" :key="slot.name" :class="$style.slotRow">
 					<div :class="$style.slotTop">
-						<span :class="$style.slotName" :title="slot.name">{{ slot.name }}</span>
+						<span :class="$style.slotName" :title="slot.name">{{
+							slot.displayName || slot.name
+						}}</span>
 						<span
 							:class="[
 								$style.slotBadge,

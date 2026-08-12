@@ -31,6 +31,11 @@ export const AgentSlotSchema = z.object({
 		.min(1)
 		.max(64)
 		.regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+	/**
+	 * Optional human-readable label shown in the UI. Expressions and tool
+	 * mappings still reference the slot by `name`; this only affects display.
+	 */
+	displayName: z.string().max(128).optional(),
 	type: z.enum(AGENT_SLOT_TYPES),
 	/**
 	 * Who may write the slot: `agent` slots are fillable via the built-in
