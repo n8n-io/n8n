@@ -35,6 +35,8 @@ export type ExecutionFilterProps = {
 	popoverSide?: 'top' | 'right' | 'bottom' | 'left';
 	popoverAlign?: 'start' | 'center' | 'end';
 	teleported?: boolean;
+	/** Reflects filters applied from outside this component (e.g. the natural-language filter) into the popover. */
+	modelValue?: ExecutionFilterType;
 };
 
 const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
@@ -78,6 +80,18 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	workflowVersionId: 'all',
 });
 const filter = reactive(getDefaultFilter());
+
+// Mirrors filters applied from outside (e.g. the natural-language filter) so the popover and
+// the count badge stay in sync. Not `immediate` — this only needs to catch subsequent external
+// changes, and Vue's reactivity already no-ops the assignment for keys whose value didn't change,
+// so this can't loop back into the `filter` watcher below.
+watch(
+	() => props.modelValue,
+	(newValue) => {
+		if (!newValue) return;
+		Object.assign(filter, newValue);
+	},
+);
 
 type ExecutionVersion = { versionId: string; name: string | null; createdAt: string };
 const workflowVersions = ref<ExecutionVersion[]>([]);
