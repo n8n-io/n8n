@@ -50,7 +50,7 @@ export interface ToLangTracerOptions {
 	synthetic: boolean;
 }
 
-/** Seeding modes the case-write API can't take. An INLINE seed is pushable — it's a
+/** Case content the case-write API can't take. An INLINE seed is pushable — it's a
  *  durable fixture, and the API stores it verbatim. A REPLAY seed isn't: it points at
  *  a LangSmith trace that expires, lang-tracer derives it from a source thread it
  *  already holds, and such a case is barred from suites anyway. Returns a
