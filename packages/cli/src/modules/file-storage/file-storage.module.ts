@@ -49,4 +49,10 @@ export class FileStorageModule implements ModuleInterface {
 
 		return [ProjectFile];
 	}
+
+	async context() {
+		const { ProjectFilesProxyService } = await import('./project-files-proxy.service.js');
+
+		return { projectFilesProxyProvider: Container.get(ProjectFilesProxyService) };
+	}
 }

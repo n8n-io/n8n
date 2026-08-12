@@ -7,6 +7,7 @@ import type {
 	INode,
 	IWorkflowSettings,
 	OauthJweProxyProvider,
+	ProjectFilesProxyProvider,
 } from 'n8n-workflow';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
@@ -49,12 +50,15 @@ declare module 'n8n-workflow' {
 		 */
 		evalLlmMockHandler?: EvalLlmMockHandler;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
+		'file-storage'?: { projectFilesProxyProvider: ProjectFilesProxyProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.
 		dataTableProjectId?: string;
+		/** Same semantics as dataTableProjectId, for the Files node's resource locator. */
+		projectFilesProjectId?: string;
 		/**
 		 * Execution context for dynamic credential resolution (EE feature).
 		 * Contains encrypted credential context that can be decrypted by resolvers.

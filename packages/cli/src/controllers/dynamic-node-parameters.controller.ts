@@ -39,6 +39,7 @@ export class DynamicNodeParametersController {
 			currentNodeParameters,
 		});
 		additionalData.dataTableProjectId = projectId;
+		additionalData.projectFilesProjectId = projectId;
 
 		if (methodName) {
 			return await this.dynamicNodeParametersService.getOptionsViaMethodName(
@@ -89,6 +90,7 @@ export class DynamicNodeParametersController {
 			currentNodeParameters,
 		});
 		additionalData.dataTableProjectId = projectId;
+		additionalData.projectFilesProjectId = projectId;
 
 		return await this.dynamicNodeParametersService.getResourceLocatorResults(
 			methodName,
@@ -119,6 +121,7 @@ export class DynamicNodeParametersController {
 			currentNodeParameters,
 		});
 		additionalData.dataTableProjectId = projectId;
+		additionalData.projectFilesProjectId = projectId;
 
 		return await this.dynamicNodeParametersService.getResourceMappingFields(
 			methodName,

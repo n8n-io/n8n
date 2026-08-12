@@ -1,5 +1,5 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import {
 	collectDynamicNodeParameterPaths,
 	detectAuthenticationParameterValue,
@@ -165,6 +165,7 @@ export async function resolveResourceLocatorOptions(
 		currentNodeParameters,
 	});
 	additionalData.dataTableProjectId = resourceIds.projectId;
+	additionalData.projectFilesProjectId = resourceIds.projectId;
 
 	const nodeTypeAndVersion = { name: nodeType, version: nodeTypeVersion };
 	const dynamicPath = toDynamicParameterPath(parameterPath);

@@ -34,6 +34,7 @@ import { constructExecutionMetaData } from './utils/construct-execution-metadata
 import { copyInputItems } from './utils/copy-input-items';
 import { getCredentialCheckHelperFunctions } from './utils/credential-check-helper-functions';
 import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
+import { getProjectFilesHelperFunctions } from './utils/project-files-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
@@ -93,6 +94,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getDataTableHelperFunctions(additionalData, workflow, node),
+			...getProjectFilesHelperFunctions(additionalData, workflow, node),
 			...getCredentialCheckHelperFunctions(additionalData),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
