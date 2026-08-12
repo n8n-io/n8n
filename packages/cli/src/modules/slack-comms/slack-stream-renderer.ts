@@ -98,14 +98,25 @@ interface StreamSessionDeps {
 /**
  * Owns one thread's live Slack stream: subscribes to the Instance AI event
  * bus, translates events into `SlackChunk`s, and manages the transport's
- * lifecycle (reopen on a stale-stream error, idle-debounced close, cancel on
- * user-initiated stop). All outbound Slack calls for this thread go through a
- * single serialized queue so a slow in-flight `append()` can never be
- * overtaken by a later one — the flush timer, tool events and status updates
- * all enqueue onto it rather than firing independently.
+ * lifecycle. All outbound Slack calls for this thread go through a single
+ * serialized queue so a slow in-flight `append()` can never be overtaken by a
+ * later one — the flush timer, tool events and status updates all enqueue
+ * onto it rather than firing independently.
+ *
+ * The transport itself closes on every `run-finish`, not just when the
+ * thread goes fully idle: Slack only renders in-flight stream content to
+ * `recipient_user_id` — everyone else in the channel sees an empty message
+ * until `chat.stopStream` — so closing per run is what makes each run's
+ * content visible to the rest of the channel. The bus subscription stays
+ * live across that close; the next renderable event reopens a fresh
+ * transport. The idle-debounced check (`scheduleIdleCheck`/`checkIdle`)
+ * governs only the final unsubscribe once the thread has no active run, no
+ * suspension and no background tasks left.
  */
 class StreamSession {
 	private transport: StreamTransport;
+
+	private transportOpen = true;
 
 	private unsubscribe: (() => void) | undefined;
 
@@ -193,6 +204,7 @@ class StreamSession {
 				break;
 			case 'run-start':
 				this.hasPlan = false;
+				this.enqueue(async () => await this.ensureTransportOpen());
 				break;
 			default:
 				break;
@@ -254,8 +266,15 @@ class StreamSession {
 		);
 	}
 
+	/**
+	 * Not gated on `hasPlan`: a tool task that already started its own
+	 * lifecycle (tracked in `this.tasks`) must be let to finish it even if a
+	 * plan arrives in between, or its row is stuck `in_progress` forever and
+	 * the heartbeat nags about it indefinitely. `hasPlan` only gates whether a
+	 * *new* tool-driven row gets created (`setToolTask`); existence in
+	 * `this.tasks` is what gates completing one that already exists.
+	 */
 	private onToolEnd(toolCallId: string, status: SlackTaskStatus, error?: string): void {
-		if (this.hasPlan) return;
 		const existing = this.tasks.get(toolCallId);
 		if (!existing) return;
 
@@ -328,10 +347,11 @@ class StreamSession {
 	}
 
 	private onRunFinish(event: RunFinishEvent): void {
+		this.enqueue(async () => await this.flushTextIfAny());
 		if (event.payload.status === 'error') {
-			this.enqueue(async () => await this.flushTextIfAny());
 			this.enqueue(async () => await this.send([this.markdownChunk(RUN_ERROR_MESSAGE)]));
 		}
+		this.enqueue(async () => await this.closeTransport());
 		this.scheduleIdleCheck();
 	}
 
@@ -354,6 +374,8 @@ class StreamSession {
 
 	private async send(chunks: SlackChunk[]): Promise<void> {
 		if (this.closed) return;
+		await this.ensureTransportOpen();
+		if (!this.transportOpen) return;
 		try {
 			await this.transport.append(chunks);
 		} catch (error) {
@@ -389,6 +411,14 @@ class StreamSession {
 		}
 	}
 
+	/** No-op once a transport is already open — the per-run close leaves the
+	 *  bus subscription live, so every send() path checks this before
+	 *  appending instead of assuming the transport from the last run. */
+	private async ensureTransportOpen(): Promise<void> {
+		if (this.transportOpen || this.closed) return;
+		await this.reopenTransport();
+	}
+
 	private async reopenTransport(): Promise<void> {
 		try {
 			this.transport = await this.deps.webClient.openStream(
@@ -396,8 +426,27 @@ class StreamSession {
 				toStreamTarget(this.target),
 				'native',
 			);
+			this.transportOpen = true;
+			this.resetHeartbeat();
 		} catch (error) {
 			this.deps.logger.error('Failed to reopen Slack stream transport', {
+				threadId: this.threadId,
+				error,
+			});
+		}
+	}
+
+	private async closeTransport(): Promise<void> {
+		if (!this.transportOpen) return;
+		this.transportOpen = false;
+		if (this.heartbeatTimer) {
+			clearTimeout(this.heartbeatTimer);
+			this.heartbeatTimer = undefined;
+		}
+		try {
+			await this.transport.close();
+		} catch (error) {
+			this.deps.logger.error('Failed to close Slack stream transport', {
 				threadId: this.threadId,
 				error,
 			});
@@ -421,27 +470,28 @@ class StreamSession {
 			return;
 		}
 
+		// The transport is normally already closed by the last run-finish;
+		// this only matters as a safety net (e.g. idle without ever seeing one).
+		await this.closeTransport();
 		this.cleanup();
-		try {
-			await this.transport.close();
-		} catch (error) {
-			this.deps.logger.error('Failed to close Slack stream transport', {
-				threadId: this.threadId,
-				error,
-			});
-		}
 	}
 
+	/** Heartbeat only runs while a transport is open: between runs, once the
+	 *  per-run-finish close lands, there is nothing to nag on. */
 	private resetHeartbeat(): void {
 		if (this.closed) return;
 		if (this.heartbeatTimer) clearTimeout(this.heartbeatTimer);
+		if (!this.transportOpen) {
+			this.heartbeatTimer = undefined;
+			return;
+		}
 		this.heartbeatTimer = setTimeout(() => {
 			this.fireHeartbeat();
 		}, HEARTBEAT_IDLE_MS);
 	}
 
 	private fireHeartbeat(): void {
-		if (this.closed) return;
+		if (this.closed || !this.transportOpen) return;
 		const taskId = this.lastActiveTaskId;
 		const title = this.lastActiveTitle;
 		if (taskId !== undefined && title !== undefined) {
@@ -464,6 +514,7 @@ class StreamSession {
 	private cleanup(): void {
 		if (this.closed) return;
 		this.closed = true;
+		this.transportOpen = false;
 		if (this.flushTimer) clearInterval(this.flushTimer);
 		if (this.idleTimer) clearTimeout(this.idleTimer);
 		if (this.heartbeatTimer) clearTimeout(this.heartbeatTimer);
@@ -475,9 +526,11 @@ class StreamSession {
 /**
  * Turns an Instance AI thread's live event bus activity into Slack Thinking
  * Steps. One `attach()` call opens a stream transport for the thread and
- * keeps it updated until the thread goes fully idle (no active run,
- * suspended state, or background tasks) — detached tasks and auto
- * follow-up runs keep the same stream open across `run-finish` events.
+ * keeps the bus subscription live across runs — detached tasks and auto
+ * follow-up runs keep being rendered on the same thread — closing and
+ * reopening the transport once per run (see `StreamSession`), and
+ * unsubscribing only once the thread goes fully idle (no active run,
+ * suspended state, or background tasks).
  */
 @Service()
 export class SlackStreamRenderer {

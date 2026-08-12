@@ -128,6 +128,15 @@ function runFinishEvent(
 	} as InstanceAiEvent;
 }
 
+function runStartEvent(): InstanceAiEvent {
+	return {
+		type: 'run-start',
+		runId: RUN_ID,
+		agentId: AGENT_ID,
+		payload: { messageId: 'message-1' },
+	} as InstanceAiEvent;
+}
+
 function confirmationRequestEvent(): InstanceAiEvent {
 	return {
 		type: 'confirmation-request',
@@ -543,6 +552,33 @@ describe('SlackStreamRenderer', () => {
 
 			expect(transport.append).not.toHaveBeenCalled();
 		});
+
+		it('lets a tool task already in flight finish its own lifecycle even after a plan arrives', async () => {
+			vi.useFakeTimers();
+			const { renderer, transport, emit, target } = createHarness();
+			await renderer.attach('thread-1', target);
+
+			// Started before any plan existed.
+			emit(toolCallEvent('call-1', 'workflows', { action: 'list' }));
+			await vi.advanceTimersByTimeAsync(0);
+
+			// A plan shows up while call-1 is still running — it must not orphan it.
+			emit(tasksUpdateEvent([{ id: 't1', description: 'Plan step', status: 'todo' }]));
+			await vi.advanceTimersByTimeAsync(0);
+			transport.append.mockClear();
+
+			emit(toolResultEvent('call-1'));
+			await vi.waitFor(() => {
+				expect(transport.append).toHaveBeenCalledTimes(1);
+			});
+			expect(transport.append.mock.calls[0][0]).toEqual([
+				{ type: 'task_update', id: 'call-1', title: 'Listing workflows', status: 'complete' },
+			]);
+
+			transport.append.mockClear();
+			await vi.advanceTimersByTimeAsync(25000);
+			expect(transport.append).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('text-delta coalescing', () => {
@@ -743,28 +779,37 @@ describe('SlackStreamRenderer', () => {
 	});
 
 	describe('run-finish', () => {
-		it('does not close the transport', async () => {
-			const { renderer, transport, emit, target } = createHarness();
+		it('closes the transport immediately, without unsubscribing', async () => {
+			const { renderer, transport, unsubscribe, emit, target } = createHarness();
 			await renderer.attach('thread-1', target);
 
 			emit(runFinishEvent('completed'));
 
-			expect(transport.close).not.toHaveBeenCalled();
+			await vi.waitFor(() => {
+				expect(transport.close).toHaveBeenCalledTimes(1);
+			});
+			expect(unsubscribe).not.toHaveBeenCalled();
 		});
 
-		it('posts the standard apology markdown on an errored run', async () => {
+		it('flushes buffered text and posts the standard apology markdown before closing on an errored run', async () => {
 			const { renderer, transport, emit, target } = createHarness();
 			await renderer.attach('thread-1', target);
 
+			emit(textDeltaEvent('partial progress'));
 			emit(runFinishEvent('error'));
 
 			await vi.waitFor(() => {
-				expect(transport.append).toHaveBeenCalledTimes(1);
+				expect(transport.close).toHaveBeenCalledTimes(1);
 			});
-			const chunks = markdownChunks(transport.append.mock.calls[0][0]);
-			expect(chunks[0].text).toBe(
-				'I hit a problem and stopped. Steps marked done above did happen; nothing else was changed.',
+			expect(transport.append).toHaveBeenCalledTimes(2);
+			expect(markdownChunks(transport.append.mock.calls[0][0])[0].text).toBe('partial progress');
+			expect(markdownChunks(transport.append.mock.calls[1][0])[0].text).toBe(
+				'\n\nI hit a problem and stopped. Steps marked done above did happen; nothing else was changed.',
 			);
+			// close() must not fire until the flush and the apology have both been sent.
+			const closeOrder = transport.close.mock.invocationCallOrder[0];
+			const appendOrders = transport.append.mock.invocationCallOrder;
+			expect(closeOrder).toBeGreaterThan(appendOrders[appendOrders.length - 1]);
 		});
 	});
 
@@ -773,12 +818,14 @@ describe('SlackStreamRenderer', () => {
 			vi.useFakeTimers();
 		});
 
-		it('closes and unsubscribes once the thread is fully idle, 5s after run-finish', async () => {
+		it('closes on run-finish and unsubscribes only once the thread is fully idle, 5s later', async () => {
 			const { renderer, transport, instanceAiService, emit, target, unsubscribe } = createHarness();
 			await renderer.attach('thread-1', target);
 
 			emit(runFinishEvent('completed'));
-			expect(transport.close).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(0);
+			expect(transport.close).toHaveBeenCalledTimes(1);
+			expect(unsubscribe).not.toHaveBeenCalled();
 
 			await vi.advanceTimersByTimeAsync(5000);
 
@@ -787,23 +834,43 @@ describe('SlackStreamRenderer', () => {
 			expect(instanceAiService.getThreadStatus).toHaveBeenCalledWith('thread-1');
 		});
 
-		it('keeps polling instead of closing when a follow-up run starts inside the debounce window', async () => {
-			const { renderer, transport, instanceAiService, emit, target } = createHarness();
+		it('closes per run-finish and reopens a fresh transport on the next renderable event, unsubscribing only once the thread is finally idle', async () => {
+			const { renderer, transport, webClient, instanceAiService, unsubscribe, emit, target } =
+				createHarness();
 			await renderer.attach('thread-1', target);
 
 			emit(runFinishEvent('completed'));
+			await vi.advanceTimersByTimeAsync(0);
+			expect(transport.close).toHaveBeenCalledTimes(1);
 
 			instanceAiService.getThreadStatus.mockReturnValueOnce(activeStatus());
 			await vi.advanceTimersByTimeAsync(5000);
-			expect(transport.close).not.toHaveBeenCalled();
+			expect(unsubscribe).not.toHaveBeenCalled();
 
-			instanceAiService.getThreadStatus.mockReturnValueOnce(idleStatus());
+			const followUpTransport = mock<StreamTransport>();
+			followUpTransport.append.mockResolvedValue(undefined);
+			followUpTransport.close.mockResolvedValue(undefined);
+			webClient.openStream.mockResolvedValueOnce(followUpTransport);
+
+			emit(runStartEvent());
+			emit(textDeltaEvent('follow-up run activity'));
+			await vi.advanceTimersByTimeAsync(1000);
+
+			expect(webClient.openStream).toHaveBeenCalledTimes(2);
+			expect(followUpTransport.append).toHaveBeenCalledTimes(1);
+			expect(unsubscribe).not.toHaveBeenCalled();
+
+			emit(runFinishEvent('completed'));
+			await vi.advanceTimersByTimeAsync(0);
+			expect(followUpTransport.close).toHaveBeenCalledTimes(1);
+
+			instanceAiService.getThreadStatus.mockReturnValue(idleStatus());
 			await vi.advanceTimersByTimeAsync(5000);
-			expect(transport.close).toHaveBeenCalledTimes(1);
+			expect(unsubscribe).toHaveBeenCalledTimes(1);
 		});
 
-		it('does not close while background tasks are still running', async () => {
-			const { renderer, transport, instanceAiService, emit, target } = createHarness();
+		it('does not unsubscribe while background tasks are still running', async () => {
+			const { renderer, instanceAiService, unsubscribe, emit, target } = createHarness();
 			await renderer.attach('thread-1', target);
 
 			emit(runFinishEvent('completed'));
@@ -816,7 +883,7 @@ describe('SlackStreamRenderer', () => {
 			});
 
 			await vi.advanceTimersByTimeAsync(5000);
-			expect(transport.close).not.toHaveBeenCalled();
+			expect(unsubscribe).not.toHaveBeenCalled();
 		});
 	});
 
