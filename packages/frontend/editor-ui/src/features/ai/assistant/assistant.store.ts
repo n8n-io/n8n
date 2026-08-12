@@ -30,6 +30,7 @@ import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAI
 import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { v4 as uuid } from 'uuid';
+import type { AiErrorExplanation } from './errorExplanation.types';
 
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
@@ -314,6 +315,87 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}, 4000);
 	}
 
+	async function createErrorHelperPayload(
+		workflowId: string,
+		context: ChatRequest.ErrorContext,
+	): Promise<ChatRequest.InitErrorHelper> {
+		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
+			workflowId,
+			context.node,
+			{ excludeParameterValues: !allowSendingParameterValues.value },
+		);
+
+		return {
+			role: 'user',
+			type: 'init-error-helper',
+			user: {
+				firstName: usersStore.currentUser?.firstName ?? '',
+			},
+			error: context.error,
+			node: await assistantHelpers.processNodeForAssistant(
+				context.node,
+				['position', 'parameters.notice'],
+				{
+					excludeParameterValues: !allowSendingParameterValues.value,
+				},
+			),
+			nodeInputData,
+			executionSchema: schemas,
+			authType,
+			context: {
+				aiUsageSettings: {
+					allowSendingParameterValues: allowSendingParameterValues.value,
+				},
+			},
+		};
+	}
+
+	async function explainError(
+		workflowId: string,
+		context: ChatRequest.ErrorContext,
+		abortSignal?: AbortSignal,
+	): Promise<AiErrorExplanation> {
+		const payload = await createErrorHelperPayload(workflowId, context);
+		let fallbackText = '';
+		let detailedSuggestion = '';
+		let codeDiff: string | undefined;
+
+		return await new Promise<AiErrorExplanation>((resolve, reject) => {
+			chatWithAssistant(
+				rootStore.restApiContext,
+				{ payload },
+				(response) => {
+					for (const message of response.messages) {
+						if (message.type === 'message' && message.role === 'assistant') {
+							fallbackText = message.text;
+						} else if (message.type === 'summary' && message.role === 'assistant') {
+							fallbackText = message.content;
+						} else if (message.type === 'agent-suggestion' && message.role === 'assistant') {
+							detailedSuggestion = message.text;
+						} else if (
+							message.type === 'code-diff' &&
+							message.role === 'assistant' &&
+							message.description
+						) {
+							detailedSuggestion = message.description;
+							codeDiff = message.codeDiff;
+						}
+					}
+				},
+				() => {
+					const detailed = detailedSuggestion || fallbackText;
+					if (!detailed) {
+						reject(new Error('AI Assistant returned no explanation'));
+						return;
+					}
+					resolve({ detailed, ...(codeDiff ? { codeDiff } : {}) });
+				},
+				reject,
+				abortSignal,
+			);
+		});
+	}
+
 	async function initCredHelp(workflowId: string, credType: ICredentialType) {
 		const hasExistingSession = !!currentSessionId.value;
 		const question = locale.baseText('aiAssistant.builder.credentialHelpMessage', {
@@ -511,37 +593,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			currentSessionActiveExecutionId.value = activeExecutionId;
 		}
 
-		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
-			workflowId,
-			context.node,
-			{ excludeParameterValues: !allowSendingParameterValues.value },
-		);
-
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
 		streaming.value = true;
-		const payload: ChatRequest.RequestPayload['payload'] = {
-			role: 'user',
-			type: 'init-error-helper',
-			user: {
-				firstName: usersStore.currentUser?.firstName ?? '',
-			},
-			error: context.error,
-			node: await assistantHelpers.processNodeForAssistant(
-				context.node,
-				['position', 'parameters.notice'],
-				{
-					excludeParameterValues: !allowSendingParameterValues.value,
-				},
-			),
-			nodeInputData,
-			executionSchema: schemas,
-			authType,
-			context: {
-				aiUsageSettings: {
-					allowSendingParameterValues: allowSendingParameterValues.value,
-				},
-			},
-		};
+		const payload = await createErrorHelperPayload(workflowId, context);
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
 		}
@@ -783,6 +837,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		onNodeExecution,
 		trackUserOpenedAssistant,
 		isNodeErrorActive,
+		explainError,
 		initErrorHelper,
 		initSupportChat,
 		sendMessage,

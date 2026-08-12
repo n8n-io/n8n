@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, h } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -24,6 +24,10 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
+import { AI_ERROR_EXPLANATION_MODAL_KEY } from '@/features/ai/assistant/constants';
+import { N8nInlineAskAssistantButton } from '@n8n/design-system';
 import {
 	SampleTemplates,
 	isTutorialTemplateId,
@@ -411,12 +415,62 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 		}
 	} else if (execution.data?.resultData.error) {
 		if (!suppressToasts) {
+			const error = execution.data.resultData.error;
 			const { message, title } = getExecutionErrorToastConfiguration({
-				error: execution.data.resultData.error,
+				error,
 				lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
 			});
 
-			toast.showMessage({ title, message, type: 'error', duration: 0 });
+			const errorNodeName =
+				'node' in error && error.node?.name
+					? error.node.name
+					: execution.data.resultData.lastNodeExecuted;
+			const errorNode = errorNodeName
+				? workflowDocumentStore.getNodeByName(errorNodeName)
+				: undefined;
+
+			if (useSettingsStore().isAiAssistantEnabled && errorNode) {
+				const errorContext: ChatRequest.ErrorContext = {
+					error: {
+						name: error.name,
+						message: error.message,
+						description: error.description,
+						lineNumber: error.lineNumber,
+						stack: error.stack,
+						type: 'type' in error && typeof error.type === 'string' ? error.type : undefined,
+					},
+					node: errorNode,
+				};
+				let notification: ReturnType<typeof toast.showMessage> | undefined;
+				const askAssistantButton = h(N8nInlineAskAssistantButton, {
+					size: 'small',
+					label: i18n.baseText('aiAssistant.errorExplanation.action'),
+					onClick: () => {
+						notification?.close();
+						const assistantStore = useAssistantStore();
+						const workflowId = workflowDocumentStore.workflowId;
+						useUIStore().openModalWithData({
+							name: AI_ERROR_EXPLANATION_MODAL_KEY,
+							data: {
+								loadExplanation: async (signal: AbortSignal) =>
+									await assistantStore.explainError(workflowId, errorContext, signal),
+							},
+						});
+					},
+				});
+
+				notification = toast.showMessage({
+					title,
+					message: h('div', [
+						message,
+						h('div', { style: 'margin-top: var(--spacing--xs)' }, [askAssistantButton]),
+					]),
+					type: 'error',
+					duration: 0,
+				});
+			} else {
+				toast.showMessage({ title, message, type: 'error', duration: 0 });
+			}
 		}
 
 		useBuilderStore().incrementManualExecutionStats('error');

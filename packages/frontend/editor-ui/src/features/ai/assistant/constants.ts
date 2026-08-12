@@ -1,5 +1,7 @@
 import { EDITABLE_CANVAS_VIEWS, VIEWS } from '@/app/constants';
 
+export const AI_ERROR_EXPLANATION_MODAL_KEY = 'aiErrorExplanationModal';
+
 /**
  * Views where the Assistant chat panel can be shown
  */

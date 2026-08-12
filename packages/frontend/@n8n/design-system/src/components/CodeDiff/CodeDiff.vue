@@ -15,6 +15,7 @@ interface Props {
 	replaced?: boolean;
 	error?: boolean;
 	streaming?: boolean;
+	showActions?: boolean;
 }
 
 type Line =
@@ -31,6 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 	replaced: false,
 	error: false,
 	streaming: false,
+	showActions: true,
 });
 
 const emit = defineEmits<{
@@ -106,7 +108,7 @@ const diffs = computed(() => {
 				</div>
 			</div>
 		</div>
-		<div :class="$style.actions">
+		<div v-if="showActions" :class="$style.actions">
 			<div v-if="error">
 				<N8nIcon icon="triangle-alert" color="danger" class="mr-5xs" />
 				<span :class="$style.infoText">{{ t('codeDiff.couldNotReplace') }}</span>
