@@ -4,13 +4,14 @@ import {
 	WorkflowHistory,
 	WorkflowHistoryRepository,
 	WorkflowPublicationOutbox,
+	WorkflowPublicationReason,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	type WorkflowPublicationTriggerKind,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { INode } from 'n8n-workflow';
+import type { INode, WorkflowActivateMode } from 'n8n-workflow';
 
 import type {
 	PublicationResult,
@@ -23,6 +24,19 @@ import {
 	type TriggerActivationOutcome,
 } from '@/workflows/triggers/workflow-trigger-activator';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
+/**
+ * The activation mode reported to trigger nodes for each enqueue reason, so
+ * e.g. the n8n Trigger's "Instance Started" event fires exactly for the
+ * leader's startup pass. Records from before the `reason` column existed
+ * default to `publish` at the DB level, i.e. today's `update` behavior.
+ */
+const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActivateMode> = {
+	[WorkflowPublicationReason.Publish]: 'update',
+	[WorkflowPublicationReason.Startup]: 'init',
+	[WorkflowPublicationReason.LeadershipTakeover]: 'leadershipChange',
+	[WorkflowPublicationReason.Reconcile]: 'update',
+};
 
 /**
  * Reconciles a workflow's triggers to a published version, one outbox record at
@@ -152,7 +166,14 @@ export class WorkflowPublicationApplier {
 
 		try {
 			if (toAdd.size > 0) {
-				const outcome = await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
+				const activationMode =
+					ACTIVATION_MODE_BY_REASON[record.reason ?? WorkflowPublicationReason.Publish];
+				const outcome = await this.workflowTriggerActivator.activate(
+					workflow,
+					newVersion,
+					toAdd,
+					activationMode,
+				);
 				return this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds);
 			}
 

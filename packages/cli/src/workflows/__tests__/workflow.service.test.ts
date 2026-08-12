@@ -1373,6 +1373,7 @@ describe('WorkflowService', () => {
 			expect(outboxRepositoryMock.enqueue).toHaveBeenCalledWith(
 				WORKFLOW_ID,
 				TARGET_VERSION_ID,
+				'publish',
 				trx,
 			);
 			// publish-history records (deactivated for the previous version, activated for the
