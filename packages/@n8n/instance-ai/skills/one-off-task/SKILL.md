@@ -1,12 +1,18 @@
 ---
 name: one-off-task
 description: >-
-  Delegates run-once work to a sandboxed coding sub-agent with the
-  run-one-off-task tool: creating an external resource (a sheet, a channel, a
-  repo), a one-time data transfer or backfill, a report or analysis over
-  external data, or an audit/lookup. Use when the user asks for something to
-  happen once, now — not on a schedule, not on a trigger. Never use it for
-  recurring or event-driven work.
+  Executes run-once work immediately, WITHOUT building a workflow, by
+  delegating to a sandboxed coding sub-agent (run-one-off-task tool). Load
+  when the deliverable is an external artifact or result produced once, now:
+  create a spreadsheet, document, channel, repo, or folder structure
+  (optionally filled with generated, example, or computed data); a one-time
+  data transfer, import, or backfill; a one-off report, analysis, audit, or
+  bulk cleanup. Signals: the request names no trigger, no schedule, and no
+  recurrence — the user wants the thing to exist, not an automation that
+  produces it. For such requests this skill takes precedence over
+  workflow-builder: a workflow that would run once is the wrong shape.
+  Recurring, scheduled, or event-triggered automation still belongs to
+  workflow-builder.
 recommended_tools:
   - run-one-off-task
   - credentials
@@ -21,15 +27,26 @@ structured report.
 
 ## Routing: workflow or one-off task
 
-- **Recurring, scheduled, or triggered work → build a workflow.** Anything with
-  "every", "whenever", "each time", a webhook, or a trigger is workflow work.
-  Refuse to run it as a one-off task and route to the workflow builder.
-- **Run-once work → one-off task.** Create a resource, transfer data once,
-  backfill history, produce a report, audit existing data.
-- The user's explicit choice wins. If they ask for a workflow, build one; if
-  they ask to "just do it once", use a one-off task.
+The deciding question: is the deliverable an **automation** (something that
+runs again later) or an **artifact** (something that exists after running
+once)?
+
+- **Artifact, no trigger, no schedule → one-off task.** Create a resource,
+  generate and insert data, transfer or import data once, backfill history,
+  produce a report, audit or clean up existing data. Do NOT build a workflow
+  that would run once and never again — that wastes the user's time on
+  trigger/canvas machinery the task does not need.
+- **Recurring, scheduled, or triggered work → build a workflow.** Anything
+  with "every", "whenever", "each time", "on new X", a webhook, or a trigger
+  is workflow work. Refuse to run it as a one-off task and route to the
+  workflow builder.
+- The user's explicit choice wins in both directions. If they ask for a
+  workflow, build one; if they ask to "just do it once", use a one-off task.
 - If the request is ambiguous ("sync my contacts"), ask whether this should
   happen once or continuously before choosing.
+- If `intent-recognition` is loaded this turn: its workflow/agent anchors
+  classify *automation* requests. A run-once artifact request is not an
+  automation request — it needs no anchor; execute it as a one-off task.
 
 ## Writing the task contract
 
@@ -63,10 +80,13 @@ confirmation of that scope before dispatching.
 
 ## Handling the result
 
-- The task runs in the background; you get a follow-up with the structured
-  report (status, actions, verification evidence, artifact links).
-- Relay the summary and artifact links to the user. Do not embellish the
-  verification evidence.
+- The task runs in the background. `run-one-off-task` returns only a task ID —
+  it contains no results. After dispatching, tell the user the task is running
+  and end your turn. **Never report completion, artifacts, URLs, or numbers
+  before the `background-task-completed` follow-up delivers the structured
+  report** — anything you state earlier is invented.
+- From the report, relay the summary and artifact links to the user. Do not
+  embellish the verification evidence.
 - If the report status is "partial" or "failed", tell the user exactly what
   was and was not done — half-created resources must be mentioned.
 - If the task ended without a structured report, say the external state is

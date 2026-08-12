@@ -29,7 +29,9 @@ function resolvePath(root: string, path: string): string {
 		: posixNormalize(posixJoin(normalizedRoot, path));
 
 	if (!isInsideRoot(normalizedPath, normalizedRoot)) {
-		throw new Error(`Path escapes builder workspace root: ${path}`);
+		throw new Error(
+			`Path escapes builder workspace root: ${path}. Use a path relative to your workspace root (${normalizedRoot}).`,
+		);
 	}
 
 	return normalizedPath;

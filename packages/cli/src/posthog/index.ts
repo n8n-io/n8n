@@ -219,6 +219,9 @@ export class PostHogClient {
 			overrides[CANVAS_NODE_CONTEXT_FLAG] = true;
 		}
 
+		// Generic JSON map (N8N_FEATURE_FLAG_OVERRIDES) wins over per-feature envs.
+		Object.assign(overrides, this.globalConfig.featureFlags.override);
+
 		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
 	}
 }

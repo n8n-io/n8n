@@ -387,6 +387,8 @@ export {
 	applyBranchReadOnlyOverrides,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	INSTANCE_AI_ONE_OFF_TASKS_FLAG,
+	INSTANCE_AI_ONE_OFF_TASKS_ENABLED_VARIANT,
 } from './schemas/instance-ai.schema';
 
 export type {

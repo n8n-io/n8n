@@ -187,8 +187,10 @@ export async function startOneOffTaskAgent(
 				const workspace = createLazyRuntimeWorkspace({
 					id: `one-off-task-workspace-${taskId}`,
 					name: 'One-off task workspace',
-					sandboxInstructions: '',
-					filesystemInstructions: '',
+					sandboxInstructions:
+						'Commands run inside your task directory. Do not cd elsewhere; absolute paths outside it are rejected.',
+					filesystemInstructions:
+						'All paths are relative to your task directory. Never use absolute paths (/tmp, /home, ...) — they are outside your workspace and are rejected.',
 					ensureWorkspace: async () => await Promise.resolve(scopedWorkspace),
 				});
 
@@ -283,7 +285,10 @@ export async function startOneOffTaskAgent(
 	});
 
 	return {
-		result: `One-off task started (task: ${taskId}). You will get a <background-task-completed> follow-up with the structured report. Reply with one short sentence.`,
+		result:
+			`One-off task started (task: ${taskId}) and is running in the background — there are NO results yet. ` +
+			'Do not state, estimate, or invent any outcome, URL, number, or artifact. ' +
+			'Tell the user the task is running and end your turn. The structured report arrives in a <background-task-completed> follow-up; report results only from it.',
 		taskId,
 		agentId: subAgentId,
 	};

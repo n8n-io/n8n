@@ -227,6 +227,7 @@ describe('PostHog', () => {
 				globalConfig.evaluation.agentEvalsEnabled = false;
 				globalConfig.instanceAi.mcpConnectionsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
+				globalConfig.featureFlags.override = {};
 			});
 
 			it('force-enables the eval-collections flag when N8N_EVAL_COLLECTIONS_ENABLED is set', async () => {
@@ -263,6 +264,26 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '089_instance_ai_mcp_connections': 'variant' });
+			});
+
+			it('applies the generic JSON override map on top of resolved flags', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ '105_instance_ai_one_off_tasks': false }),
+				);
+				globalConfig.featureFlags.override = {
+					'105_instance_ai_one_off_tasks': 'variant',
+					some_boolean_flag: true,
+				};
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({
+					'105_instance_ai_one_off_tasks': 'variant',
+					some_boolean_flag: true,
+				});
 			});
 
 			it('leaves flags untouched when no override is configured', async () => {
