@@ -396,6 +396,7 @@ onBeforeUnmount(() => {
 				:is-streaming="showStopAsPrimaryAction"
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"
+				:autofocus="true"
 				:can-submit="
 					!hasOpenApproval &&
 					!isStreaming &&

@@ -1,7 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, shallowMount } from '@vue/test-utils';
-import { TOOLTIP_DELAY_MS } from '@n8n/design-system';
 
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
@@ -27,6 +26,20 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nButton: {
+		name: 'N8nButton',
+		template: '<button v-bind="$attrs" :data-variant="variant" :data-size="size"><slot /></button>',
+		props: ['size', 'variant'],
+	},
+	N8nDropdownMenu: {
+		name: 'N8nDropdownMenu',
+		template: '<div><slot name="trigger" /></div>',
+	},
+	N8nIcon: {
+		name: 'N8nIcon',
+		template: '<i :data-icon="icon" />',
+		props: ['icon'],
+	},
 	N8nIconButton: {
 		name: 'N8nIconButton',
 		template:
@@ -35,10 +48,9 @@ vi.mock('@n8n/design-system', () => ({
 		emits: ['click'],
 	},
 	N8nKeyboardShortcut: { name: 'N8nKeyboardShortcut', template: '<span />' },
-	N8nHeading: {
-		name: 'N8nHeading',
-		template: '<component :is="tag" v-bind="$attrs" :data-size="size"><slot /></component>',
-		props: ['size', 'tag'],
+	N8nText: {
+		name: 'N8nText',
+		template: '<span v-bind="$attrs"><slot /></span>',
 	},
 	N8nTooltip: {
 		name: 'N8nTooltip',
@@ -68,6 +80,7 @@ function mountDock(
 		...(attachTo ? { attachTo } : {}),
 		props: {
 			sessionTitle: 'Order help',
+			sessionOptions: [],
 			hasSession: true,
 			initialized: true,
 			projectId: 'project-1',
@@ -89,13 +102,16 @@ describe('AgentPreviewDock', () => {
 		useKeybindingsMock.mockClear();
 	});
 
-	it('renders the Instance AI session heading before the compact actions', () => {
+	it('renders the session switcher before the compact actions', () => {
 		const wrapper = mountDock();
 		const title = wrapper.get('[data-testid="agent-preview-session-title"]');
 
 		expect(title.text()).toBe('Order help');
-		expect(title.element.tagName).toBe('H2');
-		expect(title.attributes('data-size')).toBe('small');
+		expect(title.element.tagName).toBe('BUTTON');
+		expect(title.attributes()).toMatchObject({
+			'aria-label': 'agentSessions.sessionName',
+			'data-size': 'small',
+		});
 		expect(
 			wrapper
 				.get('[data-testid="agent-preview-dock-header"]')
@@ -105,6 +121,7 @@ describe('AgentPreviewDock', () => {
 			'agent-preview-session-title',
 			'agent-preview-view-session-btn',
 			'agent-preview-new-chat-btn',
+			'agent-preview-layout-btn',
 			'agent-preview-close-btn',
 		]);
 	});
@@ -133,7 +150,6 @@ describe('AgentPreviewDock', () => {
 		expect(traceTooltip.attributes()).toMatchObject({
 			'data-content': 'agents.builder.preview.viewSession',
 			'data-placement': 'bottom',
-			'data-show-after': String(TOOLTIP_DELAY_MS),
 		});
 
 		for (const action of expectedActions) {
