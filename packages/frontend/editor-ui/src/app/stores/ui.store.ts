@@ -385,7 +385,28 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		patchModalState(payload.name, { data: payload.data });
 	};
 
+	/**
+	 * Since Seam A an unknown key resolves to a closed state instead of throwing,
+	 * so a modal whose registration was forgotten reads as "it just doesn't open".
+	 * This is what makes that visible, and it belongs on the open path: by the time
+	 * a key is missing its `<ModalRoot>` is gone too and `DynamicModalLoader` only
+	 * iterates registered keys, so nothing ever reads it — the click is the only
+	 * signal. Needs that click, so a modal nobody opens in dev stays silent.
+	 */
+	const warnIfUnknownModalKey = (name: string): void => {
+		if (!import.meta.env.DEV) return;
+		if (name in shellModalDefaults || modalRegistry.has(name) || modalRegistry.isAdHocKey(name)) {
+			return;
+		}
+
+		console.warn(
+			`[modals] Opening "${name}", which nothing defines — no shell catalogue entry and no registry entry, so it will not render.\n` +
+				'Register it from the owning feature\'s `modals.ts`, or declare its prefix with `modalRegistry.declareAdHocKeyPrefix()` if the key is minted at runtime.',
+		);
+	};
+
 	const openModal = (name: ModalKey) => {
+		warnIfUnknownModalKey(name);
 		patchModalState(name, { open: true });
 		modalStack.value = [name].concat(modalStack.value) as string[];
 	};
