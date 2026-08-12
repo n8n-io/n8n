@@ -27,7 +27,9 @@ vi.mock('@/app/composables/useIntersectionObserver', () => ({
 
 const renderComponent = createComponentRenderer(WorkflowReviewActivityFeed);
 
-function makeEntry(overrides: Partial<WorkflowReviewActivityEntry> = {}) {
+type CommentEntry = Extract<WorkflowReviewActivityEntry, { type: 'comment.created' }>;
+
+function makeComment(overrides: Partial<CommentEntry> = {}): WorkflowReviewActivityEntry {
 	return {
 		id: '1',
 		type: 'comment.created',
@@ -46,8 +48,16 @@ function makeEntry(overrides: Partial<WorkflowReviewActivityEntry> = {}) {
 			},
 		],
 		...overrides,
-	} as WorkflowReviewActivityEntry;
+	};
 }
+
+/** Every non-comment entry shares these fields; `type` and `data` are per row. */
+const systemEntry = {
+	id: '1',
+	typeVersion: 1,
+	createdBy: null,
+	createdAt: '2024-01-01T00:00:00.000Z',
+};
 
 describe('WorkflowReviewActivityFeed', () => {
 	let store: ReturnType<typeof mockedStore<typeof useReviewActivityStore>>;
@@ -66,7 +76,7 @@ describe('WorkflowReviewActivityFeed', () => {
 	});
 
 	it('shows one entry per activity in the feed', async () => {
-		store.entries = Array.from({ length: 3 }, (_, index) => makeEntry({ id: String(index) }));
+		store.entries = Array.from({ length: 3 }, (_, index) => makeComment({ id: String(index) }));
 
 		const { queryAllByTestId } = renderComponent();
 		await nextTick();
@@ -112,7 +122,7 @@ describe('WorkflowReviewActivityFeed', () => {
 
 	it('still reaches the earlier activity after posting onto a feed that failed to load', () => {
 		store.error = new Error('boom');
-		store.entries = [makeEntry()];
+		store.entries = [makeComment()];
 
 		const { getByTestId } = renderComponent();
 		getByTestId('workflow-review-activity-load-more-retry').click();
@@ -122,7 +132,7 @@ describe('WorkflowReviewActivityFeed', () => {
 	});
 
 	it('shows progress while refetching a feed that already has entries', async () => {
-		store.entries = [makeEntry()];
+		store.entries = [makeComment()];
 		store.loading = true;
 
 		const { container } = renderComponent();
@@ -132,7 +142,7 @@ describe('WorkflowReviewActivityFeed', () => {
 	});
 
 	it('keeps a loaded feed and offers a retry when load-more failed', async () => {
-		store.entries = [makeEntry()];
+		store.entries = [makeComment()];
 		store.hasMore = true;
 		// A load-more failure always has a cursor to resume from.
 		store.nextCursor = 'cursor-1';
@@ -161,7 +171,7 @@ describe('WorkflowReviewActivityFeed', () => {
 	});
 
 	it('shows a placeholder for an activity type this frontend does not know', async () => {
-		store.entries = [makeEntry({ typeVersion: 2 })];
+		store.entries = [makeComment({ typeVersion: 2 })];
 
 		const { getByTestId } = renderComponent();
 		await nextTick();
@@ -172,7 +182,7 @@ describe('WorkflowReviewActivityFeed', () => {
 	});
 
 	it('loads older entries when the viewer scrolls to the top of the feed', async () => {
-		store.entries = [makeEntry()];
+		store.entries = [makeComment()];
 		store.hasMore = true;
 
 		const { getByTestId } = renderComponent();
@@ -189,7 +199,7 @@ describe('WorkflowReviewActivityFeed', () => {
 	});
 
 	it('stops loading once the oldest entry is on screen', async () => {
-		store.entries = [makeEntry()];
+		store.entries = [makeComment()];
 		store.hasMore = false;
 
 		renderComponent();
@@ -200,7 +210,7 @@ describe('WorkflowReviewActivityFeed', () => {
 	});
 
 	it('does not request the same older page twice', async () => {
-		store.entries = [makeEntry()];
+		store.entries = [makeComment()];
 		store.hasMore = true;
 		store.loadingMore = true;
 
@@ -209,5 +219,180 @@ describe('WorkflowReviewActivityFeed', () => {
 		await nextTick();
 
 		expect(observer.observe).not.toHaveBeenCalled();
+	});
+
+	describe('review lifecycle entries', () => {
+		it.each<[string, WorkflowReviewActivityEntry, { testId: string; text: string; note?: string }]>(
+			[
+				[
+					'the review being submitted',
+					{ ...systemEntry, type: 'review.opened', data: { workflowVersionIds: ['version-1'] } },
+					{ testId: 'workflow-review-activity-opened', text: 'Review submitted' },
+				],
+				[
+					'requested changes with the note the reviewer left',
+					{
+						...systemEntry,
+						type: 'review.changes_requested',
+						data: { workflowVersionIds: ['version-1'], note: 'Please add retries' },
+					},
+					{
+						testId: 'workflow-review-activity-changes-requested',
+						text: 'Requested changes',
+						note: 'Please add retries',
+					},
+				],
+				[
+					'an approval with the note the reviewer left',
+					{
+						...systemEntry,
+						type: 'review.approved',
+						data: { workflowVersionIds: ['version-1'], note: 'Ship it' },
+					},
+					{
+						testId: 'workflow-review-activity-approved',
+						text: 'Approved this review',
+						note: 'Ship it',
+					},
+				],
+				[
+					'an approval given without a note',
+					{
+						...systemEntry,
+						type: 'review.approved',
+						data: { workflowVersionIds: ['version-1'], note: null },
+					},
+					{ testId: 'workflow-review-activity-approved', text: 'Approved this review' },
+				],
+				[
+					'an approval whose stored payload can no longer be read',
+					{ ...systemEntry, type: 'review.approved', data: null },
+					{ testId: 'workflow-review-activity-approved', text: 'Approved this review' },
+				],
+				[
+					'the reviewed version being updated',
+					{
+						...systemEntry,
+						type: 'review.version_updated',
+						data: { fromVersionId: 'version-1', toVersionId: 'version-2' },
+					},
+					{
+						testId: 'workflow-review-activity-version-updated',
+						text: 'Updated the reviewed version',
+					},
+				],
+				[
+					'a review closed by archiving its workflow',
+					{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-archived' } },
+					{
+						testId: 'workflow-review-activity-closed',
+						text: 'Review closed because the workflow was archived',
+					},
+				],
+				[
+					'a review closed by moving its workflow',
+					{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-moved' } },
+					{
+						testId: 'workflow-review-activity-closed',
+						text: 'Review closed because the workflow moved to another project',
+					},
+				],
+				[
+					'a review closed by deleting its workflow',
+					{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-deleted' } },
+					{
+						testId: 'workflow-review-activity-closed',
+						text: 'Review closed because the workflow was deleted',
+					},
+				],
+			],
+		)('shows %s', async (_label, entry, expected) => {
+			store.entries = [entry];
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId(expected.testId)).toHaveTextContent(expected.text);
+			if (expected.note) {
+				expect(getByTestId('workflow-review-activity-note')).toHaveTextContent(expected.note);
+			} else {
+				expect(queryByTestId('workflow-review-activity-note')).not.toBeInTheDocument();
+			}
+		});
+
+		// The only entry whose sentence *is* its payload, so it is the only one that
+		// cannot degrade to the same sentence with a piece missing.
+		it('shows a placeholder for a closed review that no longer says why', async () => {
+			store.entries = [{ ...systemEntry, type: 'review.closed', data: null }];
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-unknown')).toHaveTextContent(
+				"This activity entry can't be displayed.",
+			);
+			expect(queryByTestId('workflow-review-activity-closed')).not.toBeInTheDocument();
+		});
+
+		// No component is registered for this type yet, which is why the registry stays partial.
+		it('shows a placeholder for an entry type no renderer covers yet', async () => {
+			store.entries = [{ ...systemEntry, type: 'workflow.published', data: null }];
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-unknown')).toBeInTheDocument();
+		});
+
+		it('names the reviewer who acted', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'review.approved',
+					data: { workflowVersionIds: ['version-1'], note: null },
+					createdBy: {
+						id: 'user-1',
+						email: 'ada@example.com',
+						firstName: 'Ada',
+						lastName: 'Lovelace',
+					},
+				},
+			];
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-actor')).toHaveTextContent('Ada Lovelace');
+			expect(getByTestId('workflow-review-activity-separator')).toBeInTheDocument();
+		});
+
+		// The actor is missing for two different reasons, and a deleted approver must not
+		// read as a system event.
+		it('names a deleted reviewer as the actor of their decision', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'review.approved',
+					data: { workflowVersionIds: ['version-1'], note: null },
+				},
+			];
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-actor')).toHaveTextContent('Deleted user');
+		});
+
+		it('shows no actor at all for a review the system closed', async () => {
+			store.entries = [
+				{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-moved' } },
+			];
+
+			const { queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(queryByTestId('workflow-review-activity-actor')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-review-activity-separator')).not.toBeInTheDocument();
+		});
 	});
 });
