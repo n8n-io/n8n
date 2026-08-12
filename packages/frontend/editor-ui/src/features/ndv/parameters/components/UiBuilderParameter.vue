@@ -110,9 +110,14 @@ const host: UiBuilderHost = {
 
 		const [trigger] = candidates;
 		const path = String(trigger.parameters?.path ?? '').replace(/^\//, '');
-		const isFullPath = Boolean(trigger.parameters?.isFullPath);
 
-		return getNodeWebhookUrl(rootStore.webhookUrl, workflowId, trigger, path, isFullPath);
+		// `isFullPath` isn't a node parameter — it's a static `true` on the Webhook
+		// node type's own webhook description (see nodes-base `Webhook/description.ts`),
+		// meaning the production URL is the path on its own, with no webhookId
+		// segment. `trigger.parameters?.isFullPath` doesn't exist and is always
+		// undefined, which previously coerced to `false` and wrongly prefixed the
+		// webhookId.
+		return getNodeWebhookUrl(rootStore.webhookUrl, workflowId, trigger, path, true);
 	},
 
 	/**
