@@ -68,7 +68,10 @@ describe('NodeIssueItem', () => {
 		expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Linear', 'other');
 	});
 
-	it('opens NDV and emits click when Enter is pressed on the item', async () => {
+	it.each([
+		['Enter', 'Enter'],
+		['Space', ' '],
+	])('opens NDV and emits click when %s is pressed on the item', async (_label, key) => {
 		const nodeType = {
 			name: 'n8n-nodes-base.linear',
 			displayName: 'Linear',
@@ -82,7 +85,7 @@ describe('NodeIssueItem', () => {
 			},
 		});
 
-		await fireEvent.keyDown(getByLabelText('Edit Linear node'), { key: 'Enter' });
+		await fireEvent.keyDown(getByLabelText('Edit Linear node'), { key });
 
 		expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Linear', 'other');
 		expect(emitted().click).toHaveLength(1);
