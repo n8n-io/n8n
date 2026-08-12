@@ -44,19 +44,22 @@ const DEFAULT_NODE_PANEL_STATE: NodePanelState = {
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const postHogStore = usePostHog();
+	// HACKMATION BRANCH ONLY — not for merge.
+	// The three node-panel experiments default to their variant so a deployed test
+	// instance needs no console setup. Overriding a flag to 'control' still turns it
+	// off, e.g. featureFlags.override('node_panel_anchored', 'control').
+	function isVariantByDefault(experiment: { name: string; control: string }) {
+		return postHogStore.getVariant(experiment.name) !== experiment.control;
+	}
+
 	const isZoomedViewEnabled = computed(
 		() =>
 			postHogStore.getVariant(CANVAS_ZOOMED_VIEW_EXPERIMENT.name) ===
 			CANVAS_ZOOMED_VIEW_EXPERIMENT.variant,
 	);
-	const isNdvInFocusPanelEnabled = computed(() => {
-		const variant = postHogStore.getVariant(NDV_IN_FOCUS_PANEL_EXPERIMENT.name);
-
-		return (
-			variant === NDV_IN_FOCUS_PANEL_EXPERIMENT.variant ||
-			(import.meta.env.MODE === 'development' && variant === undefined)
-		);
-	});
+	const isNdvInFocusPanelEnabled = computed(() =>
+		isVariantByDefault(NDV_IN_FOCUS_PANEL_EXPERIMENT),
+	);
 	const maxCanvasZoom = computed(() => (isZoomedViewEnabled.value ? 2 : 4));
 
 	const previousViewport = ref<ViewportTransform>();
@@ -77,17 +80,11 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const alwaysShowAllSettings = computed(() => alwaysShowSettingsStorage.value === 'true');
 	// Driven through the feature-flag overrides so it can be toggled live from the
 	// console without a reload: featureFlags.override('node_panel_anchored', 'variant')
-	const isPanelAnchored = computed(
-		() =>
-			postHogStore.getVariant(NODE_PANEL_ANCHORED_EXPERIMENT.name) ===
-			NODE_PANEL_ANCHORED_EXPERIMENT.variant,
-	);
+	const isPanelAnchored = computed(() => isVariantByDefault(NODE_PANEL_ANCHORED_EXPERIMENT));
 
 	// featureFlags.override('node_panel_field_layout', 'variant')
-	const isCompactFieldLayout = computed(
-		() =>
-			postHogStore.getVariant(NODE_PANEL_FIELD_LAYOUT_EXPERIMENT.name) ===
-			NODE_PANEL_FIELD_LAYOUT_EXPERIMENT.variant,
+	const isCompactFieldLayout = computed(() =>
+		isVariantByDefault(NODE_PANEL_FIELD_LAYOUT_EXPERIMENT),
 	);
 
 	function setPanelAnchored(value: boolean) {
