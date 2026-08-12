@@ -636,13 +636,19 @@ describe('Folders', () => {
 			unpublishedWorkflow,
 		]);
 		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
-		const { getByTestId, getByText } = renderComponent({ pinia });
+		const { getAllByText, getByTestId, getByText } = renderComponent({ pinia });
 		await waitAllPromises();
 
 		await userEvent.click(getByTestId('select-all-checkbox'));
 		await userEvent.click(within(getByTestId('selection-bulk-actions')).getByRole('button'));
+		await userEvent.click(getByText('Unpublish'));
 
-		expect(getByText('Unpublish')).toBeInTheDocument();
+		expect(getByText('2 items selected. 1 will change')).toBeInTheDocument();
+		const workflowsTrigger = getAllByText('Workflows')
+			.map((element) => element.closest('button'))
+			.find((element) => element !== null);
+		expect(workflowsTrigger).toBeInTheDocument();
+		expect(workflowsTrigger?.querySelector('svg')).toBeInTheDocument();
 	});
 
 	it('should not offer unpublish when no selected workflow is published', async () => {

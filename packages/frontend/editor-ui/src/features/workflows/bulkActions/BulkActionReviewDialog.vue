@@ -75,16 +75,12 @@ const summary = computed(() =>
 		interpolate: {
 			selected: String(selectedCount.value),
 			affected: String(affectedCount.value),
-			unchanged: String(unchangedCount.value),
 		},
 	}),
 );
 
 const affectedHeading = computed(() =>
-	i18n.baseText('workflows.bulkActions.review.affectedHeading', {
-		adjustToNumber: affectedCount.value,
-		interpolate: { count: String(affectedCount.value) },
-	}),
+	i18n.baseText('workflows.bulkActions.review.affectedHeading'),
 );
 
 const unchangedHeading = computed(() =>

@@ -8,7 +8,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
-	N8nLink,
+	N8nCollapsiblePanel,
 	N8nText,
 } from '@n8n/design-system';
 
@@ -91,27 +91,25 @@ const confirm = () => {
 
 			<slot />
 
-			<div v-if="affected.length" :class="$style.panel">
-				<N8nLink theme="text" @click="showAffected = !showAffected">
-					{{ affectedHeading }}
-				</N8nLink>
-				<ul v-if="showAffected" :class="$style.list" data-test-id="bulk-action-affected-list">
+			<N8nCollapsiblePanel v-if="affected.length" v-model="showAffected" :title="affectedHeading">
+				<ul :class="$style.list" data-test-id="bulk-action-affected-list">
 					<li v-for="item in affected" :key="`${item.resourceType}:${item.id}`">
 						<N8nText size="small">{{ item.name }}</N8nText>
 					</li>
 				</ul>
-			</div>
+			</N8nCollapsiblePanel>
 
-			<div v-if="unchanged.length" :class="$style.panel">
-				<N8nLink theme="text" @click="showUnchanged = !showUnchanged">
-					{{ unchangedHeading }}
-				</N8nLink>
-				<ul v-if="showUnchanged" :class="$style.list" data-test-id="bulk-action-unchanged-list">
+			<N8nCollapsiblePanel
+				v-if="unchanged.length"
+				v-model="showUnchanged"
+				:title="unchangedHeading"
+			>
+				<ul :class="$style.list" data-test-id="bulk-action-unchanged-list">
 					<li v-for="item in unchanged" :key="`${item.resourceType}:${item.id}`">
 						<N8nText size="small" color="text-light">{{ item.name }}</N8nText>
 					</li>
 				</ul>
-			</div>
+			</N8nCollapsiblePanel>
 
 			<N8nCallout v-if="errorMessage" theme="danger" :class="$style.callout">
 				<N8nText>{{ errorMessage }}</N8nText>
@@ -153,12 +151,6 @@ const confirm = () => {
 
 .callout {
 	margin: 0;
-}
-
-.panel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
 }
 
 .list,
