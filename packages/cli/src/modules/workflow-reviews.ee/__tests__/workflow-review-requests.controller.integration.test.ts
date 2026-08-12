@@ -1598,7 +1598,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 
 		await viewerAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
-			.send({ decision: 'changes_requested' })
+			.send({ decision: 'changes_requested', note: 'Please rename the node' })
 			.expect(200);
 
 		expect(await requestRepository.findById(request.id, {})).toMatchObject({
