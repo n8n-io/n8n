@@ -125,6 +125,22 @@ describe('Data Transformation Functions', () => {
 			).toEqual({ test1: 1, test2: 2, test3: 3, test4: 4 });
 		});
 
+		test('.merge() should keep all elements when the base array is longer', () => {
+			expect(evaluate('={{ [{ a: 1 }, { b: 2 }].merge([{ c: 3 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
+		test('.merge() should keep all elements when the argument array is longer', () => {
+			expect(evaluate('={{ [{ a: 1 }].merge([{ b: 2 }, { c: 3 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
 		test('.merge() should work correctly without arguments', () => {
 			expect(
 				evaluate(

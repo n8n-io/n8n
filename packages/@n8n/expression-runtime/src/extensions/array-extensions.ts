@@ -254,13 +254,16 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 	const listLength = value.length > others.length ? value.length : others.length;
 	let merged = {};
 	for (let i = 0; i < listLength; i++) {
-		if (value[i] !== undefined) {
-			if (typeof value[i] === 'object' && typeof others[i] === 'object') {
-				merged = Object.assign(
-					merged,
-					mergeObjects(value[i] as Record<string, unknown>, [others[i]]),
-				);
-			}
+		// Merge whichever side at this index is a non-null object, so elements
+		// past the shorter array's length are not dropped when the arrays differ
+		// in length. When both are present, mergeObjects keeps base-array priority.
+		if (value[i] !== null && typeof value[i] === 'object') {
+			merged = Object.assign(
+				merged,
+				mergeObjects(value[i] as Record<string, unknown>, [others[i]]),
+			);
+		} else if (others[i] !== null && typeof others[i] === 'object') {
+			merged = Object.assign(merged, others[i] as Record<string, unknown>);
 		}
 	}
 	return merged;
