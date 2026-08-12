@@ -34,6 +34,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import {
 	createWorkflowReviewRequest,
+	fetchEligibleReviewers,
 	fetchWorkflowReviewRequests,
 	updateWorkflowReviewRequestVersion,
 } from '@/features/workflow-reviews/workflowReviews.api';
@@ -100,6 +101,7 @@ vi.mock('@/app/composables/useWorkflowPublicationStatusSync', () => ({
 
 vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
 	createWorkflowReviewRequest: vi.fn(),
+	fetchEligibleReviewers: vi.fn(),
 	fetchWorkflowReviewRequests: vi.fn(),
 	updateWorkflowReviewRequestVersion: vi.fn(),
 }));
@@ -171,6 +173,16 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 	const setupEnabledPublishButton = () => {
 		workflowDocumentStore.setNodes([triggerNode]);
+	};
+
+	const selectReviewer = async (baseElement: Element) => {
+		if (!(baseElement instanceof HTMLElement)) throw new Error('Expected an HTML test container');
+
+		await userEvent.click(within(baseElement).getByRole('combobox'));
+		await waitFor(() => expect(within(baseElement).getByRole('listbox')).toBeInTheDocument());
+		const option = baseElement.querySelector('#user-select-option-id-reviewer-1');
+		expect(option).not.toBeNull();
+		await userEvent.click(option as HTMLElement);
 	};
 
 	const setWorkflowReviewGates = ({
@@ -248,6 +260,17 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowVersionId: 'version-1',
 			createdAt: '2024-01-01T00:00:00.000Z',
 			updatedAt: '2024-01-01T00:00:00.000Z',
+		});
+		vi.mocked(fetchEligibleReviewers).mockResolvedValue({
+			count: 1,
+			data: [
+				{
+					id: 'reviewer-1',
+					email: 'reviewer@n8n.io',
+					firstName: 'Rae',
+					lastName: 'Viewer',
+				},
+			],
 		});
 		vi.mocked(updateWorkflowReviewRequestVersion).mockResolvedValue({
 			id: 'req-1',
@@ -718,7 +741,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				}),
 			);
 
-			const { getByTestId, findByRole, queryByRole } = renderComponent();
+			const { baseElement, getByTestId, findByRole, queryByRole } = renderComponent();
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 			const submitDialog = await findByRole('dialog', { name: 'Submit for review' });
 			await userEvent.click(within(submitDialog).getByTestId('workflow-review-next-button'));
@@ -726,6 +749,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				within(submitDialog).getByTestId('workflow-review-title-input'),
 				'Review payments',
 			);
+			await selectReviewer(baseElement);
 			await userEvent.click(within(submitDialog).getByTestId('workflow-review-submit-button'));
 
 			expect(
@@ -779,7 +803,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			setupEnabledPublishButton();
 			useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, true);
 
-			const { getByTestId, findByRole } = renderComponent();
+			const { baseElement, getByTestId, findByRole } = renderComponent();
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 			const submitDialog = await findByRole('dialog', { name: 'Submit for review' });
 			await userEvent.click(within(submitDialog).getByTestId('workflow-review-next-button'));
@@ -787,6 +811,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				within(submitDialog).getByTestId('workflow-review-title-input'),
 				'Review payments',
 			);
+			await selectReviewer(baseElement);
 			await userEvent.click(within(submitDialog).getByTestId('workflow-review-submit-button'));
 
 			expect(
@@ -806,7 +831,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, true);
 			localStorage.setItem(LOCAL_STORAGE_WORKFLOW_REVIEW_SUBMITTED_DIALOG_HIDDEN('user-1'), 'true');
 
-			const { getByTestId, findByRole, queryByRole } = renderComponent();
+			const { baseElement, getByTestId, findByRole, queryByRole } = renderComponent();
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 			const submitDialog = await findByRole('dialog', { name: 'Submit for review' });
 			await userEvent.click(within(submitDialog).getByTestId('workflow-review-next-button'));
@@ -814,6 +839,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				within(submitDialog).getByTestId('workflow-review-title-input'),
 				'Review payments',
 			);
+			await selectReviewer(baseElement);
 			await userEvent.click(within(submitDialog).getByTestId('workflow-review-submit-button'));
 
 			await waitFor(() => {

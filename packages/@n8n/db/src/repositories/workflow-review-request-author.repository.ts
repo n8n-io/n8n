@@ -3,12 +3,12 @@ import { DataSource, In } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { WorkflowReviewRequestAuthor } from '../entities/workflow-review-request-author.ee';
-import type { OperationContext } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 @Service()
 export class WorkflowReviewRequestAuthorRepository extends BaseRepository<WorkflowReviewRequestAuthor> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowReviewRequestAuthor, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowReviewRequestAuthor, dataSource.manager, transactionRunner);
 	}
 
 	async addAuthor(

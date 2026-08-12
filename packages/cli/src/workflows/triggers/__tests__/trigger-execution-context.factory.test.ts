@@ -11,6 +11,7 @@ import type {
 	CronExpression,
 	ExecutionError,
 	IConnections,
+	IExecuteResponsePromiseData,
 	INode,
 	INodeExecutionData,
 	IPollFunctions,
@@ -20,7 +21,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -41,6 +42,7 @@ import type {
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { createNodeTypes } from './trigger-test-utils';
+import type { PollCursorService } from '../poll-cursor.service';
 import {
 	TriggerExecutionContextFactory,
 	type TriggerFailureHandler,
@@ -62,11 +64,13 @@ describe('TriggerExecutionContextFactory', () => {
 	const nodeTypes = createNodeTypes();
 
 	let factory: TriggerExecutionContextFactory;
-	let logger: Logger;
 	let errorReporter: ErrorReporter;
+	let pollCursorService: MockProxy<PollCursorService>;
+	let scopedLogger: MockProxy<Logger>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		pollCursorService = mock<PollCursorService>({ enabled: false });
 		workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 		workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
 		executionService.createErrorExecution.mockResolvedValue(undefined);
@@ -75,8 +79,8 @@ describe('TriggerExecutionContextFactory', () => {
 		);
 
 		scheduleTriggerJobRegistrar.interceptsNode.mockReturnValue(false);
-		logger = mock<Logger>();
-		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) });
+		scopedLogger = mock<Logger>();
+		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 		errorReporter = mock<ErrorReporter>();
 
 		factory = new TriggerExecutionContextFactory(
@@ -92,6 +96,7 @@ describe('TriggerExecutionContextFactory', () => {
 			scheduleTriggerJobRegistrar,
 			ownershipService,
 			nodeTypes,
+			pollCursorService,
 		);
 	});
 
@@ -312,7 +317,7 @@ describe('TriggerExecutionContextFactory', () => {
 					await flush();
 
 					expect(unhandled).toEqual([]);
-					expect(logger.error).toHaveBeenCalledWith('boom', expect.objectContaining({}));
+					expect(scopedLogger.error).toHaveBeenCalledWith('boom', expect.objectContaining({}));
 					expect(eventService.emit).not.toHaveBeenCalled();
 				});
 
@@ -565,7 +570,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 	describe('getExecutePollFunctions', () => {
 		describe('__emit', () => {
-			test('saves static data and runs workflow', async () => {
+			test('runs the workflow', async () => {
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 				const mode: WorkflowExecuteMode = 'trigger';
@@ -586,7 +591,6 @@ describe('TriggerExecutionContextFactory', () => {
 				context.__emit(pollData);
 				await sleep(0);
 
-				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
 					workflowData,
 					node,
@@ -673,7 +677,7 @@ describe('TriggerExecutionContextFactory', () => {
 					await flush();
 
 					expect(unhandled).toEqual([]);
-					expect(logger.error).toHaveBeenCalledWith('boom', expect.objectContaining({}));
+					expect(scopedLogger.error).toHaveBeenCalledWith('boom', expect.objectContaining({}));
 				});
 
 				test('rejects donePromise instead of leaving it pending', async () => {
@@ -753,6 +757,421 @@ describe('TriggerExecutionContextFactory', () => {
 				);
 				expect(executeErrorWorkflowSpy).toHaveBeenCalledWith(executionError, workflowData, mode);
 			});
+		});
+	});
+
+	describe('durable poll cursors', () => {
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const mode: WorkflowExecuteMode = 'trigger';
+		const activation: WorkflowActivateMode = 'activate';
+		const pollData: INodeExecutionData[][] = [[{ json: { id: 1 } }]];
+
+		type RunnablePollFunctions = IPollFunctions &
+			Required<Pick<IPollFunctions, '__runPoll' | '__commitCursor'>>;
+
+		const buildWorkflow = () => {
+			const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' });
+			workflow.getStaticData.mockReturnValue({});
+			return workflow;
+		};
+
+		const buildContext = (workflow: Workflow, node: INode): RunnablePollFunctions => {
+			const getPollFunctions = factory.getExecutePollFunctions(
+				mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+				additionalData,
+				mode,
+				activation,
+				async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+			);
+			return getPollFunctions(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+			) as RunnablePollFunctions;
+		};
+
+		let workflow: MockProxy<Workflow>;
+		let node: INode;
+		let context: RunnablePollFunctions;
+
+		beforeEach(() => {
+			pollCursorService.resolveCursor.mockResolvedValue({ migrated: true, cursor: {} });
+			pollCursorService.commitCursorOnly.mockResolvedValue(undefined);
+			workflowExecutionService.runPolledWorkflow.mockResolvedValue('exec-polled');
+
+			workflow = buildWorkflow();
+			node = mock<INode>({ id: 'node-1', name: 'Poll Node' });
+			context = buildContext(workflow, node);
+		});
+
+		test('seeds the node static data from the stored cursor for the duration of one poll', async () => {
+			workflow.getStaticData.mockReturnValue({ lastItemId: 'from-static-data' });
+			pollCursorService.resolveCursor.mockResolvedValue({
+				migrated: true,
+				cursor: { lastItemId: 'from-db' },
+			});
+
+			await context.__runPoll(async () => {
+				expect(context.getWorkflowStaticData('node')).toEqual({ lastItemId: 'from-db' });
+			});
+
+			expect(pollCursorService.resolveCursor).toHaveBeenCalledWith('wf-1', 'node-1', {
+				lastItemId: 'from-static-data',
+			});
+		});
+
+		test('falls back to the real static data when the node has never migrated and the flag is off', async () => {
+			pollCursorService.resolveCursor.mockResolvedValue({ migrated: false });
+			workflow.getStaticData.mockReturnValue({ lastItemId: 'legacy' });
+
+			await context.__runPoll(async () => {
+				const nodeStaticData = context.getWorkflowStaticData('node');
+				expect(nodeStaticData).toEqual({ lastItemId: 'legacy' });
+				nodeStaticData.lastItemId = 'mutated';
+				context.__emit(pollData);
+			});
+			await sleep(0);
+
+			expect(workflow.getStaticData).toHaveBeenCalledWith('node', node);
+			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
+			// An unmigrated node's mutation lands in the real static-data bucket, so
+			// this save is the only thing that persists it.
+			expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+		});
+
+		test('migrates on the next poll once resolveCursor reports a row, seeded from what an earlier unmigrated poll mutated', async () => {
+			pollCursorService.resolveCursor.mockResolvedValueOnce({ migrated: false });
+			workflow.getStaticData.mockReturnValue({ lastItemId: 'legacy' });
+
+			await context.__runPoll(async () => {
+				context.getWorkflowStaticData('node').lastItemId = 'mutated-before-migration';
+			});
+
+			pollCursorService.resolveCursor.mockResolvedValueOnce({
+				migrated: true,
+				cursor: { lastItemId: 'mutated-before-migration' },
+			});
+
+			await context.__runPoll(async () => {
+				expect(context.getWorkflowStaticData('node')).toEqual({
+					lastItemId: 'mutated-before-migration',
+				});
+			});
+
+			expect(pollCursorService.resolveCursor).toHaveBeenLastCalledWith('wf-1', 'node-1', {
+				lastItemId: 'mutated-before-migration',
+			});
+		});
+
+		test('routes to runWorkflow, not runPolledWorkflow, when the node leaves its static data unchanged', async () => {
+			await context.__runPoll(async () => {
+				context.__emit(pollData);
+			});
+			await sleep(0);
+
+			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('routes to runPolledWorkflow with the mutated state when the node changes its static data', async () => {
+			const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+
+			await context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+				context.__emit(pollData, responsePromise);
+			});
+			await sleep(0);
+
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				node,
+				pollData,
+				additionalData,
+				mode,
+				{ lastItemId: 'a' },
+				responsePromise,
+			);
+			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+		});
+
+		// A poll that neither emitted nor committed leaves its mutation behind; the next
+		// poll must not pick it up and commit an advance past items nobody carried.
+		const abandonedStaging = [
+			{
+				title: 'a poll that threw',
+				stage: async () => {
+					await expect(
+						context.__runPoll(async () => {
+							Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+							throw new Error('poll source unreachable');
+						}),
+					).rejects.toThrow('poll source unreachable');
+				},
+			},
+			{
+				title: 'an activation poll that skipped the commit',
+				stage: async () => {
+					await context.__runPoll(async () => {
+						Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+					});
+				},
+			},
+		];
+
+		test.each(abandonedStaging)(
+			'does not commit on a later poll a mutation left by $title',
+			async ({ stage }) => {
+				await stage();
+
+				await context.__runPoll(async () => {
+					await context.__commitCursor();
+				});
+
+				expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
+			},
+		);
+
+		test.each(abandonedStaging)(
+			'does not emit on a later poll a mutation left by $title',
+			async ({ stage }) => {
+				await stage();
+
+				await context.__runPoll(async () => {
+					context.__emit(pollData);
+				});
+				await sleep(0);
+
+				expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		test('gives each of two overlapping polls of one node the snapshot it mutated itself', async () => {
+			const slowPoll = context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'slow' });
+				await sleep(10);
+				context.__emit(pollData);
+			});
+
+			const fastPoll = context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'fast' });
+				context.__emit(pollData);
+			});
+
+			await Promise.all([slowPoll, fastPoll]);
+			await sleep(0);
+
+			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(2);
+			const cursors = workflowExecutionService.runPolledWorkflow.mock.calls.map((call) => call[5]);
+			expect(cursors).toEqual([{ lastItemId: 'fast' }, { lastItemId: 'slow' }]);
+		});
+
+		test('throws when the node reads its static data outside of a poll', () => {
+			expect(() => context.getWorkflowStaticData('node')).toThrow(UnexpectedError);
+		});
+
+		test('keeps the mutations of two poll nodes built from one factory apart', async () => {
+			const firstNode = mock<INode>({ id: 'node-1', name: 'First Poll Node' });
+			const secondNode = mock<INode>({ id: 'node-2', name: 'Second Poll Node' });
+
+			const getPollFunctions = factory.getExecutePollFunctions(
+				mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+				additionalData,
+				mode,
+				activation,
+				async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+			);
+			const firstContext = getPollFunctions(
+				workflow,
+				firstNode,
+				additionalData,
+				mode,
+				activation,
+			) as RunnablePollFunctions;
+			const secondContext = getPollFunctions(
+				workflow,
+				secondNode,
+				additionalData,
+				mode,
+				activation,
+			) as RunnablePollFunctions;
+
+			await firstContext.__runPoll(async () => {
+				Object.assign(firstContext.getWorkflowStaticData('node'), { lastItemId: 'first-only' });
+
+				await secondContext.__runPoll(async () => {
+					secondContext.__emit(pollData);
+				});
+				await sleep(0);
+
+				expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+
+				firstContext.__emit(pollData);
+			});
+			await sleep(0);
+
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledWith(
+				expect.anything(),
+				firstNode,
+				pollData,
+				additionalData,
+				mode,
+				{ lastItemId: 'first-only' },
+				undefined,
+			);
+		});
+
+		test('keeps the committed cursor safe from a later mutation of the node static data', async () => {
+			await context.__runPoll(async () => {
+				const nodeStaticData = context.getWorkflowStaticData('node');
+				Object.assign(nodeStaticData, { lastItemId: 'a' });
+				await context.__commitCursor();
+				nodeStaticData.lastItemId = 'mutated-after-commit';
+			});
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith(
+				expect.objectContaining({ cursor: { lastItemId: 'a' } }),
+			);
+		});
+
+		test.each([
+			{ title: 'left the static data unchanged', stage: () => {}, committed: null },
+			{
+				title: 'mutated then reverted the static data to its seeded value',
+				stage: () => {
+					const nodeStaticData = context.getWorkflowStaticData('node');
+					nodeStaticData.lastItemId = 'a';
+					delete nodeStaticData.lastItemId;
+				},
+				committed: null,
+			},
+			{
+				title: 'mutated the static data',
+				stage: () => Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' }),
+				committed: { lastItemId: 'a' },
+			},
+		])('commits $committed when the poll $title', async ({ stage, committed }) => {
+			await context.__runPoll(async () => {
+				stage();
+				await context.__commitCursor();
+			});
+
+			if (committed === null) {
+				expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
+			} else {
+				expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					cursor: committed,
+				});
+			}
+		});
+
+		test('detects a nested mutation of the seeded static data and commits an independent copy', async () => {
+			pollCursorService.resolveCursor.mockResolvedValue({
+				migrated: true,
+				cursor: { page: { offset: 1 }, seenIds: ['a'] },
+			});
+
+			await context.__runPoll(async () => {
+				const nodeStaticData = context.getWorkflowStaticData('node') as {
+					page: { offset: number };
+					seenIds: string[];
+				};
+				nodeStaticData.page.offset = 2;
+				nodeStaticData.seenIds.push('b');
+				await context.__commitCursor();
+				nodeStaticData.seenIds.push('mutated-after-commit');
+			});
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor: { page: { offset: 2 }, seenIds: ['a', 'b'] },
+			});
+		});
+
+		test.each([
+			{
+				title: 'a second commit in the same poll',
+				carry: async () => {
+					await context.__commitCursor();
+					await context.__commitCursor();
+				},
+				commits: 1,
+				polledRuns: 0,
+				legacyRuns: 0,
+			},
+			{
+				title: 'a commit after an emit already carried it',
+				carry: async () => {
+					context.__emit(pollData);
+					await sleep(0);
+					await context.__commitCursor();
+				},
+				commits: 0,
+				polledRuns: 1,
+				legacyRuns: 0,
+			},
+			{
+				title: 'an emit after a commit already carried it',
+				carry: async () => {
+					await context.__commitCursor();
+					context.__emit(pollData);
+					await sleep(0);
+				},
+				commits: 1,
+				polledRuns: 0,
+				legacyRuns: 1,
+			},
+		])(
+			'carries a mutation exactly once, given $title',
+			async ({ carry, commits, polledRuns, legacyRuns }) => {
+				await context.__runPoll(async () => {
+					Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+					await carry();
+				});
+				await sleep(0);
+
+				expect(pollCursorService.commitCursorOnly).toHaveBeenCalledTimes(commits);
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(polledRuns);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(legacyRuns);
+			},
+		);
+
+		test('propagates a failing cursor commit to the engine that called it', async () => {
+			const commitError = new Error('poller state write failed');
+			pollCursorService.commitCursorOnly.mockRejectedValue(commitError);
+
+			await expect(
+				context.__runPoll(async () => {
+					Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+					await context.__commitCursor();
+				}),
+			).rejects.toThrow(commitError);
+		});
+
+		test('logs a failing polled run rather than leaving the rejection unhandled', async () => {
+			const runError = new Error('the polled run could not be committed');
+			workflowExecutionService.runPolledWorkflow.mockRejectedValue(runError);
+
+			await context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+				context.__emit(pollData);
+			});
+			await sleep(0);
+
+			expect(scopedLogger.error).toHaveBeenCalledWith(
+				runError.message,
+				expect.objectContaining({ error: runError }),
+			);
 		});
 	});
 
