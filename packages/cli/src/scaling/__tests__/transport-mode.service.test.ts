@@ -13,6 +13,7 @@ const allRedis: TransportConfig = {
 	cache: 'redis',
 	pubsub: 'redis',
 	queue: 'redis',
+	instanceRegistry: 'memory',
 };
 
 describe('TransportModeService', () => {
@@ -24,6 +25,15 @@ describe('TransportModeService', () => {
 			expect(service.resolve('queue')).toBe('ipc');
 			expect(service.resolve('cache')).toBe('redis');
 			expect(service.resolve('pubsub')).toBe('redis');
+		});
+
+		it('resolves the three-value instance-registry transport', () => {
+			expect(
+				makeService({ ...allRedis, instanceRegistry: 'memory' }).resolve('instanceRegistry'),
+			).toBe('memory');
+			expect(
+				makeService({ ...allRedis, instanceRegistry: 'ipc' }).resolve('instanceRegistry'),
+			).toBe('ipc');
 		});
 	});
 

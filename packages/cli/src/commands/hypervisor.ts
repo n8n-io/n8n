@@ -6,7 +6,9 @@ import cluster from 'node:cluster';
 import readline from 'node:readline';
 import type { Readable } from 'node:stream';
 
-import type { LeaderMessage } from '@/scaling/hypervisor-leader-election';
+import { InstanceRegistryHost } from '@/modules/instance-registry/storage/ipc-instance-storage';
+import { LeaderElectionHost } from '@/scaling/hypervisor-leader-election';
+import { HypervisorMessageRouter } from '@/scaling/hypervisor-message-router';
 
 import { BaseCommand } from './base-command';
 import { Start } from './start';
@@ -18,61 +20,6 @@ export function forwardPrefixed(stream: Readable | null, out: NodeJS.WriteStream
 	readline
 		.createInterface({ input: stream })
 		.on('line', (line) => out.write(`${prefix} ${line}\n`));
-}
-
-type Claimant = { id: number; send: (message: LeaderMessage) => void; process: { pid?: number } };
-
-/**
- * Assigns leadership among main-role workers. The primary's message loop is
- * single-threaded, so simultaneous claims resolve in arrival order — no lock.
- * Liveness is heartbeat based: `checkTimeouts` fails over a main that stopped
- * heartbeating (a *hung* leader), while `onExit` handles a crashed one instantly.
- */
-export function createLeaderCoordinator(log: (message: string) => void, timeoutMs: number) {
-	const claimants = new Map<number, { worker: Claimant; lastSeen: number }>();
-	let leaderId: number | null = null;
-
-	const assign = (worker: Claimant) => {
-		leaderId = worker.id;
-		worker.send({ type: 'leader:assign', isLeader: true });
-		log(`Leader = worker id=${worker.id} pid=${worker.process.pid}`);
-	};
-
-	// Drop a main and, if it held leadership, promote any survivor.
-	const dropAndMaybePromote = (id: number) => {
-		claimants.delete(id);
-		if (id !== leaderId) return;
-		leaderId = null;
-		const next = claimants.values().next().value;
-		if (next) assign(next.worker);
-		else log('No main available to lead');
-	};
-
-	return {
-		onClaim(worker: Claimant, now: number) {
-			claimants.set(worker.id, { worker, lastSeen: now });
-			if (leaderId === null) assign(worker);
-			else worker.send({ type: 'leader:assign', isLeader: false });
-		},
-		onHeartbeat(id: number, now: number) {
-			const entry = claimants.get(id);
-			if (entry) entry.lastSeen = now;
-		},
-		onExit(worker: { id: number }) {
-			dropAndMaybePromote(worker.id);
-		},
-		checkTimeouts(now: number) {
-			for (const [id, { worker, lastSeen }] of claimants) {
-				if (now - lastSeen <= timeoutMs) continue;
-				log(`Main id=${id} pid=${worker.process.pid} missed heartbeat; failing over`);
-				const wasLeader = id === leaderId;
-				dropAndMaybePromote(id);
-				// Best-effort demotion in case it is hung rather than dead — delivered
-				// when its event loop resumes, so it steps down and can't split-brain.
-				if (wasLeader) worker.send({ type: 'leader:assign', isLeader: false });
-			}
-		},
-	};
 }
 
 @Command({
@@ -92,28 +39,19 @@ export class Hypervisor extends BaseCommand {
 			cluster.setupPrimary({ silent: true });
 			const selfTag = `[hypervisor pid=${process.pid}]`;
 
-			// The primary hosts leader election over IPC (replaces the Redis lease).
-			const { interval, ttl } = this.globalConfig.multiMainSetup;
-			const coordinator = createLeaderCoordinator(
-				(message) => this.logger.info(`${selfTag} ${message}`),
-				ttl * 1000,
-			);
-			cluster.on('message', (worker, message: LeaderMessage) => {
-				if (message?.type === 'leader:claim') coordinator.onClaim(worker, Date.now());
-				else if (message?.type === 'leader:heartbeat')
-					coordinator.onHeartbeat(worker.id, Date.now());
-			});
-			const timeoutCheck = setInterval(
-				() => coordinator.checkTimeouts(Date.now()),
-				interval * 1000,
-			);
-			timeoutCheck.unref();
+			// The primary hosts coordination features (leader election, instance
+			// registry) over IPC; the router dispatches messages to them by type prefix.
+			const router = Container.get(HypervisorMessageRouter);
+			router.register(Container.get(LeaderElectionHost));
+			router.register(Container.get(InstanceRegistryHost));
+			cluster.on('message', (worker, message) => router.handleMessage(worker, message));
 
 			for (const role of ['main', 'main', 'worker', 'worker'] as const) {
 				const child = cluster.fork({
 					N8N_HYPERVISOR_ROLE: role,
 					N8N_HYPERVISOR_MODE: '1',
 					N8N_TRANSPORT_LEADER_ELECTION: 'ipc',
+					N8N_TRANSPORT_INSTANCE_REGISTRY: 'ipc',
 				});
 				const childTag = `[${role} pid=${child.process.pid}]`;
 				forwardPrefixed(child.process.stdout, process.stdout, childTag);
@@ -124,8 +62,13 @@ export class Hypervisor extends BaseCommand {
 				this.logger.info(
 					`${selfTag} Child pid ${worker.process.pid} exited (code ${code}, signal ${signal})`,
 				);
-				coordinator.onExit(worker);
+				router.handleExit(worker);
 			});
+			const tick = setInterval(
+				() => router.tick(Date.now()),
+				this.globalConfig.multiMainSetup.interval * 1000,
+			);
+			tick.unref();
 			// ponytail: no restart yet (step 2); supervisor just stays alive
 			await new Promise(() => {});
 			return;

@@ -6,7 +6,8 @@ import { Container, Service } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { HypervisorLeaderElection } from '../hypervisor-leader-election';
+import { HypervisorLeaderElection, LeaderElectionHost } from '../hypervisor-leader-election';
+import type { HypervisorWorker } from '../hypervisor-message-router';
 
 const HEARTBEAT_INTERVAL_MS = 3000;
 
@@ -167,5 +168,90 @@ describe('HypervisorLeaderElection', () => {
 
 			expect(handler.takeover).toHaveBeenCalledTimes(1);
 		});
+	});
+});
+
+describe('LeaderElectionHost', () => {
+	const TIMEOUT_S = 3;
+	const logger = mockLogger();
+	const globalConfig = mock<GlobalConfig>({
+		multiMainSetup: { ttl: TIMEOUT_S, interval: TIMEOUT_S, enabled: true },
+	});
+	const makeWorker = (id: number): HypervisorWorker => ({
+		id,
+		send: vi.fn(),
+		process: { pid: 1000 + id },
+	});
+	let host: LeaderElectionHost;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		host = new LeaderElectionHost(logger, globalConfig);
+	});
+
+	const claim = (worker: HypervisorWorker, now: number) =>
+		host.onMessage(worker, { type: 'leader:claim' }, now);
+
+	it('assigns leadership to the first claimant and follower to the rest', () => {
+		const w1 = makeWorker(1);
+		const w2 = makeWorker(2);
+
+		claim(w1, 0);
+		claim(w2, 0);
+
+		expect(w1.send).toHaveBeenCalledWith({ type: 'leader:assign', isLeader: true });
+		expect(w2.send).toHaveBeenCalledWith({ type: 'leader:assign', isLeader: false });
+	});
+
+	it('promotes a surviving claimant when the leader exits', () => {
+		const w1 = makeWorker(1);
+		const w2 = makeWorker(2);
+		claim(w1, 0);
+		claim(w2, 0);
+		vi.mocked(w2.send).mockClear();
+
+		host.onExit(w1);
+
+		expect(w2.send).toHaveBeenCalledWith({ type: 'leader:assign', isLeader: true });
+	});
+
+	it('does not reassign when a non-leader exits', () => {
+		const w1 = makeWorker(1);
+		const w2 = makeWorker(2);
+		claim(w1, 0);
+		claim(w2, 0);
+		vi.mocked(w1.send).mockClear();
+		vi.mocked(w2.send).mockClear();
+
+		host.onExit(w2);
+
+		expect(w1.send).not.toHaveBeenCalled();
+		expect(w2.send).not.toHaveBeenCalled();
+	});
+
+	it('fails over a hung leader that stops heartbeating and demotes it best-effort', () => {
+		const leader = makeWorker(1);
+		const follower = makeWorker(2);
+		claim(leader, 0);
+		claim(follower, 0);
+		host.onMessage(follower, { type: 'leader:heartbeat' }, 4000);
+		vi.mocked(leader.send).mockClear();
+		vi.mocked(follower.send).mockClear();
+
+		host.onTick(4000); // leader last seen at 0, 4000 > timeout 3000
+
+		expect(follower.send).toHaveBeenCalledWith({ type: 'leader:assign', isLeader: true });
+		expect(leader.send).toHaveBeenCalledWith({ type: 'leader:assign', isLeader: false });
+	});
+
+	it('keeps a leader that heartbeats within the timeout', () => {
+		const leader = makeWorker(1);
+		claim(leader, 0);
+		host.onMessage(leader, { type: 'leader:heartbeat' }, 2500);
+		vi.mocked(leader.send).mockClear();
+
+		host.onTick(4000); // last seen at 2500, 4000 - 2500 <= 3000
+
+		expect(leader.send).not.toHaveBeenCalled();
 	});
 });

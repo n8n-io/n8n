@@ -8,7 +8,7 @@ import cluster from 'node:cluster';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import { Hypervisor, forwardPrefixed, createLeaderCoordinator } from '../hypervisor';
+import { Hypervisor, forwardPrefixed } from '../hypervisor';
 import type { Start } from '../start';
 import type { Worker } from '../worker';
 
@@ -40,8 +40,16 @@ describe('Hypervisor', () => {
 
 		expect(mockedCluster.setupPrimary).toHaveBeenCalledWith({ silent: true });
 		expect(mockedCluster.fork).toHaveBeenCalledTimes(4);
-		const mainEnv = { N8N_HYPERVISOR_ROLE: 'main', N8N_HYPERVISOR_MODE: '1' };
-		const workerEnv = { N8N_HYPERVISOR_ROLE: 'worker', N8N_HYPERVISOR_MODE: '1' };
+		const mainEnv = {
+			N8N_HYPERVISOR_ROLE: 'main',
+			N8N_HYPERVISOR_MODE: '1',
+			N8N_TRANSPORT_LEADER_ELECTION: 'ipc',
+		};
+		const workerEnv = {
+			N8N_HYPERVISOR_ROLE: 'worker',
+			N8N_HYPERVISOR_MODE: '1',
+			N8N_TRANSPORT_LEADER_ELECTION: 'ipc',
+		};
 		expect(mockedCluster.fork).toHaveBeenNthCalledWith(1, mainEnv);
 		expect(mockedCluster.fork).toHaveBeenNthCalledWith(2, mainEnv);
 		expect(mockedCluster.fork).toHaveBeenNthCalledWith(3, workerEnv);
@@ -108,79 +116,5 @@ describe('forwardPrefixed', () => {
 		forwardPrefixed(null, out, '[main pid=7]');
 
 		expect(out.write).not.toHaveBeenCalled();
-	});
-});
-
-describe('createLeaderCoordinator', () => {
-	const TIMEOUT = 3000;
-	const makeWorker = (id: number) => ({ id, send: vi.fn(), process: { pid: 1000 + id } });
-
-	it('assigns leadership to the first claimant and follower to the rest', () => {
-		const coord = createLeaderCoordinator(() => {}, TIMEOUT);
-		const w1 = makeWorker(1);
-		const w2 = makeWorker(2);
-
-		coord.onClaim(w1, 0);
-		coord.onClaim(w2, 0);
-
-		expect(w1.send).toHaveBeenCalledWith({ type: 'leader:assign', isLeader: true });
-		expect(w2.send).toHaveBeenCalledWith({ type: 'leader:assign', isLeader: false });
-	});
-
-	it('promotes a surviving claimant when the leader exits', () => {
-		const coord = createLeaderCoordinator(() => {}, TIMEOUT);
-		const w1 = makeWorker(1);
-		const w2 = makeWorker(2);
-		coord.onClaim(w1, 0);
-		coord.onClaim(w2, 0);
-		w2.send.mockClear();
-
-		coord.onExit({ id: w1.id });
-
-		expect(w2.send).toHaveBeenCalledWith({ type: 'leader:assign', isLeader: true });
-	});
-
-	it('does not reassign when a non-leader exits', () => {
-		const coord = createLeaderCoordinator(() => {}, TIMEOUT);
-		const w1 = makeWorker(1);
-		const w2 = makeWorker(2);
-		coord.onClaim(w1, 0);
-		coord.onClaim(w2, 0);
-		w1.send.mockClear();
-		w2.send.mockClear();
-
-		coord.onExit({ id: w2.id });
-
-		expect(w1.send).not.toHaveBeenCalled();
-		expect(w2.send).not.toHaveBeenCalled();
-	});
-
-	it('fails over a hung leader that stops heartbeating and demotes it best-effort', () => {
-		const coord = createLeaderCoordinator(() => {}, TIMEOUT);
-		const leader = makeWorker(1);
-		const follower = makeWorker(2);
-		coord.onClaim(leader, 0);
-		coord.onClaim(follower, 0);
-		// The follower keeps heartbeating; the leader goes silent after t=0.
-		coord.onHeartbeat(follower.id, 4000);
-		leader.send.mockClear();
-		follower.send.mockClear();
-
-		coord.checkTimeouts(4000); // leader last seen at 0, 4000 - 0 > 3000
-
-		expect(follower.send).toHaveBeenCalledWith({ type: 'leader:assign', isLeader: true });
-		expect(leader.send).toHaveBeenCalledWith({ type: 'leader:assign', isLeader: false });
-	});
-
-	it('keeps a leader that heartbeats within the timeout', () => {
-		const coord = createLeaderCoordinator(() => {}, TIMEOUT);
-		const leader = makeWorker(1);
-		coord.onClaim(leader, 0);
-		coord.onHeartbeat(leader.id, 2500);
-		leader.send.mockClear();
-
-		coord.checkTimeouts(4000); // last seen at 2500, 4000 - 2500 <= 3000
-
-		expect(leader.send).not.toHaveBeenCalled();
 	});
 });

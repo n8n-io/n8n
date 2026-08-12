@@ -6,7 +6,7 @@ import type { InstanceRegistration } from '@n8n/api-types';
  */
 export interface InstanceStorage {
 	/** Tagged union discriminator for runtime type checking */
-	kind: 'redis' | 'memory';
+	kind: 'redis' | 'memory' | 'ipc';
 
 	/**
 	 * Register a new instance on startup

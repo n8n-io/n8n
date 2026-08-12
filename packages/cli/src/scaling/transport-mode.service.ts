@@ -3,7 +3,12 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 /** Coordination subsystems whose transport can be chosen independently. */
-export type TransportSubsystem = 'leaderElection' | 'cache' | 'pubsub' | 'queue';
+export type TransportSubsystem =
+	| 'leaderElection'
+	| 'cache'
+	| 'pubsub'
+	| 'queue'
+	| 'instanceRegistry';
 
 export type TransportMode = 'redis' | 'ipc';
 
@@ -17,7 +22,9 @@ export type TransportMode = 'redis' | 'ipc';
 export class TransportModeService {
 	constructor(private readonly globalConfig: GlobalConfig) {}
 
-	resolve(subsystem: TransportSubsystem): TransportMode {
+	// Generic so each subsystem returns its own declared value set — instance
+	// registry has three values ('memory' | 'redis' | 'ipc'), the rest have two.
+	resolve<S extends TransportSubsystem>(subsystem: S): GlobalConfig['transport'][S] {
 		return this.globalConfig.transport[subsystem];
 	}
 

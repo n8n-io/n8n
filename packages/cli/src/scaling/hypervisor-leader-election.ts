@@ -6,6 +6,8 @@ import type { MultiMainEventHandler } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
+import type { HypervisorMessageHandler, HypervisorWorker } from './hypervisor-message-router';
+
 export type LeaderClaim = { type: 'leader:claim' };
 export type LeaderHeartbeat = { type: 'leader:heartbeat' };
 export type LeaderAssign = { type: 'leader:assign'; isLeader: boolean };
@@ -105,5 +107,76 @@ export class HypervisorLeaderElection extends TypedEmitter<MultiMainEvents> {
 			const instance = Container.get(eventHandlerClass);
 			return await instance[methodName].call(instance);
 		});
+	}
+}
+
+/**
+ * Primary-side counterpart of {@link HypervisorLeaderElection}: assigns leadership
+ * among main-role workers over IPC. Single-threaded message loop ⇒ simultaneous
+ * claims resolve in arrival order, no lock. Liveness is heartbeat based —
+ * `onTick` fails over a main that stopped heartbeating (a *hung* leader), while
+ * `onExit` handles a crashed one instantly.
+ */
+@Service()
+export class LeaderElectionHost implements HypervisorMessageHandler {
+	readonly prefix = 'leader:';
+
+	private readonly claimants = new Map<number, { worker: HypervisorWorker; lastSeen: number }>();
+
+	private leaderId: number | null = null;
+
+	constructor(
+		private logger: Logger,
+		private readonly globalConfig: GlobalConfig,
+	) {
+		this.logger = this.logger.scoped(['scaling', 'multi-main-setup']);
+	}
+
+	onMessage(worker: HypervisorWorker, message: { type: string }, now: number): void {
+		if (message.type === 'leader:claim') this.onClaim(worker, now);
+		else if (message.type === 'leader:heartbeat') this.onHeartbeat(worker.id, now);
+	}
+
+	onExit(worker: HypervisorWorker): void {
+		this.dropAndMaybePromote(worker.id);
+	}
+
+	onTick(now: number): void {
+		const timeoutMs = this.globalConfig.multiMainSetup.ttl * Time.seconds.toMilliseconds;
+		for (const [id, { worker, lastSeen }] of this.claimants) {
+			if (now - lastSeen <= timeoutMs) continue;
+			this.logger.info(`Main id=${id} pid=${worker.process.pid} missed heartbeat; failing over`);
+			const wasLeader = id === this.leaderId;
+			this.dropAndMaybePromote(id);
+			// Best-effort demotion in case it is hung rather than dead — delivered when
+			// its event loop resumes, so it steps down and can't split-brain.
+			if (wasLeader) worker.send({ type: 'leader:assign', isLeader: false } satisfies LeaderAssign);
+		}
+	}
+
+	private onClaim(worker: HypervisorWorker, now: number): void {
+		this.claimants.set(worker.id, { worker, lastSeen: now });
+		if (this.leaderId === null) this.assign(worker);
+		else worker.send({ type: 'leader:assign', isLeader: false } satisfies LeaderAssign);
+	}
+
+	private onHeartbeat(id: number, now: number): void {
+		const entry = this.claimants.get(id);
+		if (entry) entry.lastSeen = now;
+	}
+
+	private assign(worker: HypervisorWorker): void {
+		this.leaderId = worker.id;
+		worker.send({ type: 'leader:assign', isLeader: true } satisfies LeaderAssign);
+		this.logger.info(`Leader = worker id=${worker.id} pid=${worker.process.pid}`);
+	}
+
+	private dropAndMaybePromote(id: number): void {
+		this.claimants.delete(id);
+		if (id !== this.leaderId) return;
+		this.leaderId = null;
+		const next = this.claimants.values().next().value;
+		if (next) this.assign(next.worker);
+		else this.logger.info('No main available to lead');
 	}
 }

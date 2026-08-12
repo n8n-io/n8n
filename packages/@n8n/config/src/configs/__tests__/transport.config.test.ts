@@ -13,13 +13,14 @@ describe('TransportConfig', () => {
 	});
 
 	describe('defaults', () => {
-		it('defaults every subsystem to redis', () => {
+		it('defaults every subsystem to redis, except instance-registry which defaults to memory', () => {
 			const { transport } = Container.get(GlobalConfig);
 
 			expect(transport.leaderElection).toBe('redis');
 			expect(transport.cache).toBe('redis');
 			expect(transport.pubsub).toBe('redis');
 			expect(transport.queue).toBe('redis');
+			expect(transport.instanceRegistry).toBe('memory');
 		});
 	});
 
@@ -41,6 +42,14 @@ describe('TransportConfig', () => {
 			const { transport } = Container.get(GlobalConfig);
 
 			expect(transport.cache).toBe('redis');
+		});
+
+		it('reads the three-value instance-registry transport', () => {
+			vi.stubEnv('N8N_TRANSPORT_INSTANCE_REGISTRY', 'ipc');
+
+			const { transport } = Container.get(GlobalConfig);
+
+			expect(transport.instanceRegistry).toBe('ipc');
 		});
 	});
 });

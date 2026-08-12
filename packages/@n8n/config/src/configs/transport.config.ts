@@ -5,6 +5,9 @@ import { Config, Env } from '../decorators';
 const transportModeSchema = z.enum(['redis', 'ipc']);
 type TransportMode = z.infer<typeof transportModeSchema>;
 
+const instanceRegistryModeSchema = z.enum(['memory', 'redis', 'ipc']);
+type InstanceRegistryMode = z.infer<typeof instanceRegistryModeSchema>;
+
 /**
  * Transport per coordination subsystem: `redis` (default, current behavior) or
  * `ipc` (hypervisor cluster). Each subsystem is an explicit opt-in flip — never
@@ -24,4 +27,12 @@ export class TransportConfig {
 
 	@Env('N8N_TRANSPORT_QUEUE', transportModeSchema)
 	queue: TransportMode = 'redis';
+
+	/**
+	 * Instance-registry storage. `memory` (default) preserves the common
+	 * non-clustered case; queue / multi-main deployments must set `redis`
+	 * explicitly to keep the shared registry. `ipc` uses the hypervisor.
+	 */
+	@Env('N8N_TRANSPORT_INSTANCE_REGISTRY', instanceRegistryModeSchema)
+	instanceRegistry: InstanceRegistryMode = 'memory';
 }

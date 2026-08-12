@@ -406,6 +406,7 @@ describe('GlobalConfig', () => {
 			cache: 'redis',
 			pubsub: 'redis',
 			queue: 'redis',
+			instanceRegistry: 'memory',
 		},
 		taskRunners: {
 			mode: 'internal',
