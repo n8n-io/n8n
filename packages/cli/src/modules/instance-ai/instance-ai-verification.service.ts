@@ -20,6 +20,9 @@ import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 
 const VERIFICATION_TIMEOUT_MS = 30_000;
+// OpenAI's Responses API rejects `max_output_tokens` below 16, and reasoning
+// models consume part of this budget before they emit any text.
+const VERIFICATION_MAX_OUTPUT_TOKENS = 256;
 
 function numericStatus(error: unknown): number | undefined {
 	if (typeof error !== 'object' || error === null) return undefined;
@@ -97,7 +100,7 @@ export class InstanceAiVerificationService {
 			await generateText({
 				model: createModel(modelConfig, createAiProxyFetch(this.outboundHttp)),
 				prompt: 'Reply with OK.',
-				maxOutputTokens: 8,
+				maxOutputTokens: VERIFICATION_MAX_OUTPUT_TOKENS,
 				abortSignal: AbortSignal.timeout(VERIFICATION_TIMEOUT_MS),
 			});
 			return { ok: true, latencyMs: Math.round(performance.now() - startedAt) };
