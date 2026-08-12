@@ -1,0 +1,59 @@
+packages/cli/src/task-runners/task-broker/auth/__tests__/task-broker-auth.service.test.ts
+  s_3e2de9c50fdafd::t_baf123b13ad33a 8,30
+packages/cli/src/commands/hypervisor.ts
+  s_3e2de9c50fdafd::t_d0aba1a16da9aa 51,61
+  s_3e2de9c50fdafd::t_bceec8dbb1c6fc 13
+packages/cli/src/services/cache/__tests__/ipc.cache-manager.test.ts
+  s_3e2de9c50fdafd::t_c31bb0807efec3 1-126
+packages/cli/test/integration/activation-errors.service.test.ts
+  s_3e2de9c50fdafd::t_baf123b13ad33a 6,12
+packages/@n8n/config/src/configs/__tests__/transport.config.test.ts
+  s_3e2de9c50fdafd::t_f5c039c94104bc 16,20,34,39-40
+  s_3e2de9c50fdafd::t_5e7dd24e123b7c 44,47-48,53
+packages/cli/src/services/cache/ipc.cache-manager.ts
+  s_3e2de9c50fdafd::t_4aed4347728762 1-224
+  s_3e2de9c50fdafd::t_d2d6b8c8d7e6d4 225-227
+packages/cli/src/services/cache/__tests__/cache.service.test.ts
+  s_3e2de9c50fdafd::t_79c5b2ce116baf 30-31
+  s_3e2de9c50fdafd::t_021f2c0a55c792 44
+  s_3e2de9c50fdafd::t_45f73e528372cc 316-337
+  s_3e2de9c50fdafd::t_af5dd19c0c429e 7
+packages/cli/src/modules/agents/integrations/__tests__/callback-store.test.ts
+  s_3e2de9c50fdafd::t_baf123b13ad33a 7,21
+packages/@n8n/config/src/configs/transport.config.ts
+  s_3e2de9c50fdafd::t_60f7458138925d 8-11
+  s_3e2de9c50fdafd::t_86a710e58e0d27 24-30
+  s_3e2de9c50fdafd::t_94edae39c42b35 43-44
+packages/cli/src/commands/__tests__/hypervisor.test.ts
+  s_3e2de9c50fdafd::t_e41d98ab8ed214 49,57
+packages/cli/src/task-runners/task-broker/auth/__tests__/task-broker-auth.controller.test.ts
+  s_3e2de9c50fdafd::t_baf123b13ad33a 5,27
+packages/cli/src/scaling/transport-mode.service.ts
+  s_3e2de9c50fdafd::t_621155cd4b5660 53-58
+packages/@n8n/config/test/config.test.ts
+  s_3e2de9c50fdafd::t_73c2744f1e4c93 406
+packages/cli/src/services/cache/cache.types.ts
+  s_3e2de9c50fdafd::t_5f029f78ae69b6 3,10
+  s_3e2de9c50fdafd::t_f7df431f943b69 11
+packages/cli/src/services/cache/cache.service.ts
+  s_3e2de9c50fdafd::t_bceec8dbb1c6fc 9
+  s_3e2de9c50fdafd::t_f0b5ec0f10487b 14
+  s_3e2de9c50fdafd::t_1bc30cce9563f8 103-106
+  s_3e2de9c50fdafd::t_fed89fb0eb20d2 30-33,37,40,42-48,50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b6a8166160708ae0465a975aefc044b6dc8ab679",
+  "prompts": {},
+  "sessions": {
+    "s_3e2de9c50fdafd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71471209-e89f-4d40-8aa6-c40750a3f307",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
