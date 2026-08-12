@@ -79,6 +79,8 @@ const SettingsUsageAndPlan = async () =>
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
 const SettingsEncryptionKeys = async () =>
 	await import('@/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue');
+const SettingsWebhooksView = async () =>
+	await import('@/features/settings/webhooks/views/SettingsWebhooksView.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
@@ -1058,6 +1060,22 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						rbac: {
 							scope: 'logStreaming:manage',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+					},
+				},
+			},
+			{
+				path: 'webhooks',
+				name: VIEWS.WEBHOOKS_SETTINGS,
+				component: SettingsWebhooksView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'webhook:list',
 						},
 					},
 					telemetry: {

@@ -27,6 +27,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type { NodeTypes } from '@/node-types';
+import type { Push } from '@/push';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -52,6 +53,7 @@ describe('LiveWebhooks', () => {
 	const expressionEngineConfig = mock<ExpressionEngineConfig>({
 		allowWebhookIsolateSkip: true,
 	});
+	const push = mock<Push>();
 
 	let liveWebhooks: LiveWebhooks;
 
@@ -68,6 +70,7 @@ describe('LiveWebhooks', () => {
 			workflowsConfig,
 			workflowPublishedDataService,
 			expressionEngineConfig,
+			push,
 		);
 
 		// Mock WorkflowExecuteAdditionalData.getBase to avoid DI issues
@@ -199,6 +202,16 @@ describe('LiveWebhooks', () => {
 			expect(capturedNodes[0].id).toBe('webhook-node-active');
 			// The allowed-methods lookup is reserved for 404 responses
 			expect(webhookService.getWebhookMethods).not.toHaveBeenCalled();
+
+			expect(push.broadcast).toHaveBeenCalledWith({
+				type: 'webhookReceived',
+				data: {
+					workflowId: WORKFLOW_ID,
+					node: NODE_NAME,
+					method: httpMethod,
+					path: WEBHOOK_PATH,
+				},
+			});
 		});
 
 		it('should look up allowed methods and include them in the 404 when no webhook is registered', async () => {

@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
 
 import { WorkflowDependency } from '../entities';
 
@@ -158,5 +158,18 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	private getTableName(name: string): string {
 		const { tablePrefix } = this.databaseConfig;
 		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);
+	}
+
+	/**
+	 * Retrieve the caller → callee edges of workflows that reference any of the
+	 * given workflows via an Execute Workflow node. `workflowId` is the caller,
+	 * `dependencyKey` the called workflow's id.
+	 */
+	async findCallersOfWorkflows(workflowIds: string[]) {
+		if (workflowIds.length === 0) return [];
+		return await this.find({
+			select: ['workflowId', 'dependencyKey'],
+			where: { dependencyType: 'workflowCall', dependencyKey: In(workflowIds) },
+		});
 	}
 }
