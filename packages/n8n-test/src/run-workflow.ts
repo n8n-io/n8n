@@ -126,6 +126,18 @@ export async function runWorkflow(
 		instanceBaseUrl: 'http://localhost',
 		variables: {},
 		currentNodeExecutionIndex: 0,
+		// Friendly refusals for engine capabilities a test harness cannot provide — without
+		// these, nodes fail with raw TypeErrors ("... is not a function").
+		executeWorkflow: () => {
+			throw new UnexpectedError(
+				'Sub-workflow execution is not supported by n8n-test — mock the node with mockNode() instead',
+			);
+		},
+		startRunnerTask: () => {
+			throw new UnexpectedError(
+				'Task-runner nodes (e.g. the Code node) are not supported by n8n-test — mock them with mockNode() instead',
+			);
+		},
 	} as unknown as IWorkflowExecuteAdditionalData;
 
 	const runExecutionData = createRunExecutionData({

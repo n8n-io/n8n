@@ -27,17 +27,23 @@ interface MockEntry {
 const registry = new Map<WorkflowJson, Map<string, MockEntry>>();
 
 /**
- * Replaces the named node's execution with a canned output for the next
- * {@link runWorkflow} of this workflow object. The JSON itself is never mutated.
- * Mocking the same node again replaces the previous mock (last one wins).
+ * Replaces the named node's execution with a canned output for every subsequent
+ * {@link runWorkflow} of this workflow object, until {@link clearNodeMocks} runs.
+ * The JSON itself is never mutated. Mocking the same node again replaces the
+ * previous mock (last one wins).
  *
- * The returned handle captures what the node received, for assertions.
+ * The returned handle captures what the node received on the latest run.
  */
 export function mockNode(
 	workflow: WorkflowJson,
 	nodeName: string,
 	output: IDataObject,
 ): MockedNodeHandle {
+	if (!workflow.nodes.some((node) => node.name === nodeName)) {
+		throw new UnexpectedError(
+			`Cannot mock node "${nodeName}": the workflow has no node with that name`,
+		);
+	}
 	let mocks = registry.get(workflow);
 	if (!mocks) {
 		mocks = new Map();
@@ -54,7 +60,10 @@ export function clearNodeMocks(): void {
 }
 
 export function getNodeMocks(workflow: WorkflowJson): Map<string, MockEntry> | undefined {
-	return registry.get(workflow);
+	const mocks = registry.get(workflow);
+	// A fresh run means fresh captures: a handle must never report a previous run's input.
+	if (mocks) for (const entry of mocks.values()) entry.capturedInput = undefined;
+	return mocks;
 }
 
 /**

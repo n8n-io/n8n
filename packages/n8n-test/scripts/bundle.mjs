@@ -27,10 +27,12 @@ const externals = [
 // Pinned to current npm releases; bump deliberately, the engine API is the risk surface.
 // The @n8n helper pins MUST match what the released n8n-core depends on, or npm installs
 // a second copy and the DI container splits (`npm view n8n-core@<v> dependencies`).
+// nodes-base must be the release-train pairing for this core/workflow (check
+// `npm view n8n@<train> dependencies`) or it nests its own second n8n-workflow copy.
 const runtimeVersions = {
 	'n8n-core': '2.16.1',
 	'n8n-workflow': '2.16.0',
-	'n8n-nodes-base': '2.15.1',
+	'n8n-nodes-base': '2.16.0',
 	'@n8n/di': '0.10.0',
 	'@n8n/decorators': '1.16.0',
 };
@@ -112,8 +114,9 @@ export declare function runWorkflow(
 ): Promise<Record<string, unknown>>;
 
 /**
- * Replaces the named node's execution with a canned output for the next runWorkflow of
- * this workflow object. Multiple nodes may be mocked; last mock per node name wins.
+ * Replaces the named node's execution with a canned output for every subsequent
+ * runWorkflow of this workflow object, until clearNodeMocks() runs. Multiple nodes may
+ * be mocked; last mock per node name wins.
  */
 export declare function mockNode(
 	workflowJson: unknown,

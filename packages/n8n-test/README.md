@@ -122,6 +122,10 @@ Feasibility is proven, but these are the edges the production version must own:
   interception point — mocking there would also catch non-HTTP-module clients.
 - **Speed is a non-issue.** The lazy loader brings node-type load to ~1s per
   process; the full demo suite runs in under 3s.
+- **(v2) Code nodes and sub-workflows need mocking.** Task-runner-backed nodes
+  (the Code node) and Execute Sub-workflow call engine capabilities a test
+  harness cannot provide; `runWorkflow` refuses them with a clear message —
+  `mockNode()` is the answer for both.
 - **(v2) Released-engine drift is the real prebake tax.** Three shims were
   needed to run on npm releases: `vitest-mock-extended`'s CJS build cannot be
   `require`d outside Vite's pipeline (hence the plain `additionalData` object);
