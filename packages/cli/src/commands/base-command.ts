@@ -154,18 +154,24 @@ export abstract class BaseCommand<F = never> {
 			Container.get(LockService).setProvider(Container.get(RedisLockService));
 		}
 
-		// `Publisher`/`Subscriber` only exchange messages in queue mode, which today still
-		// requires Redis for the execution queue regardless - so this swap doesn't yet let a
-		// real deployment drop Redis. It proves the transport is swappable the same way locking
-		// is: a working `IpcMessageTransport` is the default, and this is the single call site
-		// that opts a deployment into `RedisMessageTransport` instead. The decision comes from
-		// `TransportModeService` (explicit `N8N_TRANSPORT_PUBSUB`, defaulting to `redis`), the
-		// same mechanism `Start.leaderElection()` uses for `leaderElection` - not re-derived here.
-		if (Container.get(TransportModeService).resolve('pubsub') === 'redis') {
+		// `Publisher`/`Subscriber` only exchange messages in queue mode - `MessageTransportService`
+		// defaults to an inert `NoopMessageTransport`, and this is the single call site that opts a
+		// deployment into `RedisMessageTransport` or `HypervisorMessageTransport` instead. The
+		// decision comes from `TransportModeService` (explicit `N8N_TRANSPORT_PUBSUB`, defaulting
+		// to `redis`), the same mechanism `Start.leaderElection()` uses for `leaderElection` - not
+		// re-derived here. Redis remains required for the execution queue regardless of this
+		// setting, so this swap alone doesn't yet let a real deployment drop Redis.
+		const transportModeService = Container.get(TransportModeService);
+		if (transportModeService.resolve('pubsub') === 'redis') {
 			const { RedisMessageTransport } = await import(
 				'@/scaling/transport/redis-message-transport.js'
 			);
 			Container.get(MessageTransportService).setProvider(Container.get(RedisMessageTransport));
+		} else if (transportModeService.isUnderHypervisor()) {
+			const { HypervisorMessageTransport } = await import(
+				'@/scaling/transport/hypervisor-message-transport.js'
+			);
+			Container.get(MessageTransportService).setProvider(Container.get(HypervisorMessageTransport));
 		}
 
 		await this.dbConnection

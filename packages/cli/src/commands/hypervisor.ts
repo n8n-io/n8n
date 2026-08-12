@@ -9,6 +9,7 @@ import type { Readable } from 'node:stream';
 import { InstanceRegistryHost } from '@/modules/instance-registry/storage/ipc-instance-storage';
 import { LeaderElectionHost } from '@/scaling/hypervisor-leader-election';
 import { HypervisorMessageRouter } from '@/scaling/hypervisor-message-router';
+import { PubSubHost } from '@/scaling/transport/hypervisor-message-transport';
 
 import { BaseCommand } from './base-command';
 import { Start } from './start';
@@ -40,10 +41,12 @@ export class Hypervisor extends BaseCommand {
 			const selfTag = `[hypervisor pid=${process.pid}]`;
 
 			// The primary hosts coordination features (leader election, instance
-			// registry) over IPC; the router dispatches messages to them by type prefix.
+			// registry, pubsub) over IPC; the router dispatches messages to them by
+			// type prefix.
 			const router = Container.get(HypervisorMessageRouter);
 			router.register(Container.get(LeaderElectionHost));
 			router.register(Container.get(InstanceRegistryHost));
+			router.register(Container.get(PubSubHost));
 			cluster.on('message', (worker, message) => router.handleMessage(worker, message));
 
 			for (const role of ['main', 'main', 'worker', 'worker'] as const) {
@@ -52,6 +55,7 @@ export class Hypervisor extends BaseCommand {
 					N8N_HYPERVISOR_MODE: '1',
 					N8N_TRANSPORT_LEADER_ELECTION: 'ipc',
 					N8N_TRANSPORT_INSTANCE_REGISTRY: 'ipc',
+					N8N_TRANSPORT_PUBSUB: 'ipc',
 				});
 				const childTag = `[${role} pid=${child.process.pid}]`;
 				forwardPrefixed(child.process.stdout, process.stdout, childTag);
