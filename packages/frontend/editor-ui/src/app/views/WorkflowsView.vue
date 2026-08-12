@@ -2772,6 +2772,14 @@ const onNameSubmit = async (name: string) => {
 
 .select-all-checkbox {
 	margin: 0;
+	// Align the checkbox square with the per-card selection checkboxes, which are
+	// centered in a --spacing--xl (32px) gutter: (32px - 16px square) / 2 = 8px.
+	padding-left: var(--spacing--2xs);
+
+	// Match the breadcrumb text next to it (N8nText size="medium" color="text-base").
+	label {
+		color: var(--text-color--subtle);
+	}
 }
 
 .breadcrumbs-container {
