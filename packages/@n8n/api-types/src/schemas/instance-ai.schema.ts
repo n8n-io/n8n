@@ -52,6 +52,27 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
 }
 
+/**
+ * Builds the thread-level grant key for updating a specific workflow without HITL.
+ *
+ * Written automatically when the agent creates a workflow in this thread, so follow-up
+ * edits to that same artifact (same run or later runs in the session) skip the update
+ * approval prompt. Foreign workflows still require approval unless the admin policy is
+ * `always_allow`.
+ */
+export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
+	return `workflows:update:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for a data-tables action
+ * (e.g. `create`, `insert-rows`). Must match the frontend key
+ * `${toolName}:${action}` so UI auto-approve and persisted grants stay aligned.
+ */
+export function buildDataTablesSessionGrantKey(action: string): string {
+	return `data-tables:${action}`;
+}
+
 // --- Domain-access grants ("always allow" for web access) ---
 // These keys mirror the research tool's action names (`fetch-url`, `web-search`) the same
 // way `executions:run:<id>` mirrors the executions `run` action, so a persisted grant row
@@ -614,7 +635,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.array(workflowSetupNodeSchema)
 		.optional()
 		.describe('Per-node setup cards for workflow credential/parameter configuration'),
-	workflowId: z.string().optional().describe('Workflow ID for setup-workflow tool'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'Workflow ID for setup cards and per-workflow edit approvals (build-workflow / workflows update)',
+		),
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
@@ -1719,7 +1745,10 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'create-tasks') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
-	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
+	if (
+		['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'].includes(toolName)
+	)
+		return 'skill';
 	return 'default';
 }
 
