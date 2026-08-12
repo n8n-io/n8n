@@ -87,10 +87,33 @@ import { AuthStrategyRegistry } from './services/auth-strategy.registry';
  * unauthenticated build assets, so allowing any origin to read them costs
  * nothing.
  */
+const UI_BUILDER_RUNTIME_PATH = /^\/static\/ui-runtime\.(js|css)$/;
+
 function setUiBuilderRuntimeCorsHeader(res: express.Response) {
-	if (/^\/static\/ui-runtime\.(js|css)$/.test(res.req.url)) {
+	if (UI_BUILDER_RUNTIME_PATH.test(res.req.url)) {
 		res.setHeader('Access-Control-Allow-Origin', '*');
 	}
+}
+
+/**
+ * `express.static`'s `setHeaders` only runs for the GET it actually serves,
+ * not for the CORS preflight `OPTIONS` request a cross-origin `fetch` (which
+ * is what a `<script type="module">` load is) sends first. Answer that
+ * preflight here, ahead of the static middleware, or it 404s with no CORS
+ * headers and the browser blocks the GET before it's ever sent.
+ */
+function uiBuilderRuntimeCorsPreflightHandler(
+	req: express.Request,
+	res: express.Response,
+	next: express.NextFunction,
+) {
+	if (req.method === 'OPTIONS' && UI_BUILDER_RUNTIME_PATH.test(req.url)) {
+		res.setHeader('Access-Control-Allow-Origin', '*');
+		res.setHeader('Access-Control-Allow-Methods', 'GET');
+		res.status(204).end();
+		return;
+	}
+	next();
 }
 
 @Service()
@@ -485,6 +508,7 @@ export class Server extends AbstractServer {
 
 			this.app.use(
 				'/',
+				uiBuilderRuntimeCorsPreflightHandler,
 				historyApiHandler,
 				express.static(staticCacheDir, {
 					...cacheOptions,
@@ -498,6 +522,7 @@ export class Server extends AbstractServer {
 		} else {
 			this.app.use(
 				'/',
+				uiBuilderRuntimeCorsPreflightHandler,
 				express.static(staticCacheDir, {
 					...cacheOptions,
 					setHeaders: setUiBuilderRuntimeCorsHeader,
