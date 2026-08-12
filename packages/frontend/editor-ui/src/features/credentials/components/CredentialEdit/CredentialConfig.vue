@@ -40,6 +40,10 @@ import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { InstanceAiCredentialHelpHandler } from '@/app/composables/useInstanceAiEditorCapability';
+import {
+	useInstanceAiCredentialErrorOffer,
+	type CredentialTestFailure,
+} from '@/features/ai/instanceAi/composables/useInstanceAiCredentialErrorOffer';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
@@ -417,6 +421,31 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		emit('scrollToTop');
 	}
 });
+
+/**
+ * Explicit test failures only. `authError` is written by the modal's own test
+ * path (save, Retry, or the retest on open), all of which follow a user action.
+ * `useCredentialTestInBackground` records into the credentials store instead and
+ * so can never land here — it auto-tests while the user is still typing the API
+ * key, and offering help mid-typing would be actively annoying.
+ *
+ * `null` while the validation warning replaces the auth-error banner, or when the
+ * user can't edit the credential: no offering help for an error they can't see or
+ * can't act on.
+ */
+const credentialTestFailure = computed<CredentialTestFailure | null>(() => {
+	if (!props.authError || props.showValidationWarning || !canWrite.value) return null;
+
+	return {
+		credentialType: props.credentialType.name,
+		displayName: props.credentialType.displayName,
+		nodeName: activeNode.value?.name,
+		errorMessage: props.authError,
+		credentialId: props.credentialId || undefined,
+	};
+});
+
+useInstanceAiCredentialErrorOffer(credentialTestFailure);
 </script>
 
 <template>

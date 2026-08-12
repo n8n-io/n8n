@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
+import { toValue } from 'vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STORES } from '@n8n/stores';
@@ -38,6 +39,17 @@ vi.mock('@n8n/i18n', async () => {
 		addCredentialTranslation: vi.fn(),
 	};
 });
+
+/**
+ * The offer's restraint rules (dwell, dedupe, retract) belong to
+ * `useInstanceAiCredentialErrorOffer` and are tested there. Here we only pin what
+ * the form decides: which failures are worth reporting at all.
+ */
+const credentialErrorOfferSource = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiCredentialErrorOffer', () => ({
+	useInstanceAiCredentialErrorOffer: credentialErrorOfferSource,
+}));
 
 const mockCredentialType: ICredentialType = {
 	name: 'testCredential',
@@ -1219,6 +1231,123 @@ describe('CredentialConfig', () => {
 
 			expect(screen.queryByTestId('templated-auth-simple-view')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('templated-auth-edit-setup')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('proactive offer on a failed credential test', () => {
+		const failingTestProps = {
+			isManaged: false,
+			mode: 'edit' as const,
+			credentialId: 'cred-1',
+			credentialType: mockCredentialType,
+			credentialProperties: [
+				{ displayName: 'API Key', name: 'apiKey', type: 'string' as const, default: '' },
+			],
+			credentialData: {} as ICredentialDataDecryptedObject,
+			credentialPermissions: { read: true, update: true },
+			authError: '',
+		};
+
+		/** What the form is currently reporting to the offer composable. */
+		function reportedFailure() {
+			return toValue(credentialErrorOfferSource.mock.calls.at(-1)?.[0]);
+		}
+
+		beforeEach(() => {
+			credentialErrorOfferSource.mockClear();
+		});
+
+		it('reports the failure once a test failure sets authError', async () => {
+			const { rerender } = renderComponent({ props: failingTestProps });
+
+			expect(reportedFailure()).toBeNull();
+
+			await rerender({ authError: '401 Unauthorized \u2014 check your credentials' });
+
+			expect(reportedFailure()).toEqual({
+				credentialType: 'testCredential',
+				displayName: 'Test Credential',
+				nodeName: undefined,
+				errorMessage: '401 Unauthorized \u2014 check your credentials',
+				credentialId: 'cred-1',
+			});
+		});
+
+		it('never reports credential data', async () => {
+			const { rerender } = renderComponent({
+				props: {
+					...failingTestProps,
+					credentialData: { apiKey: 'sk-super-secret' } as ICredentialDataDecryptedObject,
+				},
+			});
+
+			await rerender({ authError: '401 Unauthorized' });
+
+			expect(JSON.stringify(reportedFailure())).not.toContain('sk-super-secret');
+		});
+
+		it('names the node the credential is being configured for', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.setWorkflowId('test-workflow-id');
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
+			ndvStore.activeNode = {
+				name: 'Send message',
+				type: 'n8n-nodes-base.slack',
+				parameters: {},
+			} as unknown as INodeUi;
+
+			const { rerender } = renderComponent({ pinia, props: failingTestProps });
+
+			await rerender({ authError: '401 Unauthorized' });
+
+			expect(reportedFailure()?.nodeName).toBe('Send message');
+		});
+
+		it('reports nothing for a background auto-test failure', async () => {
+			// `useCredentialTestInBackground` auto-tests while the user is still typing
+			// the API key. It records into the store and never touches `authError`, so
+			// no offer may come out of it.
+			const pinia = createTestingPinia();
+			const credentialsStore = useCredentialsStore();
+			credentialsStore.credentialTestResults.set('cred-1', 'error');
+
+			const { rerender } = renderComponent({ pinia, props: failingTestProps });
+			await rerender({ credentialData: { apiKey: 'partially-typed' } });
+
+			expect(reportedFailure()).toBeNull();
+		});
+
+		it('reports nothing while the validation warning replaces the error banner', async () => {
+			const { rerender } = renderComponent({
+				props: { ...failingTestProps, showValidationWarning: true },
+			});
+
+			await rerender({ authError: '401 Unauthorized' });
+
+			expect(reportedFailure()).toBeNull();
+		});
+
+		it('reports nothing for a user who cannot edit the credential', async () => {
+			const { rerender } = renderComponent({
+				props: { ...failingTestProps, credentialPermissions: { read: true } },
+			});
+
+			await rerender({ authError: '401 Unauthorized' });
+
+			expect(reportedFailure()).toBeNull();
+		});
+
+		it('stops reporting once the credential test passes', async () => {
+			// Clearing the report is what withdraws an offer still in its dwell.
+			const { rerender } = renderComponent({ props: failingTestProps });
+
+			await rerender({ authError: '401 Unauthorized' });
+			expect(reportedFailure()).not.toBeNull();
+
+			await rerender({ authError: '' });
+
+			expect(reportedFailure()).toBeNull();
 		});
 	});
 });

@@ -56,8 +56,14 @@ export function buildContextBlock(type: ProactiveContextType, fields: ContextFie
 	return `<${CONTEXT_TAG} type="${type}">\n${body}\n</${CONTEXT_TAG}>`;
 }
 
-/** Strip every context block so the message renders as the plain-language text alone. */
-export function stripContextBlocks(text: string): string {
+/**
+ * Strip every context block so the message renders as the plain-language text
+ * alone. Total on purpose: it runs per message render, and a message whose
+ * `content` hasn't arrived yet must not break the transcript.
+ */
+export function stripContextBlocks(text: string | undefined | null): string {
+	if (!text) return '';
+
 	return text
 		.replace(CONTEXT_BLOCK_REGEX, '')
 		.replace(DANGLING_CONTEXT_BLOCK_REGEX, '')
@@ -65,20 +71,22 @@ export function stripContextBlocks(text: string): string {
 		.trim();
 }
 
+export function hasContextBlock(text: string | undefined | null): boolean {
+	return Boolean(text) && /<context\b[^>]*>/i.test(text as string);
+}
+
+/** Type of the first block, used to pick the chip shown in place of the markup. */
+export function getContextBlockType(text: string | undefined | null): ProactiveContextType | null {
+	if (!text) return null;
+
+	const type = CONTEXT_TYPE_ATTRIBUTE_REGEX.exec(text)?.[1];
+	return PROACTIVE_CONTEXT_TYPES.find((known) => known === type) ?? null;
+}
+
 /** Pull complete context blocks out so a user-edited lead can reattach them on send. */
 export function extractContextBlocks(text: string): string {
 	const blocks = text.match(/<context\b[^>]*>[\s\S]*?<\/context>/gi);
 	return blocks?.join('\n\n') ?? '';
-}
-
-export function hasContextBlock(text: string): boolean {
-	return /<context\b[^>]*>/i.test(text);
-}
-
-/** Type of the first block, used to pick the chip shown in place of the markup. */
-export function getContextBlockType(text: string): ProactiveContextType | null {
-	const type = CONTEXT_TYPE_ATTRIBUTE_REGEX.exec(text)?.[1];
-	return PROACTIVE_CONTEXT_TYPES.find((known) => known === type) ?? null;
 }
 
 /** Read one `key: value` line from the first context block body. */
@@ -141,13 +149,24 @@ export function executionErrorOfferKey(executionId: string): string {
 	return `execution-error:${executionId}`;
 }
 
+/** Bounded, readable stand-in for the error string — dismissal keys are persisted. */
+function errorFingerprint(errorMessage: string): string {
+	return errorMessage.replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 64);
+}
+
 /**
- * Scoped by credential identity, so dismissing the offer for one credential
- * doesn't suppress it for another of the same type. Pass the credential id when
- * known, otherwise its display name.
+ * Scoped by credential identity *and* the error, so dismissing the offer for one
+ * credential doesn't suppress it for another of the same type, and re-running the
+ * same failing test doesn't re-offer — while a credential that starts failing
+ * differently still does. Pass the credential id when known, otherwise its
+ * display name.
  */
-export function credentialErrorOfferKey(credentialType: string, credentialRef: string): string {
-	return `credential-error:${credentialType}:${credentialRef}`;
+export function credentialErrorOfferKey(
+	credentialType: string,
+	credentialRef: string,
+	errorMessage: string,
+): string {
+	return `credential-error:${credentialType}:${credentialRef}:${errorFingerprint(errorMessage)}`;
 }
 
 export interface ExecutionErrorContext {
@@ -164,9 +183,12 @@ export interface CredentialErrorContext {
 	credentialType: string;
 	/** Credential name as shown in the UI — never its decrypted data. */
 	displayName: string;
-	nodeName: string;
+	/** Node the credential is configured for; absent outside the editor (e.g. the credentials list). */
+	nodeName?: string;
 	/** The auth error string only; no tokens, keys or headers. */
 	errorMessage: string;
+	/** Lets the agent read the credential directly instead of guessing which one failed. */
+	credentialId?: string;
 }
 
 /**
@@ -189,16 +211,23 @@ export function buildExecutionErrorSeedMessage(context: ExecutionErrorContext): 
 	return `${lead}\n\n${block}`;
 }
 
-/** Seeded message for a credential that failed to authenticate. */
+/**
+ * Draft for a credential that failed to authenticate: a short ask the transcript
+ * can stand on once the block is stripped (the credential and error show as a
+ * chip), followed by the machine-readable context.
+ *
+ * Asks for an explanation, not a fix: the agent cannot resolve a 401 because it
+ * cannot see the user's API key. Its value here is saying what the error means
+ * and what to change.
+ */
 export function buildCredentialErrorSeedMessage(context: CredentialErrorContext): string {
 	const i18n = useI18n();
 
-	const lead = i18n.baseText('instanceAi.proactive.credentialError.prompt', {
-		interpolate: { displayName: context.displayName, nodeName: context.nodeName },
-	});
+	const lead = i18n.baseText('instanceAi.proactive.credentialError.prompt');
 
 	const block = buildContextBlock('credential-error', {
 		credential: `${context.displayName} (type: ${context.credentialType})`,
+		'credential id': context.credentialId,
 		node: context.nodeName,
 		message: context.errorMessage,
 	});
