@@ -16,15 +16,22 @@ const ITEM_ID = {
 export function useProjectNavigationCommands(options: {
 	lastQuery: Ref<string>;
 	activeNodeId: Ref<string | null>;
+	/** When set, hide cross-project navigation — search stays inside this project. */
+	scopedProjectId?: Ref<string | null>;
 }) {
 	const i18n = useI18n();
-	const { lastQuery, activeNodeId } = options;
+	const { lastQuery, activeNodeId, scopedProjectId } = options;
 	const projectsStore = useProjectsStore();
 	const globalEntityCreation = useGlobalEntityCreation();
 
 	const router = useRouter();
 
 	const filteredProjects = computed(() => {
+		// Project context means "only this project" — don't surface other projects.
+		if (scopedProjectId?.value) {
+			return [];
+		}
+
 		const trimmed = (lastQuery.value || '').trim().toLowerCase();
 		const allProjects = projectsStore.availableProjects;
 
@@ -82,6 +89,11 @@ export function useProjectNavigationCommands(options: {
 	});
 
 	const projectNavigationCommands = computed<CommandBarItem[]>(() => {
+		// Keep project switching out of a project-scoped command bar session.
+		if (scopedProjectId?.value) {
+			return [];
+		}
+
 		const commands: CommandBarItem[] = [];
 
 		if (projectsStore.hasPermissionToCreateProjects && projectsStore.canCreateProjects) {

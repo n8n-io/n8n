@@ -114,6 +114,10 @@ vi.mock('./useChatHubCommands', () => ({
 vi.mock('./useInstanceAiCommands', () => ({
 	useInstanceAiCommands: () => mkGroup('instanceai'),
 }));
+vi.mock('./useGlobalNodeSearchCommands', () => ({
+	useGlobalNodeSearchCommands: () => mkGroup('globalnodes'),
+	GLOBAL_NODE_SEARCH_COMMAND_ID: 'global-node-search-result',
+}));
 
 describe('useCommandBar', () => {
 	let api: ReturnType<typeof useCommandBar>;
@@ -143,6 +147,44 @@ describe('useCommandBar', () => {
 
 		const ids = api.items.value.map((i) => i.id);
 		expect(ids).toEqual(expect.arrayContaining(['node-cmd', 'wf-cmd', 'wfn-cmd', 'gen-cmd']));
+	});
+
+	it('clears workflow context and restores it on reset', async () => {
+		renderHarness();
+		await waitFor(() => expect(api.context.value).toBe('commandBar.sections.workflow ⋅ WF'));
+
+		api.clearContext();
+		expect(api.context.value).toBe('');
+
+		api.resetContext();
+		expect(api.context.value).toBe('commandBar.sections.workflow ⋅ WF');
+	});
+
+	it('exposes project name and icon on project list routes', async () => {
+		currentRoute.value = {
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: 'p1' },
+		};
+		renderHarness();
+
+		await waitFor(() => expect(api.context.value).toBe('projects.menu.personal'));
+		expect(api.contextIcon.value).toMatchObject({
+			props: expect.objectContaining({
+				icon: { type: 'icon', value: 'user' },
+				size: 'mini',
+				borderLess: true,
+			}),
+		});
+	});
+
+	it('treats /home list views as the personal project context', async () => {
+		currentRoute.value = {
+			name: VIEWS.WORKFLOWS,
+			params: {},
+		};
+		renderHarness();
+
+		await waitFor(() => expect(api.context.value).toBe('projects.menu.personal'));
 	});
 
 	it('propagates onCommandBarChange and onCommandBarNavigateTo to groups', () => {

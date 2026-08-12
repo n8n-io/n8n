@@ -18,6 +18,10 @@ const {
 	items,
 	placeholder,
 	context,
+	contextIcon,
+	contextClearLabel,
+	clearContext,
+	resetContext,
 	onCommandBarChange,
 	onCommandBarNavigateTo,
 	isLoading: isCommandBarLoading,
@@ -37,6 +41,7 @@ watch(showCommandBar, (newVal) => {
 
 function onCommandBarOpenChange(open: boolean) {
 	if (open) {
+		resetContext();
 		commandBarEventBus.emit('open');
 	}
 }
@@ -48,10 +53,13 @@ function onCommandBarOpenChange(open: boolean) {
 		:items="items"
 		:placeholder="placeholder"
 		:context="context"
+		:context-icon="contextIcon"
+		:context-clear-label="contextClearLabel"
 		:is-loading="isCommandBarLoading"
 		:z-index="APP_Z_INDEXES.COMMAND_BAR"
 		@input-change="onCommandBarChange"
 		@navigate-to="onCommandBarNavigateTo"
+		@clear-context="clearContext"
 		@update:open="onCommandBarOpenChange"
 	/>
 </template>

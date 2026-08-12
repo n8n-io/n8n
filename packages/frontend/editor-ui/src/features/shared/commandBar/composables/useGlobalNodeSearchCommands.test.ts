@@ -7,9 +7,15 @@ import type { NodeSearchHit } from '@n8n/api-types';
 
 import { useGlobalNodeSearchCommands } from './useGlobalNodeSearchCommands';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { createTestNode } from '@/__tests__/mocks';
 import * as workflowsApi from '@/app/api/workflows';
 
 vi.mock('lodash/debounce', () => ({
@@ -20,10 +26,32 @@ vi.mock('lodash/debounce', () => ({
 	},
 }));
 
+const setNodeActiveMock = vi.fn();
+
+vi.mock('@/app/composables/useCanvasOperations', () => ({
+	useCanvasOperations: () => ({
+		setNodeActive: setNodeActiveMock,
+	}),
+}));
+
+vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
+	canvasEventBus: {
+		emit: vi.fn(),
+	},
+}));
+
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
-		baseText: (key: string) => key,
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
+			if (key === 'generic.openResource' && options?.interpolate?.resource) {
+				return `Open ${options.interpolate.resource}`;
+			}
+			if (key === 'commandBar.globalNodeSearch.truncated' && options?.interpolate?.count) {
+				return `Showing the first ${options.interpolate.count} matches`;
+			}
+			return key;
+		},
 	}),
 }));
 
@@ -59,11 +87,18 @@ const searchWorkflowNodesMock = vi.mocked(workflowsApi.searchWorkflowNodes);
 describe('useGlobalNodeSearchCommands', () => {
 	let posthogStore: ReturnType<typeof usePostHog>;
 
-	const setup = () => {
+	const setup = (options: { isWorkflowScoped?: boolean; scopedProjectId?: string | null } = {}) => {
 		const lastQuery = ref('');
 		const activeNodeId = ref<string | null>(null);
-		const group = useGlobalNodeSearchCommands({ lastQuery, activeNodeId });
-		return { group, lastQuery, activeNodeId };
+		const isWorkflowScoped = ref(options.isWorkflowScoped ?? false);
+		const scopedProjectId = ref<string | null>(options.scopedProjectId ?? null);
+		const group = useGlobalNodeSearchCommands({
+			lastQuery,
+			activeNodeId,
+			isWorkflowScoped,
+			scopedProjectId,
+		});
+		return { group, lastQuery, activeNodeId, isWorkflowScoped, scopedProjectId };
 	};
 
 	beforeEach(() => {
@@ -79,7 +114,7 @@ describe('useGlobalNodeSearchCommands', () => {
 		});
 
 		posthogStore = usePostHog();
-		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
+		vi.spyOn(posthogStore, 'getVariant').mockReturnValue('variant');
 
 		// The document store falls back to the workflows store when nothing is provided.
 		useWorkflowsStore().workflowId = 'wf-current';
@@ -97,8 +132,8 @@ describe('useGlobalNodeSearchCommands', () => {
 	});
 
 	describe('feature flag', () => {
-		it('does not search or render results when disabled', async () => {
-			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(false);
+		it('does not search or render results when assigned to control', async () => {
+			vi.spyOn(posthogStore, 'getVariant').mockReturnValue('control');
 			const { group, lastQuery } = setup();
 
 			lastQuery.value = 'orders';
@@ -106,6 +141,79 @@ describe('useGlobalNodeSearchCommands', () => {
 
 			expect(searchWorkflowNodesMock).not.toHaveBeenCalled();
 			expect(group.commands.value).toEqual([]);
+		});
+
+		it('searches when the flag is unset (local/dev default on)', async () => {
+			vi.spyOn(posthogStore, 'getVariant').mockReturnValue(undefined);
+			const { group } = setup();
+
+			group.handlers?.onCommandBarChange?.('orders');
+
+			await waitFor(() =>
+				expect(searchWorkflowNodesMock).toHaveBeenCalledWith(expect.anything(), 'orders', {}),
+			);
+		});
+	});
+
+	describe('workflow context scoping', () => {
+		it('does not search while the workflow context is active', () => {
+			const { group } = setup({ isWorkflowScoped: true });
+
+			group.handlers?.onCommandBarChange?.('orders');
+
+			expect(searchWorkflowNodesMock).not.toHaveBeenCalled();
+			expect(group.commands.value).toEqual([]);
+		});
+
+		it('starts a global search when the workflow context is cleared', async () => {
+			const { group, lastQuery, isWorkflowScoped } = setup({ isWorkflowScoped: true });
+			searchWorkflowNodesMock.mockResolvedValue({ results: [makeHit()], hasMore: false });
+
+			lastQuery.value = 'orders';
+			group.handlers?.onCommandBarChange?.('orders');
+			expect(searchWorkflowNodesMock).not.toHaveBeenCalled();
+
+			isWorkflowScoped.value = false;
+
+			await waitFor(() =>
+				expect(searchWorkflowNodesMock).toHaveBeenCalledWith(expect.anything(), 'orders', {}),
+			);
+			await waitFor(() => expect(group.commands.value).toHaveLength(1));
+		});
+
+		it('passes projectId when project context is active', async () => {
+			const { group } = setup({ scopedProjectId: 'proj-1' });
+
+			group.handlers?.onCommandBarChange?.('orders');
+
+			await waitFor(() =>
+				expect(searchWorkflowNodesMock).toHaveBeenCalledWith(expect.anything(), 'orders', {
+					projectId: 'proj-1',
+				}),
+			);
+		});
+
+		it('drops hits from other projects even if the API returns them', async () => {
+			searchWorkflowNodesMock.mockResolvedValue({
+				results: [
+					makeHit({
+						nodeId: 'in-project',
+						homeProject: { id: 'proj-1', name: 'Acme Corp', type: 'team', icon: null },
+					}),
+					makeHit({
+						nodeId: 'other-project',
+						homeProject: { id: 'proj-2', name: 'Other', type: 'team', icon: null },
+					}),
+				],
+				hasMore: false,
+			});
+			const { group, lastQuery } = setup({ scopedProjectId: 'proj-1' });
+
+			lastQuery.value = 'orders';
+			group.handlers?.onCommandBarChange?.('orders');
+
+			await waitFor(() => expect(group.commands.value).toHaveLength(1));
+			expect(group.commands.value[0].id).toContain('in-project');
 		});
 	});
 
@@ -124,7 +232,7 @@ describe('useGlobalNodeSearchCommands', () => {
 			group.handlers?.onCommandBarChange?.('orders');
 
 			await waitFor(() =>
-				expect(searchWorkflowNodesMock).toHaveBeenCalledWith(expect.anything(), 'orders'),
+				expect(searchWorkflowNodesMock).toHaveBeenCalledWith(expect.anything(), 'orders', {}),
 			);
 		});
 
@@ -150,7 +258,7 @@ describe('useGlobalNodeSearchCommands', () => {
 	});
 
 	describe('results', () => {
-		it('maps hits to command items', async () => {
+		it('maps hits under Nodes with project subsections and type/workflow suffix', async () => {
 			searchWorkflowNodesMock.mockResolvedValue({ results: [makeHit()], hasMore: false });
 			const { group, lastQuery } = setup();
 
@@ -159,7 +267,96 @@ describe('useGlobalNodeSearchCommands', () => {
 
 			await waitFor(() => expect(group.commands.value).toHaveLength(1));
 			expect(group.commands.value[0].id).toContain('wf-other');
-			expect(group.commands.value[0].section).toBe('commandBar.globalNodeSearch.section');
+			expect(group.commands.value[0].section).toBe('commandBar.sections.nodes');
+			expect(group.commands.value[0].subsection).toBe('Acme Corp');
+			expect(group.commands.value[0].subsectionIcon).toMatchObject({
+				props: expect.objectContaining({
+					icon: { type: 'icon', value: 'layers' },
+					size: 'mini',
+					borderLess: true,
+				}),
+			});
+			expect(group.commands.value[0].title).toMatchObject({
+				props: expect.objectContaining({
+					title: expect.stringContaining('Fetch orders'),
+					suffix: 'httpRequest · Billing sync',
+				}),
+			});
+		});
+
+		it('groups hits by project subsection under Nodes', async () => {
+			searchWorkflowNodesMock.mockResolvedValue({
+				results: [
+					makeHit({
+						nodeId: 'acme-type',
+						matchedField: 'type',
+						homeProject: { id: 'p1', name: 'Acme Corp', type: 'team', icon: null },
+					}),
+					makeHit({
+						nodeId: 'personal-name',
+						nodeName: 'Orders personal',
+						matchedField: 'name',
+						homeProject: { id: 'p2', name: 'Personal', type: 'personal', icon: null },
+					}),
+					makeHit({
+						nodeId: 'acme-name',
+						nodeName: 'Orders acme',
+						matchedField: 'name',
+						homeProject: { id: 'p1', name: 'Acme Corp', type: 'team', icon: null },
+					}),
+				],
+				hasMore: false,
+			});
+			const { group, lastQuery } = setup();
+
+			lastQuery.value = 'orders';
+			group.handlers?.onCommandBarChange?.('orders');
+
+			await waitFor(() => expect(group.commands.value).toHaveLength(3));
+			// Project order follows the first high-rank hit; within a project, name > type.
+			expect(group.commands.value.map((c) => c.id)).toEqual([
+				expect.stringContaining('personal-name'),
+				expect.stringContaining('acme-name'),
+				expect.stringContaining('acme-type'),
+			]);
+			expect(group.commands.value.map((c) => c.section)).toEqual([
+				'commandBar.sections.nodes',
+				'commandBar.sections.nodes',
+				'commandBar.sections.nodes',
+			]);
+			expect(group.commands.value.map((c) => c.subsection)).toEqual([
+				'projects.menu.personal',
+				'Acme Corp',
+				'Acme Corp',
+			]);
+		});
+
+		it('ranks name matches above type matches', async () => {
+			searchWorkflowNodesMock.mockResolvedValue({
+				results: [
+					makeHit({
+						nodeId: 'type-hit',
+						nodeName: 'Notify sales',
+						matchedField: 'type',
+						snippet: 'slack',
+					}),
+					makeHit({
+						nodeId: 'name-hit',
+						nodeName: 'Slack alert',
+						matchedField: 'name',
+						snippet: 'Slack alert',
+					}),
+				],
+				hasMore: false,
+			});
+			const { group, lastQuery } = setup();
+
+			lastQuery.value = 'slack';
+			group.handlers?.onCommandBarChange?.('slack');
+
+			await waitFor(() => expect(group.commands.value).toHaveLength(2));
+			expect(group.commands.value[0].id).toContain('name-hit');
+			expect(group.commands.value[1].id).toContain('type-hit');
 		});
 
 		it('includes the snippet as a keyword so parameter matches survive client filtering', async () => {
@@ -178,9 +375,15 @@ describe('useGlobalNodeSearchCommands', () => {
 			expect(group.commands.value[0].keywords).toContain('https://api.acme.test/v2/orders');
 		});
 
-		it('excludes hits from the current workflow', async () => {
+		it('excludes current-workflow hits when the canvas already has that node', async () => {
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-current'));
+			documentStore.setNodes([createTestNode({ id: 'node-1', name: 'Fetch orders' })]);
+
 			searchWorkflowNodesMock.mockResolvedValue({
-				results: [makeHit({ workflowId: 'wf-current' }), makeHit({ workflowId: 'wf-other' })],
+				results: [
+					makeHit({ workflowId: 'wf-current', nodeId: 'node-1' }),
+					makeHit({ workflowId: 'wf-other', nodeId: 'node-2' }),
+				],
 				hasMore: false,
 			});
 			const { group, lastQuery } = setup();
@@ -189,6 +392,21 @@ describe('useGlobalNodeSearchCommands', () => {
 			group.handlers?.onCommandBarChange?.('orders');
 
 			await waitFor(() => expect(group.commands.value).toHaveLength(1));
+			expect(group.commands.value[0].id).toContain('wf-other');
+		});
+
+		it('keeps current-workflow hits when local open-node commands are unavailable', async () => {
+			searchWorkflowNodesMock.mockResolvedValue({
+				results: [makeHit({ workflowId: 'wf-current', nodeName: 'Get an event' })],
+				hasMore: false,
+			});
+			const { group, lastQuery } = setup();
+
+			lastQuery.value = 'Get an event';
+			group.handlers?.onCommandBarChange?.('Get an event');
+
+			await waitFor(() => expect(group.commands.value).toHaveLength(1));
+			expect(group.commands.value[0].id).toContain('wf-current');
 		});
 
 		it('appends a truncation notice when results were capped', async () => {
@@ -262,6 +480,23 @@ describe('useGlobalNodeSearchCommands', () => {
 			);
 		});
 
+		it('opens current-workflow nodes without a full page reload', async () => {
+			searchWorkflowNodesMock.mockResolvedValue({
+				results: [makeHit({ workflowId: 'wf-current', nodeId: 'local-1' })],
+				hasMore: false,
+			});
+			const { group, lastQuery } = setup();
+
+			lastQuery.value = 'orders';
+			group.handlers?.onCommandBarChange?.('orders');
+			await waitFor(() => expect(group.commands.value).toHaveLength(1));
+
+			await group.commands.value[0].handler?.();
+
+			expect(setNodeActiveMock).toHaveBeenCalledWith('local-1', 'command_bar');
+			expect(resolveMock).not.toHaveBeenCalled();
+		});
+
 		it('routes sticky notes to canvas selection instead of the NDV', async () => {
 			searchWorkflowNodesMock.mockResolvedValue({
 				results: [
@@ -287,6 +522,32 @@ describe('useGlobalNodeSearchCommands', () => {
 					query: { selectNode: 'sticky-1' },
 				}),
 			);
+		});
+
+		it('selects sticky notes on the current workflow via the canvas event bus', async () => {
+			searchWorkflowNodesMock.mockResolvedValue({
+				results: [
+					makeHit({
+						workflowId: 'wf-current',
+						isSticky: true,
+						nodeType: 'n8n-nodes-base.stickyNote',
+						nodeId: 'sticky-local',
+					}),
+				],
+				hasMore: false,
+			});
+			const { group, lastQuery } = setup();
+
+			lastQuery.value = 'orders';
+			group.handlers?.onCommandBarChange?.('orders');
+			await waitFor(() => expect(group.commands.value).toHaveLength(1));
+
+			await group.commands.value[0].handler?.();
+
+			expect(canvasEventBus.emit).toHaveBeenCalledWith('nodes:select', {
+				ids: ['sticky-local'],
+				panIntoView: true,
+			});
 		});
 	});
 

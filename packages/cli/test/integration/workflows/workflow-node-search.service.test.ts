@@ -99,6 +99,26 @@ describe('WorkflowNodeSearchService', () => {
 			expect(results[0].matchedField).toBe('name');
 		});
 
+		it('matches node types when the instance was renamed', async () => {
+			await createWorkflow(
+				{
+					nodes: [
+						makeNode({
+							name: 'Notify sales',
+							type: 'n8n-nodes-base.slack',
+						}),
+					],
+				},
+				member,
+			);
+
+			const { results } = await service.search(member, 'slack');
+
+			expect(results).toHaveLength(1);
+			expect(results[0].matchedField).toBe('type');
+			expect(results[0].nodeType).toBe('n8n-nodes-base.slack');
+		});
+
 		it('matches node notes', async () => {
 			await createWorkflow({ nodes: [makeNode({ notes: 'retries on 429' })] }, member);
 

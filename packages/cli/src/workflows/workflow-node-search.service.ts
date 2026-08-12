@@ -23,8 +23,9 @@ const CANDIDATE_WORKFLOW_LIMIT = NODE_SEARCH_MAX_RESULTS * 10;
 /** Relevance order for matched fields — a node-name hit beats a buried parameter hit. */
 const MATCHED_FIELD_RANK: Record<NodeSearchMatchedField, number> = {
 	name: 0,
-	notes: 1,
-	parameters: 2,
+	type: 1,
+	notes: 2,
+	parameters: 3,
 };
 
 type ScoredHit = NodeSearchHit & { rank: number };
@@ -38,9 +39,14 @@ export class WorkflowNodeSearchService {
 
 	/**
 	 * Full-text search over the nodes of every non-archived workflow the user can
-	 * read. Matches node names, notes and parameter values.
+	 * read. Matches node names, types, notes and parameter values.
+	 * Optionally restrict to workflows owned by `projectId`.
 	 */
-	async search(user: User, rawQuery: string): Promise<SearchWorkflowNodesResponse> {
+	async search(
+		user: User,
+		rawQuery: string,
+		options: { projectId?: string } = {},
+	): Promise<SearchWorkflowNodesResponse> {
 		const query = rawQuery.trim();
 		if (!query) return { results: [], hasMore: false };
 
@@ -55,6 +61,7 @@ export class WorkflowNodeSearchService {
 			{ scopes, projectRoles, workflowRoles },
 			query,
 			CANDIDATE_WORKFLOW_LIMIT,
+			options.projectId,
 		);
 
 		const queryLower = query.toLowerCase();

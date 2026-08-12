@@ -13,6 +13,8 @@ export const NODE_SEARCH_PER_WORKFLOW_CAP = 5;
 
 export class SearchWorkflowNodesQueryDto extends Z.class({
 	query: z.string().min(NODE_SEARCH_MIN_QUERY_LENGTH).max(NODE_SEARCH_MAX_QUERY_LENGTH),
+	/** When set, only search nodes in workflows owned by this project. */
+	projectId: z.string().min(1).optional(),
 }) {}
 
 export type NodeSearchHitProject = {
@@ -23,7 +25,7 @@ export type NodeSearchHitProject = {
 };
 
 /** Which node field the query matched. Drives ordering and the result subtitle. */
-export type NodeSearchMatchedField = 'name' | 'notes' | 'parameters';
+export type NodeSearchMatchedField = 'name' | 'type' | 'notes' | 'parameters';
 
 export type NodeSearchHit = {
 	workflowId: string;

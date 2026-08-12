@@ -23,12 +23,19 @@ import type {
 } from 'n8n-workflow';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
-export async function searchWorkflowNodes(context: IRestApiContext, query: string) {
+export async function searchWorkflowNodes(
+	context: IRestApiContext,
+	query: string,
+	options: { projectId?: string } = {},
+) {
 	return await makeRestApiRequest<SearchWorkflowNodesResponse>(
 		context,
 		'GET',
 		'/workflows/search-nodes',
-		{ query },
+		{
+			query,
+			...(options.projectId ? { projectId: options.projectId } : {}),
+		},
 	);
 }
 

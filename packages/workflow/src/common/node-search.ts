@@ -16,12 +16,35 @@ export const NODE_SEARCH_TEXT_MAX_LENGTH = 2_000;
 /** Individual values longer than this are skipped — almost always encoded blobs. */
 const NODE_SEARCH_VALUE_MAX_LENGTH = 512;
 
-export type NodeSearchField = 'name' | 'notes' | 'parameters';
+export type NodeSearchField = 'name' | 'type' | 'notes' | 'parameters';
 
 export type NodeSearchMatch = {
 	field: NodeSearchField;
 	snippet: string;
 };
+
+/** Package prefix stripped so queries like "n8n" / "nodes-base" don't match every node. */
+function shortNodeType(type: string): string {
+	const dot = type.lastIndexOf('.');
+	return dot === -1 ? type : type.slice(dot + 1);
+}
+
+/**
+ * Match the short type id, including spaced camelCase so "http request" hits
+ * `httpRequest` without needing the package prefix.
+ */
+function typeMatchesQuery(type: string, queryLower: string): boolean {
+	const short = shortNodeType(type);
+	const shortLower = short.toLowerCase();
+	if (shortLower.includes(queryLower)) return true;
+
+	const spaced = short
+		.replace(/([a-z\d])([A-Z])/g, '$1 $2')
+		.replace(/[_.-]+/g, ' ')
+		.toLowerCase();
+
+	return spaced.includes(queryLower);
+}
 
 function isPlainRecord(value: unknown): value is INodeParameters {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -82,7 +105,7 @@ export function buildNodeSearchSnippet(text: string, queryLower: string): string
 
 /**
  * Match a node against a lowercased query, reporting which field matched and a
- * snippet of it. Fields are checked in relevance order (name, notes, then
+ * snippet of it. Fields are checked in relevance order (name, type, notes, then
  * parameter values) and the first hit wins.
  */
 export function findNodeSearchMatch(node: INode, queryLower: string): NodeSearchMatch | null {
@@ -90,6 +113,11 @@ export function findNodeSearchMatch(node: INode, queryLower: string): NodeSearch
 
 	if (node.name?.toLowerCase().includes(queryLower)) {
 		return { field: 'name', snippet: buildNodeSearchSnippet(node.name, queryLower) };
+	}
+
+	// SQL already matches `type` in the nodes JSON; without this, those hits are discarded.
+	if (node.type && typeMatchesQuery(node.type, queryLower)) {
+		return { field: 'type', snippet: shortNodeType(node.type) };
 	}
 
 	if (node.notes?.toLowerCase().includes(queryLower)) {

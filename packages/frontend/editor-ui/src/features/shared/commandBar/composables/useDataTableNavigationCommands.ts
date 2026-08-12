@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import debounce from 'lodash/debounce';
@@ -21,9 +21,11 @@ export function useDataTableNavigationCommands(options: {
 	lastQuery: Ref<string>;
 	activeNodeId: Ref<string | null>;
 	currentProjectName: Ref<string>;
+	/** When set, only search data tables in this project. */
+	scopedProjectId: Ref<string | null>;
 }) {
 	const i18n = useI18n();
-	const { lastQuery, activeNodeId, currentProjectName } = options;
+	const { lastQuery, activeNodeId, currentProjectName, scopedProjectId } = options;
 	const dataTableStore = useDataTableStore();
 	const projectsStore = useProjectsStore();
 	const sourceControlStore = useSourceControlStore();
@@ -66,9 +68,14 @@ export function useDataTableNavigationCommands(options: {
 			}
 
 			const trimmedLower = trimmed.toLowerCase();
-			const filtered = dataTableStore.dataTables.filter((dataTable) =>
-				dataTable.name.toLowerCase().includes(trimmedLower),
-			);
+			const projectId = scopedProjectId.value;
+			const filtered = dataTableStore.dataTables.filter((dataTable) => {
+				if (!dataTable.name.toLowerCase().includes(trimmedLower)) return false;
+				if (projectId) {
+					return dataTable.projectId === projectId || dataTable.project?.id === projectId;
+				}
+				return true;
+			});
 
 			dataTableResults.value = orderResultByCurrentProjectFirst(filtered);
 		} catch {
@@ -210,6 +217,18 @@ export function useDataTableNavigationCommands(options: {
 			hasDataFetched.value = false;
 		}
 	}
+
+	watch(scopedProjectId, () => {
+		if (!dataTableStore.canViewDataTables) return;
+
+		const trimmed = lastQuery.value.trim();
+		const isInDataTableParent = activeNodeId.value === ITEM_ID.OPEN_DATA_TABLE;
+		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
+		if (!isInDataTableParent && !isRootWithQuery) return;
+
+		isLoading.value = true;
+		void fetchDataTablesDebounced(isInDataTableParent ? '' : trimmed);
+	});
 
 	return {
 		commands: dataTableNavigationCommands,

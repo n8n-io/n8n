@@ -98,7 +98,7 @@ export function useNodeCommands(options: {
 	});
 
 	const rootAddNodeCommandItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2 || !hasPermission('update')) {
+		if (lastQuery.value.trim().length <= 2 || !hasPermission('update')) {
 			return [];
 		}
 
@@ -145,7 +145,7 @@ export function useNodeCommands(options: {
 	});
 
 	const rootOpenNodeCommandItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2) {
+		if (lastQuery.value.trim().length <= 2) {
 			return [];
 		}
 

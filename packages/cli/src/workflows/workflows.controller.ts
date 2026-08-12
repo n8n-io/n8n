@@ -171,7 +171,9 @@ export class WorkflowsController {
 		_res: express.Response,
 		@Query query: SearchWorkflowNodesQueryDto,
 	): Promise<SearchWorkflowNodesResponse> {
-		return await this.workflowNodeSearchService.search(req.user, query.query);
+		return await this.workflowNodeSearchService.search(req.user, query.query, {
+			projectId: query.projectId,
+		});
 	}
 
 	@Get('/new')

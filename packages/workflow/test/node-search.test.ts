@@ -87,7 +87,32 @@ describe('findNodeSearchMatch', () => {
 		expect(match).toEqual({ field: 'name', snippet: 'Fetch Orders' });
 	});
 
-	it('matches notes when the name does not', () => {
+	it('matches the short node type when the name does not', () => {
+		const node = makeNode({
+			name: 'Notify sales',
+			type: 'n8n-nodes-base.slack',
+		});
+		const match = findNodeSearchMatch(node, 'slack');
+
+		expect(match).toEqual({ field: 'type', snippet: 'slack' });
+	});
+
+	it('matches spaced camelCase type queries', () => {
+		const node = makeNode({
+			name: 'Call API',
+			type: 'n8n-nodes-base.httpRequest',
+		});
+
+		expect(findNodeSearchMatch(node, 'http request')?.field).toBe('type');
+	});
+
+	it('does not match on the package prefix alone', () => {
+		const node = makeNode({ name: 'Do Thing', type: 'n8n-nodes-base.slack' });
+		expect(findNodeSearchMatch(node, 'n8n-nodes-base')).toBeNull();
+		expect(findNodeSearchMatch(node, 'nodes-base')).toBeNull();
+	});
+
+	it('matches notes when the name and type do not', () => {
 		const match = findNodeSearchMatch(makeNode({ notes: 'retries on 429' }), '429');
 		expect(match?.field).toBe('notes');
 		expect(match?.snippet).toContain('429');

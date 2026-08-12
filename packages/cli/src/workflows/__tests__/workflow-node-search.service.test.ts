@@ -68,6 +68,21 @@ describe('WorkflowNodeSearchService', () => {
 				}),
 				'orders',
 				expect.any(Number),
+				undefined,
+			);
+		});
+
+		it('forwards projectId when scoping to a project', async () => {
+			const { service, workflowRepository } = setup();
+
+			await service.search(user, 'orders', { projectId: 'proj-1' });
+
+			expect(workflowRepository.findNodeSearchCandidates).toHaveBeenCalledWith(
+				user,
+				expect.anything(),
+				'orders',
+				expect.any(Number),
+				'proj-1',
 			);
 		});
 
@@ -81,6 +96,7 @@ describe('WorkflowNodeSearchService', () => {
 				expect.anything(),
 				'orders',
 				expect.any(Number),
+				undefined,
 			);
 		});
 
@@ -167,12 +183,40 @@ describe('WorkflowNodeSearchService', () => {
 			expect(results[0].parentFolder).toEqual({ id: 'folder-1', name: 'Billing' });
 		});
 
-		it('ranks name matches above notes and parameter matches', async () => {
+		it('matches the node type when the name does not contain the query', async () => {
+			const { service } = setup([
+				makeCandidate({
+					nodes: [
+						makeNode({
+							id: 'renamed',
+							name: 'Notify sales',
+							type: 'n8n-nodes-base.slack',
+						}),
+					],
+				}),
+			]);
+
+			const { results } = await service.search(user, 'slack');
+
+			expect(results).toHaveLength(1);
+			expect(results[0]).toMatchObject({
+				nodeId: 'renamed',
+				matchedField: 'type',
+				nodeType: 'n8n-nodes-base.slack',
+			});
+		});
+
+		it('ranks name matches above type, notes and parameter matches', async () => {
 			const { service } = setup([
 				makeCandidate({
 					nodes: [
 						makeNode({ id: 'param', name: 'A', parameters: { q: 'orders' } }),
 						makeNode({ id: 'notes', name: 'B', notes: 'about orders' }),
+						makeNode({
+							id: 'type',
+							name: 'C',
+							type: 'n8n-nodes-base.orders',
+						}),
 						makeNode({ id: 'name', name: 'Fetch orders' }),
 					],
 				}),
@@ -180,7 +224,7 @@ describe('WorkflowNodeSearchService', () => {
 
 			const { results } = await service.search(user, 'orders');
 
-			expect(results.map((hit) => hit.nodeId)).toEqual(['name', 'notes', 'param']);
+			expect(results.map((hit) => hit.nodeId)).toEqual(['name', 'type', 'notes', 'param']);
 		});
 
 		it('ranks by matched field before applying the per-workflow cap', async () => {

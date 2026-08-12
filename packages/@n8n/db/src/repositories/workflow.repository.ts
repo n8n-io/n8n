@@ -883,6 +883,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		},
 		query: string,
 		limit: number,
+		projectId?: string,
 	): Promise<NodeSearchCandidate[]> {
 		const qb = this.createQueryBuilder('workflow').select([
 			'workflow.id',
@@ -903,9 +904,23 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			this.globalConfig.database.type === 'postgresdb'
 				? '"workflow"."nodes"::text'
 				: 'workflow.nodes';
-		qb.andWhere(`LOWER(${nodesAsText}) LIKE :nodeSearchQuery ESCAPE '\\'`, {
-			nodeSearchQuery: `%${this.escapeLike(query.toLowerCase())}%`,
-		});
+
+		// Also match the query with spaces removed so display-name style searches
+		// like "http request" still hit camelCase type ids (`httpRequest`) in JSON.
+		const queryLower = query.toLowerCase();
+		const compactQuery = queryLower.replace(/\s+/g, '');
+		const likeParams: Record<string, string> = {
+			nodeSearchQuery: `%${this.escapeLike(queryLower)}%`,
+		};
+		if (compactQuery !== queryLower && compactQuery.length >= 3) {
+			likeParams.nodeSearchQueryCompact = `%${this.escapeLike(compactQuery)}%`;
+			qb.andWhere(
+				`(LOWER(${nodesAsText}) LIKE :nodeSearchQuery ESCAPE '\\' OR LOWER(${nodesAsText}) LIKE :nodeSearchQueryCompact ESCAPE '\\')`,
+				likeParams,
+			);
+		} else {
+			qb.andWhere(`LOWER(${nodesAsText}) LIKE :nodeSearchQuery ESCAPE '\\'`, likeParams);
+		}
 
 		// Relation joins (not ad-hoc ones) so TypeORM hydrates `shared[0].project`.
 		qb.leftJoin('workflow.shared', 'ownerShared', "ownerShared.role = 'workflow:owner'")
@@ -917,6 +932,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				'ownerProject.type',
 				'ownerProject.icon',
 			]);
+
+		if (projectId) {
+			qb.andWhere('ownerShared.projectId = :nodeSearchProjectId', {
+				nodeSearchProjectId: projectId,
+			});
+		}
 
 		qb.leftJoin('workflow.parentFolder', 'parentFolder').addSelect([
 			'parentFolder.id',

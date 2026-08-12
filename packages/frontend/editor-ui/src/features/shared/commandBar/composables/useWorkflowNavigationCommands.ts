@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -28,9 +28,11 @@ export function useWorkflowNavigationCommands(options: {
 	lastQuery: Ref<string>;
 	activeNodeId: Ref<string | null>;
 	currentProjectName: Ref<string>;
+	/** When set, only search workflows in this project. */
+	scopedProjectId: Ref<string | null>;
 }): CommandGroup {
 	const i18n = useI18n();
-	const { lastQuery, activeNodeId, currentProjectName } = options;
+	const { lastQuery, activeNodeId, currentProjectName, scopedProjectId } = options;
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
@@ -77,10 +79,13 @@ export function useWorkflowNavigationCommands(options: {
 			// Check if search query matches any existing tag names
 			const matchedTag = tagsStore.allTags.find((tag) => tag.name.toLowerCase() === trimmedLower);
 
+			const projectScope = scopedProjectId.value ? { projectId: scopedProjectId.value } : {};
+
 			// Search workflows by name with minimal fields
 			const nameSearchPromise = workflowsListStore.searchWorkflows({
 				query: trimmed,
 				select: ['id', 'name', 'versionId', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
+				...projectScope,
 			});
 
 			const nodeTypeSearchPromise =
@@ -97,6 +102,7 @@ export function useWorkflowNavigationCommands(options: {
 								'isArchived',
 								'description',
 							],
+							...projectScope,
 						})
 					: Promise.resolve([]);
 
@@ -113,6 +119,7 @@ export function useWorkflowNavigationCommands(options: {
 							'isArchived',
 							'description',
 						],
+						...projectScope,
 					})
 				: Promise.resolve([]);
 
@@ -157,7 +164,12 @@ export function useWorkflowNavigationCommands(options: {
 			// Merge and dedupe by id, filter out archived workflows
 			const merged = [...byName, ...byNodeTypes, ...byTags];
 			const uniqueById = Array.from(new Map(merged.map((w) => [w.id, w])).values());
-			const nonArchivedWorkflows = uniqueById.filter((w) => !w.isArchived);
+			const projectId = scopedProjectId.value;
+			const nonArchivedWorkflows = uniqueById.filter((w) => {
+				if (w.isArchived) return false;
+				if (projectId && w.homeProject?.id !== projectId) return false;
+				return true;
+			});
 			workflowResults.value = orderResultByCurrentProjectFirst(nonArchivedWorkflows);
 
 			// Cache parent folders for breadcrumb building
@@ -332,6 +344,16 @@ export function useWorkflowNavigationCommands(options: {
 			workflowMatchedNodeTypes.value.clear();
 		}
 	}
+
+	watch(scopedProjectId, () => {
+		const trimmed = lastQuery.value.trim();
+		const isInWorkflowParent = activeNodeId.value === ITEM_ID.OPEN_WORKFLOW;
+		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
+		if (!isInWorkflowParent && !isRootWithQuery) return;
+
+		isLoading.value = true;
+		void fetchWorkflowsDebounced(isInWorkflowParent ? '' : trimmed);
+	});
 
 	async function initialize() {
 		await tagsStore.fetchAll();
