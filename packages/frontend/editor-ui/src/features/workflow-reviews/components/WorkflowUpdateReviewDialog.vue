@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { WORKFLOW_VERSION_NAME_MAX_LENGTH } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nButton,
 	N8nDialog,
 	N8nDialogDescription,
 	N8nDialogFooter,
-	N8nInput,
-	N8nInputLabel,
 	N8nLink,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -15,27 +12,38 @@ import { computed, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import { useToast } from '@n8n/composables/useToast';
+import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { useReviewVersionName } from '@/features/workflow-reviews/composables/useReviewVersionName';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { updateWorkflowReviewRequestVersion } from '@/features/workflow-reviews/workflowReviews.api';
 
-const props = defineProps<{
-	open: boolean;
-	workflowId: string;
-	flushSave: () => Promise<string | undefined>;
-}>();
+const props = withDefaults(
+	defineProps<{
+		open: boolean;
+		workflowId: string;
+		flushSave: () => Promise<string | undefined>;
+		canSubmit?: boolean;
+	}>(),
+	{ canSubmit: true },
+);
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
-	updated: [];
+	updated: [workflowReviewRequestId: string];
 }>();
 
 const i18n = useI18n();
 const rootStore = useRootStore();
 const toast = useToast();
 const reviewStatusStore = useWorkflowReviewStatusStore();
-const { versionName, prefillVersionName, applyVersionName } = useReviewVersionName();
+const {
+	versionName,
+	versionDescription,
+	prefillVersionName,
+	submittedVersionDescription,
+	applyVersionMetadata,
+} = useReviewVersionName();
 
 const isSubmitting = ref(false);
 const workflowReviewRequestId = computed(
@@ -43,7 +51,7 @@ const workflowReviewRequestId = computed(
 );
 
 const isSubmitDisabled = computed(
-	() => isSubmitting.value || versionName.value.trim().length === 0,
+	() => isSubmitting.value || !props.canSubmit || versionName.value.trim().length === 0,
 );
 
 watch(
@@ -59,22 +67,23 @@ const close = () => {
 };
 
 /** The open review may have been closed elsewhere in the meantime — refetch once before giving up. */
-const resolveOpenReviewRequestId = async (workflowId: string): Promise<string | undefined> => {
+const resolveOpenReviewRequest = async (workflowId: string) => {
 	let request = reviewStatusStore.openReviewRequest(workflowId);
 	if (!request) {
 		await reviewStatusStore.fetchStatus(workflowId);
 		request = reviewStatusStore.openReviewRequest(workflowId);
 	}
-	return request?.id;
+	return request;
 };
 
 const submit = async () => {
 	if (isSubmitDisabled.value) return;
 
 	const workflowId = props.workflowId;
-	// `flushSave()` awaits a full workflow save, so reading the field afterwards
-	// could send a name the guard never validated.
+	// `flushSave()` awaits a full workflow save, so reading the fields afterwards
+	// could send values the guard never validated.
 	const trimmedVersionName = versionName.value.trim();
+	const trimmedVersionDescription = submittedVersionDescription();
 
 	isSubmitting.value = true;
 	try {
@@ -92,8 +101,8 @@ const submit = async () => {
 			return;
 		}
 
-		const workflowReviewRequestId = await resolveOpenReviewRequestId(workflowId);
-		if (!workflowReviewRequestId) {
+		const openReviewRequest = await resolveOpenReviewRequest(workflowId);
+		if (!openReviewRequest) {
 			toast.showError(
 				new Error(i18n.baseText('workflowReviews.updateReview.error.noOpenReview')),
 				i18n.baseText('workflowReviews.updateReview.error.title'),
@@ -101,18 +110,23 @@ const submit = async () => {
 			emit('update:open', false);
 			return;
 		}
+		if (openReviewRequest.workflowVersionId === workflowVersionId) {
+			emit('update:open', false);
+			return;
+		}
 
-		await updateWorkflowReviewRequestVersion(rootStore.restApiContext, workflowReviewRequestId, {
+		await updateWorkflowReviewRequestVersion(rootStore.restApiContext, openReviewRequest.id, {
 			workflowId,
 			workflowVersionId,
 			workflowVersionName: trimmedVersionName,
+			workflowVersionDescription: trimmedVersionDescription,
 		});
 
-		applyVersionName(workflowVersionId, trimmedVersionName);
+		applyVersionMetadata(workflowVersionId, trimmedVersionName, trimmedVersionDescription);
 
 		void reviewStatusStore.fetchStatus(workflowId);
 		emit('update:open', false);
-		emit('updated');
+		emit('updated', openReviewRequest.id);
 	} catch (error) {
 		// Whatever went wrong (e.g. the review closed concurrently), refetch the review state.
 		void reviewStatusStore.fetchStatus(workflowId);
@@ -150,20 +164,15 @@ const submit = async () => {
 				</template>
 			</I18nT>
 		</N8nDialogDescription>
-		<N8nInputLabel
-			input-name="workflow-update-review-version-name"
-			:label="i18n.baseText('workflowReviews.versionName.label')"
-			:class="$style.versionName"
-			required
-		>
-			<N8nInput
-				id="workflow-update-review-version-name"
-				v-model="versionName"
-				:maxlength="WORKFLOW_VERSION_NAME_MAX_LENGTH"
-				:disabled="isSubmitting"
-				data-test-id="workflow-update-review-version-name-input"
-			/>
-		</N8nInputLabel>
+		<WorkflowVersionForm
+			v-model:version-name="versionName"
+			v-model:description="versionDescription"
+			:class="$style.versionForm"
+			:disabled="isSubmitting"
+			version-name-test-id="workflow-update-review-version-name-input"
+			description-test-id="workflow-update-review-version-description-input"
+			@submit="submit"
+		/>
 		<N8nDialogFooter data-test-id="workflow-update-review-dialog">
 			<N8nButton
 				type="button"
@@ -193,7 +202,7 @@ const submit = async () => {
 	margin-top: var(--spacing--xs);
 }
 
-.versionName {
+.versionForm {
 	margin-top: var(--spacing--sm);
 }
 </style>

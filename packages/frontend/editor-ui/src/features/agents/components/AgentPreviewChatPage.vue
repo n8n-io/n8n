@@ -8,24 +8,29 @@ import { LOCAL_STORAGE_AGENT_PREVIEW_CHAT_PANEL_WIDTH } from '@/app/constants';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type { GoalGraphLiveState } from '../composables/useAgentChatStream';
-import type { AgentJsonConfig, AgentResource } from '../types';
+import type { AgentContinueLoadedEvent, AgentJsonConfig, AgentResource } from '../types';
 import AgentChatPanel from './AgentChatPanel.vue';
 import AgentGoalGraphCanvas from './goal-graph/AgentGoalGraphCanvas.vue';
 
-const props = defineProps<{
-	initialized: boolean;
-	projectId: string;
-	agentId: string;
-	agent: AgentResource | null;
-	localConfig: AgentJsonConfig | null;
-	connectedTriggers: string[];
-	effectiveSessionId?: string;
-	initialPrompt?: string;
-	canSendToAssistant?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		initialized: boolean;
+		projectId: string;
+		agentId: string;
+		agent: AgentResource | null;
+		localConfig: AgentJsonConfig | null;
+		connectedTriggers: string[];
+		effectiveSessionId?: string;
+		initialPrompt?: string;
+		canSendToAssistant?: boolean;
+		beforeSend?: () => Promise<void> | void;
+		layout?: 'page' | 'dock';
+	}>(),
+	{ layout: 'page' },
+);
 
 const emit = defineEmits<{
-	'continue-loaded': [count: number];
+	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
 	'send-to-assistant': [executionId?: string];
 }>();
@@ -63,9 +68,18 @@ const liveState = computed<GoalGraphLiveState>(
 </script>
 
 <template>
-	<main ref="previewContainer" :class="$style.previewPage" data-testid="agent-preview-chat-page">
+	<component
+		:is="layout === 'dock' ? 'div' : 'main'"
+		ref="previewContainer"
+		:class="[$style.previewPage, { [$style.dockLayout]: layout === 'dock' }]"
+		data-testid="agent-preview-chat-page"
+	>
 		<N8nResizeWrapper
-			:class="[$style.chatFrame, showGraph ? $style.chatResizable : $style.chatCentered]"
+			:class="[
+				$style.chatFrame,
+				showGraph ? $style.chatResizable : $style.chatCentered,
+				{ [$style.dockChatFrame]: layout === 'dock' },
+			]"
 			:style="showGraph ? { width: `${chatResizer.size.value}px` } : undefined"
 			:width="showGraph ? chatResizer.size.value : 0"
 			:is-resizing-enabled="showGraph"
@@ -90,6 +104,7 @@ const liveState = computed<GoalGraphLiveState>(
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
 				:can-send-to-assistant="canSendToAssistant"
+				:before-send="beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
@@ -102,7 +117,7 @@ const liveState = computed<GoalGraphLiveState>(
 			:slots="localConfig.slots ?? []"
 			:state="liveState"
 		/>
-	</main>
+	</component>
 </template>
 
 <style lang="scss" module>
@@ -130,5 +145,13 @@ const liveState = computed<GoalGraphLiveState>(
 .chatResizable {
 	flex-shrink: 0;
 	border-right: var(--border);
+}
+
+.dockLayout {
+	background-color: transparent;
+}
+
+.dockChatFrame {
+	max-width: none;
 }
 </style>

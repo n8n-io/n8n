@@ -24,8 +24,8 @@ $E: null;
 /* Scrollbar
  -------------------------- */
 @mixin scroll-bar {
-	$scrollbar-thumb-background: #b4bccc;
-	$scrollbar-track-background: var(--color--foreground--tint-2);
+	scrollbar-width: thin;
+	scrollbar-color: var.$scrollbar-background-color transparent;
 
 	&::-webkit-scrollbar {
 		z-index: 11;
@@ -38,19 +38,37 @@ $E: null;
 		&-thumb {
 			border-radius: 5px;
 			width: 6px;
-			background: $scrollbar-thumb-background;
+			background-color: var.$scrollbar-background-color;
+
+			&:hover {
+				background-color: var.$scrollbar-hover-background-color;
+			}
 		}
 
-		&-corner {
-			background: $scrollbar-track-background;
+		&-corner,
+		&-track,
+		&-track-piece {
+			background-color: transparent;
 		}
+	}
+}
 
-		&-track {
-			background: $scrollbar-track-background;
+@mixin hoverable-scroll-bar {
+	@include scroll-bar;
+	scrollbar-color: transparent transparent;
 
-			&-piece {
-				background: $scrollbar-track-background;
-				width: 6px;
+	&::-webkit-scrollbar-thumb {
+		background-color: transparent;
+	}
+
+	&:hover {
+		scrollbar-color: var.$scrollbar-background-color transparent;
+
+		&::-webkit-scrollbar-thumb {
+			background-color: var.$scrollbar-background-color;
+
+			&:hover {
+				background-color: var.$scrollbar-hover-background-color;
 			}
 		}
 	}

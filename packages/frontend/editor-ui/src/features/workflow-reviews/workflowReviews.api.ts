@@ -1,12 +1,13 @@
 import type {
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestDto,
 	DecideWorkflowReviewRequestResponse,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	GetWorkflowReviewInboxSummaryResponse,
+	ListWorkflowReviewActivityResponse,
 	ListWorkflowReviewInboxResponse,
 	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewEligibleReviewersList,
-	WorkflowReviewRequestDecision,
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
@@ -21,7 +22,7 @@ export type FetchWorkflowReviewInboxParams = {
 };
 
 /** A decision a reviewer can submit; `pending` is the initial state, never an input. */
-export type WorkflowReviewDecisionInput = Exclude<WorkflowReviewRequestDecision, 'pending'>;
+export type WorkflowReviewDecisionInput = DecideWorkflowReviewRequestDto['decision'];
 
 /** Workflow-scoped list used by the review status sync (toggle + canvas banner). */
 export async function fetchWorkflowReviewRequests(
@@ -68,7 +69,7 @@ export async function updateWorkflowReviewRequestVersion(
 	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
 		context,
 		'POST',
-		`/workflow-review-requests/${workflowReviewRequestId}/update-version`,
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/update-version`,
 		{ ...payload },
 	);
 }
@@ -76,12 +77,12 @@ export async function updateWorkflowReviewRequestVersion(
 export async function decideWorkflowReviewRequest(
 	context: IRestApiContext,
 	workflowReviewRequestId: string,
-	payload: { decision: WorkflowReviewDecisionInput },
+	payload: DecideWorkflowReviewRequestDto,
 ): Promise<DecideWorkflowReviewRequestResponse> {
 	return await makeRestApiRequest<DecideWorkflowReviewRequestResponse>(
 		context,
 		'POST',
-		`/workflow-review-requests/${workflowReviewRequestId}/decision`,
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/decision`,
 		{ ...payload },
 	);
 }
@@ -107,6 +108,19 @@ export async function fetchWorkflowReviewRequestDetail(
 	return await makeRestApiRequest(
 		context,
 		'GET',
-		`/workflow-review-requests/${workflowReviewRequestId}`,
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}`,
+	);
+}
+
+export async function fetchWorkflowReviewActivity(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+	params: { limit?: number; cursor?: string },
+): Promise<ListWorkflowReviewActivityResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/activity`,
+		params,
 	);
 }

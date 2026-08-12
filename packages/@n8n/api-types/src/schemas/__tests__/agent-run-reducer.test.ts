@@ -135,6 +135,11 @@ function makeConfirmationRequest(
 			args: {},
 			severity: 'warning',
 			message: 'Are you sure?',
+			targetApproval: {
+				toolName: 'delete_record',
+				displayName: 'Delete record',
+				args: { id: 'record-1' },
+			},
 		},
 	};
 }
@@ -715,6 +720,11 @@ describe('agent-run-reducer', () => {
 				requestId: 'req-1',
 				severity: 'warning',
 				message: 'Are you sure?',
+				targetApproval: {
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+				},
 			});
 		});
 

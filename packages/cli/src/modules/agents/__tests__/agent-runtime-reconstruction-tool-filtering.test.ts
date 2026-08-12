@@ -67,6 +67,7 @@ const nodeToolWithoutCredential: Extract<AgentJsonToolConfig, { type: 'node' }> 
 
 const workflowTool: Extract<AgentJsonToolConfig, { type: 'workflow' }> = {
 	type: 'workflow',
+	workflowId: 'wf-1',
 	workflow: 'Lookup customer',
 };
 
@@ -225,7 +226,9 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	it('drops a workflow tool the user cannot access, keeps one they can', async () => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 		const workflowRepository = mock<WorkflowRepository>();
-		workflowRepository.findOne.mockResolvedValue(mock<WorkflowEntity>({ id: 'wf-1' }));
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			mock<WorkflowEntity>({ id: 'wf-1' }),
+		);
 		const workflowFinderService = mock<WorkflowFinderService>();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 		const { service } = makeService({ workflowRepository, workflowFinderService });
@@ -240,6 +243,10 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			testUser,
 		);
 
+		expect(workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(projectId, {
+			workflowId: 'wf-1',
+			workflowName: 'Lookup customer',
+		});
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', testUser, [
 			'workflow:execute',
 		]);
@@ -253,7 +260,9 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			mock<CredentialsEntity>({ id: 'cred-1' }),
 		);
 		const workflowRepository = mock<WorkflowRepository>();
-		workflowRepository.findOne.mockResolvedValue(mock<WorkflowEntity>({ id: 'wf-1' }));
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			mock<WorkflowEntity>({ id: 'wf-1' }),
+		);
 		const workflowFinderService = mock<WorkflowFinderService>();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>>({ id: 'wf-1' }),

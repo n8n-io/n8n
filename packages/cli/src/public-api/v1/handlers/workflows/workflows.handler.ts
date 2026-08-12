@@ -53,7 +53,6 @@ type WorkflowHandlers = {
 	createWorkflow: PublicAPIEndpoint<WorkflowRequest.Create>;
 	transferWorkflow: PublicAPIEndpoint<WorkflowRequest.Transfer>;
 	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
-	getWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
 	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
 	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
@@ -172,42 +171,6 @@ const workflowHandlers: WorkflowHandlers = {
 			return res.json(workflow);
 		},
 	],
-	getWorkflow: [
-		publicApiScope('workflow:read'),
-		projectScope('workflow:read', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const { excludePinnedData = false } = req.query;
-
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:read'],
-				{
-					includeTags: areWorkflowTagsEnabled(),
-					includeActiveVersion: true,
-				},
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow they do not own
-				// and was not shared to them
-				// Or does not exist.
-				throw new NotFoundError('Not Found');
-			}
-
-			if (excludePinnedData) {
-				delete workflow.pinData;
-			}
-
-			Container.get(EventService).emit('user-retrieved-workflow', {
-				userId: req.user.id,
-				publicApi: true,
-			});
-
-			return res.json(workflow);
-		},
-	],
 	getWorkflowVersion: [
 		publicApiScope('workflow:read'),
 		projectScope('workflow:read', 'workflow'),
@@ -294,6 +257,10 @@ const workflowHandlers: WorkflowHandlers = {
 			// null moves the workflow to the project root, (undefined) leaves the current folder untouched
 			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
 
+			// Defaults to true so existing integrations keep publishing on save; callers that want
+			// to stage a change on an already-published workflow can opt out explicitly.
+			const { publishIfActive = true } = req.query;
+
 			// binaryMode and credentialResolverId are derived, internal settings
 			// rather than something users are expected to control programmatically;
 			// strip them so the settings merge in WorkflowService.update preserves
@@ -315,7 +282,7 @@ const workflowHandlers: WorkflowHandlers = {
 						parentFolderId: resolvedParentFolderId,
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
-						publishIfActive: true,
+						publishIfActive,
 						source: 'api',
 					},
 				);

@@ -2,6 +2,7 @@ import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
+	buildDataTablesSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -582,6 +583,9 @@ export function createThreadRuntime(
 			const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
 			return buildRunWorkflowSessionGrantKey(workflowId);
 		}
+		if (toolName === 'data-tables') {
+			return buildDataTablesSessionGrantKey(action);
+		}
 		return `${toolName}:${action}`;
 	}
 
@@ -593,6 +597,7 @@ export function createThreadRuntime(
 
 	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
 		const conf = item.toolCall.confirmation;
+		if (conf.targetApproval) return false;
 		if (conf.severity === 'destructive') return false;
 		if (conf.domainAccess) return false;
 		if (conf.inputType) return false;

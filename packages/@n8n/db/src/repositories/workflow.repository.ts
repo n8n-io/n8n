@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { DataSource, Repository, In, Like, Not, IsNull } from '@n8n/typeorm';
+import { DataSource, In, Like, Not, IsNull } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
 	UpdateResult,
@@ -13,6 +13,7 @@ import type {
 } from '@n8n/typeorm';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
+import { BaseRepository } from './base-repository';
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
@@ -30,6 +31,7 @@ import type {
 	FolderWithWorkflowAndSubFolderCount,
 	ListQuery,
 } from '../entities/types-db';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { isStringArray } from '../utils/is-string-array';
 import { TimedQuery } from '../utils/timed-query';
@@ -59,15 +61,16 @@ type WorkflowListResult = {
 };
 
 @Service()
-export class WorkflowRepository extends Repository<WorkflowEntity> {
+export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(WorkflowEntity, dataSource.manager);
+		super(WorkflowEntity, dataSource.manager, transactionRunner);
 	}
 
 	async get(
@@ -77,6 +80,23 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return await this.findOne({
 			where,
 			relations: options?.relations,
+		});
+	}
+
+	/**
+	 * Archived state of a workflow, or `null` if it no longer exists.
+	 *
+	 * Pass `ctx` when calling from inside a transaction — the read then runs on that
+	 * transaction's connection instead of checking out a second one, which would
+	 * deadlock a single-connection pool.
+	 */
+	async findArchivedState(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<{ isArchived: boolean } | null> {
+		return await this.managerFor(ctx).findOne(WorkflowEntity, {
+			select: { isArchived: true },
+			where: { id: workflowId },
 		});
 	}
 
@@ -225,6 +245,41 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (fields?.length) options.select = fields as FindOptionsSelect<WorkflowEntity>;
 
 		return await this.find(options);
+	}
+
+	async findManyByAgentToolReferences(
+		projectId: string,
+		workflowIds: string[],
+		legacyWorkflowNames: string[],
+	) {
+		const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
+		if (workflowIds.length > 0) {
+			where.push({ id: In(workflowIds), shared: { projectId } });
+		}
+		if (legacyWorkflowNames.length > 0) {
+			where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
+		}
+		if (where.length === 0) return [];
+
+		return await this.find({
+			where,
+			select: ['id', 'name', 'nodes'],
+		});
+	}
+
+	async findOneByAgentToolReference(
+		projectId: string,
+		reference: { workflowId?: string; workflowName: string },
+	) {
+		const workflowWhere: FindOptionsWhere<WorkflowEntity> =
+			reference.workflowId !== undefined
+				? { id: reference.workflowId }
+				: { name: reference.workflowName };
+
+		return await this.findOne({
+			where: { ...workflowWhere, shared: { projectId } },
+			relations: ['shared'],
+		});
 	}
 
 	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {
