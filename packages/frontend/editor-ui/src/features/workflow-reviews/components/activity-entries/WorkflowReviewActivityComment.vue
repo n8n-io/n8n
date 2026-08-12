@@ -38,7 +38,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 					>
 						{{ authorName(message) }}
 					</N8nText>
-					<N8nText size="xsmall" color="text-light">
+					<N8nText size="small" color="text-light">
 						<time
 							:datetime="message.createdAt"
 							data-test-id="workflow-review-activity-comment-time"
@@ -71,10 +71,17 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 </template>
 
 <style lang="scss" module>
+/* A comment is prose, so it gets the same card as a decision that carries a note. Keep in
+	step with `.boxed` in WorkflowReviewActivitySystemEntry.vue. The negative margin cancels
+	the list's inset so the avatars stay in one column with the unboxed entries. */
 .entry {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	margin-inline: calc(-1 * var(--spacing--sm));
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius);
 }
 
 .message {

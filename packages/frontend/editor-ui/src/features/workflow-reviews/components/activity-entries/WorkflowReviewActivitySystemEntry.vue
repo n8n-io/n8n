@@ -110,8 +110,8 @@ const actorName = computed(() =>
 						separator on the actorless entries. -->
 					<span aria-hidden="true" :class="$style.separator">|</span>
 				</N8nText>
-				<!-- One phrase in one colour ("Requested changes 2 hours ago"): the design keeps
-					the actor, the event and the time identical, and lightens only the note. -->
+				<!-- One phrase in one colour ("Requested changes 2 hours ago"). The design sets the
+					time at body size; we render it a step down by preference, colour unchanged. -->
 				<N8nText
 					size="medium"
 					color="text-base"
@@ -120,7 +120,7 @@ const actorName = computed(() =>
 				>
 					{{ content.text }}
 				</N8nText>
-				<N8nText size="medium" color="text-base" :class="$style.line">
+				<N8nText size="small" color="text-base" :class="$style.line">
 					<time :datetime="entry.createdAt">
 						<TimeAgo :date="entry.createdAt" />
 					</time>
@@ -167,7 +167,8 @@ const actorName = computed(() =>
 	margin-inline: var(--spacing--3xs);
 }
 
-/* A decision that carries a note sits in a card. Pulled out by the list's own inset so the
+/* A decision that carries a note sits in a card, as a comment always does. Keep in step with
+	`.entry` in WorkflowReviewActivityComment.vue. Pulled out by the list's own inset so the
 	avatars stay in one column with the unboxed entries above and below. */
 .boxed {
 	margin-inline: calc(-1 * var(--spacing--sm));

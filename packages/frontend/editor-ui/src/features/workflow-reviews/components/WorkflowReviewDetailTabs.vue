@@ -194,6 +194,9 @@ const tabOptions = computed(() => [
 	max-height: 30%;
 	overflow: auto;
 	padding-bottom: var(--spacing--sm);
+	/* Same inset the feed gives its entries, so the description starts on the avatar column
+		rather than a step to its left. */
+	padding-inline: var(--spacing--sm);
 }
 
 .callout {
