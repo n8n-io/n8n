@@ -7,10 +7,10 @@ import type { UiNode } from '../../core/types';
 /** A document ref, a `write` spy, and the composable built on both. */
 function harness(doc?: UiNode) {
 	const value = ref<string | object | undefined>(doc);
-	const writes: string[] = [];
+	const writes: UiNode[] = [];
 	const readOnly = ref(false);
 
-	const api = useUiDocument(value, (json) => writes.push(json), readOnly);
+	const api = useUiDocument(value, (definition) => writes.push(definition), readOnly);
 
 	return { ...api, writes };
 }

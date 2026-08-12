@@ -76,7 +76,7 @@ export class UiBuilder implements INodeType {
 				displayName: 'Definition',
 				name: 'definition',
 				type: 'uiBuilder',
-				default: JSON.stringify(DEFAULT_DEFINITION, null, 2),
+				default: DEFAULT_DEFINITION,
 				description:
 					'The UI definition: a tree of { id, type, props, tree } records, edited in the builder panel',
 			},
@@ -94,9 +94,15 @@ export class UiBuilder implements INodeType {
 			// generic default rather than an empty tab.
 			const title =
 				(this.getNodeParameter('title', i, '') as string) || this.getWorkflow().name || 'n8n App';
-			const raw = this.getNodeParameter('definition', i);
+			// `rawExpressions`: the definition's `={{ }}` values are the app's own
+			// expression language, resolved in the browser against its state. Left to
+			// resolve here they would be evaluated against `$json` and baked into the
+			// page as whatever they came out as.
+			const raw = this.getNodeParameter('definition', i, undefined, { rawExpressions: true });
 			const authenticate = this.getNodeParameter('authenticateActions', i, false) as boolean;
 
+			// The string branch is for workflows saved while the definition was stored
+			// as JSON text; the builder writes the tree itself now.
 			let definition: unknown;
 			try {
 				definition = typeof raw === 'string' ? JSON.parse(raw) : raw;

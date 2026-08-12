@@ -1,4 +1,5 @@
-import { computed, ref, watch } from 'vue';
+import cloneDeep from 'lodash/cloneDeep';
+import { computed, ref, toRaw, watch } from 'vue';
 import type { Ref } from 'vue';
 
 import type { UiSlotRef } from '../../core/document';
@@ -28,7 +29,7 @@ import { KIT, getComponentDef } from '../../kit';
  */
 export function useUiDocument(
 	value: Ref<string | object | undefined>,
-	write: (json: string) => void,
+	write: (definition: UiNode) => void,
 	readOnly: Ref<boolean>,
 ) {
 	const doc = ref<UiNode>(createEmptyDocument());
@@ -89,8 +90,12 @@ export function useUiDocument(
 		{ immediate: true },
 	);
 
+	// A plain snapshot, not the reactive document: what goes out is stored as a
+	// node parameter, and a proxy that keeps mutating underneath it is not that.
+	// `cloneDeep` and not `structuredClone`, which throws on the reactive proxy a
+	// moved node leaves behind in the tree.
 	function commit() {
-		write(JSON.stringify(doc.value, null, 2));
+		write(cloneDeep(toRaw(doc.value)));
 	}
 
 	const selected = computed(() =>

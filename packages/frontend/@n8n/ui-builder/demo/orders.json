@@ -56,7 +56,202 @@
 		{
 			"parameters": {
 				"title": "Orders",
-				"definition": "{\n  \"id\": \"frame-1\",\n  \"type\": \"frame\",\n  \"props\": {\n    \"defaultPage\": \"/\"\n  },\n  \"tree\": {\n    \"header\": [\n      {\n        \"id\": \"stack-nav\",\n        \"type\": \"stack\",\n        \"props\": {\n          \"direction\": \"horizontal\",\n          \"gap\": 12\n        },\n        \"tree\": {\n          \"default\": [\n            {\n              \"id\": \"heading-app\",\n              \"type\": \"heading\",\n              \"props\": {\n                \"text\": \"Orders\",\n                \"level\": 3\n              },\n              \"tree\": {}\n            },\n            {\n              \"id\": \"repeat-nav\",\n              \"type\": \"repeat\",\n              \"props\": {\n                \"items\": \"={{ $pages }}\",\n                \"direction\": \"horizontal\",\n                \"gap\": 8\n              },\n              \"tree\": {\n                \"default\": [\n                  {\n                    \"id\": \"button-nav\",\n                    \"type\": \"button\",\n                    \"props\": {\n                      \"label\": \"={{ $item.title }}\",\n                      \"variant\": \"tertiary\",\n                      \"onClick\": [\n                        {\n                          \"kind\": \"navigate\",\n                          \"to\": \"={{ $item.path }}\"\n                        }\n                      ]\n                    },\n                    \"tree\": {}\n                  }\n                ]\n              }\n            }\n          ]\n        }\n      }\n    ],\n    \"default\": [\n      {\n        \"id\": \"page-orders\",\n        \"type\": \"page\",\n        \"props\": {\n          \"path\": \"/\",\n          \"title\": \"Orders\",\n          \"onEnter\": [\n            {\n              \"kind\": \"webhook\",\n              \"url\": \"http://localhost:5678/webhook/orders-app/orders\",\n              \"method\": \"GET\",\n              \"response\": \"orders\"\n            }\n          ]\n        },\n        \"tree\": {\n          \"default\": [\n            {\n              \"id\": \"heading-orders\",\n              \"type\": \"heading\",\n              \"props\": {\n                \"text\": \"Orders\",\n                \"level\": 2\n              },\n              \"tree\": {}\n            },\n            {\n              \"id\": \"table-1\",\n              \"type\": \"table\",\n              \"props\": {\n                \"rows\": \"={{ $state.orders }}\",\n                \"columns\": \"name,qty\",\n                \"onMount\": []\n              },\n              \"tree\": {}\n            }\n          ]\n        }\n      },\n      {\n        \"id\": \"page-new\",\n        \"type\": \"page\",\n        \"props\": {\n          \"path\": \"/new\",\n          \"title\": \"New order\",\n          \"onEnter\": []\n        },\n        \"tree\": {\n          \"default\": [\n            {\n              \"id\": \"heading-new\",\n              \"type\": \"heading\",\n              \"props\": {\n                \"text\": \"New order\",\n                \"level\": 2\n              },\n              \"tree\": {}\n            },\n            {\n              \"id\": \"stack-form\",\n              \"type\": \"stack\",\n              \"props\": {\n                \"direction\": \"horizontal\",\n                \"gap\": 8\n              },\n              \"tree\": {\n                \"default\": [\n                  {\n                    \"id\": \"input-1\",\n                    \"type\": \"input\",\n                    \"props\": {\n                      \"value\": \"={{ $state.form.name }}\",\n                      \"model\": \"form.name\",\n                      \"placeholder\": \"Order name\"\n                    },\n                    \"tree\": {}\n                  },\n                  {\n                    \"id\": \"input-qty\",\n                    \"type\": \"input\",\n                    \"props\": {\n                      \"value\": \"={{ $state.form.qty }}\",\n                      \"model\": \"form.qty\",\n                      \"placeholder\": \"Qty\"\n                    },\n                    \"tree\": {}\n                  },\n                  {\n                    \"id\": \"button-add\",\n                    \"type\": \"button\",\n                    \"props\": {\n                      \"label\": \"Add\",\n                      \"variant\": \"primary\",\n                      \"onClick\": [\n                        {\n                          \"kind\": \"webhook\",\n                          \"url\": \"http://localhost:5678/webhook/orders-app/orders\",\n                          \"method\": \"POST\",\n                          \"request\": \"form\"\n                        },\n                        {\n                          \"kind\": \"set\",\n                          \"path\": \"form\",\n                          \"value\": {}\n                        },\n                        {\n                          \"kind\": \"notify\",\n                          \"message\": \"Order added\",\n                          \"type\": \"success\"\n                        },\n                        {\n                          \"kind\": \"navigate\",\n                          \"to\": \"/\"\n                        }\n                      ]\n                    },\n                    \"tree\": {}\n                  }\n                ]\n              }\n            }\n          ]\n        }\n      }\n    ],\n    \"footer\": [\n      {\n        \"id\": \"text-footer\",\n        \"type\": \"text\",\n        \"props\": {\n          \"text\": \"={{ $state.orders ? $state.orders.length + \\\" orders\\\" : \\\"\\\" }}\"\n        },\n        \"tree\": {}\n      }\n    ]\n  }\n}"
+				"definition": {
+					"id": "frame-1",
+					"type": "frame",
+					"props": {
+						"defaultPage": "/"
+					},
+					"tree": {
+						"header": [
+							{
+								"id": "stack-nav",
+								"type": "stack",
+								"props": {
+									"direction": "horizontal",
+									"gap": 12
+								},
+								"tree": {
+									"default": [
+										{
+											"id": "heading-app",
+											"type": "heading",
+											"props": {
+												"text": "Orders",
+												"level": 3
+											},
+											"tree": {}
+										},
+										{
+											"id": "repeat-nav",
+											"type": "repeat",
+											"props": {
+												"items": "={{ $pages }}",
+												"direction": "horizontal",
+												"gap": 8
+											},
+											"tree": {
+												"default": [
+													{
+														"id": "button-nav",
+														"type": "button",
+														"props": {
+															"label": "={{ $item.title }}",
+															"variant": "tertiary",
+															"onClick": [
+																{
+																	"kind": "navigate",
+																	"to": "={{ $item.path }}"
+																}
+															]
+														},
+														"tree": {}
+													}
+												]
+											}
+										}
+									]
+								}
+							}
+						],
+						"default": [
+							{
+								"id": "page-orders",
+								"type": "page",
+								"props": {
+									"path": "/",
+									"title": "Orders",
+									"onEnter": [
+										{
+											"kind": "webhook",
+											"url": "http://localhost:5678/webhook/orders-app/orders",
+											"method": "GET",
+											"response": "orders"
+										}
+									]
+								},
+								"tree": {
+									"default": [
+										{
+											"id": "heading-orders",
+											"type": "heading",
+											"props": {
+												"text": "Orders",
+												"level": 2
+											},
+											"tree": {}
+										},
+										{
+											"id": "table-1",
+											"type": "table",
+											"props": {
+												"rows": "={{ $state.orders }}",
+												"columns": "name,qty",
+												"onMount": []
+											},
+											"tree": {}
+										}
+									]
+								}
+							},
+							{
+								"id": "page-new",
+								"type": "page",
+								"props": {
+									"path": "/new",
+									"title": "New order",
+									"onEnter": []
+								},
+								"tree": {
+									"default": [
+										{
+											"id": "heading-new",
+											"type": "heading",
+											"props": {
+												"text": "New order",
+												"level": 2
+											},
+											"tree": {}
+										},
+										{
+											"id": "stack-form",
+											"type": "stack",
+											"props": {
+												"direction": "horizontal",
+												"gap": 8
+											},
+											"tree": {
+												"default": [
+													{
+														"id": "input-1",
+														"type": "input",
+														"props": {
+															"value": "={{ $state.form.name }}",
+															"model": "form.name",
+															"placeholder": "Order name"
+														},
+														"tree": {}
+													},
+													{
+														"id": "input-qty",
+														"type": "input",
+														"props": {
+															"value": "={{ $state.form.qty }}",
+															"model": "form.qty",
+															"placeholder": "Qty"
+														},
+														"tree": {}
+													},
+													{
+														"id": "button-add",
+														"type": "button",
+														"props": {
+															"label": "Add",
+															"variant": "primary",
+															"onClick": [
+																{
+																	"kind": "webhook",
+																	"url": "http://localhost:5678/webhook/orders-app/orders",
+																	"method": "POST",
+																	"request": "form"
+																},
+																{
+																	"kind": "set",
+																	"path": "form",
+																	"value": {}
+																},
+																{
+																	"kind": "notify",
+																	"message": "Order added",
+																	"type": "success"
+																},
+																{
+																	"kind": "navigate",
+																	"to": "/"
+																}
+															]
+														},
+														"tree": {}
+													}
+												]
+											}
+										}
+									]
+								}
+							}
+						],
+						"footer": [
+							{
+								"id": "text-footer",
+								"type": "text",
+								"props": {
+									"text": "={{ $state.orders ? $state.orders.length + \" orders\" : \"\" }}"
+								},
+								"tree": {}
+							}
+						]
+					}
+				}
 			},
 			"id": "6a1f0a10-0000-4000-8000-000000000002",
 			"name": "UI Builder",

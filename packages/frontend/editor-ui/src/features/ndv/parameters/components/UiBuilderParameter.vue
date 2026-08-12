@@ -5,7 +5,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { UiBuilderPanel } from '@n8n/ui-builder';
 import type { HostExecutionOutput, HostWorkflow, UiBuilderHost } from '@n8n/ui-builder';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import type { NodeParameterValueType } from 'n8n-workflow';
+import type { INodeParameters, NodeParameterValueType } from 'n8n-workflow';
 import { computed } from 'vue';
 
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/app/constants';
@@ -31,7 +31,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ valueChanged: [value: IUpdateInformation] }>();
 
-/** The parameter is stored as a JSON string; anything else is treated as unset. */
+/** The document, structured. Workflows saved before that hold the same JSON as a string. */
 const document = computed(() =>
 	typeof props.value === 'string' || (props.value && typeof props.value === 'object')
 		? (props.value as string | object)
@@ -179,8 +179,11 @@ const host: UiBuilderHost = {
 		window.document.getElementById(CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID) ?? undefined,
 };
 
-function onUpdate(json: string) {
-	emit('valueChanged', { name: props.path, value: json });
+// The parameter union names each structured value it carries — ResourceMapperValue,
+// FilterValue, AssignmentCollectionValue. A UI document is not one of them, so this
+// cast stands in for the entry a PoC has no business adding to n8n-workflow.
+function onUpdate(definition: object) {
+	emit('valueChanged', { name: props.path, value: definition as INodeParameters });
 }
 </script>
 

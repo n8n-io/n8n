@@ -12,7 +12,7 @@ import {
 } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, provide, reactive, ref, toRef } from 'vue';
 
-import type { UiScope, UiWebhookStep } from '../core/types';
+import type { UiNode, UiScope, UiWebhookStep } from '../core/types';
 import { createScopeRegistry, UiScopeRegistryKey } from '../renderer/scope-registry';
 import UiRenderer from '../renderer/UiRenderer.vue';
 import { useActionPreview } from './composables/useActionPreview';
@@ -47,7 +47,7 @@ const props = defineProps<{
 	readOnly?: boolean;
 }>();
 
-const emit = defineEmits<{ update: [json: string] }>();
+const emit = defineEmits<{ update: [definition: UiNode] }>();
 
 const open = ref(false);
 const readOnly = computed(() => Boolean(props.readOnly));
@@ -79,7 +79,7 @@ const {
 	deleteSelected,
 	deleteNode,
 	moveNode,
-} = useUiDocument(toRef(props, 'value'), (json) => emit('update', json), readOnly);
+} = useUiDocument(toRef(props, 'value'), (definition) => emit('update', definition), readOnly);
 
 const {
 	pages,
