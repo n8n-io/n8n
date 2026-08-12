@@ -56,12 +56,12 @@ function normalizeVersionDescription(description: string | undefined): string | 
 }
 
 /** What the caller was trying to do, so a refusal names that action rather than another. */
-type ReviewableWorkflowAction = 'submit' | 'review' | 'update';
+type BlockedAction = 'submit' | 'review' | 'update';
 
-const BLOCKED_ACTION_TEXT: Record<ReviewableWorkflowAction, string> = {
+const BLOCKED_ACTION_TEXT: Record<BlockedAction, string> = {
 	submit: 'submitted for review',
 	review: 'reviewed',
-	update: 'updated',
+	update: 'submitted as a new review version',
 };
 
 /**
@@ -300,7 +300,7 @@ export class WorkflowReviewRequestService {
 		workflowId: string,
 		expectedProjectId: string,
 		ctx: OperationContext,
-		action: ReviewableWorkflowAction,
+		action: BlockedAction,
 	): Promise<void> {
 		const blockedAction = BLOCKED_ACTION_TEXT[action];
 		const workflow = await this.workflowRepository.findArchivedState(workflowId, ctx);
@@ -582,7 +582,7 @@ export class WorkflowReviewRequestService {
 				}
 
 				// Captured before the update.
-				const fromVersionId = currentRow.workflowVersionId;
+				const fromWorkflowVersionId = currentRow.workflowVersionId;
 
 				await this.workflowReviewRequestWorkflowRepository.updateWorkflowVersion(
 					{
@@ -616,8 +616,8 @@ export class WorkflowReviewRequestService {
 						type: 'review.version_updated',
 						data: {
 							workflowId: dto.workflowId,
-							fromVersionId,
-							toVersionId: dto.workflowVersionId,
+							fromWorkflowVersionId,
+							toWorkflowVersionId: dto.workflowVersionId,
 						},
 						createdById: user.id,
 					},

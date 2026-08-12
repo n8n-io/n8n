@@ -24,7 +24,7 @@ export type WorkflowReviewActivityType =
 
 // These are the typeVersion 1 shapes. A typeVersion 2 gets its own schema, its own
 // union member and its own mapper case; never widen one of these in place.
-export const workflowReviewClosedReasonSchema = z.enum([
+const workflowReviewClosedReasonSchema = z.enum([
 	'workflow-archived',
 	'workflow-moved',
 	'workflow-deleted',
@@ -36,7 +36,7 @@ export type WorkflowReviewClosedReason = z.infer<typeof workflowReviewClosedReas
  * built from is prunable, so a bare version id becomes unresolvable once pruning removes the
  * history row.
  */
-export const workflowReviewActivityWorkflowVersionSchema = z.object({
+const workflowReviewActivityWorkflowVersionSchema = z.object({
 	workflowId: z.string(),
 	workflowVersionId: z.string(),
 });
@@ -61,8 +61,8 @@ export const workflowReviewVersionUpdatedActivityDataSchema = z.object({
 	 * workflow delete would silently take these entries out of an append-only feed.
 	 */
 	workflowId: z.string(),
-	fromVersionId: z.string().nullable(),
-	toVersionId: z.string().nullable(),
+	fromWorkflowVersionId: z.string().nullable(),
+	toWorkflowVersionId: z.string().nullable(),
 });
 export type WorkflowReviewVersionUpdatedActivityData = z.infer<
 	typeof workflowReviewVersionUpdatedActivityDataSchema

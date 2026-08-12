@@ -485,6 +485,10 @@ describe('Recording the review lifecycle in the feed', () => {
 
 		await workflowEntityRepository.delete(workflow.id);
 
+		// The pin cascades away with the workflow, so the entry is the only record left of which
+		// version was approved.
+		expect(await workflowRepository.findByRequestId(requestId, {})).toEqual([]);
+
 		const feed = await getActivity(ownerAgent, requestId);
 		expect(feed.data[1].data).toEqual({
 			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
@@ -509,8 +513,8 @@ describe('Recording the review lifecycle in the feed', () => {
 		expect(entryTypes(feed)).toEqual(['review.opened', 'review.version_updated']);
 		expect(feed.data[1].data).toEqual({
 			workflowId: workflow.id,
-			fromVersionId: 'version-1',
-			toVersionId: 'version-2',
+			fromWorkflowVersionId: 'version-1',
+			toWorkflowVersionId: 'version-2',
 		});
 
 		// The scoping column stays unwritten: its FK cascades, so a workflow delete would take

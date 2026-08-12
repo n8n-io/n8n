@@ -321,7 +321,9 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 		const update = service.updateVersion(user, requestId, dto);
 		await expect(update).rejects.toThrow(BadRequestError);
-		await expect(update).rejects.toThrow("The workflow 'wf-1' is archived and cannot be updated");
+		await expect(update).rejects.toThrow(
+			"The workflow 'wf-1' is archived and cannot be submitted as a new review version",
+		);
 
 		// Nothing may reach the activity feed: a version_updated entry here would
 		// durably assert a re-pin on a workflow that can no longer be reviewed.

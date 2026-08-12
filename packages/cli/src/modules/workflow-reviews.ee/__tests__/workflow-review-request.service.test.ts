@@ -268,7 +268,11 @@ describe('WorkflowReviewRequestService', () => {
 			mockSuccessfulCreatePath();
 			workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: true });
 
-			await expect(service.create(user, dto)).rejects.toThrow(BadRequestError);
+			const creation = service.create(user, dto);
+			await expect(creation).rejects.toThrow(BadRequestError);
+			await expect(creation).rejects.toThrow(
+				"The workflow 'wf-1' is archived and cannot be submitted for review",
+			);
 
 			expect(dbLockService.withLockContext).toHaveBeenCalled();
 			expect(requestRepository.createRequest).not.toHaveBeenCalled();
