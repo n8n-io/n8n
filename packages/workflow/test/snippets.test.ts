@@ -128,17 +128,13 @@ describe('runSnippetTests', () => {
 		]);
 	});
 
-	it('falls back to a truthy check without an expected expression', () => {
+	it('reports errors from either side', () => {
 		const results = runSnippetTests(sources, [
-			{ code: "typeof $snippets.TAX === 'number'" },
-			{ code: '$snippets.double(2) === 5' },
-			{ code: '$snippets.missing()' },
-			{ code: '(x =>' },
+			{ code: '$snippets.missing()', expected: '1' },
+			{ code: '(x =>', expected: '1' },
 		]);
 
 		expect(results).toEqual([
-			{ passed: true, value: true },
-			{ passed: false, value: false },
 			{ passed: false, error: expect.stringContaining('') },
 			{ passed: false, error: expect.stringContaining('') },
 		]);

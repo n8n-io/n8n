@@ -3113,7 +3113,8 @@ export interface SnippetSources {
  */
 export interface SnippetTestCase {
 	code: string;
-	expected?: string;
+	/** Expression the code's result is deep-compared against */
+	expected: string;
 }
 
 /** Contract the snippets backend module exposes to execution setup. */

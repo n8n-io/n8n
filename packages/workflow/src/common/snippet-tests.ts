@@ -13,7 +13,7 @@ export interface SnippetTestResult {
 	error?: string;
 	/** What the test expression (left side) evaluated to */
 	value?: unknown;
-	/** What the expected expression (right side) evaluated to, when it was given */
+	/** What the expected expression (right side) evaluated to */
 	expected?: unknown;
 }
 
@@ -37,13 +37,9 @@ export function runSnippetTests(
 	bindSnippets(data);
 
 	return tests.map(({ code, expected }) => {
-		const expectedSource = expected?.trim() ? expected : undefined;
 		try {
 			const value = evaluateSnippetExpression(code, data);
-			if (expectedSource === undefined) {
-				return { passed: Boolean(value), value };
-			}
-			const expectedValue = evaluateSnippetExpression(expectedSource, data);
+			const expectedValue = evaluateSnippetExpression(expected, data);
 			return { passed: isEqual(value, expectedValue), value, expected: expectedValue };
 		} catch (error) {
 			return { passed: false, error: (error as Error).message };

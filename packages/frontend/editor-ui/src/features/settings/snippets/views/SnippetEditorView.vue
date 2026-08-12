@@ -78,15 +78,15 @@ const resultMessage = (index: number) => {
 			interpolate: { value: formatValue(result.value) },
 		});
 	}
-	if ('expected' in result) {
-		return i18n.baseText('snippets.tests.failedExpected', {
-			interpolate: { expected: formatValue(result.expected), value: formatValue(result.value) },
-		});
-	}
-	return i18n.baseText('snippets.tests.failed', {
-		interpolate: { value: formatValue(result.value) },
+	return i18n.baseText('snippets.tests.failedExpected', {
+		interpolate: { expected: formatValue(result.expected), value: formatValue(result.value) },
 	});
 };
+
+// A test needs both sides; a fully empty row is ignored, a half-filled one blocks save
+const hasIncompleteTests = computed(() =>
+	tests.value.some((test) => (test.code.trim() !== '') !== (test.expected.trim() !== '')),
+);
 
 function addTest() {
 	const prefix = projectId.value ? '$project' : '$snippets';
@@ -120,7 +120,9 @@ function runTests() {
 		const sources = buildTestSources();
 		// Run row by row so results stay aligned with row indexes
 		testResults.value = tests.value.map((test) =>
-			test.code.trim() === '' ? undefined : runSnippetTests(sources, [test])[0],
+			test.code.trim() === '' || test.expected.trim() === ''
+				? undefined
+				: runSnippetTests(sources, [test])[0],
 		);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('snippets.tests.run.error'));
@@ -131,7 +133,7 @@ function runTests() {
 
 function runSingleTest(index: number) {
 	const test = tests.value[index];
-	if (!test || test.code.trim() === '') return;
+	if (!test || test.code.trim() === '' || test.expected.trim() === '') return;
 	try {
 		const [result] = runSnippetTests(buildTestSources(), [test]);
 		const next = testResults.value ? [...testResults.value] : [];
@@ -146,11 +148,8 @@ async function save() {
 	saving.value = true;
 	try {
 		const cleanTests = tests.value
-			.filter((test) => test.code.trim() !== '')
-			.map((test) => ({
-				code: test.code,
-				expected: test.expected?.trim() || undefined,
-			}));
+			.filter((test) => test.code.trim() !== '' && test.expected.trim() !== '')
+			.map((test) => ({ code: test.code, expected: test.expected }));
 		if (isNew.value) {
 			const created = await snippetsStore.createSnippet({
 				name: name.value,
@@ -227,7 +226,7 @@ onMounted(async () => {
 			<N8nButton
 				size="large"
 				:loading="saving"
-				:disabled="!name || !code"
+				:disabled="!name || !code || hasIncompleteTests"
 				data-test-id="snippet-save-button"
 				@click="save"
 			>
@@ -302,6 +301,9 @@ onMounted(async () => {
 		</div>
 		<N8nText size="small" color="text-light">
 			{{ i18n.baseText('snippets.tests.hint') }}
+		</N8nText>
+		<N8nText v-if="hasIncompleteTests" size="small" color="danger">
+			{{ i18n.baseText('snippets.tests.incomplete') }}
 		</N8nText>
 
 		<div v-if="tests.length" :class="$style.tests" data-test-id="snippet-tests">

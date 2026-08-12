@@ -114,7 +114,7 @@ export class SnippetsService implements SnippetsProvider {
 	}: {
 		name?: string;
 		code?: string;
-		tests?: Array<{ code: string; expected?: string }> | null;
+		tests?: Array<{ code: string; expected: string }> | null;
 	}) {
 		if (name && !isSafeObjectProperty(name)) {
 			throw new SnippetValidationError(`"${name}" is a reserved name`);

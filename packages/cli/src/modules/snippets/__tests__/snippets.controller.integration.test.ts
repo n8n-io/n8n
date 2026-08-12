@@ -96,13 +96,13 @@ describe('POST /snippets', () => {
 				code: '(n) => n * 2',
 				tests: [
 					{ code: '$snippets.double(2)', expected: '4' },
-					{ code: '$snippets.double(3) === 6' },
+					{ code: '$snippets.double(3)', expected: '6' },
 				],
 			})
 			.expect(200);
 		expect(response.body.data.tests).toEqual([
 			{ code: '$snippets.double(2)', expected: '4' },
-			{ code: '$snippets.double(3) === 6' },
+			{ code: '$snippets.double(3)', expected: '6' },
 		]);
 
 		await authOwnerAgent
@@ -110,7 +110,7 @@ describe('POST /snippets', () => {
 			.send({
 				name: 'other',
 				code: '1',
-				tests: [{ code: 'const x = 1' }],
+				tests: [{ code: 'const x = 1', expected: '1' }],
 			})
 			.expect(400);
 
@@ -120,6 +120,16 @@ describe('POST /snippets', () => {
 				name: 'other2',
 				code: '1',
 				tests: [{ code: '1', expected: 'const x = 1' }],
+			})
+			.expect(400);
+
+		// The expected value is required
+		await authOwnerAgent
+			.post('/snippets')
+			.send({
+				name: 'other3',
+				code: '1',
+				tests: [{ code: '$snippets.double(2)' }],
 			})
 			.expect(400);
 	});

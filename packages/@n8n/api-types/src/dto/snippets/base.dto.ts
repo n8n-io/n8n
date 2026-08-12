@@ -33,8 +33,11 @@ export const SNIPPET_MAX_TESTS = 50;
 
 export const snippetTestSchema = z.object({
 	code: z.string().min(1, 'test code must not be empty').max(SNIPPET_TEST_CODE_MAX_LENGTH),
-	// Expression the code's result is deep-compared against; truthy check when absent
-	expected: z.string().max(SNIPPET_TEST_CODE_MAX_LENGTH).optional(),
+	// Expression the code's result is deep-compared against; required
+	expected: z
+		.string()
+		.min(1, 'test expected value must not be empty')
+		.max(SNIPPET_TEST_CODE_MAX_LENGTH),
 });
 
 export const snippetTestsSchema = z
