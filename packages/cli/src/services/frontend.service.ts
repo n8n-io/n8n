@@ -391,6 +391,9 @@ export class FrontendService {
 				enabled: false,
 				setup: false,
 			},
+			executionsNlFilter: {
+				enabled: false,
+			},
 			aiCredits: {
 				enabled: false,
 				credits: 0,
@@ -616,6 +619,8 @@ export class FrontendService {
 			this.settings.aiBuilder.setup =
 				!!this.globalConfig.aiAssistant.baseUrl || !!this.globalConfig.aiBuilder.apiKey;
 		}
+
+		this.settings.executionsNlFilter.enabled = !!this.globalConfig.aiBuilder.apiKey;
 
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 

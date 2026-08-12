@@ -24,6 +24,11 @@ export type {
 	AiGatewayUsageMetadata,
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
+export { ExecutionsNlFilterRequestDto } from './ai/executions-nl-filter-request.dto';
+export {
+	ExecutionsNlFilterResponseDto,
+	EXECUTIONS_NL_FILTER_STATUSES,
+} from './ai/executions-nl-filter-response.dto';
 
 export {
 	InstanceAiConfirmRequestDto,

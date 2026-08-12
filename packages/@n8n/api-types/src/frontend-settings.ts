@@ -204,6 +204,9 @@ export interface FrontendSettings {
 		enabled: boolean;
 		setup: boolean;
 	};
+	executionsNlFilter: {
+		enabled: boolean;
+	};
 	deployment: {
 		type: string;
 	};
