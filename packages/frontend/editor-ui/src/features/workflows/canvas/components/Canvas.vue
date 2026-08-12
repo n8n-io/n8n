@@ -115,6 +115,7 @@ const emit = defineEmits<{
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id?: string];
 	'update:node:name': [id: string];
+	'open:walkthrough-description': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
@@ -1513,6 +1514,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return emit('update:node:name', nodeIds[0]);
 		case 'replace':
 			return emit('replace:node', nodeIds[0]);
+		case 'set_walkthrough_description':
+			return emit('open:walkthrough-description', nodeIds[0]);
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':

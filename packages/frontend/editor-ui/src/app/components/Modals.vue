@@ -35,6 +35,7 @@ import {
 	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
 	MIGRATE_WORKFLOW_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
+	WALKTHROUGH_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
@@ -136,6 +137,7 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import AddExecutionToDatasetModal from '@/features/ai/evaluation.ee/components/AddExecutionToDataset/AddExecutionToDatasetModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
+import WalkthroughDescriptionModal from '@/app/components/WalkthroughDescriptionModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import MigrateWorkflowModal from '@/features/settings/migrationReport/MigrateWorkflowModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
@@ -515,6 +517,12 @@ const TrialIntroModal = defineAsyncComponent(
 		<ModalRoot :name="WORKFLOW_DESCRIPTION_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowDescriptionModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WALKTHROUGH_DESCRIPTION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WalkthroughDescriptionModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

@@ -31,6 +31,7 @@ export type ContextMenuAction =
 	| 'copy_production_url'
 	| 'rename'
 	| 'replace'
+	| 'set_walkthrough_description'
 	| 'toggle_pin'
 	| 'delete'
 	| 'select_all'
@@ -542,6 +543,11 @@ export function useContextMenuItems(
 								id: 'replace',
 								label: i18n.baseText('contextMenu.replace'),
 								shortcut: { keys: ['R'] },
+								disabled: isReadOnly.value,
+							},
+							{
+								id: 'set_walkthrough_description',
+								label: i18n.baseText('contextMenu.setWalkthroughDescription'),
 								disabled: isReadOnly.value,
 							},
 						];

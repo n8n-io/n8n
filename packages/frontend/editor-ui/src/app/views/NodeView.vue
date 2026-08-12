@@ -67,6 +67,7 @@ import {
 	ABOUT_MODAL_KEY,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	WALKTHROUGH_DESCRIPTION_MODAL_KEY,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -585,6 +586,13 @@ async function onSetNodeActivated(id: string, event?: MouseEvent) {
 
 function onOpenSubWorkflow(id: string) {
 	tryToOpenSubworkflowInNewTab(id);
+}
+
+function onOpenWalkthroughDescriptionModal(id: string) {
+	uiStore.openModalWithData({
+		name: WALKTHROUGH_DESCRIPTION_MODAL_KEY,
+		data: { nodeId: id },
+	});
 }
 
 function onSetNodeDeactivated() {
@@ -2016,6 +2024,7 @@ onBeforeUnmount(() => {
 			@update:node:selected="onSetNodeSelected"
 			@update:node:enabled="onToggleNodeDisabled"
 			@update:node:name="onOpenRenameNodeModal"
+			@open:walkthrough-description="onOpenWalkthroughDescriptionModal"
 			@update:node:parameters="onUpdateNodeParameters"
 			@update:node:inputs="onUpdateNodeInputs"
 			@update:node:outputs="onUpdateNodeOutputs"
