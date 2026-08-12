@@ -65,6 +65,25 @@ Logs are at `/tmp/agent-worker.log`; the tmux session is `agent-worker`
 (`tmux attach -t agent-worker` to watch it). The worker refuses to start if
 either secret (or `$GITHUB_USER`) is missing.
 
+A turn is capped at ~25 minutes (`TURN_TIMEOUT_MS`), which sits just under the
+n8n Wait window so a slow turn reports a real message rather than n8n's generic
+timeout. Keep the two in that order if you change either.
+
+### Building and running fast in a session
+
+The prebuild already installed dependencies and warmed the build, so a session
+rarely needs a cold `pnpm install` or a full `pnpm build` — both are slow (often
+10–20 min cold) and can outlast a turn's timeout.
+
+- To run the app and see changes, use hot-reload, not a build: `pnpm dev:be`
+  (backend on 5678) and `pnpm dev:fe:editor` (editor UI on 8080).
+- If you must build, `pnpm build` reuses the turbo cache and is fast when warm.
+  Only run `pnpm install` when dependencies actually changed.
+- Stale outputs after switching branches: `pnpm reset` (add `--full` if that
+  doesn't clear it).
+- Give a long build its own turn — don't chain install + full build behind
+  other work in a single turn.
+
 ## Flaky tools (MCP)
 
 Claude sessions get the `flaky` MCP server automatically: Currents

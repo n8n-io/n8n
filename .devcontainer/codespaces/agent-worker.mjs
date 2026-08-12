@@ -22,7 +22,9 @@ const TOKEN = process.env.AGENT_WORKER_TOKEN;
 const GITHUB_USER = process.env.GITHUB_USER;
 const ROOT = resolvePath(process.env.AGENT_WORKER_ROOT ?? '/workspaces');
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS ?? 3000);
-const TURN_TIMEOUT_MS = 15 * 60_000;
+// Keep this BELOW the n8n Wait-node timeout, so a slow turn is reported by the
+// worker (with a real message) before n8n's Wait expires with a generic one.
+const TURN_TIMEOUT_MS = Number(process.env.TURN_TIMEOUT_MS ?? 25 * 60_000);
 
 for (const [k, v] of Object.entries({
 	N8N_DEQUEUE_URL: DEQUEUE_URL,
@@ -51,7 +53,13 @@ function runClaude({ message, sessionId, cwd }) {
 				try {
 					res(JSON.parse(stdout));
 				} catch {
-					rej(new Error(stderr?.trim() || err?.message || 'claude produced no output'));
+					if (err?.killed)
+						rej(
+							new Error(
+								`Turn exceeded the ${Math.round(TURN_TIMEOUT_MS / 60_000)}-minute limit and was stopped (it may have been mid-build). Try a smaller step, or run long builds in their own turn.`,
+							),
+						);
+					else rej(new Error(stderr?.trim() || err?.message || 'claude produced no output'));
 				}
 			},
 		);
