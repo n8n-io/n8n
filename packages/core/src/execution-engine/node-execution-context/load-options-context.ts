@@ -18,6 +18,8 @@ import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 export class LoadOptionsContext extends NodeExecutionContext implements ILoadOptionsFunctions {
 	readonly helpers: ILoadOptionsFunctions['helpers'];
 
+	protected readonly respectsThrowOnUndefinedExpression = false;
+
 	constructor(
 		workflow: Workflow,
 		node: INode,
