@@ -52,6 +52,7 @@ export const STORES = {
 	CONSENT: 'consent',
 	CHAT_HUB: 'chatHub',
 	CHAT_HUB_PANEL: 'chatHubPanel',
+	INSTANCE_AI_PANEL: 'instanceAiPanel',
 	EXPERIMENT_CREDENTIALS_APP_SELECTION: 'credentialsAppSelection',
 	EXPERIMENT_SURFACE_MCP_TO_NEW_CLOUD_USERS: 'surfaceMcpToNewCloudUsers',
 	EXPERIMENT_EXPOSE_ALL_WORKFLOWS_TO_MCP: 'exposeAllWorkflowsToMcp',
