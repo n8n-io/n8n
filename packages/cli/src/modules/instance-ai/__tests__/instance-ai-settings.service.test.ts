@@ -2059,6 +2059,58 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('isModelConfigured', () => {
+		it('is satisfied on managed deployments', async () => {
+			globalConfig.deployment.type = 'cloud';
+			await expect(service.isModelConfigured()).resolves.toBe(true);
+
+			globalConfig.deployment.type = 'default';
+			aiService.isProxyEnabled.mockReturnValue(true);
+			await expect(service.isModelConfigured()).resolves.toBe(true);
+		});
+
+		it('accepts a model configured through environment variables', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			globalConfig.instanceAi.modelApiKey = 'model-key';
+			service = createService();
+
+			await expect(service.isModelConfigured()).resolves.toBe(true);
+		});
+
+		it('accepts an assigned model credential', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			persistedSettingsValue = JSON.stringify({ modelName: 'gpt-5.4' });
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
+				policy.id === INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id ? 'model-credential' : null,
+			);
+			await service.reloadFromDb();
+
+			await expect(service.isModelConfigured()).resolves.toBe(true);
+		});
+
+		it('is false when no model is configured at all', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+
+			await expect(service.isModelConfigured()).resolves.toBe(false);
+		});
+
+		// Unlike isSetupCompleted, a one-shot LLM call needs no sandbox and no web
+		// search — demanding them would hide model-only features on instances that
+		// are perfectly able to run them.
+		it('ignores sandbox and search configuration', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			Object.assign(globalConfig.instanceAi, {
+				modelApiKey: 'model-key',
+				sandboxEnabled: false,
+				braveSearchApiKey: '',
+			});
+			service = createService();
+
+			await expect(service.isModelConfigured()).resolves.toBe(true);
+			await expect(service.isSetupCompleted()).resolves.toBe(false);
+		});
+	});
+
 	describe('service credential assignments', () => {
 		it('reads service credential selections from broker assignments', async () => {
 			const assignments: Record<string, string> = {

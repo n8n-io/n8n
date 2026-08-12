@@ -1263,6 +1263,28 @@ export class InstanceAiSettingsService {
 		return this.enabled;
 	}
 
+	/**
+	 * Whether a usable model is configured — the only prerequisite for features
+	 * that make a single LLM call. Deliberately narrower than `isSetupCompleted`,
+	 * which also demands a sandbox and a web-search decision: requiring those
+	 * would hide model-only features on instances fully able to run them.
+	 */
+	async isModelConfigured(): Promise<boolean> {
+		if (this.isCloud || this.aiService.isProxyEnabled()) return true;
+
+		const modelSelection = await this.readAdminModelSelection();
+		const response = this.buildAdminSettingsResponse({
+			...modelSelection,
+			daytonaCredentialId: null,
+			n8nSandboxCredentialId: null,
+			searchCredentialId: null,
+		});
+
+		return Boolean(
+			response.modelEnvConfigured || (response.modelCredentialId && response.modelName),
+		);
+	}
+
 	/** Public, detail-free setup state used to gate member-facing entry points. */
 	async isSetupCompleted(): Promise<boolean> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return true;
