@@ -32,7 +32,6 @@ export interface DaytonaHarnessSandboxProviderOptions {
 	createTimeoutSeconds?: number;
 	bootstrapTimeout?: number;
 	image?: CreateSandboxFromImageParams['image'];
-	snapshot?: string;
 	resources?: Pick<Resources, 'cpu' | 'memory'>;
 	ephemeral?: boolean;
 	autoStopInterval?: number;
@@ -211,7 +210,6 @@ export function createDaytonaHarnessSandboxProvider(
 			apiKey: options.apiKey,
 			apiUrl: options.apiUrl,
 			image: options.image,
-			snapshot: options.snapshot,
 			ephemeral: options.ephemeral,
 			autoStopInterval: options.autoStopInterval,
 			timeout: options.timeout,
@@ -223,17 +221,6 @@ export function createDaytonaHarnessSandboxProvider(
 			createStrategyMode: 'direct',
 			reconnectOnly,
 		});
-	const ensureResources = async (sandbox: DaytonaSandbox) => {
-		await sandbox.withSandbox(async (instance) => {
-			const required: Pick<Resources, 'cpu' | 'memory' | 'disk'> = {};
-			if (instance.cpu < resources.cpu) required.cpu = resources.cpu;
-			if (instance.memory < resources.memory) required.memory = resources.memory;
-			if (required.cpu !== undefined || required.memory !== undefined) {
-				await instance.resize(required);
-			}
-		});
-	};
-
 	const buildSession = async (sandbox: DaytonaSandbox): Promise<HarnessV1NetworkSandboxSession> => {
 		const filesystem = new DaytonaFilesystem(sandbox);
 		const previewTokens = new Set<string>();
@@ -420,7 +407,6 @@ export function createDaytonaHarnessSandboxProvider(
 			const sandbox = createSandbox(sessionId);
 			try {
 				await sandbox._start();
-				await ensureResources(sandbox);
 				const session = await buildSession(sandbox);
 				if (onFirstCreate) await onFirstCreate(session.restricted(), { abortSignal });
 				return session;
@@ -434,7 +420,6 @@ export function createDaytonaHarnessSandboxProvider(
 			const sandbox = createSandbox(sessionId, true);
 			try {
 				await sandbox._start();
-				await ensureResources(sandbox);
 			} catch (error) {
 				if (error instanceof DaytonaSandboxNotFoundError) throw new HarnessSessionExpiredError();
 				throw error;

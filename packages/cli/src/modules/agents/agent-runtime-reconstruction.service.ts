@@ -610,9 +610,6 @@ export class AgentRuntimeReconstructionService {
 								timeout: this.agentsConfig.sandboxTimeout,
 								createTimeoutSeconds: Math.ceil(this.agentsConfig.sandboxTimeout / 1000),
 								image: this.agentsConfig.sandboxImage,
-								...(this.agentsConfig.sandboxSnapshot.trim()
-									? { snapshot: this.agentsConfig.sandboxSnapshot.trim() }
-									: {}),
 								ephemeral: this.agentsConfig.sandboxEphemeral,
 								logger: this.logger,
 							})
