@@ -49,7 +49,7 @@ describe('Publisher', () => {
 			const regularModeConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
 			const publisher = createPublisher(regularModeConfig);
 
-			expect(publisher.getClient()).toBeUndefined();
+			expect(() => publisher.getClient()).toThrow('require Redis');
 		});
 	});
 

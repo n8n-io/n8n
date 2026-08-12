@@ -145,10 +145,14 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(LoadNodesAndCredentials).init();
 
+		// Hypervisor children run all transports over IPC and have no Redis to
+		// lock against; they keep the in-process provider. Per-child lock scope
+		// is a known gap until a lock host lands on the hypervisor channel.
 		const useRedisForLocking =
-			this.globalConfig.executions.mode === 'queue' ||
-			this.globalConfig.multiMainSetup.enabled ||
-			this.globalConfig.cache.backend === 'redis';
+			!Container.get(TransportModeService).isUnderHypervisor() &&
+			(this.globalConfig.executions.mode === 'queue' ||
+				this.globalConfig.multiMainSetup.enabled ||
+				this.globalConfig.cache.backend === 'redis');
 		if (useRedisForLocking) {
 			const { RedisLockService } = await import('@/scaling/redis-lock.service.js');
 			Container.get(LockService).setProvider(Container.get(RedisLockService));
