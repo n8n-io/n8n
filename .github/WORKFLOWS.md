@@ -245,9 +245,10 @@ parallelism). See the `--build-via-mcp` section in
 
 ### Other Manual Workflows
 
-| Workflow                  | Purpose                                                 |
-|---------------------------|---------------------------------------------------------|
-| `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
+| Workflow                    | Purpose                                                 |
+|-----------------------------|---------------------------------------------------------|
+| `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
+| `util-ai-review-runner.yml` | AI review bot compute step: dispatched only by the n8n Orchestrator; checks out the PR head, runs the `ai-pr-review` skill via Claude Code (read-only permissions, cannot post), validates the JSON, POSTs it to the n8n resume URL |
 
 ---
 
@@ -507,7 +508,9 @@ Scripts in `.github/scripts/`:
 
 | Script                                    | Purpose                                                                                          | Called By                          |
 |-------------------------------------------|--------------------------------------------------------------------------------------------------|------------------------------------|
-| `ai-review/validate-review-output.mjs`    | Validates the JSON emitted by the `ai-pr-review` skill and verifies finding line anchors against the PR diff | `ai-pr-review` skill (locally); AI review runner workflow (planned) |
+| `ai-review/validate-review-output.mjs`    | Validates the JSON emitted by the `ai-pr-review` skill and verifies finding line anchors against the PR diff | `ai-pr-review` skill (locally); `util-ai-review-runner.yml` |
+| `ai-review/prepare-review-prompt.mjs`     | Builds the runner's Claude prompt; decodes the n8n-supplied guidance overlay and prior findings to files | `util-ai-review-runner.yml`        |
+| `ai-review/review-callback.mjs`           | POSTs the validated review (or failure report) to the n8n Orchestrator's resume URL              | `util-ai-review-runner.yml`        |
 
 ### Slack Scripts
 

@@ -1,0 +1,223 @@
+# AI review bot's compute step. Dispatched exclusively by the n8n Orchestrator
+# (internal instance), which owns all decisions and all GitHub posting. This
+# job is deliberately read-only towards GitHub: it checks out the PR, runs the
+# ai-pr-review skill, validates the JSON, and reports to the n8n resume URL.
+# It must never gain write permissions — "the bot cannot approve or comment
+# from CI" is a structural guarantee, not a prompt instruction.
+name: 'Util: AI Review Runner'
+run-name: 'Util: AI Review Runner (pr=#${{ inputs.pr_number }}, sha=${{ inputs.head_sha }})'
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+      head_sha:
+        description: 'Full head sha the review must target (stale-run guard)'
+        required: true
+        type: string
+      resume_url:
+        description: 'n8n Wait-node resume URL to POST the result to'
+        required: true
+        type: string
+      guidance_b64:
+        description: 'Base64 guidance overlay markdown (from n8n feedback memory)'
+        required: false
+        type: string
+        default: ''
+      prior_findings_b64:
+        description: 'Base64 prior findings JSON for carried_over dedupe'
+        required: false
+        type: string
+        default: ''
+      model:
+        description: 'Claude model to use'
+        required: false
+        type: string
+        default: 'claude-sonnet-5'
+      max_turns:
+        description: 'Maximum conversation turns before Claude stops gracefully'
+        required: false
+        type: number
+        default: 60
+
+permissions:
+  contents: read
+
+# A newer dispatch for the same PR supersedes an in-flight review.
+concurrency:
+  group: ai-review-pr-${{ inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  run-review:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 30
+    env:
+      HAS_LINEAR_MCP: ${{ secrets.MCP_LINEAR_API_KEY != '' }}
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: refs/pull/${{ inputs.pr_number }}/head
+          fetch-depth: 1
+
+      - name: Verify head sha
+        id: verify
+        env:
+          EXPECTED_SHA: ${{ inputs.head_sha }}
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+            echo "::notice::PR head moved ($ACTUAL_SHA != $EXPECTED_SHA); reporting stale and stopping."
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "VALIDATION_ERROR=stale head: PR moved to $ACTUAL_SHA before the review started" >> "$GITHUB_ENV"
+          else
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        if: steps.verify.outputs.stale != 'true'
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Prepare review prompt
+        if: steps.verify.outputs.stale != 'true'
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          GUIDANCE_B64: ${{ inputs.guidance_b64 }}
+          PRIOR_FINDINGS_B64: ${{ inputs.prior_findings_b64 }}
+        run: node .github/scripts/ai-review/prepare-review-prompt.mjs
+
+      - name: Create MCP config
+        if: steps.verify.outputs.stale != 'true' && env.HAS_LINEAR_MCP == 'true'
+        env:
+          MCP_LINEAR_API_KEY: ${{ secrets.MCP_LINEAR_API_KEY }}
+        run: |
+          cat > /tmp/mcp-config.json << 'MCPEOF'
+          {
+            "mcpServers": {
+              "linear": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "mcp-remote",
+                  "https://mcp.linear.app/sse",
+                  "--header",
+                  "Authorization:${AUTH_HEADER}"
+                ],
+                "env": {
+                  "AUTH_HEADER": "Bearer MCP_LINEAR_API_KEY_PLACEHOLDER"
+                }
+              }
+            }
+          }
+          MCPEOF
+          sed -i "s|MCP_LINEAR_API_KEY_PLACEHOLDER|${MCP_LINEAR_API_KEY}|g" /tmp/mcp-config.json
+          echo "MCP_ARGS=--mcp-config /tmp/mcp-config.json" >> "$GITHUB_ENV"
+
+      - name: Run Claude review
+        id: claude
+        if: steps.verify.outputs.stale != 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@d668cc452deb931732f24c6b1bbf24d97bc0c586 # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: ${{ env.CLAUDE_PROMPT }}
+          show_full_output: false
+          display_report: false
+          plugin_marketplaces: './.claude/plugins/n8n'
+          plugins: 'n8n@n8n'
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Bash(gh:*)",
+                  "Bash(git:*)",
+                  "Bash(node:*)",
+                  "Bash(mkdir:*)",
+                  "Read",
+                  "Write",
+                  "Glob",
+                  "Grep",
+                  "TodoWrite",
+                  "Skill",
+                  "Task",
+                  "mcp__linear__*"
+                ]
+              },
+              "extraKnownMarketplaces": {
+                "n8n": {
+                  "source": {
+                    "source": "directory",
+                    "path": "./.claude/plugins/n8n"
+                  }
+                }
+              },
+              "enabledPlugins": {
+                "n8n@n8n": true
+              }
+            }
+          claude_args: |
+            --model ${{ inputs.model }} --max-turns ${{ inputs.max_turns }} ${{ env.MCP_ARGS }}
+
+      - name: Validate review output
+        id: validate
+        if: steps.verify.outputs.stale != 'true' && steps.claude.outcome == 'success'
+        run: |
+          if [ ! -f "$REVIEW_OUTPUT_PATH" ]; then
+            echo "VALIDATION_ERROR=review output file $REVIEW_OUTPUT_PATH was not produced" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          if node .github/scripts/ai-review/validate-review-output.mjs "$REVIEW_OUTPUT_PATH" "$REVIEW_DIFF_PATH" > /tmp/ai-review-validated.json 2> /tmp/ai-review-validation-errors.txt; then
+            echo "VALIDATED_REVIEW=/tmp/ai-review-validated.json" >> "$GITHUB_ENV"
+          else
+            ERRORS="$(tr '\n' ' ' < /tmp/ai-review-validation-errors.txt | head -c 1000)"
+            echo "VALIDATION_ERROR=review output failed validation: $ERRORS" >> "$GITHUB_ENV"
+          fi
+
+      - name: Report to n8n
+        if: always()
+        env:
+          RESUME_URL: ${{ inputs.resume_url }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+        run: node .github/scripts/ai-review/review-callback.mjs
+
+      - name: Summary
+        if: always()
+        env:
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          STALE: ${{ steps.verify.outputs.stale }}
+        run: |
+          {
+            echo "## AI Review Runner"
+            echo "**PR:** #$PR_NUMBER at \`$HEAD_SHA\`"
+            echo "**Stale:** $STALE"
+            echo "**Claude outcome:** $CLAUDE_OUTCOME"
+            echo "**Validation error:** ${VALIDATION_ERROR:-none}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check final status
+        if: always()
+        env:
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+          STALE: ${{ steps.verify.outputs.stale }}
+        run: |
+          if [ "$STALE" = "true" ]; then
+            echo "::notice::Stale dispatch; nothing reviewed."
+            exit 0
+          fi
+          if [ "$CLAUDE_OUTCOME" != "success" ] || [ -n "$VALIDATION_ERROR" ]; then
+            echo "::error::Review run failed. Claude outcome: $CLAUDE_OUTCOME; validation: ${VALIDATION_ERROR:-none}"
+            exit 1
+          fi
