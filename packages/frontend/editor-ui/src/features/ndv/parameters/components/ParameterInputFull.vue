@@ -40,7 +40,7 @@ import { N8nInputLabel } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import type { ParameterFieldLayout } from './parameterFieldLayout';
+import { isCompactLayoutCandidate, type ParameterFieldLayout } from './parameterFieldLayout';
 
 type Props = {
 	parameter: INodeProperties;
@@ -146,7 +146,13 @@ const useInlineSwitchLayout = computed(
 const useHorizontalFieldLayout = computed(() => {
 	if (useInlineSwitchLayout.value) return false;
 	if (props.fieldLayout === 'horizontal') return true;
-	if (props.fieldLayout !== 'auto' || isExpression.value) return false;
+
+	// An expression needs the full width, so it always stacks. That does mean a field
+	// changes layout when you toggle it into expression mode.
+	if (isExpression.value) return false;
+
+	if (props.fieldLayout === 'compact') return isCompactLayoutCandidate(props.parameter);
+	if (props.fieldLayout !== 'auto') return false;
 
 	return props.parameter.type === 'options' || props.parameter.type === 'number';
 });

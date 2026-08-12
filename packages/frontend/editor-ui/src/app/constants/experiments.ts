@@ -13,6 +13,9 @@ export const CANVAS_ZOOMED_VIEW_EXPERIMENT = createExperiment('canvas_zoomed_vie
 export const NDV_IN_FOCUS_PANEL_EXPERIMENT = createExperiment('ndv_in_focus_panel');
 // Spike: anchor the node panel beside the selected node instead of the right edge.
 export const NODE_PANEL_ANCHORED_EXPERIMENT = createExperiment('node_panel_anchored');
+// Spike: Tweakpane-style compact fields — label left, control right — for scalar
+// parameters. Composite controls stay full width.
+export const NODE_PANEL_FIELD_LAYOUT_EXPERIMENT = createExperiment('node_panel_field_layout');
 
 export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = createExperiment('034_extra_template_links');
 

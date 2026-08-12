@@ -8,6 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
+import type { ParameterFieldLayout } from '@/features/ndv/parameters/components/parameterFieldLayout';
 import { computed } from 'vue';
 
 const {
@@ -23,6 +24,7 @@ const {
 	initialScrollTop,
 	forcedTab,
 	hideExecutionSettings,
+	fieldLayout,
 } = defineProps<{
 	nodeId: string;
 	isReadOnly?: boolean;
@@ -36,6 +38,7 @@ const {
 	initialScrollTop?: number;
 	forcedTab?: NodeSettingsTab;
 	hideExecutionSettings?: boolean;
+	fieldLayout?: ParameterFieldLayout;
 }>();
 
 defineSlots<{ actions?: {} }>();
@@ -115,6 +118,7 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		:initial-scroll-top="initialScrollTop"
 		:forced-tab="forcedTab"
 		:hide-execution-settings="hideExecutionSettings"
+		:field-layout="fieldLayout"
 		flatten-single-value-collections
 		extra-tabs-class-name="nodrag"
 		extra-parameter-wrapper-class-name="nodrag"

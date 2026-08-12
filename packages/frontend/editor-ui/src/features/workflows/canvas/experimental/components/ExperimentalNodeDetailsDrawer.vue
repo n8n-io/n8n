@@ -39,6 +39,7 @@ import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from '
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import ExperimentalNodePanelData from './ExperimentalNodePanelData.vue';
 import { type NodePanelTab, useExperimentalNdvStore } from '../experimentalNdv.store';
+import type { ParameterFieldLayout } from '@/features/ndv/parameters/components/parameterFieldLayout';
 
 const props = defineProps<{
 	node: INodeUi;
@@ -110,6 +111,10 @@ const updateScrollPosition = useThrottleFn((nodeId: string, scrollTop: number) =
 // Anchored (popover) mode is deliberately minimal: secondary actions collapse
 // into a single control that expands into the roomier side panel.
 const isAnchoredMode = computed(() => experimentalNdvStore.isPanelAnchored);
+// Tweakpane-style compact fields, behind node_panel_field_layout.
+const panelFieldLayout = computed<ParameterFieldLayout | undefined>(() =>
+	experimentalNdvStore.isCompactFieldLayout ? 'compact' : undefined,
+);
 const isDataTab = computed(() => selectedTab.value === 'input' || selectedTab.value === 'output');
 const isSettingsTab = computed(() => selectedTab.value === 'settings');
 const dataTab = computed(() =>
@@ -415,6 +420,7 @@ onBeforeUnmount(() => {
 						hide-header
 						progressive-disclosure
 						hide-execution-settings
+						:field-layout="panelFieldLayout"
 						:show-all-settings="panelState.isShowingAllSettings"
 						:settings-filter="panelState.settingsFilter"
 						:always-show-all-settings="experimentalNdvStore.alwaysShowAllSettings"

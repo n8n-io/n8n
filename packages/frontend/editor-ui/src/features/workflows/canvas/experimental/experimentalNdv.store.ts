@@ -15,6 +15,7 @@ import {
 	CANVAS_ZOOMED_VIEW_EXPERIMENT,
 	NDV_IN_FOCUS_PANEL_EXPERIMENT,
 	NODE_PANEL_ANCHORED_EXPERIMENT,
+	NODE_PANEL_FIELD_LAYOUT_EXPERIMENT,
 } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import { useStorage } from '@n8n/composables/useStorage';
@@ -80,6 +81,13 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		() =>
 			postHogStore.getVariant(NODE_PANEL_ANCHORED_EXPERIMENT.name) ===
 			NODE_PANEL_ANCHORED_EXPERIMENT.variant,
+	);
+
+	// featureFlags.override('node_panel_field_layout', 'variant')
+	const isCompactFieldLayout = computed(
+		() =>
+			postHogStore.getVariant(NODE_PANEL_FIELD_LAYOUT_EXPERIMENT.name) ===
+			NODE_PANEL_FIELD_LAYOUT_EXPERIMENT.variant,
 	);
 
 	function setPanelAnchored(value: boolean) {
@@ -226,6 +234,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		isMapperPinned: computed(() => isMapperPinned.value),
 		alwaysShowAllSettings,
 		isPanelAnchored,
+		isCompactFieldLayout,
 		nodePanelWidth,
 		isActive,
 		setNodeExpanded,

@@ -31,6 +31,7 @@ import NodeCredentials from '@/features/credentials/components/NodeCredentials.v
 import NodeSettingsHeader from './NodeSettingsHeader.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
+import type { ParameterFieldLayout } from '@/features/ndv/parameters/components/parameterFieldLayout';
 import AgentNdvInlineControls from '@/features/ndv/agents/components/AgentNdvInlineControls.vue';
 import AgentNdvReferencedSummary from '@/features/ndv/agents/components/AgentNdvReferencedSummary.vue';
 import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
@@ -116,6 +117,8 @@ const props = withDefaults(
 		flattenSingleValueCollections?: boolean;
 		// Let a host drive which tab is shown (node panel renders one tab per pane).
 		forcedTab?: NodeSettingsTab;
+		// Overrides the layout the disclosure mode would otherwise pick.
+		fieldLayout?: ParameterFieldLayout;
 		// Keep the "Execution" group out of Properties when the host surfaces it elsewhere.
 		hideExecutionSettings?: boolean;
 	}>(),
@@ -135,6 +138,7 @@ const props = withDefaults(
 		initialScrollTop: 0,
 		flattenSingleValueCollections: false,
 		forcedTab: undefined,
+		fieldLayout: undefined,
 		hideExecutionSettings: false,
 	},
 );
@@ -388,6 +392,9 @@ const setParametersCount = computed(
 // it as a displayOptions removal and clear the value.
 const retainedParameterNames = computed(() =>
 	props.progressiveDisclosure ? parametersByTab.value.params.map(({ name }) => name) : undefined,
+);
+const resolvedFieldLayout = computed<ParameterFieldLayout>(
+	() => props.fieldLayout ?? (props.progressiveDisclosure ? 'auto' : 'stacked'),
 );
 const retainedNodeTypeSettingNames = computed(() =>
 	props.progressiveDisclosure ? parametersByTab.value.settings.map(({ name }) => name) : undefined,
@@ -966,7 +973,7 @@ function handleSelectAction(params: INodeParameters) {
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					:flatten-single-value-collections="flattenSingleValueCollections"
 					:notice-theme="progressiveDisclosure ? 'info' : undefined"
-					:field-layout="progressiveDisclosure ? 'auto' : 'stacked'"
+					:field-layout="resolvedFieldLayout"
 					path="parameters"
 					:node="props.activeNode"
 					@value-changed="valueChanged"
@@ -1069,7 +1076,7 @@ function handleSelectAction(params: INodeParameters) {
 							:hidden-issues-inputs="hiddenIssuesInputs"
 							:flatten-single-value-collections="flattenSingleValueCollections"
 							:notice-theme="progressiveDisclosure ? 'info' : undefined"
-							:field-layout="progressiveDisclosure ? 'auto' : 'stacked'"
+							:field-layout="resolvedFieldLayout"
 							path="parameters"
 							@value-changed="valueChanged"
 							@parameter-blur="onParameterBlur"
@@ -1083,7 +1090,7 @@ function handleSelectAction(params: INodeParameters) {
 							:hidden-issues-inputs="hiddenIssuesInputs"
 							:flatten-single-value-collections="flattenSingleValueCollections"
 							:notice-theme="progressiveDisclosure ? 'info' : undefined"
-							:field-layout="progressiveDisclosure ? 'auto' : 'stacked'"
+							:field-layout="resolvedFieldLayout"
 							path=""
 							@value-changed="valueChanged"
 							@parameter-blur="onParameterBlur"
