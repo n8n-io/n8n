@@ -148,6 +148,21 @@ describe('components', () => {
 			);
 		});
 
+		it('emits navigateTo(null) when closed while inside a parent item', async () => {
+			const wrapper = render(N8nCommandBar, { props: { items: createSampleItems() } });
+			await openCommandBar();
+
+			await fireEvent.click(screen.getByText('Search nodes'));
+			await waitFor(() => expect(screen.getByPlaceholderText('Search nodes…')).toBeInTheDocument());
+
+			document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+			await waitFor(() => {
+				const events = wrapper.emitted('navigateTo') ?? [];
+				expect(events[events.length - 1]).toEqual([null]);
+			});
+		});
+
 		it('closes when clicking outside the command bar', async () => {
 			render(N8nCommandBar, { props: { items: createSampleItems() } });
 			await openCommandBar();

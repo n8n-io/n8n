@@ -164,7 +164,11 @@ const closeCommandBar = () => {
 	isOpen.value = false;
 	selectedIndex.value = -1;
 	inputValue.value = '';
-	currentParentId.value = null;
+	if (currentParentId.value !== null) {
+		currentParentId.value = null;
+		// Let consumers cancel in-flight work tied to the open parent
+		emit('navigateTo', null);
+	}
 };
 
 const navigateToChildren = (item: CommandBarItem) => {

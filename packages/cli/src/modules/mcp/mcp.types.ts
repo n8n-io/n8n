@@ -1,5 +1,5 @@
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import type { WorkflowPublishBlockedReason } from '@n8n/api-types';
+import type { WorkflowContentMatchType, WorkflowPublishBlockedReason } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
@@ -92,6 +92,7 @@ export type SearchWorkflowsParams = {
 	projectId?: string;
 	tags?: string[];
 	sortBy?: SearchWorkflowsSortBy;
+	searchIn?: 'metadata' | 'content';
 };
 
 export type SearchWorkflowsItem = {
@@ -104,6 +105,10 @@ export type SearchWorkflowsItem = {
 	triggerCount: number | null;
 	availableInMCP: boolean;
 	tags: Array<{ id: string; name: string }>;
+	matchedIn?: WorkflowContentMatchType;
+	matchDetail?: string;
+	matchedNodeId?: string;
+	matchedVersionId?: string;
 };
 
 export type SearchWorkflowsResult = {

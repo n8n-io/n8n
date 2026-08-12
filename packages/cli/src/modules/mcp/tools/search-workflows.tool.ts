@@ -1,3 +1,4 @@
+import { workflowContentMatchTypes } from '@n8n/api-types';
 import { type User, type WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
@@ -35,6 +36,15 @@ const inputSchema = {
 		.describe(
 			`Sort order for results (default: ${DEFAULT_SORT_BY}). Use updatedAt:desc to find the most recently edited workflows first.`,
 		),
+	searchIn: z
+		.enum(['metadata', 'content'])
+		.optional()
+		.describe(
+			"Where to match `query`. 'metadata' (default) matches workflow name and description. " +
+				"'content' additionally matches node names, node parameters, and version history titles/descriptions; " +
+				'results are ordered by where they matched (name first) and include matchedIn/matchDetail. ' +
+				'Requires a query of 3+ characters; tags and sortBy are ignored and at most 100 results are returned in content mode.',
+		),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -62,11 +72,35 @@ const outputSchema = {
 						.describe('The number of triggers associated with the workflow'),
 					availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
 					tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
+					matchedIn: z
+						.enum(workflowContentMatchTypes)
+						.optional()
+						.describe('Where the query matched (content search only)'),
+					matchDetail: z
+						.string()
+						.optional()
+						.describe('Matched node, version, or tag name (content search only)'),
+					matchedNodeId: z
+						.string()
+						.optional()
+						.describe('ID of the matched node (content search only)'),
+					matchedVersionId: z
+						.string()
+						.optional()
+						.describe(
+							'ID of the matched workflow version, for history and past-version matches (content search only)',
+						),
 				})
 				.passthrough(),
 		)
 		.describe('List of workflows matching the query'),
-	count: z.number().int().min(0).describe('Total number of workflows that match the filters'),
+	count: z
+		.number()
+		.int()
+		.min(0)
+		.describe(
+			'Total number of workflows that match the filters (content mode: number returned, capped at 100)',
+		),
 } satisfies z.ZodRawShape;
 
 /**
@@ -99,8 +133,9 @@ export const createSearchWorkflowsTool = (
 			projectId,
 			tags,
 			sortBy,
+			searchIn,
 		}: SearchWorkflowsParams) => {
-			const parameters = { limit, query, projectId, tags, sortBy };
+			const parameters = { limit, query, projectId, tags, sortBy, searchIn };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,
 				tool_name: 'search_workflows',
@@ -114,6 +149,7 @@ export const createSearchWorkflowsTool = (
 					projectId,
 					tags,
 					sortBy,
+					searchIn,
 				});
 
 				// Track successful execution
@@ -151,9 +187,44 @@ export const createSearchWorkflowsTool = (
 export async function searchWorkflows(
 	user: User,
 	workflowService: WorkflowService,
-	{ limit = MAX_RESULTS, query, projectId, tags, sortBy = DEFAULT_SORT_BY }: SearchWorkflowsParams,
+	{
+		limit = MAX_RESULTS,
+		query,
+		projectId,
+		tags,
+		sortBy = DEFAULT_SORT_BY,
+		searchIn,
+	}: SearchWorkflowsParams,
 ): Promise<SearchWorkflowsResult> {
 	const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
+
+	if (searchIn === 'content' && query) {
+		const { results, count } = await workflowService.searchWorkflowContent(user, {
+			search: query,
+			limit: safeLimit,
+			projectId,
+		});
+
+		return {
+			data: results.map((item) => ({
+				id: item.id,
+				name: item.name,
+				description: item.description,
+				active: item.activeVersionId !== null,
+				createdAt: item.createdAt,
+				updatedAt: item.updatedAt,
+				triggerCount: item.triggerCount,
+				availableInMCP: item.availableInMCP,
+				tags: item.tags,
+				matchedIn: item.matchedIn,
+				...(item.matchDetail !== undefined ? { matchDetail: item.matchDetail } : {}),
+				...(item.matchedNodeId !== undefined ? { matchedNodeId: item.matchedNodeId } : {}),
+				...(item.matchedVersionId !== undefined ? { matchedVersionId: item.matchedVersionId } : {}),
+			})),
+			count,
+		};
+	}
+
 	const filterTags = tags && Array.from(new Set(tags.filter((tag) => tag.length > 0)));
 
 	const options: ListQuery.Options = {

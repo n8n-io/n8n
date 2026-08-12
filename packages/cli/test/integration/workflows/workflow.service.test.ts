@@ -12,6 +12,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflowRepository,
 	type WorkflowEntity,
+	WorkflowHistoryRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
@@ -85,6 +86,7 @@ beforeAll(async () => {
 		globalConfig,
 		mock(),
 		Container.get(WorkflowFinderService),
+		Container.get(WorkflowHistoryRepository),
 		workflowPublishHistoryRepository,
 		outboxRepository,
 		workflowValidationService,

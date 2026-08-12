@@ -45,6 +45,14 @@ const listAction = z.object({
 		.literal('list')
 		.describe('List workflows accessible to the current user. Use for workflow inspection.'),
 	query: z.string().optional().describe('Filter workflows by name'),
+	searchIn: z
+		.enum(['name', 'content'])
+		.optional()
+		.describe(
+			"Where to match `query`. 'name' (default) matches workflow names and descriptions. " +
+				"'content' additionally matches node names, node parameters, and version history titles/descriptions; " +
+				'results include matchedIn/matchDetail and are ordered by where they matched. Requires query.',
+		),
 	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
 	status: z
 		.enum(['active', 'archived', 'all'])
@@ -406,6 +414,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		query: input.query,
 		...(input.status ? { status: input.status } : {}),
 		...(input.scope ? { scope: input.scope } : {}),
+		...(input.searchIn ? { searchIn: input.searchIn } : {}),
 	});
 	return { workflows };
 }
