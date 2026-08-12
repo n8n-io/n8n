@@ -404,6 +404,20 @@ layers:
 3. **Service-enforced sandbox TTL.** The backstop that works when n8n
    itself dies and never comes back.
 
+Layers 2 and 3 are not implemented in the prototype, and the gap is
+observed in practice: every dev-server restart orphans the in-memory
+registry and its sandbox, and orphans accumulate until removed by hand.
+They are the first post-hackathon work item.
+
+One transport lesson from live testing: the sandbox service can fail to
+deliver an execution's final exit event after large-output runs, hanging
+the exec stream indefinitely. The lifecycle layer therefore treats the
+harness's own `report.json` as the source of truth on every failure path
+except user cancellation — a settle watchdog aborts the dead stream ~60s
+after pi's terminal events and recovers the outcome from the report file.
+(The underlying exit-event loss is an n8n-sandbox-service bug to fix in
+that repo.)
+
 ### Confirmation and result UI
 
 - The destructive-write gate renders through the existing confirmation

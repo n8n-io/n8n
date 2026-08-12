@@ -519,6 +519,149 @@ describe('OneOffTaskSandboxService', () => {
 		});
 	});
 
+	describe('exec stream recovery', () => {
+		const settledEvent = '{"type":"agent_settled"}\n';
+
+		function hangingPiExec(stdout: string): ExecImpl {
+			return async (_command, _args, options) => {
+				options?.onStdout?.(stdout);
+				return await new Promise<CommandResult>((_resolve, reject) => {
+					const fail = () => reject(new Error('killed'));
+					// The real client rejects promptly when the signal is already aborted.
+					if (options?.abortSignal?.aborted) {
+						fail();
+						return;
+					}
+					options?.abortSignal?.addEventListener('abort', fail);
+				});
+			};
+		}
+
+		describe('settle watchdog (fake timers)', () => {
+			beforeEach(() => {
+				vi.useFakeTimers();
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('recovers the report when the exec stream hangs after a terminal event', async () => {
+				const logger = createLoggerMock();
+				const { service } = createService({ logger, piExec: hangingPiExec(settledEvent) });
+				await service.bootstrap(manifest);
+
+				const run = service.runHarness(runHarnessOptions());
+				// Let the exec start and emit the terminal event, then wait out the grace period.
+				await vi.advanceTimersByTimeAsync(0);
+				await vi.advanceTimersByTimeAsync(60_000);
+
+				const result = await run;
+				expect(result.report).toEqual(validReport);
+				expect(result.exitCode).toBe(-1);
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('recovering via report file'),
+				);
+			});
+
+			it('treats the report_result tool finishing as a terminal signal', async () => {
+				const { service } = createService({
+					piExec: hangingPiExec('{"type":"tool_execution_end","toolName":"report_result"}\n'),
+				});
+				await service.bootstrap(manifest);
+
+				const run = service.runHarness(runHarnessOptions());
+				await vi.advanceTimersByTimeAsync(0);
+				await vi.advanceTimersByTimeAsync(60_000);
+
+				const result = await run;
+				expect(result.report).toEqual(validReport);
+			});
+
+			it('never fires without a terminal signal — a mid-run hang stays with the TTL', async () => {
+				const logger = createLoggerMock();
+				let finishExec!: (result: CommandResult) => void;
+				let execSignal: AbortSignal | undefined;
+				const { service } = createService({
+					logger,
+					piExec: async (_command, _args, options) => {
+						execSignal = options?.abortSignal;
+						options?.onStdout?.('{"type":"message_update"}\n');
+						return await new Promise<CommandResult>((resolve) => {
+							finishExec = resolve;
+						});
+					},
+				});
+				await service.bootstrap(manifest);
+
+				const run = service.runHarness(runHarnessOptions());
+				await vi.advanceTimersByTimeAsync(0);
+				await vi.advanceTimersByTimeAsync(120_000);
+
+				expect(execSignal?.aborted).toBe(false);
+				finishExec({ ...okResult, exitCode: 0 });
+				const result = await run;
+				expect(result.report).toEqual(validReport);
+				expect(result.exitCode).toBe(0);
+				expect(logger.warn).not.toHaveBeenCalledWith(
+					expect.stringContaining('recovering via report file'),
+				);
+			});
+
+			it('falls back to the unclean-stop result when the watchdog fires and no report exists', async () => {
+				const filesystem = createFilesystemMock({
+					readFile: vi.fn(async () => await Promise.reject(new Error('404 not found'))),
+				});
+				const { service } = createService({ filesystem, piExec: hangingPiExec(settledEvent) });
+				await service.bootstrap(manifest);
+
+				const run = service.runHarness(runHarnessOptions());
+				await vi.advanceTimersByTimeAsync(0);
+				await vi.advanceTimersByTimeAsync(60_000);
+
+				const result = await run;
+				expect(result.report).toBeUndefined();
+				expect(result.exitCode).toBe(-1);
+			});
+		});
+
+		it('prefers a valid report on disk over an exec transport error', async () => {
+			const { service } = createService({
+				piExec: async () => await Promise.reject(new Error('exec stream lost')),
+			});
+			await service.bootstrap(manifest);
+
+			const result = await service.runHarness(runHarnessOptions());
+			expect(result.report).toEqual(validReport);
+			expect(result.exitCode).toBe(-1);
+		});
+
+		it('rethrows an exec error when no report exists', async () => {
+			const filesystem = createFilesystemMock({
+				readFile: vi.fn(async () => await Promise.reject(new Error('404 not found'))),
+			});
+			const { service } = createService({
+				filesystem,
+				piExec: async () => await Promise.reject(new Error('exec stream lost')),
+			});
+			await service.bootstrap(manifest);
+
+			await expect(service.runHarness(runHarnessOptions())).rejects.toThrow('exec stream lost');
+		});
+
+		it('does not report-recover when the caller aborted', async () => {
+			const abortController = new AbortController();
+			// A valid report sits on disk, but a user cancel must not turn into a completion.
+			const { service } = createService({ piExec: hangingPiExec('') });
+			await service.bootstrap(manifest);
+
+			const run = service.runHarness(runHarnessOptions({ abortSignal: abortController.signal }));
+			abortController.abort();
+
+			await expect(run).rejects.toThrow('killed');
+		});
+	});
+
 	describe('destroy', () => {
 		it('is idempotent — repeated calls destroy the provider sandbox once', async () => {
 			const { service, sandbox } = createService();
@@ -545,7 +688,12 @@ describe('OneOffTaskSandboxService', () => {
 		});
 
 		it('aborts an in-flight harness exec', async () => {
+			// Reads fail after destroy, so no report is recoverable.
+			const filesystem = createFilesystemMock({
+				readFile: vi.fn(async () => await Promise.reject(new Error('sandbox gone'))),
+			});
 			const { service } = createService({
+				filesystem,
 				piExec: async (_command, _args, options) =>
 					await new Promise<CommandResult>((_resolve, reject) => {
 						options?.abortSignal?.addEventListener('abort', () => reject(new Error('killed')));
@@ -592,8 +740,13 @@ describe('OneOffTaskSandboxService', () => {
 		});
 
 		it('aborts a running exec and destroys the sandbox when the TTL fires', async () => {
+			// Reads fail after the TTL destroy, so no report is recoverable.
+			const filesystem = createFilesystemMock({
+				readFile: vi.fn(async () => await Promise.reject(new Error('sandbox gone'))),
+			});
 			const { service, sandbox } = createService({
 				ttlMs: 60_000,
+				filesystem,
 				piExec: async (_command, _args, options) =>
 					await new Promise<CommandResult>((_resolve, reject) => {
 						options?.abortSignal?.addEventListener('abort', () => reject(new Error('killed')));

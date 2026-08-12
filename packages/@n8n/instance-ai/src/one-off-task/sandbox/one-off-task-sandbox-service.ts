@@ -87,6 +87,34 @@ function createTailBuffer(maxChars: number) {
 }
 
 /**
+ * Grace period between a terminal pi stream event and the exec settling. Pi
+ * exits within seconds of settling, but the sandbox service's exec stream has
+ * been observed (in production) to lose the final exit event on long
+ * JSONL-heavy runs, leaving the client's follow-poll hanging forever. After
+ * the grace period the exec is aborted and the outcome is recovered from the
+ * report file.
+ */
+const HARNESS_SETTLE_GRACE_MS = 60_000;
+
+/** Pi stream events that mean the agent loop is done and the process is about to exit. */
+const TERMINAL_PI_EVENT_TYPES = new Set(['agent_settled', 'agent_end']);
+
+/**
+ * Deliberately narrow matching (verified against pi 0.84.1 `agent-session.js`):
+ * the watchdog must never arm without a real terminal signal — a hang mid-run
+ * is the TTL's job. The `report_result` tool finishing counts too, because
+ * writing the report is the harness's last act.
+ */
+function isTerminalPiEvent(event: unknown): boolean {
+	if (typeof event !== 'object' || event === null) return false;
+	const type: unknown = Reflect.get(event, 'type');
+	if (typeof type !== 'string') return false;
+	if (TERMINAL_PI_EVENT_TYPES.has(type)) return true;
+	const toolName: unknown = Reflect.get(event, 'toolName');
+	return type === 'tool_execution_end' && toolName === 'report_result';
+}
+
+/**
  * Structural superset of the contract's `HarnessRunResult`: adds the stderr
  * tail for unclean-stop debugging. Callers typed against the contract simply
  * ignore the extra field. contracts.ts should eventually gain the optional
@@ -259,44 +287,90 @@ export class OneOffTaskSandboxService implements OneOffTaskSandbox {
 
 		await this.filesystem.writeFile(promptPath, options.prompt, { recursive: true, abortSignal });
 
-		const forwarder = createJsonlForwarder(options.onEvent, this.logger);
+		// Settle watchdog: once a terminal pi event is seen the process exits
+		// within seconds, so an exec still pending after the grace period means
+		// the service lost the exit event — abort it and recover from the report.
+		const watchdog = new AbortController();
+		let watchdogTimer: NodeJS.Timeout | undefined;
+		let watchdogFired = false;
+		const armWatchdog = () => {
+			if (watchdogTimer) return;
+			watchdogTimer = setTimeout(() => {
+				watchdogFired = true;
+				this.logger?.warn(
+					'One-off task harness settled but exec stream never completed; recovering via report file',
+				);
+				watchdog.abort();
+			}, HARNESS_SETTLE_GRACE_MS);
+			watchdogTimer.unref?.();
+		};
+
+		const forwarder = createJsonlForwarder((event) => {
+			if (isTerminalPiEvent(event)) armWatchdog();
+			options.onEvent(event);
+		}, this.logger);
 		// Black box recorder for unclean stops: the report is the happy-path
 		// signal, but a harness that dies before writing one (e.g. missing LLM
 		// key) explains itself only on stderr.
 		const stderrTail = createTailBuffer(STDERR_TAIL_MAX_CHARS);
 		const command = this.buildHarnessCommand(root, options.sessionId, promptPath);
 
-		let result: CommandResult;
+		let result: CommandResult | undefined;
+		let execError: Error | undefined;
 		try {
 			result = await this.execute(command, [], {
 				cwd: root,
 				// Secret values live only in this exec's environment — the contract's
 				// injection boundary. Never write them through the filesystem API.
 				env: options.env,
-				abortSignal,
+				abortSignal: AbortSignal.any([abortSignal, watchdog.signal]),
 				timeout: this.remainingTtlMs(),
 				onStdout: (chunk) => forwarder.push(chunk),
 				onStderr: (chunk) => stderrTail.push(chunk),
 			});
 		} catch (error) {
-			if (this.lifetimeController.signal.aborted && !options.abortSignal.aborted) {
+			execError = error instanceof Error ? error : new Error(String(error));
+		} finally {
+			if (watchdogTimer) clearTimeout(watchdogTimer);
+		}
+		forwarder.flush();
+
+		// User cancel: destruction follows and the task is moot — recovering a
+		// report here would misreport a cancelled task as completed.
+		if (execError !== undefined && options.abortSignal.aborted) {
+			throw execError;
+		}
+
+		// Report-first: the harness's own record outranks transport failures
+		// (lost exec streams, watchdog aborts, TTL kills). Exec cleanup errors
+		// after a successful recovery are swallowed — the execution is already
+		// dead; the report is the outcome.
+		const report = await this.readReport(reportPath);
+		if (report !== undefined) {
+			if (execError !== undefined) {
+				this.logger?.debug(
+					'One-off task exec failed after the harness reported; using the report',
+					{
+						error: execError.message,
+					},
+				);
+			}
+			return { report, exitCode: result?.exitCode ?? -1 };
+		}
+
+		// No report to recover with. A watchdog abort falls through to the
+		// unclean-stop path (the harness settled and exited; a missing report is
+		// the standard interrupted signal, not an exception).
+		if (execError !== undefined && !watchdogFired) {
+			if (this.lifetimeController.signal.aborted) {
 				throw new OperationalError(
 					this.ttlExpired
 						? 'One-off task sandbox exceeded its maximum lifetime'
 						: 'One-off task sandbox was destroyed while the harness was running',
-					{ cause: error },
+					{ cause: execError },
 				);
 			}
-			throw error;
-		}
-		forwarder.flush();
-
-		// Per the exit protocol in contracts.ts, a missing or invalid report is
-		// the unclean-stop signal — the caller reports "task interrupted", so no
-		// exception here.
-		const report = await this.readReport(reportPath);
-		if (report !== undefined) {
-			return { report, exitCode: result.exitCode };
+			throw execError;
 		}
 
 		// The injected env values are the secrets — scrub them out before the
@@ -307,11 +381,11 @@ export class OneOffTaskSandboxService implements OneOffTaskSandbox {
 		}));
 		const scrubbedTail = scrub(stderrTail.get(), secrets);
 		this.logger?.warn('One-off task harness stopped without a valid report', {
-			exitCode: result.exitCode,
+			exitCode: result?.exitCode ?? -1,
 			stderrTail: scrubbedTail,
 		});
 		return {
-			exitCode: result.exitCode,
+			exitCode: result?.exitCode ?? -1,
 			...(scrubbedTail.length > 0 ? { stderrTail: scrubbedTail } : {}),
 		};
 	}
