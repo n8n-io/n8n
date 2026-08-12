@@ -33,8 +33,12 @@ const noteInputId = useId();
 const note = computed(() => decisionNote.value.trim());
 
 const commentDisabled = computed(
-	() => posting.value || note.value.length === 0 || !props.viewerCanComment,
+	() => posting.value || props.deciding || note.value.length === 0 || !props.viewerCanComment,
 );
+
+// A comment in flight leaves its text in the box on purpose, so without this the same text
+// goes out twice: once as the comment, once as the decision note.
+const decisionDisabled = computed(() => props.deciding || posting.value);
 
 function submitDecision(input: WorkflowReviewDecisionInput) {
 	isOpen.value = false;
@@ -146,7 +150,7 @@ async function onComment() {
 						<N8nButton
 							variant="outline"
 							size="small"
-							:disabled="!note"
+							:disabled="!note || decisionDisabled"
 							data-test-id="workflow-review-decision-request-changes-button"
 							@click="onRequestChanges"
 						>
@@ -159,6 +163,7 @@ async function onComment() {
 					<N8nButton
 						variant="outline"
 						size="small"
+						:disabled="decisionDisabled"
 						data-test-id="workflow-review-decision-approve-button"
 						@click="onApprove"
 					>

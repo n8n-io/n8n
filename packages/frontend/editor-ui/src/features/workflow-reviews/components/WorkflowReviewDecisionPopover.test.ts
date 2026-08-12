@@ -92,9 +92,10 @@ describe('WorkflowReviewDecisionPopover', () => {
 		expect(tooltipOf(requestChanges)).toHaveAttribute('data-disabled', 'true');
 	});
 
-	it.each<[string, { viewerCanComment?: boolean }, boolean]>([
+	it.each<[string, { viewerCanComment?: boolean; deciding?: boolean }, boolean]>([
 		['a viewer who is not allowed to comment', { viewerCanComment: false }, false],
 		['a comment that is already being posted', {}, true],
+		['a reviewer whose decision is in flight', { deciding: true }, false],
 	])('offers no Comment button to %s, note or not', async (_label, props, posting) => {
 		store.posting = posting;
 
@@ -103,6 +104,22 @@ describe('WorkflowReviewDecisionPopover', () => {
 		await userEvent.type(getByTestId('workflow-review-decision-note'), 'Just a thought');
 
 		expect(getByTestId('workflow-review-decision-comment-button')).toBeDisabled();
+	});
+
+	// Posting a comment leaves its text in the box on purpose, so a decision taken meanwhile
+	// would send the very same text a second time as its note.
+	it.each<[string, { posting: boolean; deciding: boolean }]>([
+		['a comment is still being posted', { posting: true, deciding: false }],
+		['a decision is already in flight', { posting: false, deciding: true }],
+	])('offers no decision while %s', async (_label, { posting, deciding }) => {
+		store.posting = posting;
+
+		const { getByTestId } = renderComponent({ props: { deciding } });
+
+		await userEvent.type(getByTestId('workflow-review-decision-note'), 'Please add retries');
+
+		expect(getByTestId('workflow-review-decision-request-changes-button')).toBeDisabled();
+		expect(getByTestId('workflow-review-decision-approve-button')).toBeDisabled();
 	});
 
 	it('submits a change request with the note', async () => {
