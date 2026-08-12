@@ -34,6 +34,7 @@ export const FormsModule: FrontendModuleDescription = {
 			component: FormsWorkflowView,
 			meta: {
 				layout: 'workflow',
+				keepWorkflowAlive: true,
 				middleware: ['authenticated'],
 				formsOnlyView: true,
 			},

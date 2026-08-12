@@ -422,6 +422,7 @@ export const routes: RouteRecordRaw[] = [
 			layout: 'workflow',
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
+			formsOnlyView: true,
 		},
 	},
 	{
