@@ -28,11 +28,17 @@ export class OperatorConsoleModule implements ModuleInterface {
 		// and is a no-op outside queue mode — safe to attach unconditionally.
 		Container.get(LogProducerService).attach(Container.get(LogRingBuffer));
 
-		if (Container.get(InstanceSettings).instanceType !== 'main') return;
-
 		const config = Container.get(OperatorConsoleConfig);
 
+		// Every instance type answers `search-logs` against its own `n8n.log`, so
+		// history must be wired everywhere — not just on mains. `LogFileSource` is
+		// fail-closed and throws until it has a redactor, so wiring it late (or
+		// only on mains) turns a worker's answer into an exception.
 		await this.wireHistory(config);
+		await import('./producer/search-responder.service.js');
+
+		if (Container.get(InstanceSettings).instanceType !== 'main') return;
+
 		await this.wireAiTool(config);
 
 		await import('./operator-console.controller.js');

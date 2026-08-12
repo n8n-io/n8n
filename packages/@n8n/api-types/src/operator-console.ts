@@ -74,3 +74,33 @@ export type OperatorLogReadResult = {
 	 */
 	gap: boolean;
 };
+
+/** What one host contributed to a distributed search. */
+export type OperatorLogSearchHost = {
+	hostId: string;
+	/** Records this host returned. Never more than the requested `limit`. */
+	matched: number;
+	/** The host had more to give but hit the limit or its payload budget. */
+	truncated: boolean;
+};
+
+/**
+ * Result of grepping every host's own `n8n.log` in parallel.
+ *
+ * The per-host breakdown is not decoration: beyond the cross-host stream window,
+ * deep history lives only on the host that wrote it, so a worker that is down or
+ * slow silently shrinks the result set. `missingHostIds` is what lets a caller
+ * tell "no matches" apart from "two hosts never replied".
+ */
+export type OperatorLogSearchResult = {
+	/** Merged across hosts, sorted by `ts` ascending, capped at the requested limit. */
+	records: OperatorLogRecord[];
+	hosts: OperatorLogSearchHost[];
+	respondedHostIds: string[];
+	/** Known hosts that did not answer before the deadline. */
+	missingHostIds: string[];
+	/** At least one known host never answered. */
+	timedOut: boolean;
+	/** Records were cut — by a host's own cap, or by the merged set exceeding `limit`. */
+	truncated: boolean;
+};

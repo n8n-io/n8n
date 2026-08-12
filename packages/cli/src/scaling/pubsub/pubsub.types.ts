@@ -80,6 +80,7 @@ export namespace PubSub {
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
 		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
 		export type LogTailStart = ToCommand<'log-tail-start'>;
+		export type SearchLogs = ToCommand<'search-logs'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -123,7 +124,8 @@ export namespace PubSub {
 		| Commands.AgentConfigChanged
 		| Commands.AgentTasksChanged
 		| Commands.RedactionFloorChanged
-		| Commands.LogTailStart;
+		| Commands.LogTailStart
+		| Commands.SearchLogs;
 
 	// ----------------------------------
 	//         worker responses
@@ -150,5 +152,7 @@ export namespace PubSub {
 	>;
 
 	/** Response sent via the `n8n.worker-response` pubsub channel. */
-	export type WorkerResponse = ToWorkerResponse<'response-to-get-worker-status'>;
+	export type WorkerResponse =
+		| ToWorkerResponse<'response-to-get-worker-status'>
+		| ToWorkerResponse<'response-to-search-logs'>;
 }

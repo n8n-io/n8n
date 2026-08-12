@@ -600,9 +600,11 @@ Supporting changes outside the module, both in `@n8n/backend-common/src/logging/
 - [ ] cli-side adapter implementing the port against the composite `LogSource` *(integration)*
 
 ### Slice 5 — stretch
-- [ ] Distributed grep: `search-logs` command → each host greps its own
+- [x] Distributed grep: `search-logs` command → each host greps its own
       `n8n.log` → scatter-gather (reuses the `get-worker-status` pattern). Closes
       the queue-mode gap where deep history covers only the local main.
+      `GET /operator-console/search` names the hosts that did not answer, so a
+      silent worker cannot masquerade as "no matches".
 - [ ] Dynamic log level (see caveat below)
 - [ ] Shareable log excerpt link
 
@@ -624,9 +626,10 @@ Supporting changes outside the module, both in `@n8n/backend-common/src/logging/
      instances. Stretch only. For the hackathon run `N8N_LOG_LEVEL=debug` and
      filter down in the console.
 4. **Queue-mode deep history is per-host.** Redis `MAXLEN` bounds the cross-host
-   window; beyond it, `n8n.log` only covers the local main until slice 5's
-   distributed grep lands. Document this in the UI rather than pretending
-   otherwise.
+   window; beyond it, `n8n.log` only covers the local main. `/operator-console/search`
+   fans a grep out to every host to close that gap, but it is a scatter-gather
+   with a deadline: a host that is down or slow contributes nothing. Render
+   `missingHostIds` rather than pretending the result set is complete.
 5. **History has narrower content than live tail.** `n8n.log` holds `Logger`
    output only — no tee'd `console.log` from Code nodes. Accepted, but the UI
    must mark the boundary or users will think lines went missing.

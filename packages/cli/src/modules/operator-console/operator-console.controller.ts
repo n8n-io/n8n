@@ -4,6 +4,7 @@ import type {
 	OperatorLogLevel,
 	OperatorLogReadResult,
 	OperatorLogRole,
+	OperatorLogSearchResult,
 } from '@n8n/api-types';
 import { OPERATOR_LOG_LEVELS } from '@n8n/api-types';
 import { LOG_SCOPES, type LogScope } from '@n8n/config';
@@ -12,6 +13,7 @@ import { Delete, Get, GlobalScope, Post, RestController } from '@n8n/decorators'
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import { DistributedSearchService } from './consumer/distributed-search.service';
 import { LogConsumerService } from './consumer/log-consumer.service';
 import { OperatorConsoleConfig } from './operator-console.config';
 import { CompositeLogSource } from './sources/composite-log.source';
@@ -46,6 +48,7 @@ export class OperatorConsoleController {
 		private readonly source: CompositeLogSource,
 		private readonly consumer: LogConsumerService,
 		private readonly config: OperatorConsoleConfig,
+		private readonly distributedSearch: DistributedSearchService,
 	) {}
 
 	/**
@@ -84,6 +87,28 @@ export class OperatorConsoleController {
 			limit: parseLimit(limit),
 			direction,
 			filter: parseFilter(req.query),
+		});
+	}
+
+	/**
+	 * Distributed grep over deep history: every host searches its own rotated
+	 * `n8n.log` in parallel and the answers are merged here. Takes the same
+	 * comma-separated filter params as `/logs`.
+	 *
+	 * Unlike `/logs` this reports who answered and who did not. Past the
+	 * cross-host stream's window a silent worker takes its whole history with it,
+	 * and "no matches" must not be indistinguishable from "two hosts never
+	 * replied".
+	 */
+	@Get('/search')
+	@GlobalScope('orchestration:read')
+	async search(req: AuthenticatedRequest<{}, {}, {}, LogsQuery>): Promise<OperatorLogSearchResult> {
+		const hosts = await this.source.hosts();
+
+		return await this.distributedSearch.search({
+			filter: parseFilter(req.query),
+			limit: parseLimit(req.query.limit),
+			expectedHostIds: hosts.map((host) => host.hostId),
 		});
 	}
 

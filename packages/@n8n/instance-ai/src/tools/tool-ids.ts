@@ -79,6 +79,16 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// nothing is connected, which is exactly when `search_tools` has no MCP tool
 	// to surface and the agent concludes the integration is unavailable.
 	DOMAIN_TOOL_IDS.MCP_SERVERS,
+	// Safe to list unconditionally: the logs tool is only *registered* when the
+	// operator-console module supplies a log query port, so on instances without
+	// it this entry never matches anything and the prompt prefix is unchanged.
+	//
+	// Loaded rather than deferred because the questions it answers ("why did this
+	// execution fail?") do not read like log questions, so the agent has little
+	// reason to go looking for it via `search_tools`. Worth revisiting: for most
+	// instances instance logs are a rare need, and this spends prefix budget on
+	// every turn to serve a minority of them.
+	DOMAIN_TOOL_IDS.LOGS,
 	'web-search',
 	'fetch-url',
 	// build-agent is the primary route for agent-anchored intents; deferring it

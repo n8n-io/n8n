@@ -201,18 +201,18 @@ describe('logs tool', () => {
 			const tool = createLogsTool(context);
 			const result = await executeTool<{ hostId: string; seq: number; count: number }>(
 				tool,
-				{ action: 'context', hostId: 'worker-2', seq: 4210 },
+				{ action: 'context', hostId: 'worker-2', ts: '2026-08-12T10:00:00.000Z' },
 				{} as never,
 			);
 
 			expect(port.readContext).toHaveBeenCalledWith({
 				hostId: 'worker-2',
-				seq: 4210,
+				ts: '2026-08-12T10:00:00.000Z',
 				before: 50,
 				after: 50,
 				abortSignal: undefined,
 			});
-			expect(result).toMatchObject({ hostId: 'worker-2', seq: 4210, count: 1 });
+			expect(result).toMatchObject({ hostId: 'worker-2', count: 1 });
 		});
 
 		it('honours explicit before/after windows', async () => {
@@ -222,13 +222,19 @@ describe('logs tool', () => {
 			const tool = createLogsTool(context);
 			await executeTool(
 				tool,
-				{ action: 'context', hostId: 'main-1', seq: 10, before: 0, after: 5 },
+				{
+					action: 'context',
+					hostId: 'main-1',
+					ts: '2026-08-12T10:00:00.000Z',
+					before: 0,
+					after: 5,
+				},
 				{} as never,
 			);
 
 			expect(port.readContext).toHaveBeenCalledWith({
 				hostId: 'main-1',
-				seq: 10,
+				ts: '2026-08-12T10:00:00.000Z',
 				before: 0,
 				after: 5,
 				abortSignal: undefined,
@@ -392,7 +398,7 @@ describe('logs tool', () => {
 				const tool = createLogsTool(context);
 				const input = {
 					search: { action: 'search', query: 'x' },
-					context: { action: 'context', hostId: 'main-1', seq: 1 },
+					context: { action: 'context', hostId: 'main-1', ts: '2026-08-12T10:00:00.000Z' },
 					snapshot: { action: 'snapshot' },
 				}[action];
 

@@ -52,4 +52,7 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	// A lease heartbeat debounced by 300ms would arrive late enough to let a tail
 	// lapse, and a filter change must take effect on the next line, not eventually.
 	'log-tail-start',
+	// A human is waiting on this behind a request with a deadline; spending 300ms
+	// of that budget in a debounce would be pure loss.
+	'search-logs',
 ]);

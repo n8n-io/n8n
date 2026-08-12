@@ -43,7 +43,9 @@ export type PubSubEventName =
 	| 'agent-config-changed'
 	| 'agent-tasks-changed'
 	| 'redaction-floor-changed'
-	| 'log-tail-start';
+	| 'log-tail-start'
+	| 'search-logs'
+	| 'response-to-search-logs';
 
 export type PubSubEventFilter =
 	| {

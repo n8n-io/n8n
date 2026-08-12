@@ -56,6 +56,15 @@ export type LogRedactionAttestation = {
 
 /** A page of log records that the adapter has attested as redacted. */
 export type RedactedLogPage = OperatorLogReadResult & {
+	/**
+	 * Hosts that were asked but never answered, when the read fanned out across
+	 * the deployment. Their logs are simply absent from `records`.
+	 *
+	 * Surfaced because "no matches" and "the host that ran it never replied" are
+	 * the same empty result otherwise, and an agent that cannot tell them apart
+	 * will confidently report the wrong conclusion.
+	 */
+	missingHostIds?: string[];
 	redaction: LogRedactionAttestation;
 };
 
@@ -70,11 +79,19 @@ export interface LogQueryReadOptions {
 
 export interface LogQueryContextOptions {
 	hostId: string;
-	/** Per-host sequence number of the hit to centre the window on. */
-	seq: number;
-	/** Records to include before `seq`. */
+	/**
+	 * Timestamp of the hit to centre the window on.
+	 *
+	 * Addressed by time rather than by `seq` because **`seq` is not a global
+	 * address**. It counts lines within one source: a record replayed from a
+	 * host's rotated `n8n.log` and a record from its in-memory buffer can carry
+	 * completely unrelated `seq` values, and the cross-host stream is keyed by
+	 * stream id instead. `ts` is the only ordinate every tier shares.
+	 */
+	ts: string;
+	/** Records to include before the hit. */
 	before: number;
-	/** Records to include after `seq`. */
+	/** Records to include after the hit. */
 	after: number;
 	abortSignal?: AbortSignal;
 }
@@ -92,7 +109,7 @@ export interface InstanceAiLogQueryPort {
 
 	/**
 	 * Neighbouring lines around a single hit, on one host. Separate from `read`
-	 * because the `(hostId, seq)` window is not expressible through the opaque
+	 * because a window centred on a hit is not expressible through the opaque
 	 * cursor. Returns REDACTED records — see the contract at the top of this file.
 	 */
 	readContext(options: LogQueryContextOptions): Promise<RedactedLogPage>;

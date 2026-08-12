@@ -113,7 +113,12 @@ const contextAction = z.object({
 				'the retry that followed are in the neighbouring lines',
 		),
 	hostId: z.string().describe('`hostId` of the hit'),
-	seq: z.number().int().min(0).describe('`seq` of the hit — the per-host line counter'),
+	ts: z
+		.string()
+		.describe(
+			'`ts` of the hit, copied verbatim from the record. Not `seq`: that counts lines ' +
+				'within one storage tier and means nothing across them.',
+		),
 	before: z
 		.number()
 		.int()
@@ -221,12 +226,24 @@ async function handleSearch(
 	});
 	assertRedactedLogPage(page, 'search');
 
+	const missingHostIds = page.missingHostIds ?? [];
+
 	return {
 		records: page.records,
 		count: page.records.length,
 		nextCursor: page.nextCursor,
 		// Honest about a partial window rather than implying continuity.
 		gap: page.gap,
+		// Absent hosts are not "no matches" — say so, or the agent will conclude
+		// the error did not happen when in fact nobody looked on that host.
+		...(missingHostIds.length > 0
+			? {
+					missingHostIds,
+					warning:
+						`${missingHostIds.length} host(s) did not answer in time, so their logs are ` +
+						'not represented. Do not conclude that nothing matched on them.',
+				}
+			: {}),
 		hint:
 			page.records.length >= limit
 				? 'Result hit the limit, so there may be more matches. Prefer action="snapshot" and grep the file instead of paging.'
@@ -241,7 +258,7 @@ async function handleContext(
 ) {
 	const page = await port.readContext({
 		hostId: input.hostId,
-		seq: input.seq,
+		ts: input.ts,
 		before: input.before ?? DEFAULT_CONTEXT_LINES,
 		after: input.after ?? DEFAULT_CONTEXT_LINES,
 		abortSignal,
@@ -250,7 +267,7 @@ async function handleContext(
 
 	return {
 		hostId: input.hostId,
-		seq: input.seq,
+		ts: input.ts,
 		records: page.records,
 		count: page.records.length,
 		gap: page.gap,

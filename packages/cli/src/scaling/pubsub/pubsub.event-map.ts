@@ -3,6 +3,7 @@ import type {
 	ChatHubMessageStatus,
 	InstanceAiEvent,
 	OperatorLogFilter,
+	OperatorLogRecord,
 	PushMessage,
 	PushPayload,
 	WorkerStatus,
@@ -354,12 +355,44 @@ export type PubSubCommandMap = {
 		ttlMs: number;
 	};
 
+	/**
+	 * Distributed grep. Beyond the cross-host stream's `MAXLEN` window, deep
+	 * history is each host's own `~/.n8n/logs/n8n.log`, and a host can only read
+	 * its own — so a search that matters ("find that error from an hour ago") has
+	 * to be fanned out and merged.
+	 *
+	 * Every instance type answers, on the worker-response channel.
+	 *
+	 * Must NOT be added to SELF_SEND_COMMANDS: the requesting main runs the same
+	 * search against its own files directly, which is cheaper than a round trip
+	 * through Redis and keeps its results available even if pubsub is degraded.
+	 */
+	'search-logs': {
+		/** Correlates answers with the request. Every main sees every answer. */
+		requestId: string;
+		filter: OperatorLogFilter;
+		/** Max records a single host may return. */
+		limit: number;
+	};
+
 	// #endregion
 };
 
 export type PubSubWorkerResponseMap = {
 	'response-to-get-worker-status': WorkerStatus & {
 		requestingUserId: string;
+	};
+
+	/**
+	 * One host's answer to a `search-logs` command. Mains other than the requester
+	 * receive this too and must ignore unknown `requestId`s.
+	 */
+	'response-to-search-logs': {
+		requestId: string;
+		hostId: string;
+		records: OperatorLogRecord[];
+		/** The host had more matches but hit `limit` or its payload budget. */
+		truncated: boolean;
 	};
 };
 
