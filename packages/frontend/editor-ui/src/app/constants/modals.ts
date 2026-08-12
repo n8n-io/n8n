@@ -39,7 +39,6 @@ export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';
 export const WORKFLOW_HISTORY_DIFF_MODAL_KEY = 'workflowHistoryDiff';
 export const CREDENTIAL_RESOLVER_EDIT_MODAL_KEY = 'credentialResolverEdit';
 export const AI_BUILDER_DIFF_MODAL_KEY = 'aiBuilderDiff';
-export const INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY = 'instanceAiCredentialSetup';
 export const ADD_EXECUTION_TO_DATASET_MODAL_KEY = 'addExecutionToDataset';
 export const TRIAL_INTRO_MODAL_KEY = 'trialIntroModal';
 export const MIGRATE_WORKFLOW_MODAL_KEY = 'migrateWorkflow';
