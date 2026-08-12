@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
 	ABOUT_MODAL_KEY,
-	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
@@ -11,11 +10,9 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
-	MFA_SETUP_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
-	PROMPT_MFA_CODE_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
@@ -29,7 +26,6 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-	CONFIRM_PASSWORD_MODAL_KEY,
 	BINARY_DATA_VIEW_MODAL_KEY,
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
@@ -81,8 +77,6 @@ import AboutModal from '@/app/components/AboutModal.vue';
 import ActivationModal from '@/app/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue';
 import NewAssistantSessionModal from '@/features/ai/assistant/components/Chat/NewAssistantSessionModal.vue';
-import ChangePasswordModal from '@/features/core/auth/components/ChangePasswordModal.vue';
-import ConfirmPasswordModal from '@/features/core/auth/components/ConfirmPasswordModal.vue';
 import ChatEmbedModal from '@/app/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/features/settings/communityNodes/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.vue';
@@ -102,7 +96,6 @@ import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModa
 import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
 import ImportWorkflowUrlModal from '@/app/components/ImportWorkflowUrlModal.vue';
 import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
-import MfaSetupModal from '@/features/core/auth/components/MfaSetupModal.vue';
 import ModalRoot from '@/app/components/ModalRoot.vue';
 import NpsSurvey from '@/app/components/NpsSurvey.vue';
 import PersonalizationModal from '@/features/settings/users/components/PersonalizationModal.vue';
@@ -128,7 +121,6 @@ import WorkflowSettings from '@/app/components/WorkflowSettings/WorkflowSettings
 import WorkflowShareModal from '@/app/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import PromptMfaCodeModal from '@/features/core/auth/components/PromptMfaCodeModal.vue';
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
@@ -232,14 +224,6 @@ const TrialIntroModal = defineAsyncComponent(
 			<WorkflowSettings />
 		</ModalRoot>
 
-		<ModalRoot :name="CHANGE_PASSWORD_MODAL_KEY">
-			<ChangePasswordModal />
-		</ModalRoot>
-
-		<ModalRoot :name="CONFIRM_PASSWORD_MODAL_KEY">
-			<ConfirmPasswordModal />
-		</ModalRoot>
-
 		<ModalRoot :name="INVITE_USER_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<InviteUsersModal :modal-name="modalName" :data="data" />
@@ -254,14 +238,6 @@ const TrialIntroModal = defineAsyncComponent(
 
 		<ModalRoot :name="WORKFLOW_ACTIVE_MODAL_KEY">
 			<ActivationModal />
-		</ModalRoot>
-
-		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
-			<MfaSetupModal />
-		</ModalRoot>
-
-		<ModalRoot :name="PROMPT_MFA_CODE_MODAL_KEY">
-			<PromptMfaCodeModal />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">

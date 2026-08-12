@@ -31,6 +31,7 @@ import { ChartJSPlugin } from '@/app/plugins/chartjs';
 import { SentryPlugin } from '@/app/plugins/sentry';
 import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
+import { registerEagerModals } from '@/app/modals.manifest';
 import { installRenderTracker } from '@/app/dev/render-tracker';
 
 import type { VueScanOptions } from 'z-vue-scan';
@@ -48,6 +49,10 @@ app.use(SentryPlugin);
 // Register module routes
 // We do this here so landing straight on a module page works
 registerModuleRoutes(router);
+
+// Register always-on modals here rather than post-login, so they exist on paths
+// that never reach `initializeAuthenticatedFeatures` — see modals.manifest.ts
+registerEagerModals();
 
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
