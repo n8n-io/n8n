@@ -112,6 +112,27 @@ describe('WorkflowReviewCommentComposer', () => {
 		expect(textarea).toHaveValue('Nice work and the next one');
 	});
 
+	it('keeps the draft when the post it was waiting on belonged to another review', async () => {
+		let resolvePost!: () => void;
+		store.postComment.mockImplementation(
+			async () =>
+				await new Promise<boolean>((resolve) => {
+					// Stale: the viewer moved to another review while this was in flight.
+					resolvePost = () => resolve(false);
+				}),
+		);
+		const { getByTestId, getByRole } = renderComponent({ props: { canComment: true } });
+		const textarea = getByRole('textbox');
+
+		await userEvent.type(textarea, 'Nice work');
+		await userEvent.click(getByTestId('send-message-button'));
+		resolvePost();
+		await new Promise(setImmediate);
+
+		// Identical text, so only the stale result can keep it from being cleared.
+		expect(textarea).toHaveValue('Nice work');
+	});
+
 	it('keeps the draft and surfaces an error when posting fails', async () => {
 		store.postComment.mockRejectedValue(new Error('boom'));
 		const { getByTestId, getByRole } = renderComponent({ props: { canComment: true } });

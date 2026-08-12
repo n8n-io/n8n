@@ -31,9 +31,11 @@ async function onSubmit() {
 	if (!body) return;
 
 	try {
-		await store.postComment(body);
+		// A stale post belongs to the review the viewer left, so its completion must not
+		// touch the draft they are typing now, even if the two strings happen to match.
+		const posted = await store.postComment(body);
 		// Don't clear text typed while the post was in flight.
-		if (draft.value === submitted) draft.value = '';
+		if (posted && draft.value === submitted) draft.value = '';
 	} catch (error) {
 		showError(error, i18n.baseText('workflowReviews.detail.activity.error.post'));
 	}
