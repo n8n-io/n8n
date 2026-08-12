@@ -4,6 +4,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildDataTablesSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
+	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	instanceAiEventSchema,
@@ -565,23 +566,54 @@ export function createThreadRuntime(
 
 	// --- Session "Always allow" ---
 	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
-	// runtime is disposed and recreated. Key: `${toolName}:${args.action ?? ''}`
-	// for most tools; `submit-workflow` is keyed on `workflowId` presence so a
-	// create grant doesn't silently auto-approve later updates (the backend
-	// distinguishes createWorkflow vs updateWorkflow by that field).
+	// runtime is disposed and recreated. Prefer shared builders from
+	// `@n8n/api-types` so UI keys match persisted thread grants:
+	// `executions:run:<id>`, `workflows:update:<id>`, `data-tables:<action>`.
+	// Fallback for other tools: `${toolName}:${args.action ?? ''}`.
+	// `submit-workflow` is keyed on `workflowId` presence so a create grant
+	// doesn't silently auto-approve later updates.
 	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
 
-	function buildAlwaysAllowKey(toolName: string, args: Record<string, unknown>): string {
+	function resolveAlwaysAllowWorkflowId(
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): string {
+		if (typeof args.workflowId === 'string' && args.workflowId.length > 0) {
+			return args.workflowId;
+		}
+		if (typeof confirmationWorkflowId === 'string' && confirmationWorkflowId.length > 0) {
+			return confirmationWorkflowId;
+		}
+		return '';
+	}
+
+	/**
+	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
+	 * generic `build-workflow:` key would auto-approve later foreign edits.
+	 */
+	function buildAlwaysAllowKey(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): string | null {
 		if (toolName === 'submit-workflow') {
 			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
+		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 		// workflow the user approved.
 		if (toolName === 'executions' && action === 'run') {
-			const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
 			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
+		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
+		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
+		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
+		// payload instead. Without either ID, refuse to store a key (fail closed).
+		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
+			if (!workflowId) return null;
+			return buildUpdateWorkflowSessionGrantKey(workflowId);
 		}
 		if (toolName === 'data-tables') {
 			return buildDataTablesSessionGrantKey(action);
@@ -589,10 +621,25 @@ export function createThreadRuntime(
 		return `${toolName}:${action}`;
 	}
 
-	function addAlwaysAllowKey(toolName: string, args: Record<string, unknown>): void {
+	function addAlwaysAllowKey(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): void {
+		const key = buildAlwaysAllowKey(toolName, args, confirmationWorkflowId);
+		if (key === null) return;
 		const next = new Set(sessionAlwaysAllowKeys.value);
-		next.add(buildAlwaysAllowKey(toolName, args));
+		next.add(key);
 		sessionAlwaysAllowKeys.value = next;
+	}
+
+	/** False when Always allow cannot be scoped (e.g. workflow edit with no workflow ID). */
+	function canAlwaysAllow(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): boolean {
+		return buildAlwaysAllowKey(toolName, args, confirmationWorkflowId) !== null;
 	}
 
 	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
@@ -623,8 +670,12 @@ export function createThreadRuntime(
 				if (resolvedConfirmationIds.has(conf.requestId)) continue;
 				if (autoApproveInFlight.has(conf.requestId)) continue;
 				if (!isGenericApprovalEligible(item)) continue;
-				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
-				if (!sessionAlwaysAllowKeys.value.has(key)) continue;
+				const key = buildAlwaysAllowKey(
+					item.toolCall.toolName,
+					item.toolCall.args ?? {},
+					conf.workflowId,
+				);
+				if (key === null || !sessionAlwaysAllowKeys.value.has(key)) continue;
 
 				autoApproveInFlight.add(conf.requestId);
 				try {
@@ -1320,6 +1371,7 @@ export function createThreadRuntime(
 		confirmResourceDecision,
 		resolveConfirmation,
 		addAlwaysAllowKey,
+		canAlwaysAllow,
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,

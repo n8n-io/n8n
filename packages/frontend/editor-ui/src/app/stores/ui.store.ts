@@ -400,6 +400,16 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		modalStack.value = modalStack.value.filter((openModalName) => name !== openModalName);
 	};
 
+	const closeAllModals = () => {
+		for (const name of modalStack.value) {
+			modalsById.value[name] = {
+				...modalsById.value[name],
+				open: false,
+			};
+		}
+		modalStack.value = [];
+	};
+
 	const openDeleteUserModal = (id: string) => {
 		setActiveId(DELETE_USER_MODAL_KEY, id);
 		openModal(DELETE_USER_MODAL_KEY);
@@ -605,6 +615,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModalWithData,
 		openModal,
 		closeModal,
+		closeAllModals,
 		openDeleteUserModal,
 		openExistingCredential,
 		openNewCredential,
