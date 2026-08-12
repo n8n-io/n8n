@@ -174,7 +174,7 @@ const actorName = computed(() =>
 	margin-inline: calc(-1 * var(--spacing--sm));
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border: var(--border);
-	border-radius: var(--radius);
+	border-radius: var(--radius--2xs);
 }
 
 /* Figma asks for 20px on 14px text; no line-height token gives that ratio. */

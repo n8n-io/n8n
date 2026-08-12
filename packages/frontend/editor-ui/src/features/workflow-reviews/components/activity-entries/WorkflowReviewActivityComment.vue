@@ -81,7 +81,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 	margin-inline: calc(-1 * var(--spacing--sm));
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border: var(--border);
-	border-radius: var(--radius);
+	border-radius: var(--radius--2xs);
 }
 
 .message {

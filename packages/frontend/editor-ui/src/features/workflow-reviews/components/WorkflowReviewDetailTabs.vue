@@ -86,23 +86,30 @@ const tabOptions = computed(() => [
 				data-test-id="workflow-review-activity-panel"
 			>
 				<div :class="$style.activityHeader">
-					<N8nText
-						v-if="detail?.description"
-						color="text-base"
-						size="medium"
-						:class="$style.description"
-						data-test-id="workflow-review-description"
-					>
-						{{ detail.description }}
-					</N8nText>
-					<N8nText
-						v-else
-						color="text-light"
-						size="medium"
-						data-test-id="workflow-review-no-description"
-					>
-						{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
-					</N8nText>
+					<!-- Carded and labelled so the review's own words are not mistaken for the
+						first entry of the feed below it. -->
+					<div :class="$style.descriptionCard">
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('workflowReviews.detail.activity.description') }}
+						</N8nText>
+						<N8nText
+							v-if="detail?.description"
+							color="text-base"
+							size="medium"
+							:class="$style.description"
+							data-test-id="workflow-review-description"
+						>
+							{{ detail.description }}
+						</N8nText>
+						<N8nText
+							v-else
+							color="text-light"
+							size="medium"
+							data-test-id="workflow-review-no-description"
+						>
+							{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
+						</N8nText>
+					</div>
 				</div>
 
 				<WorkflowReviewActivityFeed :key="review.id" />
@@ -189,6 +196,18 @@ const tabOptions = computed(() => [
 }
 
 /* Capped so a long description cannot push the composer off screen. */
+.descriptionCard {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	/* Cancels the header's inset so the border reaches the panel edge and the text starts on
+		the avatar column, exactly as the feed's entry cards do. */
+	margin-inline: calc(-1 * var(--spacing--sm));
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius--2xs);
+}
+
 .activityHeader {
 	flex-shrink: 0;
 	max-height: 30%;

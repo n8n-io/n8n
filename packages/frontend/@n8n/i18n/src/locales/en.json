@@ -5457,6 +5457,7 @@
 	"workflowReviews.decision.approved": "Approved",
 	"workflowReviews.detail.tabs.activity": "Activity",
 	"workflowReviews.detail.tabs.changes": "Changes",
+	"workflowReviews.detail.activity.description": "Description",
 	"workflowReviews.detail.activity.noDescription": "No description provided.",
 	"workflowReviews.detail.activity.listLabel": "Review activity",
 	"workflowReviews.detail.activity.empty.heading": "No activity yet",
