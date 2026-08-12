@@ -7,7 +7,9 @@ vi.mock('@n8n/instance-ai', () => ({
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 
-import { generatePinData } from '../pin-data-generator';
+import { OperationalError } from 'n8n-workflow';
+
+import { generatePinData, PinDataDriftError } from '../pin-data-generator';
 
 const createEvalAgentMock = vi.mocked(createEvalAgent);
 const extractTextMock = vi.mocked(extractText);
@@ -199,6 +201,26 @@ describe('generatePinData', () => {
 				generatePinData({ workflow, nodeNames: ['Get Posted Keys'], dataTableColumns }),
 			).rejects.toThrow('drifted from declared field names after retry');
 			expect(generateMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('carries the drifted data and violations on the thrown error', async () => {
+			const generate = vi.fn().mockResolvedValue(drifted);
+
+			const error = await generatePinData({
+				workflow,
+				nodeNames: ['Get Posted Keys'],
+				dataTableColumns,
+				generate,
+			}).catch((e: unknown) => e);
+
+			// Callers that prefer imperfect data over a hard failure degrade on this
+			// type — never by matching the error message.
+			expect(error).toBeInstanceOf(PinDataDriftError);
+			expect(error).toBeInstanceOf(OperationalError);
+
+			const drift = error as PinDataDriftError;
+			expect(drift.pinData['Get Posted Keys'][0].json).toMatchObject({ email: 'a@b.c' });
+			expect(drift.violations.map((v) => v.nodeName)).toEqual(['Get Posted Keys']);
 		});
 	});
 });

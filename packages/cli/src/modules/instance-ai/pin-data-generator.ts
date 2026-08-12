@@ -17,6 +17,7 @@ import type {
 	OutputSchemaLookup,
 	PinDataGenerationInstructions,
 	DataTableColumnInfo,
+	PinFieldViolation,
 } from '@n8n/workflow-sdk';
 import {
 	buildDateAnchors,
@@ -35,6 +36,22 @@ import { OperationalError } from 'n8n-workflow';
 export { findOutputParserTargets, repairStructuredOutput } from '@n8n/workflow-sdk';
 
 type PinData = Record<string, Array<Record<string, unknown>>>;
+
+/**
+ * Generated field names still drift from the declared schema after the
+ * corrective retry. Carries the drifted data so a caller can choose to serve it
+ * anyway — the user-facing sample-data path prefers imperfect field names over a
+ * failed button, while eval callers keep failing loud on the `OperationalError`.
+ */
+export class PinDataDriftError extends OperationalError {
+	constructor(
+		message: string,
+		readonly pinData: PinData,
+		readonly violations: PinFieldViolation[],
+	) {
+		super(message);
+	}
+}
 
 /**
  * Hang guard for the pin-data LLM call. A stalled provider call otherwise
@@ -171,8 +188,10 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 			.join('; ');
 		// Fail loud: a drifted fixture served silently would poison failure
 		// attribution — an unpinnable scenario must surface as a harness fault.
-		throw new OperationalError(
+		throw new PinDataDriftError(
 			`Pin data generation drifted from declared field names after retry: ${summary}`,
+			retried,
+			remaining,
 		);
 	}
 
