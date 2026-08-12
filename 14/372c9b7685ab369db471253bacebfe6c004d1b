@@ -1,0 +1,24 @@
+packages/cli/src/modules/instance-ai/__tests__/pin-data-generator.test.ts
+  s_90002f1fe023d1::t_0bbdacbdee2466 205-224
+  s_90002f1fe023d1::t_00c6b76243e607 10-12
+packages/cli/src/modules/instance-ai/pin-data-generator.ts
+  s_90002f1fe023d1::t_e6c852cac5e5b8 41-55
+  s_90002f1fe023d1::t_1ebc0886a78b76 191,193-194
+  s_90002f1fe023d1::t_9ed4610d7811e2 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "14372c9b7685ab369db471253bacebfe6c004d1b",
+  "prompts": {},
+  "sessions": {
+    "s_90002f1fe023d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9dd1c3f-0c3e-4ea6-9f03-3f9ec6951428",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
