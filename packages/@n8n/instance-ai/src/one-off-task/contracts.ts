@@ -229,6 +229,30 @@ export interface OneOffTaskSandbox {
 	destroy(): Promise<void>;
 }
 
+/**
+ * How long a sandbox may wait between harness runs (the credential approval
+ * window) before the lifecycle owner destroys it and the task is reported
+ * incomplete. Communicated to the orchestrator on `needs_credential`;
+ * enforced by the provider registry.
+ */
+export const ONE_OFF_TASK_CREDENTIAL_WAIT_TIMEOUT_MS = 10 * 60_000;
+
+/**
+ * Provisioning boundary between the orchestration tool and the sandbox
+ * lifecycle. `create` provisions a fresh sandbox for a new task; `reattach`
+ * reconnects to a still-alive sandbox during the credential loop (the
+ * process-local registry backing `reattach` also enforces the credential
+ * wait timeout — destroy on expiry). `sandboxRef` is an opaque handle the
+ * orchestrator round-trips through the `needs_credential` outcome.
+ * `reattach` MUST throw on an unknown, destroyed, or expired ref — never
+ * lazily recreate: the orchestrator treats that failure as an interrupted
+ * task, and a silent fresh sandbox would misreport prior work as intact.
+ */
+export interface OneOffTaskSandboxProvider {
+	create(): Promise<{ sandbox: OneOffTaskSandbox; sandboxRef: string }>;
+	reattach(sandboxRef: string): Promise<OneOffTaskSandbox>;
+}
+
 // ── Credential resolution (workstream C, implemented in packages/cli) ───────
 
 export const resolvedCredentialEnvSchema = z.object({
