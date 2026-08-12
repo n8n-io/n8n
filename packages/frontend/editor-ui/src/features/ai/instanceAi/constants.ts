@@ -1,5 +1,7 @@
 import { INSTANCE_AI_THREAD_SOURCES, type InstanceAiThreadSource } from '@n8n/api-types';
 
+import { TIME } from '@/app/constants';
+
 export const INSTANCE_AI_VIEW = 'InstanceAi';
 export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
@@ -36,6 +38,19 @@ export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';
 export const COMPUTER_USE_CONNECTION_TYPE = 'computer-use';
 export type BrowserUseConnectionType = typeof BROWSER_USE_CONNECTION_TYPE;
 export type ComputerUseConnectionType = typeof COMPUTER_USE_CONNECTION_TYPE;
+
+/**
+ * How long the user must sit with a problem before a proactive offer appears.
+ * Cheap proxy for "doesn't understand it" — see INS-1158.
+ */
+export const INSTANCE_AI_PROACTIVE_OFFER_DWELL_MS = 3 * TIME.SECOND;
+
+/** localStorage key for dismissed proactive offer keys. */
+export const INSTANCE_AI_PROACTIVE_DISMISSED_STORAGE_KEY =
+	'n8n-instance-ai-proactive-dismissed-keys';
+
+/** Query flag that raises the hardcoded demo offer (hackathon / local demos). */
+export const INSTANCE_AI_DEMO_OFFER_QUERY = 'instanceAiDemoOffer';
 
 const INSTANCE_AI_THREAD_SOURCE_SET: ReadonlySet<string> = new Set(INSTANCE_AI_THREAD_SOURCES);
 
