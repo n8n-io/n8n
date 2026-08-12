@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Docker/SandboxContract.ts
+  s_385d4dd73c1589::t_79f011135c62c0 100-109
+  s_385d4dd73c1589::t_7f30dffc31e22c 11-13,21-28
+  s_385d4dd73c1589::t_729ef31048ae6a 44
+packages/nodes-base/nodes/Docker/Docker.node.ts
+  s_385d4dd73c1589::t_87d18b31df3585 144,150-168,177-195,203
+  s_385d4dd73c1589::t_eaeb02aefe6380 13-26
+  s_385d4dd73c1589::t_74de6e4bfefb09 266-269,272-285,287-307,314-315,317
+packages/nodes-base/nodes/Docker/SandboxHttpClient.ts
+  s_385d4dd73c1589::t_dda1d264e86fbc 493
+  s_385d4dd73c1589::t_29633822b8d178 424-439
+  s_385d4dd73c1589::t_df7237f5313da0 11
+packages/nodes-base/nodes/Docker/SandboxSdkClient.ts
+  s_385d4dd73c1589::t_9d357400e442cc 221
+  s_385d4dd73c1589::t_ee4068e6ebec74 6
+  s_385d4dd73c1589::t_f6a9ea59b113f9 10,24-69
+  s_385d4dd73c1589::t_5bbedb4e67a7b1 149-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4add6d1f35893010b27d29a5c65b7ccd30b8a9bb",
+  "prompts": {},
+  "sessions": {
+    "s_385d4dd73c1589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5f982d2-f3ab-498c-bacc-95859f6ca4fb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

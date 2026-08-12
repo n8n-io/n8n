@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsNlFilter.vue
+  s_03d816ea3ae9c9::t_c66afded20df31 11
+  s_03d816ea3ae9c9::t_2ef3166f3384e7 16
+  s_03d816ea3ae9c9::t_695fb5efa283b0 2-3,17
+  s_03d816ea3ae9c9::t_d7fcbd19351d4f 38-43,50-53
+  s_03d816ea3ae9c9::t_96be5e123542ca 106-123,137-138,155-162
+  s_03d816ea3ae9c9::t_772a674ea6aa42 154
+  s_03d816ea3ae9c9::t_314187365de9eb 163,185-235,239-242,245-285
+  s_03d816ea3ae9c9::t_df3e2d19dbb47a 164
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_03d816ea3ae9c9::t_e1911d2932a7a0 43-44
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionsNlFilterHistory.ts
+  s_03d816ea3ae9c9::t_1104e81a8fad7c 1-50
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_03d816ea3ae9c9::t_8eb1111b606a9f 1669
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b1d1ea772b037361e64a1ff5e6ca97926ea82790",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
