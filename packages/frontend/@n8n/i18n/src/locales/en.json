@@ -1666,6 +1666,7 @@
 	"executionsNlFilter.placeholder2": "Try 'executions rated bad'",
 	"executionsNlFilter.placeholder3": "Try 'runs tagged urgent from yesterday'",
 	"executionsNlFilter.error.title": "Couldn't understand that filter",
+	"executionsNlFilter.history.ariaLabel": "Recent filter queries",
 	"expressionEdit.anythingInside": "Anything inside ",
 	"expressionEdit.isJavaScript": " is JavaScript.",
 	"expressionEdit.learnMore": "Learn more",
