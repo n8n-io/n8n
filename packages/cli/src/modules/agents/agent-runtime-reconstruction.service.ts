@@ -722,7 +722,7 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		const { createBrowserUseTools } = await import('./tools/browser-use-tools.js');
-		for (const tool of await createBrowserUseTools({ agentId })) {
+		for (const tool of await createBrowserUseTools({ agentId, logger: this.logger })) {
 			agent.tool(tool);
 		}
 	}

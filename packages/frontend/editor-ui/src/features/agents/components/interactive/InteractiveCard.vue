@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import {
+	APPROVAL_TOOL_NAME,
+	BROWSER_USE_CONNECT_CARD_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
+} from '@n8n/api-types';
 import type { AgentsChatInteractionRenderer } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import InteractionRenderer from '@/features/ai/shared/agentsChat/components/InteractionRenderer.vue';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import ApprovalCard from './ApprovalCard.vue';
+import BrowserUseConnectCard from './BrowserUseConnectCard.vue';
 import N8nChatActionCard from './N8nChatActionCard.vue';
 
 /**
@@ -36,6 +41,18 @@ const interactiveRenderers = [
 		matches: (payload) => payload.toolName === APPROVAL_TOOL_NAME,
 		getProps: (payload) => {
 			if (payload.toolName !== APPROVAL_TOOL_NAME) return {};
+			return {
+				input: payload.input,
+				resolvedValue: payload.resolvedValue,
+			};
+		},
+	},
+	{
+		key: 'browser_use_connect',
+		component: BrowserUseConnectCard,
+		matches: (payload) => payload.toolName === BROWSER_USE_CONNECT_CARD_NAME,
+		getProps: (payload) => {
+			if (payload.toolName !== BROWSER_USE_CONNECT_CARD_NAME) return {};
 			return {
 				input: payload.input,
 				resolvedValue: payload.resolvedValue,

@@ -1,4 +1,8 @@
-import { type APPROVAL_TOOL_NAME, type N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import {
+	type APPROVAL_TOOL_NAME,
+	type BROWSER_USE_CONNECT_CARD_NAME,
+	type N8N_CHAT_ACTION_TOOL_NAME,
+} from '@n8n/api-types';
 
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
@@ -75,6 +79,19 @@ export interface ApprovalResume {
 	approved: boolean;
 }
 
+/** Payload a Browser Use tool suspends with while waiting for a browser. */
+export interface BrowserUseConnectInput {
+	type: typeof BROWSER_USE_CONNECT_CARD_NAME;
+	title: string;
+	message: string;
+	setupUrl: string;
+}
+
+export interface BrowserUseConnectResume {
+	type: string;
+	value: string;
+}
+
 /**
  * Discriminated union describing the interactive card that a suspended tool call
  * renders in the chat. `toolName` is the discriminant.
@@ -89,6 +106,11 @@ export type InteractivePayload =
 			toolName: typeof N8N_CHAT_ACTION_TOOL_NAME;
 			input: N8nChatInteractionInput;
 			resolvedValue?: N8nChatResumeValue;
+	  })
+	| (InteractivePayloadBase & {
+			toolName: typeof BROWSER_USE_CONNECT_CARD_NAME;
+			input: BrowserUseConnectInput;
+			resolvedValue?: BrowserUseConnectResume;
 	  });
 
 export type AgentsChatInteraction = InteractivePayload;

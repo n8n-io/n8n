@@ -1,5 +1,6 @@
 import {
 	APPROVAL_TOOL_NAME,
+	BROWSER_USE_CONNECT_CARD_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	type AgentBuilderOpenSuspension,
 	type AgentPersistedMessageDto,
@@ -17,6 +18,7 @@ import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import { summariseToolCall } from './interactiveSummary';
 import type {
 	ApprovalInput,
+	BrowserUseConnectInput,
 	ChatMessage,
 	ChatMessageAttachment,
 	ChatMessageRenderPart,
@@ -108,6 +110,18 @@ function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 	};
 }
 
+function parseBrowserUseConnectInput(value: unknown): BrowserUseConnectInput | undefined {
+	if (!isRecord(value)) return undefined;
+	if (value.type !== BROWSER_USE_CONNECT_CARD_NAME) return undefined;
+	if (typeof value.setupUrl !== 'string' || value.setupUrl.length === 0) return undefined;
+	return {
+		type: BROWSER_USE_CONNECT_CARD_NAME,
+		title: typeof value.title === 'string' ? value.title : '',
+		message: typeof value.message === 'string' ? value.message : '',
+		setupUrl: value.setupUrl,
+	};
+}
+
 function isDeclinedToolOutput(value: unknown): boolean {
 	return isRecord(value) && value.declined === true;
 }
@@ -139,6 +153,19 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 				!isDelegateSubAgentTool(tc.tool) && {
 					resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
 				}),
+		};
+	}
+
+	// Keyed on the payload, not the tool: any `browser_*` tool can raise this
+	// card, depending on which one the model reached for first.
+	const browserUseInput = parseBrowserUseConnectInput(tc.suspendPayload);
+	if (browserUseInput) {
+		return {
+			toolCallId: tc.toolCallId,
+			...(tc.output !== undefined && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
+			toolName: BROWSER_USE_CONNECT_CARD_NAME,
+			input: browserUseInput,
 		};
 	}
 

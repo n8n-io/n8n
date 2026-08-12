@@ -246,3 +246,11 @@ export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
 export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
 export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;
+
+/**
+ * Marks the card a Browser Use tool suspends with while it waits for the user
+ * to connect their browser. Not a tool name: the suspension can come from any
+ * `browser_*` tool the model happened to call, so the card is keyed on the
+ * payload's own discriminator rather than on the tool.
+ */
+export const BROWSER_USE_CONNECT_CARD_NAME = 'browser_use_connect' as const;
