@@ -16,6 +16,10 @@
 		{
 			"name": "DataTable",
 			"path": "packages/cli/src/modules/data-table/data-table.entity.ts"
+		},
+		{
+			"name": "ProjectFile",
+			"path": "packages/cli/src/modules/project-files/project-file.entity.ts"
 		}
 	],
 	"notTransferred": [

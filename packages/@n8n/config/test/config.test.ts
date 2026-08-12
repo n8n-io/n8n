@@ -197,6 +197,11 @@ describe('GlobalConfig', () => {
 			pythonEnabled: true,
 			mergeSqlSandboxMemoryLimitMb: 64,
 		},
+		projectFiles: {
+			maxFileSize: 100 * 1024 * 1024,
+			projectMaxSize: 2 * 1024 * 1024 * 1024,
+			personalTotalMaxSize: 1024 * 1024 * 1024,
+		},
 		publicApi: {
 			disabled: false,
 			path: 'api',

@@ -158,6 +158,7 @@ type EntityName =
 	| 'InsightsMetadata'
 	| 'DataTable'
 	| 'DataTableColumn'
+	| 'ProjectFile'
 	| 'ChatHubSession'
 	| 'ChatHubMessage'
 	| 'ChatHubAgent'
