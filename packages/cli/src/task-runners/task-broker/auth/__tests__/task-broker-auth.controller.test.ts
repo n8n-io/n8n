@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 
 import { CacheService } from '@/services/cache/cache.service';
+import { TransportModeService } from '@/scaling/transport-mode.service';
 
 import { BadRequestError } from '../../../../errors/response-errors/bad-request.error';
 import { ForbiddenError } from '../../../../errors/response-errors/forbidden.error';
@@ -23,7 +24,7 @@ describe('TaskBrokerAuthController', () => {
 			grantTokenTtl: 0.1,
 		},
 	});
-	const cacheService = new CacheService(globalConfig);
+	const cacheService = new CacheService(globalConfig, new TransportModeService(globalConfig));
 	const authService = new TaskBrokerAuthService(globalConfig.taskRunners, cacheService);
 	const authController = new TaskBrokerAuthController(authService);
 

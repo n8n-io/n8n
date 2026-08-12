@@ -3,12 +3,13 @@ import { GlobalConfig } from '@n8n/config';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { CacheService } from '@/services/cache/cache.service';
+import { TransportModeService } from '@/scaling/transport-mode.service';
 
 describe('ActivationErrorsService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		cache: { backend: 'memory', memory: { maxSize: 3 * 1024 * 1024, ttl: 3600 * 1000 } },
 	});
-	const cacheService = new CacheService(globalConfig);
+	const cacheService = new CacheService(globalConfig, new TransportModeService(globalConfig));
 	const activationErrorsService = new ActivationErrorsService(cacheService);
 
 	const firstWorkflowId = 'GSG0etbfTA2CNPDX';

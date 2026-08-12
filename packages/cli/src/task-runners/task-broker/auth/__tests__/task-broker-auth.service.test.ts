@@ -5,6 +5,7 @@ import { sleep } from '@n8n/utils/sleep';
 
 import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
+import { TransportModeService } from '@/scaling/transport-mode.service';
 import { retryUntil } from '@test-integration/retry-until';
 
 import { TaskBrokerAuthService } from '../task-broker-auth.service';
@@ -26,7 +27,7 @@ describe('TaskBrokerAuthService', () => {
 			grantTokenTtl: TTL / Time.seconds.toMilliseconds, // Convert ms to seconds
 		},
 	});
-	const cacheService = new CacheService(globalConfig);
+	const cacheService = new CacheService(globalConfig, new TransportModeService(globalConfig));
 	const authService = new TaskBrokerAuthService(globalConfig.taskRunners, cacheService);
 
 	beforeEach(() => {

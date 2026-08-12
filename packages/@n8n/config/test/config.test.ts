@@ -403,7 +403,7 @@ describe('GlobalConfig', () => {
 		},
 		transport: {
 			leaderElection: 'redis',
-			cache: 'redis',
+			cache: 'memory',
 			pubsub: 'redis',
 			queue: 'redis',
 			instanceRegistry: 'memory',

@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { CacheService } from '@/services/cache/cache.service';
+import { TransportModeService } from '@/scaling/transport-mode.service';
 
 import { CallbackStore } from '../callback-store';
 
@@ -17,7 +18,7 @@ async function createCache(): Promise<CacheService> {
 		executions: { mode: 'regular' },
 		redis: { prefix: 'n8n' },
 	} as GlobalConfig);
-	const cache = new CacheService(globalConfig);
+	const cache = new CacheService(globalConfig, new TransportModeService(globalConfig));
 	await cache.init();
 	return cache;
 }

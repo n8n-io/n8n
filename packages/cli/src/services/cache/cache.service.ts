@@ -6,10 +6,12 @@ import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
+import { TransportModeService } from '@/scaling/transport-mode.service';
 import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
+	TaggedIpcCache,
 	MaybeHash,
 	Hash,
 } from '@/services/cache/cache.types';
@@ -25,19 +27,27 @@ type CacheEvents = {
 export class CacheService extends TypedEmitter<CacheEvents> {
 	private readonly takingKeys = new Set<string>();
 
-	constructor(private readonly globalConfig: GlobalConfig) {
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly transportMode: TransportModeService,
+	) {
 		super();
 	}
 
-	private cache: TaggedRedisCache | TaggedMemoryCache;
+	private cache: TaggedRedisCache | TaggedMemoryCache | TaggedIpcCache;
 
 	async init() {
-		const { backend } = this.globalConfig.cache;
-		const { mode } = this.globalConfig.executions;
+		const backend = this.transportMode.resolve('cache');
 
-		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
+		if (backend === 'ipc') {
+			const { IpcCacheStore } = await import('@/services/cache/ipc.cache-manager.js');
+			const ipcStore = new IpcCacheStore(this.globalConfig.cache.memory.ttl);
+			const ipcCache = await caching(ipcStore);
+			this.cache = { ...ipcCache, kind: 'ipc' };
+			return;
+		}
 
-		if (useRedis) {
+		if (backend === 'redis') {
 			const { RedisClientService } = await import('../redis-client.service.js');
 			const redisClientService = Container.get(RedisClientService);
 
@@ -88,6 +98,10 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 	isMemory() {
 		return this.cache.kind === 'memory';
+	}
+
+	isIpc() {
+		return this.cache.kind === 'ipc';
 	}
 
 	async exists(key: string) {
