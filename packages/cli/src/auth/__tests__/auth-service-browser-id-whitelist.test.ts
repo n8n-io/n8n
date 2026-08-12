@@ -55,5 +55,57 @@ describe('AuthService Browser ID Whitelist', () => {
 
 			expect(skipEndpoints).toContain('/rest/credentials/:id/authorize');
 		});
+
+		it('should skip the browser ID check for project file downloads', () => {
+			// The endpoint string the auth middleware builds substitutes the
+			// controller prefix's :projectId from req.baseUrl but leaves the route
+			// path's :fileId as-is, so the pattern has to match that mixed shape.
+			const endpoint = '/rest/projects/f5xoCo9IAI8CGGlf/files/:fileId/content';
+
+			expect((authService as any).endpointSkipsBrowserIdCheck(endpoint)).toBe(true);
+		});
+
+		it('should not skip the browser ID check for other project file routes', () => {
+			// Only the byte-streaming download is browser-driven; list, upload,
+			// rename and delete all go through the API client, which sends the header.
+			const others = [
+				'/rest/projects/f5xoCo9IAI8CGGlf/files',
+				'/rest/projects/f5xoCo9IAI8CGGlf/files/:fileId',
+			];
+
+			for (const endpoint of others) {
+				expect((authService as any).endpointSkipsBrowserIdCheck(endpoint)).toBe(false);
+			}
+		});
+	});
+
+	describe('validateBrowserId for project file downloads', () => {
+		const contentEndpoint = '/rest/projects/f5xoCo9IAI8CGGlf/files/:fileId/content';
+		// A browser navigation carries the auth cookie but no browser-id header.
+		const jwtPayload = { browserId: 'hashed-browser-id' };
+
+		it('accepts a GET with no browser-id header', () => {
+			expect(() =>
+				(authService as any).validateBrowserId(jwtPayload, undefined, contentEndpoint, 'GET'),
+			).not.toThrow();
+		});
+
+		it('still rejects a non-GET on the same path', () => {
+			// The skip is GET-only, so the exemption can't be reused to mutate.
+			expect(() =>
+				(authService as any).validateBrowserId(jwtPayload, undefined, contentEndpoint, 'POST'),
+			).toThrow('Unauthorized');
+		});
+
+		it('still rejects a GET with no browser-id header on the list route', () => {
+			expect(() =>
+				(authService as any).validateBrowserId(
+					jwtPayload,
+					undefined,
+					'/rest/projects/f5xoCo9IAI8CGGlf/files',
+					'GET',
+				),
+			).toThrow('Unauthorized');
+		});
 	});
 });

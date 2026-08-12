@@ -116,6 +116,12 @@ export class AuthService {
 			new RegExp(
 				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/chat/attachments/:attachmentId$`,
 			),
+
+			// Project file downloads are a browser-driven navigation (the response
+			// carries Content-Disposition: attachment), which can't send the
+			// browser-id header. Same resolved-:projectId shape as agent attachments.
+			// Still cookie-authenticated and gated by `projectFile:read`.
+			new RegExp(`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/files/:fileId/content$`),
 		];
 	}
 
