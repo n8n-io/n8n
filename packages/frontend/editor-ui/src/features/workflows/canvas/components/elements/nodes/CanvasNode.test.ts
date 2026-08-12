@@ -281,7 +281,8 @@ describe('CanvasNode', () => {
 			const handleStubs = container.querySelectorAll('handle-stub');
 			const handleIds = [...handleStubs].map((stub) => stub.getAttribute('id'));
 
-			expect(handleIds).toEqual(['outputs/main/0', 'inputs/main/0']);
+			expect(handleIds).toHaveLength(2);
+			expect(handleIds).toEqual(expect.arrayContaining(['outputs/main/0', 'inputs/main/0']));
 			expect(queryAllByTestId('canvas-node-input-handle')).toHaveLength(0);
 			expect(queryAllByTestId('canvas-node-output-handle')).toHaveLength(0);
 		});

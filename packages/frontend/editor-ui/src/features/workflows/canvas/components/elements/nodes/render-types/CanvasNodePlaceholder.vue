@@ -9,15 +9,23 @@ defineProps<{
 
 const $style = useCssModule();
 
-const { label, executionStatus, executionRunning, executionWaiting, hasRunData } = useCanvasNode();
+const {
+	label,
+	executionStatus,
+	executionRunning,
+	executionWaiting,
+	executionWaitingForNext,
+	hasRunData,
+} = useCanvasNode();
 
 const classes = computed(() => ({
 	[$style.placeholder]: true,
 	// success gated on run data to match CanvasNodeDefault; error approximated
-	// from execution status alone (the full render checks execution issues).
+	// from execution status alone (the full render checks execution issues),
+	// and pinned-data nodes tint success instead of the pinned color.
 	[$style.success]: Boolean(hasRunData.value && executionStatus.value === 'success'),
 	[$style.error]: executionStatus.value === 'error',
-	[$style.running]: executionRunning.value,
+	[$style.running]: Boolean(executionRunning.value || executionWaitingForNext.value),
 	[$style.waiting]: Boolean(executionWaiting.value || executionStatus.value === 'waiting'),
 }));
 </script>
@@ -80,5 +88,13 @@ const classes = computed(() => ({
 	line-height: var(--line-height--sm);
 	text-align: center;
 	pointer-events: none;
+	// Same 2-line clamp as CanvasNodeDefault .description so long names don't
+	// grow arbitrarily wide at overview zoom.
+	max-width: 200%;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	overflow-wrap: anywhere;
 }
 </style>

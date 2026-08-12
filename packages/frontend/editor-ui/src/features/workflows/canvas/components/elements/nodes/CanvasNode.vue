@@ -434,7 +434,7 @@ onBeforeUnmount(() => {
 			<Handle
 				v-for="source in mappedOutputs"
 				:id="source.handleId"
-				:key="source.handleId"
+				:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
 				type="source"
 				:position="source.position"
 				:style="source.offset"
@@ -445,7 +445,7 @@ onBeforeUnmount(() => {
 			<Handle
 				v-for="target in mappedInputs"
 				:id="target.handleId"
-				:key="target.handleId"
+				:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
 				type="target"
 				:position="target.position"
 				:style="target.offset"

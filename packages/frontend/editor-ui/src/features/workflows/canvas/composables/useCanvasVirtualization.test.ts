@@ -3,6 +3,7 @@ import {
 	computeCullingFrame,
 	isOutsideRect,
 	useCanvasVirtualization,
+	VIRTUALIZATION_MIN_NODES,
 } from './useCanvasVirtualization';
 
 describe(useCanvasVirtualization, () => {
@@ -59,7 +60,7 @@ describe(useCanvasVirtualization, () => {
 			const { active } = useCanvasVirtualization({
 				viewport: ref({ x: 0, y: 0, zoom: 1 }),
 				dimensions: ref({ width: 800, height: 600 }),
-				defaultNodeCount: computed(() => 99),
+				defaultNodeCount: computed(() => VIRTUALIZATION_MIN_NODES - 1),
 			});
 
 			expect(active.value).toBe(false);
@@ -69,7 +70,7 @@ describe(useCanvasVirtualization, () => {
 			const { active } = useCanvasVirtualization({
 				viewport: ref({ x: 0, y: 0, zoom: 1 }),
 				dimensions: ref({ width: 800, height: 600 }),
-				defaultNodeCount: computed(() => 100),
+				defaultNodeCount: computed(() => VIRTUALIZATION_MIN_NODES),
 			});
 
 			expect(active.value).toBe(true);

@@ -222,7 +222,8 @@ describe('WorkflowCanvas', () => {
 				},
 			});
 
-			expect(vueuse.throttledRef).toHaveBeenCalledTimes(2);
+			// 2 node/connection throttles here + 1 culling frame in the child Canvas
+			expect(vueuse.throttledRef).toHaveBeenCalledTimes(3);
 
 			// Find calls related to our specific debouncing logic
 			const calls = vi.mocked(vueuse.throttledRef).mock.calls;
