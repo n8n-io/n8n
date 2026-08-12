@@ -14,7 +14,7 @@ import { attachMetric, measurePerformance } from '../../../utils/performance-hel
 
 const ITERATIONS = 3;
 const FRAME_BUDGET_MS = 1500;
-const TIERS: Tier[] = ['S', 'M', 'L'];
+const TIERS: Tier[] = ['S', 'M', 'L', 'XL'];
 
 test.use({
 	capability: {
@@ -31,7 +31,7 @@ test.describe(
 			test(`interactions ${tier}-tier @tier:${tier}`, async ({ n8n, api }, testInfo) => {
 				test.skip(
 					tier !== 'S' && !!process.env.CI,
-					'CI only runs S tier; M / L run locally via `pnpm bench:canvas`',
+					'CI only runs S tier; M / L / XL run locally via `pnpm bench:canvas`',
 				);
 
 				test.setTimeout(420_000);

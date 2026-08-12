@@ -4,8 +4,9 @@ import { expect, type Page } from '@playwright/test';
  * Wait for the canvas to be fully mounted and quiesced.
  *
  * Vue Flow has no native "ready" event, so we synthesise one by combining:
- *  1. exact DOM count matches the workflow's node count (Vue Flow doesn't
- *     virtualize, so the relationship is 1:1)
+ *  1. exact DOM count matches the workflow's node count (canvas virtualization
+ *     swaps node internals for cheap placeholders but keeps every canvas-node
+ *     wrapper mounted, so the relationship stays 1:1)
  *  2. the viewport finished its initial fit-to-view transition
  *  3. two RAF cycles to ensure a stable post-mount paint
  *
