@@ -274,7 +274,7 @@ function viewPreviewTrace() {
 			@close="closeTimeline"
 		/>
 
-		<div :class="$style.content">
+		<div :class="[$style.content, { [$style.previewOpen]: isPreviewOpen }]">
 			<AgentSessionTimelinePanel
 				:project-id="projectId"
 				:agent-id="agentId"
@@ -283,7 +283,7 @@ function viewPreviewTrace() {
 			/>
 
 			<AgentPreviewDock
-				v-if="isPreviewOpen"
+				:is-open="isPreviewOpen"
 				:session-title="currentSessionTitle"
 				:session-options="sessionMenu"
 				:has-session="currentSessionHasMessages"
@@ -312,9 +312,24 @@ function viewPreviewTrace() {
 }
 
 .content {
+	position: relative;
 	display: flex;
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow: hidden;
+	padding-right: 0;
+	transition: padding-right var(--duration--snappy) var(--easing--ease-out);
+
+	&.previewOpen {
+		padding-right: var(--agent-preview-chat-column-width, 25rem);
+	}
+
+	&:has([data-preview-layout='floating']) {
+		padding-right: 0;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
 }
 </style>

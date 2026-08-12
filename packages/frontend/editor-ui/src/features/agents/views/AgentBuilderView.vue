@@ -1757,7 +1757,10 @@ function onSwitchAgent(nextAgentId: string) {
 			@switch-agent="onSwitchAgent"
 			@toggle-version-history="onToggleVersionHistory"
 		/>
-		<div ref="builderContainer" :class="$style.builder">
+		<div
+			ref="builderContainer"
+			:class="[$style.builder, { [$style.previewOpen]: isPreviewDockOpen }]"
+		>
 			<div
 				v-if="!isPreviewDockOpen && !isArtifactMode && instanceAiAvailable"
 				:class="$style.aiButtonWrapper"
@@ -1844,40 +1847,33 @@ function onSwitchAgent(nextAgentId: string) {
 					@unpublished="onUnpublished"
 				/>
 
-				<Transition
-					enter-active-class="preview-dock-enter-active"
-					leave-active-class="preview-dock-leave-active"
-				>
-					<AgentPreviewDock
-						v-if="isPreviewDockOpen"
-						:session-title="currentSessionTitle"
-						:session-options="sessionMenu"
-						:has-session="currentSessionHasMessages"
-						:initialized="initialized"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent="agent"
-						:local-config="localConfig"
-						:connected-triggers="connectedTriggers"
-						:effective-session-id="effectiveSessionId"
-						:can-send-to-assistant="canSendPreviewToInstanceAi"
-						:before-send="beforePreviewSend"
-						@view-trace="viewPreviewTrace"
-						@new-session="startNewPreviewSession"
-						@session-select="onSessionPick"
-						@close="closePreviewDock"
-						@continue-loaded="onContinueLoaded"
-						@send-to-assistant="onSendPreviewToAssistant"
-					/>
-				</Transition>
+				<AgentPreviewDock
+					:is-open="isPreviewDockOpen"
+					:session-title="currentSessionTitle"
+					:session-options="sessionMenu"
+					:has-session="currentSessionHasMessages"
+					:initialized="initialized"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent="agent"
+					:local-config="localConfig"
+					:connected-triggers="connectedTriggers"
+					:effective-session-id="effectiveSessionId"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:before-send="beforePreviewSend"
+					@view-trace="viewPreviewTrace"
+					@new-session="startNewPreviewSession"
+					@session-select="onSessionPick"
+					@close="closePreviewDock"
+					@continue-loaded="onContinueLoaded"
+					@send-to-assistant="onSendPreviewToAssistant"
+				/>
 			</template>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/motion.scss' as motion;
-
 .root {
 	display: flex;
 	flex-direction: column;
@@ -1891,8 +1887,23 @@ function onSwitchAgent(nextAgentId: string) {
 	height: 100%;
 	min-height: 0;
 	overflow: hidden;
+	padding-right: 0;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+
+	&.previewOpen {
+		padding-right: var(--agent-preview-chat-column-width, 25rem);
+		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
+	}
+
+	&:has([data-preview-layout='floating']) {
+		padding-right: 0;
+		transition: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
 }
 
 .loading {
@@ -1952,20 +1963,6 @@ function onSwitchAgent(nextAgentId: string) {
 .editorColumn {
 	flex: 1 1 auto;
 	min-width: 0;
-}
-
-:global(.preview-dock-enter-active) {
-	--animation--fade-in-right--duration: var(--duration--snappy);
-	--animation--fade-in-right--translate: 100%;
-
-	@include motion.fade-in-right;
-}
-
-:global(.preview-dock-leave-active) {
-	--animation--fade-out-right--duration: var(--duration--snappy);
-	--animation--fade-out-right--translate: 100%;
-
-	@include motion.fade-out-right;
 }
 
 .aiButtonWrapper {

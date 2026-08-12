@@ -48,6 +48,7 @@ const props = defineProps<{
 	agent: AgentResource | null;
 	localConfig: AgentJsonConfig | null;
 	connectedTriggers: string[];
+	isOpen: boolean;
 	effectiveSessionId?: string;
 	initialPrompt?: string;
 	canSendToAssistant?: boolean;
@@ -141,8 +142,11 @@ useKeybindings({
 <template>
 	<aside
 		ref="dock"
-		:class="$style.dock"
+		:class="[$style.dock, { [$style.open]: props.isOpen }]"
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
+		:aria-hidden="!props.isOpen"
+		:inert="!props.isOpen"
+		:data-preview-layout="floating ? 'floating' : 'docked'"
 		data-testid="agent-preview-dock"
 	>
 		<div :class="[$style.dockInner, { [$style.floating]: floating }]">
@@ -299,15 +303,19 @@ useKeybindings({
 
 <style lang="scss" module>
 .dock {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
 	width: var(--agent-preview-chat-column-width, 25rem);
 	max-width: 100%;
 	min-width: 0;
 	min-height: 0;
-	flex: 0 0 var(--agent-preview-chat-column-width, 25rem);
+	z-index: 1;
 	pointer-events: none;
 
 	&:has(.floating) {
-		position: fixed;
+		top: auto;
 		right: var(--spacing--md);
 		bottom: var(--spacing--md);
 		display: flex;
@@ -315,14 +323,29 @@ useKeybindings({
 		justify-content: flex-end;
 	}
 }
+
 .dockInner {
 	display: flex;
 	flex-direction: column;
+	width: var(--agent-preview-chat-column-width, 25rem);
 	height: 100%;
 	overflow: hidden;
 	background-color: var(--background--surface);
 	border-left: var(--border);
-	pointer-events: auto;
+	pointer-events: none;
+	transform: translateX(100%);
+	transition: transform var(--duration--snappy) var(--easing--ease-out);
+	will-change: transform;
+
+	.open & {
+		pointer-events: auto;
+		transform: translateX(0);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+		will-change: auto;
+	}
 }
 .floating {
 	width: 100%;
