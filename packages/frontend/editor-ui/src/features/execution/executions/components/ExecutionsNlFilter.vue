@@ -213,6 +213,21 @@ function onEnter() {
 	void runTranslation();
 }
 
+/**
+ * Copies the highlighted entry into the box without applying it, so an earlier query can be
+ * extended or reworded. Only swallows Tab when something is highlighted — otherwise it stays a
+ * normal focus move and the field isn't a keyboard trap.
+ */
+function onTab(event: KeyboardEvent) {
+	const highlighted = matchingQueries.value[highlightedIndex.value];
+	if (!highlighted) return;
+
+	event.preventDefault();
+	query.value = highlighted.query;
+	// Deliberately no `applyResponse` here: the point is to edit before running it. Leaving
+	// `lastTranslatedQuery` alone keeps Enter able to translate whatever it's edited into.
+}
+
 function onFocus() {
 	isFocused.value = true;
 }
@@ -259,6 +274,7 @@ async function moveHighlight(delta: 1 | -1) {
 			@blur="onBlur"
 			@keydown.enter="onEnter"
 			@keydown.esc="onEscape"
+			@keydown.tab="onTab"
 			@keydown.down.prevent="moveHighlight(1)"
 			@keydown.up.prevent="moveHighlight(-1)"
 		>
