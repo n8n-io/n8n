@@ -353,6 +353,37 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]').length).toBe(1);
 	});
 
+	// Browser Use is a config flag rather than a tool ref, so it would otherwise
+	// be invisible in the Tools row even when the agent has it enabled.
+	it('renders Browser Use as a tool chip when the capability is enabled', () => {
+		const config: AgentJsonConfig = {
+			name: 'Test Agent',
+			model: '',
+			instructions: '',
+			tools: [],
+			config: { browserUse: true },
+		};
+
+		const wrapper = mountSection([], {}, config);
+
+		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]').length).toBe(1);
+		expect(wrapper.text()).toContain('agents.browserUse.tool.title');
+	});
+
+	it('does not render a Browser Use chip when the capability is off', () => {
+		const config: AgentJsonConfig = {
+			name: 'Test Agent',
+			model: '',
+			instructions: '',
+			tools: [],
+			config: { browserUse: false },
+		};
+
+		const wrapper = mountSection([], {}, config);
+
+		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]').length).toBe(0);
+	});
+
 	it('renders selected sub-agents as chips and opens the add modal from capabilities', async () => {
 		const config: AgentJsonConfig = {
 			name: 'Test Agent',

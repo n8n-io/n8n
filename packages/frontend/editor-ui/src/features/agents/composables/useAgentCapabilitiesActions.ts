@@ -149,6 +149,13 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	}
 
 	function onOpenToolFromList(target: ToolOpenTarget | number) {
+		// Browser Use has no per-tool config, so its chip reopens the tools
+		// picker — the only place it can be turned back off.
+		if (typeof target !== 'number' && target.kind === 'browserUse') {
+			onOpenAddToolModal();
+			return;
+		}
+
 		const tools = localConfig.value?.tools ?? [];
 
 		const toolIndex =

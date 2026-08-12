@@ -279,6 +279,11 @@ type CapabilityToolEntry =
 			index: number;
 			server: AgentJsonMcpServerConfig;
 			openTarget: ToolOpenTarget;
+	  }
+	| {
+			kind: 'browserUse';
+			index: number;
+			openTarget: ToolOpenTarget;
 	  };
 
 function toToolOpenTarget(tool: AgentJsonToolRef): ToolOpenTarget {
@@ -306,9 +311,24 @@ const capabilityTools = computed<CapabilityToolEntry[]>(() => [
 		server,
 		openTarget: { kind: 'mcpServer' as const, serverName: server.name },
 	})),
+	// Browser Use is a capability flag, not a tool ref, but it still earns a
+	// chip so an enabled agent visibly lists it alongside its other tools.
+	...(props.config?.config?.browserUse === true
+		? [
+				{
+					kind: 'browserUse' as const,
+					index: props.tools.length + mcpServers.value.length,
+					openTarget: { kind: 'browserUse' as const },
+				},
+			]
+		: []),
 ]);
 
 function toolLabel(entry: CapabilityToolEntry) {
+	if (entry.kind === 'browserUse') {
+		return i18n.baseText('agents.browserUse.tool.title');
+	}
+
 	if (entry.kind === 'mcpServer') {
 		return formatToolNameForDisplay(entry.server.name);
 	}
@@ -330,6 +350,7 @@ function toolLabel(entry: CapabilityToolEntry) {
 }
 
 function toolIcon(entry: CapabilityToolEntry): IconName {
+	if (entry.kind === 'browserUse') return 'globe';
 	if (entry.kind === 'mcpServer') return 'mcp';
 	const { tool } = entry;
 	if (tool.type === 'workflow') return 'workflow';
@@ -338,6 +359,8 @@ function toolIcon(entry: CapabilityToolEntry): IconName {
 }
 
 function toolNodeType(entry: CapabilityToolEntry) {
+	if (entry.kind === 'browserUse') return null;
+
 	if (entry.kind === 'mcpServer') {
 		const preferredTypeName = entry.server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
 		return (
@@ -354,6 +377,10 @@ function toolNodeType(entry: CapabilityToolEntry) {
 }
 
 function toolTypeLabel(entry: CapabilityToolEntry, nodeType = toolNodeType(entry)) {
+	if (entry.kind === 'browserUse') {
+		return i18n.baseText('agents.browserUse.tool.title');
+	}
+
 	if (entry.kind === 'mcpServer') {
 		return nodeType?.displayName ?? toolLabel(entry);
 	}
@@ -369,6 +396,8 @@ function toolTypeLabel(entry: CapabilityToolEntry, nodeType = toolNodeType(entry
 }
 
 function toolEntryReasons(entry: CapabilityToolEntry): string[] {
+	// Nothing to misconfigure: it takes no credential and no parameters.
+	if (entry.kind === 'browserUse') return [];
 	if (entry.kind === 'mcpServer') return mcpServerIssueMessages.value.get(entry.server.name) ?? [];
 	return toolIssueMessages.value.get(entry.index) ?? [];
 }
@@ -384,7 +413,7 @@ const toolRows = computed<ToolRow[]>(() => {
 				typeLabel: toolTypeLabel(entry, nodeType),
 				nodeType,
 				fallbackIcon: toolIcon(entry),
-				toolType: entry.kind === 'tool' ? entry.tool.type : 'mcpServer',
+				toolType: entry.kind === 'tool' ? entry.tool.type : entry.kind,
 				openTarget: entry.openTarget,
 				invalid: reasons.length > 0,
 				invalidReasons: reasons,
@@ -394,11 +423,14 @@ const toolRows = computed<ToolRow[]>(() => {
 });
 
 function toTargetKey(target: ToolOpenTarget): string {
+	if (target.kind === 'browserUse') return 'browserUse';
 	if (target.kind === 'mcpServer') return `mcpServer:${encodeURIComponent(target.serverName)}`;
 	return `tool:${target.toolType}:${encodeURIComponent(target.id)}`;
 }
 
 function fromTargetKey(key: string): ToolOpenTarget | null {
+	if (key === 'browserUse') return { kind: 'browserUse' };
+
 	const [scope, toolType, ...rest] = key.split(':');
 	if (scope === 'mcpServer') {
 		const encodedServerName = toolType;

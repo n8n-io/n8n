@@ -17,7 +17,7 @@ type BaseToolRow = {
 	typeLabel: string;
 	nodeType: ToolRowNodeType;
 	fallbackIcon: IconName;
-	toolType: AgentJsonToolRef['type'] | 'mcpServer';
+	toolType: AgentJsonToolRef['type'] | 'mcpServer' | 'browserUse';
 	openTarget: ToolOpenTarget;
 	invalid: boolean;
 	invalidReasons: string[];

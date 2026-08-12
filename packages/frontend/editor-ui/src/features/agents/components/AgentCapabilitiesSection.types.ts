@@ -14,6 +14,10 @@ export type ToolOpenTarget =
 	| {
 			kind: 'mcpServer';
 			serverName: string;
+	  }
+	| {
+			/** Browser Use is a config flag rather than a tool ref, so it has no id. */
+			kind: 'browserUse';
 	  };
 
 export type ToolRowItem = {
