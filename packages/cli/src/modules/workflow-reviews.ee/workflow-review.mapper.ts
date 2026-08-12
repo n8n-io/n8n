@@ -27,14 +27,15 @@ export function toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
 
 /**
  * A stored payload the schema rejects becomes `null` rather than an exception: one bad row must
- * not take down the whole feed page. `Container.get` rather than injection because the mapper is
- * a pure module and the only caller that could pass a logger writes rows that cannot fail to
- * parse.
+ * not take down the whole feed page.
  */
 function parsePayload<T>(schema: z.ZodType<T>, row: WorkflowReviewActivity): T | null {
-	const parsed = schema.safeParse(row.data);
-	if (parsed.success) {
-		return parsed.data;
+	// These schemas describe typeVersion 1 only; a later version gets its own schema and case.
+	if (row.typeVersion === 1) {
+		const parsed = schema.safeParse(row.data);
+		if (parsed.success) {
+			return parsed.data;
+		}
 	}
 
 	Container.get(Logger).warn('Discarded an unreadable workflow review activity payload', {

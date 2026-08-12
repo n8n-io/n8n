@@ -559,8 +559,7 @@ export class WorkflowReviewRequestService {
 					return { request: current, changed: false };
 				}
 
-				// Read before the UPDATE: that repository writes by criteria and leaves the
-				// in-memory row alone, so reading first keeps that non-load-bearing.
+				// Captured before the update.
 				const fromVersionId = currentRow.workflowVersionId;
 
 				await this.workflowReviewRequestWorkflowRepository.updateWorkflowVersion(

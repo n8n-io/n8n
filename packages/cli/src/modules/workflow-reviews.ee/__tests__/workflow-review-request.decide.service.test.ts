@@ -216,6 +216,18 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
+		// The missing note is a payload problem, and an author is not entitled to hear about it:
+		// they may not decide at all, whatever they sent.
+		it('tells an author they may not decide even when their note is missing too', async () => {
+			mockSuccessfulDecidePath();
+			authorRepository.isAuthor.mockResolvedValue(true);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			await expect(
+				service.decide(memberUser(), requestId, { decision: 'changes_requested' }),
+			).rejects.toThrow(ForbiddenError);
+		});
+
 		it('rejects a caller who became an author while waiting for the lock', async () => {
 			mockSuccessfulDecidePath();
 			// Not an author before the lock, but a version sync won the lock first and
@@ -466,6 +478,15 @@ describe('WorkflowReviewRequestService.decide', () => {
 				status: 'failed',
 				message: 'The reviewed workflow version no longer exists',
 			});
+			// A `[null]` here is rejected on read, which would take the reviewer's note down
+			// with it and leave an approval nobody can account for.
+			expect(activityRepository.createActivity).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'review.approved',
+					data: { workflowVersionIds: [], note: null },
+				}),
+				ctx,
+			);
 		});
 	});
 

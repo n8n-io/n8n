@@ -25,4 +25,19 @@ describe('toActivityEntry', () => {
 			createdAt: '2026-07-20T10:00:00.000Z',
 		});
 	});
+
+	// Same reason: only a downgrade writes a payload version this code does not know, and its
+	// shape may happen to satisfy the version 1 schema while meaning something else.
+	it('does not read a newer payload version as if it were the one it knows', () => {
+		const row = mock<WorkflowReviewActivity>({
+			id: 8,
+			typeVersion: 2,
+			type: 'review.approved',
+			data: { workflowVersionIds: ['ver-1'], note: 'Ship it' },
+			createdById: null,
+			createdAt: new Date('2026-07-20T10:00:00.000Z'),
+		});
+
+		expect(toActivityEntry(row, [], new Map()).data).toBeNull();
+	});
 });

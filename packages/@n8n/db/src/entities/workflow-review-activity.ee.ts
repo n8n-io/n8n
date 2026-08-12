@@ -45,9 +45,7 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	 * Scopes an entry to one workflow; `null` for review-level entries such as comments and
 	 * decisions. Only `review.version_updated` sets it. A column rather than a key in `data` so
 	 * the feed can query and filter on it directly, for instance to leave out entries about
-	 * workflows the reader may not open. Reading with that filter is a precondition for relaxing
-	 * `CreateWorkflowReviewRequestDto.workflows.length(1)`: without it, a multi-workflow review
-	 * would show a reader entries about workflows they cannot open.
+	 * workflows the reader may not open.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowId: string | null;

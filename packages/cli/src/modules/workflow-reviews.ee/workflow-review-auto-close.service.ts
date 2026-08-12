@@ -66,10 +66,8 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 				workflowReviewRequestIds: closedRequestIds,
 			});
 
-			// Post-commit and best-effort, the opposite of the lock path above: the close has
-			// already committed on the root context with no transaction, so a failed entry can
-			// only be logged. Per-entry so one failure does not strand the remaining swept
-			// requests unexplained.
+			// Post-commit and best-effort, unlike the lock path below: the close has already
+			// committed, so a failed entry can only be logged.
 			for (const workflowReviewRequestId of closedRequestIds) {
 				try {
 					await this.activityRepository.createActivity(
@@ -123,9 +121,9 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 						await this.workflowReviewRequestRepository.saveRequest(request, ctx);
 
 						// In the transaction on purpose: a review closed without an explanation is
-						// worse than a close that rolls back. The cost is that a failed insert now
-						// rolls the close back too — swallowed for archive/move, and for the
-						// pre-delete hook it calls the delete off, which the close could already do.
+						// worse than a close that rolls back. Archive and move have no recovery path
+						// for that rollback — unlike a delete, which the sweep picks up — so the
+						// review stays open and its workflow publish-blocked until someone steps in.
 						await this.activityRepository.createActivity(
 							{
 								workflowReviewRequestId: request.id,

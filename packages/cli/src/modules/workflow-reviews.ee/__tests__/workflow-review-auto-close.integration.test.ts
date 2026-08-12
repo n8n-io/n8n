@@ -112,9 +112,9 @@ async function getActivityEntries(requestId: string) {
 }
 
 /** Create a workflow owned by `owner` with a pinned history version. */
-async function createReviewableWorkflow() {
+async function createReviewableWorkflow(attributes: { isArchived?: boolean } = {}) {
 	const versionId = uuid();
-	const workflow = await createWorkflow({ versionId }, owner);
+	const workflow = await createWorkflow({ versionId, ...attributes }, owner);
 	await createWorkflowHistoryItem(workflow.id, { versionId });
 	return { workflow, versionId };
 }
@@ -249,6 +249,20 @@ describe('auto-close on workflow hard delete', () => {
 		expect(await getActivityEntries(request.id)).toEqual([
 			expect.objectContaining({ type: 'review.closed', data: { reason: 'workflow-deleted' } }),
 		]);
+	});
+
+	// The pre-delete hook shares one transaction with its explanation and rethrows, so an
+	// unwritable entry calls the delete off rather than leaving a closed review unexplained.
+	test('refuses to delete the workflow when the review cannot be explained', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow({ isArchived: true });
+		const request = await createOpenReview(workflow.id, versionId);
+		vi.spyOn(activityRepository, 'createActivity').mockRejectedValueOnce(new Error('write failed'));
+
+		await ownerAgent.delete(`/workflows/${workflow.id}`).expect(500);
+
+		expect(await Container.get(WorkflowRepository).findOneBy({ id: workflow.id })).not.toBeNull();
+		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
+		expect(await getActivityEntries(request.id)).toEqual([]);
 	});
 
 	// A review opened after the pre-delete hook ran loses its link row to the cascade and
