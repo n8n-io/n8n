@@ -41,6 +41,41 @@ pnpm session rm           # delete the codespace
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
 
+## Agent broker (call the codespace over HTTP)
+
+`agent-broker.mjs` runs one Claude turn per HTTP request, so an external caller
+(an n8n workflow, a script) can drive a session on the codespace. Each turn is a
+headless `claude -p`. State persists on disk, so `--resume` continues a
+conversation across turns and across a stop/start.
+
+The broker starts on every container start (`postStartCommand`). It needs the
+`AGENT_BROKER_TOKEN` secret and refuses to start without it. Add the token at
+[github.com/settings/codespaces](https://github.com/settings/codespaces) the
+same way as `ANTHROPIC_API_KEY`. Logs are at `/tmp/agent-broker.log`; the tmux
+session is `broker`.
+
+The port is private by default. Make it reachable, then health-check it:
+
+```bash
+gh codespace ports visibility 8787:public -c <codespace-name>
+curl https://<codespace-name>-8787.app.github.dev/healthz     # {"ok":true}
+```
+
+A public port has no auth in front of it, so the bearer token is the only
+guard. Keep it secret.
+
+Send a turn (omit `sessionId` to start one; pass it back to continue):
+
+```bash
+curl -s https://<codespace-name>-8787.app.github.dev/turns \
+  -H "Authorization: Bearer $AGENT_BROKER_TOKEN" -H 'content-type: application/json' \
+  -d '{"message":"what branch is this?"}'
+# reply carries .result.session_id — send it back as "sessionId" next turn
+```
+
+Turns take minutes. Pass a `callbackUrl` to get `202 {turnId}` at once and the
+result by POST when the turn ends. See the file header for the full contract.
+
 ## Flaky tools (MCP)
 
 Claude sessions get the `flaky` MCP server automatically: Currents

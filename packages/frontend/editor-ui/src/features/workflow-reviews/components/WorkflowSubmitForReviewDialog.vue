@@ -76,7 +76,10 @@ const stepLabel = computed(() =>
 const isNextDisabled = computed(() => versionName.value.trim().length === 0);
 
 const isSubmitDisabled = computed(
-	() => isSubmitting.value || reviewTitle.value.trim().length === 0,
+	() =>
+		isSubmitting.value ||
+		reviewTitle.value.trim().length === 0 ||
+		selectedReviewerId.value.length === 0,
 );
 
 const reviewerOptions = computed<IUser[]>(() =>
@@ -189,7 +192,7 @@ const submit = async () => {
 					workflowVersionDescription: trimmedVersionDescription,
 				},
 			],
-			reviewerUserIds: reviewerId ? [reviewerId] : undefined,
+			reviewerUserIds: [reviewerId],
 		});
 
 		// Navigated away mid-flight: the review belongs to a workflow this dialog no
@@ -293,6 +296,7 @@ const submit = async () => {
 				<N8nInputLabel
 					input-name="workflow-review-reviewer"
 					:label="i18n.baseText('workflowReviews.submitForReview.reviewer.label')"
+					required
 				>
 					<N8nUserSelect
 						id="workflow-review-reviewer"
