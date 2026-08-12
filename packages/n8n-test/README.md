@@ -1,7 +1,8 @@
 # n8n-test — workflow testing PoC
 
 > **Throwaway proof of concept.** Demo-only, never merged, no tests for the
-> harness itself. Spec: [`.agents/specs/n8n-test-poc.md`](../../.agents/specs/n8n-test-poc.md).
+> harness itself. Specs: [`n8n-test-poc.md`](../../.agents/specs/n8n-test-poc.md) (v1),
+> [`n8n-test-poc-v2.md`](../../.agents/specs/n8n-test-poc-v2.md) (v2).
 
 Test an n8n workflow like code: a `workflow.json` executes through the **real
 n8n engine** (real `WorkflowExecute`, real `nodes-base` node implementations)
@@ -38,6 +39,44 @@ real node types load once per process, the trigger node's stack item is seeded
 with `input`, `WorkflowExecute.processRunExecutionData` runs the graph in
 `trigger` mode, and the last executed node's first item `json` comes back.
 A node error rejects (n8n's default `onError=stopWorkflow`, i.e. "throw" mode).
+
+## v2: `mockNode`
+
+Swap any named node's execution for a canned result while everything else runs
+real — several per workflow if you like, and with both external dependencies
+mocked a test needs no nock at all:
+
+```ts
+import { clearNodeMocks, mockNode, runWorkflow } from 'n8n-test';
+
+const http = mockNode(workflowJson, 'Http request', { data: 'canned response' });
+const sub = mockNode(workflowJson, 'Execute sub-workflow', { subworkflowOutput: 'sfoutput' });
+
+const result = await runWorkflow(workflowJson);
+
+expect(result.subworkflowOutput).toBe('sfoutput');
+// The handle captures what the mocked node received.
+expect(sub.input()?.['test-output']).toBe('canned response');
+```
+
+Mocks register against the workflow *object* (the JSON is never mutated), the
+last mock per node name wins, and `clearNodeMocks()` belongs in `afterEach`.
+The star use-case is the Execute Sub-workflow node, which cannot run for real
+under the harness — `demo/workflow-with-subworkflow.test.ts` asserts both
+directions.
+
+## v2: run it from a plain git repo (the CI story)
+
+`pnpm --filter n8n-test bundle` produces a self-contained npm tarball
+(`n8n-test-0.2.0.tgz`): our sources plus the vendored `core/nodes-testing`
+loader components, with their `../dist/*` imports rewritten to `n8n-core/dist/*`
+deep requires. It runs against **released npm** `n8n-core` / `n8n-workflow` /
+`n8n-nodes-base` — no monorepo, no build, vanilla vitest.
+
+The demo repo
+[geemanjs/n8n-workflow-testing-demo](https://github.com/geemanjs/n8n-workflow-testing-demo)
+holds an exploded project package export (`manifest.json` + `projects/**`),
+installs the tarball from its release, and runs the workflow tests on every PR.
 
 ## Gotchas for the real feature
 
@@ -80,7 +119,15 @@ Feasibility is proven, but these are the edges the production version must own:
   change the result shape; a real `runWorkflow` needs a richer result object.
 - **nock is the PoC seam.** It intercepts the HTTP Request node fine today, but
   the SSRF-hardened request helper in `n8n-core` is the sturdier production
-  interception point — mocking there would also catch non-HTTP-module clients
-  and pave the way for `mockNode`.
+  interception point — mocking there would also catch non-HTTP-module clients.
 - **Speed is a non-issue.** The lazy loader brings node-type load to ~1s per
-  process; the three demo tests run in under 3s total.
+  process; the full demo suite runs in under 3s.
+- **(v2) Released-engine drift is the real prebake tax.** Three shims were
+  needed to run on npm releases: `vitest-mock-extended`'s CJS build cannot be
+  `require`d outside Vite's pipeline (hence the plain `additionalData` object);
+  the `@n8n/di`/`@n8n/decorators` pins must match released `n8n-core`'s own
+  dependency versions or npm installs a second copy and the DI container
+  splits; and workflow node `typeVersion`s must exist in the released
+  `nodes-base` — a workflow exported from a newer n8n than the test runtime
+  reads as "type unknown". The real feature needs a version-compatibility
+  story, not a pin.
