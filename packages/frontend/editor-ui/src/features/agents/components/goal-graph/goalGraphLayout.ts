@@ -23,7 +23,7 @@ export const RIGHT_GUTTER = 300;
 /** Goal-centre → first tool-pill-centre vertical distance. */
 export const TOOL_OFFSET_Y = 150;
 /** Horizontal spacing between sibling tool pills under one goal. */
-export const TOOL_GAP_X = 84;
+export const TOOL_GAP_X = 110;
 
 export interface Point {
 	x: number;

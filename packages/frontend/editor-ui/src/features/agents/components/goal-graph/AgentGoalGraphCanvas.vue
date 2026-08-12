@@ -94,6 +94,13 @@ const toolNodes = computed<ToolView[]>(() => {
 	return out;
 });
 
+// Runtime tool names are snake_case with no natural break points, so adjacent
+// labels would overflow into each other. A zero-width space after each
+// separator lets long names wrap cleanly within the label's column.
+function breakableToolName(name: string): string {
+	return name.replace(/([_-])/g, '$1\u200b');
+}
+
 function edgePath(from: Point, to: Point): string {
 	const fx = from.x + GOAL_SIZE / 2;
 	const tx = to.x - GOAL_SIZE / 2;
@@ -506,6 +513,7 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 				<!-- Tools -->
 				<template v-for="tool in toolNodes" :key="tool.id">
 					<div
+						:title="tool.name"
 						:class="[
 							$style.tool,
 							tool.execState === 'running' && $style.running,
@@ -526,9 +534,13 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 					</div>
 					<div
 						:class="$style.toolLabel"
-						:style="{ left: `${tool.x - 70}px`, top: `${tool.y + TOOL_SIZE / 2 + 4}px` }"
+						:style="{
+							left: `${tool.x - (TOOL_GAP_X - 6) / 2}px`,
+							top: `${tool.y + TOOL_SIZE / 2 + 4}px`,
+							width: `${TOOL_GAP_X - 6}px`,
+						}"
 					>
-						{{ tool.name }}
+						{{ breakableToolName(tool.name) }}
 					</div>
 				</template>
 			</div>
@@ -780,12 +792,15 @@ function statusLabel(status: GoalStatus | 'idle'): string {
 	opacity: 0.5;
 }
 
+/* Width comes inline from TOOL_GAP_X so adjacent labels never collide;
+   names wrap at the zero-width breaks inserted after _ and -. */
 .toolLabel {
 	position: absolute;
-	width: 140px;
 	text-align: center;
 	font-size: var(--font-size--2xs);
+	line-height: 1.3;
 	color: var(--color--text--tint-1);
+	overflow-wrap: anywhere;
 	pointer-events: none;
 }
 
