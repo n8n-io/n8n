@@ -75,6 +75,7 @@ describe('HarnessRuntimeAgent', () => {
 			sessionId: 'sandbox-1',
 			hasUnfinishedTurn: vi.fn(() => false),
 			detach: vi.fn().mockResolvedValue(resumeFrom),
+			stop: vi.fn().mockResolvedValue(resumeFrom),
 			suspendTurn: vi.fn().mockResolvedValue(continueFrom),
 			destroy: vi.fn().mockResolvedValue(undefined),
 		};
@@ -103,6 +104,7 @@ describe('HarnessRuntimeAgent', () => {
 			harness: {} as HarnessAgentAdapter,
 			createSandboxProvider: () => ({}) as HarnessV1SandboxProvider,
 			sessionStore,
+			sessionEndMode: 'stop',
 		});
 
 		const result = await agent.stream('new request', {
@@ -118,6 +120,8 @@ describe('HarnessRuntimeAgent', () => {
 			harness.stream.mock.invocationCallOrder[0],
 		);
 		expect(chunks.filter((chunk) => chunk.type === 'finish')).toHaveLength(1);
+		expect(session.stop).toHaveBeenCalledOnce();
+		expect(session.detach).not.toHaveBeenCalled();
 		expect(claim.save).toHaveBeenCalledWith({ sessionId: 'sandbox-1', resumeFrom });
 	});
 

@@ -600,6 +600,7 @@ export class AgentRuntimeReconstructionService {
 				harness,
 				tools,
 				sessionStore: Container.get(N8nHarnessSessionStore),
+				sessionEndMode: sandboxProvider === 'daytona' ? 'stop' : 'detach',
 				createSandboxProvider: (claim) =>
 					sandboxConnection.type === 'daytona'
 						? createDaytonaHarnessSandboxProvider({

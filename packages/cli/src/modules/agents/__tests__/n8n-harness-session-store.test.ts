@@ -9,6 +9,7 @@ import type { N8nHarnessSessionCleanupService } from '../integrations/n8n-harnes
 import { N8nHarnessSessionStore } from '../integrations/n8n-harness-session-store';
 import type { AgentHarnessSession } from '../entities/agent-harness-session.entity';
 import type { AgentHarnessSessionRepository } from '../repositories/agent-harness-session.repository';
+import { createReusableDaytonaSandboxId } from '../utils/harness-sandbox-provider';
 
 const scope = {
 	projectId: 'project-1',
@@ -128,5 +129,37 @@ describe('N8nHarnessSessionStore', () => {
 
 		await expect(service.claim(scope)).rejects.toThrow('This agent session expired');
 		expect(repository.acquire).not.toHaveBeenCalled();
+	});
+
+	it('reuses one Daytona sandbox for the same project and user scope', async () => {
+		const { service, repository } = makeService();
+		const daytonaScope = { ...scope, adapter: 'codex:daytona' };
+		const sessionId = createReusableDaytonaSandboxId(daytonaScope);
+		repository.acquire.mockResolvedValue(makeRow({ adapter: daytonaScope.adapter, sessionId }));
+
+		const claim = await service.claim(daytonaScope);
+
+		expect(repository.acquire).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ sessionId }),
+		);
+		await claim.release();
+	});
+
+	it('rejects concurrent local turns sharing a reusable Daytona sandbox', async () => {
+		const { service, repository } = makeService();
+		const daytonaScope = { ...scope, adapter: 'codex:daytona' };
+		const sessionId = createReusableDaytonaSandboxId(daytonaScope);
+		repository.acquire
+			.mockResolvedValueOnce(makeRow({ adapter: daytonaScope.adapter, sessionId }))
+			.mockResolvedValueOnce(
+				makeRow({ adapter: daytonaScope.adapter, sessionId, threadId: 'thread-2' }),
+			);
+		const firstClaim = await service.claim(daytonaScope);
+
+		await expect(service.claim({ ...daytonaScope, threadId: 'thread-2' })).rejects.toThrow(
+			'already has another harness conversation running',
+		);
+		await firstClaim.release();
 	});
 });

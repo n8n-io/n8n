@@ -16,6 +16,10 @@ import {
 	type AgentHarnessSessionClaimHandle,
 } from '../repositories/agent-harness-session.repository';
 import { N8nHarnessSessionCleanupService } from './n8n-harness-session-cleanup.service';
+import {
+	createReusableDaytonaSandboxId,
+	getStoredHarnessSandboxProvider,
+} from '../utils/harness-sandbox-provider';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;
@@ -73,6 +77,8 @@ function serializeState(state: HarnessSessionState): string | null {
 
 @Service()
 export class N8nHarnessSessionStore implements HarnessSessionStore {
+	private readonly activeReusableSandboxes = new Set<string>();
+
 	constructor(
 		private readonly repository: AgentHarnessSessionRepository,
 		private readonly config: AgentsConfig,
@@ -111,7 +117,8 @@ export class N8nHarnessSessionStore implements HarnessSessionStore {
 		}
 
 		const claimToken = randomUUID();
-		const sessionId = randomUUID();
+		const isReusableDaytona = getStoredHarnessSandboxProvider(scope.adapter) === 'daytona';
+		const sessionId = isReusableDaytona ? createReusableDaytonaSandboxId(scope) : randomUUID();
 		const row = await this.repository.acquire(
 			{
 				agentId: scope.agentId,
@@ -145,10 +152,19 @@ export class N8nHarnessSessionStore implements HarnessSessionStore {
 			await this.repository.release(handle);
 			throw new OperationalError('Stored harness session belongs to a different adapter');
 		}
+		const usesReusableSandbox = isReusableDaytona && row.sessionId === sessionId;
+		if (usesReusableSandbox && this.activeReusableSandboxes.has(row.sessionId)) {
+			await this.repository.release(handle);
+			throw new UserError('This user already has another harness conversation running');
+		}
+		if (usesReusableSandbox) this.activeReusableSandboxes.add(row.sessionId);
 
 		try {
-			return this.createClaim(handle, deserializeState(row.sessionId, row.state));
+			return this.createClaim(handle, deserializeState(row.sessionId, row.state), () => {
+				if (usesReusableSandbox) this.activeReusableSandboxes.delete(row.sessionId);
+			});
 		} catch (error) {
+			if (usesReusableSandbox) this.activeReusableSandboxes.delete(row.sessionId);
 			await this.repository.release(handle);
 			throw error;
 		}
@@ -157,6 +173,7 @@ export class N8nHarnessSessionStore implements HarnessSessionStore {
 	private createClaim(
 		handle: AgentHarnessSessionClaimHandle,
 		state: HarnessSessionState,
+		onRelease: () => void,
 	): HarnessSessionClaim {
 		let cleared = false;
 		let released = false;
@@ -224,14 +241,19 @@ export class N8nHarnessSessionStore implements HarnessSessionStore {
 				requireOwned(await this.repository.deleteClaimed(handle));
 				cleared = true;
 				clearInterval(renewalTimer);
+				onRelease();
 			},
 			release: async () => {
 				if (released) return;
 				released = true;
 				clearInterval(renewalTimer);
-				if (!cleared) {
-					const owned = await this.repository.release(handle);
-					if (!owned && !ownershipAbort.signal.aborted) requireOwned(false);
+				try {
+					if (!cleared) {
+						const owned = await this.repository.release(handle);
+						if (!owned && !ownershipAbort.signal.aborted) requireOwned(false);
+					}
+				} finally {
+					onRelease();
 				}
 			},
 		};

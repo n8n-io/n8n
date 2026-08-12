@@ -6,6 +6,7 @@ import type {
 	AgentHarnessSessionCleanupRecord,
 	AgentHarnessSessionRepository,
 } from '../repositories/agent-harness-session.repository';
+import { createReusableDaytonaSandboxId } from '../utils/harness-sandbox-provider';
 
 const destroyN8nHarnessSandbox = vi.hoisted(() => vi.fn(async () => {}));
 const destroyDaytonaHarnessSandbox = vi.hoisted(() => vi.fn(async () => {}));
@@ -25,6 +26,8 @@ const row: AgentHarnessSessionCleanupRecord = {
 };
 
 describe('N8nHarnessSessionCleanupService', () => {
+	beforeEach(() => vi.clearAllMocks());
+
 	it('destroys the native sandbox before deleting its resumability row', async () => {
 		const repository = mock<AgentHarnessSessionRepository>();
 		const sandboxSettings = mock<SandboxSettingsService>();
@@ -80,6 +83,27 @@ describe('N8nHarnessSessionCleanupService', () => {
 			apiKey: 'secret',
 			sandboxId: 'sandbox-1',
 		});
+		expect(repository.deleteCleanupRecord).toHaveBeenCalledWith(daytonaRow);
+	});
+
+	it('retains a reusable Daytona sandbox when deleting one thread row', async () => {
+		const repository = mock<AgentHarnessSessionRepository>();
+		const sandboxSettings = mock<SandboxSettingsService>();
+		const daytonaRow = {
+			...row,
+			adapter: 'codex:daytona',
+			sessionId: createReusableDaytonaSandboxId({
+				projectId: 'project-1',
+				resourceId: 'draft-chat:user-1',
+				adapter: 'codex:daytona',
+			}),
+		};
+		repository.findForCleanupByAgentAndThread.mockResolvedValue([daytonaRow]);
+		const service = new N8nHarnessSessionCleanupService(repository, sandboxSettings);
+
+		await service.destroyByAgentAndThread(daytonaRow.agentId, daytonaRow.threadId);
+
+		expect(destroyDaytonaHarnessSandbox).not.toHaveBeenCalled();
 		expect(repository.deleteCleanupRecord).toHaveBeenCalledWith(daytonaRow);
 	});
 });

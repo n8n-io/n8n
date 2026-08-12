@@ -38,6 +38,7 @@ export interface HarnessRuntimeAgentSettings {
 	harness: HarnessAgentAdapter;
 	createSandboxProvider(claim: HarnessSessionClaim): HarnessV1SandboxProvider;
 	sessionStore: HarnessSessionStore;
+	sessionEndMode?: 'detach' | 'stop';
 	tools?: readonly BuiltTool[];
 	sandboxConfig?: HarnessAgentSandboxConfig;
 }
@@ -216,7 +217,10 @@ export class HarnessRuntimeAgent implements AgentRuntimeInstance {
 							const continueFrom = await session.suspendTurn();
 							await claim.save({ sessionId: session.sessionId, continueFrom });
 						} else {
-							const resumeFrom = await session.detach();
+							const resumeFrom =
+								this.settings.sessionEndMode === 'stop'
+									? await session.stop()
+									: await session.detach();
 							await claim.save({ sessionId: session.sessionId, resumeFrom });
 						}
 						status = 'success';

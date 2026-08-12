@@ -8,7 +8,10 @@ import {
 	AgentHarnessSessionRepository,
 	type AgentHarnessSessionCleanupRecord,
 } from '../repositories/agent-harness-session.repository';
-import { getStoredHarnessSandboxProvider } from '../utils/harness-sandbox-provider';
+import {
+	getStoredHarnessSandboxProvider,
+	isReusableDaytonaSandboxId,
+} from '../utils/harness-sandbox-provider';
 
 @Service()
 export class N8nHarnessSessionCleanupService {
@@ -63,6 +66,10 @@ export class N8nHarnessSessionCleanupService {
 		for (const row of rows) {
 			const provider =
 				getStoredHarnessSandboxProvider(row.adapter) ?? this.sandboxSettings.getProvider();
+			if (provider === 'daytona' && isReusableDaytonaSandboxId(row.sessionId)) {
+				await this.repository.deleteCleanupRecord(row);
+				continue;
+			}
 			if (provider === 'daytona') {
 				daytonaConfig ??= await this.sandboxSettings.resolveDaytonaConfig();
 				if (!daytonaConfig.apiKey?.trim()) {
