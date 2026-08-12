@@ -6,7 +6,7 @@ import { ElSelect, ElOption } from 'element-plus';
 import Modal from '@/app/components/Modal.vue';
 import { FORM_STEP_EDIT_MODAL_KEY, FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useFormAppearance } from '../composables/useFormAppearance';
 import { useMessage } from '@/app/composables/useMessage';
 import AppearanceTab from './AppearanceTab.vue';
@@ -18,13 +18,13 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const message = useMessage();
 
 // nodeId is fixed for the lifetime of this modal instance.
 const nodeId = props.data?.nodeId as string;
 
-const node = computed(() => workflowsStore.workflow.nodes.find((n) => n.id === nodeId));
+const node = computed(() => workflowDocumentStore.value.allNodes.find((n) => n.id === nodeId));
 const isTrigger = computed(() => node.value?.type === FORM_TRIGGER_NODE_TYPE);
 const title = computed(() => node.value?.name ?? i18n.baseText('formStep.editForm'));
 

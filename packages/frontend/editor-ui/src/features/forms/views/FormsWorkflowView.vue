@@ -3,6 +3,7 @@ import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanva
 import CanvasBackground from '@/features/workflows/canvas/components/elements/background/CanvasBackground.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -21,6 +22,7 @@ const route = useRoute();
 const router = useRouter();
 const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 
 const loading = ref(true);
@@ -37,9 +39,9 @@ const formNodeRenderOverrides: Partial<Record<string, CanvasNodeRenderType>> = {
 
 onMounted(async () => {
 	const workflowId = route.params.workflowId as string;
-	if (workflowsStore.workflow.id !== workflowId) {
+	if (workflowsStore.workflowId !== workflowId) {
 		const workflowData = await workflowsListStore.fetchWorkflow(workflowId);
-		workflowsStore.setWorkflow(workflowData);
+		workflowDocumentStore.value.hydrate(workflowData);
 	}
 	loading.value = false;
 });
@@ -56,7 +58,7 @@ watch(
 const showOpenWorkflowButton = computed(() => route.name === FORMS_WORKFLOW_VIEW);
 
 const nonFormNodeIds = computed(() =>
-	workflowsStore.workflow.nodes.filter((n) => !FORM_NODE_TYPES.has(n.type)).map((n) => n.id),
+	workflowDocumentStore.value.allNodes.filter((n) => !FORM_NODE_TYPES.has(n.type)).map((n) => n.id),
 );
 
 const nonFormNodeCss = computed(() => {
@@ -70,7 +72,7 @@ const nonFormNodeCss = computed(() => {
 function openWorkflow() {
 	void router.push({
 		name: VIEWS.WORKFLOW,
-		params: { workflowId: workflowsStore.workflow.id },
+		params: { workflowId: workflowsStore.workflowId },
 	});
 }
 
@@ -78,7 +80,7 @@ function onNodeActivated(nodeId: string, event?: MouseEvent) {
 	if (event?.type === 'dblclick') {
 		void router.push({
 			name: VIEWS.WORKFLOW,
-			params: { workflowId: workflowsStore.workflow.id, nodeId },
+			params: { workflowId: workflowsStore.workflowId, nodeId },
 		});
 	} else {
 		uiStore.openModalWithData({ name: FORM_STEP_EDIT_MODAL_KEY, data: { nodeId } });

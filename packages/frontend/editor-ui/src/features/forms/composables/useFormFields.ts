@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import type { INodeParameters } from 'n8n-workflow';
 import { FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
@@ -106,10 +107,11 @@ function fromNodeParam(param: INodeParameters): FormFieldDraft {
 
 export function useFormFields(nodeId: string) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeHelpers = useNodeHelpers();
 
 	const node = computed<INodeUi | undefined>(() =>
-		workflowsStore.workflow.nodes.find((n) => n.id === nodeId),
+		workflowDocumentStore.value.allNodes.find((n) => n.id === nodeId),
 	);
 
 	const isTrigger = computed(() => node.value?.type === FORM_TRIGGER_NODE_TYPE);
@@ -118,7 +120,7 @@ export function useFormFields(nodeId: string) {
 	const triggerNode = computed<INodeUi | undefined>(() =>
 		isTrigger.value
 			? undefined
-			: workflowsStore.workflow.nodes.find((n) => n.type === FORM_TRIGGER_NODE_TYPE),
+			: workflowDocumentStore.value.allNodes.find((n) => n.type === FORM_TRIGGER_NODE_TYPE),
 	);
 
 	const inheritedTitle = computed<string>(
@@ -320,10 +322,11 @@ export function useFormFields(nodeId: string) {
 	async function save() {
 		if (!node.value || !workflowsStore.workflowId) return;
 
-		const nodeIdx = workflowsStore.workflow.nodes.findIndex((n) => n.id === nodeId);
+		const nodes = workflowDocumentStore.value.allNodes.map((n) => ({ ...n }));
+		const nodeIdx = nodes.findIndex((n) => n.id === nodeId);
 		if (nodeIdx === -1) return;
 
-		const target = workflowsStore.workflow.nodes[nodeIdx];
+		const target = nodes[nodeIdx];
 		const newParams = { ...target.parameters };
 
 		if (isCompletion.value) {
@@ -361,14 +364,14 @@ export function useFormFields(nodeId: string) {
 			newParams.options = opts as INodeParameters;
 		}
 
-		workflowsStore.workflow.nodes[nodeIdx].parameters = newParams;
+		nodes[nodeIdx] = { ...target, parameters: newParams };
 		nodeHelpers.updateNodeParameterIssuesByName(target.name);
 
 		isSaving.value = true;
 		try {
 			await workflowsStore.updateWorkflow(workflowsStore.workflowId, {
-				nodes: workflowsStore.workflow.nodes,
-				versionId: workflowsStore.workflow.versionId,
+				nodes,
+				versionId: workflowDocumentStore.value.versionId,
 			});
 		} finally {
 			isSaving.value = false;

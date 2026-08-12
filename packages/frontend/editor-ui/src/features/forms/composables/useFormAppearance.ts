@@ -3,10 +3,12 @@ import { useDebounceFn } from '@vueuse/core';
 import { NodeHelpers } from 'n8n-workflow';
 import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import type { INodeUi } from '@/Interface';
 import { fetchFormPreview } from '../api';
 import { FORM_THEMES } from '../constants/themes';
@@ -43,6 +45,7 @@ const globalScope = ref<Scope>('all');
 
 export function useFormAppearance(nodeId: string) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 
@@ -51,7 +54,7 @@ export function useFormAppearance(nodeId: string) {
 	// -------------------------------------------------------------------------
 
 	const node = computed<INodeUi | undefined>(() =>
-		workflowsStore.workflow.nodes.find((n) => n.id === nodeId),
+		workflowDocumentStore.value.allNodes.find((n) => n.id === nodeId),
 	);
 
 	const isTrigger = computed(() => node.value?.type === FORM_TRIGGER_NODE_TYPE);
@@ -83,7 +86,7 @@ export function useFormAppearance(nodeId: string) {
 	});
 
 	const triggerNode = computed<INodeUi | undefined>(() =>
-		workflowsStore.workflow.nodes.find((n) => n.type === FORM_TRIGGER_NODE_TYPE),
+		workflowDocumentStore.value.allNodes.find((n) => n.type === FORM_TRIGGER_NODE_TYPE),
 	);
 
 	const triggerResolvedParameters = computed((): INodeParameters => {
@@ -264,8 +267,8 @@ export function useFormAppearance(nodeId: string) {
 
 	const isSaving = ref(false);
 
-	function applyToNode(idx: number) {
-		const target = workflowsStore.workflow.nodes[idx];
+	function applyToNode(nodes: INodeUi[], idx: number) {
+		const target = nodes[idx];
 		const opts = { ...((target.parameters.options as Record<string, unknown>) ?? {}) };
 
 		if (assembledCss.value) {
@@ -280,35 +283,38 @@ export function useFormAppearance(nodeId: string) {
 			delete opts.appendAttribution;
 		}
 
-		workflowsStore.workflow.nodes[idx].parameters = {
-			...target.parameters,
-			options: opts as INodeParameters,
+		nodes[idx] = {
+			...target,
+			parameters: {
+				...target.parameters,
+				options: opts as INodeParameters,
+			},
 		};
 	}
 
 	async function save(scope: 'current' | 'all' = 'current') {
-		if (!workflowsStore.workflowId) return;
+		const workflowId = workflowsStore.workflowId;
+		if (!workflowId) return;
 
+		const nodes = workflowDocumentStore.value.allNodes.map((n) => ({ ...n }));
 		const FORM_TYPES = new Set([FORM_TRIGGER_NODE_TYPE, FORM_NODE_TYPE]);
 		const targets =
 			scope === 'all'
-				? workflowsStore.workflow.nodes
-						.map((n, i) => (FORM_TYPES.has(n.type) ? i : -1))
-						.filter((i) => i !== -1)
+				? nodes.map((n, i) => (FORM_TYPES.has(n.type) ? i : -1)).filter((i) => i !== -1)
 				: (() => {
-						const i = workflowsStore.workflow.nodes.findIndex((n) => n.id === nodeId);
+						const i = nodes.findIndex((n) => n.id === nodeId);
 						return i === -1 ? [] : [i];
 					})();
 
 		for (const idx of targets) {
-			applyToNode(idx);
+			applyToNode(nodes, idx);
 		}
 
 		isSaving.value = true;
 		try {
-			await workflowsStore.updateWorkflow(workflowsStore.workflowId, {
-				nodes: workflowsStore.workflow.nodes,
-				versionId: workflowsStore.workflow.versionId,
+			await workflowsStore.updateWorkflow(workflowId, {
+				nodes,
+				versionId: workflowDocumentStore.value.versionId,
 			});
 		} finally {
 			isSaving.value = false;

@@ -4,9 +4,10 @@ import { useDebounceFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton } from '@n8n/design-system';
 import { FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useCanvasNode } from '@/features/workflows/canvas/composables/useCanvasNode';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { NodeHelpers } from 'n8n-workflow';
@@ -26,11 +27,13 @@ function onActivate(event: MouseEvent) {
 	emit('activate', id.value, event);
 }
 
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
 
-const node = computed(() => workflowsStore.workflow.nodes.find((n: INodeUi) => n.id === id.value));
+const node = computed(() =>
+	workflowDocumentStore.value.allNodes.find((n: INodeUi) => n.id === id.value),
+);
 const isTrigger = computed(() => node.value?.type === FORM_TRIGGER_NODE_TYPE);
 const isCompletion = computed(() => node.value?.parameters?.operation === 'completion');
 
@@ -63,7 +66,7 @@ const optionsCollectionDefaults = computed(() => {
 });
 
 const triggerNode = computed(() =>
-	workflowsStore.workflow.nodes.find((n: INodeUi) => n.type === FORM_TRIGGER_NODE_TYPE),
+	workflowDocumentStore.value.allNodes.find((n: INodeUi) => n.type === FORM_TRIGGER_NODE_TYPE),
 );
 
 const triggerResolvedParameters = computed((): INodeParameters => {
