@@ -1,6 +1,8 @@
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import type { ProactiveOffer } from './instanceAiPanel.types';
+
 export type { ProactiveOffer } from './instanceAiPanel.types';
 
 /**
@@ -141,13 +143,24 @@ export function executionErrorOfferKey(executionId: string): string {
 	return `execution-error:${executionId}`;
 }
 
+/** Bounded, readable stand-in for the error string — dismissal keys are persisted. */
+function errorFingerprint(errorMessage: string): string {
+	return errorMessage.replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 64);
+}
+
 /**
- * Scoped by credential identity, so dismissing the offer for one credential
- * doesn't suppress it for another of the same type. Pass the credential id when
- * known, otherwise its display name.
+ * Scoped by credential identity *and* the error, so dismissing the offer for one
+ * credential doesn't suppress it for another of the same type, and re-running the
+ * same failing test doesn't re-offer — while a credential that starts failing
+ * differently still does. Pass the credential id when known, otherwise its
+ * display name.
  */
-export function credentialErrorOfferKey(credentialType: string, credentialRef: string): string {
-	return `credential-error:${credentialType}:${credentialRef}`;
+export function credentialErrorOfferKey(
+	credentialType: string,
+	credentialRef: string,
+	errorMessage: string,
+): string {
+	return `credential-error:${credentialType}:${credentialRef}:${errorFingerprint(errorMessage)}`;
 }
 
 export interface ExecutionErrorContext {
@@ -164,9 +177,12 @@ export interface CredentialErrorContext {
 	credentialType: string;
 	/** Credential name as shown in the UI — never its decrypted data. */
 	displayName: string;
-	nodeName: string;
+	/** Node the credential is configured for; absent outside the editor (e.g. the credentials list). */
+	nodeName?: string;
 	/** The auth error string only; no tokens, keys or headers. */
 	errorMessage: string;
+	/** Lets the agent read the credential directly instead of guessing which one failed. */
+	credentialId?: string;
 }
 
 /**
@@ -189,19 +205,51 @@ export function buildExecutionErrorSeedMessage(context: ExecutionErrorContext): 
 	return `${lead}\n\n${block}`;
 }
 
-/** Seeded message for a credential that failed to authenticate. */
+/**
+ * Seeded message for a credential that failed to authenticate.
+ *
+ * Asks for an explanation, not a fix: the agent cannot resolve a 401 because it
+ * cannot see the user's API key. Its value here is saying what the error means
+ * and what to change.
+ */
 export function buildCredentialErrorSeedMessage(context: CredentialErrorContext): string {
 	const i18n = useI18n();
 
-	const lead = i18n.baseText('instanceAi.proactive.credentialError.prompt', {
-		interpolate: { displayName: context.displayName, nodeName: context.nodeName },
-	});
+	const lead = context.nodeName
+		? i18n.baseText('instanceAi.proactive.credentialError.prompt', {
+				interpolate: { displayName: context.displayName, nodeName: context.nodeName },
+			})
+		: i18n.baseText('instanceAi.proactive.credentialError.promptNoNode', {
+				interpolate: { displayName: context.displayName },
+			});
 
 	const block = buildContextBlock('credential-error', {
 		credential: `${context.displayName} (type: ${context.credentialType})`,
+		'credential id': context.credentialId,
 		node: context.nodeName,
 		message: context.errorMessage,
 	});
 
 	return `${lead}\n\n${block}`;
+}
+
+/**
+ * The full offer for a failed credential test. Owned here rather than in the
+ * credentials feature so the copy, the dedupe key and the context block stay in
+ * one place.
+ */
+export function buildCredentialErrorOffer(context: CredentialErrorContext): ProactiveOffer {
+	const i18n = useI18n();
+
+	return {
+		key: credentialErrorOfferKey(
+			context.credentialType,
+			context.credentialId || context.displayName,
+			context.errorMessage,
+		),
+		title: i18n.baseText('instanceAi.proactiveOffer.credentialError.title'),
+		detail: i18n.baseText('instanceAi.proactiveOffer.credentialError.detail'),
+		message: buildCredentialErrorSeedMessage(context),
+		source: 'proactive_offer',
+	};
 }
