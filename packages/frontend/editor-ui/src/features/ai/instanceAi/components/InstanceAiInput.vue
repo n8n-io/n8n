@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nTag, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nTag, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
@@ -80,6 +80,9 @@ const props = withDefaults(
 		contextChips?: ContextChip[];
 		/** External draft (e.g. proactive offer). Applied when the value changes; clearing does not wipe typing. */
 		prefillText?: string | null;
+		/** Floating panel: show a control to pick canvas nodes as context. */
+		showNodeContextPicker?: boolean;
+		isNodeContextPickerActive?: boolean;
 	}>(),
 	{
 		isStreaming: false,
@@ -97,6 +100,8 @@ const props = withDefaults(
 		contextChip: null,
 		contextChips: undefined,
 		prefillText: null,
+		showNodeContextPicker: false,
+		isNodeContextPickerActive: false,
 	},
 );
 
@@ -105,6 +110,7 @@ const emit = defineEmits<{
 	stop: [];
 	'cancel-plan-edit': [];
 	'dismiss-context-chip': [key?: string];
+	'toggle-node-context-picker': [];
 	'workflow-preview': [workflowFile: string | null];
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	// Fires when the composer goes between empty and non-empty so the split
@@ -572,6 +578,32 @@ const resizable = computed(() => {
 					/>
 				</div>
 			</template>
+			<template v-if="props.showNodeContextPicker" #right-actions>
+				<N8nTooltip
+					:content="
+						props.isNodeContextPickerActive
+							? i18n.baseText('instanceAi.input.nodePicker.activeTooltip')
+							: i18n.baseText('instanceAi.input.nodePicker.tooltip')
+					"
+					placement="top"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
+					<N8nIconButton
+						variant="ghost"
+						:icon="props.isNodeContextPickerActive ? 'circle-check' : 'circle-plus'"
+						icon-size="large"
+						:class="{ [$style.nodePickerButtonActive]: props.isNodeContextPickerActive }"
+						:aria-pressed="props.isNodeContextPickerActive"
+						:aria-label="
+							props.isNodeContextPickerActive
+								? i18n.baseText('instanceAi.input.nodePicker.activeTooltip')
+								: i18n.baseText('instanceAi.input.nodePicker.tooltip')
+						"
+						data-test-id="instance-ai-node-context-picker"
+						@click.stop="emit('toggle-node-context-picker')"
+					/>
+				</N8nTooltip>
+			</template>
 		</ChatInputBase>
 		<slot name="footer"></slot>
 		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
@@ -617,8 +649,8 @@ const resizable = computed(() => {
 
 .contextChips {
 	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
+	flex-wrap: wrap;
+	align-items: center;
 	gap: var(--spacing--2xs);
 	align-self: flex-start;
 	max-width: 100%;
@@ -626,6 +658,10 @@ const resizable = computed(() => {
 
 .contextChip {
 	max-width: 100%;
+}
+
+.nodePickerButtonActive {
+	color: var(--color--primary);
 }
 
 .chipWithTooltip {

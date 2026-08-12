@@ -19,9 +19,11 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
+import { useInstanceAiPanelStore } from '@/features/ai/instanceAi/instanceAiPanel.store';
 
 const $style = useCssModule();
 const i18n = useI18n();
+const instanceAiPanelStore = useInstanceAiPanelStore();
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
@@ -79,6 +81,11 @@ const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 
+const isNodePickerTarget = computed(() => instanceAiPanelStore.isNodePickerActive);
+const isNodePickerPinned = computed(() =>
+	instanceAiPanelStore.contextNodes.some((node) => node.nodeId === id.value),
+);
+
 const classes = computed(() => {
 	const waiting = Boolean(executionWaiting.value || executionStatus.value === 'waiting');
 	const running = Boolean(executionRunning.value || executionWaitingForNext.value);
@@ -99,6 +106,8 @@ const classes = computed(() => {
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
 		[$style.placeholder]: renderOptions.value.placeholder,
+		[$style.nodePickerTarget]: isNodePickerTarget.value,
+		[$style.nodePickerPinned]: isNodePickerPinned.value,
 		waiting,
 		running,
 	};
@@ -351,6 +360,27 @@ function onActivate(event: MouseEvent) {
 
 	&.selected {
 		@include styles.canvas-node-selected-ring;
+	}
+
+	&.nodePickerTarget {
+		cursor: pointer;
+		transition:
+			box-shadow 0.12s ease,
+			border-color 0.12s ease;
+
+		&:hover {
+			--canvas-node--border-color: var(--color--primary);
+			/* stylelint-disable-next-line @n8n/css-var-naming */
+			box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
+				color-mix(in srgb, var(--color--primary) 28%, transparent);
+		}
+	}
+
+	&.nodePickerPinned {
+		--canvas-node--border-color: var(--color--primary);
+		/* stylelint-disable-next-line @n8n/css-var-naming */
+		box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
+			color-mix(in srgb, var(--color--primary) 28%, transparent);
 	}
 
 	&.success {

@@ -98,6 +98,7 @@ import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useInstanceAiPanelStore } from '@/features/ai/instanceAi/instanceAiPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
 
@@ -218,6 +219,7 @@ provide(CanvasRenderDataKey, renderData);
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
+const instanceAiPanelStore = useInstanceAiPanelStore();
 const setupPanelStore = useSetupPanelStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
@@ -290,6 +292,7 @@ const classes = computed(() => ({
 	[$style.canvas]: true,
 	[$style.ready]: !props.loading && isPaneReady.value,
 	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
+	[$style.nodePickerActive]: instanceAiPanelStore.isNodePickerActive,
 	spotlightActive: setupPanelStore.isHighlightActive,
 }));
 
@@ -638,6 +641,15 @@ watch(
 	(isOpen) => {
 		if (isOpen && selectedNodeIds.value.length > 0 && focusedNodesStore.isFeatureEnabled) {
 			focusedNodesStore.setUnconfirmedFromCanvasSelection(selectedNodeIds.value);
+		}
+	},
+);
+
+watch(
+	() => instanceAiPanelStore.isNodePickerActive,
+	(isActive) => {
+		if (isActive && selectedNodeIds.value.length > 0) {
+			instanceAiPanelStore.addContextNodesFromSelection(selectedNodeIds.value);
 		}
 	},
 );
@@ -1035,6 +1047,10 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
+	}
+
+	if (instanceAiPanelStore.isOpen && instanceAiPanelStore.isNodePickerActive) {
+		instanceAiPanelStore.toggleContextNode(node.id);
 	}
 
 	emit('click:node', node.id, getProjectedPosition(event));
@@ -1952,6 +1968,12 @@ defineExpose({
 	&.isExperimentalNdvActive {
 		/* stylelint-disable-next-line @n8n/css-var-naming */
 		--canvas-zoom-compensation-factor: 0.5;
+	}
+
+	&.nodePickerActive {
+		:global(.vue-flow__node) {
+			cursor: pointer;
+		}
 	}
 
 	// VueFlow sizes its selection box to the selected VueFlow nodes only, which

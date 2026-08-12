@@ -21,6 +21,7 @@ import type { InstanceAiAttachment } from '@n8n/api-types';
 
 import { messageHasVisibleContent } from '../builderAgents';
 import { isPendingItemFloating } from '../confirmationKinds';
+import { useInstanceAiCanvasSync } from '../composables/useInstanceAiCanvasSync';
 import {
 	agentPageChipKey,
 	useInstanceAiPageContext,
@@ -28,13 +29,16 @@ import {
 } from '../composables/useInstanceAiPageContext';
 import { handoffContextKey } from '../instanceAi.handoffContext';
 import { provideThread } from '../instanceAi.store';
-import { useInstanceAiPanelStore } from '../instanceAiPanel.store';
+import { nodeContextChipKey, useInstanceAiPanelStore } from '../instanceAiPanel.store';
 import {
+	buildFocusedNodesContextBlock,
 	extractContextBlocks,
 	getContextBlockType,
 	getExecutionErrorChipTooltip,
 	getProactiveContextChip,
 	hasContextBlock,
+	PROACTIVE_ERROR_CONTEXT_TYPES,
+	stripContextBlocks,
 } from '../instanceAiProactive';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
@@ -100,6 +104,7 @@ const rootStore = useRootStore();
 const panelStore = useInstanceAiPanelStore();
 const pageContext = useInstanceAiPageContext();
 const thread = provideThread(props.threadId);
+useInstanceAiCanvasSync(thread);
 
 /** Per-session dismissals for offer + ambient page chips. */
 const dismissedChipKeys = ref(new Set<string>());
@@ -188,6 +193,21 @@ const contextChips = computed(() => {
 		seen.add(chip.key);
 	}
 
+	for (const node of panelStore.contextNodes) {
+		const key = nodeContextChipKey(node.nodeId);
+		if (seen.has(key)) continue;
+		chips.push({
+			key,
+			label: node.nodeName,
+			icon: 'box',
+			tooltip: i18n.baseText('instanceAi.input.nodePicker.nodeTooltip', {
+				interpolate: { name: node.nodeName },
+			}),
+			testId: 'instance-ai-floating-node-chip',
+		});
+		seen.add(key);
+	}
+
 	return chips;
 });
 
@@ -205,17 +225,25 @@ const showEmptyHints = computed(
 	() => visibleMessages.value.length === 0 && !hasInlineConfirmation.value,
 );
 /**
- * Offer landing: pick explain / debug / fix / custom instead of typing first.
- * Cold open (no offer) keeps the free-form composer.
+ * Offer landing for failed runs / credentials: pick explain / debug / fix /
+ * custom instead of typing first. Build invites (empty workflow) and cold opens
+ * go straight to the free-form composer.
  */
-const showActionChooser = computed(
-	() => showEmptyHints.value && hasOfferContext.value && !showCustomComposer.value,
+const offerContextType = computed(() =>
+	panelStore.pendingOffer ? getContextBlockType(panelStore.pendingOffer.message) : null,
 );
+const showActionChooser = computed(() => {
+	const type = offerContextType.value;
+	return (
+		showEmptyHints.value &&
+		hasOfferContext.value &&
+		!showCustomComposer.value &&
+		type !== null &&
+		PROACTIVE_ERROR_CONTEXT_TYPES.has(type)
+	);
+});
 const chooserTitleKey = computed<BaseTextKey>(() => {
-	const message = panelStore.pendingOffer?.message;
-	if (!message) return 'instanceAi.floatingPanel.empty.title';
-
-	switch (getContextBlockType(message)) {
+	switch (offerContextType.value) {
 		case 'execution-error':
 			return 'instanceAi.floatingPanel.empty.executionErrorTitle';
 		case 'credential-error':
@@ -223,6 +251,18 @@ const chooserTitleKey = computed<BaseTextKey>(() => {
 		default:
 			return 'instanceAi.floatingPanel.empty.title';
 	}
+});
+/**
+ * Prefill non-error offers (e.g. empty-workflow build invite) so the user can
+ * edit or send immediately. Error offers keep the explain/debug/fix chooser.
+ */
+const composerPrefill = computed(() => {
+	const offer = panelStore.pendingOffer;
+	if (!offer) return null;
+	const type = offerContextType.value;
+	if (type !== null && PROACTIVE_ERROR_CONTEXT_TYPES.has(type)) return null;
+	const text = stripContextBlocks(offer.message);
+	return text.length > 0 ? text : null;
 });
 const showComposer = computed(() => !showActionChooser.value && !hasFloatingConfirmation.value);
 const isBusy = computed(() => thread.isStreaming || thread.isSendingMessage);
@@ -253,6 +293,11 @@ watch(
 function dismissContextChip(key?: string) {
 	if (!key) {
 		panelStore.dismissPendingOffer();
+		return;
+	}
+
+	if (key.startsWith('node:')) {
+		panelStore.removeContextNode(key.slice('node:'.length));
 		return;
 	}
 
@@ -329,12 +374,23 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	const handoff = pageContext.handoffContext.value;
 	const handoffToSend = handoff && !dismissed.has(handoffContextKey(handoff)) ? handoff : undefined;
 
+	const focusedNodesBlock = buildFocusedNodesContextBlock(panelStore.contextNodes);
+	if (focusedNodesBlock) {
+		finalMessage = `${finalMessage}\n\n${focusedNodesBlock}`;
+	}
+
+	panelStore.exitNodePicker();
+
 	void thread.sendMessage(
 		finalMessage,
 		finalAttachments.length > 0 ? finalAttachments : undefined,
 		rootStore.pushRef,
 		handoffToSend,
 	);
+}
+
+function onToggleNodeContextPicker() {
+	panelStore.toggleNodePicker();
 }
 
 function handleStop() {
@@ -519,10 +575,16 @@ function onBackFromCustom() {
 					:is-workflow-builder-available="true"
 					:current-thread-id="thread.id"
 					:context-chips="contextChips"
-					:prefill-text="null"
+					:prefill-text="composerPrefill"
+					:show-node-context-picker="true"
+					:is-node-context-picker-active="panelStore.isNodePickerActive"
+					:placeholder-key="
+						panelStore.isNodePickerActive ? 'instanceAi.input.nodePicker.placeholder' : undefined
+					"
 					@submit="handleSubmit"
 					@stop="handleStop"
 					@dismiss-context-chip="dismissContextChip"
+					@toggle-node-context-picker="onToggleNodeContextPicker"
 				/>
 			</template>
 		</div>

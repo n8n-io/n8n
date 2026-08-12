@@ -1,30 +1,42 @@
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { useRouter } from 'vue-router';
 import { STORES } from '@n8n/stores';
 import { useToast } from '@n8n/composables/useToast';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 import { INSTANCE_AI_THREAD_VIEW } from './constants';
 import { useInstanceAiAvailable } from './composables/useInstanceAiAvailability';
 import { ensurePersonalProjectId } from './composables/useInstanceAiHandoff';
 import { useInstanceAiStore } from './instanceAi.store';
-import type { ProactiveOffer } from './instanceAiPanel.types';
+import type { InstanceAiContextNode, ProactiveOffer } from './instanceAiPanel.types';
 import { resolveQuickHelpThreadId } from './resolveQuickHelpThread';
 
-export type { ProactiveOffer } from './instanceAiPanel.types';
+export type { InstanceAiContextNode, ProactiveOffer } from './instanceAiPanel.types';
+
+export const nodeContextChipKey = (nodeId: string) => `node:${nodeId}`;
 
 export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () => {
 	const router = useRouter();
 	const toast = useToast();
 	const instanceAiStore = useInstanceAiStore();
 	const instanceAiAvailable = useInstanceAiAvailable();
+	const workflowsStore = useWorkflowsStore();
 
 	const isOpen = ref(false);
 	const activeThreadId = ref<string | null>(null);
 	/** Offer the composer is drafting — context chip + prefill; send is the user's. */
 	const pendingOffer = ref<ProactiveOffer | null>(null);
+	/** When true, canvas selection adds nodes as composer context chips. */
+	const isNodePickerActive = ref(false);
+	const contextNodes = ref<InstanceAiContextNode[]>([]);
 
 	const isAvailable = computed(() => instanceAiAvailable.value);
+	const hasContextNodes = computed(() => contextNodes.value.length > 0);
 
 	let seedInFlight = false;
 	let openInFlight = false;
@@ -75,7 +87,79 @@ export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () 
 	function close() {
 		isOpen.value = false;
 		pendingOffer.value = null;
+		exitNodePicker();
 	}
+
+	function exitNodePicker() {
+		isNodePickerActive.value = false;
+	}
+
+	function toggleNodePicker() {
+		if (!isOpen.value) return;
+		isNodePickerActive.value = !isNodePickerActive.value;
+	}
+
+	function resolveContextNode(nodeId: string): InstanceAiContextNode | null {
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const node = workflowDocumentStore.allNodes.find((candidate) => candidate.id === nodeId);
+		if (!node) return null;
+		return {
+			nodeId,
+			nodeName: node.name,
+			nodeType: node.type,
+		};
+	}
+
+	function addContextNodesFromSelection(nodeIds: string[]) {
+		if (!isNodePickerActive.value || nodeIds.length === 0) return;
+
+		const known = new Map(contextNodes.value.map((node) => [node.nodeId, node]));
+		let changed = false;
+
+		for (const nodeId of nodeIds) {
+			if (known.has(nodeId)) continue;
+			const next = resolveContextNode(nodeId);
+			if (!next) continue;
+			known.set(nodeId, next);
+			changed = true;
+		}
+
+		if (changed) {
+			contextNodes.value = [...known.values()];
+		}
+	}
+
+	/** Click a canvas node while picker mode is on — pin it, or unpin if already pinned. */
+	function toggleContextNode(nodeId: string) {
+		if (!isNodePickerActive.value) return;
+
+		if (contextNodes.value.some((node) => node.nodeId === nodeId)) {
+			removeContextNode(nodeId);
+			return;
+		}
+
+		const next = resolveContextNode(nodeId);
+		if (!next) return;
+		contextNodes.value = [...contextNodes.value, next];
+	}
+
+	function removeContextNode(nodeId: string) {
+		contextNodes.value = contextNodes.value.filter((node) => node.nodeId !== nodeId);
+	}
+
+	function clearContextNodes() {
+		contextNodes.value = [];
+	}
+
+	watch(
+		() => workflowsStore.workflowId,
+		() => {
+			clearContextNodes();
+			exitNodePicker();
+		},
+	);
 
 	async function toggle(): Promise<void> {
 		if (isOpen.value) {
@@ -139,6 +223,9 @@ export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () 
 		activeThreadId,
 		pendingOffer,
 		isAvailable,
+		isNodePickerActive,
+		contextNodes,
+		hasContextNodes,
 		open,
 		openOrCreate,
 		toggle,
@@ -146,5 +233,11 @@ export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () 
 		openWithSeed,
 		dismissPendingOffer,
 		expandToFullView,
+		toggleNodePicker,
+		exitNodePicker,
+		addContextNodesFromSelection,
+		toggleContextNode,
+		removeContextNode,
+		clearContextNodes,
 	};
 });

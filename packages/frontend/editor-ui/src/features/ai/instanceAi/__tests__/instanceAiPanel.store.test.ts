@@ -48,6 +48,22 @@ vi.mock('../instanceAi.store', () => ({
 	}),
 }));
 
+vi.mock('@/app/stores/workflows.store', () => ({
+	useWorkflowsStore: () => ({
+		workflowId: 'workflow-1',
+	}),
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	createWorkflowDocumentId: (id: string) => id,
+	useWorkflowDocumentStore: () => ({
+		allNodes: [
+			{ id: 'node-1', name: 'Post to Slack', type: 'n8n-nodes-base.slack' },
+			{ id: 'node-2', name: 'Send Email', type: 'n8n-nodes-base.gmail' },
+		],
+	}),
+}));
+
 import { useInstanceAiPanelStore } from '../instanceAiPanel.store';
 import type { ProactiveOffer } from '../instanceAiPanel.types';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
@@ -161,5 +177,61 @@ describe('useInstanceAiPanelStore', () => {
 		await store.expandToFullView();
 
 		expect(mocks.routerPush).not.toHaveBeenCalled();
+	});
+
+	it('toggles node picker only while the panel is open', () => {
+		const store = useInstanceAiPanelStore();
+
+		store.toggleNodePicker();
+		expect(store.isNodePickerActive).toBe(false);
+
+		store.open();
+		store.toggleNodePicker();
+		expect(store.isNodePickerActive).toBe(true);
+
+		store.close();
+		expect(store.isNodePickerActive).toBe(false);
+	});
+
+	it('adds selected canvas nodes as context while the picker is active', () => {
+		const store = useInstanceAiPanelStore();
+		store.open();
+		store.toggleNodePicker();
+
+		store.addContextNodesFromSelection(['node-1', 'node-2', 'missing']);
+
+		expect(store.contextNodes).toEqual([
+			{ nodeId: 'node-1', nodeName: 'Post to Slack', nodeType: 'n8n-nodes-base.slack' },
+			{ nodeId: 'node-2', nodeName: 'Send Email', nodeType: 'n8n-nodes-base.gmail' },
+		]);
+
+		store.removeContextNode('node-1');
+		expect(store.contextNodes).toEqual([
+			{ nodeId: 'node-2', nodeName: 'Send Email', nodeType: 'n8n-nodes-base.gmail' },
+		]);
+	});
+
+	it('toggles a node in and out of context on click', () => {
+		const store = useInstanceAiPanelStore();
+		store.open();
+		store.toggleNodePicker();
+
+		store.toggleContextNode('node-1');
+		expect(store.contextNodes).toEqual([
+			{ nodeId: 'node-1', nodeName: 'Post to Slack', nodeType: 'n8n-nodes-base.slack' },
+		]);
+
+		store.toggleContextNode('node-1');
+		expect(store.contextNodes).toEqual([]);
+	});
+
+	it('ignores canvas selection when the picker is inactive', () => {
+		const store = useInstanceAiPanelStore();
+		store.open();
+
+		store.addContextNodesFromSelection(['node-1']);
+		store.toggleContextNode('node-1');
+
+		expect(store.contextNodes).toEqual([]);
 	});
 });

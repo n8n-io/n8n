@@ -126,6 +126,7 @@ import {
 	summarizeFailedExecution,
 	useInstanceAiExecutionErrorOffer,
 } from '@/features/ai/instanceAi/composables/useInstanceAiExecutionErrorOffer';
+import { useInstanceAiEmptyWorkflowOffer } from '@/features/ai/instanceAi/composables/useInstanceAiEmptyWorkflowOffer';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -337,6 +338,20 @@ const isCanvasReadOnly = computed(() => {
 		externalReadOnly.value
 	);
 });
+
+/**
+ * Brand-new empty canvas — invite to build after the user settles. Dropped as
+ * soon as a first node lands or the route is no longer `?new=true`.
+ */
+const emptyNewWorkflow = computed(() => {
+	if (!isNewWorkflowRoute.value || isLoading.value || isCanvasReadOnly.value) return null;
+	const document = workflowDocumentStore?.value;
+	if (!document || document.allNodes.length !== 0) return null;
+	const id = workflowId.value;
+	if (!id) return null;
+	return { workflowId: id };
+});
+useInstanceAiEmptyWorkflowOffer(emptyNewWorkflow);
 
 const groupExpansionMode = computed<GroupExpansionMode | undefined>(() => {
 	return isDemoRoute.value ? 'all' : externalExpandGroups.value;

@@ -199,6 +199,42 @@ describe('WorkflowLayout', () => {
 		expect(mockPushDisconnect).toHaveBeenCalledOnce();
 	});
 
+	it('should force-reload the open workflow when reloadWorkflow is emitted', async () => {
+		const { useWorkflowInitialization } = await import(
+			'@/app/composables/useWorkflowInitialization'
+		);
+		renderComponent();
+		const state = vi.mocked(useWorkflowInitialization).mock.results.at(-1)?.value as {
+			initializeWorkflow: ReturnType<typeof vi.fn>;
+		};
+
+		const { nodeViewEventBus } = await import('@/app/event-bus/node-view');
+		nodeViewEventBus.emit('reloadWorkflow', { workflowId: 'other-id' });
+		await Promise.resolve();
+		expect(state.initializeWorkflow).toHaveBeenCalledTimes(1); // mount only
+
+		nodeViewEventBus.emit('reloadWorkflow', { workflowId: 'test-workflow-id' });
+		await Promise.resolve();
+		expect(state.initializeWorkflow).toHaveBeenCalledWith(true);
+	});
+
+	it('should stop listening for reloadWorkflow on unmount', async () => {
+		const { useWorkflowInitialization } = await import(
+			'@/app/composables/useWorkflowInitialization'
+		);
+		const { unmount } = renderComponent();
+		const state = vi.mocked(useWorkflowInitialization).mock.results.at(-1)?.value as {
+			initializeWorkflow: ReturnType<typeof vi.fn>;
+		};
+		unmount();
+
+		const { nodeViewEventBus } = await import('@/app/event-bus/node-view');
+		nodeViewEventBus.emit('reloadWorkflow', { workflowId: 'test-workflow-id' });
+		await Promise.resolve();
+
+		expect(state.initializeWorkflow).toHaveBeenCalledTimes(1); // mount only
+	});
+
 	it('should show LoadingView instead of RouterView while the document store is not yet available', async () => {
 		// During a workflow load/switch the provided document store is briefly null (disposed
 		// before the new one is created). NodeView must not mount in that window, or its strict

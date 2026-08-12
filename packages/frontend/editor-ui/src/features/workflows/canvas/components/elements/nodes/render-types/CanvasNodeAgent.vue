@@ -20,10 +20,12 @@ import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
 import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
 import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { useInstanceAiPanelStore } from '@/features/ai/instanceAi/instanceAiPanel.store';
 
 // Width comes from the shared constant so canvas placement and tidy-up layout
 // stay in sync with the rendered card.
 const cardStyle = { width: `${AGENT_NODE_SIZE[0]}px` };
+const instanceAiPanelStore = useInstanceAiPanelStore();
 
 const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
@@ -53,6 +55,11 @@ const renderOptions = computed(() => render.value.options as CanvasNodeAgentRend
 
 const isInline = computed(() => renderOptions.value.agentSource === 'inline');
 
+const isNodePickerTarget = computed(() => instanceAiPanelStore.isNodePickerActive);
+const isNodePickerPinned = computed(() =>
+	instanceAiPanelStore.contextNodes.some((node) => node.nodeId === id.value),
+);
+
 // Mirror CanvasNodeDefault's state classes so the card shows the same run
 // feedback as every other node (green border + check on success, animated
 // glow while running/waiting, red border on error).
@@ -62,6 +69,8 @@ const classes = computed(() => ({
 	[$style.error]: executionStatus.value === 'error' || executionStatus.value === 'crashed',
 	[$style.running]: Boolean(executionRunning.value || executionWaitingForNext.value),
 	[$style.waiting]: Boolean(executionWaiting.value || executionStatus.value === 'waiting'),
+	[$style.nodePickerTarget]: isNodePickerTarget.value,
+	[$style.nodePickerPinned]: isNodePickerPinned.value,
 }));
 
 const agentResourceLocator = computed<INodeParameterResourceLocator>(
@@ -418,6 +427,19 @@ watch(
  */
 .selected {
 	box-shadow: 0 0 0 4px var(--canvas--color--selected);
+}
+
+.nodePickerTarget {
+	cursor: pointer;
+	transition: box-shadow 0.12s ease;
+
+	&:hover {
+		box-shadow: 0 0 0 4px color-mix(in srgb, var(--color--primary) 28%, transparent);
+	}
+}
+
+.nodePickerPinned {
+	box-shadow: 0 0 0 4px color-mix(in srgb, var(--color--primary) 28%, transparent);
 }
 
 .success::after,

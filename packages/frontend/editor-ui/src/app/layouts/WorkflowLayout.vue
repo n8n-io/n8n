@@ -16,6 +16,7 @@ import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { nodeViewEventBus } from '@/app/event-bus/node-view';
 
 const { layoutProps } = useLayoutProps();
 const assistantStore = useAssistantStore();
@@ -45,9 +46,15 @@ const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessag
 // thread. Editors embedded elsewhere get their host's capability — or none.
 provide(InstanceAiEditorCapabilityKey, useInstanceAiHandoffCapability());
 
+async function onReloadWorkflow({ workflowId: id }: { workflowId: string }) {
+	if (!id || id !== workflowId.value) return;
+	await initializeWorkflow(true);
+}
+
 onMounted(async () => {
 	pushConnectionStore.pushConnect();
 	setupPostMessages();
+	nodeViewEventBus.on('reloadWorkflow', onReloadWorkflow);
 	await initializeData();
 	await initializeWorkflow();
 });
@@ -76,6 +83,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+	nodeViewEventBus.off('reloadWorkflow', onReloadWorkflow);
 	pushConnectionStore.pushDisconnect();
 	cleanupPostMessages();
 	cleanup();

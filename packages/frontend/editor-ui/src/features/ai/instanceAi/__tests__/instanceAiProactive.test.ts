@@ -3,8 +3,11 @@ import {
 	CONTEXT_VALUE_MAX_LENGTH,
 	buildContextBlock,
 	buildCredentialErrorSeedMessage,
+	buildEmptyWorkflowSeedMessage,
 	buildExecutionErrorSeedMessage,
+	buildFocusedNodesContextBlock,
 	credentialErrorOfferKey,
+	emptyWorkflowOfferKey,
 	executionErrorOfferKey,
 	extractContextBlocks,
 	getContextBlockField,
@@ -98,6 +101,28 @@ describe('buildContextBlock', () => {
 
 		expect(stripContextBlocks(block)).toBe('');
 		expect(getContextBlockType(block)).toBe('execution-error');
+	});
+});
+
+describe('buildFocusedNodesContextBlock', () => {
+	it('lists pinned nodes for the agent', () => {
+		const block = buildFocusedNodesContextBlock([
+			{ nodeName: 'Post to Slack', nodeType: 'n8n-nodes-base.slack' },
+			{ nodeName: 'Say Hi', nodeType: 'n8n-nodes-base.slack' },
+		]);
+
+		expect(block).toBe(
+			[
+				'<context type="focused-nodes">',
+				'nodes: Post to Slack (n8n-nodes-base.slack), Say Hi (n8n-nodes-base.slack)',
+				'</context>',
+			].join('\n'),
+		);
+		expect(getContextBlockType(block)).toBe('focused-nodes');
+	});
+
+	it('returns empty when no nodes are pinned', () => {
+		expect(buildFocusedNodesContextBlock([])).toBe('');
 	});
 });
 
@@ -258,6 +283,10 @@ describe('offer keys', () => {
 			'credential-error:slackApi:cred-1:'.length + 64,
 		);
 	});
+
+	it('scopes empty-workflow offers by workflow id', () => {
+		expect(emptyWorkflowOfferKey('wf-new-1')).toBe('empty-workflow:wf-new-1');
+	});
 });
 
 describe('buildExecutionErrorSeedMessage', () => {
@@ -334,5 +363,11 @@ describe('buildCredentialErrorSeedMessage', () => {
 		expect(message).toContain('credential: My Slack account (type: slackApi)');
 		expect(message).toContain('node: Send message');
 		expect(message).toContain('message: invalid_auth');
+	});
+});
+
+describe('buildEmptyWorkflowSeedMessage', () => {
+	it('returns only the build invite with no context block', () => {
+		expect(buildEmptyWorkflowSeedMessage()).toBe('instanceAi.proactive.emptyWorkflow.prompt');
 	});
 });
