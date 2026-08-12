@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+	N8nActionDropdown,
 	N8nButton,
 	N8nIconButton,
 	N8nInput,
@@ -95,6 +96,12 @@ function remove(index: number) {
 function append(kind: UiActionKind) {
 	emit('update', [...props.steps, createStep(kind)]);
 }
+
+const addItems = ACTION_KINDS.map((kind) => ({
+	id: kind.kind,
+	label: kind.short,
+	icon: kind.icon,
+}));
 
 /** The step's own trigger stays in the list even when it lives in another workflow. */
 function optionsFor(url: string): Array<{ label: string; url: string }> {
@@ -275,18 +282,18 @@ async function onCreate(index: number) {
 			Nothing happens yet.
 		</N8nText>
 
-		<div :class="$style.add">
-			<N8nButton
-				v-for="kind in ACTION_KINDS"
-				:key="kind.kind"
-				variant="ghost"
-				size="mini"
-				:disabled="disabled"
-				@click="append(kind.kind)"
-			>
-				+ {{ kind.short }}
-			</N8nButton>
-		</div>
+		<N8nActionDropdown
+			:items="addItems"
+			placement="bottom-start"
+			:disabled="disabled"
+			@select="append"
+		>
+			<template #activator>
+				<N8nButton variant="ghost" size="mini" icon="plus" :disabled="disabled">
+					Add step
+				</N8nButton>
+			</template>
+		</N8nActionDropdown>
 	</div>
 </template>
 
@@ -338,11 +345,5 @@ async function onCreate(index: number) {
 .narrow {
 	width: 96px;
 	flex-shrink: 0;
-}
-
-.add {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--5xs);
 }
 </style>

@@ -37,8 +37,10 @@ describe('normaliseAction', () => {
 		expect(normaliseAction(chain)).toEqual(chain);
 	});
 
-	it('drops a webhook step that has no url', () => {
-		expect(normaliseAction([{ kind: 'webhook', url: '' }])).toEqual([]);
+	it('keeps a webhook step that has no url yet, since a step can be added before it is pointed at a trigger', () => {
+		expect(normaliseAction([{ kind: 'webhook', url: '' }])).toEqual([
+			{ kind: 'webhook', url: '', method: 'POST' },
+		]);
 	});
 
 	it('drops a step of a kind it does not know', () => {
