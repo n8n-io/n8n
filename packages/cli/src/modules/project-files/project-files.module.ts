@@ -43,4 +43,10 @@ export class ProjectFilesModule implements ModuleInterface {
 
 		return [ProjectFile];
 	}
+
+	async context() {
+		const { ProjectFileProxyService } = await import('./project-file-proxy.service.js');
+
+		return { projectFileProxyProvider: Container.get(ProjectFileProxyService) };
+	}
 }

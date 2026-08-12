@@ -204,7 +204,13 @@ export class ProjectFileService {
 			file.source.type === 'path'
 				? // Takes a path and streams internally, so a large file never lands in memory.
 					await this.binaryDataService.copyBinaryFile(location, binaryData, file.source.path)
-				: await this.binaryDataService.store(location, file.source.buffer, binaryData);
+				: await this.binaryDataService.store(
+						location,
+						// `store` accepts either, so a stream is passed straight through
+						// instead of being buffered first.
+						file.source.type === 'stream' ? file.source.stream : file.source.buffer,
+						binaryData,
+					);
 
 		if (!stored.id) {
 			// The in-memory `default` binary mode returns the bytes inline and no id,

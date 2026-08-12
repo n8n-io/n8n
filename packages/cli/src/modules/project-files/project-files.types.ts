@@ -1,4 +1,5 @@
 import type { AuthenticatedRequest } from '@n8n/db';
+import type { Readable } from 'node:stream';
 
 /**
  * Who performed an operation on a project file.
@@ -14,7 +15,10 @@ export type ProjectFileActor =
 /** Where the bytes of an incoming file come from. */
 export type ProjectFileSource =
 	/** A temp file on disk, e.g. staged by multer. Streamed, never fully buffered. */
-	{ type: 'path'; path: string } | { type: 'buffer'; buffer: Buffer };
+	| { type: 'path'; path: string }
+	| { type: 'buffer'; buffer: Buffer }
+	/** An open read stream, e.g. a persisted execution binary. Never fully buffered. */
+	| { type: 'stream'; stream: Readable };
 
 export type ProjectFileListOptions = {
 	take?: number;
