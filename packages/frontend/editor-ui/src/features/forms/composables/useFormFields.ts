@@ -373,6 +373,11 @@ export function useFormFields(nodeId: string) {
 				nodes,
 				versionId: workflowDocumentStore.value.versionId,
 			});
+			// Replace the whole node list to sync the saved params. `setNodes`
+			// doesn't mark `uiStore.stateIsDirty` (unlike `setNodeParameters`), so
+			// the incoming workflow-update push doesn't misfire the "Workflow
+			// updated elsewhere" warning against our own save.
+			workflowDocumentStore.value.setNodes(nodes);
 		} finally {
 			isSaving.value = false;
 		}

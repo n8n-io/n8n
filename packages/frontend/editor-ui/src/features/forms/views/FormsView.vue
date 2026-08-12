@@ -1,23 +1,26 @@
 <script lang="ts" setup>
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
-import { FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
+import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
+import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
+import { FORM_TRIGGER_NODE_TYPE, VIEWS } from '@/app/constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type {
 	BaseFilters,
 	Resource,
 	SortingAndPaginationUpdates,
 	WorkflowResource,
 } from '@/Interface';
-import { N8nHeading, N8nInputLabel, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/app/constants';
 import { FORMS_WORKFLOW_VIEW } from '../constants';
 import { useI18n } from '@n8n/i18n';
 
 const workflowsListStore = useWorkflowsListStore();
+const insightsStore = useInsightsStore();
 const router = useRouter();
 const i18n = useI18n();
 
@@ -27,7 +30,9 @@ interface FormsFilters extends BaseFilters {
 	status: string;
 }
 
-// Intercept WorkflowCard's built-in navigation and redirect to FormsWorkflowView
+// Intercept WorkflowCard's built-in navigation to VIEWS.WORKFLOW so clicking a
+// card opens the form preview instead of the workflow editor. The guard is
+// installed while this view is mounted and removed on unmount.
 let removeGuard: (() => void) | undefined;
 onMounted(() => {
 	removeGuard = router.beforeEach((to) => {
@@ -51,6 +56,8 @@ const statusFilterOptions = computed(() => [
 	{ label: i18n.baseText('workflows.filters.status.active'), value: StatusFilter.ACTIVE },
 	{ label: i18n.baseText('workflows.filters.status.deactivated'), value: StatusFilter.DEACTIVATED },
 ]);
+
+const showInsights = computed(() => insightsStore.isSummaryEnabled && workflows.value.length > 0);
 
 async function initialize() {
 	loading.value = true;
@@ -90,10 +97,9 @@ const onPaginationAndSort = (payload: SortingAndPaginationUpdates) => {
 const filteredWorkflows = computed<Resource[]>(() => {
 	const q = filters.value.search.toLowerCase();
 	const projectId = filters.value.homeProject;
-
 	const status = filters.value.status;
 
-	let result = workflows.value.filter((w) => {
+	const result = workflows.value.filter((w) => {
 		if (q && !w.name.toLowerCase().includes(q)) return false;
 		if (projectId && w.homeProject?.id !== projectId) return false;
 		if (status === StatusFilter.ACTIVE && !w.active) return false;
@@ -101,7 +107,7 @@ const filteredWorkflows = computed<Resource[]>(() => {
 		return true;
 	});
 
-	result = [...result].sort((a, b) => {
+	return [...result].sort((a, b) => {
 		switch (sortBy.value) {
 			case 'lastUpdated':
 				return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
@@ -115,15 +121,12 @@ const filteredWorkflows = computed<Resource[]>(() => {
 				return 0;
 		}
 	});
-
-	return result;
 });
 </script>
 
 <template>
 	<ResourcesListLayout
 		resource-key="forms-workflows"
-		@click:add="() => {}"
 		type="list-paginated"
 		:resources="filteredWorkflows"
 		:type-props="{ itemSize: 80 }"
@@ -133,13 +136,18 @@ const filteredWorkflows = computed<Resource[]>(() => {
 		:dont-perform-sorting-and-filtering="true"
 		:total-items="filteredWorkflows.length"
 		v-model:filters="filters"
+		@click:add="() => {}"
 		@update:pagination-and-sort="onPaginationAndSort"
 	>
 		<template #header>
-			<div :class="$style.header">
-				<N8nHeading bold tag="h2" size="xlarge">Forms</N8nHeading>
-				<N8nText color="text-light">Your workflows that start with a form</N8nText>
-			</div>
+			<ProjectHeader>
+				<InsightsSummary
+					v-if="showInsights"
+					:loading="insightsStore.weeklySummary.isLoading"
+					:summary="insightsStore.weeklySummary.state"
+					time-range="week"
+				/>
+			</ProjectHeader>
 		</template>
 		<template #item="{ item }">
 			<WorkflowCard
@@ -172,19 +180,17 @@ const filteredWorkflows = computed<Resource[]>(() => {
 			</div>
 		</template>
 		<template #empty>
-			<div style="text-align: center; padding: var(--spacing--2xl)">
-				<p>No form workflows</p>
-				<p>Create a workflow with a Form Trigger node to see it here.</p>
+			<div :class="$style.empty">
+				<p>{{ i18n.baseText('forms.list.emptyState.title') }}</p>
+				<p>{{ i18n.baseText('forms.list.emptyState.description') }}</p>
 			</div>
 		</template>
 	</ResourcesListLayout>
 </template>
 
 <style lang="scss" module>
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	padding-bottom: var(--spacing--lg);
+.empty {
+	text-align: center;
+	padding: var(--spacing--2xl);
 }
 </style>

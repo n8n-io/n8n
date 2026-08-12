@@ -316,6 +316,14 @@ export function useFormAppearance(nodeId: string) {
 				nodes,
 				versionId: workflowDocumentStore.value.versionId,
 			});
+			// `updateWorkflow` only writes versionId/checksum back to the document
+			// store; nodes stay stale. Replace the whole node list so `hasUnsavedChanges`
+			// and downstream computeds see the new state. `setNodes` doesn't mark
+			// `uiStore.stateIsDirty` (unlike `setNodeParameters`), which is important
+			// here because the Forms view is read-only and the backend broadcasts a
+			// workflow-update push right after this PATCH — a stale dirty flag would
+			// trigger the "Workflow updated elsewhere" warning against our own save.
+			workflowDocumentStore.value.setNodes(nodes);
 		} finally {
 			isSaving.value = false;
 		}

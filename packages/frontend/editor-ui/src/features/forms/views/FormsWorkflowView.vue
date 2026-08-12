@@ -13,7 +13,7 @@ import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useFormsLayout } from '../composables/useFormsLayout';
 import { FORM_STEP_NON_FORM_NODE_SCALE, FORMS_WORKFLOW_VIEW } from '../constants';
 import { N8nButton, N8nLoading } from '@n8n/design-system';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/app/stores/ui.store';
 
@@ -26,7 +26,7 @@ const uiStore = useUIStore();
 const loading = ref(true);
 
 const containerId = `forms-canvas-${Math.random().toString(36).slice(2)}`;
-const { layoutReady, refreshLayout } = useFormsLayout(containerId);
+const { layoutReady } = useFormsLayout(containerId);
 
 const FORM_NODE_TYPES = new Set([FORM_TRIGGER_NODE_TYPE, FORM_NODE_TYPE]);
 
@@ -41,15 +41,6 @@ const formNodeRenderOverrides: Partial<Record<string, CanvasNodeRenderType>> = {
 onMounted(() => {
 	loading.value = false;
 });
-
-watch(
-	() => uiStore.modalsById[FORM_STEP_EDIT_MODAL_KEY]?.open,
-	(isOpen, wasOpen) => {
-		if (wasOpen && !isOpen) {
-			void nextTick(() => refreshLayout());
-		}
-	},
-);
 
 const showOpenWorkflowButton = computed(() => route.name === FORMS_WORKFLOW_VIEW);
 

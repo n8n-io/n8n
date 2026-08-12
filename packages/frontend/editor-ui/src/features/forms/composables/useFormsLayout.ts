@@ -246,9 +246,5 @@ export function useFormsLayout(vueFlowId: string) {
 		off();
 	});
 
-	function refreshLayout() {
-		applyLayout({ doFitView: false });
-	}
-
-	return { layoutReady, refreshLayout };
+	return { layoutReady };
 }

@@ -12,8 +12,6 @@ import { useProjectsStore } from '../projects.store';
 import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
-import { FORMS_VIEW } from '@/features/forms/constants';
-import { useFormsStore } from '@/features/forms/stores/forms.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
@@ -38,7 +36,6 @@ const globalEntityCreation = useGlobalEntityCreation();
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-const formsStore = useFormsStore();
 const favoritesStore = useFavoritesStore();
 
 const {
@@ -143,23 +140,13 @@ const chat = computed<IMenuItem>(() => ({
 	preview: true,
 }));
 
-const forms = computed<IMenuItem>(() => ({
-	id: 'forms',
-	icon: 'clipboard-list',
-	label: locale.baseText('projects.menu.forms'),
-	route: { to: { name: FORMS_VIEW } },
-}));
-
 async function onSourceControlPull() {
 	// Update myProjects for the sidebar display
 	await projectsStore.getMyProjects();
 }
 
 onBeforeMount(async () => {
-	await Promise.all([
-		usersStore.fetchUsers({ filter: { isPending: false }, take: 2 }),
-		formsStore.checkForFormWorkflows(),
-	]);
+	await usersStore.fetchUsers({ filter: { isPending: false }, take: 2 });
 	sourceControlEventBus.on('pull', onSourceControlPull);
 });
 
@@ -214,13 +201,6 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'chat'"
 				data-test-id="project-chat-menu-item"
-			/>
-			<N8nMenuItem
-				v-if="formsStore.hasFormWorkflows !== false"
-				:item="forms"
-				:compact="props.collapsed"
-				:active="activeTabId === 'forms'"
-				data-test-id="project-forms-menu-item"
 			/>
 		</div>
 		<template v-if="hasFavorites">
