@@ -274,7 +274,7 @@ describe('WorkflowReviewActivityFeed', () => {
 					{
 						...systemEntry,
 						type: 'review.version_updated',
-						data: { fromVersionId: 'version-1', toVersionId: 'version-2' },
+						data: { workflowId: 'wf-1', fromVersionId: 'version-1', toVersionId: 'version-2' },
 					},
 					{
 						testId: 'workflow-review-activity-version-updated',

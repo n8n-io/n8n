@@ -47,6 +47,11 @@ export type WorkflowReviewDecisionActivityData = z.infer<
 >;
 
 export const workflowReviewVersionUpdatedActivityDataSchema = z.object({
+	/**
+	 * Here rather than in the entity's `workflowId` column: that column's FK cascades, so a
+	 * workflow delete would silently take these entries out of an append-only feed.
+	 */
+	workflowId: z.string(),
 	fromVersionId: z.string().nullable(),
 	toVersionId: z.string().nullable(),
 });

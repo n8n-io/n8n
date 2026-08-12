@@ -43,9 +43,16 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 
 	/**
 	 * Scopes an entry to one workflow; `null` for review-level entries such as comments and
-	 * decisions. Only `review.version_updated` sets it. A column rather than a key in `data` so
-	 * the feed can query and filter on it directly, for instance to leave out entries about
-	 * workflows the reader may not open.
+	 * decisions. A column rather than a key in `data` so the feed can query and filter on it
+	 * directly, for instance to leave out entries about workflows the reader may not open.
+	 *
+	 * Nothing writes it yet, deliberately: the FK is `ON DELETE CASCADE`, so setting it means
+	 * accepting that an ordinary workflow delete removes those entries from an append-only
+	 * feed. `review.version_updated` keeps its `workflowId` in `data` for that reason. The
+	 * first writer should land together with the reader that filters on it — which is also a
+	 * precondition for relaxing `CreateWorkflowReviewRequestDto.workflows.length(1)`, since a
+	 * multi-workflow review would otherwise show entries about workflows the reader may not
+	 * open.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowId: string | null;

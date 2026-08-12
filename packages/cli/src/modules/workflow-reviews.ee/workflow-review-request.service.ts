@@ -592,9 +592,12 @@ export class WorkflowReviewRequestService {
 					{
 						workflowReviewRequestId,
 						type: 'review.version_updated',
-						data: { fromVersionId, toVersionId: dto.workflowVersionId },
+						data: {
+							workflowId: dto.workflowId,
+							fromVersionId,
+							toVersionId: dto.workflowVersionId,
+						},
 						createdById: user.id,
-						workflowId: dto.workflowId,
 					},
 					ctx,
 				);
