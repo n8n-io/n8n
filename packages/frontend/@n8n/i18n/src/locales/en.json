@@ -6960,7 +6960,6 @@
 	"instanceAi.planReview.updating": "Updating plan...",
 	"instanceAi.message.retry": "Retry",
 	"instanceAi.input.amendPlaceholder": "Amend the {role} agent...",
-	"instanceAi.proactiveOffer.accept": "Get help",
 	"instanceAi.proactiveOffer.dismiss": "Dismiss",
 	"instanceAi.proactiveOffer.demo.title": "I can help with that",
 	"instanceAi.proactiveOffer.demo.detail": "Something looks stuck. I can walk you through what happened.",

@@ -8,8 +8,8 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	useI18n: () => ({
 		baseText: (key: string) => {
 			const map: Record<string, string> = {
-				'instanceAi.proactiveOffer.accept': 'Get help',
 				'instanceAi.proactiveOffer.dismiss': 'Dismiss',
+				'aiAssistant.name': 'n8n AI',
 			};
 			return map[key] ?? key;
 		},
@@ -24,17 +24,16 @@ const renderComponent = createComponentRenderer(InstanceAiOfferBubble, {
 });
 
 describe('InstanceAiOfferBubble', () => {
-	it('renders the title, detail, and actions', () => {
-		const { getByTestId } = renderComponent();
+	it('renders the title and detail', () => {
+		const { getByTestId, queryByText } = renderComponent();
 
 		const bubble = getByTestId('instance-ai-offer-bubble');
 		expect(bubble).toHaveTextContent('I can help with that');
 		expect(bubble).toHaveTextContent('HTTP Request failed');
-		expect(getByTestId('instance-ai-offer-bubble-dismiss')).toHaveTextContent('Dismiss');
-		expect(getByTestId('instance-ai-offer-bubble-accept')).toHaveTextContent('Get help');
+		expect(queryByText('Get help')).not.toBeInTheDocument();
 	});
 
-	it('emits accept and dismiss', async () => {
+	it('emits accept when the message is clicked and dismiss from the close control', async () => {
 		const user = userEvent.setup();
 		const { emitted, getByTestId } = renderComponent();
 

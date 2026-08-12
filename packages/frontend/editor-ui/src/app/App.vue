@@ -7,6 +7,7 @@ import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 import E2ETestModeMarker from '@/app/components/app/E2ETestModeMarker.vue';
 import InstanceAiProactiveOfferHost from '@/features/ai/instanceAi/components/InstanceAiProactiveOfferHost.vue';
+import InstanceAiLauncherDock from '@/features/ai/instanceAi/components/InstanceAiLauncherDock.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useBackendStatus } from '@/app/composables/useBackendStatus';
@@ -135,6 +136,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		</AppLayout>
 		<AppModals />
 		<InstanceAiProactiveOfferHost />
+		<InstanceAiLauncherDock />
 		<AppCommandBar />
 		<template #overlays>
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />

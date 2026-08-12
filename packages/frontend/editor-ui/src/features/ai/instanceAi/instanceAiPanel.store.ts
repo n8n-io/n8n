@@ -28,15 +28,62 @@ export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () 
 	const isAvailable = computed(() => instanceAiAvailable.value);
 
 	let seedInFlight = false;
+	let openInFlight = false;
+
+	async function ensureActiveThread(): Promise<string | null> {
+		if (activeThreadId.value) return activeThreadId.value;
+
+		const projectId = await ensurePersonalProjectId();
+		if (!projectId) {
+			toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+			return null;
+		}
+
+		const threadId = await resolveQuickHelpThreadId(projectId);
+		try {
+			await instanceAiStore.syncThread(threadId, projectId, {
+				source: 'assistant_page',
+				origin: 'internal',
+			});
+		} catch {
+			toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+			return null;
+		}
+
+		activeThreadId.value = threadId;
+		instanceAiStore.getOrCreateRuntime(threadId, projectId);
+		return threadId;
+	}
 
 	function open() {
 		if (!isAvailable.value) return;
 		isOpen.value = true;
 	}
 
+	async function openOrCreate(): Promise<boolean> {
+		if (!isAvailable.value || openInFlight) return false;
+		openInFlight = true;
+		try {
+			const threadId = await ensureActiveThread();
+			if (!threadId) return false;
+			isOpen.value = true;
+			return true;
+		} finally {
+			openInFlight = false;
+		}
+	}
+
 	function close() {
 		isOpen.value = false;
 		pendingOffer.value = null;
+	}
+
+	async function toggle(): Promise<void> {
+		if (isOpen.value) {
+			close();
+			return;
+		}
+		await openOrCreate();
 	}
 
 	/**
@@ -90,6 +137,8 @@ export const useInstanceAiPanelStore = defineStore(STORES.INSTANCE_AI_PANEL, () 
 		pendingOffer,
 		isAvailable,
 		open,
+		openOrCreate,
+		toggle,
 		close,
 		openWithSeed,
 		expandToFullView,
