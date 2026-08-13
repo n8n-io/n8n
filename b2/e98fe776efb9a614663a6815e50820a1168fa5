@@ -1,0 +1,27 @@
+packages/@n8n/utils/src/search/sublime-search.test.ts
+  s_3a323ce6ef5756::t_1e5457a7cbc9b6 27
+  s_3a323ce6ef5756::t_e383e31ef36dcd 68
+  s_3a323ce6ef5756::t_2e735634e7a313 64-66,69,71-75
+  s_3a323ce6ef5756::t_2237f36c880e3c 12-13
+  s_3a323ce6ef5756::t_901e1922112697 44-63,67,70,76
+packages/@n8n/utils/src/search/sublime-search.ts
+  s_3a323ce6ef5756::t_2874e8823fdb04 144,148-150,157-158,165,170-178,181
+  s_3a323ce6ef5756::t_67f20cd9b6ed64 15-27
+  s_3a323ce6ef5756::t_c18dc51c8abae4 182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b2e98fe776efb9a614663a6815e50820a1168fa5",
+  "prompts": {},
+  "sessions": {
+    "s_3a323ce6ef5756": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b280cc7-2aa7-411b-b755-f5d92f9ab557",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

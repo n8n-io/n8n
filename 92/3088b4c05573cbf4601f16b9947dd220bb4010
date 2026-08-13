@@ -1,0 +1,68 @@
+packages/@n8n/config/src/configs/__tests__/transport.config.test.ts
+  s_3e2de9c50fdafd::t_508bf5b2b264f1 16,23
+  s_3e2de9c50fdafd::t_0d818f48ac1d6c 46-53
+packages/@n8n/config/test/config.test.ts
+  s_3e2de9c50fdafd::t_d2e1e9998f3f17 409
+packages/cli/src/commands/hypervisor.ts
+  s_3e2de9c50fdafd::t_3d1fe362f67c0a 9-11
+  s_3e2de9c50fdafd::t_dd8a3dcd323c5b 42-47,54,65,67-71
+packages/cli/src/modules/instance-registry/storage/instance-storage.interface.ts
+  s_3e2de9c50fdafd::t_0e0c38202b3683 9
+packages/cli/src/modules/instance-registry/instance-registry.service.ts
+  s_3e2de9c50fdafd::t_1b8a467bd715e7 111,113-118
+  s_3e2de9c50fdafd::t_d0ed17a2d5afd5 31
+  s_3e2de9c50fdafd::t_c345f32c08a40d 92
+  s_3e2de9c50fdafd::t_ecebcebed33432 8
+packages/cli/src/scaling/__tests__/hypervisor-message-router.test.ts
+  s_3e2de9c50fdafd::t_a720a7bb101b55 1-62
+packages/cli/src/modules/instance-registry/storage/__tests__/ipc-instance-storage.test.ts
+  s_3e2de9c50fdafd::t_30b2bcc1acc847 1-100,106-110,113-124,127-128,130-134,136-137
+  s_3e2de9c50fdafd::t_435842c854a98e 101-105,135
+  s_3e2de9c50fdafd::t_22fff4d7d01d7c 111-112,125-126,129
+  s_3e2de9c50fdafd::t_cd37c9a1c8240e 138-140
+packages/cli/src/commands/__tests__/hypervisor.test.ts
+  s_3e2de9c50fdafd::t_c365936d41e1b1 11
+  s_3e2de9c50fdafd::t_dd9a4277b1a5ca 43-52
+packages/cli/src/scaling/hypervisor-leader-election.ts
+  s_3e2de9c50fdafd::t_6c1f6b9ae336d5 9-10
+  s_3e2de9c50fdafd::t_e62871c457befc 112-182
+packages/cli/src/scaling/__tests__/transport-mode.service.test.ts
+  s_3e2de9c50fdafd::t_f1505c5d9f718c 16
+  s_3e2de9c50fdafd::t_a9624758336cea 29-37
+packages/@n8n/config/src/configs/transport.config.ts
+  s_3e2de9c50fdafd::t_62d8472cc817d1 30-37
+  s_3e2de9c50fdafd::t_f370333cd8b1c7 8-10
+packages/cli/src/scaling/transport-mode.service.ts
+  s_3e2de9c50fdafd::t_faee6d0c1b7603 6-11
+  s_3e2de9c50fdafd::t_abaebd0297346e 25-27
+packages/cli/src/scaling/hypervisor-message-router.ts
+  s_3e2de9c50fdafd::t_094cbe5fa1d647 1-60
+packages/cli/src/modules/instance-registry/storage/ipc-instance-storage.ts
+  s_3e2de9c50fdafd::t_07d24e33d32655 2
+  s_3e2de9c50fdafd::t_7fb92d51b07ed7 1,3-165
+packages/cli/src/scaling/__tests__/hypervisor-leader-election.test.ts
+  s_3e2de9c50fdafd::t_ff9b0509943c9d 173-257
+  s_3e2de9c50fdafd::t_e21da98e4bd00e 9-10
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.service.test.ts
+  s_3e2de9c50fdafd::t_416ea85a7ead93 72-78
+  s_3e2de9c50fdafd::t_a222b39ff9191b 272
+  s_3e2de9c50fdafd::t_b0759d3c6b5d05 107,111,116-117,124-125,129,140,142
+  s_3e2de9c50fdafd::t_4508ebcff45e6b 7
+  s_3e2de9c50fdafd::t_235c5d43212c94 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "923088b4c05573cbf4601f16b9947dd220bb4010",
+  "prompts": {},
+  "sessions": {
+    "s_3e2de9c50fdafd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71471209-e89f-4d40-8aa6-c40750a3f307",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
