@@ -1,6 +1,6 @@
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
 
-import { ExecutionRecorder } from '../execution-recorder';
+import { ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
@@ -974,5 +974,89 @@ describe('ExecutionRecorder — subagent-chunk', () => {
 		} as StreamChunk);
 
 		expect(recorder.getMessageRecord().timeline).toEqual([]);
+	});
+});
+
+describe('ExecutionRecorder — durable timeline events', () => {
+	it('emits replacing live snapshots without splitting the final response', () => {
+		vi.useFakeTimers();
+		try {
+			const snapshots: TimelineEvent[][] = [];
+			const recorder = new ExecutionRecorder(undefined, (timeline) => snapshots.push(timeline));
+			recorder.record({ type: 'text-delta', id: 'text-1', delta: 'First' });
+			vi.advanceTimersByTime(999);
+			expect(snapshots).toEqual([]);
+			vi.advanceTimersByTime(1);
+			expect(snapshots).toEqual([[expect.objectContaining({ type: 'text', content: 'First' })]]);
+
+			recorder.record({ type: 'text-delta', id: 'text-1', delta: ' second' });
+			vi.advanceTimersByTime(1_000);
+
+			expect(snapshots).toEqual([
+				[expect.objectContaining({ type: 'text', content: 'First' })],
+				[expect.objectContaining({ type: 'text', content: 'First second' })],
+			]);
+			const record = recorder.getMessageRecord();
+			expect(record.assistantResponse).toBe('First second');
+			expect(record.timeline).toEqual([
+				expect.objectContaining({ type: 'text', content: 'First second' }),
+			]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('emits a tool snapshot when execution starts and updates it on completion', () => {
+		const snapshots: TimelineEvent[][] = [];
+		const recorder = new ExecutionRecorder(undefined, (timeline) => snapshots.push(timeline));
+
+		recorder.record({ type: 'text-delta', id: 'text-1', delta: 'Checking' });
+		expect(snapshots).toEqual([]);
+
+		recorder.record({
+			type: 'tool-call',
+			toolCallId: 'tool-1',
+			toolName: 'lookup',
+			input: { id: 1 },
+		} as StreamChunk);
+		expect(snapshots).toEqual([[expect.objectContaining({ type: 'text', content: 'Checking' })]]);
+
+		recorder.record({
+			type: 'tool-execution-start',
+			toolCallId: 'tool-1',
+			toolName: 'lookup',
+			startTime: 10,
+		});
+		expect(snapshots[1]?.[1]).toMatchObject({
+			type: 'tool-call',
+			startTime: 10,
+			endTime: 0,
+		});
+
+		recorder.record({
+			type: 'tool-execution-end',
+			toolCallId: 'tool-1',
+			toolName: 'lookup',
+			isError: false,
+			endTime: 20,
+		});
+		recorder.record({
+			type: 'tool-result',
+			toolCallId: 'tool-1',
+			toolName: 'lookup',
+			output: { name: 'Ada' },
+		});
+
+		expect(snapshots).toHaveLength(4);
+		expect(snapshots[2]?.[1]).toMatchObject({
+			type: 'tool-call',
+			endTime: 20,
+			output: undefined,
+		});
+		expect(snapshots[3]?.[1]).toMatchObject({
+			type: 'tool-call',
+			endTime: 20,
+			output: { name: 'Ada' },
+		});
 	});
 });

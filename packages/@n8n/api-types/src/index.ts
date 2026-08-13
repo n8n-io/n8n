@@ -13,6 +13,7 @@ export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
+export type * from './workflow-review-activity';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
 export * from './workflow-publish-blocked-details';
@@ -286,6 +287,8 @@ export {
 
 export {
 	buildRunWorkflowSessionGrantKey,
+	buildUpdateWorkflowSessionGrantKey,
+	buildDataTablesSessionGrantKey,
 	buildFetchUrlGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	WEB_SEARCH_GRANT_KEY,
@@ -311,8 +314,13 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
+	credentialPlaceholderDefSchema,
 	credentialRequestSchema,
+	credentialSetupHintSchema,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	GENERIC_AUTH_CREDENTIAL_TYPES,
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
@@ -327,6 +335,9 @@ export {
 	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	CANVAS_NODE_CONTEXT_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
@@ -342,6 +353,7 @@ export {
 	isInstanceAiSandboxProvider,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	INSTANCE_AI_CATALOG_PROVIDERS,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
@@ -363,11 +375,16 @@ export {
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
+	instanceAiEvalSeedAgentSchema,
+	findUnbackedSeedWorkflowTools,
 	applyBranchReadOnlyOverrides,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -377,6 +394,10 @@ export type {
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
+	InstanceAiCatalogProvider,
+	InstanceAiCatalogModel,
+	InstanceAiModelCatalogResponse,
+	InstanceAiCredits,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -391,7 +412,10 @@ export type {
 	InstanceAiChannelConfig,
 	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
+	InstanceAiCredentialPlaceholderDef,
+	InstanceAiTargetApproval,
 	InstanceAiCredentialRequest,
+	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,
 	InstanceAiAgentKind,
 	TaskItem,
@@ -441,6 +465,9 @@ export type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiConfirmResponse,
 	InstanceAiAdminSettingsResponse,
+	InstanceAiEnvManagedFields,
+	InstanceAiVerificationFailure,
+	InstanceAiVerificationResponse,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiSandboxProvider,
@@ -484,6 +511,7 @@ export type {
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedAgent,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -585,7 +613,11 @@ export {
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalRunSchema,
 	CreateAgentEvalRunDto,
+	AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+	AgentEvalRunDetailQueryDto,
 	agentEvalCorrectionSchema,
+	AGENT_EVAL_MAX_COMMENT_CHARS,
+	AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS,
 	createAgentEvalRatingSchema,
 	CreateAgentEvalRatingDto,
 	agentEvalDraftCaseSchema,
@@ -602,10 +634,12 @@ export type {
 	UpdateAgentEvalDatasetPayload,
 	CreateAgentEvalRunPayload,
 	CreateAgentEvalRatingPayload,
+	AgentEvalPage,
 	AgentEvalDatasetRecord,
 	AgentEvalRunRecord,
 	AgentEvalResultRecord,
 	AgentEvalRatingRecord,
+	AgentEvalRunList,
 	AgentEvalRunDetail,
 	AgentEvalRunSummary,
 	AgentEvalDraftCase,

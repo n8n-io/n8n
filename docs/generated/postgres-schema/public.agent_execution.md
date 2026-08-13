@@ -30,7 +30,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_agent_execution_hitlStatus | CHECK | CHECK ((("hitlStatus")::text = ANY ((ARRAY['suspended'::character varying, 'resumed'::character varying])::text[]))) |
-| CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying])::text[]))) |
+| CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying])::text[]))) |
 | CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -47,6 +47,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_63d3c3a68b9cebf05f967f0b1c | CREATE INDEX "IDX_63d3c3a68b9cebf05f967f0b1c" ON public.agent_execution USING btree ("threadId", "createdAt") |
+| IDX_agent_execution_status | CREATE INDEX "IDX_agent_execution_status" ON public.agent_execution USING btree (status) WHERE ((status)::text = 'running'::text) |
 | PK_ba438acc8532addc12d1ef17049 | CREATE UNIQUE INDEX "PK_ba438acc8532addc12d1ef17049" ON public.agent_execution USING btree (id) |
 
 ## Relations

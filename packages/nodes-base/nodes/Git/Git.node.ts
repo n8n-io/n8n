@@ -43,6 +43,22 @@ import {
 
 const REMOTE_HELPER_TRANSPORT = /^[a-zA-Z][a-zA-Z0-9+.-]*::/;
 
+// These git config keys select external programs git may invoke. Pin them to fixed
+// defaults that take precedence over any values in the repository's own `.git/config`
+// (`-c` outranks on-disk config). Use `ssh` rather than empty to keep ssh remotes working.
+const COMMAND_CONFIG_KEYS: ReadonlyArray<
+	[key: string, value: string, unsafeFlag: keyof NonNullable<SimpleGitOptions['unsafe']>]
+> = [
+	['core.sshCommand', 'ssh', 'allowUnsafeSshCommand'],
+	['core.fsmonitor', 'false', 'allowUnsafeFsMonitor'],
+	['core.pager', 'cat', 'allowUnsafePager'],
+	['diff.external', 'true', 'allowUnsafeDiffExternal'], // no-op binary: empty would make git try to exec ""
+	['credential.helper', '', 'allowUnsafeCredentialHelper'],
+	['core.gitProxy', 'none', 'allowUnsafeGitProxy'],
+	['gpg.program', 'gpg', 'allowUnsafeGpgProgram'],
+	['init.templateDir', '', 'allowUnsafeTemplateDir'],
+];
+
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Git',
@@ -503,13 +519,25 @@ export class Git implements INodeType {
 					gitConfig.push('core.hooksPath=/dev/null');
 				}
 
+				// Pin the command-bearing keys to their defaults, unless the admin has opted
+				// into setting arbitrary git config (`enableGitNodeAllConfigKeys`) — then any
+				// values they set via `addConfig` take effect instead. simple-git requires the
+				// matching `unsafe.*` flag to allow setting each key via `config`.
+				const unsafe: NonNullable<SimpleGitOptions['unsafe']> = {};
+				if (!securityConfig.enableGitNodeAllConfigKeys) {
+					for (const [key, value, unsafeFlag] of COMMAND_CONFIG_KEYS) {
+						gitConfig.push(`${key}=${value}`);
+						unsafe[unsafeFlag] = true;
+					}
+				}
+				if (!enableHooks) {
+					unsafe.allowUnsafeHooksPath = true;
+				}
+
 				const gitOptions: Partial<SimpleGitOptions> = {
 					baseDir: operation === 'clone' ? cloneStagingBase : resolvedRepositoryPath,
 					config: gitConfig,
-					// simple-git blocks callers from setting `core.hooksPath` via `config`
-					// unless this flag is set. We set it deliberately as a mitigation, so
-					// opt in to keep that mitigation working.
-					...(!enableHooks && { unsafe: { allowUnsafeHooksPath: true } }),
+					...(Object.keys(unsafe).length > 0 && { unsafe }),
 				};
 
 				const cleanEnv = Object.create(null) as Record<string, unknown>;

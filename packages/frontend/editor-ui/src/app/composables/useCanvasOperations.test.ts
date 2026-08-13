@@ -66,6 +66,7 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
@@ -464,6 +465,99 @@ describe('useCanvasOperations', () => {
 						node_type: 'hubspot',
 					}),
 				);
+			});
+		});
+
+		describe('User added agent node telemetry', () => {
+			const agentNodeTypeDescription = mockNodeTypeDescription({
+				name: MESSAGE_AN_AGENT_NODE_TYPE,
+			});
+
+			it('tracks agent_source inline when the node carries the inline preset', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				const node = addNode(
+					{
+						type: MESSAGE_AN_AGENT_NODE_TYPE,
+						typeVersion: 3,
+						parameters: { agentSource: 'inline' },
+					},
+					agentNodeTypeDescription,
+					{ telemetry: true },
+				);
+
+				await waitFor(() => {
+					expect(telemetry.track).toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.objectContaining({
+							agent_source: 'inline',
+							agent_id: undefined,
+							node_id: node.id,
+							node_version: 3,
+						}),
+					);
+				});
+			});
+
+			it('tracks agent_source referenced with the picked agent id', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				addNode(
+					{
+						type: MESSAGE_AN_AGENT_NODE_TYPE,
+						typeVersion: 3,
+						parameters: {
+							agentSource: 'referenced',
+							agentId: { __rl: true, mode: 'list', value: 'agent-123' },
+						},
+					},
+					agentNodeTypeDescription,
+					{ telemetry: true },
+				);
+
+				await waitFor(() => {
+					expect(telemetry.track).toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.objectContaining({
+							agent_source: 'referenced',
+							agent_id: 'agent-123',
+						}),
+					);
+				});
+			});
+
+			it('omits agent_source when the node was added without the agents panel preset', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				addNode({ type: MESSAGE_AN_AGENT_NODE_TYPE, typeVersion: 3 }, agentNodeTypeDescription, {
+					telemetry: true,
+				});
+
+				await waitFor(() => {
+					expect(telemetry.track).toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.objectContaining({ agent_source: undefined, agent_id: undefined }),
+					);
+				});
+			});
+
+			it('does not fire for other node types', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				addNode({ type: 'hubspot', typeVersion: 1 }, mockNodeTypeDescription({ name: 'hubspot' }), {
+					telemetry: true,
+				});
+
+				await waitFor(() => {
+					expect(telemetry.track).not.toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.anything(),
+					);
+				});
 			});
 		});
 

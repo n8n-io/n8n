@@ -186,6 +186,23 @@ describe('CredentialsOverwrites', () => {
 
 				expect(result).toEqual({ password: 'pass' });
 			});
+
+			it('should still apply overwrites to an extending type when only its parent is in the skip list', () => {
+				// The skip list is exact-name: a skip entry on 'parent' must not change how
+				// 'test' (which extends 'parent') is treated, even when 'test' has a
+				// customized field. This allows skipping a base type without affecting
+				// the concrete types that inherit its overwrite.
+				globalConfig.credentials.overwrite.skipTypes = [
+					'parent',
+				] as unknown as CommaSeparatedStringArray<string>;
+
+				const result = credentialsOverwrites.applyOverwrite('test', {
+					username: 'custom-user',
+					password: '',
+				});
+
+				expect(result).toEqual({ username: 'custom-user', password: 'pass' });
+			});
 		});
 	});
 

@@ -180,7 +180,7 @@ export function normalizeLegacyRequest(
 		};
 	}
 	return {
-		url: uriOrObject.uri ?? uriOrObject.url ?? '',
+		url: uriOrObject.url ?? uriOrObject.uri ?? '',
 		method: uriOrObject.method,
 		headers: uriOrObject.headers,
 		body: (uriOrObject.body ??

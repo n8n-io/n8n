@@ -3,10 +3,39 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { CaseSeed } from '../harness/schema';
 import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
+/** Render a turn's out-of-band workflow attachment for a transcript/prompt, e.g.
+ *  `[attached workflow: Batch loop]`, or '' when it has none. The editor hands the
+ *  agent a resource reference rather than text, so without this the faithful
+ *  hand-off shape (`text: ""` + `attach`) reaches judges and prompt-aware checks
+ *  as an empty message.
+ *
+ *  `label` is the workflow's NAME — the restored one where the harness knows it
+ *  (the live path), else the name the seed declares for that id
+ *  (`attachedWorkflowLabel`). An id would mean nothing to a prompt-aware check or
+ *  to a human reading the report. */
+export function attachedWorkflowNote(label: string | undefined): string {
+	return label ? `[attached workflow: ${label}]` : '';
+}
+
+/** The name a seed declares for an attached workflow id. The authored-conversation
+ *  path has only the id, and the seed is where that id gets its name; falls back
+ *  to the id when the seed can't resolve it, so the hand-off stays visible. */
+function attachedWorkflowLabel(
+	turn: ConversationTurn | undefined,
+	seed: CaseSeed | undefined,
+): string | undefined {
+	const id = turn?.attach?.workflow;
+	if (id === undefined) return undefined;
+	const declared = seed?.mode === 'inline' ? seed.workflows.find((w) => w.id === id) : undefined;
+	return declared?.name ?? id;
+}
+
 /**
  * Human-readable prompt label for a test case. Authored cases use their first
  * turn; a `replay` seed carries no authored conversation, so fall back to the
  * live (non-seeded) user turn captured in the transcript, then to the thread id.
+ * A text-less hand-off (`text: ""` + `attach`) has no prompt text at all, so it
+ * falls back to naming the attachment — otherwise it labels as '' in every report.
  */
 export function caseDisplayPrompt(
 	testCase: { conversation?: ConversationTurn[]; seed?: CaseSeed },
@@ -17,7 +46,8 @@ export function caseDisplayPrompt(
 	const liveTurn = transcript?.find((t) => !t.seeded && t.userMessage)?.userMessage;
 	if (liveTurn) return liveTurn;
 	const { seed } = testCase;
-	return seed?.mode === 'replay' ? `[seeded] thread ${seed.threadId.slice(0, 8)}` : '';
+	if (seed?.mode === 'replay') return `[seeded] thread ${seed.threadId.slice(0, 8)}`;
+	return attachedWorkflowNote(attachedWorkflowLabel(testCase.conversation?.[0], seed));
 }
 
 /**
@@ -42,12 +72,20 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
  *
  * Accepts `undefined` because `testCase.conversation` is optional (a `replay`-seeded
  * case carries none) and callers pass it straight through — no conversation → ''.
+ * `seed` resolves an attachment's id to its declared name.
  */
-export function conversationUserTurnsAsText(conversation: ConversationTurn[] | undefined): string {
+export function conversationUserTurnsAsText(
+	conversation: ConversationTurn[] | undefined,
+	seed?: CaseSeed,
+): string {
 	if (!conversation) return '';
 	const turns = conversation
 		.filter((t) => t.role === 'user')
-		.map((t) => t.text)
+		// Name an attachment, so a text-less hand-off isn't filtered out below and
+		// handed to the prompt-aware checks as an empty prompt.
+		.map((t) =>
+			[attachedWorkflowNote(attachedWorkflowLabel(t, seed)), t.text].filter(Boolean).join(' '),
+		)
 		.filter((text) => text.length > 0);
 
 	if (turns.length === 0) return '';

@@ -88,6 +88,8 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
 	'insights:read',
+	'role:manage',
+	'role:list',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;

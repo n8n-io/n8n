@@ -52,17 +52,7 @@ export const parameters = {
 	},
 	options: {
 		storySort: {
-			order: [
-				'Docs',
-				'Styleguide',
-				'Core',
-				'Instance Settings',
-				'Assistant',
-				'Chat',
-				'Tables',
-				'Utilities',
-				'Experimental',
-			],
+			order: ['Style guide', 'Core', 'Areas', 'Experimental'],
 		},
 	},
 	chromatic: {

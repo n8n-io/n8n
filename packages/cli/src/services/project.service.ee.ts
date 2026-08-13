@@ -3,6 +3,7 @@ import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	type User,
+	FolderRepository,
 	Project,
 	ProjectRelation,
 	ProjectRelationRepository,
@@ -76,6 +77,7 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly folderRepository: FolderRepository,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly ownershipService: OwnershipService,
@@ -91,12 +93,6 @@ export class ProjectService {
 	private get credentialsService() {
 		return import('@/credentials/credentials.service.js').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
-		);
-	}
-
-	private get folderService() {
-		return import('@/services/folder.service.js').then(({ FolderService }) =>
-			Container.get(FolderService),
 		);
 	}
 
@@ -216,8 +212,7 @@ export class ProjectService {
 
 		// 3. Move folders over to the target project, before deleting the project else cascading will delete workflows
 		if (targetProject) {
-			const folderService = await this.folderService;
-			await folderService.transferAllFoldersToProject(project.id, targetProject.id);
+			await this.folderRepository.transferAllFoldersToProject(project.id, targetProject.id);
 		}
 
 		// 4. delete shared credentials into this project

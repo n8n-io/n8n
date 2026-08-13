@@ -4,8 +4,8 @@ import { z } from 'zod';
 import {
 	ConversationSeedSchema,
 	SeedMessageSchema,
-	clampFutureSeedTimestamps,
 	expandSeedMessageShorthand,
+	normalizeSeedTimestamps,
 } from './conversation-seed';
 import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
 
@@ -33,6 +33,17 @@ export const conversationTurnTextSchema = z
 export const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	text: conversationTurnTextSchema,
+	/** Hand the agent a seeded workflow with this turn, the way the editor does when
+	 *  a user opens the assistant with a workflow in front of them — without it the
+	 *  eval agent has to guess which workflow prose like "why is this failing?"
+	 *  means, and we score a clarification failure the real user never hit.
+	 *
+	 *  `workflow` is the id as the seed declares it; the harness swaps in the
+	 *  per-run remapped id. Opening turn only (refined below). */
+	attach: z
+		.object({ workflow: z.string().min(1) })
+		.strict()
+		.optional(),
 });
 
 const ExecutionScenarioSchema = z.object({
@@ -52,10 +63,10 @@ const ExecutionScenarioSchema = z.object({
 /** Prior messages for an inline seed. Accepts a full envelope or the `{role, text}`
  *  shorthand, expanded BEFORE validation so the envelope rules apply to the
  *  expansion and error paths stay per-message (`seed.messages.2.createdAt`).
- *  Future `createdAt` values are pulled back after expansion, so seeded history
- *  can never sort after the live turn. */
+ *  Timestamps are normalized after expansion, so seeded history always presents
+ *  in array order and never sorts after the live turn. */
 const inlineSeedMessagesSchema = z.preprocess(
-	(raw) => (Array.isArray(raw) ? clampFutureSeedTimestamps(expandSeedMessageShorthand(raw)) : raw),
+	(raw) => (Array.isArray(raw) ? normalizeSeedTimestamps(expandSeedMessageShorthand(raw)) : raw),
 	z.array(SeedMessageSchema).min(1),
 );
 
@@ -187,6 +198,51 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 	.refine((c) => c.seed?.mode === 'replay' || c.conversation !== undefined, {
 		message:
 			'a case needs a conversation, or a seed with mode: replay (which supplies the live turn from the trace)',
+	})
+	// Rejected rather than ignored on a later turn, so a misplaced one can't silently
+	// do nothing.
+	.refine((c) => (c.conversation ?? []).slice(1).every((turn) => turn.attach === undefined), {
+		message: 'only the first conversation turn may carry `attach` — an attachment is a hand-off',
+	})
+	// Grading an assistant turn that carries one would score a transcript that could
+	// not have happened.
+	.refine((c) => c.conversation?.[0]?.attach === undefined || c.conversation[0].role === 'user', {
+		message:
+			'only a `user` turn may carry `attach` — the attachment is the hand-off that opens the conversation',
+	})
+	// A dangling attachment would hand the agent a reference to nothing, which reads
+	// as a builder failure. Only an inline seed declares workflows to point at.
+	.refine(
+		(c) => {
+			const attached = c.conversation?.[0]?.attach?.workflow;
+			if (attached === undefined) return true;
+			const declared = c.seed?.mode === 'inline' ? c.seed.workflows : [];
+			return declared.some((workflow) => workflow.id === attached);
+		},
+		{
+			message:
+				'`attach.workflow` must be the id of a workflow the inline seed declares — otherwise the attachment points at nothing',
+		},
+	)
+	// The chat API refuses a message that is empty with nothing attached, so catch it
+	// at load rather than mid-run as a 400 that reads like an infrastructure fault.
+	// Every user turn, not just the opening; assistant turns are proxy script data
+	// and never posted. Only a non-replay opening may substitute `attach` for text —
+	// a replay case has no inline seed for it to point at.
+	.superRefine((c, ctx) => {
+		const isReplay = c.seed?.mode === 'replay';
+		(c.conversation ?? []).forEach((turn, index) => {
+			if (turn.role === 'assistant' || turn.text.trim().length > 0) return;
+			const openingMayAttach = index === 0 && !isReplay;
+			if (openingMayAttach && turn.attach !== undefined) return;
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['conversation', index, 'text'],
+				message: openingMayAttach
+					? 'an opening turn with empty text must carry `attach` — the chat API rejects a message that is empty with nothing attached'
+					: 'a conversation turn needs text — the chat API rejects an empty message, and only a non-replay opening turn may substitute `attach`',
+			});
+		});
 	})
 	.superRefine((c, ctx) => {
 		// Note: this message avoids double quotes — ZodError.message is a JSON.stringify of

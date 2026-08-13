@@ -1,31 +1,24 @@
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionBase } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { QueryFailedError } from '@n8n/typeorm';
 import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions';
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-import { getExecutionTags, mapAnnotationTags, updateExecutionTags } from './executions.service';
 import type { ExecutionRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getSharedWorkflowIds } from '../workflows/workflows.service';
 
 const handleError = (error: unknown) => {
 	if (error instanceof QueuedExecutionRetryError || error instanceof AbortedExecutionRetryError) {
@@ -59,54 +52,28 @@ const executionHandlers: ExecutionHandlers = {
 	deleteExecution: [
 		publicApiScope('execution:delete'),
 		async (req, res) => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
+			const sharedWorkflowsIds = await Container.get(
+				WorkflowSharingService,
+			).getSharedWorkflowIdsForScopes(req.user, ['workflow:delete']);
 
-			// user does not have workflows hence no executions
-			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
 				throw new NotFoundError('Not Found');
 			}
 
 			const { id } = req.params;
 
-			// look for the execution on the workflow the user owns
-			const execution = await Container.get(
-				ExecutionPersistence,
-			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
+			const execution = await Container.get(ExecutionService).deleteOne(id, sharedWorkflowsIds);
 
-			if (!execution) {
-				throw new NotFoundError('Not Found');
-			}
-
-			if (execution.status === 'running') {
-				throw new BadRequestError('Cannot delete a running execution');
-			}
-
-			if (execution.status === 'new') {
-				Container.get(ConcurrencyControlService).remove({
-					executionId: execution.id,
-					mode: execution.mode,
-				});
-			}
-
-			await Container.get(ExecutionPersistence).hardDelete({
-				workflowId: execution.workflowId,
-				executionId: execution.id,
-				storedAt: execution.storedAt,
-			});
-
-			execution.id = id;
-
-			return res.json(replaceCircularReferences(execution));
+			return res.json(replaceCircularReferences({ ...execution, id }));
 		},
 	],
 	getExecution: [
 		publicApiScope('execution:read'),
 		async (req, res) => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+			const sharedWorkflowsIds = await Container.get(
+				WorkflowSharingService,
+			).getSharedWorkflowIdsForScopes(req.user, ['workflow:read']);
 
-			// user does not have workflows hence no executions
-			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
 				throw new NotFoundError('Not Found');
 			}
@@ -120,10 +87,15 @@ const executionHandlers: ExecutionHandlers = {
 				? 0
 				: Container.get(ExecutionsConfig).maxDisplaySize;
 
-			// look for the execution on the workflow the user owns
-			const execution = await Container.get(
-				ExecutionPersistence,
-			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, includeData, maxDataSizeBytes);
+			const execution = await Container.get(ExecutionService).findOneInWorkflows(
+				id,
+				sharedWorkflowsIds,
+				{
+					includeData,
+					includeAnnotation: false,
+					maxDataSizeBytes,
+				},
+			);
 
 			if (!execution) {
 				throw new NotFoundError('Not Found');
@@ -165,47 +137,31 @@ const executionHandlers: ExecutionHandlers = {
 				projectId,
 			} = req.query;
 
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read'], projectId);
+			const sharedWorkflowsIds = await Container.get(
+				WorkflowSharingService,
+			).getSharedWorkflowIdsForScopes(req.user, ['workflow:read'], projectId);
 
-			// user does not have workflows hence no executions
-			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length || (workflowId && !sharedWorkflowsIds.includes(workflowId))) {
 				return res.status(200).json({ data: [], nextCursor: null });
 			}
 
-			// Collect genuinely running executions to exclude from the default listing.
-			// The active executions list also retains `waiting` executions (persisted and
-			// resumable); filter by status so waiting executions are still listed.
-			const runningExecutionsIds = Container.get(ActiveExecutions)
-				.getActiveExecutions()
-				.filter(({ status }) => status === 'running')
-				.map(({ id }) => id);
-
-			const filters: Parameters<
-				typeof ExecutionPersistence.prototype.getExecutionsForPublicApi
-			>[0] = {
-				status,
-				limit,
-				lastId,
-				includeData,
-				workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
-
-				// for backward compatibility `running` executions are always excluded
-				// unless the user explicitly filters by `running` status
-				excludedExecutionsIds: status !== 'running' ? runningExecutionsIds : undefined,
-			};
-
-			const executions = await Container.get(ExecutionPersistence).getExecutionsForPublicApi(
-				filters,
-				ignoreDataSizeLimit ? 0 : Container.get(ExecutionsConfig).maxDisplaySize,
+			const { executions, count } = await Container.get(ExecutionService).findManyAndCount(
+				workflowId ? [workflowId] : sharedWorkflowsIds,
+				{
+					status,
+					limit,
+					lastId,
+					includeData,
+					// for backward compatibility `running` executions are always excluded
+					// unless the user explicitly filters by `running` status
+					excludeRunning: status !== 'running',
+					maxDataSizeBytes: ignoreDataSizeLimit
+						? 0
+						: Container.get(ExecutionsConfig).maxDisplaySize,
+				},
 			);
 
-			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
-
-			filters.lastId = newLastId;
-
-			const count =
-				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
+			const newLastId = executions.length === 0 ? '0' : executions.at(-1)!.id;
 
 			if (includeData) {
 				const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
@@ -243,10 +199,10 @@ const executionHandlers: ExecutionHandlers = {
 	retryExecution: [
 		publicApiScope('execution:retry'),
 		async (req, res) => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
+			const sharedWorkflowsIds = await Container.get(
+				WorkflowSharingService,
+			).getSharedWorkflowIdsForScopes(req.user, ['workflow:execute']);
 
-			// user does not have workflows hence no executions
-			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
 				throw new NotFoundError('Not Found');
 			}
@@ -271,22 +227,18 @@ const executionHandlers: ExecutionHandlers = {
 	getExecutionTags: [
 		publicApiScope('executionTags:list'),
 		async (req, res) => {
-			const { id } = req.params;
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+			const sharedWorkflowsIds = await Container.get(
+				WorkflowSharingService,
+			).getSharedWorkflowIdsForScopes(req.user, ['workflow:read']);
 
 			if (!sharedWorkflowsIds.length) {
 				throw new NotFoundError('Not Found');
 			}
 
-			const execution = await Container.get(
-				ExecutionPersistence,
-			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
-
-			if (!execution) {
-				throw new NotFoundError('Not Found');
-			}
-
-			const tags = await getExecutionTags(id);
+			const tags = await Container.get(ExecutionService).getExecutionTags(
+				req.params.id,
+				sharedWorkflowsIds,
+			);
 
 			return res.json(tags);
 		},
@@ -294,30 +246,23 @@ const executionHandlers: ExecutionHandlers = {
 	updateExecutionTags: [
 		publicApiScope('executionTags:update'),
 		async (req, res) => {
-			const { id } = req.params;
 			const newTagIds = req.body.map((tag) => tag.id);
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:update']);
+			const sharedWorkflowsIds = await Container.get(
+				WorkflowSharingService,
+			).getSharedWorkflowIdsForScopes(req.user, ['workflow:update']);
 
 			if (!sharedWorkflowsIds.length) {
 				throw new NotFoundError('Not Found');
 			}
 
-			const execution = await Container.get(
-				ExecutionPersistence,
-			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
-
-			if (!execution) {
-				throw new NotFoundError('Not Found');
-			}
-
 			try {
-				const updatedTags = await updateExecutionTags(id, newTagIds);
-				const tags = mapAnnotationTags(updatedTags);
+				const tags = await Container.get(ExecutionService).updateExecutionTags(
+					req.params.id,
+					newTagIds,
+					sharedWorkflowsIds,
+				);
 				return res.json(tags);
 			} catch (error) {
-				if (error instanceof QueryFailedError) {
-					throw new NotFoundError('Some tags not found');
-				}
 				return handleError(error);
 			}
 		},
@@ -325,10 +270,10 @@ const executionHandlers: ExecutionHandlers = {
 	stopExecution: [
 		publicApiScope('execution:stop'),
 		async (req, res) => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
+			const sharedWorkflowsIds = await Container.get(
+				WorkflowSharingService,
+			).getSharedWorkflowIdsForScopes(req.user, ['workflow:execute']);
 
-			// user does not have workflows hence no executions
-			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
 				throw new NotFoundError('Not Found');
 			}
@@ -349,7 +294,6 @@ const executionHandlers: ExecutionHandlers = {
 		async (req, res) => {
 			const { status: rawStatus, workflowId, startedAfter, startedBefore } = req.body;
 			const status: ExecutionStatus[] = rawStatus.map((x) => (x === 'queued' ? 'new' : x));
-			// Validate that status is provided and not empty
 			if (!status || status.length === 0) {
 				return res.status(400).json({
 					message:
@@ -360,14 +304,14 @@ const executionHandlers: ExecutionHandlers = {
 				});
 			}
 
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
+			const sharedWorkflowsIds = await Container.get(
+				WorkflowSharingService,
+			).getSharedWorkflowIdsForScopes(req.user, ['workflow:execute']);
 
-			// Return early to avoid expensive db query
 			if (!sharedWorkflowsIds.length) {
 				return res.json({ stopped: 0 });
 			}
 
-			// If workflowId is provided, validate user has access to it
 			if (workflowId && workflowId !== 'all' && !sharedWorkflowsIds.includes(workflowId)) {
 				throw new NotFoundError('Workflow not found or not accessible');
 			}

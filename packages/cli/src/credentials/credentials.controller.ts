@@ -170,7 +170,15 @@ export class CredentialsController {
 		@Param('credentialId') credentialId: string,
 	) {
 		try {
-			return await this.credentialsService.probeById(req.user, credentialId);
+			const result = await this.credentialsService.probeById(req.user, credentialId);
+
+			this.eventService.emit('credentials-probed', {
+				user: req.user,
+				credentialId,
+				outcome: result.outcome,
+			});
+
+			return result;
 		} catch (error) {
 			if (error instanceof CredentialNotFoundError) {
 				throw new ForbiddenError();

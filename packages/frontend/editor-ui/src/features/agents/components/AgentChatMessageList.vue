@@ -652,7 +652,7 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--sm);
 	scrollbar-width: none;
 
-	mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 
 	&::-webkit-scrollbar {
 		display: none;
@@ -713,7 +713,7 @@ onBeforeUnmount(() => {
 .chatMessageUser {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
-	background-color: var(--background--subtle);
+	background: var(--assistant--color--background--user-bubble);
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;

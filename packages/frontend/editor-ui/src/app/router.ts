@@ -8,7 +8,7 @@ import type {
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
@@ -19,14 +19,18 @@ import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
-import { MfaRequiredError } from '@n8n/rest-api-client';
+import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
+import { handleSessionExpired } from '@/app/utils/handleSessionExpired';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
-import { canMessageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
+import {
+	canManageInstanceAi,
+	canMessageInstanceAi,
+} from '@/features/ai/instanceAi/instanceAiPermissions';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -175,9 +179,11 @@ export const routes: RouteRecordRaw[] = [
 		component: { render: () => null },
 		beforeEnter: (_to, _from, next) => {
 			const settingsStore = useSettingsStore();
+			const instanceAiSettings = settingsStore.moduleSettings['instance-ai'];
 			if (
 				settingsStore.isModuleActive('instance-ai') &&
-				settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
+				instanceAiSettings?.enabled !== false &&
+				(instanceAiSettings?.setupCompleted === true || canManageInstanceAi()) &&
 				canMessageInstanceAi()
 			) {
 				return next({ name: INSTANCE_AI_VIEW });
@@ -763,7 +769,7 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							return settingsStore.isAiGatewayEnabled;
+							return settingsStore.isAiGatewayEnabled && !settingsStore.isAiGatewayCloudUbbEnabled;
 						},
 					},
 					telemetry: {
@@ -1181,6 +1187,10 @@ const router = createRouter({
 		}
 	},
 	routes: routes.map(withCanvasReadOnlyMeta),
+});
+
+setUnauthorizedHandler((baseURL) => {
+	void handleSessionExpired(router, baseURL);
 });
 
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {

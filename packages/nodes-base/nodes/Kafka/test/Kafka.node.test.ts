@@ -11,6 +11,12 @@ import { mock } from 'vitest-mock-extended';
 
 import { Kafka } from '../Kafka.node';
 import { KafkaV1 } from '../v1/KafkaV1.node';
+import { KafkaV2 } from '../v2/KafkaV2.node';
+import {
+	confluentKafkaModuleMock,
+	getConfluentKafkaAccessCount,
+	resetConfluentKafkaAccessCount,
+} from './mocks/confluent-kafka';
 
 // The node is imported directly (through vite) so vi.mock can intercept its
 // `kafkajs` / `@kafkajs/confluent-schema-registry` imports. NodeTestHarness can't
@@ -91,6 +97,11 @@ vi.mock('@kafkajs/confluent-schema-registry', () => ({
 	}),
 }));
 
+// v1 must never load the new library — the ESLint import restrictions guard the
+// static-import side; this covers the runtime side (e.g. a dynamic import added
+// by mistake down the line).
+vi.mock('@confluentinc/kafka-javascript', () => confluentKafkaModuleMock());
+
 const defaultKafkaCredentials: IDataObject = {
 	brokers: 'localhost:9092',
 	clientId: 'test-client',
@@ -145,6 +156,24 @@ const schemaRegistryCredential = {
 describe('Kafka Node', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		resetConfluentKafkaAccessCount();
+	});
+
+	test('never loads the new confluent-kafka-javascript library', async () => {
+		const params: IDataObject = {
+			options: { acks: true, compression: true, timeout: 1000 },
+			sendInputData: true,
+			useSchemaRegistry: false,
+			topic: 'test-topic',
+			jsonParameters: false,
+			useKey: false,
+			headersUi: {},
+		};
+		const items: INodeExecutionData[] = [{ json: { name: 'item' } }];
+
+		await new KafkaV1(baseDescription).execute.call(createExecuteFunctions(params, items));
+
+		expect(getConfluentKafkaAccessCount()).toBe(0);
 	});
 
 	test('publishes input data as messages with key, headers and options', async () => {
@@ -400,6 +429,30 @@ describe('Kafka (versioned entry point)', () => {
 
 	it('should expose version 1 as KafkaV1', () => {
 		expect(kafka.nodeVersions[1]).toBeInstanceOf(KafkaV1);
+	});
+
+	it('should expose version 2 as KafkaV2', () => {
+		expect(kafka.nodeVersions[2]).toBeInstanceOf(KafkaV2);
+	});
+
+	// One credential test per credential type, not per node version. Adding
+	// `methods.credentialTest.kafkaConnectionTest` to v2 wouldn't add a second test — it is
+	// resolved newest-version-first, so it would take over v1's test for everyone. Until it
+	// moves, the test exercises v1's kafkajs path while v2 connects through librdkafka.
+	it('should leave the kafka credential test to v1', () => {
+		const v2 = kafka.nodeVersions[2];
+
+		expect(v2.methods?.credentialTest).toBeUndefined();
+		expect(v2.description.credentials?.find((c) => c.name === 'kafka')?.testedBy).toBeUndefined();
+		expect(kafka.nodeVersions[1].methods?.credentialTest).toHaveProperty('kafkaConnectionTest');
+	});
+
+	it('should resolve v1 by default', () => {
+		expect(kafka.getNodeType()).toBeInstanceOf(KafkaV1);
+	});
+
+	it('should resolve v2 when requested', () => {
+		expect(kafka.getNodeType(2)).toBeInstanceOf(KafkaV2);
 	});
 
 	it('should have defaultVersion set to 1', () => {

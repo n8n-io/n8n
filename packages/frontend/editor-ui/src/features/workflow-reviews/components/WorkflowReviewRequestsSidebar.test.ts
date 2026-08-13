@@ -1,8 +1,6 @@
 import type { WorkflowReviewInboxItem } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
-import { useUsersStore } from '@n8n/stores/users.store';
 import WorkflowReviewRequestsSidebar from './WorkflowReviewRequestsSidebar.vue';
 
 vi.mock('@/app/composables/useIntersectionObserver', () => ({
@@ -14,13 +12,6 @@ vi.mock('@/app/composables/useIntersectionObserver', () => ({
 }));
 
 const renderComponent = createComponentRenderer(WorkflowReviewRequestsSidebar);
-
-const requester = {
-	id: 'user-requester',
-	email: 'requester@example.com',
-	firstName: 'Rita',
-	lastName: 'Requester',
-};
 
 const reviewers = [
 	{
@@ -49,7 +40,8 @@ function makeItem(overrides: Partial<WorkflowReviewInboxItem> = {}): WorkflowRev
 		projectId: 'proj-1',
 		title: 'Needs review',
 		workflowName: 'My workflow',
-		requester,
+		requester: null,
+		authors: [],
 		reviewers: reviewers.slice(0, 1),
 		decision: 'pending',
 		state: 'open',
@@ -74,47 +66,13 @@ const baseProps = {
 describe('WorkflowReviewRequestsSidebar', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		const usersStore = mockedStore(useUsersStore);
-		usersStore.currentUser = {
-			id: 'current-user',
-			email: 'me@example.com',
-			firstName: 'Me',
-			lastName: 'User',
-		} as never;
 	});
 
-	it('renders requester and reviewer avatars for populated participants', () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				...baseProps,
-				items: [makeItem()],
-			},
-		});
-
-		expect(getByTestId('workflow-review-request-users')).toBeInTheDocument();
-		expect(getByTestId(`user-stack-avatar-${requester.id}`)).toBeInTheDocument();
-		expect(getByTestId(`user-stack-avatar-${reviewers[0].id}`)).toBeInTheDocument();
-	});
-
-	it('shows overflow badge when participants exceed maxAvatars', () => {
-		const { getByTestId, container } = renderComponent({
-			props: {
-				...baseProps,
-				items: [makeItem({ reviewers })],
-			},
-		});
-
-		// Requester + 3 reviewers = 4 participants; maxAvatars is 3, so +1.
-		expect(getByTestId('workflow-review-request-users')).toBeInTheDocument();
-		expect(container.querySelectorAll('[data-test-id^="user-stack-avatar-"]')).toHaveLength(3);
-		expect(container.querySelector('.hiddenBadge')).toHaveTextContent('+1');
-	});
-
-	it('does not render the user stack when there are no nameable participants', () => {
+	it('does not render an avatar stack for inbox cards', () => {
 		const { queryByTestId } = renderComponent({
 			props: {
 				...baseProps,
-				items: [makeItem({ requester: null, reviewers: [] })],
+				items: [makeItem()],
 			},
 		});
 

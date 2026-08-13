@@ -107,17 +107,6 @@ export declare namespace TestRunRequest {
 }
 
 export declare namespace TagRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-		}
-	>;
-
 	type Create = AuthenticatedRequest<{}, {}, TagEntity>;
 	type Get = AuthenticatedRequest<{ id: string }>;
 	type Delete = Get;
@@ -159,7 +148,7 @@ export declare namespace WorkflowRequest {
 		{ id: string },
 		{},
 		WorkflowEntity & { parentFolderId?: string | null },
-		{}
+		{ publishIfActive?: boolean }
 	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },

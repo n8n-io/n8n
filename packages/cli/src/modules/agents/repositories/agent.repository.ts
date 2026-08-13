@@ -159,6 +159,33 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
+	async findCredentialIndexAgentIdsBatch(
+		afterId: string | null,
+		batchSize: number,
+	): Promise<Array<Pick<Agent, 'id'>>> {
+		const query = this.createQueryBuilder('agent')
+			.select(['agent.id'])
+			.orderBy('agent.id', 'ASC')
+			.take(batchSize);
+
+		if (afterId !== null) {
+			query.where('agent.id > :afterId', { afterId });
+		}
+
+		return await query.getMany();
+	}
+
+	async findSummariesByIds(
+		ids: string[],
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'projectId'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			select: ['id', 'name', 'projectId'],
+			where: { id: In(ids) },
+		});
+	}
+
 	async findByIdInProjects(id: string, projectIds: string[]): Promise<Agent | null> {
 		if (projectIds.length === 0) return null;
 		return await this.findOne({

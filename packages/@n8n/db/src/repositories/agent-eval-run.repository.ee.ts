@@ -96,11 +96,21 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		return await this.findOne({ where: { id, dataset: { agentId } } });
 	}
 
-	/** Runs of a dataset, scoped to the agent that dataset must belong to. */
-	async findByDatasetIdAndAgentId(datasetId: string, agentId: string): Promise<AgentEvalRun[]> {
-		return await this.find({
+	/**
+	 * One page of a dataset's runs, newest first, scoped to its agent. The `id`
+	 * tiebreak is what keeps equal-`createdAt` rows from landing on two pages or
+	 * none — ids are random nanoids, so it orders nothing, it just stays stable.
+	 */
+	async findAndCountByDatasetIdAndAgentId(
+		datasetId: string,
+		agentId: string,
+		options: { skip?: number; take?: number } = {},
+	): Promise<[AgentEvalRun[], number]> {
+		return await this.findAndCount({
 			where: { datasetId, dataset: { agentId } },
-			order: { createdAt: 'DESC' },
+			order: { createdAt: 'DESC', id: 'DESC' },
+			skip: options.skip,
+			take: options.take,
 		});
 	}
 

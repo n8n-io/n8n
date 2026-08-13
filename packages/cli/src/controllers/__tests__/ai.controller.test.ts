@@ -3,11 +3,13 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 	AiBuilderChatRequestDto,
+	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { APIResponseError, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -39,6 +41,7 @@ describe('AiController', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		aiGatewayService.assertEnabled.mockImplementation(() => {});
 
 		response.header.mockReturnThis();
 		response.status.mockReturnThis();
@@ -652,6 +655,23 @@ describe('AiController', () => {
 	});
 
 	describe('getGatewayWallet', () => {
+		it('should reject gateway requests when n8n Connect is disabled', async () => {
+			aiGatewayService.assertEnabled.mockImplementation(() => {
+				throw new BadRequestError('n8n Connect is not enabled on this instance');
+			});
+			const query = mock<AiGatewayUsageQueryDto>({ offset: 0, limit: 10 });
+
+			await expect(controller.getGatewayConfig()).rejects.toThrow(BadRequestError);
+			await expect(controller.getGatewayWallet(request)).rejects.toThrow(BadRequestError);
+			await expect(controller.getGatewayUsage(request, response, query)).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(aiGatewayService.getGatewayConfig).not.toHaveBeenCalled();
+			expect(aiGatewayService.getWallet).not.toHaveBeenCalled();
+			expect(aiGatewayService.getUsage).not.toHaveBeenCalled();
+		});
+
 		it('should return wallet from aiGatewayService', async () => {
 			const walletData = { budget: 10, balance: 7 };
 			aiGatewayService.getWallet.mockResolvedValue(walletData);

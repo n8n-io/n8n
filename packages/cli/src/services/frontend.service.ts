@@ -600,11 +600,14 @@ export class FrontendService {
 		}
 
 		const isAiGatewayEnabled =
-			this.licenseState.isAiGatewayLicensed() && !!this.globalConfig.aiAssistant.baseUrl;
+			this.globalConfig.aiGateway.enabled &&
+			this.licenseState.isAiGatewayLicensed() &&
+			!!this.globalConfig.aiAssistant.baseUrl;
 		if (isAiGatewayEnabled) {
 			this.settings.aiGateway = {
 				enabled: true,
 				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
+				cloudUbbEnabled: this.licenseState.isAiGatewayCloudUbbLicensed(),
 			};
 		}
 

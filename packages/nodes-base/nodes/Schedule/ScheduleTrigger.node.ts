@@ -16,6 +16,7 @@ import {
 	toCronExpression,
 	toCronSource,
 	validateInterval,
+	withIntervalDefaults,
 } from './GenericFunctions';
 import type { IRecurrenceRule, Rule } from './SchedulerInterface';
 
@@ -444,7 +445,8 @@ export class ScheduleTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const version = this.getNode().typeVersion;
-		const { interval: intervals } = this.getNodeParameter('rule', []) as Rule;
+		const { interval = [{}] } = this.getNodeParameter('rule', {}) as Partial<Rule>;
+		const intervals = interval.map(withIntervalDefaults);
 		const timezone = this.getTimezone();
 		const staticData = this.getWorkflowStaticData('node') as {
 			recurrenceRules: Array<number | undefined>;

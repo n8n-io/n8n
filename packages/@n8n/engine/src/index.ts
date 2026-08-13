@@ -30,6 +30,7 @@ export { InMemoryWorkQueue } from './queue';
 export type {
 	ExecutionEnqueuedEvent,
 	OrchestrationMessage,
+	StepCompletedEvent,
 	StepMessage,
 	StepReadyEvent,
 	WorkQueue,
@@ -39,7 +40,11 @@ export {
 	ExecutionNotFoundError,
 	ExecutionStartHandler,
 	OrchestrationWorker,
+	StartExecutionService,
+	StepCompletedHandler,
 	StepNotFoundError,
+	StepReadyHandler,
+	StepWorker,
 } from './execution';
 export type {
 	ExecutionMode,
@@ -48,10 +53,18 @@ export type {
 	ExecutionStore,
 	NewExecutionRecord,
 	NewStepRecord,
+	StartExecutionRequest,
+	StartExecutionResult,
 	StepError,
 	StepRecord,
+	StepSlots,
 	StepStatus,
 	StepStore,
 } from './execution';
 
-export { createDataSource, TypeOrmExecutionStore, TypeOrmStepStore } from './database';
+export {
+	createDataSource,
+	createStores,
+	WorkflowExecution,
+	WorkflowStepExecution,
+} from './database';

@@ -37,7 +37,7 @@ vi.mock('@n8n/rest-api-client/api/cloudPlans', () => ({
 }));
 
 let mockIsCloudDeployment = false;
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		get isCloudDeployment() {
 			return mockIsCloudDeployment;

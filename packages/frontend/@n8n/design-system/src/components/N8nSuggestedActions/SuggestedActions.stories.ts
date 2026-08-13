@@ -32,11 +32,6 @@ const Template: StoryFn = (args, { argTypes }) => ({
 			alert(`Action clicked: ${actionId}`);
 		};
 
-		const onIgnoreClick = (actionId: string) => {
-			console.log('Ignore clicked:', actionId);
-			alert(`Ignore clicked: ${actionId}`);
-		};
-
 		const onUpdateOpen = (open: boolean) => {
 			console.log('Open state changed:', open);
 			isOpen.value = open;
@@ -46,7 +41,6 @@ const Template: StoryFn = (args, { argTypes }) => ({
 			args,
 			isOpen,
 			onActionClick,
-			onIgnoreClick,
 			onUpdateOpen,
 		};
 	},
@@ -61,7 +55,6 @@ const Template: StoryFn = (args, { argTypes }) => ({
 				v-bind="args"
 				v-model:open="isOpen"
 				@action-click="onActionClick"
-				@ignore-click="onIgnoreClick"
 			/>
 		</div>
 	`,
@@ -129,92 +122,6 @@ LongContent.args = {
 	open: false,
 } satisfies SuggestedActionsProps;
 
-const TemplateWithEvents: StoryFn = (args, { argTypes }) => ({
-	setup() {
-		const isOpen = ref(false);
-
-		const onActionClick = (actionId: string) => {
-			console.log('Action clicked:', actionId);
-			alert(`Action clicked: ${actionId}`);
-		};
-
-		const onIgnoreClick = (actionId: string) => {
-			console.log('Ignore clicked:', actionId);
-			alert(`Ignore clicked: ${actionId}`);
-		};
-
-		const onIgnoreAll = () => {
-			console.log('Ignore all clicked');
-			alert('Ignore all clicked');
-		};
-
-		const onUpdateOpen = (open: boolean) => {
-			console.log('Open state changed:', open);
-			isOpen.value = open;
-		};
-
-		return {
-			args,
-			isOpen,
-			onActionClick,
-			onIgnoreClick,
-			onIgnoreAll,
-			onUpdateOpen,
-		};
-	},
-	props: Object.keys(argTypes),
-	components: {
-		N8nSuggestedActions,
-	},
-	template: `
-		<div style="padding: 50px;">
-			<p style="margin-bottom: 20px;">Popover is: {{ isOpen ? 'Open' : 'Closed' }}</p>
-			<N8nSuggestedActions
-				v-bind="args"
-				v-model:open="isOpen"
-				@action-click="onActionClick"
-				@ignore-click="onIgnoreClick"
-				@ignore-all="onIgnoreAll"
-			/>
-		</div>
-	`,
-});
-
-export const WithIgnoreAllOption = TemplateWithEvents.bind({});
-WithIgnoreAllOption.args = {
-	title: 'Suggested Actions',
-	ignoreAllLabel: 'Ignore for all workflows',
-	open: false,
-	actions: [
-		{
-			id: 'evaluate-workflow',
-			title: 'Evaluate your workflow with a dataset',
-			description: 'Set up an AI evaluation to be sure th WF is reliable.',
-			moreInfoLink: 'https://docs.n8n.io/evaluations',
-		},
-		{
-			id: 'track-errors',
-			title: 'Keep track of execution errors',
-			description: 'Setup a workflow error to track what is going on here.',
-			moreInfoLink: 'https://docs.n8n.io/error-workflows',
-		},
-	],
-} satisfies SuggestedActionsProps;
-
-export const SingleActionWithTurnOff = TemplateWithEvents.bind({});
-SingleActionWithTurnOff.args = {
-	ignoreAllLabel: 'Disable all suggestions',
-	title: 'Single Action',
-	open: false,
-	actions: [
-		{
-			id: 'single-action',
-			title: 'Single action with turn off option',
-			description: 'This shows how the turn off option appears even with a single action.',
-		},
-	],
-} satisfies SuggestedActionsProps;
-
 const AlignmentTemplate: StoryFn = (args, { argTypes }) => ({
 	setup() {
 		const startOpen = ref(false);
@@ -266,24 +173,24 @@ PopoverAlignments.args = {
 	open: false,
 } satisfies SuggestedActionsProps;
 
-export const MultipleActionsWithIgnoreAll = TemplateWithEvents.bind({});
-MultipleActionsWithIgnoreAll.args = {
+export const MultipleActionsWithCompleted = Template.bind({});
+MultipleActionsWithCompleted.args = {
 	actions: [
 		{
 			id: 'action1',
 			title: 'First action',
-			description: 'This is the first action that can be ignored.',
+			description: 'This action is already completed.',
 			completed: true,
 		},
 		{
 			id: 'action2',
 			title: 'Second action',
-			description: 'This is the second action that can be ignored.',
+			description: 'This is the second action.',
 		},
 		{
 			id: 'action3',
 			title: 'Third action',
-			description: 'This is the third action that can be ignored.',
+			description: 'This is the third action.',
 		},
 	],
 	title: 'Multiple Actions',
@@ -309,11 +216,6 @@ const ControlledTemplate: StoryFn = (args, { argTypes }) => ({
 			isOpen.value = false;
 		};
 
-		const onIgnoreClick = (actionId: string) => {
-			console.log('Ignore clicked:', actionId);
-			alert(`Ignore clicked: ${actionId}`);
-		};
-
 		const onUpdateOpen = (open: boolean) => {
 			console.log('External open change:', open);
 			isOpen.value = open;
@@ -325,7 +227,6 @@ const ControlledTemplate: StoryFn = (args, { argTypes }) => ({
 			toggleOpen,
 			forceClose,
 			onActionClick,
-			onIgnoreClick,
 			onUpdateOpen,
 		};
 	},
@@ -346,7 +247,6 @@ const ControlledTemplate: StoryFn = (args, { argTypes }) => ({
 				v-bind="args"
 				v-model:open="isOpen"
 				@action-click="onActionClick"
-				@ignore-click="onIgnoreClick"
 			/>
 		</div>
 	`,

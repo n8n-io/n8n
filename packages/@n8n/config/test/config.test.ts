@@ -358,6 +358,10 @@ describe('GlobalConfig', () => {
 			runDebugEnabled: false,
 			thinkingEnabled: true,
 			durableLog: true,
+			mcpConnectionsEnabled: false,
+			canvasNodeContextEnabled: false,
+			activationCapped: false,
+			activationLockMessageThreshold: 1,
 		},
 		queue: {
 			health: {
@@ -470,6 +474,9 @@ describe('GlobalConfig', () => {
 			maxAttempts: 5,
 			misfireGraceSeconds: 60,
 		},
+		poller: {
+			durableCursorsEnabled: false,
+		},
 		evaluation: {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
@@ -554,6 +561,9 @@ describe('GlobalConfig', () => {
 		aiAssistant: {
 			baseUrl: '',
 		},
+		aiGateway: {
+			enabled: true,
+		},
 		aiBuilder: {
 			apiKey: '',
 		},
@@ -623,7 +633,7 @@ describe('GlobalConfig', () => {
 			trimOnStartUp: false,
 		},
 		expressionEngine: {
-			engine: 'legacy',
+			engine: 'vm',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
@@ -632,6 +642,7 @@ describe('GlobalConfig', () => {
 			tracesEnabled: true,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
+			allowWebhookIsolateSkip: true,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -670,13 +681,10 @@ describe('GlobalConfig', () => {
 			tracingRecordOutputs: true,
 			modules: [],
 			sandboxEnabled: false,
-			sandboxProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
-			daytonaApiUrl: '',
-			daytonaApiKey: '',
 		},
 	} satisfies GlobalConfigShape;
 
