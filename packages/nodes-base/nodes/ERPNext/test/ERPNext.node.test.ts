@@ -76,12 +76,15 @@ describe('ERPNext Node', () => {
 				{ properties: { customProperty: [] }, docType: 'Customer', documentName: 'CUST-0001' },
 			]);
 
-			const error: NodeOperationError = await new ERPNext().execute
-				.call(mockThis)
-				.catch((e: unknown) => e as NodeOperationError);
+			let caught: unknown;
+			try {
+				await new ERPNext().execute.call(mockThis);
+			} catch (e) {
+				caught = e;
+			}
 
-			expect(error).toBeInstanceOf(NodeOperationError);
-			expect(error.message).toContain(message);
+			expect(caught).toBeInstanceOf(NodeOperationError);
+			expect((caught as NodeOperationError).message).toContain(message);
 			expect(erpNextApiRequestMock).not.toHaveBeenCalled();
 		});
 
