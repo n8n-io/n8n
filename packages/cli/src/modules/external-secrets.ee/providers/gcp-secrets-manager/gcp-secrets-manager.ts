@@ -5,6 +5,7 @@ import { jsonParse, UserError, type INodeProperties } from 'n8n-workflow';
 
 import type {
 	GcpSecretsManagerContext,
+	GcpSecretsManagerSettings,
 	GcpSecretAccountKey,
 	RawGcpSecretAccountKey,
 } from './types';
@@ -18,6 +19,8 @@ import {
 } from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
 
+const CLOUD_PLATFORM_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
+
 export class GcpSecretsManager extends SecretsProvider {
 	name = 'gcpSecretsManager';
 
@@ -26,7 +29,15 @@ export class GcpSecretsManager extends SecretsProvider {
 	properties: INodeProperties[] = [
 		DOCS_HELP_NOTICE,
 		{
-			displayName: 'Service Account Key',
+			displayName: 'Use application default credentials',
+			name: 'useApplicationDefaultCredentials',
+			type: 'boolean',
+			default: false,
+			description: "Use credentials detected automatically from n8n's runtime environment",
+			noDataExpression: true,
+		},
+		{
+			displayName: 'Service account key',
 			name: 'serviceAccountKey',
 			type: 'json',
 			default: '',
@@ -35,6 +46,38 @@ export class GcpSecretsManager extends SecretsProvider {
 			placeholder: 'e.g. { "type": "service_account", "project_id": "gcp-secrets-store", ... }',
 			hint: 'Content of JSON file downloaded from Google Cloud Console.',
 			noDataExpression: true,
+			displayOptions: {
+				hide: {
+					useApplicationDefaultCredentials: [true],
+				},
+			},
+		},
+		{
+			displayName: 'Impersonate service account',
+			name: 'impersonateServiceAccount',
+			type: 'string',
+			default: '',
+			placeholder: 'n8n-secrets@my-project.iam.gserviceaccount.com',
+			hint: 'Optional. The authenticated identity needs the <a href="https://cloud.google.com/iam/docs/service-account-impersonation" target="_blank">Service Account Token Creator</a> role on this account.',
+			noDataExpression: true,
+		},
+		{
+			displayName: 'Project ID',
+			name: 'projectId',
+			type: 'string',
+			default: '',
+			placeholder: 'my-gcp-project',
+			hint: 'Optional. Overrides the project ID from credentials or automatic detection.',
+			noDataExpression: true,
+		},
+		{
+			displayName: 'Secret filter',
+			name: 'secretFilter',
+			type: 'string',
+			default: '',
+			placeholder: 'labels.n8n-vault=finance',
+			hint: 'Use <a href="https://cloud.google.com/secret-manager/docs/filtering" target="_blank">Google Cloud Secret Manager filter syntax</a>, such as <code>labels.n8n-vault=finance</code>. n8n imports only matching secrets. IAM permissions still apply.',
+			noDataExpression: true,
 		},
 	];
 
@@ -42,7 +85,7 @@ export class GcpSecretsManager extends SecretsProvider {
 
 	private client: GcpClient;
 
-	private settings: GcpSecretAccountKey;
+	private settings: GcpSecretsManagerSettings;
 
 	constructor(private readonly logger = Container.get(Logger)) {
 		super();
@@ -51,7 +94,32 @@ export class GcpSecretsManager extends SecretsProvider {
 
 	async init(context: GcpSecretsManagerContext) {
 		try {
-			this.settings = this.parseSecretAccountKey(context.settings.serviceAccountKey);
+			const useApplicationDefaultCredentials =
+				context.settings.useApplicationDefaultCredentials === true;
+			const configuredProjectId = context.settings.projectId?.trim() || undefined;
+			const secretFilter = context.settings.secretFilter?.trim() || undefined;
+			const impersonateServiceAccount =
+				context.settings.impersonateServiceAccount?.trim() || undefined;
+
+			if (useApplicationDefaultCredentials) {
+				this.settings = {
+					useApplicationDefaultCredentials,
+					projectId: configuredProjectId,
+					secretFilter,
+					impersonateServiceAccount,
+				};
+			} else {
+				const serviceAccountKey = this.parseSecretAccountKey(
+					context.settings.serviceAccountKey ?? '',
+				);
+				this.settings = {
+					useApplicationDefaultCredentials,
+					...serviceAccountKey,
+					projectId: configuredProjectId ?? serviceAccountKey.projectId,
+					secretFilter,
+					impersonateServiceAccount,
+				};
+			}
 		} catch (error) {
 			this.logOperationFailure('Failed to initialize GCP Secrets Manager provider', {
 				operation: 'initialize',
@@ -63,18 +131,10 @@ export class GcpSecretsManager extends SecretsProvider {
 
 	protected async doConnect(): Promise<void> {
 		try {
-			const { projectId, privateKey, clientEmail } = this.settings;
-
-			const { SecretManagerServiceClient: GcpClient } = await import(
-				'@google-cloud/secret-manager'
-			);
-
 			// TODO: gRPC bypasses @n8n/backend-network, so the configured proxy and SSRF/DNS rules are not enforced here.
 			// Route through it once it supports a gRPC transport.
-			this.client = new GcpClient({
-				credentials: { client_email: clientEmail, private_key: privateKey },
-				projectId,
-			});
+			this.client = await this.createClient();
+			await this.resolveProjectId();
 
 			this.logger.debug('GCP Secrets Manager provider connected');
 		} catch (error) {
@@ -90,7 +150,7 @@ export class GcpSecretsManager extends SecretsProvider {
 		if (!this.client) return [false, 'Failed to connect to GCP Secrets Manager'];
 
 		try {
-			await this.client.initialize();
+			await this.client.listSecrets(this.createListSecretsRequest(1), { autoPaginate: false });
 			return [true];
 		} catch (error: unknown) {
 			this.logOperationFailure('GCP Secrets Manager provider test failed', {
@@ -107,11 +167,9 @@ export class GcpSecretsManager extends SecretsProvider {
 
 	async update() {
 		try {
-			const { projectId } = this.settings;
+			const projectId = this.getProjectId();
 
-			const [rawSecretNames] = await this.client.listSecrets({
-				parent: `projects/${projectId}`,
-			});
+			const [rawSecretNames] = await this.client.listSecrets(this.createListSecretsRequest());
 
 			const secretNames = rawSecretNames.reduce<string[]>((acc, cur) => {
 				if (!cur.name) return acc;
@@ -216,6 +274,78 @@ export class GcpSecretsManager extends SecretsProvider {
 
 	getSecretNames() {
 		return Object.keys(this.cachedSecrets);
+	}
+
+	private createListSecretsRequest(
+		pageSize?: number,
+	): protos.google.cloud.secretmanager.v1.IListSecretsRequest {
+		const request: protos.google.cloud.secretmanager.v1.IListSecretsRequest = {
+			parent: `projects/${this.getProjectId()}`,
+		};
+
+		if (this.settings.secretFilter) request.filter = this.settings.secretFilter;
+		if (pageSize !== undefined) request.pageSize = pageSize;
+
+		return request;
+	}
+
+	private async resolveProjectId(): Promise<void> {
+		if (this.settings.projectId) return;
+
+		const projectId = (await this.client.auth.getProjectId())?.trim();
+		if (!projectId) {
+			throw new UserError(
+				'Could not determine the Google Cloud project ID. Enter a Project ID and try again.',
+			);
+		}
+
+		this.settings.projectId = projectId;
+	}
+
+	private getProjectId(): string {
+		if (!this.settings.projectId) {
+			throw new UserError(
+				'Could not determine the Google Cloud project ID. Enter a Project ID and try again.',
+			);
+		}
+
+		return this.settings.projectId;
+	}
+
+	private async createClient() {
+		const [{ SecretManagerServiceClient: GcpClient }, { GoogleAuth, Impersonated }] =
+			await Promise.all([import('@google-cloud/secret-manager'), import('google-auth-library')]);
+
+		const projectId = this.settings.projectId;
+		const scopes = [CLOUD_PLATFORM_SCOPE];
+		const sourceAuth =
+			this.settings.useApplicationDefaultCredentials
+				? new GoogleAuth()
+				: new GoogleAuth({
+						credentials: {
+							client_email: this.settings.clientEmail,
+							private_key: this.settings.privateKey,
+						},
+					});
+
+		// SecretManagerServiceClient sets these defaults on its GoogleAuth wrapper after
+		// construction, so apply them before resolving and injecting authClient.
+		sourceAuth.defaultScopes = scopes;
+		sourceAuth.defaultServicePath = 'secretmanager.googleapis.com';
+
+		let authClient = await sourceAuth.getClient();
+		if (this.settings.impersonateServiceAccount) {
+			authClient = new Impersonated({
+				sourceClient: authClient,
+				targetPrincipal: this.settings.impersonateServiceAccount,
+				targetScopes: scopes,
+			});
+		}
+
+		return new GcpClient({
+			authClient,
+			...(projectId ? { projectId } : {}),
+		});
 	}
 
 	private parseSecretAccountKey(serviceAccountKey: string): GcpSecretAccountKey {
