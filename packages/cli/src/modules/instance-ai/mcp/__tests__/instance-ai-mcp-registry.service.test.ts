@@ -531,6 +531,11 @@ describe('InstanceAiMcpRegistryService', () => {
 			return connection;
 		}
 
+		function getConfiguredFetch(): CustomFetch {
+			const [configs] = mcpClientConstructorMock.mock.lastCall ?? [];
+			return (configs as Array<{ fetch: CustomFetch }>)[0].fetch;
+		}
+
 		it('lists tools with connection-local names and closes the MCP client', async () => {
 			const deps = createService();
 			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } = deps;
@@ -708,6 +713,54 @@ describe('InstanceAiMcpRegistryService', () => {
 				status: 'disconnected',
 				tools: [],
 				failureReason: 'unknown',
+			});
+		});
+
+		it.each([
+			[401, 'authentication'],
+			[403, 'authentication'],
+			[503, 'server_unavailable'],
+		] as const)('classifies an HTTP %i connection failure as %s', async (status, failureReason) => {
+			const deps = createService();
+			arrangeResolvableConnection(deps);
+			proxyFetchMock.mockResolvedValue(new Response(null, { status }));
+			mcpClientListToolsMock.mockImplementation(async () => {
+				await getConfiguredFetch()('https://linear.example.com/mcp');
+				return [];
+			});
+			mcpClientGetConnectionFailuresMock.mockReturnValue([
+				{ server: 'mcp_linear', error: 'Connection failed' },
+			]);
+
+			const result = await deps.service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason,
+			});
+		});
+
+		it('classifies a rejected request as server unavailable', async () => {
+			const deps = createService();
+			arrangeResolvableConnection(deps);
+			proxyFetchMock.mockRejectedValue(new Error('Connection refused'));
+			mcpClientListToolsMock.mockImplementation(async () => {
+				await getConfiguredFetch()('https://linear.example.com/mcp').catch(() => undefined);
+				return [];
+			});
+			mcpClientGetConnectionFailuresMock.mockReturnValue([
+				{ server: 'mcp_linear', error: 'Connection failed' },
+			]);
+
+			const result = await deps.service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'server_unavailable',
 			});
 		});
 

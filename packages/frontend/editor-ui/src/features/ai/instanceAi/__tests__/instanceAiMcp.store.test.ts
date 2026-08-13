@@ -13,10 +13,11 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const mockShowError = vi.fn();
+const mockShowMessage = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showError: (...args: unknown[]) => mockShowError(...args),
-		showMessage: vi.fn(),
+		showMessage: (...args: unknown[]) => mockShowMessage(...args),
 	}),
 }));
 
@@ -156,6 +157,20 @@ describe('useInstanceAiMcpStore', () => {
 			});
 			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'search' }]);
 			expect(store.connectionToolsById.has('conn-2')).toBe(false);
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('reports bulk tool check errors', async () => {
+			const error = new Error('boom');
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools.mockRejectedValue(error);
+
+			await store.fetchConnections();
+
+			await vi.waitFor(() => {
+				expect(mockShowError).toHaveBeenCalledWith(error, 'instanceAi.mcp.error.checkConnections');
+			});
+			expect(store.connections[0].status).toBe('disconnected');
 		});
 
 		it('loads connections and tools only once', async () => {
@@ -196,6 +211,51 @@ describe('useInstanceAiMcpStore', () => {
 	});
 
 	describe('fetchConnectionToolsLazy', () => {
+		it.each([
+			['server_unavailable', 'instanceAi.mcp.error.connection.serverUnavailable'],
+			['authentication', 'instanceAi.mcp.error.connection.authentication'],
+			['unknown', 'instanceAi.mcp.error.connection.unknown'],
+		] as const)('shows the connection error for %s failures', async (failureReason, message) => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools.mockResolvedValue([
+				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'unknown' },
+			]);
+			await store.fetchConnections();
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
+			mockFetchMcpConnectionTools.mockResolvedValue({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason,
+			});
+
+			await store.fetchConnectionToolsLazy('conn-1');
+
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: 'instanceAi.mcp.error.connection.title',
+				message,
+			});
+		});
+
+		it('shows the unknown connection error when the request fails', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools.mockResolvedValue([
+				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'unknown' },
+			]);
+			await store.fetchConnections();
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
+			mockFetchMcpConnectionTools.mockRejectedValue(new Error('boom'));
+
+			await store.fetchConnectionToolsLazy('conn-1');
+
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: 'instanceAi.mcp.error.connection.title',
+				message: 'instanceAi.mcp.error.connection.unknown',
+			});
+		});
+
 		it('retries a disconnected connection and caches its tools', async () => {
 			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
 			mockFetchAllMcpConnectionTools.mockResolvedValue([
