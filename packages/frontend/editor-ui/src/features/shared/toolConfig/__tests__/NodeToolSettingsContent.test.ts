@@ -7,9 +7,11 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { ToolConfigCredentialSelectedKey } from '@/app/constants';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
+import { defineComponent, inject, type PropType } from 'vue';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -504,6 +506,123 @@ describe('NodeToolSettingsContent', () => {
 			});
 
 			vi.restoreAllMocks();
+		});
+
+		it('applies credentials from ToolConfigCredentialSelectedKey onto the local node', async () => {
+			const httpLikeNodeType: INodeTypeDescription = {
+				...MOCK_NODE_TYPE,
+				properties: [
+					{
+						displayName: 'Name Field',
+						name: 'nameField',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Generic Credential Type', value: 'genericCredentialType' },
+						],
+						default: 'none',
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						displayOptions: {
+							show: { authentication: ['genericCredentialType'] },
+						},
+					},
+				],
+				// Non-empty credentials array is required for getNodeCredentialIssues to
+				// evaluate generic auth (HTTP Request declares httpSslAuth the same way).
+				credentials: [
+					{
+						name: 'httpSslAuth',
+						required: true,
+						displayOptions: { show: { provideSslCertificates: [true] } },
+					},
+				],
+			};
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(httpLikeNodeType);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				name: 'httpHeaderAuth',
+				displayName: 'Header Auth',
+			});
+
+			const toolName = 'HTTP Tool';
+			const ParameterInputListStub = defineComponent({
+				props: {
+					node: { type: Object as PropType<INode | null>, default: null },
+				},
+				setup() {
+					const onCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
+					return { onCredentialSelected };
+				},
+				template: `
+					<div data-test-id="parameter-input-list">
+						<slot />
+						<button
+							data-test-id="simulate-credential-selected"
+							@click="onCredentialSelected?.({
+								name: node?.name ?? '',
+								properties: {
+									credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Darwin Webhook Auth' } },
+								},
+							})"
+						/>
+					</div>
+				`,
+			});
+
+			const renderWithCredentialSelect = createComponentRenderer(NodeToolSettingsContent, {
+				global: {
+					stubs: {
+						ParameterInputList: ParameterInputListStub,
+						NodeCredentials: {
+							template: '<div data-test-id="node-credentials" />',
+							props: ['node', 'readonly', 'showAll', 'hideIssues'],
+						},
+					},
+				},
+			});
+
+			const { emitted, getAllByTestId } = renderWithCredentialSelect({
+				props: {
+					initialNode: createMockNode({
+						name: toolName,
+						parameters: {
+							nameField: 'test',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+					}),
+				},
+			});
+
+			await waitFor(() => {
+				const validEmissions = emitted('update:valid') as boolean[][];
+				expect(validEmissions.at(-1)?.[0]).toBe(false);
+			});
+
+			// Params + settings tabs each render ParameterInputList.
+			getAllByTestId('simulate-credential-selected')[0].click();
+
+			await waitFor(() => {
+				const validEmissions = emitted('update:valid') as boolean[][];
+				expect(validEmissions.at(-1)?.[0]).toBe(true);
+
+				const nodeEmissions = emitted('update:node') as INode[][];
+				const latestNode = nodeEmissions.at(-1)?.[0];
+				expect(latestNode?.credentials?.httpHeaderAuth).toEqual({
+					id: 'cred-1',
+					name: 'Darwin Webhook Auth',
+				});
+			});
 		});
 	});
 
