@@ -100,9 +100,36 @@ const GatewayStatusSchema = z.object({
 const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
 export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
+// Browser-use relay (a different channel from the computer-use gateway above:
+// the server owns the CDP relay and the extension dials in).
+const BrowserLinkSchema = z.object({
+	connectUrl: z.string(),
+	expiresAt: z.string().nullable(),
+	ttlSeconds: z.number().nullable(),
+});
+const BrowserLinkEnvelope = z.object({ data: BrowserLinkSchema });
+export type BrowserLink = z.infer<typeof BrowserLinkSchema>;
+
+const BrowserStatusSchema = z.object({
+	connected: z.boolean(),
+	connectedAt: z.string().nullable(),
+	toolCategories: z.array(z.object({ name: z.string(), enabled: z.boolean() })),
+});
+const BrowserStatusEnvelope = z.object({ data: BrowserStatusSchema });
+export type BrowserStatus = z.infer<typeof BrowserStatusSchema>;
+
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
 // ---------------------------------------------------------------------------
+
+/** A credential as `GET /rest/credentials` returns it. No `data`: the REST read
+ *  blanks every password field, so nothing here consumes decrypted credential
+ *  data — see the header of `credential-setup-checks.ts`. */
+export interface CredentialResponse {
+	id: string;
+	name: string;
+	type: string;
+}
 
 /** A node as returned by the n8n REST API — the fields eval code reads. */
 export interface WorkflowNodeResponse {
@@ -203,7 +230,9 @@ export class N8nApiError extends Error {
 export class N8nClient {
 	private sessionCookie?: string;
 
-	constructor(private readonly baseUrl: string) {}
+	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
+	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
+	constructor(readonly baseUrl: string) {}
 
 	// -- Auth ----------------------------------------------------------------
 
@@ -362,6 +391,36 @@ export class N8nClient {
 		return GatewayStatusEnvelope.parse(result).data;
 	}
 
+	// -- Browser-use relay (extension pairing + status) ----------------------
+
+	/**
+	 * Mint a connect URL for the browser-use extension to dial into. This is the
+	 * production `mode: 'remote'` path — the server owns the relay.
+	 * POST /rest/instance-ai/browser/create-link
+	 */
+	async createBrowserLink(): Promise<BrowserLink> {
+		const result = await this.fetch('/rest/instance-ai/browser/create-link', { method: 'POST' });
+		return BrowserLinkEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Read the browser relay status. Flips to `connected: true` once the
+	 * extension has registered.
+	 * GET /rest/instance-ai/browser/status
+	 */
+	async getBrowserStatus(): Promise<BrowserStatus> {
+		const result = await this.fetch('/rest/instance-ai/browser/status');
+		return BrowserStatusEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Drop the browser session so the next case starts from a clean relay.
+	 * POST /rest/instance-ai/browser/disconnect-session
+	 */
+	async disconnectBrowserSession(): Promise<void> {
+		await this.fetch('/rest/instance-ai/browser/disconnect-session', { method: 'POST' });
+	}
+
 	// -- REST API (verification helpers) -------------------------------------
 
 	/**
@@ -391,12 +450,51 @@ export class N8nClient {
 		return { id: result.data.id };
 	}
 
+	/**
+	 * List all credentials visible to the authenticated user (no secret data).
+	 * GET /rest/credentials
+	 */
+	async listCredentials(): Promise<CredentialResponse[]> {
+		const result = (await this.fetch('/rest/credentials')) as { data: CredentialResponse[] };
+		return Array.isArray(result.data) ? result.data : [];
+	}
+
+	/**
+	 * Run a credential's own test request WITHOUT persisting anything.
+	 * POST /rest/credentials/test
+	 *
+	 * Proves the stored secret works without the harness ever reading it back.
+	 */
+	async testCredential(credential: {
+		id: string;
+		name: string;
+		type: string;
+		data: Record<string, unknown>;
+	}): Promise<{ status: string; message?: string }> {
+		const result = (await this.fetch('/rest/credentials/test', {
+			method: 'POST',
+			body: { credentials: credential },
+		})) as { data?: { status?: string; message?: string } };
+		return { status: result.data?.status ?? 'Error', message: result.data?.message };
+	}
+
+	/** Read one credential including its (password-blanked) data — the shape the
+	 *  test endpoint wants echoed back. */
+	async getCredentialForTest(id: string): Promise<{
+		id: string;
+		name: string;
+		type: string;
+		data: Record<string, unknown>;
+	}> {
+		const result = (await this.fetch(`/rest/credentials/${id}?includeData=true`)) as {
+			data: { id: string; name: string; type: string; data?: Record<string, unknown> };
+		};
+		return { ...result.data, data: result.data.data ?? {} };
+	}
+
 	/** List all credential IDs visible to the authenticated user. */
 	async listCredentialIds(): Promise<string[]> {
-		const result = (await this.fetch('/rest/credentials')) as {
-			data: Array<{ id: string }>;
-		};
-		return Array.isArray(result.data) ? result.data.map((c) => c.id) : [];
+		return (await this.listCredentials()).map((c) => c.id);
 	}
 
 	/**

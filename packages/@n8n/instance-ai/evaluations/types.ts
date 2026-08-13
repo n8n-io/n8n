@@ -251,6 +251,11 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
+	/** Opts into the credential-setup BROWSER lane and picks what it talks to:
+	 *  a shipped fixture id (hermetic lookalike) or `local` (the REAL provider
+	 *  site in the developer's own Chrome). Omitted → no browser lane; absence
+	 *  never means real internet. */
+	credentialFixture?: string;
 	/** History restored before the live turn, in one slot so the modes can't
 	 *  overlap: `mode: 'inline'` carries the messages (and the workflows/tables
 	 *  they reference) in the case body; `mode: 'replay'` reconstructs them from a
