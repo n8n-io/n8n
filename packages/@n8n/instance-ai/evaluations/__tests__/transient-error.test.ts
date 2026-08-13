@@ -1,6 +1,8 @@
 import {
 	extractErrorMessage,
 	findProviderOutage,
+	isRequestAbort,
+	isServerBudgetStop,
 	isTransientNetworkError,
 	isTransientProviderError,
 	MAX_EXEC_ATTEMPTS,
@@ -57,6 +59,36 @@ describe('transient-error', () => {
 		])('does not classify builder/mock failure %j as transient', (message) => {
 			expect(isTransientNetworkError(message)).toBe(false);
 		});
+	});
+
+	describe('isRequestAbort', () => {
+		it('recognises the client abort message', () => {
+			expect(isRequestAbort('The operation was aborted due to timeout')).toBe(true);
+		});
+
+		it.each([
+			// The chat loop's own budget overrun — the agent was slow, the lane is fine.
+			'Run timed out after 900000ms',
+			// A node's timeout quoted in a build error must not evict the lane.
+			'Tool errors: HTTP Request failed with TimeoutError',
+		])('leaves %j to the lane health probe', (message) => {
+			expect(isRequestAbort(message)).toBe(false);
+		});
+	});
+
+	describe('isServerBudgetStop', () => {
+		it('recognises the in-band error the server returns when it stops a run', () => {
+			expect(isServerBudgetStop(['Execution exceeded its 895s eval budget and was stopped'])).toBe(
+				true,
+			);
+		});
+
+		it.each([[undefined], [[]], [['Sheet with ID __evalMockResource not found']]])(
+			'leaves ordinary execution failures alone (%j)',
+			(errors) => {
+				expect(isServerBudgetStop(errors)).toBe(false);
+			},
+		);
 	});
 
 	it('caps retries at a small positive number', () => {

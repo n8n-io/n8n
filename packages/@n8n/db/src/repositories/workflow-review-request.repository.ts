@@ -1,13 +1,15 @@
 import { Service } from '@n8n/di';
-import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, Repository } from '@n8n/typeorm';
+import type { SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
 import {
 	WorkflowReviewRequest,
 	type WorkflowReviewRequestDecision,
 	type WorkflowReviewRequestState,
 } from '../entities/workflow-review-request.ee';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 /**
  * Keyset pagination boundary. The caller carries `createdAt`/`id` in the cursor
@@ -34,17 +36,9 @@ export type FindManyForInboxOptions = {
  */
 export type WorkflowReviewRequestForWorkflowRow = Pick<
 	WorkflowReviewRequest,
-	'id' | 'state' | 'decision' | 'updatedById' | 'createdAt' | 'updatedAt'
+	'id' | 'state' | 'decision' | 'description' | 'updatedById' | 'createdAt' | 'updatedAt'
 > & {
 	workflowVersionId: string | null;
-};
-
-export type ExistsAnyForInboxOptions = {
-	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
-	projectIds: string[] | null;
-	/** Requesters always see the reviews they created, regardless of project scope. */
-	requesterId: string;
-	state?: WorkflowReviewRequestState;
 };
 
 export type CountByStateForInboxOptions = {
@@ -60,9 +54,9 @@ export type InboxStateCounts = {
 };
 
 @Service()
-export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRequest> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowReviewRequest, dataSource.manager);
+export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowReviewRequest> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowReviewRequest, dataSource.manager, transactionRunner);
 	}
 
 	async createRequest(
@@ -76,9 +70,8 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			createdById: string | null;
 			updatedById?: string | null;
 		},
-		trx?: EntityManager,
+		ctx: OperationContext,
 	): Promise<WorkflowReviewRequest> {
-		const manager = trx ?? this.manager;
 		const entity = this.create({
 			id: input.id,
 			projectId: input.projectId,
@@ -92,12 +85,63 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			approvedAt: null,
 		});
 
-		return await manager.save(WorkflowReviewRequest, entity);
+		return await this.managerFor(ctx).save(WorkflowReviewRequest, entity);
 	}
 
-	async findById(id: string, trx?: EntityManager): Promise<WorkflowReviewRequest | null> {
-		const manager = trx ?? this.manager;
-		return await manager.findOne(WorkflowReviewRequest, { where: { id } });
+	/**
+	 * Persists an already-loaded request. Deliberately `save` and not `update`, so the
+	 * entity's `@BeforeUpdate` hook bumps `updatedAt`.
+	 */
+	async saveRequest(
+		request: WorkflowReviewRequest,
+		ctx: OperationContext,
+	): Promise<WorkflowReviewRequest> {
+		return await this.managerFor(ctx).save(WorkflowReviewRequest, request);
+	}
+
+	/**
+	 * Closes every open request left with no linked workflow, returning the ids closed.
+	 *
+	 * A workflow hard delete cascades the link rows away, so an open request that has
+	 * lost its last one covers nothing and can never be acted on again. `create` writes
+	 * the request and its link row in one transaction, so a request is only ever visible
+	 * without links once the workflow behind it is gone — the two steps here cannot see
+	 * a half-written create and so need no lock.
+	 */
+	async closeOrphanedOpenRequests(ctx: OperationContext): Promise<string[]> {
+		const openState: WorkflowReviewRequestState = 'open';
+		const closedState: WorkflowReviewRequestState = 'closed';
+		const manager = this.managerFor(ctx);
+
+		const orphans = await manager
+			.createQueryBuilder(WorkflowReviewRequest, 'review')
+			.select('review.id', 'id')
+			.where('review.state = :openState', { openState })
+			.andWhere((qb) => {
+				const linkedWorkflowExists = qb
+					.subQuery()
+					.select('1')
+					.from(WorkflowReviewRequestWorkflow, 'requestWorkflow')
+					.where('requestWorkflow.workflowReviewRequestId = review.id')
+					.getQuery();
+				return `NOT EXISTS ${linkedWorkflowExists}`;
+			})
+			.getRawMany<{ id: string }>();
+
+		if (orphans.length === 0) return [];
+
+		const ids = orphans.map(({ id }) => id);
+		// A system close has no closing user; the decision stays as-is.
+		await manager.update(WorkflowReviewRequest, ids, {
+			state: closedState,
+			closedById: null,
+		});
+
+		return ids;
+	}
+
+	async findById(id: string, ctx: OperationContext): Promise<WorkflowReviewRequest | null> {
+		return await this.managerFor(ctx).findOne(WorkflowReviewRequest, { where: { id } });
 	}
 
 	async findRequestsForWorkflow(
@@ -143,6 +187,7 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			id: entity.id,
 			state: entity.state,
 			decision: entity.decision,
+			description: entity.description,
 			updatedById: entity.updatedById,
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
@@ -154,12 +199,11 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 
 	async findOpenRequestForWorkflow(
 		workflowId: string,
-		trx?: EntityManager,
+		ctx: OperationContext,
 	): Promise<WorkflowReviewRequest | null> {
-		const manager = trx ?? this.manager;
 		const state: WorkflowReviewRequestState = 'open';
 
-		return await manager
+		return await this.managerFor(ctx)
 			.createQueryBuilder(WorkflowReviewRequest, 'request')
 			.innerJoin(
 				WorkflowReviewRequestWorkflow,
@@ -170,6 +214,45 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			.andWhere('request.state = :state', { state })
 			.orderBy('request.createdAt', 'DESC')
 			.getOne();
+	}
+
+	/**
+	 * All open requests linked to any of the given workflows, each with the
+	 * subset of those workflows it is linked to — so a lifecycle cleanup can
+	 * close a request once while still knowing which workflows were affected.
+	 */
+	async findOpenRequestsForWorkflows(
+		workflowIds: string[],
+		ctx: OperationContext,
+	): Promise<Array<{ request: WorkflowReviewRequest; workflowIds: string[] }>> {
+		if (workflowIds.length === 0) return [];
+
+		const state: WorkflowReviewRequestState = 'open';
+
+		const { entities, raw } = await this.managerFor(ctx)
+			.createQueryBuilder(WorkflowReviewRequest, 'request')
+			.innerJoin(
+				WorkflowReviewRequestWorkflow,
+				'requestWorkflow',
+				'requestWorkflow.workflowReviewRequestId = request.id',
+			)
+			.addSelect('requestWorkflow.workflowId', 'linkedWorkflowId')
+			.where('requestWorkflow.workflowId IN (:...workflowIds)', { workflowIds })
+			.andWhere('request.state = :state', { state })
+			.getRawAndEntities<{ request_id: string; linkedWorkflowId: string }>();
+
+		// Raw rows are per (request, workflow) pair; entities are deduplicated.
+		const workflowIdsByRequestId = new Map<string, string[]>();
+		for (const row of raw) {
+			const linked = workflowIdsByRequestId.get(row.request_id) ?? [];
+			linked.push(row.linkedWorkflowId);
+			workflowIdsByRequestId.set(row.request_id, linked);
+		}
+
+		return entities.map((request) => ({
+			request,
+			workflowIds: workflowIdsByRequestId.get(request.id) ?? [],
+		}));
 	}
 
 	async findManyForInbox(options: FindManyForInboxOptions): Promise<WorkflowReviewRequest[]> {
@@ -234,11 +317,11 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 		}
 
 		if (projectIds.length === 0) {
-			queryBuilder.where('review.createdById = :requesterId', { requesterId });
+			queryBuilder.andWhere('review.createdById = :requesterId', { requesterId });
 			return;
 		}
 
-		queryBuilder.where(
+		queryBuilder.andWhere(
 			'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
 			{ projectIds, requesterId },
 		);

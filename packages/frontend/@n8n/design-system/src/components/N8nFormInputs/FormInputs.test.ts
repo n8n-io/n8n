@@ -1,9 +1,8 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect } from 'vitest';
 
-import type { IFormInput } from '@n8n/design-system/types';
-
 import FormInputs from './FormInputs.vue';
+import type { IFormInput } from '../../types';
 import N8nFormInput from '../N8nFormInput';
 
 describe('FormInputs', () => {

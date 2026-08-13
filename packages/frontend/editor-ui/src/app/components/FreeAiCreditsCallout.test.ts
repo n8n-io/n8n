@@ -62,13 +62,7 @@ const assertUserCanClaimCredits = () => {
 const assertUserClaimedCredits = () => {
 	expect(
 		screen.getByText(
-			'Claimed 100 free OpenAI API credits! Please note these free credits are only for the following models:',
-		),
-	).toBeInTheDocument();
-
-	expect(
-		screen.getByText(
-			'gpt-5-mini, gpt-4.1-mini, gpt-4.1-nano, gpt-4o-mini, text-embedding-3-small, dall-e-3, tts-1, whisper-1, and text-moderation-latest',
+			'Claimed 100 free OpenAI API credits! They cover a limited set of OpenAI models — check the model dropdown to see which.',
 		),
 	).toBeInTheDocument();
 };

@@ -38,6 +38,8 @@ mockInstance(WorkflowService);
 mockInstance(OwnershipService);
 mockInstance(ExternalHooks);
 
+const abortSignal = new AbortController().signal;
+
 let consumer: WorkflowPublicationOutboxConsumer;
 let activeWorkflowManager: ActiveWorkflowManager;
 let activeWorkflowTriggers: ActiveWorkflowTriggers;
@@ -121,11 +123,11 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			connections: {},
 		});
 
-		await outboxRepository.enqueue(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 		expect(record).not.toBeNull();
 
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		// Surgical in-memory result: unchanged kept, removed gone, added registered.
 		const state = activeWorkflowTriggers.get(workflow.id);
@@ -162,10 +164,10 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		expect(presentResponse).toBeDefined();
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(missing.id)).toBe(false);
 
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		// `missing` got re-registered; `present` was left untouched (same response object).
 		const state = activeWorkflowTriggers.get(workflow.id);
@@ -189,10 +191,10 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		const responseBefore = activeWorkflowTriggers.get(workflow.id)?.get(trigger.id);
 		expect(responseBefore).toBeDefined();
 
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		// Nothing re-registered (same response object) and the version is unchanged.
 		expect(activeWorkflowTriggers.get(workflow.id)?.get(trigger.id)).toBe(responseBefore);
@@ -223,10 +225,10 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			connections: {},
 		});
 
-		await outboxRepository.enqueue(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
 		const published = await publishedVersionRepository.getPublishedVersionWithRelations(

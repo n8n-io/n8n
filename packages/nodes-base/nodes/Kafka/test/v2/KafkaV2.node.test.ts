@@ -182,7 +182,7 @@ describe('KafkaV2 Node', () => {
 
 	test('publishes input data as messages with key and headers unchanged, acks/timeout on the producer config', async () => {
 		const params: IDataObject = {
-			options: { acks: true, timeout: 1000 },
+			options: { acks: true, compression: 'none', timeout: 1000 },
 			sendInputData: true,
 			useSchemaRegistry: false,
 			topic: 'test-topic',
@@ -199,7 +199,7 @@ describe('KafkaV2 Node', () => {
 		await new KafkaV2(baseDescription).execute.call(createExecuteFunctions(params, items));
 
 		expect(mockProducerFactory).toHaveBeenCalledWith({
-			kafkaJS: { acks: -1, timeout: 1000, allowAutoTopicCreation: true },
+			kafkaJS: { acks: -1, timeout: 1000, allowAutoTopicCreation: true, compression: 'none' },
 		});
 		expect(mockProducerConnect).toHaveBeenCalledTimes(1);
 		expect(mockProducerSendBatch).toHaveBeenCalledTimes(1);
@@ -230,7 +230,7 @@ describe('KafkaV2 Node', () => {
 		expect(mockProducerDisconnect).toHaveBeenCalledTimes(1);
 	});
 
-	test('maps acks off to 0 and falls back to the default timeout when the option is unset', async () => {
+	test('maps acks off to 0 and falls back to the default timeout and compression when the options are unset', async () => {
 		const params: IDataObject = {
 			options: {},
 			sendInputData: false,
@@ -246,7 +246,7 @@ describe('KafkaV2 Node', () => {
 		await new KafkaV2(baseDescription).execute.call(createExecuteFunctions(params, items));
 
 		expect(mockProducerFactory).toHaveBeenCalledWith({
-			kafkaJS: { acks: 0, timeout: 30000, allowAutoTopicCreation: true },
+			kafkaJS: { acks: 0, timeout: 30000, allowAutoTopicCreation: true, compression: 'none' },
 		});
 		expect(mockProducerSendBatch).toHaveBeenCalledWith({
 			topicMessages: [
@@ -257,6 +257,32 @@ describe('KafkaV2 Node', () => {
 			],
 		});
 	});
+
+	// 'none' included: it must reach the config as an explicit codec, since the
+	// native library crashes on an undefined value.
+	test.each(['none', 'gzip', 'snappy', 'lz4', 'zstd'])(
+		'passes the %s compression codec to the producer',
+		async (compression) => {
+			const params: IDataObject = {
+				options: { compression },
+				sendInputData: false,
+				useSchemaRegistry: false,
+				topic: 'test-topic',
+				jsonParameters: false,
+				useKey: false,
+				message: 'plain message',
+				headersUi: {},
+			};
+
+			await new KafkaV2(baseDescription).execute.call(
+				createExecuteFunctions(params, [{ json: {} }]),
+			);
+
+			expect(mockProducerFactory).toHaveBeenCalledWith({
+				kafkaJS: { acks: 0, timeout: 30000, allowAutoTopicCreation: true, compression },
+			});
+		},
+	);
 
 	test('reads the topic and key per item', async () => {
 		const params: NodeParams = {
