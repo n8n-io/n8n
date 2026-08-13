@@ -1,9 +1,11 @@
 import {
 	MAX_ATTACHMENT_BASE64_BYTES as API_TYPES_PER_FILE,
+	MAX_ATTACHMENT_DECODED_BYTES as API_TYPES_PER_FILE_DECODED,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES as API_TYPES_TOTAL,
 } from '@n8n/api-types';
 import {
 	MAX_ATTACHMENT_BASE64_BYTES as PARSER_PER_FILE,
+	MAX_ATTACHMENT_DECODED_BYTES as PARSER_PER_FILE_DECODED,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES as PARSER_TOTAL,
 } from '@n8n/instance-ai/parsers';
 
@@ -21,6 +23,10 @@ describe('attachment size limits', () => {
 
 	it('agrees on the total-payload limit across packages', () => {
 		expect(PARSER_TOTAL).toBe(API_TYPES_TOTAL);
+	});
+
+	it('agrees on the decoded per-file limit quoted in user-facing copy', () => {
+		expect(PARSER_PER_FILE_DECODED).toBe(API_TYPES_PER_FILE_DECODED);
 	});
 
 	it('keeps the per-file limit within the total budget', () => {

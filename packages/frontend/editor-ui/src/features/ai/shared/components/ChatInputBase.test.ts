@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
-import { MAX_ATTACHMENT_BASE64_BYTES } from '@n8n/api-types';
+import { MAX_ATTACHMENT_BASE64_BYTES, MAX_TOTAL_ATTACHMENT_DECODED_BYTES } from '@n8n/api-types';
 
 const mockStart = vi.fn();
 const mockStop = vi.fn();
@@ -246,6 +246,46 @@ describe('ChatInputBase', () => {
 			pasteInto(getByRole('textbox'), [fileOfSize('fine.png', 1024)]);
 
 			expect(emitted()['files-selected']).toBeTruthy();
+			expect(mockShowError).not.toHaveBeenCalled();
+		});
+
+		it('rejects a batch that would breach the combined per-message budget', () => {
+			// Each file is individually fine; together they are not. Without this the
+			// upload only fails after megabytes have crossed the wire.
+			const half = MAX_TOTAL_ATTACHMENT_DECODED_BYTES / 2;
+			const { getByRole, emitted } = renderComponent({ props: makeProps({ showAttach: true }) });
+
+			pasteInto(getByRole('textbox'), [
+				fileOfSize('a.png', half),
+				fileOfSize('b.png', half),
+				fileOfSize('c.png', half),
+			]);
+
+			const events = emitted()['files-selected'] as Array<[File[]]>;
+			expect(events[0][0].map((f) => f.name)).toEqual(['a.png', 'b.png']);
+			expect(mockShowError).toHaveBeenCalled();
+		});
+
+		it('counts files already in the composer toward the budget', () => {
+			const half = MAX_TOTAL_ATTACHMENT_DECODED_BYTES / 2;
+			const { getByRole, emitted } = renderComponent({
+				props: makeProps({ showAttach: true, attachedDecodedBytes: half * 2 }),
+			});
+
+			pasteInto(getByRole('textbox'), [fileOfSize('one-too-many.png', half)]);
+
+			expect(emitted()['files-selected']).toBeFalsy();
+			expect(mockShowError).toHaveBeenCalled();
+		});
+
+		it('attaches a batch that fits within the combined budget', () => {
+			const third = MAX_TOTAL_ATTACHMENT_DECODED_BYTES / 3;
+			const { getByRole, emitted } = renderComponent({ props: makeProps({ showAttach: true }) });
+
+			pasteInto(getByRole('textbox'), [fileOfSize('a.png', third), fileOfSize('b.png', third)]);
+
+			const events = emitted()['files-selected'] as Array<[File[]]>;
+			expect(events[0][0].map((f) => f.name)).toEqual(['a.png', 'b.png']);
 			expect(mockShowError).not.toHaveBeenCalled();
 		});
 

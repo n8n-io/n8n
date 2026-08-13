@@ -171,6 +171,10 @@ const isBusy = computed(() =>
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
+// Fed to the composer so its size guard can account for what is already staged.
+const attachedDecodedBytes = computed(() =>
+	attachedFiles.value.reduce((sum, file) => sum + file.size, 0),
+);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
@@ -447,6 +451,7 @@ const resizable = computed(() => {
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="!props.isPlanEditMode"
+			:attached-decoded-bytes="attachedDecodedBytes"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"

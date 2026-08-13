@@ -109,6 +109,19 @@ export const MAX_ATTACHMENT_BASE64_BYTES = 10 * 1024 * 1024;
  */
 export const MAX_TOTAL_ATTACHMENT_BASE64_BYTES = 16 * 1024 * 1024;
 
+/**
+ * The per-file ceiling as a raw file size — what a user sees on disk. Enforcement
+ * uses the encoded limit above; **copy quotes this**, because telling someone with
+ * an 8 MB file that it "exceeds the 10 MB limit" reproduces the very unit confusion
+ * this validator exists to prevent.
+ */
+export const MAX_ATTACHMENT_DECODED_BYTES = (MAX_ATTACHMENT_BASE64_BYTES / 4) * 3;
+
+/** Raw size of a base64 payload, for describing a file the way the user sees it. */
+function decodedSize(encodedBytes: number): number {
+	return (encodedBytes / 4) * 3;
+}
+
 export interface OversizedAttachmentDetail {
 	fileName: string;
 	encodedBytes: number;
@@ -141,13 +154,18 @@ export class OversizedAttachmentError extends Error {
 		limitBytes: number;
 		totalEncodedBytes: number;
 	}) {
+		// Sizes are reported decoded so they match the files the user picked.
 		super(
 			args.reason === 'per_file'
 				? `Attachment too large: ${args.oversized
-						.map((o) => `${o.fileName} (${formatMegabytes(o.encodedBytes)})`)
-						.join(', ')}. Each file must be at most ${formatMegabytes(args.limitBytes)}.`
-				: `Attachments total ${formatMegabytes(args.totalEncodedBytes)}, over the ${formatMegabytes(
-						args.limitBytes,
+						.map((o) => `${o.fileName} (${formatMegabytes(decodedSize(o.encodedBytes))})`)
+						.join(', ')}. Each file must be at most ${formatMegabytes(
+						decodedSize(args.limitBytes),
+					)}.`
+				: `Attachments total ${formatMegabytes(
+						decodedSize(args.totalEncodedBytes),
+					)}, over the ${formatMegabytes(
+						decodedSize(args.limitBytes),
 					)} limit for a single message.`,
 		);
 		this.name = 'OversizedAttachmentError';

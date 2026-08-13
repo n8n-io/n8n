@@ -30,6 +30,7 @@ export {
 	UnsupportedAttachmentError,
 	OversizedAttachmentError,
 	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_ATTACHMENT_DECODED_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from './validate-attachments';
 export type {

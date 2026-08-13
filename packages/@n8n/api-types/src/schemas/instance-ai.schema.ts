@@ -1016,6 +1016,34 @@ export const MAX_ATTACHMENT_BASE64_BYTES = 10 * 1024 * 1024;
 export const MAX_TOTAL_ATTACHMENT_BASE64_BYTES = 16 * 1024 * 1024;
 
 /**
+ * Largest raw file that still fits once base64-encoded — i.e. the ceiling as a user
+ * experiences it, since `File.size` and the figure their OS shows are both decoded.
+ *
+ * Enforcement uses the encoded limit above (that is what the provider measures), but
+ * **user-facing copy must quote this**: telling someone with an 8 MB file that it
+ * "exceeds the 10 MB limit" is the same decoded-vs-encoded confusion this guard exists
+ * to prevent.
+ */
+export const MAX_ATTACHMENT_DECODED_BYTES = (MAX_ATTACHMENT_BASE64_BYTES / 4) * 3;
+
+/** Combined ceiling across one message's attachments, as raw file size. */
+export const MAX_TOTAL_ATTACHMENT_DECODED_BYTES = (MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 4) * 3;
+
+function formatMegabyteLimit(bytes: number): string {
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** The per-file limit as a short label for user-facing copy, e.g. `7.5 MB`. */
+export function formatAttachmentSizeLimit(): string {
+	return formatMegabyteLimit(MAX_ATTACHMENT_DECODED_BYTES);
+}
+
+/** The combined per-message limit as a short label for user-facing copy, e.g. `12.0 MB`. */
+export function formatTotalAttachmentSizeLimit(): string {
+	return formatMegabyteLimit(MAX_TOTAL_ATTACHMENT_DECODED_BYTES);
+}
+
+/**
  * Encoded size of `decodedBytes` once base64'd: 3 bytes become 4 characters,
  * padded up to a multiple of 4.
  */
@@ -1038,8 +1066,11 @@ export function exceedsAttachmentSizeLimit(decodedBytes: number): boolean {
 /** A binary file the user attached to a message (image, CSV, PDF, …). */
 export const instanceAiFileAttachmentSchema = z.object({
 	type: z.literal('file'),
+	// This message is the copy the user actually sees for a single oversized file:
+	// body validation runs before the controller, so it answers first and the
+	// controller's richer per-file message never renders on this path.
 	data: z.string().max(MAX_ATTACHMENT_BASE64_BYTES, {
-		message: 'Attachment exceeds the 10 MB limit',
+		message: `Attachment is too large (limit ${formatAttachmentSizeLimit()}). Attach a smaller file, or resize the image before sending.`,
 	}),
 	mimeType: z.string().max(100),
 	fileName: z.string().max(300),

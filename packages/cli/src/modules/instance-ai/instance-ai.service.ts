@@ -11,7 +11,7 @@ import {
 	buildProxyHeaders,
 	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
-	MAX_ATTACHMENT_BASE64_BYTES,
+	formatAttachmentSizeLimit,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
@@ -363,9 +363,6 @@ function isStaleResumeError(error: unknown): boolean {
 	return error instanceof Error && error.name === 'StaleResumeError';
 }
 
-/** Whole megabytes, so the user-facing copy always quotes the limit we actually enforce. */
-const ATTACHMENT_LIMIT_MB = Math.floor(MAX_ATTACHMENT_BASE64_BYTES / (1024 * 1024));
-
 /** Signals that the failure is about an attached file rather than the request as a whole. */
 const ATTACHMENT_SUBJECT_PATTERN = /image|attachment/;
 
@@ -414,6 +411,14 @@ type TerminalErrorCode = NonNullable<ReturnType<typeof getUserFacingErrorCode>>;
 export function getUserFacingErrorMessage(
 	error: unknown,
 	fallback: string = GENERIC_ERROR_USER_MESSAGE,
+	opts: {
+		/**
+		 * Whether the refused attachment was actually removed from thread history.
+		 * `false` means the thread still replays it, so the guidance must send the user
+		 * to a new conversation rather than promise a clean slate.
+		 */
+		attachmentRemoved?: boolean;
+	} = {},
 ): string {
 	if (isQuotaExhaustedError(error)) {
 		return QUOTA_EXHAUSTED_USER_MESSAGE;
@@ -435,13 +440,17 @@ export function getUserFacingErrorMessage(
 		return "I couldn't finish preparing the workspace sandbox. Please try again in a moment.";
 	}
 
-	// Deliberately no "try again": the attachment is dropped from history, so the
-	// user needs to send a *new* message rather than retry the failed one.
+	// Deliberately no "try again": retrying replays the same attachment. Wording stays
+	// generic because PDFs and spreadsheets get refused too, and the pixel ceiling is
+	// scoped to images so a rejected CSV isn't sent chasing a resize.
 	if (isAttachmentRejectedByProviderError(error)) {
-		return (
-			'One of the attached images was too large for me to read, so I left it out. ' +
-			`Send it again as a smaller file — under ${ATTACHMENT_LIMIT_MB} MB and no more than 8000x8000 pixels.`
-		);
+		const limit = formatAttachmentSizeLimit();
+		const sizeAdvice = `under ${limit}, and for images no more than 8000x8000 pixels`;
+		return opts.attachmentRemoved === false
+			? 'One of the attached files was too large for me to read, and I could not remove it ' +
+					`from this conversation. Start a new chat and attach a smaller file — ${sizeAdvice}.`
+			: 'One of the attached files was too large for me to read, so I left it out. ' +
+					`Send it again as a smaller file — ${sizeAdvice}.`;
 	}
 
 	if (error instanceof OperationalError) {
@@ -4203,16 +4212,19 @@ export class InstanceAiService {
 			});
 			// The attachment is persisted in history before the model call is known to
 			// have succeeded, so a refused file would fail every later turn as well.
-			// Drop it here to keep the thread usable.
-			if (isAttachmentRejectedByProviderError(terminalError)) {
-				await dropRejectedAttachmentsFromHistory(
-					this.agentMemory,
-					{ threadId, resourceId: user.id },
-					this.logger,
-				);
-			}
+			// Drop it here to keep the thread usable, and tell the user what really
+			// happened — a failed cleanup leaves the thread poisoned.
+			const attachmentRemoved = isAttachmentRejectedByProviderError(terminalError)
+				? (await dropRejectedAttachmentsFromHistory(
+						this.agentMemory,
+						{ threadId, resourceId: user.id },
+						this.logger,
+					)) > 0
+				: undefined;
 			const errorMessage = getErrorMessage(terminalError);
-			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError, undefined, {
+				attachmentRemoved,
+			});
 			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const errCtx: InstanceAiObservabilityContext = {
@@ -5541,15 +5553,17 @@ export class InstanceAiService {
 			});
 			// Same recovery as the initial-run path: a refused attachment stays in
 			// history and would fail every later turn until it is removed.
-			if (isAttachmentRejectedByProviderError(terminalError)) {
-				await dropRejectedAttachmentsFromHistory(
-					this.agentMemory,
-					{ threadId: opts.threadId, resourceId: opts.user.id },
-					this.logger,
-				);
-			}
+			const attachmentRemoved = isAttachmentRejectedByProviderError(terminalError)
+				? (await dropRejectedAttachmentsFromHistory(
+						this.agentMemory,
+						{ threadId: opts.threadId, resourceId: opts.user.id },
+						this.logger,
+					)) > 0
+				: undefined;
 			const errorMessage = getErrorMessage(terminalError);
-			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError, undefined, {
+				attachmentRemoved,
+			});
 			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);

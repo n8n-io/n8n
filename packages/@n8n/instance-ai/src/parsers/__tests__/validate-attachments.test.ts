@@ -3,6 +3,7 @@ import {
 	getSupportedAttachmentMimeTypes,
 	isSupportedAttachmentMimeType,
 	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_ATTACHMENT_DECODED_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 	OversizedAttachmentError,
 	UnsupportedAttachmentError,
@@ -186,5 +187,33 @@ describe('validateAttachmentSizes', () => {
 			expect(error.limitBytes).toBe(MAX_ATTACHMENT_BASE64_BYTES);
 			expect(error.message).toContain('big.png');
 		}
+	});
+
+	// The user compares against the file on their disk, so the copy has to speak in
+	// decoded bytes even though enforcement measures the encoded payload.
+	it('quotes the raw-file limit in the message, not the encoded limit', () => {
+		try {
+			validateAttachmentSizes([imageOfEncodedSize('big.png', MAX_ATTACHMENT_BASE64_BYTES + 1)]);
+			expect.fail('expected error to be thrown');
+		} catch (caught) {
+			expect((caught as OversizedAttachmentError).message).toContain('7.5 MB');
+		}
+	});
+
+	it('reports the offending file at its raw size, not inflated by base64', () => {
+		// 12 MB encoded is a 9 MB file on disk; reporting 12 MB would misdescribe it.
+		const twelveMbEncoded = 12 * 1024 * 1024;
+		try {
+			validateAttachmentSizes([imageOfEncodedSize('big.png', twelveMbEncoded)]);
+			expect.fail('expected error to be thrown');
+		} catch (caught) {
+			const { message } = caught as OversizedAttachmentError;
+			expect(message).toContain('9.0 MB');
+			expect(message).not.toContain('12.0 MB');
+		}
+	});
+
+	it('exposes the decoded ceiling that matches the encoded one', () => {
+		expect(MAX_ATTACHMENT_DECODED_BYTES).toBe((MAX_ATTACHMENT_BASE64_BYTES / 4) * 3);
 	});
 });

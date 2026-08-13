@@ -208,6 +208,12 @@ export class InstanceAiController {
 				// The provider answers an oversized image with an opaque 400, and the
 				// attachment is already persisted in thread history by then — so every
 				// later turn replays it and fails too, stranding the conversation.
+				//
+				// Note the request schema caps each `data` field at the same per-file
+				// limit, and body validation runs before this handler — so over HTTP a
+				// single oversized file is answered by the schema and only the combined
+				// budget reaches here. This call stays because it is the check for
+				// non-HTTP callers and the one that enforces the total.
 				validateAttachmentSizes(fileAttachments);
 			} catch (error) {
 				if (error instanceof UnsupportedAttachmentError) {
