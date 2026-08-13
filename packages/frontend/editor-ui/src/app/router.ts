@@ -18,6 +18,7 @@ import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
+import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
 import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
 import { handleSessionExpired } from '@/app/utils/handleSessionExpired';
@@ -1262,9 +1263,13 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 			return;
 		}
 
-		// An error from the checks above must still resolve the guard, not leave it hanging.
+		// Resolve the guard instead of leaving it hanging, but don't authorize `to`
+		// without its permission check having completed: redirect to sign-in.
 		console.error(failure);
-		return next();
+		return next({
+			name: VIEWS.SIGNIN,
+			query: { redirect: encodeURIComponent(getSanitizedCurrentPath(to)) },
+		});
 	}
 });
 
