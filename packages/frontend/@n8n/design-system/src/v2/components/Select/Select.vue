@@ -96,11 +96,6 @@ function isTypingKey(event: KeyboardEvent) {
 	);
 }
 
-/**
- * Keep typing in the search field from driving Reka's typeahead on the list,
- * but let Escape bubble so the select can close, and let ↑/↓ bubble so Reka
- * can move focus into the options (search → list handoff).
- */
 function onSearchKeydown(event: KeyboardEvent) {
 	if (event.key === 'Escape' || isSearchNavigationKey(event.key)) {
 		if (isSearchNavigationKey(event.key)) {
@@ -119,11 +114,6 @@ function getEnabledOptions(contentEl: HTMLElement): HTMLElement[] {
 	);
 }
 
-/**
- * Focus the search field after open. Reka focuses the selected item once
- * content is positioned (`@placed`), so defer past that to keep the caret
- * ready for typing.
- */
 async function focusSearchInput() {
 	await nextTick();
 	requestAnimationFrame(() => {
@@ -131,11 +121,6 @@ async function focusSearchInput() {
 	});
 }
 
-/**
- * When focus is already on the list: ↑ on the first option returns to search;
- * typing a character returns to search and appends to the query (instead of
- * Reka typeahead).
- */
 function onContentKeydown(event: KeyboardEvent) {
 	if (!props.searchable) {
 		return;
@@ -220,7 +205,6 @@ function isOptionItem(item: SelectItem): item is SelectOptionBase {
 	return item.type !== 'label' && item.type !== 'separator';
 }
 
-/** Avoid `String(object)` → `[object Object]` (eslint `@typescript-eslint/no-base-to-string`). */
 function stringifyPrimitive(value: unknown): string | undefined {
 	switch (typeof value) {
 		case 'string':
@@ -293,7 +277,6 @@ function itemSearchText(item: SelectOptionBase): string {
 	return (item.textValue ?? item.label).toLowerCase();
 }
 
-/** Keep preceding label/separator rows when at least one option in that group matches. */
 function filterGroupedItems(items: SelectItem[], query: string): SelectItem[] {
 	const normalizedQuery = query.toLowerCase().trim();
 	if (!normalizedQuery) {
@@ -415,10 +398,6 @@ function slotModelValue(value: AcceptableValue | AcceptableValue[] | null | unde
 	return isModelValue(value) ? value : undefined;
 }
 
-/**
- * Resolve trigger text from `items` so the label does not depend on Reka's
- * options registry (which briefly clears while the menu remounts on close).
- */
 function resolveDisplayValue(value: unknown): string | undefined {
 	if (value === undefined || value === null || value === '') {
 		return undefined;
@@ -525,7 +504,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				<slot name="header" />
 
 				<div :class="$style.viewportRegion">
-					<!-- Hide scroll arrows when empty — Reka can still report overflow after filter. -->
 					<SelectScrollUpButton
 						v-if="hasSelectableItems"
 						:class="[$style.selectScrollButton, $style.selectScrollButtonUp]"
@@ -731,7 +709,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	flex-direction: column;
 	overflow: hidden;
 	width: max-content;
-	/* Trigger width is only set for `position="popper"`; floor keeps item-aligned menus usable with short labels. */
 	min-width: max(var(--reka-select-trigger-width, 0px), var(--spacing--4xl));
 	max-height: min(var(--reka-select-content-available-height, 50vh), calc(var(--height--5xl) * 3));
 	border-radius: var(--radius--xs);
