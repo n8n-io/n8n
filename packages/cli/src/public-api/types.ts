@@ -118,24 +118,6 @@ export declare namespace CredentialTypeRequest {
 }
 
 export declare namespace WorkflowRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			tags?: string;
-			status?: ExecutionStatus;
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			workflowId?: number;
-			active: boolean;
-			name?: string;
-			projectId?: string;
-			excludePinnedData?: boolean;
-		}
-	>;
-
 	type Create = AuthenticatedRequest<
 		{},
 		{},

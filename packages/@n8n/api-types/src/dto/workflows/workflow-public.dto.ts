@@ -109,3 +109,31 @@ export const workflowPublicSchema = z.object({
 });
 
 export class WorkflowPublicDto extends Z.class(workflowPublicSchema.shape) {}
+
+// The list query selects fewer columns than a single-workflow fetch, so these are absent from every
+// item — adding them back makes the response fail its own validation.
+export const workflowListItemSharedPublicSchema = sharedWorkflowPublicSchema.omit({
+	project: true,
+});
+
+export const workflowListItemActiveVersionPublicSchema = activeWorkflowVersionPublicSchema.omit({
+	workflowPublishHistory: true,
+});
+
+export const workflowListItemPublicSchema = workflowPublicSchema
+	.omit({
+		description: true,
+		versionCounter: true,
+		sourceWorkflowId: true,
+		shared: true,
+		activeVersion: true,
+	})
+	.extend({
+		shared: z.array(workflowListItemSharedPublicSchema),
+		activeVersion: workflowListItemActiveVersionPublicSchema.nullable(),
+	});
+
+export class WorkflowListPublicDto extends Z.class({
+	data: z.array(workflowListItemPublicSchema),
+	nextCursor: z.string().nullable(),
+}) {}

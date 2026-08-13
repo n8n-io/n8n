@@ -14,6 +14,9 @@ paths:
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml
+  /workflows:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflows.generated.yml
   /workflows/{workflowId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflow.generated.yml
