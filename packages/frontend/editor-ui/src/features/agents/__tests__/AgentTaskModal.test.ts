@@ -390,6 +390,26 @@ describe('AgentTaskModal', () => {
 			expectNextRun(getByText, '2026-01-01T14:00:00.000Z', 'America/New_York');
 		});
 
+		it('keeps a task on the instance timezone when the schedule is not touched', async () => {
+			setBrowserTimezone('Asia/Tokyo');
+			updateAgentTaskSpy.mockResolvedValue({});
+
+			const { getByTestId } = renderModal({ task: makeTask({ timezone: null }) });
+
+			await fireEvent.update(getByTestId('agent-task-name-input'), 'Renamed');
+			await fireEvent.click(getByTestId('agent-task-save'));
+
+			// Editing anything else must not pin the task, or a later change to the
+			// instance timezone would stop applying to it.
+			expect(updateAgentTaskSpy).toHaveBeenCalledWith(
+				{},
+				'p1',
+				'a1',
+				'task-9',
+				expect.objectContaining({ timezone: null }),
+			);
+		});
+
 		it('re-previews and saves against a newly picked timezone', async () => {
 			setBrowserTimezone('Asia/Tokyo');
 			updateAgentTaskSpy.mockResolvedValue({});

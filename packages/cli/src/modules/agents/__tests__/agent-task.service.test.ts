@@ -938,6 +938,27 @@ describe('AgentTaskService', () => {
 			expect(taskRepository.findOne).not.toHaveBeenCalled();
 		});
 
+		it('names the schedule timezone without moving the timestamp off the instance zone', async () => {
+			(agentRepository.findOne as Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
+			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
+				makeSnapshot({ timezone: 'Asia/Tokyo' }),
+			);
+			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
+				emptyStream(),
+			);
+
+			await runTaskOf(service, AGENT_ID, 'task-1');
+
+			// The timestamp has to agree with the `get_environment` tool, which reports
+			// the instance zone, so the schedule's zone is named instead of substituted.
+			const { message } = (agentExecutionOrchestratorService.executeForTaskPublished as Mock).mock
+				.calls[0][0] as { message: string };
+			expect(message).toContain('(timezone: UTC)');
+			expect(message).toContain('This task is scheduled in Asia/Tokyo.');
+		});
+
 		it('skips when the agent is unpublished', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
 

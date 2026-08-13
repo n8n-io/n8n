@@ -2,6 +2,7 @@
 import {
 	AGENT_TASK_NAME_MAX_LENGTH,
 	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
+	StrictTimeZoneSchema,
 	type AgentTaskDto,
 } from '@n8n/api-types';
 import {
@@ -90,6 +91,11 @@ const dayOfMonth = ref(DEFAULT_SCHEDULE_PARTS.dayOfMonth);
 const customCron = ref('');
 const timezone = ref(browserTimezone());
 const timezoneOptions = ref<Array<{ value: string; label: string }>>([]);
+// A task stored without a timezone follows the instance timezone. The selector has
+// to show a concrete zone, so remember that the task was on the default and keep
+// it there unless the user picks one — otherwise saving an unrelated edit would
+// silently pin it, and a later instance timezone change would stop applying.
+const followsInstanceTimezone = ref(false);
 const saving = ref(false);
 const errorMessage = ref('');
 // Save is always clickable; clicking with invalid data reveals every field's
@@ -101,9 +107,15 @@ const objectiveTouched = ref(false);
 // below), so only the custom field's own validator can make this false.
 const cronValid = ref(true);
 
-/** Zone a new task is authored in — the clock the user is actually reading. */
+/**
+ * Zone a new task is authored in — the clock the user is actually reading. A host
+ * that cannot determine its zone reports `Etc/Unknown`, which `Intl` itself then
+ * refuses, so check against the same schema the API validates with and fall back
+ * to the instance timezone rather than sending a value that cannot be saved.
+ */
 function browserTimezone(): string {
-	return Intl.DateTimeFormat().resolvedOptions().timeZone || rootStore.timezone;
+	const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	return StrictTimeZoneSchema.safeParse(browserZone).success ? browserZone : rootStore.timezone;
 }
 
 const cronExpression = computed(() => {
@@ -124,6 +136,8 @@ function applyTask() {
 	objective.value = current?.objective ?? '';
 	// A task saved before schedules carried their own timezone runs in the
 	// instance timezone, so keep showing that instead of the viewer's zone.
+	// Absent and null both mean "no zone stored", so treat them alike.
+	followsInstanceTimezone.value = current !== null && !current.timezone;
 	timezone.value = current ? (current.timezone ?? rootStore.timezone) : browserTimezone();
 
 	const parts = current ? parseCron(current.cronExpression) : { ...DEFAULT_SCHEDULE_PARTS };
@@ -272,6 +286,11 @@ function onCronInput(value: Validatable) {
 	customCron.value = typeof value === 'string' ? value : '';
 }
 
+function onTimezoneChange(value: unknown) {
+	timezone.value = String(value);
+	followsInstanceTimezone.value = false;
+}
+
 function closeModal() {
 	uiStore.closeModal(props.modalName);
 }
@@ -348,7 +367,7 @@ async function onSave() {
 		name: name.value.trim(),
 		objective: objective.value.trim(),
 		cronExpression: cronExpression.value,
-		timezone: timezone.value,
+		timezone: followsInstanceTimezone.value ? null : timezone.value,
 	};
 
 	try {
@@ -578,7 +597,7 @@ async function onSave() {
 							filterable
 							:limit-popper-width="true"
 							data-testid="agent-task-timezone"
-							@update:model-value="timezone = String($event)"
+							@update:model-value="onTimezoneChange"
 						>
 							<N8nOption
 								v-for="option in timezoneSelectOptions"

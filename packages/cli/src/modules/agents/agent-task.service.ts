@@ -624,11 +624,15 @@ export class AgentTaskService {
 		objective: string,
 		taskTimezone: string | null,
 	): { message: string; threadId: string } {
-		// The agent reasons about "today"/"this morning" in the zone the task was
-		// scheduled in, not the instance's.
-		const timezone = this.resolveTaskTimezone(taskTimezone, taskId);
+		// Timestamped in the instance timezone so it agrees with the `get_environment`
+		// tool the agent also reads "today" from; the schedule's own zone is named
+		// instead of substituted, so the two can never contradict each other.
+		const timezone = this.globalConfig.generic.timezone;
 		const timestamp = DateTime.now().setZone(timezone).toISO() ?? new Date().toISOString();
-		const message = `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})`;
+		const scheduleTimezone = this.resolveTaskTimezone(taskTimezone, taskId);
+		const scheduleNote =
+			scheduleTimezone === timezone ? '' : `\nThis task is scheduled in ${scheduleTimezone}.`;
+		const message = `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})${scheduleNote}`;
 		const threadId = `task-${taskId}-${randomUUID()}`;
 		return { message, threadId };
 	}

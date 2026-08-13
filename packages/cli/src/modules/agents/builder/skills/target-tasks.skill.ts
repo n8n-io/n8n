@@ -83,6 +83,9 @@ Initial Build rules in your system prompt. Never create a placeholder or
   config first — a task can only use tools the agent already has.
 - Translate each cadence into a valid 5-field cron expression (e.g. daily 09:00
   -> "0 9 * * *"; weekdays 08:30 -> "30 8 * * 1-5"; hourly -> "0 * * * *").
+- Set \`timezone\` to the IANA zone whenever the user names a timezone or a
+  location ("9am in Tokyo" -> "Asia/Tokyo"); omit it to run on the instance
+  timezone.
 - Call \`create_tasks\` once with a \`tasks\` array containing every task you
   currently know how to write — do not spread multiple fully-specified tasks
   across separate calls. A single task is still a one-item array.
