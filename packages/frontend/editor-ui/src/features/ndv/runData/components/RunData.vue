@@ -1665,7 +1665,9 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<slot v-if="!displaysMultipleNodes" name="before-data" />
+		</div>
 
+		<div v-show="!binaryDataDisplayVisible" :class="$style.hints" data-test-id="run-data-hints">
 			<div v-if="props.calloutMessage || $slots['callout-message']" :class="$style.hintCallout">
 				<N8nCallout theme="info" data-test-id="run-data-callout">
 					<slot name="callout-message">
@@ -1686,7 +1688,9 @@ defineExpose({ enterEditMode });
 			>
 				<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 			</N8nCallout>
+		</div>
 
+		<div v-show="!binaryDataDisplayVisible">
 			<div
 				v-if="showBranchSwitch && !isExecutionRedacted"
 				:class="$style.outputs"
@@ -2290,7 +2294,10 @@ defineExpose({ enterEditMode });
 .dataContainer {
 	position: relative;
 	overflow-y: auto;
-	height: 100%;
+	/* Take whatever the header, hints and pagination leave over, and keep shrinking
+	   (min-height: 0) instead of forcing the column to overflow */
+	flex: 1 1 auto;
+	min-height: 0;
 }
 
 .dataDisplay {
@@ -2472,6 +2479,15 @@ defineExpose({ enterEditMode });
 
 .uiBlocker {
 	border-radius: 0;
+}
+
+.hints {
+	/* Hints are secondary to the data: never let them take more than a share of the
+	   pane. Percentage resolves against .container, which has a definite height */
+	max-height: 40%;
+	overflow-y: auto;
+	flex-shrink: 0;
+	scrollbar-width: thin;
 }
 
 .hintCallout {

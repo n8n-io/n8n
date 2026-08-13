@@ -43,6 +43,15 @@ export class RunDataPanel {
 		return this.root.getByTestId('ndv-data-container');
 	}
 
+	/** Container holding the node's warnings/hints, above the data */
+	getHintsContainer() {
+		return this.root.getByTestId('run-data-hints');
+	}
+
+	getNodeHints() {
+		return this.root.getByTestId('node-hint');
+	}
+
 	getPagination() {
 		return this.root.getByTestId('ndv-data-pagination');
 	}

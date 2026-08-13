@@ -1,0 +1,61 @@
+{
+	"name": "NDV output pane with many warnings",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0a1cd6a6-6c0a-4c1a-9a4f-3e6a4f6bd001",
+			"name": "When clicking \"Execute workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [640, 400]
+		},
+		{
+			"parameters": {
+				"category": "randomData",
+				"randomDataSeed": "0",
+				"randomDataCount": 20
+			},
+			"id": "0a1cd6a6-6c0a-4c1a-9a4f-3e6a4f6bd002",
+			"name": "DebugHelper",
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [860, 400]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "firstname, missingField01, missingField02, missingField03, missingField04, missingField05, missingField06, missingField07, missingField08, missingField09, missingField10, missingField11, missingField12, missingField13, missingField14, missingField15, missingField16, missingField17, missingField18, missingField19, missingField20",
+				"options": {}
+			},
+			"id": "0a1cd6a6-6c0a-4c1a-9a4f-3e6a4f6bd003",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [1080, 400]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute workflow\"": {
+			"main": [
+				[
+					{
+						"node": "DebugHelper",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"DebugHelper": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}
