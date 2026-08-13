@@ -64,6 +64,7 @@ import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPane
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
+import InstanceAiWorkflowOverviewPreview from './components/InstanceAiWorkflowOverviewPreview.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import AgentSection from './components/AgentSection.vue';
@@ -1257,6 +1258,15 @@ async function dismissComposerContextChip() {
 								:project-id="preview.activeAgentProjectId.value"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
+							/>
+							<InstanceAiWorkflowOverviewPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.isOverviewTabActive.value &&
+									thread.currentWorkflowOverview
+								"
+								:class="$style.previewSlot"
+								:overview="thread.currentWorkflowOverview"
 							/>
 						</div>
 					</TabsRoot>

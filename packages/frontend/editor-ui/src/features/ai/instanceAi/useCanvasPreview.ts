@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import type { IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import {
 	getLatestBuildResult,
@@ -17,7 +18,7 @@ import type { ThreadRuntime } from './instanceAi.store';
 
 export interface ArtifactTab {
 	id: string;
-	type: 'workflow' | 'data-table' | 'agent';
+	type: 'workflow' | 'data-table' | 'agent' | 'overview';
 	name: string;
 	icon: IconName;
 	projectId?: string;
@@ -25,10 +26,14 @@ export interface ArtifactTab {
 	pending?: boolean;
 }
 
+/** Stable synthetic tab id — the workflow overview is thread-scoped, not an artifact. */
+export const WORKFLOW_OVERVIEW_TAB_ID = 'workflow-overview';
+
 const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	overview: 'list-checks',
 };
 
 interface UseCanvasPreviewOptions {
@@ -38,6 +43,8 @@ interface UseCanvasPreviewOptions {
 }
 
 export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOptions) {
+	const i18n = useI18n();
+
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	const isPreviewOpen = ref(false);
@@ -56,6 +63,17 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 					pending: entry.pending,
 				});
 			}
+		}
+
+		// Synthetic tab: the thread's three-pane workflow overview, next to the
+		// workflow tab so it stays reachable while the preview covers the sidebar.
+		if (thread.currentWorkflowOverview) {
+			result.push({
+				id: WORKFLOW_OVERVIEW_TAB_ID,
+				type: 'overview',
+				name: i18n.baseText('instanceAi.workflowOverview.tabTitle'),
+				icon: ARTIFACT_ICON_MAP.overview ?? 'file',
+			});
 		}
 
 		return result;
@@ -91,6 +109,8 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
 		return tab?.type === 'agent' && tab.pending === true;
 	});
+
+	const isOverviewTabActive = computed(() => activeTabId.value === WORKFLOW_OVERVIEW_TAB_ID);
 
 	const executionResultsByWorkflow = computed(() => {
 		const results = new Map<string, ExecutionResult>();
@@ -454,6 +474,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		activeAgentId,
 		activeAgentProjectId,
 		activeAgentPending,
+		isOverviewTabActive,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,

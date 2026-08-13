@@ -6766,6 +6766,7 @@
 	"instanceAi.artifactsPanel.context.agentPreviewTitled": "{agentName} — {sessionTitle}",
 	"instanceAi.artifactsPanel.context.agentPreviewSessionTitled": "{sessionTitle}",
 	"instanceAi.workflowOverview.title": "Workflow overview",
+	"instanceAi.workflowOverview.tabTitle": "Overview",
 	"instanceAi.workflowOverview.triggers": "Triggers",
 	"instanceAi.workflowOverview.steps": "Steps",
 	"instanceAi.workflowOverview.results": "Results",
