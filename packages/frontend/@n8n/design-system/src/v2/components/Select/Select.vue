@@ -510,9 +510,17 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				v-for="selectedItem in [getSelectedItem(selectedValue)]"
 				:key="selectedItem?.value ?? 'none'"
 			>
-				<span v-if="!multiple && selectedItem?.icon" :class="$style.selectedIcon">
+				<span
+					v-if="!multiple && selectedItem && (selectedItem.icon || $slots['item-leading'])"
+					:class="$style.selectedIcon"
+				>
 					<slot name="item-leading" :item="selectedItem" :ui="selectedIconUi()">
-						<Icon :icon="selectedItem.icon" color="text-base" v-bind="selectedIconUi()" />
+						<Icon
+							v-if="selectedItem.icon"
+							:icon="selectedItem.icon"
+							color="text-base"
+							v-bind="selectedIconUi()"
+						/>
 					</slot>
 				</span>
 				<span v-else-if="icon" :class="$style.selectedIcon">
@@ -907,7 +915,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 
 	margin-block: var(--select-viewport--padding);
 	margin-inline: calc(-1 * var(--select-viewport--padding) + var(--select-separator-outline-inset));
-	border-top: 1px solid var(--border-color);
+	border-top: var(--border);
 }
 
 .selectScrollButton {

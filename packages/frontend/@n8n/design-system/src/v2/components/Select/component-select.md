@@ -37,7 +37,7 @@ type SelectItem = SelectOptionBase | SelectLabelItem | SelectSeparatorItem;
 type SelectItemUi = { class: string; strokeWidth?: number };
 ```
 
-Item `icon` is rendered in the menu automatically. In single select, the same leading content (`#item-leading`, or the default icon) is shown on the trigger for the selected value.
+Item `icon` is rendered in the menu automatically. In single select, the same leading content (`#item-leading` when provided, otherwise the item `icon`) is shown on the trigger for the selected value — including when `#item-leading` is used without `icon`.
 
 Consumers that need extra fields should extend the base type and map source data themselves:
 
@@ -64,7 +64,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `name?: string` The name of the native select field used in form submission.
 - `autocomplete?: string` Native HTML `autocomplete` attribute.
 - `dir?: 'ltr' | 'rtl'` Reading direction. When omitted, inherits from `ConfigProvider` or defaults to LTR.
-- `icon?: IconName` Fallback leading icon on the trigger when nothing is selected, or the selected item has no `icon`. In single select, a selected item with `icon` is rendered through `#item-leading` instead (see Slots).
+- `icon?: IconName` Fallback leading icon on the trigger when nothing is selected, or the selected item has no leading visual. In single select, a selected item's `#item-leading` (or its `icon`) is shown on the trigger instead.
 - `clearable?: boolean` When `true`, shows a clear button when a value is selected. Hidden when `disabled` or the value is empty. Default: `false`.
 - `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by `textValue` (falling back to `label`) and `keywords`. Default: `false`.
 - `searchPlaceholder?: string` Placeholder for the search field. Defaults to `t('nds.select.searchPlaceholder')` (`Search`).
@@ -92,7 +92,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `default`: `{ modelValue?: SelectValue | SelectValue[]; open: boolean }` — trigger display. Default is the selected label(s), comma-separated in multiple mode.
 - `item`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour)
 - `label`: `{ item: SelectLabelItem }` — group label rows (`type: 'label'`)
-- `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). In single select, the same slot (or the default item icon) is reused for the selected-value icon on the trigger. Not used on the trigger in `multiple` mode.
+- `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). In single select, the same slot is reused on the trigger for the selected value, even when the item has no `icon`. Not used on the trigger in `multiple` mode.
 - `item-label`: `{ item: SelectOptionBase }`
 - `item-trailing`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom trailing content
 - `header?: ()`

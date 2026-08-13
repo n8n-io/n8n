@@ -552,6 +552,22 @@ describe('v2/components/Select', () => {
 			});
 		});
 
+		it('should render item-leading on the trigger when the selected item has no icon', () => {
+			const wrapper = render(Select, {
+				props: {
+					items: [{ value: 'todo', label: 'Todo' }],
+					modelValue: 'todo',
+				},
+				slots: {
+					'item-leading': '<span data-test-id="custom-leading">dot</span>',
+				},
+			});
+
+			expect(
+				within(wrapper.getByTestId('select-trigger')).getByTestId('custom-leading'),
+			).toBeVisible();
+		});
+
 		it('should render item-leading slot', async () => {
 			const wrapper = render(Select, {
 				props: {
