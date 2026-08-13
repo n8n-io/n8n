@@ -213,3 +213,164 @@ README's [storage integration](./README.md#storage-integration) notes.
 | Download works | The Files tab row menu → **Download**. A 401 here means the browser-id exemption is missing — see the README's gotchas |
 | Preview works | The eye button on an image or text row. PDFs deliberately have none |
 | Quota enforcement | `N8N_PROJECT_FILES_PROJECT_MAX_SIZE_BYTES=1024 pnpm dev`, then upload something larger and expect a 413 |
+
+---
+
+## Demo workflow
+
+Here's a demo workflow using the new "Project file" node.
+Yes it's creating a csv, which could be covered by data tables already, but it's the first idea Claude had.
+Imagine this real use case: you are a marketing agency and are generating social media posts with AI.
+With this new feature, you can store each generated image in the project and review them directly in n8n
+
+```json
+{
+  "name": "Rates report → project files",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "9f1c2b7e-4a3d-4b6f-8c21-7d5e0a1b2c34",
+        "formTitle": "Generate rates report",
+        "formDescription": "Pick a base currency. The report is saved to this project's files.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Base currency",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  { "option": "EUR" },
+                  { "option": "USD" },
+                  { "option": "GBP" }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [-220, 0],
+      "id": "a1111111-1111-4111-8111-111111111111",
+      "name": "On form submission",
+      "webhookId": "9f1c2b7e-4a3d-4b6f-8c21-7d5e0a1b2c34"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.frankfurter.dev/v1/latest?base={{ $json['Base currency'] }}&symbols=USD,GBP,CHF,JPY,SEK",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [0, 0],
+      "id": "a2222222-2222-4222-8222-222222222222",
+      "name": "Get rates"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const { base, date, rates } = $input.first().json;\n\nreturn Object.entries(rates).map(([currency, rate]) => ({\n  json: { base, date, currency, rate },\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0],
+      "id": "a3333333-3333-4333-8333-333333333333",
+      "name": "Build rows"
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [440, 0],
+      "id": "a4444444-4444-4444-8444-444444444444",
+      "name": "Convert to CSV"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "binaryPropertyName": "data",
+        "fileName": "=reports/rates-{{ $('Get rates').first().json.date }}-{{ $('Get rates').first().json.base }}.csv",
+        "overwrite": false
+      },
+      "type": "n8n-nodes-base.projectFile",
+      "typeVersion": 1,
+      "position": [680, -110],
+      "id": "a5555555-5555-4555-8555-555555555555",
+      "name": "Archive dated report"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "binaryPropertyName": "data",
+        "fileName": "rates-latest.csv",
+        "overwrite": true
+      },
+      "type": "n8n-nodes-base.projectFile",
+      "typeVersion": 1,
+      "position": [680, 110],
+      "id": "a6666666-6666-4666-8666-666666666666",
+      "name": "Update latest report"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "file": {
+          "__rl": true,
+          "mode": "name",
+          "value": "rates-latest.csv"
+        },
+        "outputFieldName": "data"
+      },
+      "type": "n8n-nodes-base.projectFile",
+      "typeVersion": 1,
+      "position": [920, 110],
+      "id": "a7777777-7777-4777-8777-777777777777",
+      "name": "Read it back"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "destinationKey": "readBack",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [1160, 110],
+      "id": "a8888888-8888-4888-8888-888888888888",
+      "name": "Show CSV contents"
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [[{ "node": "Get rates", "type": "main", "index": 0 }]]
+    },
+    "Get rates": {
+      "main": [[{ "node": "Build rows", "type": "main", "index": 0 }]]
+    },
+    "Build rows": {
+      "main": [[{ "node": "Convert to CSV", "type": "main", "index": 0 }]]
+    },
+    "Convert to CSV": {
+      "main": [
+        [
+          { "node": "Archive dated report", "type": "main", "index": 0 },
+          { "node": "Update latest report", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Update latest report": {
+      "main": [[{ "node": "Read it back", "type": "main", "index": 0 }]]
+    },
+    "Read it back": {
+      "main": [[{ "node": "Show CSV contents", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
+```
