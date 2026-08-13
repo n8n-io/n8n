@@ -1,4 +1,4 @@
-# project_git_connection
+# git_connection
 
 ## Description
 
@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "project_git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "repositoryUrl" text NOT NULL, "branchName" varchar(255), "connectionType" varchar(16) NOT NULL, "connected" boolean NOT NULL DEFAULT (false), "publicKey" text, "encryptedPrivateKey" text, "encryptedUsername" text, "encryptedPassword" text, "keyGeneratorType" varchar(16), "baseCommit" varchar(64), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_project_git_connection_connectionType" CHECK ("connectionType" IN ('ssh', 'https')), CONSTRAINT "CHK_project_git_connection_keyGeneratorType" CHECK ("keyGeneratorType" IN ('ed25519', 'rsa')))
+CREATE TABLE "git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "repositoryUrl" text NOT NULL, "branchName" varchar(255), "connectionType" varchar(16) NOT NULL, "connected" boolean NOT NULL DEFAULT (false), "publicKey" text, "encryptedPrivateKey" text, "encryptedUsername" text, "encryptedPassword" text, "keyGeneratorType" varchar(16), "baseCommit" varchar(64), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_git_connection_connectionType" CHECK ("connectionType" IN ('ssh', 'https')), CONSTRAINT "CHK_git_connection_keyGeneratorType" CHECK ("keyGeneratorType" IN ('ed25519', 'rsa')))
 ```
 
 </details>
@@ -37,13 +37,13 @@ CREATE TABLE "project_git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "n
 | - | CHECK | CHECK ("connectionType" IN ('ssh', 'https')) |
 | - | CHECK | CHECK ("keyGeneratorType" IN ('ed25519', 'rsa')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
-| sqlite_autoindex_project_git_connection_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_git_connection_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| sqlite_autoindex_project_git_connection_1 | PRIMARY KEY (id) |
+| sqlite_autoindex_git_connection_1 | PRIMARY KEY (id) |
 
 ## Relations
 
@@ -51,7 +51,7 @@ CREATE TABLE "project_git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "n
 erDiagram
 
 
-"project_git_connection" {
+"git_connection" {
   varchar_64_ baseCommit
   varchar_255_ branchName
   boolean connected

@@ -7,9 +7,9 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'CreateProjectGitConnectionTable1786547629549';
+const MIGRATION_NAME = 'CreateGitConnectionTable1786547629549';
 
-describe('CreateProjectGitConnectionTable migration', () => {
+describe('CreateGitConnectionTable migration', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
@@ -29,7 +29,7 @@ describe('CreateProjectGitConnectionTable migration', () => {
 
 	it('creates a table that stores disconnected SSH and HTTPS connections', async () => {
 		const context = createTestMigrationContext(dataSource);
-		const table = context.escape.tableName('project_git_connection');
+		const table = context.escape.tableName('git_connection');
 		const now = new Date();
 		await context.runQuery(
 			`INSERT INTO ${table} ("id", "name", "repositoryUrl", "connectionType", "connected", "createdAt", "updatedAt")
