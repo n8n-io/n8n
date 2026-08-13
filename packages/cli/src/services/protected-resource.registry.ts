@@ -1,3 +1,4 @@
+import type { ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -18,6 +19,9 @@ export interface ProtectedResource {
 
 	/** Human readable name, for consent screen */
 	displayName?: string;
+
+	/** Presentational hints for the consent screen; omit for the default client-brand treatment. */
+	uiHints?: ConsentUiHints;
 
 	/**
 	 * Canonical RFC 8707 resource URL used as the JWT `aud` claim and advertised

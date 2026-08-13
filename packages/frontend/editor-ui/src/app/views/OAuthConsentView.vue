@@ -2,6 +2,7 @@
 import { useConsentStore } from '@/app/stores/consent.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { onMounted, computed, ref, watch } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
 import {
@@ -49,9 +50,17 @@ const errorMessage = computed(() => {
 const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
 // Known clients get their brand mark on the left tile; unknown ones fall back to the MCP glyph.
 const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
+// Localized noun for first-party copy, driven by the resource's consentType hint.
+const firstPartyResourceType = computed(() =>
+	i18n.baseText(
+		`oauth.consentView.firstParty.type.${clientDetails.value?.uiHints?.consentType ?? 'default'}` as BaseTextKey,
+	),
+);
 const availableScopes = computed(() => clientDetails.value?.scopes ?? []);
 const hasScopes = computed(() => availableScopes.value.length > 0);
-const trustRequired = computed(() => !!clientDetails.value?.redirectUri);
+const trustRequired = computed(
+	() => !!clientDetails.value?.redirectUri && !clientDetails.value?.isFirstParty,
+);
 const noScopesSelected = computed(() => hasScopes.value && selectedScopes.value.length === 0);
 const allowDisabled = computed(
 	() =>
@@ -146,7 +155,17 @@ onMounted(async () => {
 		<div :class="$style['consent-dialog']">
 			<header :class="$style.header">
 				<div :class="$style.logo">
-					<component :is="clientBrandIcon" v-if="clientBrandIcon" :class="$style['brand-icon']" />
+					<N8nIcon
+						v-if="clientDetails?.uiHints?.icon"
+						:icon="clientDetails.uiHints.icon"
+						size="large"
+						color="text-dark"
+					/>
+					<component
+						:is="clientBrandIcon"
+						v-else-if="clientBrandIcon"
+						:class="$style['brand-icon']"
+					/>
 					<N8nIcon v-else icon="mcp" size="large" color="text-dark" />
 				</div>
 				<!-- Pending-connection connector: a dashed SVG line marching toward the n8n tile
@@ -196,7 +215,14 @@ onMounted(async () => {
 			</div>
 			<!-- Default content -->
 			<div v-else :class="$style.content" data-test-id="consent-content">
-				<N8nHeading v-if="resourceName" tag="h2" size="large" :bold="true">
+				<N8nHeading v-if="clientDetails?.isFirstParty" tag="h2" size="large" :bold="true">
+					{{
+						i18n.baseText('oauth.consentView.firstParty.heading', {
+							interpolate: { resourceName: resourceName ?? '' },
+						})
+					}}
+				</N8nHeading>
+				<N8nHeading v-else-if="resourceName" tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.headingWithWorkflow', {
 							interpolate: { clientName: clientDetails?.clientName ?? '', resourceName },
@@ -211,7 +237,14 @@ onMounted(async () => {
 					}}
 				</N8nHeading>
 				<div :class="$style['text-content']">
-					<N8nText v-if="resourceName" color="text-base" size="medium">
+					<N8nText v-if="clientDetails?.isFirstParty" color="text-base" size="medium">
+						{{
+							i18n.baseText('oauth.consentView.firstParty.description', {
+								interpolate: { resourceType: firstPartyResourceType },
+							})
+						}}
+					</N8nText>
+					<N8nText v-else-if="resourceName" color="text-base" size="medium">
 						{{
 							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
@@ -253,10 +286,11 @@ onMounted(async () => {
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
-				<!-- The trust acknowledgment lives inside the warning itself so it can't be missed:
-				     one block that says where access goes, shows the URL, and asks for the check. -->
+				<!-- Third-party clients: the trust acknowledgment lives inside the warning itself so it
+				     can't be missed: one block that says where access goes, shows the URL, asks for the check.
+				     First-party clients skip this entirely — their redirect URI is the form itself. -->
 				<N8nCallout
-					v-if="!error && clientDetails?.redirectUri"
+					v-if="!error && !clientDetails?.isFirstParty && clientDetails?.redirectUri"
 					theme="warning"
 					data-test-id="consent-redirect-warning"
 				>

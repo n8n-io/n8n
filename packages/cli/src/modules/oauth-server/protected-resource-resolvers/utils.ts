@@ -1,3 +1,5 @@
+import type { ConsentUiHints } from '@n8n/api-types';
+
 /**
  * Scopes advertised for per-workflow MCP trigger resources. Empty on purpose:
  * the gate enforces no scopes and tokens carry none, and an empty list makes
@@ -7,6 +9,12 @@ export const WORKFLOW_MCP_TRIGGER_SCOPES: string[] = [];
 
 /** Scopes advertised for per-workflow Form trigger resources. Empty, like MCP triggers. */
 export const FORM_TRIGGER_SCOPES: string[] = [];
+
+/** Consent-screen presentation hints for per-workflow Form trigger resources. */
+export const FORM_TRIGGER_CONSENT_HINTS: ConsentUiHints = {
+	icon: 'square-pen',
+	consentType: 'form',
+};
 
 /** Scopes advertised for per-workflow Webhook trigger resources. */
 export const WEBHOOK_TRIGGER_SCOPES: string[] = [];
