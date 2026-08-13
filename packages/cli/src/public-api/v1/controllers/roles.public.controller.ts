@@ -47,6 +47,14 @@ const toRolePublicDto = (role: RoleDTO & { roleType: PublicRoleNamespace }): Rol
 	updatedAt: role.updatedAt!.toISOString(),
 });
 
+const toRoleGetPublicDto = (role: RoleDTO & { roleType: PublicRoleNamespace }, withUsageCount: boolean): RoleGetPublicDto => ({
+	...toRolePublicDto(role),
+	licensed: role.licensed,
+	...(withUsageCount
+		? { usedByUsers: role.usedByUsers, usedByProjects: role.usedByProjects }
+		: {}),
+});
+
 @PublicApiController('/roles')
 export class RolesPublicController {
 	constructor(
@@ -75,12 +83,8 @@ export class RolesPublicController {
 			publicRoles
 				.filter((role): role is RoleDTO & { roleType: T } => role.roleType === roleType)
 				.map((role) => ({
-					...toRolePublicDto(role),
+					...toRoleGetPublicDto({ ...role, roleType }, withUsageCount),
 					roleType,
-					licensed: role.licensed,
-					...(withUsageCount
-						? { usedByUsers: role.usedByUsers, usedByProjects: role.usedByProjects }
-						: {}),
 				}));
 
 		return {
@@ -109,7 +113,7 @@ export class RolesPublicController {
 		if (!isPublicRole(role)) {
 			throw new NotFoundError('Role not found');
 		}
-		return toRolePublicDto({ ...role, roleType: role.roleType });
+		return toRoleGetPublicDto({ ...role, roleType: role.roleType }, withUsageCount);
 	}
 
 	@Post('/')
