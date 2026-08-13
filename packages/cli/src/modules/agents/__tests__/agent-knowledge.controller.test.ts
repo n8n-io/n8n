@@ -1,5 +1,4 @@
 import type { Mocked } from 'vitest';
-import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import multer from 'multer';
 
@@ -9,6 +8,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -16,19 +16,19 @@ import {
 
 function makeController({
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
-	agentsConfig = {
-		sandboxEnabled: true,
-	} as AgentsConfig,
+	agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+		isEnabled: () => true,
+	}),
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
 }: {
 	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
-	agentsConfig?: AgentsConfig;
+	agentSandboxRuntimeService?: Mocked<AgentSandboxRuntimeService>;
 	runtimeCacheService?: Mocked<AgentRuntimeCacheService>;
 } = {}) {
 	return {
 		controller: new AgentKnowledgeController(
 			agentKnowledgeService,
-			agentsConfig,
+			agentSandboxRuntimeService,
 			runtimeCacheService,
 		),
 		agentKnowledgeService,
@@ -129,9 +129,9 @@ describe('AgentKnowledgeController file deletion', () => {
 describe('AgentKnowledgeController knowledge base gating', () => {
 	it('returns not found for file endpoints when the knowledge base is disabled', async () => {
 		const { controller } = makeController({
-			agentsConfig: {
-				sandboxEnabled: false,
-			} as AgentsConfig,
+			agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({
+				isEnabled: () => false,
+			}),
 		});
 
 		await expect(

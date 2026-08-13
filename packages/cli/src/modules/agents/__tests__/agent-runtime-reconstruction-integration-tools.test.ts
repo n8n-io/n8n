@@ -8,7 +8,7 @@ import type {
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { AgentsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type {
 	User,
 	CredentialsEntity,
@@ -48,6 +48,7 @@ import type { AgentSetupCompletionService } from '../agent-setup-completion.serv
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSkillsService } from '../agent-skills.service';
 
 import type { AgentTaskService } from '../agent-task.service';
@@ -112,7 +113,7 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 }
 
 function makeRuntimeReconstructionService(
-	modules: string[] = [],
+	_modules: string[] = [],
 ): AgentRuntimeReconstructionService {
 	const transport = mock<HttpTransport>();
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
@@ -130,7 +131,7 @@ function makeRuntimeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
-		{ modules } as unknown as AgentsConfig,
+		mock<AgentSandboxRuntimeService>(),
 		mock<AiService>(),
 		outboundHttp,
 		mock<AgentWorkspaceService>(),

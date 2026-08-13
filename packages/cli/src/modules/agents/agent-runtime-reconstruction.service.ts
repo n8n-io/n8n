@@ -26,7 +26,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -49,7 +49,10 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
-import { sanitizeSandboxErrorDetail } from './agent-sandbox-runtime.service';
+import {
+	AgentSandboxRuntimeService,
+	sanitizeSandboxErrorDetail,
+} from './agent-sandbox-runtime.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
 import { Agent } from './entities/agent.entity';
@@ -172,7 +175,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
-		private readonly agentsConfig: AgentsConfig,
+		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly agentWorkspaceService: AgentWorkspaceService,
@@ -596,7 +599,7 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createGetEnvironmentTool());
 
-		if (runtimeProfile !== 'inline' && this.agentsConfig.sandboxEnabled) {
+		if (runtimeProfile !== 'inline' && this.agentSandboxRuntimeService.isEnabled()) {
 			try {
 				agent.workspace(await this.agentWorkspaceService.getAgentWorkspace(projectId, agentId));
 			} catch (error) {
