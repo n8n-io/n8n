@@ -143,8 +143,12 @@ function buildRequestBody(
 }
 
 /**
- * The JSON Schema form of a route's `@Body` DTO. Same conversion the committed fragments go
- * through, run in memory for callers that need the schema without reading a generated file.
+ * The JSON Schema form of a route's `@Body` DTO, for callers that need to describe a request body
+ * without going through the spec files. `/discover` is the one today: it reads request bodies out
+ * of the hand-written spec, and a decorator route has no entry there.
+ *
+ * Uses the same generator that writes the committed fragments, so `/discover` and the published
+ * spec cannot end up describing an endpoint differently.
  */
 export function buildRequestBodyJsonSchema(
 	route: ResolvedPublicApiRoute,

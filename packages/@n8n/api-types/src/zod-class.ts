@@ -38,7 +38,12 @@ export interface ZodArrayClass<T, Item extends z.ZodTypeAny = z.ZodTypeAny> {
 export const Z = {
 	class: <T extends z.ZodRawShape>(
 		shape: T,
-		/** `strict` rejects unknown keys instead of stripping them, and generates `additionalProperties: false`. */
+		/**
+		 * Pass `strict` when the endpoint must reject an unrecognised key rather than drop it.
+		 * Needed by Public API request bodies whose hand-written spec set
+		 * `additionalProperties: false`: Zod strips by default, so without this a client's typo
+		 * would be silently accepted where it used to return 400.
+		 */
 		options: { strict?: boolean } = {},
 	): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> => {
 		const schema = options.strict ? z.object(shape).strict() : z.object(shape);
