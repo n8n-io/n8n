@@ -119,7 +119,7 @@ function showConnectedServer(connectionId: string | null): void {
 
 if (isMcpEnabled.value) {
 	void mcpStore.fetchCatalogLazy();
-	void mcpStore.fetchConnections();
+	void mcpStore.fetchConnectionsLazy();
 	void credentialsStore.fetchAllCredentials();
 }
 

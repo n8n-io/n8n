@@ -42,6 +42,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	const connectionToolsById = reactive(new Map<string, InstanceAiMcpConnectionToolResponse[]>());
 	const isLoadingConnections = ref(false);
 	const isLoadingCatalog = ref(false);
+	let hasLoadedConnections = false;
 	const inFlightConnectionToolsById = new Map<
 		string,
 		Promise<InstanceAiMcpConnectionToolsResponse>
@@ -62,11 +63,17 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		await connectionsLoad;
 	}
 
+	async function fetchConnectionsLazy(): Promise<void> {
+		if (hasLoadedConnections) return;
+		await fetchConnections();
+	}
+
 	async function loadConnections(): Promise<void> {
 		isLoadingConnections.value = true;
 		try {
 			const fetched = await fetchMcpConnections(rootStore.restApiContext);
 			connections.value = fetched.map((connection) => ({ ...connection, status: 'connecting' }));
+			hasLoadedConnections = true;
 			void fetchAllConnectionTools();
 		} catch (error) {
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchConnections'));
@@ -258,6 +265,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		catalogLoad = null;
 		connectionToolsById.clear();
 		inFlightConnectionToolsById.clear();
+		hasLoadedConnections = false;
 	}
 
 	return {
@@ -268,6 +276,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		isLoadingCatalog,
 		connectionsByServerSlug,
 		fetchConnections,
+		fetchConnectionsLazy,
 		fetchCatalogLazy,
 		fetchConnectionToolsLazy,
 		connect,

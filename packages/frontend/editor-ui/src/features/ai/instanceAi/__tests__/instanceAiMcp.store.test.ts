@@ -202,12 +202,22 @@ describe('useInstanceAiMcpStore', () => {
 			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(2);
 		});
 
+		it('loads only once through the lazy entry point', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+
+			await store.fetchConnectionsLazy();
+			await store.fetchConnectionsLazy();
+
+			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(1);
+			expect(mockFetchAllMcpConnectionTools).toHaveBeenCalledTimes(1);
+		});
+
 		it('leaves a failed fetch for the next caller to retry', async () => {
 			mockFetchMcpConnections.mockRejectedValueOnce(new Error('boom'));
 			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
 
-			await store.fetchConnections();
-			await store.fetchConnections();
+			await store.fetchConnectionsLazy();
+			await store.fetchConnectionsLazy();
 
 			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(2);
 			expect(store.connections).toHaveLength(1);
