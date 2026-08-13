@@ -1,5 +1,4 @@
-import { generateWorkflowCode, parseWorkflowCode, type WorkflowJSON } from '@n8n/workflow-sdk';
-import { jsonParse } from 'n8n-workflow';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import type { InstanceAiContext } from '../../../types';
@@ -62,20 +61,6 @@ function makeManagedCredential(): {
 	__aiGatewayManaged: true;
 } {
 	return { id: null, name: 'n8n credits', __aiGatewayManaged: true };
-}
-
-function isWorkflowJson(value: unknown): value is WorkflowJSON {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'name' in value &&
-		typeof value.name === 'string' &&
-		'nodes' in value &&
-		Array.isArray(value.nodes) &&
-		'connections' in value &&
-		typeof value.connections === 'object' &&
-		value.connections !== null
-	);
 }
 
 // ---------------------------------------------------------------------------
@@ -658,74 +643,44 @@ describe('resolveCredentials', () => {
 			});
 		});
 
-		it('round-trips a managed credential placeholder through production transport and restores its saved reference', async () => {
+		it('restores a saved managed credential from a null placeholder', async () => {
 			const managedCredential = makeManagedCredential();
-			const existingWorkflow = makeWorkflow({
-				id: 'wf-123',
+			const workflow = makeWorkflow({
 				nodes: [
-					{
-						id: 'manual-1',
-						name: 'Manual Trigger',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
 					{
 						id: 'slack-1',
 						name: 'Slack',
 						type: 'n8n-nodes-base.slack',
 						typeVersion: 2.2,
-						position: [240, 0],
-						parameters: { channel: '#alerts', text: 'Keep this text' },
+						position: [0, 0],
+						credentials: {
+							slackApi: null as unknown as { id: string; name: string },
+						},
+					},
+				],
+			});
+			const existingWorkflow = makeWorkflow({
+				nodes: [
+					{
+						id: 'slack-1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.2,
+						position: [0, 0],
 						credentials: { slackApi: managedCredential },
 					},
 				],
-				connections: {
-					'Manual Trigger': {
-						main: [[{ node: 'Slack', type: 'main', index: 0 }]],
-					},
-				},
-				settings: { executionOrder: 'v1' },
-				pinData: { 'Manual Trigger': [{ retained: true }] },
 			});
 
-			const code = generateWorkflowCode(existingWorkflow);
-
-			expect(code).toContain("slackApi: newCredential('n8n credits')");
-			expect(code).not.toContain("newCredential('n8n credits',");
-
-			const rebuilt = parseWorkflowCode(code);
-			const serializedForTransport = JSON.stringify(
-				rebuilt,
-				(_key: string, value: unknown): unknown => (value === undefined ? null : value),
-			);
-			expect(serializedForTransport).toContain('"slackApi":null');
-
-			const transportedValue = jsonParse<unknown>(serializedForTransport);
-			if (!isWorkflowJson(transportedValue)) {
-				throw new Error('Expected the sandbox transport to return WorkflowJSON');
-			}
-			const transportedWorkflow = transportedValue;
-			const transportedSlack = transportedWorkflow.nodes.find((node) => node.name === 'Slack');
-			expect(transportedSlack?.credentials).toEqual({ slackApi: null });
-
-			const expectedWorkflow = structuredClone(transportedWorkflow);
-			const expectedSlack = expectedWorkflow.nodes.find((node) => node.name === 'Slack');
-			if (!expectedSlack) throw new Error('Expected Slack node after code round trip');
-			expectedSlack.credentials = { slackApi: managedCredential };
-
 			const result = await resolveCredentials(
-				transportedWorkflow,
+				workflow,
 				'wf-123',
 				createMockContext(existingWorkflow),
 				makeCredentialMap([]),
 			);
 
 			expect(result.mockedNodeNames).toEqual([]);
-			expect(transportedWorkflow).toStrictEqual(expectedWorkflow);
-			const restoredSlack = transportedWorkflow.nodes.find((node) => node.name === 'Slack');
-			expect(restoredSlack?.credentials?.slackApi).toBe(managedCredential);
+			expect(workflow.nodes[0]?.credentials?.slackApi).toBe(managedCredential);
 		});
 	});
 

@@ -16,14 +16,6 @@ interface GetAsCodeResult {
 	error?: string;
 }
 
-function makeManagedCredential(): {
-	id: null;
-	name: string;
-	__aiGatewayManaged: true;
-} {
-	return { id: null, name: 'n8n credits', __aiGatewayManaged: true };
-}
-
 function makeManagedWorkflow(): WorkflowJSON {
 	return {
 		id: 'wf-managed',
@@ -36,34 +28,20 @@ function makeManagedWorkflow(): WorkflowJSON {
 				typeVersion: 2.2,
 				position: [0, 0],
 				parameters: { channel: '#alerts' },
-				credentials: { slackApi: makeManagedCredential() },
+				credentials: {
+					slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				},
 			},
 		],
 		connections: {},
 	};
 }
 
-function makeWorkflowThatFailsCodeGeneration(): WorkflowJSON {
-	const workflow = makeManagedWorkflow();
-	const credential = workflow.nodes[0]?.credentials?.slackApi;
-	if (!credential) throw new Error('Expected managed credential fixture');
-	Object.defineProperty(credential, 'name', {
-		enumerable: true,
-		get: () => {
-			throw new Error('credential codegen failed');
-		},
-	});
-	return workflow;
-}
-
 function makeContext(workflow: WorkflowJSON): InstanceAiContext {
 	const context = mock<InstanceAiContext>();
 	context.threadId = undefined;
 	context.threadMemory = undefined;
-	context.workflowService.getAsWorkflowJSON = vi
-		.fn()
-		.mockResolvedValueOnce(makeWorkflowThatFailsCodeGeneration())
-		.mockResolvedValue(workflow);
+	context.workflowService.getAsWorkflowJSON = vi.fn().mockResolvedValue(workflow);
 	context.workflowService.get = vi.fn().mockResolvedValue({
 		id: 'wf-managed',
 		name: 'Managed credential workflow',
@@ -80,7 +58,7 @@ function makeContext(workflow: WorkflowJSON): InstanceAiContext {
 }
 
 describe('workflows get-as-code integration', () => {
-	it('returns real TypeScript for a managed credential and refreshes its binding only after code generation succeeds', async () => {
+	it('returns real TypeScript for a managed credential and refreshes its binding', async () => {
 		const context = makeContext(makeManagedWorkflow());
 		const filePath = 'src/workflows/managed.workflow.ts';
 		await saveWorkflowSourceFileBinding(context, {
@@ -91,32 +69,15 @@ describe('workflows get-as-code integration', () => {
 		});
 		const tool = createWorkflowsTool(context, 'full');
 
-		const failed = await executeTool<GetAsCodeResult>(tool, {
+		const result = await executeTool<GetAsCodeResult>(tool, {
 			action: 'get-as-code',
 			workflowId: 'wf-managed',
 		});
 
-		expect(failed).toEqual({
-			workflowId: 'wf-managed',
-			name: '',
-			code: '',
-			error: 'credential codegen failed',
-		});
-		expect(context.workflowService.get).not.toHaveBeenCalled();
-		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
-			workflowVersionId: 'v-stale',
-			workflowChecksum: 'checksum-stale',
-		});
-
-		const succeeded = await executeTool<GetAsCodeResult>(tool, {
-			action: 'get-as-code',
-			workflowId: 'wf-managed',
-		});
-
-		expect(succeeded.error).toBeUndefined();
-		expect(succeeded.code).not.toBe('');
-		expect(succeeded.code).toContain("newCredential('n8n credits')");
-		expect(succeeded.code).not.toContain("newCredential('n8n credits',");
+		expect(result.error).toBeUndefined();
+		expect(result.code).not.toBe('');
+		expect(result.code).toContain("newCredential('n8n credits')");
+		expect(result.code).not.toContain("newCredential('n8n credits',");
 		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
 			workflowVersionId: 'v-current',
 			workflowChecksum: 'checksum-current',

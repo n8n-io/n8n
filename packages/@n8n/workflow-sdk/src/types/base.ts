@@ -306,6 +306,7 @@ export interface NodeJSON {
 	typeVersion: number;
 	position: [number, number];
 	parameters?: IDataObject;
+	/** Persisted managed references use a null ID with the managed marker. */
 	credentials?: Record<string, { id?: string | null; name: string; __aiGatewayManaged?: boolean }>;
 	webhookId?: string;
 	disabled?: boolean;

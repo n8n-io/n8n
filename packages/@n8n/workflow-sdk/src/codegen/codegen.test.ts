@@ -425,49 +425,6 @@ describe('generateWorkflowCode', () => {
 // =============================================================================
 
 describe('generateWorkflowCode with AI subnodes', () => {
-	it('should generate a placeholder for an AI Gateway managed subnode credential', () => {
-		const json: WorkflowJSON = {
-			id: 'managed-subnode-credential-test',
-			name: 'Managed Subnode Credentials Test',
-			nodes: [
-				{
-					id: 'agent-1',
-					name: 'AI Agent',
-					type: '@n8n/n8n-nodes-langchain.agent',
-					typeVersion: 1.7,
-					position: [0, 0],
-					parameters: {},
-				},
-				{
-					id: 'model-1',
-					name: 'OpenAI Model',
-					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-					typeVersion: 1.2,
-					position: [0, 200],
-					parameters: {},
-					credentials: {
-						openAiApi: {
-							id: null,
-							name: 'n8n Connect',
-							__aiGatewayManaged: true,
-						},
-					},
-				},
-			],
-			connections: {
-				'OpenAI Model': {
-					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
-				},
-			},
-		};
-
-		const code = generateWorkflowCode(json);
-
-		expect(code).toContain("openAiApi: newCredential('n8n Connect')");
-		expect(code).not.toContain('id: null');
-		expect(code).not.toContain('__aiGatewayManaged');
-	});
-
 	it('should generate subnode config for AI agent with model', () => {
 		const json: WorkflowJSON = {
 			id: 'ai-agent-test',
@@ -501,6 +458,13 @@ describe('generateWorkflowCode with AI subnodes', () => {
 					parameters: {
 						model: 'gpt-4',
 					},
+					credentials: {
+						openAiApi: {
+							id: null,
+							name: 'n8n Connect',
+							__aiGatewayManaged: true,
+						},
+					},
 				},
 			],
 			connections: {
@@ -524,6 +488,9 @@ describe('generateWorkflowCode with AI subnodes', () => {
 		// Should reference the variable in subnodes config
 		expect(code).toContain('subnodes:');
 		expect(code).toMatch(/model: \w+/); // Variable reference, not inline call
+		expect(code).toContain("openAiApi: newCredential('n8n Connect')");
+		expect(code).not.toContain('id: null');
+		expect(code).not.toContain('__aiGatewayManaged');
 	});
 
 	it('should generate subnode config for AI agent with multiple subnodes', () => {

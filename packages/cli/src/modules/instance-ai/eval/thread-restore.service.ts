@@ -36,27 +36,19 @@ function isConnections(value: unknown): value is IConnections {
 	return isRecord(value);
 }
 
-interface ManagedCredentialReference {
-	id: null;
-	name: string;
-	__aiGatewayManaged: true;
-}
-
-function isManagedCredentialReference(value: unknown): value is ManagedCredentialReference {
-	return (
-		isRecord(value) &&
-		value.id === null &&
-		typeof value.name === 'string' &&
-		value.__aiGatewayManaged === true
-	);
-}
-
 function retainManagedCredentialReferences(credentials: unknown): INode['credentials'] | undefined {
 	if (!isRecord(credentials)) return undefined;
 
 	const managedCredentials: NonNullable<INode['credentials']> = {};
 	for (const [type, credential] of Object.entries(credentials)) {
-		if (!isManagedCredentialReference(credential)) continue;
+		if (
+			!isRecord(credential) ||
+			credential.id !== null ||
+			typeof credential.name !== 'string' ||
+			credential.__aiGatewayManaged !== true
+		) {
+			continue;
+		}
 		managedCredentials[type] = {
 			id: null,
 			name: credential.name,

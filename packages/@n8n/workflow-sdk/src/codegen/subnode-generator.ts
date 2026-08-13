@@ -44,25 +44,22 @@ export function formatCredentials(credentials: unknown): string {
 		const name = value.name;
 		const id = value.id;
 
-		// Managed credentials have no persisted ID, so emit the placeholder form.
-		if (id === null && value.__aiGatewayManaged === true && typeof name === 'string') {
-			return `${formatKey(key)}: newCredential('${escapeString(name)}')`;
+		if (typeof name === 'string') {
+			// Managed credentials have no persisted ID, so emit the placeholder form.
+			if (id === null && value.__aiGatewayManaged === true) {
+				return `${formatKey(key)}: newCredential('${escapeString(name)}')`;
+			}
+			if (id === undefined) {
+				return `${formatKey(key)}: newCredential('${escapeString(name)}')`;
+			}
+			if (typeof id === 'string') {
+				return `${formatKey(key)}: newCredential('${escapeString(name)}', '${escapeString(id)}')`;
+			}
 		}
 
-		// If credential has a name, use newCredential() call
-		if (name !== undefined || id !== undefined) {
-			if (typeof name === 'string') {
-				if (typeof id === 'string') {
-					return `${formatKey(key)}: newCredential('${escapeString(name)}', '${escapeString(id)}')`;
-				}
-				if (id === undefined) {
-					return `${formatKey(key)}: newCredential('${escapeString(name)}')`;
-				}
-			}
-			// id-only credential (no name property) — emit raw object to preserve shape
-			if (name === undefined && typeof id === 'string') {
-				return `${formatKey(key)}: { id: '${escapeString(id)}' }`;
-			}
+		// id-only credential (no name property) — emit raw object to preserve shape
+		if (name === undefined && typeof id === 'string') {
+			return `${formatKey(key)}: { id: '${escapeString(id)}' }`;
 		}
 		// Empty or malformed credential object — preserve as-is
 		return `${formatKey(key)}: ${formatValue(value)}`;
