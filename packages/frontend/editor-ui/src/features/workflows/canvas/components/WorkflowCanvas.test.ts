@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import WorkflowCanvas from './WorkflowCanvas.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -14,6 +14,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { IWorkflowDb } from '@/Interface';
 import * as vueuse from '@vueuse/core';
+import { useWorkflowGenerativeUiStore } from '@/experiments/workflowGenerativeUi/workflowGenerativeUi.store';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -65,6 +66,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.clearAllMocks();
+	vi.unstubAllGlobals();
 });
 
 describe('WorkflowCanvas', () => {
@@ -72,6 +74,73 @@ describe('WorkflowCanvas', () => {
 		const { getByTestId } = renderComponent();
 
 		expect(getByTestId('canvas')).toBeVisible();
+	});
+
+	it('keeps Vue Flow mounted and hidden when a generated view is selected', async () => {
+		const { container, getByTestId } = renderComponent();
+		await waitFor(() =>
+			expect(container.querySelector('[data-testid="generative-ui-picker"]')).toBeInTheDocument(),
+		);
+		const store = useWorkflowGenerativeUiStore();
+
+		await store.setView('story');
+
+		await waitFor(() => expect(getByTestId('canvas')).not.toBeVisible());
+		expect(getByTestId('canvas')).toBeInTheDocument();
+	});
+
+	it('removes the previous spec when the workflow hash changes', async () => {
+		const workflow = createTestWorkflow({
+			id: '1',
+			name: 'First Workflow',
+			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
+			connections: {},
+		});
+		setupWorkflow(workflow);
+		const firstSpec = {
+			root: 'screen',
+			elements: {
+				screen: {
+					type: 'Screen',
+					props: { title: 'First Workflow' },
+					children: ['text'],
+				},
+				text: {
+					type: 'Text',
+					props: { text: 'Previous workflow spec' },
+					children: [],
+				},
+			},
+		};
+		const pendingResponse = new Promise<Response>(() => {});
+		vi.stubGlobal(
+			'fetch',
+			vi
+				.fn()
+				.mockResolvedValueOnce(
+					new Response(
+						JSON.stringify({
+							content: [{ type: 'text', text: JSON.stringify(firstSpec) }],
+						}),
+						{ status: 200 },
+					),
+				)
+				.mockReturnValueOnce(pendingResponse),
+		);
+		const { container } = renderComponent();
+		await waitFor(() =>
+			expect(container.querySelector('[data-testid="generative-ui-picker"]')).toBeInTheDocument(),
+		);
+		const store = useWorkflowGenerativeUiStore();
+		store.apiKey = 'test-key';
+
+		await store.setView('story');
+		expect(await screen.findByText('Previous workflow spec')).toBeInTheDocument();
+
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).setName('Second Workflow');
+
+		await waitFor(() => expect(store.activeSpec).toBeUndefined());
+		expect(screen.queryByText('Previous workflow spec')).not.toBeInTheDocument();
 	});
 
 	it('should render nodes and connections', async () => {
