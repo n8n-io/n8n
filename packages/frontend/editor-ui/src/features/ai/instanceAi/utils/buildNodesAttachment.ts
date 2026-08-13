@@ -99,3 +99,18 @@ export function resolveSetNeighbors(
 
 	return { inputName, outputName };
 }
+
+export function resolveSetCanvasGroup(
+	set: NodeSet,
+	workflow: BuilderWorkflow,
+): { canvasGroupId?: string; canvasGroupName?: string } {
+	const nameToId = new Map(workflow.nodes.map((n) => [n.name, n.id]));
+	const groupIds = new Set(
+		set.nodeNames.map((name) => workflow.nodeIdToGroupId.get(nameToId.get(name) ?? '')),
+	);
+	if (groupIds.size !== 1) return {};
+	const [only] = [...groupIds];
+	if (!only) return {}; // the single value is `undefined` → some/all ungrouped
+	const group = workflow.groupsById.get(only);
+	return group ? { canvasGroupId: group.id, canvasGroupName: group.name } : {};
+}

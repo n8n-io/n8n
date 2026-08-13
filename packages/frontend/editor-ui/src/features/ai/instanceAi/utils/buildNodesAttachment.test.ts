@@ -1,6 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import type { IConnections } from 'n8n-workflow';
-import { partitionSelectionIntoSets, resolveSetNeighbors } from './buildNodesAttachment';
+import {
+	partitionSelectionIntoSets,
+	resolveSetNeighbors,
+	resolveSetCanvasGroup,
+} from './buildNodesAttachment';
+import type { BuilderWorkflow } from './buildNodesAttachment';
+
+function wf(over: Partial<BuilderWorkflow> = {}): BuilderWorkflow {
+	return {
+		nodes: [
+			{ id: 'n1', name: 'A', type: 't' },
+			{ id: 'n2', name: 'B', type: 't' },
+			{ id: 'n3', name: 'C', type: 't' },
+		],
+		connections: {},
+		groupsById: new Map(),
+		nodeIdToGroupId: new Map(),
+		...over,
+	};
+}
 
 // Helpers: build a name-keyed IConnections for simple main-type chains.
 function chain(...pairs: Array<[string, string]>): IConnections {
@@ -59,5 +78,28 @@ describe('resolveSetNeighbors', () => {
 		const r = resolveSetNeighbors({ nodeNames: ['A', 'B'] }, conns);
 		expect(r.inputName).toBeUndefined();
 		expect(r.outputName).toBeUndefined();
+	});
+});
+
+describe('resolveSetCanvasGroup', () => {
+	it('returns the group when the whole set shares one', () => {
+		const w = wf({
+			groupsById: new Map([['g1', { id: 'g1', name: 'My Group 1', nodeIds: ['n1', 'n2'] }]]),
+			nodeIdToGroupId: new Map([
+				['n1', 'g1'],
+				['n2', 'g1'],
+			]),
+		});
+		const r = resolveSetCanvasGroup({ nodeNames: ['A', 'B'] }, w);
+		expect(r).toEqual({ canvasGroupId: 'g1', canvasGroupName: 'My Group 1' });
+	});
+
+	it('returns {} when the set mixes groups or grouped+ungrouped', () => {
+		const w = wf({ nodeIdToGroupId: new Map([['n1', 'g1']]) }); // n2 ungrouped
+		expect(resolveSetCanvasGroup({ nodeNames: ['A', 'B'] }, w)).toEqual({});
+	});
+
+	it('returns {} when no node in the set is grouped', () => {
+		expect(resolveSetCanvasGroup({ nodeNames: ['A', 'B'] }, wf())).toEqual({});
 	});
 });
