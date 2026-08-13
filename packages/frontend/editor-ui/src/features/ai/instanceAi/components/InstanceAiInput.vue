@@ -12,6 +12,7 @@ import type { InstanceAiAttachment, InstanceAiResourceAttachment } from '@n8n/ap
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { mergeNodeSets } from '../utils/buildNodesAttachment';
 
 type AmendContext = { agentId: string; role: string } | null;
 type SuggestionPromptPayload =
@@ -328,10 +329,22 @@ watch(
 	(pending) => {
 		if (pending.length === 0) return;
 		const consumed = instanceAiStore.consumePendingAttachments();
-		attachedResources.value = [
-			...attachedResources.value,
-			...consumed.filter((a): a is InstanceAiResourceAttachment => a.type !== 'file'),
-		];
+		for (const attachment of consumed) {
+			if (attachment.type === 'file') continue;
+			// Fold a nodes attachment into the existing one for the same workflow so
+			// re-adding the same selection dedups instead of stacking duplicate chips.
+			if (attachment.type === 'nodes') {
+				const existing = attachedResources.value.find(
+					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
+						a.type === 'nodes' && a.workflowId === attachment.workflowId,
+				);
+				if (existing) {
+					existing.sets = mergeNodeSets(existing.sets, attachment.sets);
+					continue;
+				}
+			}
+			attachedResources.value = [...attachedResources.value, attachment];
+		}
 	},
 	{ deep: true, immediate: true },
 );

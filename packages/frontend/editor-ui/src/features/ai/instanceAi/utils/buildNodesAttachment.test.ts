@@ -59,6 +59,17 @@ describe('partitionSelectionIntoSets', () => {
 		expect(sets).toHaveLength(1);
 		expect(sets[0].nodeNames).toEqual(['Trigger', 'Mid', 'Out']);
 	});
+
+	it('folds a sub-node (non-main connection) into its parent set, not a separate one', () => {
+		// Model —ai_languageModel→ Agent, plus a main chain Trigger → Agent.
+		const conns: IConnections = {
+			Trigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+			Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+		};
+		const sets = partitionSelectionIntoSets(['Trigger', 'Agent', 'Model'], conns);
+		expect(sets).toHaveLength(1);
+		expect(sets[0].nodeNames.slice().sort()).toEqual(['Agent', 'Model', 'Trigger']);
+	});
 });
 
 describe('resolveSetNeighbors', () => {
@@ -103,6 +114,17 @@ describe('resolveSetCanvasGroup', () => {
 
 	it('returns {} when no node in the set is grouped', () => {
 		expect(resolveSetCanvasGroup({ nodeNames: ['A', 'B'] }, wf())).toEqual({});
+	});
+
+	it('returns {} for a lone grouped node so it keeps its own name, not the group label', () => {
+		const w = wf({
+			groupsById: new Map([['g1', { id: 'g1', name: 'My Group 1', nodeIds: ['n1', 'n2'] }]]),
+			nodeIdToGroupId: new Map([
+				['n1', 'g1'],
+				['n2', 'g1'],
+			]),
+		});
+		expect(resolveSetCanvasGroup({ nodeNames: ['A'] }, w)).toEqual({});
 	});
 });
 

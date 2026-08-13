@@ -27,6 +27,32 @@ describe('instanceAi store — pending composer attachments', () => {
 		expect(nodesAtt.type === 'nodes' && nodesAtt.sets).toEqual([...setsA, ...setsB]);
 	});
 
+	it('skips re-staging a set already present (dedup by node ids, order-independent)', () => {
+		const store = useInstanceAiStore();
+		const twoNodes: InstanceAiNodesAttachment['sets'] = [
+			{
+				nodes: [
+					{ id: 'n1', name: 'A' },
+					{ id: 'n2', name: 'B' },
+				],
+			},
+		];
+		const sameReordered: InstanceAiNodesAttachment['sets'] = [
+			{
+				nodes: [
+					{ id: 'n2', name: 'B' },
+					{ id: 'n1', name: 'A' },
+				],
+			},
+		];
+		store.stageNodeSets('w1', twoNodes);
+		store.stageNodeSets('w1', sameReordered); // same selection, ignored
+		store.stageNodeSets('w1', setsB); // genuinely new, appended
+		const consumed = store.consumePendingAttachments();
+		const nodesAtt = consumed[0];
+		expect(nodesAtt.type === 'nodes' && nodesAtt.sets).toEqual([...twoNodes, ...setsB]);
+	});
+
 	it('clears staged state after one consume; next stage starts fresh', () => {
 		const store = useInstanceAiStore();
 		store.stageNodeSets('w1', setsA);

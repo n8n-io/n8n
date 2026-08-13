@@ -29,6 +29,22 @@ export interface NodeSet {
 
 export type NodesAttachmentSet = InstanceAiNodesAttachment['sets'][number];
 
+/** Identity of a set = its node ids (order-independent), so re-adding the same selection dedups. */
+const setSignature = (set: NodesAttachmentSet) =>
+	set.nodes
+		.map((n) => n.id)
+		.sort()
+		.join('\n');
+
+/** Append incoming sets to existing ones, dropping any whose node membership is already present. */
+export function mergeNodeSets(
+	existing: InstanceAiNodesAttachment['sets'],
+	incoming: InstanceAiNodesAttachment['sets'],
+): InstanceAiNodesAttachment['sets'] {
+	const seen = new Set(existing.map(setSignature));
+	return [...existing, ...incoming.filter((s) => !seen.has(setSignature(s)))];
+}
+
 // Schema caps (instanceAiNodeSetSchema / instanceAiNodesAttachmentSchema, #36039).
 // The safeParse test in this file is the real drift-guard — no need to poke zod internals.
 const MAX_SETS = 50;
@@ -43,23 +59,31 @@ export function partitionSelectionIntoSets(
 	const seen = new Set<string>();
 	const sets: NodeSet[] = [];
 
-	// Neighbors within the selection only (both endpoints selected).
+	// Neighbors within the selection only (both endpoints selected). `main`-only
+	// drives the input→output ordering below; `ALL` also folds sub-nodes (chat
+	// models, memory, tools) into their parent's set instead of stranding them.
 	const selectedChildren = (name: string) =>
 		getChildNodes(connections, name, 'main', 1).filter((n) => selected.has(n));
 	const selectedParents = (name: string) =>
 		getParentNodes(byDestination, name, 'main', 1).filter((n) => selected.has(n));
+	const selectedNeighborsAllTypes = (name: string) =>
+		[
+			...getChildNodes(connections, name, 'ALL', 1),
+			...getParentNodes(byDestination, name, 'ALL', 1),
+		].filter((n) => selected.has(n));
 
 	for (const start of selectedNodeNames) {
 		if (seen.has(start)) continue;
 
-		// Collect the connected component (undirected) among selected nodes.
+		// Collect the connected component (undirected, any connection type) among
+		// selected nodes, so a sub-node lands in the same set as its parent.
 		const component = new Set<string>();
 		const stack = [start];
 		while (stack.length) {
 			const cur = stack.pop() as string;
 			if (component.has(cur)) continue;
 			component.add(cur);
-			for (const n of [...selectedChildren(cur), ...selectedParents(cur)]) {
+			for (const n of selectedNeighborsAllTypes(cur)) {
 				if (!component.has(n)) stack.push(n);
 			}
 		}
@@ -109,6 +133,9 @@ export function resolveSetCanvasGroup(
 	set: NodeSet,
 	workflow: BuilderWorkflow,
 ): { canvasGroupId?: string; canvasGroupName?: string } {
+	// A lone node stays its own named chip even when grouped — labeling one member
+	// with the group name reads as a duplicate when several members are added.
+	if (set.nodeNames.length < 2) return {};
 	const nameToId = new Map(workflow.nodes.map((n) => [n.name, n.id]));
 	const groupIds = new Set(
 		set.nodeNames.map((name) => workflow.nodeIdToGroupId.get(nameToId.get(name) ?? '')),

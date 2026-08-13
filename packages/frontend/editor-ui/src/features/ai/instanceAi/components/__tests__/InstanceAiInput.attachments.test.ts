@@ -16,6 +16,8 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn(() => ({ addEventListener: vi.fn(() => () => {}) })),
 }));
 
+configure({ testIdAttribute: 'data-testid' });
+
 const defaultProps = () => ({
 	isStreaming: false,
 	isSubmitting: false,
@@ -51,9 +53,24 @@ describe('InstanceAiInput — staged node attachments', () => {
 
 		expect(textbox).toHaveValue('my question');
 	});
-});
 
-configure({ testIdAttribute: 'data-testid' });
+	it('dedups re-staging the same selection instead of stacking duplicate chips', async () => {
+		const { findAllByTestId, queryAllByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
+		await findAllByTestId('nodes-chip-node');
+
+		// Same selection again → no new chip.
+		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
+		await waitFor(() => expect(store.pendingComposerAttachments).toHaveLength(0));
+		expect(queryAllByTestId('nodes-chip-node')).toHaveLength(1);
+
+		// A different node → a second chip.
+		store.stageNodeSets('w1', [{ nodes: [{ id: 'n2', name: 'B' }] }]);
+		await waitFor(() => expect(queryAllByTestId('nodes-chip-node')).toHaveLength(2));
+	});
+});
 
 const renderAttachmentPreview = createComponentRenderer(AttachmentPreview);
 

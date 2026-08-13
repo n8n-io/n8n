@@ -102,6 +102,12 @@ const isDeleteNodeVisible = computed(() => !props.readOnly);
 
 const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
 
+// Instance AI "add this node to chat" — shown for real nodes (not stickies) when
+// the flag is on, independent of the legacy assistant/builder gating.
+const isAddToChatVisible = computed(
+	() => isNodeContextEnabled.value && render.value.type !== CanvasNodeRenderType.StickyNote,
+);
+
 // Feeds the builder side panel, so mirror the context menu's
 // assistant-or-builder semantics on top of the focused-nodes experiment.
 // Hidden when Instance AI supersedes the legacy builder/assistant.
@@ -110,17 +116,14 @@ const isAddToAiVisible = computed(
 		!props.readOnly &&
 		focusedNodesStore.isFeatureEnabled &&
 		(aiAssistant.value || aiBuilder.value) &&
-		!instanceAi.value,
+		!instanceAi.value &&
+		// The Instance AI add-to-chat button is the same sparkles affordance;
+		// when it shows, don't render a second identical icon.
+		!isAddToChatVisible.value,
 );
 
 const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
-);
-
-// Instance AI "add this node to chat" — shown for real nodes (not stickies) when
-// the flag is on, independent of the legacy assistant/builder gating.
-const isAddToChatVisible = computed(
-	() => isNodeContextEnabled.value && render.value.type !== CanvasNodeRenderType.StickyNote,
 );
 
 function executeNode() {

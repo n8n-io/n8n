@@ -24,6 +24,7 @@ import {
 } from './instanceAi.memory.api';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
+import { mergeNodeSets } from './utils/buildNodesAttachment';
 
 export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
 
@@ -299,7 +300,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			(a): a is InstanceAiNodesAttachment => a.type === 'nodes' && a.workflowId === workflowId,
 		);
 		if (existing) {
-			existing.sets = [...existing.sets, ...newSets];
+			existing.sets = mergeNodeSets(existing.sets, newSets);
 		} else {
 			pendingComposerAttachments.value = [
 				...pendingComposerAttachments.value,
