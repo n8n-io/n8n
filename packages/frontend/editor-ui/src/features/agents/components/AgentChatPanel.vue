@@ -200,6 +200,17 @@ const hasOpenSuspension = computed(() =>
 		),
 	),
 );
+// Tools still pending/running after the stream ended (desync): the backend
+// finished but their terminal events never arrived. Surfacing Stop here lets
+// the user clear the stale pulsing state without reloading the chat.
+const hasInFlightToolCalls = computed(() =>
+	messages.value.some((message) =>
+		message.toolCalls?.some(
+			(toolCall) =>
+				toolCall.state === TOOL_CALL_STATE.PENDING || toolCall.state === TOOL_CALL_STATE.RUNNING,
+		),
+	),
+);
 const showSuspensionStopAlongsideSend = computed(
 	() => hasOpenInteractiveQuestion.value && !isStreaming.value && !isCancelling.value,
 );
@@ -208,7 +219,8 @@ const showStopAsPrimaryAction = computed(
 		isStreaming.value ||
 		isCancelling.value ||
 		hasOpenApproval.value ||
-		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
+		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value) ||
+		(!isStreaming.value && hasInFlightToolCalls.value),
 );
 
 const chatPlaceholder = computed(() => {
