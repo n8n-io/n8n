@@ -38,6 +38,7 @@ export type { ReasoningLevel } from './sdk/reasoning';
 
 export type {
 	AgentResult,
+	AgentPersistenceOptions,
 	StreamChunk,
 	FinishReason,
 	TokenUsage,
@@ -51,6 +52,7 @@ export type {
 	GenerateResult,
 	StreamResult,
 	BuiltAgent,
+	AgentRuntimeInstance,
 	AgentRunState,
 	AgentResumeData,
 	PendingToolCall,

@@ -130,6 +130,15 @@ export interface DaytonaSandboxOptions {
 	networkAllowList?: string;
 	errorReporter?: ErrorReporter;
 	createStrategyMode?: 'direct' | 'proxy';
+	/** Reattach to an existing named sandbox instead of creating one when it is absent. */
+	reconnectOnly?: boolean;
+}
+
+export class DaytonaSandboxNotFoundError extends Error {
+	constructor(sandboxName: string) {
+		super(`Daytona sandbox "${sandboxName}" no longer exists`);
+		this.name = 'DaytonaSandboxNotFoundError';
+	}
 }
 
 function shellEscape(value: string): string {
@@ -201,6 +210,9 @@ export class DaytonaSandbox extends BaseSandbox {
 			this.sandbox = existing;
 			await this.detectWorkingDirectory();
 			return;
+		}
+		if (this.options.reconnectOnly) {
+			throw new DaytonaSandboxNotFoundError(this.sandboxName);
 		}
 
 		this.sandbox = await this.createSandboxOrReattach(client);
@@ -316,11 +328,19 @@ export class DaytonaSandbox extends BaseSandbox {
 		op: (fs: Sandbox['fs']) => Promise<T>,
 		options?: AbortableOptions,
 	): Promise<T> {
+		return await this.withSandbox(async (sandbox) => await op(sandbox.fs), options);
+	}
+
+	/** Run an SDK operation against a live, recoverable Daytona sandbox handle. */
+	async withSandbox<T>(
+		op: (sandbox: Sandbox) => Promise<T>,
+		options?: AbortableOptions,
+	): Promise<T> {
 		return await raceWithAbort(async () => {
 			return await this.recoverAndRetry(async () => {
 				await this.ensureRunning({ abortSignal: options?.abortSignal });
 				await this.ensureAuthFresh();
-				return await op(this.instance.fs);
+				return await op(this.instance);
 			});
 		}, options?.abortSignal);
 	}

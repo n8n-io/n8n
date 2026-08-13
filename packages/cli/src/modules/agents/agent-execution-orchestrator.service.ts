@@ -1,7 +1,7 @@
 import {
 	INLINE_SUB_AGENT_ID,
 	parseDelegateSubAgentContinuation,
-	type Agent as RuntimeAgent,
+	type AgentRuntimeInstance,
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
@@ -139,7 +139,7 @@ export interface ExecuteForTaskNowConfig {
 }
 
 export interface StreamChatResponseConfig {
-	agentInstance: RuntimeAgent;
+	agentInstance: AgentRuntimeInstance;
 	toolRegistry: ToolRegistry;
 	agentId: string;
 	userId?: string;

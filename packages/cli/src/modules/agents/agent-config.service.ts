@@ -182,6 +182,7 @@ export class AgentConfigService {
 		const toolsProvided = validatedConfig.tools !== undefined;
 		const skillsProvided = validatedConfig.skills !== undefined;
 		const credentialProvided = validatedConfig.credential !== undefined;
+		const engineProvided = validatedConfig.engine !== undefined;
 		const personalisationProvided = validatedConfig.personalisation !== undefined;
 		const memoryProvided = validatedConfig.memory !== undefined;
 		const subAgentsProvided = validatedConfig.subAgents !== undefined;
@@ -212,6 +213,7 @@ export class AgentConfigService {
 			model: decomposedSchema.model,
 			instructions: decomposedSchema.instructions,
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
+			...(engineProvided ? { engine: decomposedSchema.engine } : {}),
 			...(personalisationProvided ? { personalisation: nextPersonalisation } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
 			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
@@ -389,6 +391,7 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJsonConfig): void {
 	const optionalFields = [
 		'credential',
+		'engine',
 		'personalisation',
 		'memory',
 		'subAgents',

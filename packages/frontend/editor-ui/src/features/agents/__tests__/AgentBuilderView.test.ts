@@ -641,6 +641,30 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
 	});
 
+	it('does not restore n8n memory when saving a harness model selection', async () => {
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', {
+			engine: { type: 'harness', adapter: 'codex' },
+			model: 'openai/gpt-5.6-sol',
+			credential: 'cred-openai',
+			memory: undefined,
+			config: { promptCaching: { enabled: true } },
+		});
+		await nextTick();
+		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+
+		const savedConfig: unknown = updateConfigMock.mock.calls.at(-1)?.[2];
+		expect(savedConfig).toMatchObject({
+			engine: { type: 'harness', adapter: 'codex' },
+			model: 'openai/gpt-5.6-sol',
+			credential: 'cred-openai',
+		});
+		expect(savedConfig).not.toHaveProperty('memory');
+		expect(savedConfig).not.toHaveProperty('config');
+	});
+
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {
 		await renderView();
 

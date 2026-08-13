@@ -1,6 +1,7 @@
 import type { CredentialProvider } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
 import type { WorkflowRepository } from '@n8n/db';
+import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
@@ -48,7 +49,7 @@ function makeCredentialProvider(credentials: Array<{ id: string; type: string }>
 	} as unknown as CredentialProvider;
 }
 
-function makeService() {
+function makeService(configOverrides: Partial<AgentsConfig> = {}) {
 	const agentRepository = mock<AgentRepository>();
 	const agentSkillsService = mock<AgentSkillsService>();
 	const agentTaskRepository = mock<AgentTaskRepository>();
@@ -62,6 +63,7 @@ function makeService() {
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	chatIntegrationRegistry.get.mockReturnValue(undefined);
 	const aiGatewayService = mock<AiGatewayService>();
+	const agentsConfig = mock<AgentsConfig>({ modules: [], ...configOverrides });
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -71,6 +73,7 @@ function makeService() {
 			workflowRepository,
 			chatIntegrationRegistry,
 			aiGatewayService,
+			agentsConfig,
 		),
 		agentRepository,
 		agentSkillsService,
@@ -1052,6 +1055,113 @@ describe('AgentValidationService — structured issues', () => {
 				capability: { kind: 'task', id: 'missing_disabled', index: 1 },
 			}),
 		]);
+	});
+});
+
+describe('AgentValidationService — harness engines', () => {
+	it('accepts a stored provider credential', async () => {
+		const { service, agentRepository } = makeService({ modules: ['harnesses'] });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				model: 'anthropic/claude-sonnet-5',
+				credential: 'anthropic-main',
+				engine: { type: 'harness', adapter: 'claude-code' },
+			}),
+		);
+
+		await expect(
+			service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'anthropic-main', type: 'anthropicApi' }]),
+			),
+		).resolves.toMatchObject({ status: 'valid', issues: [] });
+	});
+
+	it('accepts compatible models and rejects models outside the adapter catalog', async () => {
+		const { service, agentRepository } = makeService({ modules: ['harnesses'] });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				model: 'openai/gpt-5.6-sol',
+				credential: AI_GATEWAY_MANAGED_TAG,
+				engine: { type: 'harness', adapter: 'codex' },
+			}),
+		);
+
+		await expect(
+			service.validateAgentConfiguration(agentId, projectId, makeCredentialProvider()),
+		).resolves.toMatchObject({ status: 'valid', issues: [] });
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				model: 'openai/gpt-5-mini',
+				credential: AI_GATEWAY_MANAGED_TAG,
+				engine: { type: 'harness', adapter: 'codex' },
+			}),
+		);
+
+		const incompatible = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider(),
+		);
+		expect(incompatible.issues).toContainEqual(
+			expect.objectContaining({ code: 'invalid_value', path: 'model' }),
+		);
+	});
+
+	it('accepts stale n8n memory and prompt caching on a harness agent', async () => {
+		const { service, agentRepository } = makeService({ modules: ['harnesses'] });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				model: 'openai/gpt-5.6-sol',
+				credential: AI_GATEWAY_MANAGED_TAG,
+				engine: { type: 'harness', adapter: 'codex' },
+				memory: { enabled: true, storage: 'n8n' },
+				config: { promptCaching: { enabled: true } },
+			}),
+		);
+
+		await expect(
+			service.validateAgentConfiguration(agentId, projectId, makeCredentialProvider()),
+		).resolves.toMatchObject({ status: 'valid', issues: [] });
+	});
+
+	it('rejects n8n-only execution settings before a harness turn starts', async () => {
+		const { service, agentRepository } = makeService({ modules: ['harnesses'] });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				model: 'anthropic/claude-sonnet-5',
+				credential: AI_GATEWAY_MANAGED_TAG,
+				engine: { type: 'harness', adapter: 'claude-code' },
+				config: {
+					reasoning: 'high',
+					toolCallConcurrency: 2,
+					maxIterations: 10,
+					webSearch: { enabled: true },
+				},
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider(),
+		);
+
+		expect(result.issues.map((item) => item.path)).toEqual(
+			expect.arrayContaining([
+				'config.reasoning',
+				'config.toolCallConcurrency',
+				'config.maxIterations',
+				'config.webSearch',
+			]),
+		);
 	});
 });
 

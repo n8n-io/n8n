@@ -17,11 +17,14 @@ catalog:
   '@ai-sdk/gateway': ^4.0.37
   '@ai-sdk/google': ^4.0.24
   '@ai-sdk/groq': ^4.0.13
+  '@ai-sdk/harness': 1.0.64
+  '@ai-sdk/harness-claude-code': 1.0.65
+  '@ai-sdk/harness-codex': 1.0.66
   '@ai-sdk/mistral': ^4.0.14
   '@ai-sdk/openai': ^4.0.20
   '@ai-sdk/openai-compatible': ^3.0.14
-  '@ai-sdk/otel': ^1.0.48
-  '@ai-sdk/provider-utils': ^5.0.18
+  '@ai-sdk/otel': ^1.0.58
+  '@ai-sdk/provider-utils': ^5.0.25
   '@ai-sdk/xai': ^4.0.18
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
@@ -127,7 +130,7 @@ catalog:
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
-  ai: ^7.0.48
+  ai: ^7.0.58
   axios: 1.18.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
@@ -218,6 +221,7 @@ catalog:
   vite-plugin-dts: ^4.5.4
   vite-plugin-singlefile: 2.3.3
   vitest: ^4.1.9
+  ws: 8.21.3
   vitest-mock-extended: ^3.1.0
   vm2: 3.11.5
   xml2js: 0.6.2

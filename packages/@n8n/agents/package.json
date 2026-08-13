@@ -19,6 +19,9 @@
       "sandbox": [
         "dist/workspace/sandbox/index.d.ts"
       ],
+      "harness": [
+        "dist/harness/index.d.ts"
+      ],
       "vector-stores/postgres": [
         "dist/vector-stores/postgres.d.ts"
       ],
@@ -50,6 +53,10 @@
     "./sandbox": {
       "types": "./dist/workspace/sandbox/index.d.ts",
       "default": "./dist/workspace/sandbox/index.js"
+    },
+    "./harness": {
+      "types": "./dist/harness/index.d.ts",
+      "default": "./dist/harness/index.js"
     },
     "./vector-stores/postgres": {
       "types": "./dist/vector-stores/postgres.d.ts",
@@ -99,6 +106,9 @@
     "@ai-sdk/gateway": "catalog:",
     "@ai-sdk/google": "catalog:",
     "@ai-sdk/groq": "catalog:",
+    "@ai-sdk/harness": "catalog:",
+    "@ai-sdk/harness-claude-code": "catalog:",
+    "@ai-sdk/harness-codex": "catalog:",
     "@ai-sdk/mistral": "catalog:",
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/openai-compatible": "catalog:",
@@ -117,7 +127,9 @@
     "ai": "catalog:",
     "ajv": "^8.18.0",
     "langsmith": "catalog:",
+    "n8n-workflow": "workspace:*",
     "undici": "catalog:undici-v7",
+    "ws": "catalog:",
     "yaml": "catalog:",
     "zod-to-json-schema": "catalog:"
   },

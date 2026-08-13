@@ -147,6 +147,20 @@ function makeService() {
 	};
 }
 
+function makeWorkflowContext(workflowId: string): ExecuteAgentWorkflowContext {
+	return {
+		workflowId,
+		workflowName: 'Harness workflow',
+		callingNodeName: 'Message an Agent',
+		callingNodeId: 'message-agent-node',
+		inputData: [{ json: { prompt: 'hello' } }],
+		inputDataScope: 'item',
+		exposeWorkflowData: false,
+		nodes: [],
+		runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+	};
+}
+
 describe('AgentWorkflowExecutionService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -240,6 +254,70 @@ describe('AgentWorkflowExecutionService', () => {
 				executionId: 'execution-1',
 			}),
 		);
+	});
+
+	it('runs a saved harness agent and reuses its workflow-scoped sandbox across threads', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		const tool = vi.fn();
+		Object.assign(runtime.agent, { tool, declaredTools: [] });
+		const harnessSchema: AgentJsonConfig = {
+			name: 'Codex Agent',
+			model: 'openai/gpt-5.5',
+			credential: 'openai-credential',
+			instructions: 'Help users',
+			engine: { type: 'harness', adapter: 'codex' },
+		};
+		const harnessAgent = makeAgent({ schema: harnessSchema });
+		if (harnessAgent.activeVersion) harnessAgent.activeVersion.schema = harnessSchema;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(harnessAgent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		const workflowContext = makeWorkflowContext('workflow-1');
+
+		await service.executeForWorkflow(
+			agentId,
+			'first run',
+			'execution-1',
+			'wf:workflow-1:thread-1',
+			projectId,
+			undefined,
+			false,
+			undefined,
+			workflowContext,
+		);
+		await service.executeForWorkflow(
+			agentId,
+			'second run',
+			'execution-2',
+			'wf:workflow-1:thread-2',
+			projectId,
+			undefined,
+			false,
+			undefined,
+			workflowContext,
+		);
+
+		expect(runtime.agent.stream).toHaveBeenNthCalledWith(
+			1,
+			'first run',
+			expect.objectContaining({
+				persistence: {
+					resourceId: 'workflow:workflow-1',
+					threadId: 'wf:workflow-1:thread-1',
+				},
+			}),
+		);
+		expect(runtime.agent.stream).toHaveBeenNthCalledWith(
+			2,
+			'second run',
+			expect.objectContaining({
+				persistence: {
+					resourceId: 'workflow:workflow-1',
+					threadId: 'wf:workflow-1:thread-2',
+				},
+			}),
+		);
+		expect(tool).toHaveBeenCalledTimes(2);
 	});
 
 	it('records workflow stream setup failures', async () => {

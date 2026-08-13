@@ -19,6 +19,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution](agent_execution.md) | 20 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
+| [agent_harness_sessions](agent_harness_sessions.md) | 15 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 7 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
@@ -159,6 +160,7 @@ erDiagram
 "agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_harness_sessions" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -472,6 +474,23 @@ erDiagram
   varchar_255_ mimeType
   TEXT storageKey
   varchar_2_ storedAt
+  datetime_3_ updatedAt
+}
+"agent_harness_sessions" {
+  varchar_32_ adapter
+  varchar_36_ agentId PK
+  datetime_3_ claimExpiresAt
+  varchar claimToken
+  datetime_3_ createdAt
+  datetime_3_ expiresAt
+  datetime_3_ lastUsedAt
+  INTEGER ownershipEpoch
+  varchar_255_ resourceId
+  varchar_64_ runtimeIdentity PK
+  varchar_255_ sessionId
+  TEXT state
+  varchar_16_ status
+  varchar_255_ threadId PK
   datetime_3_ updatedAt
 }
 "agent_history" {

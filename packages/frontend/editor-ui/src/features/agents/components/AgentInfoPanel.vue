@@ -6,6 +6,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
+import { isAgentHarnessModel } from '@n8n/api-types';
 import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -14,6 +15,7 @@ import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { useToast } from '@n8n/composables/useToast';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import shared from '../styles/agent-panel.module.scss';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
@@ -65,6 +67,7 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 const { showError } = useToast();
 const { catalog, ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 
@@ -88,6 +91,14 @@ const configProvider = computed<AgentModelProvider | null>(() => {
 	return parsed && isAgentModelProvider(parsed.provider) ? parsed.provider : null;
 });
 
+const harnessesEnabled = computed(() => settingsStore.isAgentModuleActive('harnesses'));
+const showHarnessModels = computed(
+	() => harnessesEnabled.value || props.config?.engine?.type === 'harness',
+);
+const selectedHarnessAdapter = computed(() =>
+	props.config?.engine?.type === 'harness' ? props.config.engine.adapter : null,
+);
+
 // The agent's persisted `config.credential` is the source of truth for the selected
 // model's provider. `credentialsByProvider` only tracks manual (localStorage) selections,
 // so a builder-created agent — which writes `config` but not localStorage — would fall
@@ -101,7 +112,7 @@ const effectiveCredentials = computed(() => {
 	return { ...base, [provider]: credential };
 });
 
-const filteredAgents = computed<AgentModelsByProvider>(() =>
+const modelsByProvider = computed<AgentModelsByProvider>(() =>
 	getModelsForPicker(effectiveCredentials.value),
 );
 
@@ -110,8 +121,10 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	if (!modelStr) return null;
 	const parsed = parseModelString(modelStr);
 	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
+	const engine = props.config?.engine;
+	if (engine?.type === 'harness' && !isAgentHarnessModel(engine.adapter, modelStr)) return null;
 
-	const registryEntry = filteredAgents.value[parsed.provider]?.models.find(
+	const registryEntry = modelsByProvider.value[parsed.provider]?.models.find(
 		(m) => m.model === parsed.name,
 	);
 	if (registryEntry) return registryEntry;
@@ -147,6 +160,38 @@ function onModelChange(selection: AgentModelSelection) {
 	}
 	const modelName = sanitizeModelId(selection.provider, selection.model);
 	const model = `${selection.provider}/${modelName}`;
+	if (selection.harnessAdapter) {
+		const harnessConfig: NonNullable<AgentJsonConfig['config']> = {};
+		if (selection.harnessAdapter === 'codex') {
+			if (props.config?.config?.reasoning) {
+				harnessConfig.reasoning = props.config.config.reasoning;
+			}
+			if (props.config?.config?.webSearch) {
+				harnessConfig.webSearch = props.config.config.webSearch;
+			}
+		}
+		const isChangingHarness =
+			props.config?.engine?.type !== 'harness' ||
+			props.config.engine.adapter !== selection.harnessAdapter;
+		emit('update:config', {
+			engine: { type: 'harness', adapter: selection.harnessAdapter },
+			model,
+			credential: credentialId,
+			memory: undefined,
+			config: Object.keys(harnessConfig).length > 0 ? harnessConfig : undefined,
+			...(isChangingHarness
+				? {
+						subAgents: undefined,
+						skills: [],
+						mcpServers: [],
+						vectorStores: [],
+						providerTools: undefined,
+					}
+				: {}),
+		});
+		return;
+	}
+
 	const capabilities = PROVIDER_CAPABILITIES[selection.provider];
 	const webSearchChanges = normalizeWebSearchForModelChange(
 		props.config,
@@ -165,6 +210,7 @@ function onModelChange(selection: AgentModelSelection) {
 		catalog.value[selection.provider]?.models[modelName]?.reasoning,
 	);
 	emit('update:config', {
+		engine: { type: 'n8n' },
 		model,
 		credential: credentialId,
 		...webSearchChanges,
@@ -172,7 +218,6 @@ function onModelChange(selection: AgentModelSelection) {
 		...reasoningChanges,
 	});
 }
-
 function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
 	const parsed = parseModelString(modelToString(props.config?.model));
@@ -223,11 +268,13 @@ function onInstructionsInput(value: string) {
 				:disabled="props.disabled"
 				:selected-model="selectedAgent"
 				:credentials="effectiveCredentials"
-				:models-by-provider="filteredAgents"
+				:models-by-provider="modelsByProvider"
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
 				:bound-credential-id="props.config?.credential ?? null"
+				:show-harness-models="showHarnessModels"
+				:selected-harness-adapter="selectedHarnessAdapter"
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"

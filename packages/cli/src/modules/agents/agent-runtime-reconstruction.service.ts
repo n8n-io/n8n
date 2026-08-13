@@ -1,6 +1,7 @@
 import {
 	createWriteTodosTool,
 	type Agent as RuntimeAgent,
+	type AgentRuntimeInstance,
 	BuiltTool,
 	CredentialProvider,
 	ModelConfig,
@@ -43,6 +44,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
+import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -61,6 +63,7 @@ import {
 	type IntegrationToolConnectionDescriptor,
 } from './integrations/integration-tools';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { N8nHarnessSessionStore } from './integrations/n8n-harness-session-store';
 import { N8nMemory } from './integrations/n8n-memory';
 import {
 	buildFromJson,
@@ -81,7 +84,9 @@ import { createGetEnvironmentTool } from './tools/environment-tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
+import { createHarnessAdapterStorageIdentity } from './utils/harness-sandbox-provider';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
+import { createHarnessRuntimeIdentity } from './utils/harness-runtime-identity';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
  * row exists, so anything keyed on a real agent id (checkpoints, knowledge
@@ -158,6 +163,10 @@ async function getWorkflowRunner(): Promise<WorkflowRunner> {
 	return Container.get(WorkflowRunner);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
 @Service()
 export class AgentRuntimeReconstructionService {
 	constructor(
@@ -192,7 +201,7 @@ export class AgentRuntimeReconstructionService {
 		user?: User,
 		instrumentation?: AgentRuntimeInstrumentation,
 		workflowToolExecutionMode: WorkflowToolExecutionMode = 'manual',
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	): Promise<{ agent: AgentRuntimeInstance; toolRegistry: ToolRegistry }> {
 		let config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
@@ -217,12 +226,26 @@ export class AgentRuntimeReconstructionService {
 			toolDescriptors[_toolId] = toolEntry.descriptor;
 		}
 
+		if (config.engine?.type === 'harness') {
+			return await this.reconstructHarnessRuntime({
+				config,
+				memoryOwnerAgentId: agentEntity.id,
+				projectId: agentEntity.projectId,
+				credentialProvider,
+				toolDescriptors,
+				toolCodeByName: toolsByName,
+				runType,
+				workflowToolExecutionMode,
+				instrumentation,
+			});
+		}
+
 		const subAgentDelegation = await this.createSubAgentDelegationConfig(
 			config,
 			agentEntity.projectId,
 		);
 
-		return await this.reconstructRuntime({
+		return await this.reconstructNativeRuntime({
 			config,
 			memoryOwnerAgentId: agentEntity.id,
 			projectId: agentEntity.projectId,
@@ -318,6 +341,9 @@ export class AgentRuntimeReconstructionService {
 		params: ReconstructAgentRuntimeParams,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		let config = params.config;
+		if (config.engine?.type === 'harness') {
+			throw new UserError('Harness agents cannot currently run as sub-agents or inline agents');
+		}
 		if (params.user && config.tools?.length) {
 			config = {
 				...config,
@@ -327,7 +353,7 @@ export class AgentRuntimeReconstructionService {
 
 		const subAgentDelegation = await this.createSubAgentDelegationConfig(config, params.projectId);
 
-		return await this.reconstructRuntime({
+		return await this.reconstructNativeRuntime({
 			...params,
 			config,
 			credentialIntegrations: [],
@@ -335,7 +361,7 @@ export class AgentRuntimeReconstructionService {
 		});
 	}
 
-	private async reconstructRuntime(options: {
+	private async reconstructNativeRuntime(options: {
 		config: AgentJsonConfig;
 		memoryOwnerAgentId: string;
 		projectId: string;
@@ -454,6 +480,155 @@ export class AgentRuntimeReconstructionService {
 		});
 
 		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
+	}
+
+	private async reconstructHarnessRuntime(options: {
+		config: AgentJsonConfig;
+		memoryOwnerAgentId: string;
+		projectId: string;
+		credentialProvider: CredentialProvider;
+		toolDescriptors: Record<string, ToolDescriptor>;
+		toolCodeByName: Record<string, string>;
+		runType: AgentRunTelemetryType;
+		workflowToolExecutionMode: WorkflowToolExecutionMode;
+		instrumentation?: AgentRuntimeInstrumentation;
+	}): Promise<{ agent: AgentRuntimeInstance; toolRegistry: ToolRegistry }> {
+		const { config, memoryOwnerAgentId, projectId, credentialProvider } = options;
+		const engine = config.engine;
+		if (engine?.type !== 'harness') {
+			throw new Error('Harness runtime reconstruction requires a harness engine');
+		}
+		if (!this.agentsConfig.modules.includes('harnesses')) {
+			throw new UserError('Harness agents are not enabled on this instance');
+		}
+		if (!config.credential) throw new UserError('Harness agents require a model credential');
+		const resolvedTools: BuiltTool[] = [];
+		const toolResolver = this.makeToolResolver(
+			projectId,
+			options.workflowToolExecutionMode,
+			options.instrumentation,
+		);
+		const configuredAgent = await buildFromJson(config, options.toolDescriptors, {
+			toolExecutor: this.secureRuntime.createToolExecutor(options.toolCodeByName),
+			credentialProvider,
+			resolveTool: async (ref) => {
+				const resolved = await toolResolver(ref);
+				if (resolved) resolvedTools.push(resolved);
+				return resolved;
+			},
+			memoryFactory: this.getMemoryFactory(memoryOwnerAgentId),
+			modelFetch: options.instrumentation?.modelFetch ?? createAiProxyFetch(this.outboundHttp),
+			webSearchFetch: createWebSearchFetch(
+				this.outboundHttp,
+				this.ssrfConfig,
+				this.ssrfProtectionService,
+			),
+		});
+
+		const modelConfig = await resolveCredentialAwareModelConfig(
+			config.model,
+			config.credential,
+			credentialProvider,
+		);
+		const modelSettings: unknown = modelConfig;
+		if (!isRecord(modelSettings) || typeof modelSettings.apiKey !== 'string') {
+			throw new UserError('Harness model credential did not resolve to an API key');
+		}
+		const baseUrl = typeof modelSettings.baseURL === 'string' ? modelSettings.baseURL : undefined;
+		const modelApiKey = modelSettings.apiKey;
+		const model = config.model.slice(config.model.indexOf('/') + 1);
+		const sandboxSettings = Container.get(SandboxSettingsService);
+		const sandboxProvider = sandboxSettings.getProvider();
+		const sandboxConnection = await (async () => {
+			if (sandboxProvider === 'daytona') {
+				const connection = await sandboxSettings.resolveDaytonaConfig();
+				const apiKey = connection.apiKey?.trim();
+				if (!apiKey) {
+					throw new UserError(
+						'Harness agents require a Daytona API key. Set DAYTONA_API_KEY or configure the Daytona sandbox credential.',
+					);
+				}
+				return { type: 'daytona' as const, ...connection, apiKey };
+			}
+
+			const connection = await sandboxSettings.resolveN8nSandboxConfig();
+			const serviceUrl = connection.serviceUrl?.trim();
+			if (!serviceUrl) {
+				throw new UserError(
+					'Harness agents require the n8n sandbox service URL. Set N8N_SANDBOX_SERVICE_URL.',
+				);
+			}
+			return { type: 'n8n-sandbox' as const, ...connection, serviceUrl };
+		})();
+
+		const {
+			HarnessRuntimeAgent,
+			createDaytonaHarnessSandboxProvider,
+			createN8nHarnessAdapter,
+			createN8nHarnessSandboxProvider,
+		} = await import('@n8n/agents/harness');
+		const harness = createN8nHarnessAdapter({
+			adapter: engine.adapter,
+			model,
+			apiKey: modelApiKey,
+			...(baseUrl ? { baseUrl } : {}),
+			...(config.config?.reasoning ? { reasoningEffort: config.config.reasoning } : {}),
+			...(engine.adapter === 'codex'
+				? { webSearch: config.config?.webSearch?.enabled === true }
+				: {}),
+		});
+		const tools = configuredAgent.declaredTools;
+		const toolInstructions = tools
+			.map((tool) => tool.systemInstruction)
+			.filter((instruction): instruction is string => Boolean(instruction));
+		const instructions = [config.instructions, ...toolInstructions].join('\n\n');
+		const runtimeIdentity = createHarnessRuntimeIdentity({
+			config,
+			instructions,
+			sandboxProvider,
+			...(baseUrl ? { baseUrl } : {}),
+			toolDescriptors: options.toolDescriptors,
+			toolCodeByName: options.toolCodeByName,
+		});
+
+		return {
+			agent: new HarnessRuntimeAgent({
+				name: config.name,
+				model: config.model,
+				instructions,
+				projectId,
+				agentId: memoryOwnerAgentId,
+				runtimeIdentity,
+				adapter: createHarnessAdapterStorageIdentity(engine.adapter, sandboxProvider),
+				harness,
+				tools,
+				sessionStore: Container.get(N8nHarnessSessionStore),
+				sessionEndMode: sandboxProvider === 'daytona' ? 'stop' : 'detach',
+				createSandboxProvider: (claim) =>
+					sandboxConnection.type === 'daytona'
+						? createDaytonaHarnessSandboxProvider({
+								apiKey: sandboxConnection.apiKey,
+								...(sandboxConnection.apiUrl ? { apiUrl: sandboxConnection.apiUrl } : {}),
+								harness: engine.adapter,
+								previewUrlTtlSeconds: this.agentsConfig.harnessSessionTtlSeconds,
+								timeout: this.agentsConfig.sandboxTimeout,
+								createTimeoutSeconds: Math.ceil(this.agentsConfig.sandboxTimeout / 1000),
+								image: this.agentsConfig.sandboxImage,
+								ephemeral: false,
+								logger: this.logger,
+							})
+						: createN8nHarnessSandboxProvider({
+								serviceUrl: sandboxConnection.serviceUrl,
+								...(sandboxConnection.apiKey ? { apiKey: sandboxConnection.apiKey } : {}),
+								harness: engine.adapter,
+								ownershipEpoch: claim.fence.ownershipEpoch,
+								claimToken: claim.fence.claimToken,
+								bridgeLeaseTtlMs: this.agentsConfig.harnessClaimTtlSeconds * 1000,
+								bridgeLeaseRetentionMs: this.agentsConfig.harnessSessionTtlSeconds * 1000,
+							}),
+			}),
+			toolRegistry: buildToolRegistry(resolvedTools),
+		};
 	}
 
 	async createSubAgentDelegationConfig(

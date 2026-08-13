@@ -19,6 +19,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution](public.agent_execution.md) | 20 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
+| [public.agent_harness_sessions](public.agent_harness_sessions.md) | 15 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 7 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
@@ -176,6 +177,7 @@ erDiagram
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_harness_sessions" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -485,6 +487,23 @@ erDiagram
   varchar_255_ mimeType
   text storageKey
   varchar_2_ storedAt
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_harness_sessions" {
+  varchar_32_ adapter
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone claimExpiresAt
+  uuid claimToken
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone expiresAt
+  timestamp_3__with_time_zone lastUsedAt
+  integer ownershipEpoch
+  varchar_255_ resourceId
+  varchar_64_ runtimeIdentity
+  varchar_255_ sessionId
+  text state
+  varchar_16_ status
+  varchar_255_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_history" {

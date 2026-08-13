@@ -179,7 +179,10 @@ vi.mock('../../../workspace/sandbox/lazy-daytona', () => ({
 }));
 
 import { DaytonaFilesystem } from '../../../workspace/filesystem/daytona-filesystem';
-import { DaytonaSandbox } from '../../../workspace/sandbox/daytona-sandbox';
+import {
+	DaytonaSandbox,
+	DaytonaSandboxNotFoundError,
+} from '../../../workspace/sandbox/daytona-sandbox';
 import type { ErrorReporter, Logger } from '../../../workspace/sandbox/logger';
 
 function base64url(input: string): string {
@@ -213,6 +216,18 @@ beforeEach(() => {
 });
 
 describe('DaytonaSandbox (creation strategies)', () => {
+	it('does not create a replacement sandbox when reconnect-only lookup misses', async () => {
+		queueNotFound('not found');
+		const sandbox = new DaytonaSandbox({
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			reconnectOnly: true,
+		});
+
+		await expect(sandbox.start()).rejects.toBeInstanceOf(DaytonaSandboxNotFoundError);
+		expect(clientLog[0].create).not.toHaveBeenCalled();
+	});
+
 	it('falls back from snapshot creation to image creation and preserves caller-provided labels', async () => {
 		const logger = makeLogger();
 		const errorReporter: ErrorReporter = { error: vi.fn() };

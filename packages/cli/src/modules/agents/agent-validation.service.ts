@@ -6,6 +6,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
 	findVectorStoreToolNameCollisions,
+	isAgentHarnessModel,
 	isDraftAgentConfig,
 	isDraftIntegration,
 	type AgentConfigValidationIssue,
@@ -18,6 +19,7 @@ import {
 	type AgentSkill,
 } from '@n8n/api-types';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
+import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8n-workflow';
 
@@ -82,6 +84,7 @@ export class AgentValidationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	/**
@@ -259,6 +262,7 @@ export class AgentValidationService {
 	): Promise<AgentConfigValidationIssue[]> {
 		const { config } = ctx;
 		const issues: AgentConfigValidationIssue[] = [];
+		const isHarnessEngine = config.engine?.type === 'harness';
 
 		let credentialList: Awaited<ReturnType<CredentialProvider['list']>> | undefined;
 		const findCredential: FindCredential = async (credentialId) => {
@@ -269,16 +273,24 @@ export class AgentValidationService {
 		const { agentsById, workflowsByReference } = await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
-		this.collectVectorStoreIssues(config, issues);
+		if (isHarnessEngine) {
+			this.collectHarnessEngineIssues(config, issues);
+		} else {
+			this.collectVectorStoreIssues(config, issues);
+		}
 		await this.collectMainCredentialIssues(config, findCredential, issues);
-		this.collectSubAgentRefIssues(ctx, agentsById, issues);
-		this.collectSkillIssues(config, ctx.skills, issues);
+		if (!isHarnessEngine) {
+			this.collectSubAgentRefIssues(ctx, agentsById, issues);
+			this.collectSkillIssues(config, ctx.skills, issues);
+		}
 		if (scope === 'publish') {
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues);
-		await this.collectMcpServerIssues(config, findCredential, issues);
+		if (!isHarnessEngine) {
+			await this.collectMcpServerIssues(config, findCredential, issues);
+		}
 
 		return this.dedupe(issues);
 	}
@@ -334,6 +346,75 @@ export class AgentValidationService {
 			issues.push(agentIssue('missing_required', 'model'));
 		} else if (!AgentModelSchema.safeParse(config.model).success) {
 			issues.push(agentIssue('invalid_value', 'model'));
+		}
+	}
+
+	private collectHarnessEngineIssues(
+		config: AgentJsonConfig,
+		issues: AgentConfigValidationIssue[],
+	) {
+		if (config.engine?.type !== 'harness') return;
+		if (!this.agentsConfig.modules.includes('harnesses')) {
+			issues.push(agentIssue('invalid_value', 'engine'));
+		}
+		if (!isAgentHarnessModel(config.engine.adapter, config.model)) {
+			issues.push(agentIssue('invalid_value', 'model'));
+		}
+
+		if (
+			(config.subAgents?.agents?.length ?? 0) > 0 ||
+			config.subAgents?.maxChildren !== undefined ||
+			config.subAgents?.modelsByDifficulty !== undefined
+		) {
+			issues.push(agentIssue('invalid_value', 'subAgents'));
+		}
+		if ((config.skills?.length ?? 0) > 0) {
+			issues.push(agentIssue('invalid_value', 'skills'));
+		}
+		if ((config.mcpServers?.length ?? 0) > 0) {
+			issues.push(agentIssue('invalid_value', 'mcpServers'));
+		}
+		if ((config.vectorStores?.length ?? 0) > 0) {
+			issues.push(agentIssue('invalid_value', 'vectorStores'));
+		}
+		if (config.providerTools && Object.keys(config.providerTools).length > 0) {
+			issues.push(agentIssue('invalid_value', 'providerTools'));
+		}
+		if (config.config?.toolCallConcurrency !== undefined) {
+			issues.push(agentIssue('invalid_value', 'config.toolCallConcurrency'));
+		}
+		if (config.config?.maxIterations !== undefined) {
+			issues.push(agentIssue('invalid_value', 'config.maxIterations'));
+		}
+		if (config.engine.adapter === 'claude-code' && config.config?.reasoning !== undefined) {
+			issues.push(agentIssue('invalid_value', 'config.reasoning'));
+		}
+		if (
+			config.engine.adapter === 'claude-code' &&
+			(config.config?.webSearch?.enabled ||
+				config.config?.webSearch?.provider !== undefined ||
+				config.config?.webSearch?.credential !== undefined)
+		) {
+			issues.push(agentIssue('invalid_value', 'config.webSearch'));
+		}
+
+		for (const [index, tool] of (config.tools ?? []).entries()) {
+			if (tool.requireApproval !== true) continue;
+
+			const id =
+				tool.type === 'custom'
+					? tool.id
+					: tool.type === 'workflow'
+						? (tool.name ?? tool.workflow)
+						: tool.name;
+			issues.push(
+				issue('invalid_value', `tools.${index}.requireApproval`, {
+					kind: 'tool',
+					id,
+					index,
+					toolType: tool.type,
+				}),
+			);
 		}
 	}
 

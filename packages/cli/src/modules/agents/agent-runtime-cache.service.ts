@@ -1,4 +1,4 @@
-import type { Agent as RuntimeAgent } from '@n8n/agents';
+import type { AgentRuntimeInstance } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -37,7 +37,7 @@ export interface GetRuntimeParams {
 }
 
 export interface AgentRuntime {
-	agent: RuntimeAgent;
+	agent: AgentRuntimeInstance;
 	agentId: string;
 	toolRegistry: ToolRegistry;
 	projectId: string;

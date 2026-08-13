@@ -18,6 +18,7 @@ import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
+import { N8nHarnessSessionCleanupService } from './integrations/n8n-harness-session-cleanup.service';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
@@ -104,6 +105,7 @@ export class AgentExecutionService {
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly harnessSessionCleanupService: N8nHarnessSessionCleanupService,
 		private readonly agentWorkspaceService: AgentWorkspaceService,
 	) {}
 
@@ -444,6 +446,7 @@ export class AgentExecutionService {
 
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
+		await this.harnessSessionCleanupService.destroyByAgentAndThread(agentId, threadId);
 		await Promise.all([
 			this.agentWorkspaceService.cleanupThreadWorkspace(projectId, agentId, threadId),
 			this.agentExecutionThreadRepository.delete({ id: threadId }),
@@ -452,6 +455,10 @@ export class AgentExecutionService {
 			),
 		]);
 		return true;
+	}
+
+	async destroyHarnessSessionsForAgent(agentId: string): Promise<void> {
+		await this.harnessSessionCleanupService.destroyByAgent(agentId);
 	}
 
 	/**

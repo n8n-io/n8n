@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
+import { N8nHarnessSessionCleanupService } from './integrations/n8n-harness-session-cleanup.service';
 import { N8nMemory } from './integrations/n8n-memory';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 
@@ -17,6 +18,7 @@ export class AgentTestChatService {
 	constructor(
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly harnessSessionCleanupService: N8nHarnessSessionCleanupService,
 		private readonly agentWorkspaceService: AgentWorkspaceService,
 	) {}
 
@@ -37,6 +39,7 @@ export class AgentTestChatService {
 	 */
 	async clearTestChatMessages(projectId: string, agentId: string, userId: string) {
 		const threadId = chatThreadId(agentId, userId);
+		await this.harnessSessionCleanupService.destroyByAgentAndThread(agentId, threadId);
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentChatAttachmentService.deleteByThread(threadId, { agentId });
 		await this.agentWorkspaceService.cleanupThreadWorkspace(projectId, agentId, threadId);
@@ -46,6 +49,7 @@ export class AgentTestChatService {
 	async clearAllTestChatMessages(agentId: string) {
 		const threadId = chatThreadId(agentId);
 		const memory = this.n8nMemory.getImplementation(agentId);
+		await this.harnessSessionCleanupService.destroyByAgentAndThreadPrefix(agentId, threadId);
 		await memory.deleteThreadsByPrefix(threadId);
 		await memory.deleteMessagesByThread(threadId);
 		await memory.deleteThread(threadId);

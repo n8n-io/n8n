@@ -680,6 +680,8 @@ describe('GlobalConfig', () => {
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
 			modules: [],
+			harnessClaimTtlSeconds: 60,
+			harnessSessionTtlSeconds: 3600,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',

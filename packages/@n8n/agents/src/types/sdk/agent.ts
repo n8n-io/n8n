@@ -375,6 +375,24 @@ export interface BuiltAgent {
 	deny(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 }
 
+/**
+ * Agent surface used by n8n's cached chat/task orchestration.
+ *
+ * The current `Agent` exposes this already. Alternative agent engines can
+ * implement the same execution contract without inheriting the builder API.
+ */
+export interface AgentRuntimeInstance extends Pick<BuiltAgent, 'name' | 'stream' | 'close'> {
+	readonly snapshot: {
+		readonly model: { readonly provider: string | null; readonly name: string | null };
+	};
+	resume(
+		method: 'stream',
+		data: unknown,
+		options: ResumeOptions & ExecutionOptions,
+	): Promise<StreamResult>;
+	hasCheckpointStorage(): boolean;
+}
+
 // --- Checkpoint Storage ---
 
 export type AgentRunState =

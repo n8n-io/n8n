@@ -68,6 +68,10 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const isExpanded = ref(!props.collapsible);
+const isHarnessEngine = computed(() => props.config?.engine?.type === 'harness');
+const isCodexEngine = computed(
+	() => props.config?.engine?.type === 'harness' && props.config.engine.adapter === 'codex',
+);
 
 const provider = computed(() => parseProvider(props.config?.model));
 const selectedModel = computed(() => parseModelString(modelToString(props.config?.model)));
@@ -413,7 +417,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 			/>
 		</button>
 		<div v-show="isExpanded" :class="$style.content" data-testid="agent-advanced-content">
-			<div :class="$style.settingGroup">
+			<div v-if="!isHarnessEngine || isCodexEngine" :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
@@ -441,10 +445,12 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 							:label="i18n.baseText('agents.builder.advanced.webSearch.method.native')"
 						/>
 						<N8nOption
+							v-if="!isHarnessEngine"
 							value="brave"
 							:label="i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.brave')"
 						/>
 						<N8nOption
+							v-if="!isHarnessEngine"
 							value="searxng"
 							:label="i18n.baseText('agents.builder.advanced.webSearch.fallbackProvider.searxng')"
 						/>
@@ -452,7 +458,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 
 				<div
-					v-if="webSearchEnabled"
+					v-if="webSearchEnabled && !isHarnessEngine"
 					:class="$style.subSettings"
 					data-testid="agent-web-search-settings"
 				>
@@ -568,7 +574,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 			</div>
 
-			<div :class="$style.settingGroup">
+			<div v-if="!isHarnessEngine || isCodexEngine" :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
@@ -619,7 +625,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 			</div>
 
-			<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
+			<div
+				v-if="!isHarnessEngine && capabilities.promptCaching === 'ttl'"
+				:class="$style.settingGroup"
+			>
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
@@ -647,7 +656,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 			</div>
 
-			<div :class="$style.row">
+			<div v-if="!isHarnessEngine" :class="$style.row">
 				<div :class="$style.rowLabel">
 					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 						i18n.baseText('agents.builder.advanced.concurrency.label')
@@ -669,7 +678,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				/>
 			</div>
 
-			<div :class="$style.row">
+			<div v-if="!isHarnessEngine" :class="$style.row">
 				<div :class="$style.rowLabel">
 					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 						i18n.baseText('agents.builder.advanced.maxIterations.label')

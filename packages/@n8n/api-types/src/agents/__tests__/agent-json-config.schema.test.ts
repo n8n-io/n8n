@@ -1,3 +1,4 @@
+import { isAgentHarnessModel } from '../agent-harness-models';
 import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
@@ -18,6 +19,13 @@ describe('AgentJsonConfigSchema — model', () => {
 		});
 
 		expect(result.success).toBe(true);
+	});
+
+	it('validates harness models against the adapter compatibility catalog', () => {
+		expect(isAgentHarnessModel('codex', 'openai/gpt-5.6-sol')).toBe(true);
+		expect(isAgentHarnessModel('codex', 'openai/gpt-5-mini')).toBe(false);
+		expect(isAgentHarnessModel('claude-code', 'anthropic/claude-fable-5')).toBe(true);
+		expect(isAgentHarnessModel('claude-code', 'anthropic/claude-future')).toBe(false);
 	});
 });
 

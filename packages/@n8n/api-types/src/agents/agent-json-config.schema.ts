@@ -1,6 +1,7 @@
 import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
+import { AGENT_HARNESS_ADAPTERS } from './agent-harness-models';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
@@ -16,6 +17,16 @@ import {
 } from './sub-agent.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
+
+export const AgentEngineConfigSchema = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('n8n') }).strict(),
+	z
+		.object({
+			type: z.literal('harness'),
+			adapter: z.enum(AGENT_HARNESS_ADAPTERS),
+		})
+		.strict(),
+]);
 
 export const AgentModelSchema = z.string().min(1).regex(
 	/**
@@ -420,6 +431,7 @@ export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
+	engine: AgentEngineConfigSchema.optional(),
 	instructions: z.string(),
 	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
@@ -513,6 +525,7 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
+export type AgentEngineConfig = z.infer<typeof AgentEngineConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;

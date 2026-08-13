@@ -14,7 +14,13 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import {
+	AGENT_HARNESS_ADAPTERS,
+	AGENT_HARNESS_MODEL_PROVIDERS,
+	AI_GATEWAY_MANAGED_TAG,
+	isAgentHarnessModel,
+	type AgentHarnessAdapter,
+} from '@n8n/api-types';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
 import { buildMenuItemId, parseMenuItemId } from './model-selector/menuItemId';
@@ -37,6 +43,8 @@ const FREE_OPENAI_CREDITS_MODEL = 'gpt-5-mini';
 
 type MenuItemData = AiModelSelectorMenuItemData & {
 	provider?: AgentModelProvider;
+	harnessAdapter?: AgentHarnessAdapter;
+	groupId?: string;
 };
 
 type MenuItem = AiModelSelectorMenuItem<MenuItemData>;
@@ -51,6 +59,8 @@ const {
 	boundCredentialId = null,
 	disabled = false,
 	credentialModalAppendToBody = false,
+	showHarnessModels = false,
+	selectedHarnessAdapter = null,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
 	credentials: AgentCredentialsByProvider | null;
@@ -67,6 +77,10 @@ const {
 	disabled?: boolean;
 	/** Append credential modals to body (needed when embedded in the Memory dialog). */
 	credentialModalAppendToBody?: boolean;
+	/** Show Claude Code and Codex as model-selector groups. */
+	showHarnessModels?: boolean;
+	/** The harness group that owns the persisted model selection. */
+	selectedHarnessAdapter?: AgentHarnessAdapter | null;
 }>();
 
 const emit = defineEmits<{
@@ -138,9 +152,24 @@ const isCredentialsMissing = computed(
 		!(boundCredentialId && credentialsStore.getCredentialById(boundCredentialId)),
 );
 
-const selectedLabel = computed(
-	() => selectedModel?.name ?? i18n.baseText('agents.modelSelector.defaultLabel'),
-);
+function getHarnessDisplayName(adapter: AgentHarnessAdapter): string {
+	return i18n.baseText(
+		adapter === 'claude-code'
+			? 'agents.builder.agent.engine.claudeCode'
+			: 'agents.builder.agent.engine.codex',
+	);
+}
+
+const selectedLabel = computed(() => {
+	if (!selectedModel) return i18n.baseText('agents.modelSelector.defaultLabel');
+	if (!selectedHarnessAdapter) return selectedModel.name;
+	return i18n.baseText('agents.modelSelector.harnessModel', {
+		interpolate: {
+			harness: getHarnessDisplayName(selectedHarnessAdapter),
+			model: selectedModel.name,
+		},
+	});
+});
 
 const triggerCredentialTypeName = computed(() =>
 	selectedModel ? getProviderCredentialTypes(selectedModel.provider)[0] : null,
@@ -195,13 +224,60 @@ const freeOpenAiCreditsDescription = computed(() =>
 	}),
 );
 
-function providerToMenuItem(provider: AgentModelProvider): MenuItem {
+type SelectorMenuAction = 'configure' | 'select' | 'n8nConnect' | 'freeCredits' | 'model';
+
+interface ProviderMenuItemOptions {
+	id?: string;
+	label?: string;
+	harnessAdapter?: AgentHarnessAdapter;
+	models?: AgentModelOption[];
+}
+
+function scopedMenuAction(
+	action: SelectorMenuAction,
+	harnessAdapter?: AgentHarnessAdapter,
+): string {
+	return harnessAdapter ? `${action}@${harnessAdapter}` : action;
+}
+
+function parseScopedMenuAction(action: string): {
+	action: SelectorMenuAction;
+	harnessAdapter?: AgentHarnessAdapter;
+} | null {
+	const [baseAction, adapter, extra] = action.split('@');
+	if (extra !== undefined) return null;
+	if (
+		baseAction !== 'configure' &&
+		baseAction !== 'select' &&
+		baseAction !== 'n8nConnect' &&
+		baseAction !== 'freeCredits' &&
+		baseAction !== 'model'
+	) {
+		return null;
+	}
+	if (adapter === undefined) return { action: baseAction };
+	if (adapter !== 'claude-code' && adapter !== 'codex') return null;
+	return { action: baseAction, harnessAdapter: adapter };
+}
+
+function providerToMenuItem(
+	provider: AgentModelProvider,
+	options: ProviderMenuItemOptions = {},
+): MenuItem {
 	const definition = AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
+	const groupId = options.id ?? provider;
 	const credentialOptions = getCredentialsForProvider(provider);
 	const selectedProviderCredentialId = credentials?.[provider] ?? null;
-	const models = modelsByProvider[provider]?.models ?? [];
+	const models = options.models ?? modelsByProvider[provider]?.models ?? [];
 	const modelsUnavailable = modelsByProvider[provider]?.unavailable === true;
 	const credentialTypes = getProviderCredentialTypes(provider);
+	const itemData = {
+		provider,
+		harnessAdapter: options.harnessAdapter,
+		groupId,
+	};
+	const itemId = (action: SelectorMenuAction, value: string) =>
+		buildMenuItemId(provider, scopedMenuAction(action, options.harnessAdapter), value);
 	const isAiGatewayManagedSelected = selectedProviderCredentialId === AI_GATEWAY_MANAGED_TAG;
 	const hasProviderCredential =
 		isAiGatewayManagedSelected ||
@@ -210,35 +286,35 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 
 	// Existing credentials as selectable rows; `keepOpen` lets a model be picked next.
 	const credentialItems: MenuItem[] = credentialOptions.map<MenuItem>((credential) => ({
-		id: buildMenuItemId(provider, 'select', credential.id),
+		id: itemId('select', credential.id),
 		label: credential.name,
 		disabled: false,
 		checked: selectedProviderCredentialId === credential.id,
 		keepOpen: true,
-		data: { provider },
+		data: itemData,
 	}));
 
 	const createCredentialItems: MenuItem[] = canCreateCredentials.value
 		? credentialTypes.length === 1
 			? [
 					{
-						id: buildMenuItemId(provider, 'configure', credentialTypes[0]),
+						id: itemId('configure', credentialTypes[0]),
 						label: i18n.baseText('agents.modelSelector.configureCredentials'),
 						disabled: false,
-						data: { provider, leadingIcon: 'plus' },
+						data: { ...itemData, leadingIcon: 'plus' },
 					},
 				]
 			: [
 					{
-						id: `${provider}::configure`,
+						id: `${groupId}::configure`,
 						label: i18n.baseText('agents.modelSelector.configureCredentials'),
 						disabled: false,
-						data: { provider, leadingIcon: 'plus' },
+						data: { ...itemData, leadingIcon: 'plus' },
 						children: credentialTypes.map<MenuItem>((credentialType) => ({
-							id: buildMenuItemId(provider, 'configure', credentialType),
+							id: itemId('configure', credentialType),
 							label: getCredentialTypeDisplayName(credentialType),
 							disabled: false,
-							data: { provider, leadingIcon: 'plus' },
+							data: { ...itemData, leadingIcon: 'plus' },
 						})),
 					},
 				]
@@ -256,17 +332,13 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		? [
 				{
 					// `parseMenuItemId` requires a value segment, so this cannot be dropped.
-					id: buildMenuItemId(
-						provider,
-						'n8nConnect',
-						gatewayServedCredentialType ?? credentialTypes[0],
-					),
+					id: itemId('n8nConnect', gatewayServedCredentialType ?? credentialTypes[0]),
 					label: i18n.baseText('aiGateway.credentialMode.n8nConnect.title'),
 					disabled: false,
 					checked: isAiGatewayManagedSelected,
 					keepOpen: true,
 					data: {
-						provider,
+						...itemData,
 						actionPill: aiGatewayBalancePill.value,
 					},
 				},
@@ -274,19 +346,17 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		: [];
 
 	const freeOpenAiCreditsItems: MenuItem[] =
-		provider === FREE_OPENAI_CREDITS_PROVIDER && canUseFreeOpenAiCredits.value
+		provider === FREE_OPENAI_CREDITS_PROVIDER &&
+		canUseFreeOpenAiCredits.value &&
+		!options.harnessAdapter
 			? [
 					{
-						id: buildMenuItemId(
-							FREE_OPENAI_CREDITS_PROVIDER,
-							'freeCredits',
-							FREE_OPENAI_CREDITS_MODEL,
-						),
+						id: itemId('freeCredits', FREE_OPENAI_CREDITS_MODEL),
 						icon: { type: 'icon', value: 'sparkles' },
 						label: i18n.baseText('agents.modelSelector.freeCredits.label'),
 						disabled: claimingCredits.value,
 						data: {
-							provider,
+							...itemData,
 							credentialType: credentialTypes[0],
 							leadingIcon: 'sparkles',
 							description: freeOpenAiCreditsDescription.value,
@@ -298,12 +368,15 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 
 	const modelItems = hasProviderCredential
 		? models.map<MenuItem>((model) => ({
-				id: buildMenuItemId(provider, 'model', model.model),
+				id: itemId('model', model.model),
 				label: truncateBeforeLast(model.name, MAX_MODEL_NAME_CHARS),
 				disabled: false,
-				checked: selectedModel?.provider === provider && selectedModel.model === model.model,
+				checked:
+					selectedModel?.provider === provider &&
+					selectedModel.model === model.model &&
+					selectedHarnessAdapter === (options.harnessAdapter ?? null),
 				data: {
-					provider,
+					...itemData,
 					description: model.description ?? undefined,
 					descriptionTooltipTeleported: false,
 					fullName: `${model.name} ${model.model}`,
@@ -317,7 +390,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		: isLoading
 			? [
 					{
-						id: `${provider}::loading`,
+						id: `${groupId}::loading`,
 						label: i18n.baseText('generic.loadingEllipsis'),
 						disabled: true,
 					},
@@ -325,7 +398,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 			: modelItems.length === 0
 				? [
 						{
-							id: `${provider}::empty`,
+							id: `${groupId}::empty`,
 							label: i18n.baseText(
 								modelsUnavailable
 									? 'agents.modelSelector.modelsUnavailable'
@@ -347,7 +420,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const connectHeader: MenuItem[] = connectItems.length
 		? [
 				{
-					id: `${provider}::header::connect`,
+					id: `${groupId}::header::connect`,
 					label: i18n.baseText('agents.modelSelector.connectTo', {
 						interpolate: { provider: definition.displayName },
 					}),
@@ -361,7 +434,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const modelsHeader: MenuItem[] = modelsSection.length
 		? [
 				{
-					id: `${provider}::header::models`,
+					id: `${groupId}::header::models`,
 					label: i18n.baseText('agents.modelSelector.models'),
 					header: true,
 					disabled: true,
@@ -372,10 +445,10 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		: [];
 
 	return {
-		id: provider,
-		label: definition.displayName,
+		id: groupId,
+		label: options.label ?? definition.displayName,
 		data: {
-			provider,
+			...itemData,
 			credentialType: credentialTypes[0],
 			// Two independent offers, and an instance can have either: n8n Connect is
 			// licensed separately from the one-time free OpenAI credits, which most
@@ -404,16 +477,35 @@ const menu = computed(() => {
 	});
 
 	let dividerInserted = false;
-	return providers.map<MenuItem>((provider) => {
+	const providerItems = providers.map<MenuItem>((provider) => {
 		const item = providerToMenuItem(provider);
 		if (dividerInserted) return item;
 		dividerInserted = true;
 		return { ...item, divided: true };
 	});
+
+	if (!showHarnessModels) return providerItems;
+
+	const harnessItems = AGENT_HARNESS_ADAPTERS.map<MenuItem>((adapter) => {
+		const provider: AgentModelProvider = AGENT_HARNESS_MODEL_PROVIDERS[adapter];
+		const models = (modelsByProvider[provider]?.models ?? []).filter((model) =>
+			isAgentHarnessModel(adapter, `${provider}/${model.model}`),
+		);
+		return providerToMenuItem(provider, {
+			id: `harness:${adapter}`,
+			label: getHarnessDisplayName(adapter),
+			harnessAdapter: adapter,
+			models,
+		});
+	});
+
+	return [...harnessItems, ...providerItems];
 });
 
 function isSearchableItem(item: MenuItem): boolean {
-	return (item.id.includes('::model::') || item.id.includes('::freeCredits::')) && !item.disabled;
+	const parsed = parseMenuItemId(item.id);
+	const action = parsed ? parseScopedMenuAction(parsed.action)?.action : undefined;
+	return (action === 'model' || action === 'freeCredits') && !item.disabled;
 }
 
 const {
@@ -442,7 +534,7 @@ const filteredMenu = computed(() => {
 
 	return menu.value.flatMap<MenuItem>((providerItem) => {
 		const results = matchingModelItems.value.filter(
-			(item) => item.data?.provider === providerItem.id,
+			(item) => item.data?.groupId === providerItem.id,
 		);
 		if (results.length <= MAX_SEARCH_RESULTS_PER_PROVIDER) return results;
 
@@ -486,7 +578,10 @@ async function onSelect(id: string) {
 
 	const parsed = parseMenuItemId(id);
 	if (!parsed || !isAgentModelProvider(parsed.provider)) return;
-	const { provider: providerId, action, value } = parsed;
+	const { provider: providerId, value } = parsed;
+	const scopedAction = parseScopedMenuAction(parsed.action);
+	if (!scopedAction) return;
+	const { action, harnessAdapter } = scopedAction;
 
 	if (action === 'configure') {
 		openNewCredential(value);
@@ -521,7 +616,11 @@ async function onSelect(id: string) {
 	}
 
 	if (action === 'model') {
-		emit('change', { provider: providerId, model: value });
+		emit('change', {
+			provider: providerId,
+			model: value,
+			...(harnessAdapter ? { harnessAdapter } : {}),
+		});
 	}
 }
 

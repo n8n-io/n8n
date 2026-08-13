@@ -1,4 +1,8 @@
-import { AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES, type AgentModelProvider } from '@n8n/api-types';
+import {
+	AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES,
+	type AgentHarnessAdapter,
+	type AgentModelProvider,
+} from '@n8n/api-types';
 
 export {
 	AGENT_MODEL_PROVIDERS,
@@ -30,6 +34,7 @@ export type AgentCredentialsByProvider = Partial<Record<AgentModelProvider, stri
 export interface AgentModelSelection {
 	provider: AgentModelProvider;
 	model: string;
+	harnessAdapter?: AgentHarnessAdapter;
 }
 
 /**

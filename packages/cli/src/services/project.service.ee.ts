@@ -273,6 +273,7 @@ export class ProjectService {
 
 				await agentKnowledgeService.destroySandbox(project.id, agent.id);
 				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
+				await agentExecutionService.destroyHarnessSessionsForAgent(agent.id);
 			}
 		}
 

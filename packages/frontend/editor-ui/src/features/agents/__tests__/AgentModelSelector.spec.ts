@@ -1,9 +1,9 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentHarnessAdapter } from '@n8n/api-types';
 
-import type { AgentModelsByProvider } from '../model-providers';
+import type { AgentModelOption, AgentModelsByProvider } from '../model-providers';
 
 type Credential = { id: string; name: string; type: string };
 type TestMenuItem = {
@@ -22,6 +22,8 @@ type TestMenuItem = {
 		leadingIcon?: string;
 		credentialType?: string;
 		provider?: string;
+		harnessAdapter?: AgentHarnessAdapter;
+		groupId?: string;
 	};
 };
 
@@ -52,6 +54,7 @@ const baseText = vi.hoisted(() =>
 		const template =
 			{
 				'agents.modelSelector.defaultLabel': 'Choose model',
+				'agents.modelSelector.harnessModel': '{harness}: {model}',
 				'agents.modelSelector.configureCredentials': 'Create credential',
 				'agents.modelSelector.connectTo': 'Connect to {provider}',
 				'agents.modelSelector.models': 'Models',
@@ -67,6 +70,8 @@ const baseText = vi.hoisted(() =>
 				'aiGateway.wallet.noCredits': 'No credits',
 				'agents.modelSelector.freeCredits.description':
 					'Get {credits} free OpenAI API credits. Try it with gpt-5-mini.',
+				'agents.builder.agent.engine.claudeCode': 'Claude Code (Preview)',
+				'agents.builder.agent.engine.codex': 'Codex (Preview)',
 				'generic.loadingEllipsis': 'Loading...',
 			}[key] ?? key;
 
@@ -161,8 +166,92 @@ const modelsByProvider: AgentModelsByProvider = {
 		models: [
 			{
 				provider: 'anthropic',
+				model: 'claude-sonnet-5',
+				name: 'Claude Sonnet 5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'anthropic',
+				model: 'claude-fable-5',
+				name: 'Claude Fable 5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'anthropic',
+				model: 'claude-opus-5',
+				name: 'Claude Opus 5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'anthropic',
+				model: 'claude-haiku-4-5',
+				name: 'Claude Haiku 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'anthropic',
 				model: 'claude-sonnet-4-5',
 				name: 'Claude Sonnet 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+		],
+	},
+	openai: {
+		models: [
+			{
+				provider: 'openai',
+				model: 'gpt-5.6-sol',
+				name: 'GPT-5.6 Sol',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'openai',
+				model: 'gpt-5.6-terra',
+				name: 'GPT-5.6 Terra',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'openai',
+				model: 'gpt-5.6-luna',
+				name: 'GPT-5.6 Luna',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'openai',
+				model: 'gpt-5.5',
+				name: 'GPT-5.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'openai',
+				model: 'gpt-5.2',
+				name: 'GPT-5.2',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+			{
+				provider: 'openai',
+				model: 'gpt-5-mini',
+				name: 'GPT-5 mini',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
@@ -176,6 +265,9 @@ async function mountSelector(
 	extraProps: {
 		credentialModalAppendToBody?: boolean;
 		boundCredentialId?: string | null;
+		showHarnessModels?: boolean;
+		selectedHarnessAdapter?: AgentHarnessAdapter | null;
+		selectedModel?: AgentModelOption | null;
 	} = {},
 ) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
@@ -200,6 +292,10 @@ function getProviderItem(wrapper: VueWrapper, provider: string) {
 	return (getDropdown(wrapper).props('items') as TestMenuItem[]).find(
 		(item) => item.id === provider,
 	);
+}
+
+function getHarnessItem(wrapper: VueWrapper, adapter: AgentHarnessAdapter) {
+	return getProviderItem(wrapper, `harness:${adapter}`);
 }
 
 function getMenuItemByLabel(items: TestMenuItem[], label: string): TestMenuItem | undefined {
@@ -240,6 +336,113 @@ describe('AgentModelSelector', () => {
 		await mountSelector({ anthropic: null });
 
 		expect(aiGatewayState.fetchConfig).toHaveBeenCalled();
+	});
+
+	it('shows only adapter-compatible models from their provider catalogs', async () => {
+		credentialsByType.value.openAiApi = [
+			{ id: 'openai-cred', name: 'OpenAI credential', type: 'openAiApi' },
+		];
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi', 'openAiApi']);
+		const wrapper = await mountSelector(
+			{ anthropic: 'anthropic-cred', openai: 'openai-cred' },
+			{ showHarnessModels: true },
+		);
+
+		const claudeCode = getHarnessItem(wrapper, 'claude-code');
+		const codex = getHarnessItem(wrapper, 'codex');
+
+		expect(claudeCode?.label).toBe('Claude Code (Preview)');
+		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('Anthropic credential');
+		expect(JSON.stringify(claudeCode?.children ?? [])).toContain('n8n Connect');
+		const claudeCodeChildren = JSON.stringify(claudeCode?.children ?? []);
+		expect(claudeCodeChildren).toContain('Claude Sonnet 5');
+		expect(claudeCodeChildren).toContain('Claude Fable 5');
+		expect(claudeCodeChildren).toContain('Claude Opus 5');
+		expect(claudeCodeChildren).toContain('Claude Haiku 4.5');
+		expect(claudeCodeChildren).not.toContain('Claude Sonnet 4.5');
+		expect(codex?.label).toBe('Codex (Preview)');
+		const codexChildren = JSON.stringify(codex?.children ?? []);
+		expect(codexChildren).toContain('OpenAI credential');
+		expect(codexChildren).toContain('n8n Connect');
+		expect(codexChildren).toContain('GPT-5.6 Sol');
+		expect(codexChildren).toContain('GPT-5.6 Terra');
+		expect(codexChildren).toContain('GPT-5.6 Luna');
+		expect(codexChildren).toContain('GPT-5.5');
+		expect(codexChildren).toContain('GPT-5.2');
+		expect(codexChildren).not.toContain('GPT-5 mini');
+	});
+
+	it.each([
+		{
+			adapter: 'claude-code' as const,
+			provider: 'anthropic' as const,
+			model: 'claude-sonnet-5',
+			credential: 'anthropic-cred',
+			credentialType: 'anthropicApi',
+		},
+		{
+			adapter: 'codex' as const,
+			provider: 'openai' as const,
+			model: 'gpt-5.6-sol',
+			credential: 'openai-cred',
+			credentialType: 'openAiApi',
+		},
+	])('emits the $adapter adapter with its selected model', async (testCase) => {
+		credentialsByType.value[testCase.credentialType] = [
+			{
+				id: testCase.credential,
+				name: `${testCase.provider} credential`,
+				type: testCase.credentialType,
+			},
+		];
+		const wrapper = await mountSelector(
+			{ [testCase.provider]: testCase.credential },
+			{ showHarnessModels: true },
+		);
+
+		getDropdown(wrapper).vm.$emit(
+			'select',
+			`${testCase.provider}::model@${testCase.adapter}::${testCase.model}`,
+		);
+
+		expect(wrapper.emitted('change')).toEqual([
+			[
+				{
+					provider: testCase.provider,
+					model: testCase.model,
+					harnessAdapter: testCase.adapter,
+				},
+			],
+		]);
+	});
+
+	it('offers stored credentials in the harness submenu', async () => {
+		const wrapper = await mountSelector(
+			{ anthropic: 'anthropic-cred' },
+			{ showHarnessModels: true },
+		);
+
+		expect(JSON.stringify(getHarnessItem(wrapper, 'claude-code')?.children ?? [])).toContain(
+			'Anthropic credential',
+		);
+		expect(JSON.stringify(getProviderItem(wrapper, 'anthropic')?.children ?? [])).toContain(
+			'Anthropic credential',
+		);
+	});
+
+	it('identifies the selected harness in the closed selector label', async () => {
+		const wrapper = await mountSelector(
+			{ anthropic: 'anthropic-cred' },
+			{
+				showHarnessModels: true,
+				selectedHarnessAdapter: 'claude-code',
+			},
+		);
+
+		expect(getDropdown(wrapper).props('selectedLabel')).toBe(
+			'Claude Code (Preview): Claude Sonnet 5',
+		);
 	});
 
 	function getN8nCreditsItem(wrapper: VueWrapper, provider: string) {
@@ -422,8 +625,8 @@ describe('AgentModelSelector', () => {
 
 		expect(dropdown.props('credentialsMissing')).toBe(false);
 		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
-		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
-		expect(getMenuItemByLabel(anthropicItem?.children ?? [], 'Claude Sonnet 4.5')?.checked).toBe(
+		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 5');
+		expect(getMenuItemByLabel(anthropicItem?.children ?? [], 'Claude Sonnet 5')?.checked).toBe(
 			true,
 		);
 	});

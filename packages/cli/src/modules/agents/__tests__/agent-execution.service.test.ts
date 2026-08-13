@@ -13,6 +13,7 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
+import type { N8nHarnessSessionCleanupService } from '../integrations/n8n-harness-session-cleanup.service';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
@@ -67,6 +68,7 @@ describe('AgentExecutionService', () => {
 	let errorReporter: Mocked<ErrorReporter>;
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
+	let harnessSessionCleanupService: Mocked<N8nHarnessSessionCleanupService>;
 	let agentWorkspaceService: Mocked<AgentWorkspaceService>;
 
 	beforeEach(() => {
@@ -85,6 +87,7 @@ describe('AgentExecutionService', () => {
 		errorReporter = mock<ErrorReporter>();
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
+		harnessSessionCleanupService = mock<N8nHarnessSessionCleanupService>();
 		agentWorkspaceService = mock<AgentWorkspaceService>();
 		agentWorkspaceService.cleanupThreadWorkspace.mockResolvedValue();
 
@@ -99,6 +102,7 @@ describe('AgentExecutionService', () => {
 			storageConfig,
 			errorReporter,
 			executionUpdateBroadcaster,
+			harnessSessionCleanupService,
 			agentWorkspaceService,
 		);
 	});
@@ -286,6 +290,7 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
+				harnessSessionCleanupService,
 				agentWorkspaceService,
 			);
 
@@ -351,6 +356,7 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
+				harnessSessionCleanupService,
 				agentWorkspaceService,
 			);
 
@@ -765,6 +771,7 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
+				harnessSessionCleanupService,
 				agentWorkspaceService,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
@@ -953,6 +960,10 @@ describe('AgentExecutionService', () => {
 				'thread-1',
 			);
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
+			expect(harnessSessionCleanupService.destroyByAgentAndThread).toHaveBeenCalledWith(
+				'agent-1',
+				'thread-1',
+			);
 		});
 
 		it('deletes blob-stored logs when deleting a thread', async () => {
@@ -988,6 +999,7 @@ describe('AgentExecutionService', () => {
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();
+			expect(harnessSessionCleanupService.destroyByAgentAndThread).not.toHaveBeenCalled();
 		});
 	});
 
