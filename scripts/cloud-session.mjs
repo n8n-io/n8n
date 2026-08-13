@@ -13,8 +13,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 
 const REPO = 'n8n-io/n8n';
 const DEVCONTAINER = '.devcontainer/codespaces/devcontainer.json';
-const MACHINE = process.env.CODESPACE_MACHINE ?? 'premiumLinux'; // 8-core/32GB
-const FALLBACK_MACHINE = 'standardLinux32gb'; // 4-core/16GB, until org policy allows bigger
+const MACHINE = 'premiumLinux'; // 8-core/32GB — the only size we use
 
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8' }).trim();
 const ghTty = (...args) => spawnSync('gh', args, { stdio: 'inherit' });
@@ -39,21 +38,32 @@ function requestCodespaceScope() {
 }
 
 function ensureCodespace() {
-	let cs = findCodespace();
-	if (!cs) {
-		console.log(`No codespace on ${REPO} — creating one (first build takes a while)…`);
-		const create = (machine) =>
-			gh('codespace', 'create', '-R', REPO, '--devcontainer-path', DEVCONTAINER, '-m', machine);
-		let name;
-		try {
-			name = create(MACHINE);
-		} catch {
-			console.log(`Machine type ${MACHINE} unavailable — falling back to ${FALLBACK_MACHINE}`);
-			name = create(FALLBACK_MACHINE);
-		}
-		cs = { name };
+	const existing = findCodespace();
+	if (existing) return existing.name;
+
+	console.log(`No codespace on ${REPO} — creating one (first build takes a while)…`);
+	// Run interactive. The devcontainer requests access to the private skills repo,
+	// so gh prints an authorization URL and waits. A captured run cannot answer it.
+	const { status } = ghTty(
+		'codespace',
+		'create',
+		'-R',
+		REPO,
+		'--devcontainer-path',
+		DEVCONTAINER,
+		'-m',
+		MACHINE,
+	);
+	if (status !== 0) {
+		console.error('Codespace create failed. Authorize the permissions prompt above, then retry.');
+		process.exit(1);
 	}
-	return cs.name;
+	const created = findCodespace();
+	if (!created) {
+		console.error('Created a codespace but could not find it — run `pnpm session ls`.');
+		process.exit(1);
+	}
+	return created.name;
 }
 
 // The preludes go inside tmux's '…' argument: do not use single quotes in them.

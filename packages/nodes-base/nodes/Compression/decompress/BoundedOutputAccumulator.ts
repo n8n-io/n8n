@@ -3,7 +3,7 @@
  * fflate reuses its internal buffer between callbacks, so every chunk is
  * copied via `slice()` before being stored.
  */
-export class GunzipOutputAccumulator {
+export class BoundedOutputAccumulator {
 	readonly chunks: Uint8Array[] = [];
 
 	exceeded = false;

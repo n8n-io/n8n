@@ -1,4 +1,4 @@
-export { Z, type ZodClass } from './zod-class';
+export { Z, type ZodClass, type ZodArrayClass } from './zod-class';
 export type * from './datetime';
 export * from './dto';
 export type * from './push';
@@ -316,6 +316,9 @@ export {
 	confirmationInputTypeSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
+	mcpConnectServerSchema,
+	mcpConnectRequestSchema,
+	mcpConnectResumeSchema,
 	credentialPlaceholderDefSchema,
 	credentialRequestSchema,
 	credentialSetupHintSchema,
@@ -340,6 +343,7 @@ export {
 	CANVAS_NODE_CONTEXT_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
+	instanceAiApprovalResumeSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
 	instanceAiCredentialHandoffContextSchema,
@@ -410,8 +414,12 @@ export type {
 	InstanceAiConfirmation,
 	InstanceAiConfirmationInputType,
 	InstanceAiChannelConfig,
+	InstanceAiMcpConnectServer,
+	InstanceAiMcpConnectRequest,
+	InstanceAiMcpConnectResume,
 	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
+	InstanceAiApprovalResumeData,
 	InstanceAiCredentialPlaceholderDef,
 	InstanceAiTargetApproval,
 	InstanceAiCredentialRequest,

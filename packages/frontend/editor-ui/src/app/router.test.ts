@@ -18,6 +18,7 @@ import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
 import type { MockInstance } from 'vitest';
 import * as init from '@/app/init';
+import { middleware } from '@/app/utils/rbac/middleware';
 
 const App = {
 	template: '<div />',
@@ -419,5 +420,34 @@ describe('router', () => {
 				}),
 			);
 		});
+	});
+
+	describe('error thrown during authenticated-features init', () => {
+		afterEach(async () => {
+			await router.replace('/workflow/router-test-reset');
+		});
+
+		test('still settles the navigation and runs the normal permission checks, instead of leaving it unresolved', async () => {
+			// The mock skips real authentication, so the guard redirects to sign-in.
+			initializeAuthenticatedFeaturesSpy.mockRejectedValue(new Error('CAT-4040: boom'));
+
+			await expect(router.push('/workflows')).resolves.toBeUndefined();
+			expect(router.currentRoute.value.name).toBe(VIEWS.SIGNIN);
+		}, 20000);
+	});
+
+	describe('error thrown from a route middleware', () => {
+		afterEach(async () => {
+			await router.replace('/workflow/router-test-reset');
+		});
+
+		test("redirects to sign-in instead of authorizing the route the check didn't complete for", async () => {
+			vi.spyOn(middleware, 'authenticated').mockImplementation(() => {
+				throw new Error('boom');
+			});
+
+			await expect(router.push('/workflows')).resolves.toBeUndefined();
+			expect(router.currentRoute.value.name).toBe(VIEWS.SIGNIN);
+		}, 20000);
 	});
 });

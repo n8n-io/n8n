@@ -9,6 +9,7 @@ import type {
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
+	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
@@ -565,6 +566,8 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 			};
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
+		case 'mcpConnect':
+			return { approved: request.approved, connectedSlugs: request.connectedSlugs };
 		case 'setupWorkflowApply':
 			return {
 				approved: true,
@@ -4824,7 +4827,7 @@ export class InstanceAiService {
 		}
 	}
 
-	private async rebuildAgentForAutoSetupResume(
+	private async rebuildAgentForResume(
 		user: User,
 		threadId: string,
 		runId: string,
@@ -4857,7 +4860,7 @@ export class InstanceAiService {
 				orchestrationContext: rebuilt.orchestrationContext,
 			};
 		} catch (error: unknown) {
-			this.logger.warn('Failed to rebuild agent for credential auto-setup resume', {
+			this.logger.warn('Failed to rebuild agent for resume', {
 				threadId,
 				runId,
 				error: getErrorMessage(error),
@@ -4949,6 +4952,8 @@ export class InstanceAiService {
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 			...(data.scope ? { scope: data.scope } : {}),
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
+			...(data.denied ? { denied: true } : {}),
+			...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
 		};
 
 		const resumeTracing = await this.tracing.createOrchestratorResumeTraceContext({
@@ -4990,8 +4995,8 @@ export class InstanceAiService {
 		let resumeAgent = agent;
 		let resumeModelId = modelId;
 		let resumeOrchestrationContext = orchestrationContext;
-		if (data.autoSetup) {
-			const rebuilt = await this.rebuildAgentForAutoSetupResume(
+		if (data.autoSetup || data.connectedSlugs?.length) {
+			const rebuilt = await this.rebuildAgentForResume(
 				activeUser,
 				threadId,
 				runId,
@@ -6073,6 +6078,8 @@ export class InstanceAiService {
 		payload.inputThreadId = inputThreadId;
 
 		const inputType = payload.inputType as string | undefined;
+		const mcpConnectServers = mcpConnectRequestSchema.safeParse(payload.mcpConnectRequest).data
+			?.servers;
 		let type: string;
 		if (inputType) {
 			type = inputType;
@@ -6080,6 +6087,8 @@ export class InstanceAiService {
 			type = 'setup';
 		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
 			type = 'credential-setup';
+		} else if (mcpConnectServers) {
+			type = 'mcp-connect';
 		} else {
 			type = 'approval';
 		}
@@ -6091,6 +6100,8 @@ export class InstanceAiService {
 			numSteps = payload.setupRequests.length;
 		} else if (Array.isArray(payload.credentialRequests)) {
 			numSteps = payload.credentialRequests.length;
+		} else if (mcpConnectServers) {
+			numSteps = mcpConnectServers.length;
 		}
 
 		if (inputType === 'plan-review') {

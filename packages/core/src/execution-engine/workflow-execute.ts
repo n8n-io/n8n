@@ -2755,9 +2755,10 @@ export class WorkflowExecute {
 				let errorData: GenericValue | undefined;
 				if (item.error) {
 					errorData = item.error;
-				} else if (item.json.error && Object.keys(item.json).length === 1) {
-					errorData = item.json.error;
-				} else if (item.json.error && item.json.message && Object.keys(item.json).length === 2) {
+				} else if (
+					item.json.error &&
+					Object.keys(item.json).every((key) => ['error', 'message', 'details'].includes(key))
+				) {
 					errorData = item.json.error;
 				}
 
