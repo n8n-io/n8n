@@ -420,4 +420,21 @@ describe('router', () => {
 			);
 		});
 	});
+
+	// CAT-4040: an unrelated error thrown during authenticated-features init (e.g.
+	// a malformed cloud-plan response while a trial instance is reactivating) must
+	// not leave the navigation guard permanently unresolved, or the app never
+	// mounts any route component and the user is stuck on a blank screen that
+	// reloading can't fix.
+	describe('error thrown during authenticated-features init', () => {
+		afterEach(async () => {
+			await router.replace('/workflow/router-test-reset');
+		});
+
+		test('still settles the navigation instead of leaving it unresolved', async () => {
+			initializeAuthenticatedFeaturesSpy.mockRejectedValue(new Error('CAT-4040: boom'));
+
+			await expect(router.push('/workflows')).resolves.toBeUndefined();
+		}, 15000);
+	});
 });

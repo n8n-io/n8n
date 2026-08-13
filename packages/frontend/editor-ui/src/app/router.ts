@@ -1251,9 +1251,16 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		}
 		if (isNavigationFailure(failure)) {
 			console.log(failure);
-		} else {
-			console.error(failure);
+			return;
 		}
+
+		// An unexpected error here (e.g. a transient failure fetching cloud-plan
+		// data) must not leave the navigation guard unresolved: without a `next()`
+		// call, Vue Router never mounts any route component and the user is stuck
+		// on a blank screen that reloading can't fix (CAT-4040). Proceed to the
+		// requested route so the app still renders something the user can act on.
+		console.error(failure);
+		return next();
 	}
 });
 
