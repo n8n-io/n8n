@@ -8,6 +8,7 @@ import type { Agent } from '../entities/agent.entity';
  * `hasUnpublishedChanges` stays accurate.
  */
 export function markAgentDraftDirty(agent: Agent): void {
+	agent.revision++;
 	if (agent.versionId !== null && agent.versionId === agent.activeVersionId) {
 		agent.versionId = uuid();
 	}

@@ -117,6 +117,8 @@ export class AgentPublishService {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
+		const expectedRevision = agent.revision;
+
 		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
 			return { agent };
 		}
@@ -152,16 +154,19 @@ export class AgentPublishService {
 		);
 
 		await this.agentRepository.manager.transaction(async (trx) => {
-			if (targetHistory) {
-				agent.activeVersionId = targetHistory.versionId;
-				agent.activeVersion = targetHistory;
-				agent.versionId = uuid();
-			} else {
-				agent.versionId ??= uuid();
+			let nextActiveVersionId: string;
+			let nextVersionId: string;
+			let nextActiveVersion: AgentHistory | null | undefined;
 
-				agent.activeVersion = await this.agentHistoryRepository.saveVersion(
+			if (targetHistory) {
+				nextActiveVersionId = targetHistory.versionId;
+				nextActiveVersion = targetHistory;
+				nextVersionId = uuid();
+			} else {
+				nextVersionId = agent.versionId ?? uuid();
+				nextActiveVersion = await this.agentHistoryRepository.saveVersion(
 					{
-						versionId: agent.versionId,
+						versionId: nextVersionId,
 						agentId: agent.id,
 						schema: agent.schema,
 						tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
@@ -170,11 +175,27 @@ export class AgentPublishService {
 					},
 					trx,
 				);
-				await this.snapshotConfiguredTasks(trx, agent.versionId, agent.schema, tasks);
-				agent.activeVersionId = agent.versionId;
+				await this.snapshotConfiguredTasks(trx, nextVersionId, agent.schema, tasks);
+				nextActiveVersionId = nextVersionId;
 			}
 
-			await trx.save(agent);
+			const won = await this.agentRepository.setActiveVersionFenced(
+				agent.id,
+				expectedRevision,
+				{ activeVersionId: nextActiveVersionId, versionId: nextVersionId },
+				trx,
+			);
+			if (!won) {
+				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
+			}
+
+			// Fence first: only mutate the in-memory entity once the row is ours,
+			// so a losing caller never sees phantom published state on the entity
+			// instance it still holds.
+			agent.activeVersionId = nextActiveVersionId;
+			agent.activeVersion = nextActiveVersion;
+			agent.versionId = nextVersionId;
+			agent.revision = expectedRevision + 1;
 		});
 		this.eventService.emit('agent-saved', { agentId });
 
@@ -258,12 +279,31 @@ export class AgentPublishService {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
+		// Same optimistic revision fence as publish: a concurrent edit that bumped
+		// `revision` after this load makes the unpublish lose the fence and surface
+		// a user-retryable conflict instead of rolling back a newer active version.
+		const expectedRevision = agent.revision;
+
 		await this.agentRepository.manager.transaction(async (trx) => {
+			const nextVersionId = uuid();
+
+			// Fence first: only mutate the in-memory entity once the row is ours,
+			// so a losing caller never sees phantom unpublished state on the
+			// entity instance it still holds.
+			const won = await this.agentRepository.setActiveVersionFenced(
+				agent.id,
+				expectedRevision,
+				{ activeVersionId: null, versionId: nextVersionId },
+				trx,
+			);
+			if (!won) {
+				throw new ConflictError('Agent was modified concurrently while unpublishing; please retry');
+			}
+
 			agent.activeVersionId = null;
 			agent.activeVersion = null;
-			agent.versionId = uuid();
-
-			await trx.save(agent);
+			agent.versionId = nextVersionId;
+			agent.revision = expectedRevision + 1;
 		});
 		this.eventService.emit('agent-saved', { agentId });
 
@@ -411,6 +451,8 @@ export class AgentPublishService {
 			agent.skills = deepCopy(activeVersion.skills ?? {});
 			agent.versionId = activeVersion.versionId;
 
+			agent.revision++;
+
 			if (agent.schema) {
 				agent.name = agent.schema.name;
 			}
@@ -462,6 +504,8 @@ export class AgentPublishService {
 			agent.tools = deepCopy(target.tools ?? {});
 			agent.skills = deepCopy(target.skills ?? {});
 			agent.versionId = uuid();
+
+			agent.revision++;
 
 			if (agent.schema) {
 				agent.name = agent.schema.name;

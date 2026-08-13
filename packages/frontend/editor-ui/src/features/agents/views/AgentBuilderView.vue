@@ -1338,11 +1338,23 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			// Persist a pending MCP toggle before the new agent can replace its
 			// snapshot. Other pending edits remain governed by their existing
 			// switch/revert behavior.
-			await Promise.all([
-				configAutosave.settleAutosave(),
-				skillAutosave.settleAutosave(),
-				mcpAutosave.flushAutosave(),
-			]);
+			try {
+				await Promise.all([
+					configAutosave.settleAutosave(),
+					skillAutosave.settleAutosave(),
+					mcpAutosave.flushAutosave(),
+				]);
+			} finally {
+				// Genuine A→B switch: always detach A's autosave loop from
+				// `saveStatus`/`lastSaveError`, even when the drain throws —
+				// otherwise B inherits A's indicator and A's lastSaveError
+				// would abort B's later flush/publish.
+				if (isCurrentInitialization()) {
+					configAutosave.reset();
+					skillAutosave.reset();
+					mcpAutosave.reset();
+				}
+			}
 		}
 		if (!isCurrentInitialization()) return;
 		if (!preserveState) {

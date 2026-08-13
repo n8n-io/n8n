@@ -1,6 +1,13 @@
 import type { ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	IsNull,
+	Repository,
+	type EntityManager,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -278,5 +285,33 @@ export class AgentRepository extends Repository<Agent> {
 				agent.id !== excludeAgentId &&
 				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
 		);
+	}
+
+	/**
+	 * Atomically advances publication state only when the row's `revision` still
+	 * matches the value the caller observed at load — the optimistic revision
+	 * fence for publish/unpublish. Writes only the publication-owned columns
+	 * (`activeVersionId`, `versionId`) and bumps `revision`, so a concurrent
+	 * draft edit (autosave) that bumped `revision` in between makes this affect
+	 * zero rows instead of clobbering the newer draft. Returns whether this
+	 * caller won the fence.
+	 */
+	async setActiveVersionFenced(
+		id: string,
+		expectedRevision: number,
+		next: { activeVersionId: string | null; versionId: string },
+		trx?: EntityManager,
+	): Promise<boolean> {
+		const result = await (trx ?? this)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				activeVersionId: next.activeVersionId,
+				versionId: next.versionId,
+				revision: () => 'revision + 1',
+			})
+			.where('id = :id AND revision = :expected', { id, expected: expectedRevision })
+			.execute();
+		return (result.affected ?? 0) > 0;
 	}
 }

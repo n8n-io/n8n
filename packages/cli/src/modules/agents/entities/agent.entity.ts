@@ -57,4 +57,14 @@ export class Agent extends WithTimestampsAndStringId {
 	@ManyToOne('AgentHistory', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'activeVersionId' })
 	activeVersion?: Relation<AgentHistory> | null;
+
+	/**
+	 * Monotonic per-row counter bumped on every write to this agent. Used as an
+	 * optimistic-lock token by publish/unpublish: the fenced UPDATE only affects
+	 * the row when `revision` still matches the value seen at load, so a concurrent
+	 * edit (autosave, another publish) that bumped `revision` in between causes a
+	 * user-retryable `ConflictError` instead of silently overwriting newer state.
+	 */
+	@Column({ type: 'int', default: 0 })
+	revision: number;
 }

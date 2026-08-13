@@ -111,4 +111,67 @@ describe('useAgentConfigAutosave', () => {
 		expect(onSaved).not.toHaveBeenCalled();
 		expect(autosave.saveStatus.value).toBe('idle');
 	});
+
+	it('reset() clears saveStatus and drops a pending debounced snapshot', async () => {
+		vi.useFakeTimers();
+		const save = vi.fn().mockResolvedValue(undefined);
+		const autosave = useAgentConfigAutosave<{ value: string }>({
+			save,
+			debounceMs: 500,
+			savedHoldMs: 2000,
+		});
+
+		autosave.scheduleAutosave({ value: 'a' });
+		await vi.advanceTimersByTimeAsync(500);
+		await autosave.settleAutosave();
+		expect(autosave.saveStatus.value).toBe('saved');
+
+		autosave.reset();
+		expect(autosave.saveStatus.value).toBe('idle');
+
+		// A pending debounced snapshot is dropped — no save fires after reset.
+		autosave.scheduleAutosave({ value: 'b' });
+		autosave.reset();
+		await vi.advanceTimersByTimeAsync(500);
+		await autosave.flushAutosave();
+		expect(save).toHaveBeenCalledTimes(1);
+		expect(save).toHaveBeenCalledWith({ value: 'a' });
+	});
+
+	it('reset() detaches an in-flight save so it cannot flip saveStatus or fire later', async () => {
+		vi.useFakeTimers();
+		let resolveSave: (value?: 'skipped' | undefined) => void = () => {};
+		const save = vi
+			.fn()
+			.mockImplementation(
+				() => new Promise<'skipped' | undefined>((resolve) => void (resolveSave = resolve)),
+			);
+		const onSaved = vi.fn();
+		const autosave = useAgentConfigAutosave<{ value: string }>({
+			save,
+			onSaved,
+			debounceMs: 500,
+			savedHoldMs: 2000,
+		});
+
+		autosave.scheduleAutosave({ value: 'a' });
+		await vi.advanceTimersByTimeAsync(500);
+		// Save is now in flight for A.
+		expect(autosave.saveStatus.value).toBe('saving');
+
+		// Switch to B: reset detaches the in-flight A save from saveStatus.
+		autosave.reset();
+		expect(autosave.saveStatus.value).toBe('idle');
+
+		// A's save resolves after the switch — it must not flip B's indicator.
+		resolveSave();
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(autosave.saveStatus.value).toBe('idle');
+		expect(onSaved).toHaveBeenCalledWith({ value: 'a' });
+
+		// The `saved` hold timer queued by the stale save must not fire for B.
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(autosave.saveStatus.value).toBe('idle');
+	});
 });
