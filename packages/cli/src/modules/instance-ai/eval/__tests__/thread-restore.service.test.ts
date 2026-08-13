@@ -67,36 +67,6 @@ describe('EvalThreadRestoreService', () => {
 		expect(saved.nodes?.[0]).toMatchObject({ name: 'Slack', parameters: expect.any(Object) });
 	});
 
-	it('retains only canonical AI Gateway-managed credentials from a mixed seed', async () => {
-		const node = makeNode({
-			credentials: {
-				googlePalmApi: {
-					id: null,
-					name: 'n8n credits',
-					__aiGatewayManaged: true,
-					extra: 'not part of the canonical marker',
-				},
-				slackApi: { id: 'cred-from-source-instance', name: 'Slack' },
-				unmarkedNull: { id: null, name: 'Not managed' },
-				invalidName: { id: null, name: 123, __aiGatewayManaged: true },
-			},
-		});
-
-		await service.restoreWorkflows(
-			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
-			'project-1',
-		);
-
-		const saved = workflowRepo.create.mock.calls[0][0];
-		expect(saved.nodes?.[0].credentials).toEqual({
-			googlePalmApi: {
-				id: null,
-				name: 'n8n credits',
-				__aiGatewayManaged: true,
-			},
-		});
-	});
-
 	it('does not re-grant ownership when the workflow already exists in this project', async () => {
 		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue({ id: 'project-1' } as Project);
 

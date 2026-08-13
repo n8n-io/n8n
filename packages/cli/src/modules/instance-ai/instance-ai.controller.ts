@@ -1089,9 +1089,10 @@ export class InstanceAiController {
 
 	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
-	 * recreate referenced workflows, data tables, and agents, then write the native
-	 * message log verbatim. Stored credential references are stripped; canonical
-	 * AI Gateway-managed references are retained by `EvalThreadRestoreService`.
+	 * recreate the artifacts the history references — workflows (node credentials
+	 * stripped — see `EvalThreadRestoreService`), data tables and agents — then
+	 * write the native message log verbatim. The thread then continues as if the
+	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
 	@GlobalScope('instanceAi:eval')
