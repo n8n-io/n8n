@@ -12,6 +12,7 @@ import type {
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
+import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
@@ -233,21 +234,11 @@ export interface NodeSummary {
 }
 
 /**
- * Metadata about how a node is reachable via the AI Gateway (n8n Connect).
- * Attached to node results only when the instance is licensed for the
- * gateway AND the node is listed in the gateway config. Absence means either
- * "not licensed" or "not supported" — consumers treat both the same.
- *
- * `operations` mirrors the gateway config's `supportedActions[nodeName]`:
- * a map from resource name to allowed operations. Nodes without a resource
- * dimension use the marker key `'__operation_only__'`.
+ * Re-exported from `@n8n/ai-utilities/node-catalog`, which owns the definition
+ * because the shared node search engine reads it. Kept exported here so this
+ * package's consumers have one import site for the Instance AI types.
  */
-export interface AiGatewayNodeMeta {
-	supported: true;
-	operations?: Record<string, string[]>;
-	minVersion?: number;
-	hiddenProperties?: string[];
-}
+export type { AiGatewayNodeMeta };
 
 export interface NodeDescription extends NodeSummary {
 	properties: Array<{
@@ -623,7 +614,7 @@ export interface SearchableNodeDescription {
 	outputs: string[] | string;
 	codex?: { alias?: string[] };
 	builderHint?: {
-		message?: string;
+		searchHint?: string;
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
 		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
 	};
