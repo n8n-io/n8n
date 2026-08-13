@@ -109,7 +109,7 @@ describe('RoleService custom role scope whitelist', () => {
 			expect(roleRepository.updateRole).not.toHaveBeenCalled();
 		});
 
-		it('accepts updating a project role with project-scoped scopes', async () => {
+		it('accepts updating a project role with project-scoped scopes and emits custom-role-updated', async () => {
 			const dto = { scopes: ['workflow:create'] } as UpdateRoleDto;
 
 			await expect(
@@ -120,6 +120,11 @@ describe('RoleService custom role scope whitelist', () => {
 				}),
 			).resolves.toBeDefined();
 			expect(roleRepository.updateRole).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('custom-role-updated', {
+				userId: 'user-id',
+				roleSlug: 'project:custom-abc123',
+				scopes: [],
+			});
 		});
 	});
 });
