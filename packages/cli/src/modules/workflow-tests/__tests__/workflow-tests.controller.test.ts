@@ -190,6 +190,8 @@ describe('WorkflowTestsController', () => {
 
 	describe('remove', () => {
 		it('deletes the test and returns success', async () => {
+			repository.delete.mockResolvedValue({ affected: 1, raw: {} });
+
 			const req = mock<AuthenticatedRequest<{ id: string }>>({
 				params: { id: 'test-1' },
 			});
@@ -197,6 +199,22 @@ describe('WorkflowTestsController', () => {
 			const result = await controller.remove(req);
 
 			expect(repository.delete).toHaveBeenCalledWith({ id: 'test-1' });
+			expect(result).toEqual({ success: true });
+		});
+
+		it('returns success even when no row matched the id (current, deliberate behavior)', async () => {
+			// TypeORM's delete() silently no-ops on zero matching rows; the PoC does not
+			// distinguish that from an actual delete, so this locks in { success: true }
+			// as a choice rather than leaving it untested and ambiguous.
+			repository.delete.mockResolvedValue({ affected: 0, raw: {} });
+
+			const req = mock<AuthenticatedRequest<{ id: string }>>({
+				params: { id: 'missing' },
+			});
+
+			const result = await controller.remove(req);
+
+			expect(repository.delete).toHaveBeenCalledWith({ id: 'missing' });
 			expect(result).toEqual({ success: true });
 		});
 	});

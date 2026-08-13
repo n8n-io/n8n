@@ -67,6 +67,9 @@ export class WorkflowTestsController {
 
 	@Post('/:id/run')
 	@GlobalScope('workflow:execute')
+	// `_res` is unused here but required: ControllerRegistry invokes handlers positionally
+	// as `(req, res)` (see packages/cli/src/controller.registry.ts), so the parameter must
+	// stay in place even though this handler doesn't touch it directly.
 	async run(req: AuthenticatedRequest<{ id: string }>, _res: Response) {
 		const test = await this.repository.findOneBy({ id: req.params.id });
 		if (!test) throw new NotFoundError(`Test ${req.params.id} not found`);
