@@ -1,6 +1,7 @@
+import { TypedEmitter } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { UnexpectedError } from 'n8n-workflow';
+import { NodeApiError, UnexpectedError } from 'n8n-workflow';
 import type {
 	Workflow,
 	INode,
@@ -18,8 +19,42 @@ import assert from 'node:assert';
 
 import type { IGetExecuteTriggerFunctions } from './interfaces';
 
+/** How a poll tick's error presented, from the HTTP status the source returned. */
+export type PollErrorKind = 'auth' | 'rate_limited' | 'thrown';
+
+const classifyPollError = (error: unknown): PollErrorKind => {
+	if (error instanceof NodeApiError) {
+		if (error.httpCode === '429') {
+			return 'rate_limited';
+		}
+		if (error.httpCode === '401' || error.httpCode === '403') {
+			return 'auth';
+		}
+	}
+	return 'thrown';
+};
+
+export type PollTickEventMap = {
+	/** One `poll()` call finished, successfully or not. */
+	'poll-tick-completed': {
+		nodeType: string;
+		status: 'success' | 'error';
+		/** Only present when `status` is `error`. */
+		errorKind?: PollErrorKind;
+		durationMs: number;
+		/** Whether another tick for the same node was still in flight in this process when this one started. */
+		overlapped: boolean;
+	};
+};
+
 @Service()
 export class TriggersAndPollers {
+	/** Metrics event stream for poll ticks; the host's metrics collector subscribes to it. */
+	readonly events = new TypedEmitter<PollTickEventMap>();
+
+	/** In-flight `poll()` calls per `workflowId:nodeId`, to detect overlapping ticks. */
+	private readonly inFlightPolls = new Map<string, number>();
+
 	/**
 	 * Runs the trigger() implementation for an active trigger or schedule trigger node.
 	 */
@@ -106,6 +141,36 @@ export class TriggersAndPollers {
 			});
 		}
 
-		return await nodeType.poll.call(pollFunctions);
+		const pollKey = `${workflow.id}:${node.id}`;
+		const inFlight = this.inFlightPolls.get(pollKey) ?? 0;
+		const overlapped = inFlight > 0;
+		this.inFlightPolls.set(pollKey, inFlight + 1);
+		const startedAt = Date.now();
+		try {
+			const result = await nodeType.poll.call(pollFunctions);
+			this.events.emit('poll-tick-completed', {
+				nodeType: node.type,
+				status: 'success',
+				durationMs: Date.now() - startedAt,
+				overlapped,
+			});
+			return result;
+		} catch (error) {
+			this.events.emit('poll-tick-completed', {
+				nodeType: node.type,
+				status: 'error',
+				errorKind: classifyPollError(error),
+				durationMs: Date.now() - startedAt,
+				overlapped,
+			});
+			throw error;
+		} finally {
+			const remaining = (this.inFlightPolls.get(pollKey) ?? 1) - 1;
+			if (remaining > 0) {
+				this.inFlightPolls.set(pollKey, remaining);
+			} else {
+				this.inFlightPolls.delete(pollKey);
+			}
+		}
 	}
 }
