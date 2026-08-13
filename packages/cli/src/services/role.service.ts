@@ -42,6 +42,7 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { isUniqueConstraintError } from '@/response-helper';
 
 import { RoleCacheService } from './role-cache.service';
@@ -56,6 +57,7 @@ export class RoleService {
 		private readonly roleCacheService: RoleCacheService,
 		private readonly logger: Logger,
 		private readonly roleDeletionCheckProxy: RoleDeletionCheckProxy,
+		private readonly eventService: EventService,
 	) {}
 
 	private dbRoleToRoleDTO(role: Role, usedByUsers?: number, usedByProjects?: number): RoleDTO {
@@ -221,7 +223,7 @@ export class RoleService {
 		return scopes;
 	}
 
-	async updateCustomRole(slug: string, newData: UpdateRoleDto) {
+	async updateCustomRole(slug: string, newData: UpdateRoleDto, userId: string) {
 		const { displayName, description, scopes: scopeSlugs } = newData;
 
 		const roleType = slug.startsWith('project:') ? 'project' : 'global';
@@ -236,7 +238,15 @@ export class RoleService {
 			// Invalidate cache after role update
 			await this.roleCacheService.invalidateCache();
 
-			return this.dbRoleToRoleDTO(updatedRole);
+			const result = this.dbRoleToRoleDTO(updatedRole);
+
+			this.eventService.emit('custom-role-updated', {
+				userId,
+				roleSlug: result.slug,
+				scopes: result.scopes,
+			});
+
+			return result;
 		} catch (error) {
 			if (error instanceof UserError && error.message === 'Role not found') {
 				throw new NotFoundError('Role not found');

@@ -161,13 +161,7 @@ export class RolesPublicController {
 		}
 		assertCanManageRoleType(req.user, role.roleType);
 
-		const result = await this.roleService.updateCustomRole(slug, updateRole);
-
-		this.eventService.emit('custom-role-updated', {
-			userId: req.user.id,
-			roleSlug: result.slug,
-			scopes: result.scopes,
-		});
+		const result = await this.roleService.updateCustomRole(slug, updateRole, req.user.id);
 
 		return toRolePublicDto({ ...result, roleType: role.roleType });
 	}

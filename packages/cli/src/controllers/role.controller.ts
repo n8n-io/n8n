@@ -128,13 +128,7 @@ export class RoleController {
 	): Promise<RoleDTO> {
 		const role = await this.roleService.getRole(slug);
 		assertCanManageRoleType(req.user, role.roleType);
-		const result = await this.roleService.updateCustomRole(slug, updateRole);
-		this.eventService.emit('custom-role-updated', {
-			userId: req.user.id,
-			roleSlug: result.slug,
-			scopes: result.scopes,
-		});
-		return result;
+		return await this.roleService.updateCustomRole(slug, updateRole, req.user.id);
 	}
 
 	@Delete('/:slug')

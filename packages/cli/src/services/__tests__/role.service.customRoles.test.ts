@@ -7,6 +7,7 @@ import { RoleRepository, ScopeRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
 import { RoleCacheService } from '@/services/role-cache.service';
 import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
 import { RoleService } from '@/services/role.service';
@@ -18,6 +19,7 @@ describe('RoleService custom role scope whitelist', () => {
 	const roleCacheService = mockInstance(RoleCacheService);
 	const logger = mockInstance(Logger);
 	const roleDeletionCheckProxy = mockInstance(RoleDeletionCheckProxy);
+	const eventService = mockInstance(EventService);
 
 	const roleService = new RoleService(
 		licenseState,
@@ -26,6 +28,7 @@ describe('RoleService custom role scope whitelist', () => {
 		roleCacheService,
 		logger,
 		roleDeletionCheckProxy,
+		eventService,
 	);
 
 	beforeEach(() => {
@@ -96,9 +99,9 @@ describe('RoleService custom role scope whitelist', () => {
 		it('rejects updating a project role with a global-only scope', async () => {
 			const dto = { scopes: ['user:create'] } as UpdateRoleDto;
 
-			await expect(roleService.updateCustomRole('project:custom-abc123', dto)).rejects.toThrow(
-				BadRequestError,
-			);
+			await expect(
+				roleService.updateCustomRole('project:custom-abc123', dto, 'user-id'),
+			).rejects.toThrow(BadRequestError);
 			expect(roleRepository.updateRole).not.toHaveBeenCalled();
 		});
 
@@ -106,7 +109,7 @@ describe('RoleService custom role scope whitelist', () => {
 			const dto = { scopes: ['workflow:create'] } as UpdateRoleDto;
 
 			await expect(
-				roleService.updateCustomRole('project:custom-abc123', dto),
+				roleService.updateCustomRole('project:custom-abc123', dto, 'user-id'),
 			).resolves.toBeDefined();
 			expect(roleRepository.updateRole).toHaveBeenCalled();
 		});
