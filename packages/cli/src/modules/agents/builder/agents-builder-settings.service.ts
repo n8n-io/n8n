@@ -20,7 +20,7 @@ import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
+import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createProxyLanguageModel } from '@/utils/ai-proxy-language-model';
