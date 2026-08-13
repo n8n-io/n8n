@@ -1,8 +1,8 @@
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { diff } from 'json-diff';
-import pick from 'lodash/pick';
-import type { INode, INodeConnectionsDiff } from 'n8n-workflow';
+import omit from 'lodash/omit';
+import type { IConnections, INode, INodeConnectionsDiff } from 'n8n-workflow';
 import { compareConnections, compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 import z from 'zod';
 
@@ -42,9 +42,21 @@ const modifiedNodeSchema = nodeChangeSummarySchema.extend({
 });
 
 const connectionChangeSchema = z.object({
-	from: z.string().describe('Source node name'),
-	to: z.string().describe('Target node name'),
+	from: z
+		.string()
+		.describe(
+			'Source node name, using its target-version name, or its base-version name if the node no longer exists there',
+		),
+	to: z
+		.string()
+		.describe(
+			'Target node name, using its target-version name, or its base-version name if the node no longer exists there',
+		),
 	type: z.string().describe("Connection type (e.g. 'main', 'ai_tool')"),
+	fromOutput: z
+		.number()
+		.describe('Index of the source node output (e.g. 0 = true branch, 1 = false branch on an If)'),
+	toInput: z.number().describe('Index of the target node input (e.g. 1 = second input of a Merge)'),
 });
 
 const outputSchema = {
@@ -67,8 +79,14 @@ const outputSchema = {
 		.describe(
 			'Nodes present in both versions whose content changed (position-only moves are not reported). Listed by their name in the target version.',
 		),
-	connectionsAdded: z.array(connectionChangeSchema),
-	connectionsRemoved: z.array(connectionChangeSchema),
+	connectionsAdded: z
+		.array(connectionChangeSchema)
+		.describe(
+			'Connections present in the target version but not the base version. Renaming a node does not by itself produce connection changes; endpoints are matched by node id.',
+		),
+	connectionsRemoved: z
+		.array(connectionChangeSchema)
+		.describe('Connections present in the base version but not the target version.'),
 	error: z.string().optional(),
 } satisfies z.ZodRawShape;
 
@@ -95,22 +113,21 @@ type GetWorkflowVersionsDiffOutput = GetWorkflowVersionsDiffResult & {
 	error?: string;
 };
 
-// The property set compareWorkflowsNodes marks a node "modified" by, so the
-// delta explains exactly why the node is listed.
-const DIFFED_NODE_PROPS = ['name', 'type', 'typeVersion', 'webhookId', 'credentials', 'parameters'];
+// The delta diffs everything but `position`, mirroring `compareNodes` (which
+// compares all persisted node fields except position), so `changes` explains
+// why a node is listed as modified.
+const IGNORED_NODE_PROPS = ['position'] as const;
 
 // json-diff types its return as `any`; pin the delta shape at the boundary
 // (undefined when both sides are equal).
 const structuredDiff: (a: unknown, b: unknown) => Record<string, unknown> | undefined = diff;
 
-function diffNodeContents(fromNode: INode, toNode: INode): Record<string, unknown> {
+function diffNodeContents(fromNode: INode, toNode: INode): Record<string, unknown> | undefined {
 	// Credentials are reduced to `{ id, name }` per slot before diffing,
 	// mirroring the get_workflow_version read path.
-	return (
-		structuredDiff(
-			pick(sanitizeNodeCredentials(fromNode), DIFFED_NODE_PROPS),
-			pick(sanitizeNodeCredentials(toNode), DIFFED_NODE_PROPS),
-		) ?? {}
+	return structuredDiff(
+		omit(sanitizeNodeCredentials(fromNode), IGNORED_NODE_PROPS),
+		omit(sanitizeNodeCredentials(toNode), IGNORED_NODE_PROPS),
 	);
 }
 
@@ -118,15 +135,49 @@ function toNodeChangeSummary(node: INode): NodeChangeSummary {
 	return { id: node.id, name: node.name, type: node.type };
 }
 
+/**
+ * Rewrites a version's connections so the source key and each connection's
+ * target hold node ids instead of names. Names are the persisted connection
+ * identity, so without this a rename reads as every edge on that node being
+ * removed and re-added. A name matching no node (a stale entry) is kept as-is.
+ */
+function toIdKeyedConnections(connections: IConnections, nodes: INode[]): IConnections {
+	const idByName = new Map(nodes.map((node) => [node.name, node.id]));
+	const keyed: IConnections = {};
+	for (const [sourceName, byType] of Object.entries(connections)) {
+		keyed[idByName.get(sourceName) ?? sourceName] = Object.fromEntries(
+			Object.entries(byType).map(([type, outputs]) => [
+				type,
+				outputs.map(
+					(connections) =>
+						connections?.map((connection) => ({
+							...connection,
+							node: idByName.get(connection.node) ?? connection.node,
+						})) ?? null,
+				),
+			]),
+		);
+	}
+	return keyed;
+}
+
 function flattenConnectionsDiff(
 	connectionsDiff: Record<string, INodeConnectionsDiff>,
+	nameById: Map<string, string>,
 ): ConnectionChange[] {
 	const changes: ConnectionChange[] = [];
 	for (const [from, byType] of Object.entries(connectionsDiff)) {
 		for (const [type, entries] of Object.entries(byType)) {
 			for (const entry of entries) {
 				if (!entry.value) continue;
-				changes.push({ from, to: entry.value.connection.node, type });
+				const { node, index } = entry.value.connection;
+				changes.push({
+					from: nameById.get(from) ?? from,
+					to: nameById.get(node) ?? node,
+					type,
+					fromOutput: entry.sourceIndex,
+					toInput: index,
+				});
 			}
 		}
 	}
@@ -249,18 +300,24 @@ export async function getWorkflowVersionsDiff(
 		if (status === NodeDiffStatus.Added) nodesAdded.push(sanitizeNodeCredentials(node));
 		else if (status === NodeDiffStatus.Deleted) nodesRemoved.push(toNodeChangeSummary(node));
 		else if (status === NodeDiffStatus.Modified) {
+			// Modified implies the id is present in the target version; the guard
+			// only narrows the type.
 			const toNode = toNodesById.get(node.id);
 			if (!toNode) continue;
 			nodesModified.push({
 				...toNodeChangeSummary(toNode),
-				changes: diffNodeContents(node, toNode),
+				changes: diffNodeContents(node, toNode) ?? {},
 			});
 		}
 	}
 
+	// Compare by node id so a rename doesn't read as edge churn, then report
+	// names again. Target names win so a renamed node is listed by a name that
+	// still exists; base names cover endpoints only present in the base version.
+	const nameById = new Map([...fromNodes, ...toNodes].map((node) => [node.id, node.name]));
 	const connectionsDiff = compareConnections(
-		fromVersion.connections ?? {},
-		toVersion.connections ?? {},
+		toIdKeyedConnections(fromVersion.connections ?? {}, fromNodes),
+		toIdKeyedConnections(toVersion.connections ?? {}, toNodes),
 	);
 
 	return {
@@ -270,7 +327,7 @@ export async function getWorkflowVersionsDiff(
 		nodesAdded,
 		nodesRemoved,
 		nodesModified,
-		connectionsAdded: flattenConnectionsDiff(connectionsDiff.added),
-		connectionsRemoved: flattenConnectionsDiff(connectionsDiff.removed),
+		connectionsAdded: flattenConnectionsDiff(connectionsDiff.added, nameById),
+		connectionsRemoved: flattenConnectionsDiff(connectionsDiff.removed, nameById),
 	};
 }
