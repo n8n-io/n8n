@@ -823,23 +823,24 @@ export class SlackManagedSetupService {
 			return response;
 		}
 
-		const refreshedAuthedUser = {
+		const refreshedAuthedUser: Record<string, unknown> = {
 			...authedUser,
 			access_token: refreshedAccessToken,
-			...(typeof refreshResponse.id === 'string' ? { id: refreshResponse.id } : {}),
-			...(typeof refreshResponse.scope === 'string'
-				? { scope: refreshResponse.scope }
-				: {}),
-			...(typeof refreshResponse.refresh_token === 'string'
-				? { refresh_token: refreshResponse.refresh_token }
-				: {}),
-			...(typeof refreshResponse.token_type === 'string'
-				? { token_type: refreshResponse.token_type }
-				: {}),
-			...(typeof refreshResponse.expires_in === 'number'
-				? { expires_in: refreshResponse.expires_in }
-				: {}),
 		};
+		const refreshedUserId = stringProperty(refreshResponse, 'user_id');
+		const refreshedScope = stringProperty(refreshResponse, 'scope');
+		const refreshedRefreshToken = stringProperty(refreshResponse, 'refresh_token');
+		const refreshedTokenType = stringProperty(refreshResponse, 'token_type');
+
+		if (refreshedUserId !== undefined) refreshedAuthedUser.id = refreshedUserId;
+		if (refreshedScope !== undefined) refreshedAuthedUser.scope = refreshedScope;
+		if (refreshedRefreshToken !== undefined) {
+			refreshedAuthedUser.refresh_token = refreshedRefreshToken;
+		}
+		if (refreshedTokenType !== undefined) refreshedAuthedUser.token_type = refreshedTokenType;
+		if (typeof refreshResponse.expires_in === 'number') {
+			refreshedAuthedUser.expires_in = refreshResponse.expires_in;
+		}
 		const oauthTokenData = {
 			...manager.oauthTokenData,
 			authed_user: refreshedAuthedUser,
