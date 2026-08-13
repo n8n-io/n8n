@@ -267,15 +267,24 @@ export class AgentRepository extends Repository<Agent> {
 	 * change can never revert a concurrent publish or config write. Returns false
 	 * when another writer got there first; the caller can re-read and reapply,
 	 * because its input is a delta rather than a whole array.
+	 *
+	 * `activeVersionId` is guarded but never written: publishing leaves `versionId`
+	 * untouched, so without it in the `WHERE` a publish landing after the read
+	 * would let the write through and the caller would act on stale publication
+	 * state.
 	 */
 	async updateIntegrations(
 		id: string,
 		integrations: AgentIntegrationConfig[],
-		expectedVersionId: string | null,
+		expected: Pick<AgentIntegrationState, 'versionId' | 'activeVersionId'>,
 		versionId: string | null,
 	): Promise<boolean> {
 		const result = await this.update(
-			{ id, versionId: expectedVersionId ?? IsNull() },
+			{
+				id,
+				versionId: expected.versionId ?? IsNull(),
+				activeVersionId: expected.activeVersionId ?? IsNull(),
+			},
 			{ integrations, versionId },
 		);
 

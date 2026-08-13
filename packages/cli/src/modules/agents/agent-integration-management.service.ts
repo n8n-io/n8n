@@ -17,6 +17,7 @@ import type { AgentActor } from './agent-modification-telemetry.service';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentRepository } from './repositories/agent.repository';
 
 @Service()
 export class AgentIntegrationManagementService {
@@ -29,6 +30,7 @@ export class AgentIntegrationManagementService {
 		private readonly chatService: ChatIntegrationService,
 		private readonly registry: ChatIntegrationRegistry,
 		private readonly logger: Logger,
+		private readonly agentRepository: AgentRepository,
 	) {}
 
 	async validateConfig(input: unknown): Promise<AgentIntegrationConfig> {
@@ -145,19 +147,25 @@ export class AgentIntegrationManagementService {
 				? undefined
 				: options.remove;
 
+		// The entity can predate a publish or another channel write, so read the row
+		// for both decisions that depend on it: whether to connect at all, and what
+		// a rollback would restore to. The write does its own read and reconciles
+		// anything that lands after this one.
+		const state = add ? await this.agentRepository.findIntegrationState(agent.id) : null;
+		const publishedBefore = state ? state.activeVersionId !== null : agent.activeVersionId !== null;
+
 		// `connect` restarts a connection that is already live — a settings-only
 		// save, or re-connecting the same credential — so a rollback has to know
 		// whether step 1 created this connection or merely replaced it.
 		const wasLive = !!add && this.chatService.getChatInstance(agent.id, add) !== undefined;
-		// Captured before the delta rewrites `agent.integrations`: this is the entry
-		// the row holds for this key, and the only thing a rollback can restore to.
-		const persistedBefore = add
-			? (agent.integrations ?? []).find((entry) => matchesIntegrationRef(entry, add))
-			: undefined;
+		const persistedBefore =
+			add && state
+				? (state.integrations ?? []).find((entry) => matchesIntegrationRef(entry, add))
+				: undefined;
 
 		let connected: boolean;
 		try {
-			connected = add ? await this.startRuntime(agent, add, agent.activeVersionId !== null) : false;
+			connected = add ? await this.startRuntime(agent, add, publishedBefore) : false;
 		} catch (error) {
 			// `connect` releases the live connection before it builds the new one, so
 			// a failed rebuild leaves a still-persisted channel with nothing running.
@@ -227,6 +235,14 @@ export class AgentIntegrationManagementService {
 			return false;
 		}
 
+		if (connected && published && this.chatService.getChatInstance(agent.id, add) === undefined) {
+			this.logger.info(
+				'[AgentIntegrationManagementService] Channel runtime went away while the mutation was in flight — restarting it',
+				{ agentId: agent.id, type: add.type },
+			);
+			return await this.startRuntimeQuietly(agent, add);
+		}
+
 		if (!connected && published) {
 			this.logger.info(
 				'[AgentIntegrationManagementService] Agent was published while its channel persisted — starting the runtime',
@@ -234,18 +250,27 @@ export class AgentIntegrationManagementService {
 			);
 			// Already durable, so a failure here leaves it persisted-but-not-live —
 			// the same contract `publishAgent` runs under via `syncToConfig`.
-			try {
-				return await this.startRuntime(agent, add, true);
-			} catch (error) {
-				this.logger.warn(
-					'[AgentIntegrationManagementService] Could not start the runtime after a concurrent publish',
-					{ agentId: agent.id, type: add.type, error },
-				);
-				return false;
-			}
+			return await this.startRuntimeQuietly(agent, add);
 		}
 
 		return connected;
+	}
+
+	/**
+	 * Start a runtime for a channel that is already durable, so a failure must not
+	 * fail the request — the next publish or restart picks it up.
+	 */
+	private async startRuntimeQuietly(agent: Agent, add: AgentIntegrationConfig): Promise<boolean> {
+		try {
+			return await this.startRuntime(agent, add, true);
+		} catch (error) {
+			this.logger.warn('[AgentIntegrationManagementService] Could not start the channel runtime', {
+				agentId: agent.id,
+				type: add.type,
+				error,
+			});
+			return false;
+		}
 	}
 
 	/**

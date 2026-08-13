@@ -69,8 +69,10 @@ function setup(options: SetupOptions = {}) {
 		integrations: [...(row.integrations ?? [])],
 	}));
 	agentRepository.updateIntegrations.mockImplementation(
-		async (_id, integrations, expectedVersionId, versionId) => {
-			if (row.versionId !== expectedVersionId) return false;
+		async (_id, integrations, expected, versionId) => {
+			// Mirrors the real WHERE clause: both guarded columns must still match.
+			if (row.versionId !== expected.versionId) return false;
+			if (row.activeVersionId !== expected.activeVersionId) return false;
 			row.integrations = integrations;
 			row.versionId = versionId;
 			return true;
@@ -184,7 +186,8 @@ describe('AgentIntegrationPersistenceService', () => {
 			expect(agentRepository.updateIntegrations).toHaveBeenCalledWith(
 				agentId,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				'version-1',
+				// Both guarded columns, so a publish landing after the read is caught.
+				{ versionId: 'version-1', activeVersionId: 'version-1' },
 				expect.not.stringMatching('^version-1$'),
 			);
 		});
@@ -287,10 +290,9 @@ describe('AgentIntegrationPersistenceService', () => {
 				byUser,
 			);
 
-			const [, , expectedVersionId, writtenVersionId] =
-				agentRepository.updateIntegrations.mock.calls[0];
-			expect(expectedVersionId).toBe(versions.versionId);
-			expect(writtenVersionId).not.toBe(expectedVersionId);
+			const [, , expected, writtenVersionId] = agentRepository.updateIntegrations.mock.calls[0];
+			expect(expected.versionId).toBe(versions.versionId);
+			expect(writtenVersionId).not.toBe(expected.versionId);
 		});
 
 		it('rejects payloads that would persist a channel without a credential', async () => {

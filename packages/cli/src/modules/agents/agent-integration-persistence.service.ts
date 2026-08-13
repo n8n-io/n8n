@@ -172,6 +172,7 @@ export class AgentIntegrationPersistenceService {
 			// nothing to add there is no write left to make.
 			if (!add && !removed) {
 				agent.integrations = current;
+				agent.versionId = state.versionId;
 				return { agent, changed: false, published };
 			}
 
@@ -194,7 +195,7 @@ export class AgentIntegrationPersistenceService {
 			const written = await this.agentRepository.updateIntegrations(
 				agent.id,
 				integrations,
-				state.versionId,
+				{ versionId: state.versionId, activeVersionId: state.activeVersionId },
 				versionId,
 			);
 			if (!written) continue;

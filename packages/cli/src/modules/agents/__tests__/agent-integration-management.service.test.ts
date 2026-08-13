@@ -15,6 +15,7 @@ import type {
 	ChatIntegrationRegistry,
 } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 describe('AgentIntegrationManagementService', () => {
 	const user = { id: 'user-1' };
@@ -40,6 +41,7 @@ describe('AgentIntegrationManagementService', () => {
 		const chatService = mock<ChatIntegrationService>();
 		const registry = mock<ChatIntegrationRegistry>();
 		const logger = mock<Logger>();
+		const agentRepository = mock<AgentRepository>();
 		const implementation = mock<AgentChatIntegration>({
 			type: 'slack',
 			displayLabel: 'Slack',
@@ -61,11 +63,13 @@ describe('AgentIntegrationManagementService', () => {
 				chatService,
 				registry,
 				logger,
+				agentRepository,
 			),
 			persistenceService,
 			credentialsService,
 			chatService,
 			implementation,
+			agentRepository,
 		};
 	}
 
@@ -76,6 +80,19 @@ describe('AgentIntegrationManagementService', () => {
 	function deltaResult(agent: Agent, published: boolean, extra: object = {}) {
 		agent.activeVersionId = published ? 'version-1' : null;
 		return { agent, changed: true, published, ...extra };
+	}
+
+	/** Stub the persisted row the mutation reads before it touches the runtime. */
+	function stubRow(
+		agentRepository: ReturnType<typeof mock<AgentRepository>>,
+		integrations: AgentIntegrationConfig[],
+		activeVersionId: string | null = 'version-1',
+	) {
+		agentRepository.findIntegrationState.mockResolvedValue({
+			integrations,
+			versionId: 'draft-1',
+			activeVersionId,
+		});
 	}
 
 	/** First call order of a mock, for asserting one step ran before another. */
@@ -148,9 +165,10 @@ describe('AgentIntegrationManagementService', () => {
 			// Re-saving a channel (e.g. a settings-only edit) restarts its runtime. The
 			// row never changed, so the channel must end up running what the row holds
 			// — not the settings this failed write was trying to persist.
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, agentRepository } = makeService();
 			const persistedEntry = { type: 'slack', credentialId: 'credential-1' } as const;
 			const agent = makeAgent({ integrations: [persistedEntry] });
+			stubRow(agentRepository, [persistedEntry]);
 			chatService.getChatInstance.mockReturnValue({} as never);
 			persistenceService.applyIntegrationDelta.mockRejectedValue(new Error('write failed'));
 
@@ -171,9 +189,10 @@ describe('AgentIntegrationManagementService', () => {
 		it('restores the previous runtime when the restart itself fails', async () => {
 			// `connect` releases the live connection before building the new one, so a
 			// failed rebuild would otherwise strand a still-persisted channel.
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, agentRepository } = makeService();
 			const persistedEntry = { type: 'slack', credentialId: 'credential-1' } as const;
 			const agent = makeAgent({ integrations: [persistedEntry] });
+			stubRow(agentRepository, [persistedEntry]);
 			chatService.getChatInstance.mockReturnValue({} as never);
 			chatService.connect.mockRejectedValueOnce(new Error('Slack connect failed'));
 
@@ -325,6 +344,27 @@ describe('AgentIntegrationManagementService', () => {
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 			// ...and the response must not claim it is connected.
 			expect(savedAgent.activeVersionId).toBeNull();
+		});
+
+		it('restarts the runtime when a peer tore it down mid-mutation', async () => {
+			const { service, persistenceService, chatService, agentRepository } = makeService();
+			const agent = makeAgent();
+			stubRow(agentRepository, []);
+			// Never live: not before the connect, and gone again by the time the write
+			// finished — as if a peer's disconnect broadcast landed in between.
+			chatService.getChatInstance.mockReturnValue(undefined);
+			persistenceService.applyIntegrationDelta.mockImplementation(async () =>
+				deltaResult(agent, true),
+			);
+
+			await service.connect({ agent, user: user as never, integration });
+
+			expect(chatService.connect).toHaveBeenCalledTimes(2);
+			expect(chatService.broadcastIntegrationChange).toHaveBeenCalledWith(
+				agent.id,
+				integration,
+				'connect',
+			);
 		});
 
 		it('leaves an unpublished agent alone when the write agrees it is unpublished', async () => {

@@ -78,7 +78,7 @@ describe('AgentRepository integration columns', () => {
 			const written = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				'version-1',
+				{ versionId: 'version-1', activeVersionId: null },
 				'version-2',
 			);
 
@@ -90,7 +90,7 @@ describe('AgentRepository integration columns', () => {
 			expect(reloaded?.schema).toEqual(agent.schema);
 		});
 
-		it('cannot revert a publication that landed after the read', async () => {
+		it('refuses the write when a publication landed after the read', async () => {
 			const agent = await createAgent({ versionId: 'version-1', activeVersionId: null });
 			// A concurrent publish claims the current draft as the live version.
 			await agentHistoryRepo.saveVersion({
@@ -106,14 +106,27 @@ describe('AgentRepository integration columns', () => {
 			const written = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				'version-1',
+				{ versionId: 'version-1', activeVersionId: null },
 				'version-2',
 			);
 
-			expect(written).toBe(true);
+			// The publish is untouched and the caller is told to re-read, so it cannot
+			// act on stale publication state.
+			expect(written).toBe(false);
 			const reloaded = await agentRepo.findById(agent.id);
 			expect(reloaded?.activeVersionId).toBe('version-1');
-			expect(reloaded?.integrations).toEqual([{ type: 'slack', credentialId: 'slack-1' }]);
+			expect(reloaded?.integrations).toEqual([]);
+
+			// Reapplied against the state that is actually there, it lands.
+			await expect(
+				agentRepo.updateIntegrations(
+					agent.id,
+					[{ type: 'slack', credentialId: 'slack-1' }],
+					{ versionId: 'version-1', activeVersionId: 'version-1' },
+					'version-2',
+				),
+			).resolves.toBe(true);
+			expect((await agentRepo.findById(agent.id))?.activeVersionId).toBe('version-1');
 		});
 
 		it('refuses the write when another writer moved the version on', async () => {
@@ -123,7 +136,7 @@ describe('AgentRepository integration columns', () => {
 			const written = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				'version-1',
+				{ versionId: 'version-1', activeVersionId: null },
 				'version-2',
 			);
 
@@ -139,7 +152,7 @@ describe('AgentRepository integration columns', () => {
 			const written = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				null,
+				{ versionId: null, activeVersionId: null },
 				null,
 			);
 
@@ -155,7 +168,7 @@ describe('AgentRepository integration columns', () => {
 			const written = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				null,
+				{ versionId: null, activeVersionId: null },
 				null,
 			);
 
@@ -172,13 +185,13 @@ describe('AgentRepository integration columns', () => {
 			const first = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				'version-1',
+				{ versionId: 'version-1', activeVersionId: null },
 				'version-2',
 			);
 			const second = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'linear', credentialId: 'linear-1' }],
-				'version-1',
+				{ versionId: 'version-1', activeVersionId: null },
 				'version-3',
 			);
 
@@ -191,7 +204,12 @@ describe('AgentRepository integration columns', () => {
 
 		it('reports no write for an agent that no longer exists', async () => {
 			await expect(
-				agentRepo.updateIntegrations(uuid(), [], 'version-1', 'version-2'),
+				agentRepo.updateIntegrations(
+					uuid(),
+					[],
+					{ versionId: 'version-1', activeVersionId: null },
+					'version-2',
+				),
 			).resolves.toBe(false);
 		});
 	});
