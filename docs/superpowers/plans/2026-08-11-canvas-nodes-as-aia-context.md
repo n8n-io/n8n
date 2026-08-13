@@ -820,9 +820,16 @@ async function handleSubmit() {
 }
 ```
 
-In the template, next to the existing `attachedFiles` block, render resource chips (Phase 3 will make `AttachmentPreview` handle `nodes`; for now it renders the existing resource-chip branches and, once Phase 3 lands, node chips):
+In the template, render resource chips in a **separate block** ABOVE the existing
+`attachedFiles` block — a distinct row, NOT merged into the same flex-wrap. This
+matters: `attachedFiles` renders as 80px thumbnail cards (`.thumbnailWrapper`),
+while node chips are small pills (`.resourceChip`); mixing them in one flex-wrap
+row wraps unevenly (big cards next to tiny pills). Two `.attachments` blocks keep
+each visual language on its own line. (Phase 3 makes `AttachmentPreview` handle
+`nodes`; until then this block renders nothing for node attachments.)
 
 ```vue
+<!-- Node/resource context pills — their own row, above the file thumbnails. -->
 <div v-if="!props.isPlanEditMode && attachedResources.length > 0" :class="$style.attachments">
 	<AttachmentPreview
 		v-for="(attachment, index) in attachedResources"
@@ -833,6 +840,12 @@ In the template, next to the existing `attachedFiles` block, render resource chi
 	/>
 </div>
 ```
+
+**Chip visual:** node chips reuse the existing `.resourceChip` pill style
+(bordered, `--color--foreground--tint-2` bg, `× ` remove) that
+`workflow`/`agent` attachments already use — no new visual language. The
+bundled (`N nodes ⌄`) and group variants build on that same pill base (caret /
+count added), defined in Phase 3.
 
 - [ ] **Step 4: Run to verify pass**
 
@@ -1112,6 +1125,8 @@ const isCollapsed = ref(false);
 ```
 
 Template: iterate `attachment.sets`; when `explodeSingleSet`, iterate `sets[0].nodes` rendering `nodes-chip-node` each with `nodes-chip-remove` → `removeNode(0, i)`. Otherwise per set render by `kindOf`: `named` (NodeIcon+name, remove→`removeSet`), `group` (`nodes-chip-group`, layers icon + `canvasGroupName`, remove→`removeSet`, NO caret), `bundle` (`nodes-chip-bundle`, layers icon + `"{{set.nodes.length}} nodes"`, `nodes-chip-expand` caret toggling `expandedSet`, `nodes-chip-panel` listing `set.nodes.map(n => n.name)` when open, remove→`removeSet`). Wrap in a container that shows `nodes-chips-collapse` toggle when the visible chip count is large. All labels via i18n (`instanceAi.nodeContext.*` keys — add to `@n8n/i18n`).
+
+**Chip base style:** every chip kind reuses the existing `.resourceChip` look from `AttachmentPreview.vue` (inline-flex, `var(--border)`, `--color--foreground--tint-2` bg, `--radius`, `--spacing--4xs/2xs` padding, `--font-size--2xs`) — copy those token values, do NOT invent a new visual. Small pill, `× ` remove control, name ellipsis-truncated (`.resourceName` pattern). Bundled adds a caret glyph; group swaps the leading icon for `layers`. This keeps node chips visually identical to the `workflow`/`agent` pills already in the composer.
 
 - [ ] **Step 4: Run to verify pass**
 

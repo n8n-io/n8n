@@ -103,6 +103,16 @@ Additional visuals from screenshots: every chip carries the node's **type icon**
 a `⌘↵` keyboard shortcut adds the current selection ("Add N nodes to chat"); when
 many per-set chips overflow, a **Collapse / expand** toggle appears.
 
+**Composer layout & chip style.** The composer already renders **file**
+attachments as 80px thumbnail cards (`.thumbnailWrapper`) in a flex-wrap row.
+Node-context chips are small pills and render in their **own separate row**
+(a distinct block above the file-thumbnail row) — not merged into the same
+flex-wrap, since mixing 80px cards with tiny pills wraps unevenly. Node chips
+**reuse the existing `.resourceChip` pill style** already used for
+`workflow`/`agent` attachments (bordered, `--color--foreground--tint-2` bg,
+`× ` remove) — no new visual language; bundled/group variants add a caret/count
+on that same base.
+
 Screenshot example decoded — `[Fetch API Data] [7 nodes] [My group 1]` = a
 size-1 set (named), a ≥4 set (bundled with list), and a group set (name-only).
 
