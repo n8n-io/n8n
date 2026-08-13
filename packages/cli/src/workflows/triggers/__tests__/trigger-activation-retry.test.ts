@@ -1,3 +1,4 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
@@ -15,12 +16,14 @@ const flushPromises = async () => await new Promise((resolve) => setImmediate(re
 const MAX_ATTEMPTS = 3;
 
 describe('retryTriggerActivation', () => {
+	const signal = new AbortController().signal;
+
 	beforeEach(() => vi.clearAllMocks());
 
 	test('resolves without retrying when activation succeeds', async () => {
 		const activate = vi.fn().mockResolvedValue(undefined);
 
-		await retryTriggerActivation(activate, MAX_ATTEMPTS);
+		await retryTriggerActivation(activate, MAX_ATTEMPTS, signal);
 
 		expect(activate).toHaveBeenCalledTimes(1);
 	});
@@ -31,7 +34,7 @@ describe('retryTriggerActivation', () => {
 			.mockRejectedValueOnce(new Error('transient'))
 			.mockResolvedValueOnce(undefined);
 
-		await retryTriggerActivation(activate, MAX_ATTEMPTS);
+		await retryTriggerActivation(activate, MAX_ATTEMPTS, signal);
 
 		expect(activate).toHaveBeenCalledTimes(2);
 	});
@@ -40,7 +43,7 @@ describe('retryTriggerActivation', () => {
 		const error = new Error('transient');
 		const activate = vi.fn().mockRejectedValue(error);
 
-		await expect(retryTriggerActivation(activate, MAX_ATTEMPTS)).rejects.toBe(error);
+		await expect(retryTriggerActivation(activate, MAX_ATTEMPTS, signal)).rejects.toBe(error);
 		expect(activate).toHaveBeenCalledTimes(MAX_ATTEMPTS);
 	});
 
@@ -48,15 +51,15 @@ describe('retryTriggerActivation', () => {
 		const error = new WebhookPathTakenError('Webhook');
 		const activate = vi.fn().mockRejectedValue(error);
 
-		await expect(retryTriggerActivation(activate, MAX_ATTEMPTS)).rejects.toBe(error);
+		await expect(retryTriggerActivation(activate, MAX_ATTEMPTS, signal)).rejects.toBe(error);
 		expect(activate).toHaveBeenCalledTimes(1);
 	});
 
 	test('stops sleeping and rethrows the abort reason when the signal fires during backoff', async () => {
 		vi.mocked(sleep).mockImplementationOnce(
-			async (_ms, signal) =>
+			async (_ms, sleepSignal) =>
 				await new Promise((_resolve, reject) => {
-					signal?.addEventListener('abort', () => reject(new Error('sleep aborted')), {
+					sleepSignal?.addEventListener('abort', () => reject(ensureError(sleepSignal.reason)), {
 						once: true,
 					});
 				}),

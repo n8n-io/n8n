@@ -22,33 +22,28 @@ export const isTransientActivationError = (error: Error): boolean =>
 export async function retryTriggerActivation(
 	activate: () => Promise<void>,
 	maxAttempts: number,
-	signal?: AbortSignal,
+	signal: AbortSignal,
 ): Promise<void> {
 	for (let attempt = 0; ; attempt++) {
-		signal?.throwIfAborted();
+		signal.throwIfAborted();
 		try {
 			await activate();
 			return;
 		} catch (error) {
 			const isLastAttempt = attempt >= maxAttempts - 1;
-			if (!isTransientActivationError(ensureError(error)) || isLastAttempt || signal?.aborted)
+			if (!isTransientActivationError(ensureError(error)) || isLastAttempt || signal.aborted)
 				throw error;
 
-			// `sleep` rejects as soon as the signal fires, so an abandoned retry
-			// unwinds promptly instead of sleeping out the backoff (up to a day)
-			// while its caller holds the workflow's lifecycle lock.
-			try {
-				await sleep(
-					Math.min(
-						WORKFLOW_REACTIVATE_INITIAL_TIMEOUT * 2 ** attempt,
-						WORKFLOW_REACTIVATE_MAX_TIMEOUT,
-					),
-					signal,
-				);
-			} catch {
-				signal?.throwIfAborted();
-				throw error;
-			}
+			// `sleep` rejects with the abort reason as soon as the signal fires, so
+			// an abandoned retry unwinds promptly instead of sleeping out the backoff
+			// (up to a day) while its caller holds the workflow's lifecycle lock.
+			await sleep(
+				Math.min(
+					WORKFLOW_REACTIVATE_INITIAL_TIMEOUT * 2 ** attempt,
+					WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+				),
+				signal,
+			);
 		}
 	}
 }
