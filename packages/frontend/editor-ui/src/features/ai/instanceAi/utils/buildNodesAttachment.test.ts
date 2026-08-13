@@ -164,4 +164,12 @@ describe('buildNodesAttachment', () => {
 		expect(res!.attachment.sets[0].canvasGroupName).toBe('Prepare ticket');
 		expect(instanceAiNodesAttachmentSchema.safeParse(res!.attachment).success).toBe(true);
 	});
+
+	it('drops a neighbor that names a node absent from workflow.nodes (orphan connection endpoint)', () => {
+		// "Ghost" is a connection endpoint but not in workflow.nodes — an orphan.
+		const w = wf({ connections: chain(['Ghost', 'A'], ['A', 'B']) });
+		const res = buildNodesAttachment('w1', ['n1', 'n2'], w);
+		expect(instanceAiNodesAttachmentSchema.safeParse(res!.attachment).success).toBe(true);
+		expect(res!.attachment.sets[0].inputNode).toBeUndefined();
+	});
 });

@@ -157,8 +157,8 @@ export function buildNodesAttachment(
 		const group = resolveSetCanvasGroup({ nodeNames: names }, workflow);
 		return {
 			nodes: names.map(ref),
-			...(inputName ? { inputNode: ref(inputName) } : {}),
-			...(outputName ? { outputNode: ref(outputName) } : {}),
+			...(inputName && nameToId.has(inputName) ? { inputNode: ref(inputName) } : {}),
+			...(outputName && nameToId.has(outputName) ? { outputNode: ref(outputName) } : {}),
 			...group,
 		};
 	});

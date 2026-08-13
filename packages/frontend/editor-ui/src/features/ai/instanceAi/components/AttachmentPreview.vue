@@ -22,7 +22,7 @@ const loading = ref(true);
 // A `nodes` attachment carries one or more sets of canvas-selected nodes —
 // delegated entirely to NodesAttachmentChips for kind/granularity handling.
 const nodesAttachment = computed(() =>
-	props.attachment?.type === 'nodes' ? (props.attachment as InstanceAiNodesAttachment) : undefined,
+	props.attachment?.type === 'nodes' ? props.attachment : undefined,
 );
 // A workflow attachment is a resource reference (no bytes) — rendered as a
 // chip; everything below handles the binary file case.
