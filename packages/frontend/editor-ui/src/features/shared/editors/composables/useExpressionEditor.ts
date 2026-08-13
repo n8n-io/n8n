@@ -30,8 +30,19 @@ import {
 } from '@/app/composables/useWorkflowHelpers';
 import { highlighter } from '../plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '../plugins/codemirror/tooltips/InfoBoxTooltip';
-import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/app/types/expressions';
-import { getExpressionErrorMessage, getResolvableState } from '@/app/utils/expressions';
+import type {
+	Html,
+	Plaintext,
+	RawSegment,
+	Resolvable,
+	ResolvableState,
+	Segment,
+} from '@/app/types/expressions';
+import {
+	getExpressionErrorMessage,
+	getExternalSecretPreview,
+	getResolvableState,
+} from '@/app/utils/expressions';
 import { isCredentialsModalOpen } from '../plugins/codemirror/completions/utils';
 import { usesDeprecatedExpressionFunction } from '../plugins/codemirror/expressionDeprecations';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
@@ -144,7 +155,7 @@ export const useExpressionEditor = ({
 				const { from, to, text, token } = segment;
 
 				if (token === 'Resolvable') {
-					const { resolved, error, fullError } = await resolve(text, targetItem.value);
+					const { resolved, error, fullError, state } = await resolve(text, targetItem.value);
 					return {
 						kind: 'resolvable' as const,
 						from,
@@ -154,7 +165,8 @@ export const useExpressionEditor = ({
 						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
 						// This fixes that but as as TODO we should figure out why this is happening
 						resolved: String(resolved),
-						state: getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
+						state:
+							state ?? getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
 						error: fullError,
 					};
 				}
@@ -378,11 +390,17 @@ export const useExpressionEditor = ({
 	}
 
 	async function resolve(resolvable: string, target: TargetItem | null) {
-		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
+		const result: {
+			resolved: unknown;
+			error: boolean;
+			fullError: Error | null;
+			state?: ResolvableState;
+		} = {
 			resolved: undefined,
 			error: false,
 			fullError: null,
 		};
+		const isCredentialModal = !expressionLocalResolveContext.value && isCredentialsModalOpen();
 
 		try {
 			// Deprecated functions still resolve on the backend, but we surface them
@@ -397,7 +415,7 @@ export const useExpressionEditor = ({
 					additionalKeys: toValue(additionalData),
 				});
 			} else if (
-				isCredentialsModalOpen() ||
+				isCredentialModal ||
 				(!ndvStore.value.activeNode && toValue(targetNodeParameterContext) === undefined)
 			) {
 				// e.g. credential modal
@@ -435,11 +453,19 @@ export const useExpressionEditor = ({
 		}
 
 		if (result.resolved === undefined) {
-			result.resolved = isUncalledExpressionExtension(resolvable)
-				? i18n.baseText('expressionEditor.uncalledFunction')
-				: i18n.baseText('expressionModalInput.undefined');
+			const secretPreview = isCredentialModal
+				? getExternalSecretPreview(resolvable, toValue(additionalData).$secrets)
+				: undefined;
 
-			result.error = true;
+			if (secretPreview) {
+				result.resolved = secretPreview.text;
+				result.state = secretPreview.exists ? 'pending' : 'invalid';
+			} else {
+				result.resolved = isUncalledExpressionExtension(resolvable)
+					? i18n.baseText('expressionEditor.uncalledFunction')
+					: i18n.baseText('expressionModalInput.undefined');
+				result.error = true;
+			}
 		}
 
 		return result;
