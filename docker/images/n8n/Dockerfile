@@ -22,7 +22,13 @@ RUN rm -rf prebuilds && \
 
 FROM toolchain AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
-RUN cd /usr/local/lib/node_modules/n8n && npm rebuild sqlite3
+# Call node-gyp directly rather than `npm rebuild sqlite3`: sqlite3 is reachable through
+# several symlinks in the pnpm tree, and npm runs one install script per link
+# concurrently in the same store directory, where they collide on build/node_gyp_bins
+# and on each other's make output. npm's bundled node-gyp also fixes the toolchain
+# version to the pinned image digest instead of fetching it at build time.
+RUN cd /usr/local/lib/node_modules/n8n/node_modules/sqlite3 && \
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
 COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
      /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build/Release/isolated_vm.node
 # node-gyp-build finds build/Release first. Delete the prebuilds to remove the glibc fallback.
