@@ -5,7 +5,7 @@ import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { createConnectedTool, extractDomain, pageIdField, withSnapshotEnvelope } from './helpers';
 
-const waitUntilField = z
+export const waitUntilField = z
 	.enum(['load', 'domcontentloaded', 'networkidle'])
 	.optional()
 	.describe('When to consider navigation done (default: "load")');

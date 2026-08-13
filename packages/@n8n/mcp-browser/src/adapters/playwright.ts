@@ -243,7 +243,10 @@ export class PlaywrightAdapter {
 	// Pages
 	// =========================================================================
 
-	async newPage(url?: string): Promise<PageInfo> {
+	async newPage(
+		url?: string,
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
+	): Promise<PageInfo> {
 		log.debug('newPage: creating page, url =', url ?? '(none)');
 		const page = await this.requireContext().newPage();
 		// The relay assigned an ID during Target.createTarget → createTab()
@@ -252,7 +255,7 @@ export class PlaywrightAdapter {
 		const state = this.findPageState(page) ?? this.trackPage(page, tabId);
 
 		if (url) {
-			await page.goto(url, { waitUntil: 'load' });
+			await page.goto(url, { waitUntil });
 			state.info.title = await page.title();
 			state.info.url = page.url();
 		}

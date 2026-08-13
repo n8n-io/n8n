@@ -67,7 +67,7 @@ export interface Adapter {
 	listTabs(): Promise<PageInfo[]>;
 	listTabIds(): Promise<string[]>;
 	listTabSessionIds(): Promise<string[]>;
-	newPage(url?: string): Promise<PageInfo>;
+	newPage(url?: string, waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'): Promise<PageInfo>;
 	closePage(pageId: string): Promise<void>;
 	focusPage(pageId: string): Promise<void>;
 	// Navigation

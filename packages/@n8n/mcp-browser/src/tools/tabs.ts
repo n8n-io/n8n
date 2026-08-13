@@ -4,6 +4,7 @@ import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { createConnectedTool, extractDomain, withSnapshotEnvelope } from './helpers';
+import { waitUntilField } from './navigation';
 
 export function createTabTools(connection: BrowserConnection): ToolDefinition[] {
 	return [tabOpen(connection), tabList(connection), tabFocus(connection), tabClose(connection)];
@@ -11,6 +12,11 @@ export function createTabTools(connection: BrowserConnection): ToolDefinition[] 
 
 const tabOpenSchema = z.object({
 	url: z.string().optional().describe('URL to navigate to (default: about:blank)'),
+	// First navigation defaults to 'domcontentloaded': heavy SPA consoles often
+	// never fire 'load', so waiting for it there times out with nothing to show.
+	waitUntil: waitUntilField.describe(
+		'When to consider navigation done (default: "domcontentloaded")',
+	),
 });
 
 const tabOpenOutputSchema = withSnapshotEnvelope({
@@ -26,7 +32,7 @@ function tabOpen(connection: BrowserConnection): ToolDefinition {
 		'Open a new tab. Optionally navigate to a URL.',
 		tabOpenSchema,
 		async (state, input) => {
-			const pageInfo = await state.adapter.newPage(input.url);
+			const pageInfo = await state.adapter.newPage(input.url, input.waitUntil);
 			state.pages.set(pageInfo.id, pageInfo);
 			state.activePageId = pageInfo.id;
 			return formatCallToolResult({
