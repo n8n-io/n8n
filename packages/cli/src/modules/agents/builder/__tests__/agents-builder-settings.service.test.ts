@@ -13,7 +13,13 @@ import { BUILDER_NOT_CONFIGURED_CODE } from '@n8n/api-types';
 import { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
 import { BuilderNotConfiguredError } from '../errors';
 
-const ENV_KEYS = ['N8N_AI_ANTHROPIC_KEY', 'ANTHROPIC_API_KEY'] as const;
+const ENV_KEYS = [
+	'N8N_AI_ANTHROPIC_KEY',
+	'ANTHROPIC_API_KEY',
+	'N8N_INSTANCE_AI_MODEL',
+	'N8N_INSTANCE_AI_MODEL_API_KEY',
+	'N8N_INSTANCE_AI_MODEL_URL',
+] as const;
 
 function makeJwt(exp: number): string {
 	const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64url');
@@ -108,6 +114,24 @@ describe('AgentsBuilderSettingsService', () => {
 				{ id: 'user-1' },
 				{ userMessageId: expect.any(String) },
 			);
+		});
+
+		it('mode=default + proxy disabled + Instance AI env set → returns Instance AI model config', async () => {
+			mockPersistedSettings({ mode: 'default' });
+			aiService.isProxyEnabled.mockReturnValue(false);
+			process.env.N8N_INSTANCE_AI_MODEL = 'custom/Kimi-K3';
+			process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'custom-key';
+			process.env.N8N_AI_ANTHROPIC_KEY = 'sk-env';
+
+			const result = await service.resolveModelConfig(user);
+
+			expect(result).toEqual({
+				config: {
+					id: 'custom/Kimi-K3',
+					apiKey: 'custom-key',
+				},
+				isProxied: false,
+			});
 		});
 
 		it('mode=default + proxy disabled + env set → returns env-var anthropic config', async () => {

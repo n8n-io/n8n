@@ -65,6 +65,84 @@ type ProviderRegistry = {
 	[P in ProviderId]: RegistryEntry<P>;
 };
 
+type OpenAiCompatibleCreds = {
+	apiKey?: string;
+	baseURL?: string;
+	headers?: Record<string, string>;
+};
+
+/**
+ * Parse a Vertex service-account JSON string into `googleAuthOptions`.
+ * Accepts either a full SA JSON blob or the subset `{ client_email, private_key }`.
+ * Returns undefined when unset so ADC can take over.
+ */
+function parseGoogleVertexAuthOptions(
+	googleCredentials: string | undefined,
+): { credentials: Record<string, unknown> } | undefined {
+	if (!googleCredentials?.trim()) return undefined;
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(googleCredentials);
+	} catch {
+		throw new Error(
+			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be valid JSON',
+		);
+	}
+	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+		throw new Error(
+			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be a JSON object',
+		);
+	}
+	const credentials = { ...(parsed as Record<string, unknown>) };
+	// SA keys often arrive with literal `\n` escapes when pasted into env files.
+	if (typeof credentials.private_key === 'string') {
+		credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+	}
+	return { credentials };
+}
+
+/**
+ * Shared builder for OpenAI-compatible HTTP providers. Prefer this over
+ * `@ai-sdk/<provider>` packages that pull optional NAPI binaries or v4-only types.
+ */
+function buildOpenAiCompatible(
+	name: string,
+	defaultBaseURL: string | undefined,
+	creds: OpenAiCompatibleCreds,
+	model: string,
+	fetch: FetchFn | undefined,
+	options?: { includeUsage?: boolean; supportsStructuredOutputs?: boolean },
+): LanguageModel {
+	const { createOpenAICompatible } =
+		require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+	const baseURL = creds.baseURL ?? defaultBaseURL;
+	if (!baseURL) {
+		throw new Error(`baseURL is required for OpenAI-compatible provider "${name}"`);
+	}
+	return createOpenAICompatible({
+		name,
+		baseURL,
+		apiKey: creds.apiKey,
+		headers: creds.headers,
+		fetch,
+		includeUsage: options?.includeUsage,
+		supportsStructuredOutputs: options?.supportsStructuredOutputs,
+	})(model);
+}
+
+type OpenAiCompatibleProviderId = 'nvidia';
+
+function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
+	name: P,
+	defaultBaseURL: string,
+	options?: { includeUsage?: boolean; supportsStructuredOutputs?: boolean },
+): RegistryEntry<P> {
+	return {
+		build: (creds, model, fetch) =>
+			buildOpenAiCompatible(name, defaultBaseURL, creds, model, fetch, options),
+	};
+}
+
 /**
  * Registry of language model providers.
  * Each entry maps a provider id to a builder that loads its @ai-sdk/* package
@@ -86,17 +164,10 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	custom: {
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'custom',
-				baseURL: creds.baseURL,
-				apiKey: creds.apiKey,
-				headers: creds.headers,
-				fetch,
-			})(model);
-		},
+		build: (creds, model, fetch) =>
+			buildOpenAiCompatible('custom', undefined, creds, model, fetch, {
+				supportsStructuredOutputs: creds.supportsStructuredOutputs,
+			}),
 	},
 	anthropic: {
 		build: (creds, model, fetch) => {
@@ -114,6 +185,21 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				}
 			}
 			return createAnthropic({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
+		},
+	},
+	'google-vertex-anthropic': {
+		build: (creds, model, fetch) => {
+			const { createVertexAnthropic } =
+				require('@ai-sdk/google-vertex/anthropic') as typeof import('@ai-sdk/google-vertex/anthropic');
+			const googleAuthOptions = parseGoogleVertexAuthOptions(creds.googleCredentials);
+			return createVertexAnthropic({
+				project: creds.project,
+				location: creds.location,
+				baseURL: creds.baseURL,
+				headers: creds.headers,
+				...(googleAuthOptions ? { googleAuthOptions } : {}),
+				fetch,
+			})(model);
 		},
 	},
 	google: {
@@ -165,19 +251,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
 		},
 	},
-	nvidia: {
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'nvidia',
-				baseURL: creds.baseURL ?? 'https://integrate.api.nvidia.com/v1',
-				apiKey: creds.apiKey,
-				headers: creds.headers,
-				fetch,
-			})(model);
-		},
-	},
+	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),
 	'azure-openai': {
 		build: (creds, model, fetch) => {
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
