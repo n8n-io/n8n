@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { CURATED_LIBS } from './libs.js';
@@ -52,7 +52,7 @@ export function collectCopies(root: string): Map<string, Copy[]> {
 		}
 	};
 
-	const record = (name: string, dir: string) => {
+	const record = (dir: string) => {
 		let real: string;
 		try {
 			real = realpathSync(dir);
@@ -69,11 +69,14 @@ export function collectCopies(root: string): Map<string, Copy[]> {
 		} catch {
 			return; // not a real package dir (e.g. a decoy source folder)
 		}
-		if (pj.name !== name) return; // guard against name/dir mismatch
+		// Key on the manifest name, not the directory: an npm rename (`"zod-v3": "npm:zod@^3"`)
+		// installs a real second copy of zod under `node_modules/zod-v3`, and keying on the
+		// directory would leave it out of duplicate detection entirely.
+		if (!pj.name) return; // no name means it is not a package we can identify
 		recordedReals.add(real);
-		const copies = found.get(name) ?? [];
+		const copies = found.get(pj.name) ?? [];
 		copies.push({ realPath: real, version: pj.version ?? '' });
-		found.set(name, copies);
+		found.set(pj.name, copies);
 	};
 
 	// pnpm virtual store: each `<name>@<key>` entry holds the real package under its own node_modules.
@@ -91,16 +94,15 @@ export function collectCopies(root: string): Map<string, Copy[]> {
 			} else if (name.startsWith('.')) {
 				continue;
 			} else if (name.startsWith('@')) {
-				for (const s of readEntries(full))
-					recordAndRecurse(`${name}/${s.name}`, join(full, s.name));
+				for (const s of readEntries(full)) recordAndRecurse(join(full, s.name));
 			} else {
-				recordAndRecurse(name, full);
+				recordAndRecurse(full);
 			}
 		}
 	};
 
-	const recordAndRecurse = (pkgName: string, pkgDir: string) => {
-		record(pkgName, pkgDir);
+	const recordAndRecurse = (pkgDir: string) => {
+		record(pkgDir);
 		const nested = join(pkgDir, 'node_modules');
 		try {
 			const real = realpathSync(nested);
@@ -113,7 +115,17 @@ export function collectCopies(root: string): Map<string, Copy[]> {
 		}
 	};
 
-	walk(join(root, 'node_modules'));
+	// Absent nested `node_modules` are normal, so the walk tolerates them — but an absent root means
+	// there is no closure to inspect, and staying quiet about it reports "no duplicates found" for a
+	// closure that was never read. Callers treat a throw as "the check did not run".
+	const rootNodeModules = join(root, 'node_modules');
+	if (!existsSync(rootNodeModules)) {
+		throw new Error(
+			`No node_modules at ${rootNodeModules} — expected an installed closure, so nothing was verified.`,
+		);
+	}
+
+	walk(rootNodeModules);
 	return found;
 }
 

@@ -72,6 +72,43 @@ describe('collectCopies + analyze', () => {
 	});
 });
 
+// `"zod-v3": "npm:zod@^3"` installs a real second copy of zod under a directory named `zod-v3`.
+// Identifying copies by directory would leave it out of duplicate detection.
+describe('npm rename aliases', () => {
+	it('counts an aliased copy under the name in its manifest', () => {
+		pkg('aliased/node_modules/zod', 'zod', '4.0.0');
+		pkg('aliased/node_modules/zod-v3', 'zod', '3.0.0');
+
+		const found = collectCopies(join(ROOT, 'aliased'));
+
+		expect(found.get('zod-v3')).toBeUndefined();
+		expect(
+			distinctCopies(found.get('zod') ?? [])
+				.map((c) => c.version)
+				.sort(),
+		).toEqual(['3.0.0', '4.0.0']);
+		expect(analyze(found).failures.map((f) => f.name)).toEqual(['zod']);
+	});
+
+	it('ignores a directory whose manifest has no name', () => {
+		mkdirSync(join(ROOT, 'nameless/node_modules/mystery'), { recursive: true });
+		writeFileSync(join(ROOT, 'nameless/node_modules/mystery/package.json'), '{"version":"1.0.0"}');
+
+		expect(collectCopies(join(ROOT, 'nameless')).size).toBe(0);
+	});
+});
+
+describe('missing closure', () => {
+	// Reporting "no duplicates" for a tree that was never read is the worst outcome for this check,
+	// so callers get a throw (read as "did not run") rather than a clean verdict.
+	it('throws instead of reporting a clean result when the root has no node_modules', () => {
+		mkdirSync(join(ROOT, 'empty'), { recursive: true });
+
+		expect(() => collectCopies(join(ROOT, 'empty'))).toThrow(/No node_modules/);
+		expect(() => collectCopies(join(ROOT, 'does-not-exist'))).toThrow(/nothing was verified/);
+	});
+});
+
 // Exercises the pnpm-shaped layout the tool actually runs against: the physical copy lives under
 // the `.pnpm` virtual store and is symlinked to `node_modules/<pkg>`. This is what the `.pnpm` walk
 // (walkPnpmStore) and the realpath dedup exist for — a single physical copy reached via a symlink
