@@ -37,6 +37,10 @@ const claudeConfigSchema = z
 	})
 	.passthrough();
 
+const extraMcpConfigSchema = z
+	.object({ mcpServers: z.record(z.unknown()).optional() })
+	.passthrough();
+
 function readJson(path: string, label: string): unknown {
 	const content = readFileSync(path, 'utf-8');
 	try {
@@ -79,14 +83,14 @@ export function unlinkStagedMcpConfig(path: string): void {
 	}
 }
 
-function writeMcpConfig(serverName: string, block: unknown, filePrefix: string): string {
+function writeMcpConfig(servers: Readonly<Record<string, unknown>>, filePrefix: string): string {
 	// A random suffix (not just pid+time) keeps concurrent lane stages from
 	// colliding when several are written in the same millisecond.
 	const tmpPath = join(
 		tmpdir(),
 		`${filePrefix}-${String(process.pid)}-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}.json`,
 	);
-	writeFileSync(tmpPath, JSON.stringify({ mcpServers: { [serverName]: block } }), { mode: 0o600 });
+	writeFileSync(tmpPath, JSON.stringify({ mcpServers: servers }), { mode: 0o600 });
 	stagedConfigPaths.add(tmpPath);
 	return tmpPath;
 }
@@ -117,7 +121,21 @@ export function stageMcpConfigFromClaudeJson(
 		throw new Error(`MCP server "${serverName}" not configured in ${claudeConfigPath} (${scope})`);
 	}
 
-	return writeMcpConfig(serverName, block, 'n8n-mcp-config');
+	return writeMcpConfig({ [serverName]: block }, 'n8n-mcp-config');
+}
+
+/**
+ * Extra MCP server blocks to stage alongside the n8n server, read from a JSON
+ * file shaped like a Claude config (`{ "mcpServers": { "<name>": {...} } }`, or
+ * the bare `{ "<name>": {...} }` map). Lets a run measure the builder against
+ * additional servers (e.g. a memory server) without touching `~/.claude.json`.
+ */
+export function readExtraMcpServers(path: string): Record<string, unknown> {
+	const parsed = extraMcpConfigSchema.parse(readJson(path, 'extra MCP config'));
+	const servers = parsed.mcpServers ?? (parsed as Record<string, unknown>);
+	const entries = Object.entries(servers).filter(([key]) => key !== 'mcpServers');
+	if (entries.length === 0) throw new Error(`No MCP servers found in ${path}`);
+	return Object.fromEntries(entries);
 }
 
 /**
@@ -131,13 +149,16 @@ export function stageLaneMcpConfig(opts: {
 	serverName: string;
 	url: string;
 	apiKey: string;
+	/** Additional servers staged alongside n8n (see `readExtraMcpServers`). */
+	extraServers?: Readonly<Record<string, unknown>>;
 }): string {
 	const block = {
 		type: 'http',
 		url: opts.url,
 		headers: { Authorization: `Bearer ${opts.apiKey}` },
 	};
-	return writeMcpConfig(opts.serverName, block, 'n8n-mcp-lane-config');
+	// n8n last so a stray extra server can never shadow the lane's own block.
+	return writeMcpConfig({ ...opts.extraServers, [opts.serverName]: block }, 'n8n-mcp-lane-config');
 }
 
 /** Each non-alphanumeric character (excluding hyphen) becomes "_". Mirrors
@@ -147,8 +168,11 @@ export function sanitizeServerName(name: string): string {
 	return name.replace(/[^a-zA-Z0-9-]/g, '_');
 }
 
-export function buildAllowedTools(serverName: string): readonly string[] {
-	return [`mcp__${sanitizeServerName(serverName)}`];
+export function buildAllowedTools(
+	serverName: string,
+	extraServerNames: readonly string[] = [],
+): readonly string[] {
+	return [serverName, ...extraServerNames].map((name) => `mcp__${sanitizeServerName(name)}`);
 }
 
 type McpBuildKeySupport = 'supported' | 'orchestrator-only';
@@ -248,6 +272,8 @@ const KILL_GRACE_MS = 5_000;
 export interface McpBuildSettings {
 	/** MCP server name in the staged config; also derives the tool allowlist. */
 	serverName: string;
+	/** Names of any extra staged servers, so their tools are allowlisted too. */
+	extraServerNames?: readonly string[];
 	/** Anthropic model id passed to `claude -p --model`. */
 	model: string;
 	/** Retries per build when no WORKFLOW_ID is returned. */
@@ -479,7 +505,7 @@ export async function buildWorkflowViaMcp(opts: {
 }): Promise<McpBuildResult> {
 	const { conversation, slug, iteration, mcpConfigPath, settings, logDir } = opts;
 	const log = opts.log ?? ((message: string) => console.log(message));
-	const allowedTools = buildAllowedTools(settings.serverName);
+	const allowedTools = buildAllowedTools(settings.serverName, settings.extraServerNames ?? []);
 	const userMessage = buildUserMessage(conversation, settings);
 
 	let workflowId: string | null = null;

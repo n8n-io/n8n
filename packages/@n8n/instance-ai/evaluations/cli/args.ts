@@ -103,6 +103,10 @@ export interface CliArgs {
 	/** MCP server name used in the per-lane staged `claude` config + tool allowlist
 	 *  (`--build-via-mcp` only). Arbitrary — the eval CLI stages the config itself. */
 	mcpServerName: string;
+	/** Path to a JSON file of additional MCP server blocks staged alongside the
+	 *  lane's n8n server (`--build-via-mcp`), so a run can measure the builder
+	 *  with extra servers (e.g. a memory server) attached. */
+	extraMcpConfigPath?: string;
 	/** Anthropic model id passed to `claude -p` for the MCP build (`--build-via-mcp`).
 	 *  Sourced from the ANTHROPIC_MODEL env var (the variable `claude` reads
 	 *  natively), pinned to DEFAULT_MCP_BUILD_MODEL when unset. Distinct from the
@@ -159,6 +163,7 @@ const cliArgsSchema = z.object({
 	suite: z.string().min(1).optional(),
 	buildViaMcp: z.boolean().default(false),
 	mcpServerName: z.string().min(1).default('n8n-local'),
+	extraMcpConfigPath: z.string().min(1).optional(),
 	buildModel: z.string().min(1).default('claude-opus-4-8'),
 	buildCwd: z.string().min(1).optional(),
 	buildMaxAttempts: z.number().int().positive().default(3),
@@ -253,6 +258,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		suite: validated.suite,
 		buildViaMcp: validated.buildViaMcp,
 		mcpServerName: validated.mcpServerName,
+		extraMcpConfigPath: validated.extraMcpConfigPath,
 		buildModel: validated.buildModel,
 		buildCwd: validated.buildCwd,
 		buildMaxAttempts: validated.buildMaxAttempts,
@@ -313,6 +319,7 @@ interface RawArgs {
 	suite?: string;
 	buildViaMcp: boolean;
 	mcpServerName: string;
+	extraMcpConfigPath?: string;
 	buildModel: string;
 	buildCwd?: string;
 	buildMaxAttempts: number;
@@ -472,6 +479,12 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--mcp-server':
 				result.mcpServerName = nextArg(argv, i, '--mcp-server');
+				result.buildOnlyFlags.push(arg);
+				i++;
+				break;
+
+			case '--extra-mcp-config':
+				result.extraMcpConfigPath = nextArg(argv, i, '--extra-mcp-config');
 				result.buildOnlyFlags.push(arg);
 				i++;
 				break;
