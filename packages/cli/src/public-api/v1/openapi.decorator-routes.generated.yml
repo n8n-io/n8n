@@ -20,3 +20,8 @@ paths:
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  /workflows/{workflowId}/tags:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflowTags.generated.yml
+    put:
+      $ref: ./handlers/workflows/spec/paths/updateWorkflowTags.generated.yml
