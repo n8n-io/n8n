@@ -1,6 +1,4 @@
-// Node loads this file before anything can build: every import here must resolve without a
-// build step — published deps, source-only workspace packages, or relative files. Test-only
-// config (which may import dist-only packages) lives in `vitest.config.mts`.
+// Every import here must resolve without a build step; dist-only deps go in `vitest.config.mts`.
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, type UserConfig } from 'vite';

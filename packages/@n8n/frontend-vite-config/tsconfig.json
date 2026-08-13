@@ -4,8 +4,7 @@
 		"types": ["node"],
 		"module": "ESNext",
 		"moduleResolution": "bundler",
-		// No emit: consumers compile this package from source, so `.ts` specifiers are what
-		// Node's ESM loader needs when it reads these files directly (vite config loading).
+		// Node's ESM loader reads these files directly when vite loads a config, and wants extensions.
 		"allowImportingTsExtensions": true
 	},
 	"include": ["**/*.ts"]

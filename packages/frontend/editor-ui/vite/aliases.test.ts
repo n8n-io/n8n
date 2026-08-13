@@ -23,10 +23,7 @@ const readTsconfig = (file: string) =>
 			.join('\n'),
 	) as { compilerOptions?: { paths?: Record<string, string[]> } };
 
-/**
- * Reduce a tsconfig `paths` block to one absolute src directory per package, so the terse
- * `"@n8n/x*"` form and the explicit `"@n8n/x"` + `"@n8n/x/*"` pair compare equal.
- */
+/** Normalised so the terse `"@n8n/x*"` form and the explicit `"@n8n/x"` + `"@n8n/x/*"` pair compare equal. */
 const pathsByPackage = (file: string) => {
 	const paths = readTsconfig(file).compilerOptions?.paths ?? {};
 	const byPackage = new Map<string, string>();
@@ -43,9 +40,8 @@ const pathsByPackage = (file: string) => {
 };
 
 /**
- * Vite picks the first matching entry and rewrites with `String.replace`, so a faithful check has
- * to model both — see `matches$1`/`alias$1` in vite's resolve plugin. An unmatched specifier falls
- * through to node resolution, which lands on the package's built `dist`.
+ * Mirrors vite's resolve plugin: first match wins, rewrite via `String.replace`. An unmatched
+ * specifier falls through to node resolution, which lands on the package's built `dist`.
  */
 const resolveSpecifier = (specifier: string, aliases: Alias[]): string => {
 	const matched = aliases.find(({ find }) =>
@@ -67,9 +63,7 @@ describe('editor-ui vite aliases', () => {
 	const aliases = editorUiAliases(editorUiDir, packagesDir);
 	const editorUiPaths = pathsByPackage(join(editorUiDir, 'tsconfig.json'));
 
-	// Both lists are hand-maintained, and drifting apart is not a hypothetical: four packages
-	// spent months typechecked from `src` while the bundle was built from their `dist`. Adding a
-	// package to one list and not the other has to fail here.
+	// Not hypothetical: four packages spent months typechecked from `src` while built from `dist`.
 	it.each([...sourcePackages, ...modulePackages])(
 		'resolves $name to the same src as tsconfig does',
 		({ name, dir }) => {
@@ -82,7 +76,6 @@ describe('editor-ui vite aliases', () => {
 	);
 
 	it('aliases every source package editor-ui typechecks from src', () => {
-		// The direction that actually bit: a tsconfig path added without the matching alias.
 		const aliased = new Set([...sourcePackages, ...modulePackages].map(({ name }) => name));
 		const pathed = [...editorUiPaths.keys()]
 			// editor-ui's own browser stub, not a package consumed from source.
@@ -92,8 +85,7 @@ describe('editor-ui vite aliases', () => {
 	});
 
 	it('agrees with the shared module tsconfig base', () => {
-		// Module packages extend that base, so a package pointed at a different src there would
-		// typecheck modules against something the editor never bundles.
+		// Disagreement typechecks modules against a src the editor never bundles.
 		const modulePaths = pathsByPackage(join(MODULE_TSCONFIG, 'tsconfig.frontend-module.json'));
 
 		for (const [name, srcDir] of modulePaths) {
@@ -102,9 +94,8 @@ describe('editor-ui vite aliases', () => {
 	});
 
 	it('resolves @n8n/tournament from source', () => {
-		// Reached transitively via `n8n-workflow`, so it is not a declared dependency and is not in
-		// `sourcePackages`. Its dist is CJS: on `dist` the dev server fails to parse a named export
-		// out of it and the build loses ~397 kB to defeated tree-shaking.
+		// Transitive via `n8n-workflow`, so not a declared dependency and not in `sourcePackages`.
+		// Its dist is CJS: named-export parse failure in dev, ~397 kB of defeated tree-shaking.
 		expect(resolveSpecifier('@n8n/tournament', aliases)).toBe(
 			'packages/@n8n/tournament/src/index.ts',
 		);
@@ -114,8 +105,6 @@ describe('editor-ui vite aliases', () => {
 	});
 
 	it('still applies the vendor rewrites the shared set drops', () => {
-		// They moved after the source and module aliases; nothing above matches a `lodash.*` or a
-		// `stream` specifier, so the shell keeps rewriting both. Only editor-ui declares the targets.
 		const rewrite = (specifier: string) => {
 			const matched = aliases.find(({ find }) =>
 				typeof find === 'string' ? specifier === find : find.test(specifier),
@@ -128,19 +117,15 @@ describe('editor-ui vite aliases', () => {
 	});
 
 	it('shares only aliases that resolve to workspace source', () => {
-		// `frontendAliases` is spread into every `packages/modules/*/frontend` vitest config, and a
-		// module's `node_modules` is not the shell's. An entry rewriting to a bare specifier only
-		// editor-ui declares — `stream` → `stream-browserify`, `lodash.camelCase` → `lodash/camelCase`
-		// — makes the module fail to resolve it, reporting the original specifier rather than the
-		// alias. Those belong in `vendorAliases`, which only the shell composes.
+		// Every `packages/modules/*/frontend` vitest spreads this set, and a module's `node_modules`
+		// is not the shell's — a rewrite to a bare specifier only editor-ui declares breaks there.
 		const shared = frontendAliases(packagesDir).map(({ replacement }) => replacement);
 
 		expect(shared.filter((replacement) => !replacement.startsWith(packagesDir))).toEqual([]);
 	});
 
 	it('resolves a package and its subpaths independently of entry order', () => {
-		// An open-ended `^@n8n/chat(.+)$` also matches `@n8n/chat-hub/…`, so a list carrying both
-		// only resolves correctly while the more specific entry happens to come first.
+		// An open-ended `^@n8n/chat(.+)$` would also match `@n8n/chat-hub/…`.
 		expect(resolveSpecifier('@n8n/chat-hub/api', aliases)).toBe('packages/@n8n/chat-hub/src/api');
 		expect(resolveSpecifier('@n8n/chat-hub/api', [...aliases].reverse())).toBe(
 			'packages/@n8n/chat-hub/src/api',
