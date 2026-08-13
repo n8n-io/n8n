@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.34.0",
+  "version": "2.35.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
@@ -504,6 +504,7 @@
       "dist/nodes/CoinGecko/CoinGecko.node.js",
       "dist/nodes/CompareDatasets/CompareDatasets.node.js",
       "dist/nodes/Compression/Compression.node.js",
+      "dist/nodes/Confluence/Confluence.node.js",
       "dist/nodes/Contentful/Contentful.node.js",
       "dist/nodes/ConvertKit/ConvertKit.node.js",
       "dist/nodes/ConvertKit/ConvertKitTrigger.node.js",

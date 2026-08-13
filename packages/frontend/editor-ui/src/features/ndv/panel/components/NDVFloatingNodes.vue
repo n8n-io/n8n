@@ -27,8 +27,6 @@ interface NodeConfig {
 	nodeType: INodeTypeDescription;
 }
 
-const isNDVV2 = computed(() => true);
-
 function moveNodeDirection(direction: FloatingNodePosition) {
 	const matchedDirectionNode = connectedNodes.value[direction][0];
 	if (matchedDirectionNode) {
@@ -107,7 +105,7 @@ defineExpose({
 </script>
 
 <template>
-	<aside :class="[$style.floatingNodes, { [$style.v2]: isNDVV2 }]" data-test-id="floating-nodes">
+	<aside :class="$style.floatingNodes" data-test-id="floating-nodes">
 		<ul
 			v-for="connectionGroup in connectionGroups"
 			:key="connectionGroup"
@@ -119,7 +117,7 @@ defineExpose({
 					:key="node.name"
 					:placement="tooltipPositionMapper[connectionGroup]"
 					:teleported="false"
-					:offset="isNDVV2 ? 16 : 60"
+					:offset="16"
 				>
 					<template #content>{{ node.name }}</template>
 
@@ -134,7 +132,7 @@ defineExpose({
 							:node-type="nodeType"
 							:node-name="node.name"
 							:tooltip-position="tooltipPositionMapper[connectionGroup]"
-							:size="isNDVV2 ? 24 : 35"
+							:size="24"
 							circle
 						/>
 					</li>
@@ -201,7 +199,7 @@ defineExpose({
 	border: var(--border);
 	background-color: var(--node--color--background);
 	border-radius: 100%;
-	padding: var(--spacing--sm);
+	padding: var(--spacing--xs);
 	cursor: pointer;
 	pointer-events: all;
 	transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
@@ -211,14 +209,8 @@ defineExpose({
 	justify-self: center;
 	align-self: center;
 
-	&::after {
-		content: '';
-		position: absolute;
-		top: -35%;
-		right: -15%;
-		bottom: -35%;
-		left: -15%;
-		z-index: -1;
+	&:hover {
+		transform: scale(1.1);
 	}
 
 	.outputMain &,
@@ -227,40 +219,6 @@ defineExpose({
 		display: flex;
 		align-items: center;
 		justify-content: center;
-	}
-
-	.outputMain & {
-		&:hover {
-			transform: scale(1.2) translateX(-50%);
-		}
-	}
-	.outputSub & {
-		&:hover {
-			transform: scale(1.2) translateY(50%);
-		}
-	}
-	.inputMain & {
-		&:hover {
-			transform: scale(1.2) translateX(50%);
-		}
-	}
-	.inputSub & {
-		&:hover {
-			transform: scale(1.2) translateY(-50%);
-		}
-	}
-
-	// V2 styles override
-	.v2 & {
-		padding: var(--spacing--xs);
-
-		&::after {
-			display: none;
-		}
-
-		&:hover {
-			transform: scale(1.1);
-		}
 	}
 }
 </style>

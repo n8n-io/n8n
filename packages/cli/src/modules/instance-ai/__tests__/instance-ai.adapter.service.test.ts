@@ -3,8 +3,12 @@ vi.mock('@n8n/instance-ai', async () => {
 	const { WorkflowSaveConflictError } = await import(
 		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js'
 	);
+	const { WorkflowNotFoundError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
+	);
 	return {
 		WorkflowSaveConflictError,
+		WorkflowNotFoundError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -1233,9 +1237,11 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 
@@ -2544,6 +2550,19 @@ describe('createWorkflowAdapter', () => {
 				expectedChecksum: 'stale-checksum',
 			}),
 		).rejects.toBeInstanceOf(WorkflowSaveConflictError);
+	});
+
+	it('throws WorkflowNotFoundError when workflowService.update cannot find the workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.update.mockRejectedValueOnce(
+			new NotFoundError(
+				'You do not have permission to update this workflow. Ask the owner to share it with you.',
+			),
+		);
+
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-missing', minimalWorkflowJSON),
+		).rejects.toBeInstanceOf(WorkflowNotFoundError);
 	});
 
 	it('returns a checksum on create and update saves', async () => {

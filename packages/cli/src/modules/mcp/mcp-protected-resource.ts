@@ -1,17 +1,17 @@
 import { MCP_AGENT_SCOPES, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+
+import type { ProtectedResource } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 
 import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
-import type { User } from '@n8n/db';
-
-export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
 
 /**
  * Scopes a user can grant on the consent screen. Enforced per-tool via the

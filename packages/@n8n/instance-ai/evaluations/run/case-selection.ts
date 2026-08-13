@@ -64,9 +64,10 @@ export function selectCases(
 	}
 
 	// `claude -p` builds get only the flattened conversation — build-side setup
-	// (credentials, seeds) is orchestrator-only. Skip cases that declare it
-	// rather than building them without prerequisites and reporting misleading
-	// failures (mirrors the prebuilt-coverage partition above).
+	// the fused path can't provide (conversation/thread seeds) is
+	// orchestrator-only. Skip cases that declare it rather than building them
+	// without prerequisites and reporting misleading failures (mirrors the
+	// prebuilt-coverage partition above).
 	if (args.buildViaMcp) {
 		const skippedMcp: string[] = [];
 		testCasesWithFiles = testCasesWithFiles.filter(({ testCase, fileSlug }) => {

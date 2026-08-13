@@ -480,10 +480,12 @@ The LLM never sees secrets — the user interacts with the n8n frontend directly
 **Returns**: `{ credentialId, credentialType, needsBrowserSetup? }`
 
 **HITL**: Suspends execution and renders the credential setup UI. When a single
-matching credential already exists, the card auto-selects it and resolves
-without user input — a `success` result with a credentials map means setup is
-already complete, and the card is never open once a result is returned. When
-`needsBrowserSetup=true`, the orchestrator should load the
+matching *service-scoped* credential already exists, the card auto-selects it
+and resolves without user input — a `success` result with a credentials map
+means setup is already complete, and the card is never open once a result is
+returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
+but always require an explicit Continue, since the type alone does not identify
+a service. When `needsBrowserSetup=true`, the orchestrator should load the
 `credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
 directly, then call `setup-credentials` again to finalize.
 
@@ -752,12 +754,22 @@ conversation. Creation and editing stay on `build-agent`.
 
 ### `mcp-servers` *(domain tool — conditional)*
 
-Search the MCP registry so the orchestrator can discover a hosted MCP server for
-a service the user asked about but has not connected. One action, `search`, over
-`{ queries: string[] }`; returns
-`{ results: [{ slug, title, description, tools }], hint? }`.
+Tool to interact with connected and available MCP servers.
 
-Only servers that the user has *not* connected come back. Results are capped at 5, most relevant first.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `action` | `'connected' \| 'details' \| 'search'` | yes | Discriminator |
+| `slug` | string | `details` | Server slug, as returned by `connected` |
+| `queries` | string[] | `search` | Free-text queries matched against server name, title, description |
+
+**`connected`** → `{ servers: [{ slug, toolCount }], hint? }`. Every connected MCP
+server, counts only — names are `details`' job.
+
+**`details`** → `{ slug, tools, hint? }`. One server's tool names. `hint` tells an
+unconnected slug apart from a connected server that loaded no tools.
+
+**`search`** → `{ results: [{ slug, title, description, tools }], hint? }`, capped
+at 5, most relevant first. Only servers the user has *not* connected come back.
 
 ## Other Domain Tools
 

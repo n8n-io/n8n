@@ -1,5 +1,3 @@
-import { HttpProxyAgent } from 'http-proxy-agent';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { UnexpectedError } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
@@ -7,6 +5,7 @@ import type { LookupFunction } from 'node:net';
 
 import { EnvProxyHttpAgent } from './env-proxy-http-agent';
 import { EnvProxyHttpsAgent } from './env-proxy-https-agent';
+import { createProxiedHttpAgent, createProxiedHttpsAgent } from '../proxy/proxied-agents';
 import type { SsrfBridge } from '../ssrf';
 
 /**
@@ -63,6 +62,10 @@ export type NodeAgentOptions = https.AgentOptions;
  * always overrides anything in `agentOptions`. Passing `agentOptions.lookup`
  * therefore has no effect and is rejected to avoid a false sense of control over
  * DNS resolution.
+ *
+ * `agentOptions` describes the connection to the **target**. Behind a proxy its TLS
+ * options travel with the tunnelled session rather than the proxy handshake
+ * (see `proxy/proxied-agents.ts`).
  */
 export function buildNodeAgents(
 	proxy: ProxyOption,
@@ -100,8 +103,8 @@ export function buildNodeAgents(
 
 	// Explicit proxy URL. No direct path, so no SSRF lookup is injected.
 	return {
-		httpAgent: new HttpProxyAgent(proxy as string, { ...agentOptions }),
-		httpsAgent: new HttpsProxyAgent(proxy as string, { ...agentOptions }),
+		httpAgent: createProxiedHttpAgent(proxy, agentOptions),
+		httpsAgent: createProxiedHttpsAgent(proxy, agentOptions),
 	};
 }
 

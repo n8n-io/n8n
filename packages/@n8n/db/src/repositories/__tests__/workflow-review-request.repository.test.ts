@@ -207,6 +207,73 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 	});
 
+	describe('findOpenRequestsForWorkflows', () => {
+		let queryBuilder: Mocked<SelectQueryBuilder<WorkflowReviewRequest>>;
+
+		beforeEach(() => {
+			queryBuilder = mock<SelectQueryBuilder<WorkflowReviewRequest>>();
+			queryBuilder.innerJoin.mockReturnThis();
+			queryBuilder.addSelect.mockReturnThis();
+			queryBuilder.where.mockReturnThis();
+			queryBuilder.andWhere.mockReturnThis();
+			queryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
+			(entityManager.createQueryBuilder as Mock).mockReturnValue(queryBuilder);
+		});
+
+		it('returns an empty list without querying when no workflow ids are given', async () => {
+			const result = await repo.findOpenRequestsForWorkflows([], {});
+
+			expect(result).toEqual([]);
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('scopes to the given workflows and to open requests only', async () => {
+			await repo.findOpenRequestsForWorkflows(['workflow-1', 'workflow-2'], {});
+
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				'requestWorkflow.workflowId IN (:...workflowIds)',
+				{ workflowIds: ['workflow-1', 'workflow-2'] },
+			);
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('request.state = :state', {
+				state: 'open',
+			});
+		});
+
+		it('maps each request to the linked workflows it was matched by', async () => {
+			queryBuilder.getRawAndEntities.mockResolvedValue({
+				entities: [
+					mock<WorkflowReviewRequest>({ id: 'req-1' }),
+					mock<WorkflowReviewRequest>({ id: 'req-2' }),
+				],
+				raw: [
+					{ request_id: 'req-1', linkedWorkflowId: 'workflow-1' },
+					{ request_id: 'req-1', linkedWorkflowId: 'workflow-2' },
+					{ request_id: 'req-2', linkedWorkflowId: 'workflow-2' },
+				],
+			});
+
+			const result = await repo.findOpenRequestsForWorkflows(['workflow-1', 'workflow-2'], {});
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toMatchObject({ workflowIds: ['workflow-1', 'workflow-2'] });
+			expect(result[0].request.id).toBe('req-1');
+			expect(result[1]).toMatchObject({ workflowIds: ['workflow-2'] });
+			expect(result[1].request.id).toBe('req-2');
+		});
+
+		it("reads through the context's transaction manager", async () => {
+			const transactionManager = mock<EntityManager>();
+			(transactionManager.createQueryBuilder as Mock).mockReturnValue(queryBuilder);
+
+			await repo.findOpenRequestsForWorkflows(['workflow-1'], {
+				trx: new TypeOrmTransaction(transactionManager),
+			});
+
+			expect(transactionManager.createQueryBuilder).toHaveBeenCalled();
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findById', () => {
 		it("reads through the context's transaction manager", async () => {
 			const transactionManager = mock<EntityManager>();
@@ -238,7 +305,7 @@ describe('WorkflowReviewRequestRepository', () => {
 
 			expect(result).toBe(rows);
 			expect(repo.createQueryBuilder).toHaveBeenCalledWith('review');
-			expect(queryBuilder.where).toHaveBeenCalledWith('review.createdById = :requesterId', {
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.createdById = :requesterId', {
 				requesterId: 'user-1',
 			});
 			expect(queryBuilder.take).toHaveBeenCalledWith(15);
@@ -257,7 +324,10 @@ describe('WorkflowReviewRequestRepository', () => {
 
 			expect(result).toBe(rows);
 			expect(repo.createQueryBuilder).toHaveBeenCalledWith('review');
-			expect(queryBuilder.where).not.toHaveBeenCalled();
+			expect(queryBuilder.andWhere).not.toHaveBeenCalledWith(
+				expect.stringContaining('review.createdById'),
+				expect.anything(),
+			);
 			expect(queryBuilder.orderBy).toHaveBeenCalledWith('review.createdAt', 'DESC');
 			expect(queryBuilder.addOrderBy).toHaveBeenCalledWith('review.id', 'ASC');
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.state = :state', {
@@ -279,7 +349,7 @@ describe('WorkflowReviewRequestRepository', () => {
 
 			expect(result).toBe(rows);
 			expect(repo.createQueryBuilder).toHaveBeenCalledWith('review');
-			expect(queryBuilder.where).toHaveBeenCalledWith(
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 				'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
 				{ projectIds: ['proj-1', 'proj-2'], requesterId: 'user-1' },
 			);
@@ -322,7 +392,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			expect(queryBuilder.select).toHaveBeenCalledWith('review.state', 'state');
 			expect(queryBuilder.addSelect).toHaveBeenCalledWith('COUNT(*)', 'count');
 			expect(queryBuilder.groupBy).toHaveBeenCalledWith('review.state');
-			expect(queryBuilder.where).toHaveBeenCalledWith('review.createdById = :requesterId', {
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.createdById = :requesterId', {
 				requesterId: 'user-1',
 			});
 		});
@@ -336,7 +406,10 @@ describe('WorkflowReviewRequestRepository', () => {
 			const result = await repo.countByStateForInbox({ projectIds: null, requesterId: 'user-1' });
 
 			expect(result).toEqual({ open: 3, closed: 12 });
-			expect(queryBuilder.where).not.toHaveBeenCalled();
+			expect(queryBuilder.andWhere).not.toHaveBeenCalledWith(
+				expect.stringContaining('review.createdById'),
+				expect.anything(),
+			);
 			expect(queryBuilder.groupBy).toHaveBeenCalledWith('review.state');
 		});
 
@@ -352,7 +425,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			});
 
 			expect(result).toEqual({ open: 1, closed: 4 });
-			expect(queryBuilder.where).toHaveBeenCalledWith(
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 				'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
 				{ projectIds: ['proj-1', 'proj-2'], requesterId: 'user-1' },
 			);

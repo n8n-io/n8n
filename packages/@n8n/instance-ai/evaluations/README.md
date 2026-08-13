@@ -436,8 +436,19 @@ How it differs from the manifest flow:
   place, so every iteration gets a genuinely fresh build (clean `pass@k`/`pass^k`
   variance) instead of rotating a fixed list of prebuilt IDs.
 - **Multi-lane.** Unlike `--prebuilt-workflows` (single instance), `--build-via-mcp`
-  accepts a comma-separated `--base-url`. Each lane enables MCP, mints its own API
-  key, and stages its own `claude` MCP config — the CLI does this setup for you.
+  accepts a comma-separated `--base-url`. Each lane enables MCP; the CLI does this
+  setup for you.
+- **Per-case build users + credential seeding.** Every build runs `claude` as its
+  own freshly-invited member user (invited in batches through the lane owner,
+  accepted lazily per build), with that user's MCP API key staged into a per-build
+  `claude` MCP config. MCP credential/workflow visibility is user-scoped, so each
+  build sees an isolated view: exactly the case's declared `credentials` (created
+  in the member's personal project — the MCP analog of the orchestrator's
+  per-thread credential pinning), and nothing from concurrent builds. Requires the
+  lanes to have no SMTP configured (otherwise invites are emailed and the CLI
+  can't obtain the accept token — eval instances never have SMTP). Build users are
+  deleted with the built workflows after the run; under `--keep-workflows` they
+  stay, since deleting a user deletes their remaining data.
 - **Throwaway cleanup.** Built workflows are deleted after the run unless you pass
   `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
   `claude` prints, so a build that times out or never emits the trailer can leave

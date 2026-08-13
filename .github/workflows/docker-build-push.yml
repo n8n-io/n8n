@@ -40,6 +40,28 @@ on:
         required: false
         type: string
         default: ''
+    outputs:
+      # Repo name + multi-arch manifest digest per image, so callers can promote what
+      # was actually pushed (retag by digest) instead of re-deriving tag strings.
+      # Empty when push_enabled is false — the manifest job doesn't run.
+      n8n_image:
+        description: 'GHCR repo for the n8n image (no tag)'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.n8n_image }}
+      n8n_digest:
+        description: 'Multi-arch manifest digest of the n8n image'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.n8n_digest }}
+      runners_image:
+        description: 'GHCR repo for the runners image (no tag)'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.runners_image }}
+      runners_digest:
+        description: 'Multi-arch manifest digest of the runners image'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.runners_digest }}
+      runners_distroless_image:
+        description: 'GHCR repo for the distroless runners image (no tag; same repo as runners)'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.runners_distroless_image }}
+      runners_distroless_digest:
+        description: 'Multi-arch manifest digest of the distroless runners image'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
 
   workflow_dispatch:
     inputs:

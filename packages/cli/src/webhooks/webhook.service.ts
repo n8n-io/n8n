@@ -2,8 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { HookContext, WebhookContext } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { HookContext, WebhookContext } from 'n8n-core';
 import {
 	isNodeClassInstance,
 	NodeHelpers,
@@ -248,8 +248,27 @@ export class WebhookService {
 		}
 	}
 
-	createWebhook(data: Partial<WebhookEntity>) {
-		return this.webhookRepository.create(data);
+	createWebhook(data: Partial<WebhookEntity>, nodeWebhookId?: string) {
+		const webhook = this.webhookRepository.create(data);
+		webhook.webhookPath = this.normalizeWebhookPath(webhook.webhookPath);
+
+		if (this.isDynamicWebhookPath(webhook.webhookPath) && nodeWebhookId) {
+			webhook.webhookId = nodeWebhookId;
+			webhook.pathLength = webhook.webhookPath.split('/').length;
+		}
+
+		return webhook;
+	}
+
+	private normalizeWebhookPath(path: string) {
+		let normalizedPath = path.trim();
+		if (normalizedPath.startsWith('/')) normalizedPath = normalizedPath.slice(1);
+		if (normalizedPath.endsWith('/')) normalizedPath = normalizedPath.slice(0, -1);
+		return normalizedPath;
+	}
+
+	private isDynamicWebhookPath(path: string) {
+		return path.startsWith(':') || path.includes('/:');
 	}
 
 	/** The webhooks currently registered (stored locally) for a workflow. */
@@ -309,6 +328,42 @@ export class WebhookService {
 		return [webhook.path.includes(':') ? webhook.webhookId : undefined, webhook.path]
 			.filter((part) => !!part)
 			.join('/');
+	}
+
+	/**
+	 * `method path` for each webhook the given nodes would register, to compare two workflows
+	 * before either is published. Only paths registered verbatim count; the rest get prefixed
+	 * per node or per workflow (see {@link NodeHelpers.getNodeWebhookPath}) and cannot collide.
+	 */
+	getStaticWebhookKeys(nodes: INode[]): string[] {
+		return nodes.flatMap((node) => {
+			if (node.disabled === true || node.webhookId === undefined) return [];
+
+			const { description } = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const webhooks = description.webhooks?.filter(({ isFullPath }) => isFullPath === true);
+			if (!webhooks?.length) return [];
+
+			const parameters =
+				NodeHelpers.getNodeParameters(
+					description.properties,
+					node.parameters,
+					true,
+					false,
+					node,
+					description,
+				) ?? {};
+
+			const { path, httpMethod } = parameters;
+			if (typeof path !== 'string' || path.startsWith('=')) return [];
+
+			const webhookPath = this.normalizeWebhookPath(path);
+			if (webhookPath === '' || this.isDynamicWebhookPath(webhookPath)) return [];
+
+			return [httpMethod]
+				.flat()
+				.filter((method): method is string => typeof method === 'string')
+				.map((method) => `${method} ${webhookPath}`);
+		});
 	}
 
 	/**

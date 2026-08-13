@@ -24,7 +24,6 @@ import type { AgentResourceRepository } from '../../repositories/agent-resource.
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { N8nMemory } from '../n8n-memory';
 
-const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
 describe('N8nMemory', () => {
@@ -795,7 +794,7 @@ describe('N8nMemory', () => {
 					marker: 'important',
 					text: 'hello',
 					parentId: null,
-					tokenCount: estimateObservationTokens('hello'),
+					tokenCount: 1,
 					status: 'active',
 					supersededBy: null,
 				}),
@@ -929,7 +928,7 @@ describe('N8nMemory', () => {
 					marker: 'important',
 					text: 'Merged observation',
 					parentId: null,
-					tokenCount: estimateObservationTokens('Merged observation'),
+					tokenCount: 3,
 					status: 'active',
 					supersededBy: null,
 				}),

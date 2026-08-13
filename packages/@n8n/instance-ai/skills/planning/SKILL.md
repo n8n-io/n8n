@@ -58,11 +58,13 @@ with direct `data-tables` and `parse-file` calls.
 
 ## Knowledge Base
 
-**Consult the knowledge base before planning.** Read the relevant `.md` guides
-and templates for each technique the request involves (`knowledge-base/index.json`,
-`knowledge-base/best-practices/index.json`, and linked files). Use
-`workspace_execute_command` with `rg` or `find` under `knowledge-base/templates/`
-to locate matching SDK examples — never load `templates/index.json` wholesale.
+**Consult the knowledge base before planning.** It lives at the workspace root.
+Read the relevant `.md` guides and templates for each technique the request
+involves (`${N8N_WORKSPACE_DIR}/knowledge-base/index.json`,
+`${N8N_WORKSPACE_DIR}/knowledge-base/best-practices/index.json`, and linked
+files). Use `workspace_execute_command` with `rg` or `find` under
+`${N8N_WORKSPACE_DIR}/knowledge-base/templates/` to locate matching SDK
+examples — never load `templates/index.json` wholesale.
 Skip only for trivial mechanical edits you have already reviewed in this thread.
 
 ## Method

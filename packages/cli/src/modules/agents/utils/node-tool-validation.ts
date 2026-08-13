@@ -2,11 +2,11 @@ import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import type { AgentJsonToolConfig } from '@n8n/api-types';
 import type { INodeParameters } from 'n8n-workflow';
 
-import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import {
 	isUnsupportedEphemeralNodeOperation,
 	unsupportedEphemeralNodeOperationMessage,
 } from '@/node-execution/node-tool-operation-support';
+import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 
 type NodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
 

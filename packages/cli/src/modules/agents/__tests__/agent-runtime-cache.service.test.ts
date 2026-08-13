@@ -92,6 +92,8 @@ describe('AgentRuntimeCacheService', () => {
 			'test',
 			undefined,
 			undefined,
+			undefined,
+			'manual',
 		);
 	});
 
@@ -123,6 +125,8 @@ describe('AgentRuntimeCacheService', () => {
 			'test',
 			'n8n_chat',
 			undefined,
+			undefined,
+			'manual',
 		);
 	});
 
@@ -154,6 +158,8 @@ describe('AgentRuntimeCacheService', () => {
 			'test',
 			undefined,
 			userA,
+			undefined,
+			'manual',
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -162,6 +168,8 @@ describe('AgentRuntimeCacheService', () => {
 			'test',
 			undefined,
 			userB,
+			undefined,
+			'manual',
 		);
 	});
 
@@ -286,6 +294,8 @@ describe('AgentRuntimeCacheService', () => {
 			'production',
 			'slack',
 			undefined,
+			undefined,
+			'integrated',
 		);
 	});
 

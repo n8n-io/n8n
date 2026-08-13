@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
+import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
+import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { Z } from '../zod-class';
-import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
-import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
 // Credits
@@ -15,6 +15,20 @@ import { TimeZoneSchema } from './timezone.schema';
  * proxy is disabled (credits are not metered). Consumers should treat this as "unlimited".
  */
 export const UNLIMITED_CREDITS = -1;
+
+/**
+ * The instance's AI Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
+ * `updateInstanceAiCredits` push and by the internal callers that pass it around.
+ *
+ * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
+ * disabled, or the amounts are deliberately withheld from a cohort that must not see a balance.
+ */
+export type InstanceAiCredits = {
+	creditsQuota: number;
+	creditsClaimed: number;
+	/** Whether the pool has been locked by the activation cap. */
+	quotaLocked?: boolean;
+};
 
 /**
  * Transient setup-state tag for an AI Gateway managed credential selection.
@@ -36,6 +50,27 @@ export const AI_GATEWAY_MANAGED_TAG = '__AI_GATEWAY_MANAGED__';
  */
 export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level grant key for updating a specific workflow without HITL.
+ *
+ * Written automatically when the agent creates a workflow in this thread, so follow-up
+ * edits to that same artifact (same run or later runs in the session) skip the update
+ * approval prompt. Foreign workflows still require approval unless the admin policy is
+ * `always_allow`.
+ */
+export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
+	return `workflows:update:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for a data-tables action
+ * (e.g. `create`, `insert-rows`). Must match the frontend key
+ * `${toolName}:${action}` so UI auto-approve and persisted grants stay aligned.
+ */
+export function buildDataTablesSessionGrantKey(action: string): string {
+	return `data-tables:${action}`;
 }
 
 // --- Domain-access grants ("always allow" for web access) ---
@@ -290,11 +325,76 @@ export const toolErrorPayloadSchema = z.object({
 	error: z.string(),
 });
 
+/** The generic credential type that agent-supplied setup recipes create. */
+export const TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE = 'httpTemplatedCustomAuth';
+
+/**
+ * Auth types where one credential serves many services.
+ */
+export const GENERIC_AUTH_CREDENTIAL_TYPES: ReadonlySet<string> = new Set([
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	'httpHeaderAuth',
+	'httpBearerAuth',
+	'httpQueryAuth',
+	'httpBasicAuth',
+	'httpDigestAuth',
+	'httpCustomAuth',
+	'oAuth1Api',
+	'oAuth2Api',
+]);
+
+/** One user-provided input of a Templated Custom Auth credential. */
+export const credentialPlaceholderDefSchema = z.object({
+	/** Marker name referenced by the template as `{{name}}`. */
+	name: z.string(),
+	/** Input label shown to the user (e.g. "API key"). */
+	title: z.string(),
+	/** One-line clarification of the value itself (format, which token) —
+	 *  never where to obtain it; the AI help thread owns navigation. */
+	info: z.string().optional(),
+	/** Defaults to `password` (masked input). */
+	type: z.enum(['password', 'plain']).optional(),
+	/** When true the input may be left empty; template entries referencing an
+	 *  empty optional placeholder are omitted from the signed request. */
+	optional: z.boolean().optional(),
+});
+export type InstanceAiCredentialPlaceholderDef = z.infer<typeof credentialPlaceholderDefSchema>;
+
+/**
+ * Agent-supplied recipe for creating a Templated Custom Auth credential: the
+ * auth request parts with `{{placeholder}}` markers where user-provided values
+ * go, plus what to ask the user for each marker. Never contains real secrets.
+ */
+export const credentialSetupHintSchema = z.object({
+	template: z.object({
+		headers: z.record(z.string()).optional(),
+		qs: z.record(z.string()).optional(),
+		body: z.record(z.unknown()).optional(),
+	}),
+	placeholders: z.array(credentialPlaceholderDefSchema).min(1),
+	/** The provider page where the user creates/copies the secret. Not rendered
+	 *  in the form — handed to the AI help thread so it can point the user at
+	 *  the exact page the recipe research already verified. */
+	docsUrl: z.string().optional(),
+	suggestedName: z.string().optional(),
+	/** GET endpoint the created credential is auth-probed against. */
+	testUrl: z.string().optional(),
+	/** Status codes the probe must not treat as rejection (only relaxes the
+	 *  401/403 default — codes outside that pair never fail a probe anyway). */
+	acceptedStatusCodes: z.array(z.number().int()).max(10).optional(),
+	/** Host of the API the recipe targets, derived server-side from the node
+	 *  being set up (never model-supplied). Stamped into the created credential
+	 *  so setup surfaces only offer it to nodes calling the same service. */
+	serviceHost: z.string().optional(),
+});
+export type InstanceAiCredentialSetupHint = z.infer<typeof credentialSetupHintSchema>;
+
 export const credentialRequestSchema = z.object({
 	credentialType: z.string(),
 	reason: z.string(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
 	suggestedName: z.string().optional(),
+	setupHint: credentialSetupHintSchema.optional(),
 });
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;
@@ -324,6 +424,7 @@ export const workflowSetupNodeSchema = z.object({
 	}),
 	credentialType: z.string().optional(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+	setupHint: credentialSetupHintSchema.optional(),
 	isTrigger: z.boolean(),
 	isFirstTrigger: z.boolean().optional(),
 	isTestable: z.boolean().optional(),
@@ -534,7 +635,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.array(workflowSetupNodeSchema)
 		.optional()
 		.describe('Per-node setup cards for workflow credential/parameter configuration'),
-	workflowId: z.string().optional().describe('Workflow ID for setup-workflow tool'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'Workflow ID for setup cards and per-workflow edit approvals (build-workflow / workflows update)',
+		),
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
@@ -927,6 +1033,14 @@ export const instanceAiCredentialHandoffContextSchema = z.object({
 		id: z.string().min(1).max(128).optional(),
 		nodeName: z.string().min(1).max(255).optional(),
 		nodeType: z.string().min(1).max(255).optional(),
+		/** Guided-form input labels of a pre-filled (recipe-created) credential —
+		 *  the user only pastes these values, so the thread gives where-to-find
+		 *  guidance instead of configuration steps. */
+		placeholderTitles: z.array(z.string().min(1).max(255)).max(20).optional(),
+		/** The provider's key page from the recipe (where the user creates/copies
+		 *  the secret) — distinct from documentationUrl, the n8n docs page of the
+		 *  credential type. The thread directs the user there. */
+		docsUrl: z.string().url().max(2048).optional(),
 		documentationUrl: z.string().url().max(2048).optional(),
 		oauthRedirectUrl: z.string().url().max(2048).optional(),
 	}),
@@ -1446,6 +1560,38 @@ export const INSTANCE_AI_MODEL_CREDENTIAL_TYPES = [
 
 export const INSTANCE_AI_SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'] as const;
 
+export const INSTANCE_AI_CATALOG_PROVIDERS = ['anthropic', 'openai', 'openrouter'] as const;
+export type InstanceAiCatalogProvider = (typeof INSTANCE_AI_CATALOG_PROVIDERS)[number];
+
+export interface InstanceAiCatalogModel {
+	id: string;
+	name: string;
+	releaseDate?: string;
+}
+
+export interface InstanceAiModelCatalogResponse {
+	models: Record<InstanceAiCatalogProvider, InstanceAiCatalogModel[]>;
+}
+
+export interface InstanceAiEnvManagedFields {
+	model: {
+		provider: boolean;
+		apiKey: boolean;
+		baseUrl: boolean;
+		model: boolean;
+	};
+	sandbox: {
+		provider: boolean;
+		serviceUrl: boolean;
+		apiKey: boolean;
+	};
+	search: {
+		provider: boolean;
+		apiKey: boolean;
+		url: boolean;
+	};
+}
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	permissions: InstanceAiPermissions;
@@ -1460,6 +1606,9 @@ export interface InstanceAiAdminSettingsResponse {
 	modelEnvConfigured: boolean;
 	sandboxEnvConfigured: boolean;
 	searchEnvConfigured: boolean;
+	searchDisabled: boolean;
+	n8nSandboxServiceUrl: string | null;
+	envManaged: InstanceAiEnvManagedFields;
 	localGatewayDisabled: boolean;
 	browserUseEnabled: boolean;
 }
@@ -1491,9 +1640,47 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	sandboxConnection: instanceAiConnectionSchema.nullable().optional(),
 	searchConnection: instanceAiConnectionSchema.nullable().optional(),
 	modelName: z.string().trim().min(1).nullable().optional(),
+	searchDisabled: z.boolean().optional(),
+	n8nSandboxServiceUrl: z.string().url().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 	browserUseEnabled: z.boolean().optional(),
 }) {}
+
+export const instanceAiVerificationFailureSchema = z.enum([
+	'unauthorized',
+	'forbidden',
+	'timeout',
+	'rate_limited',
+	'quota_exceeded',
+	'unreachable',
+	'invalid_response',
+	'provider_error',
+]);
+export type InstanceAiVerificationFailure = z.infer<typeof instanceAiVerificationFailureSchema>;
+
+export class InstanceAiVerifyModelRequest extends Z.class({
+	connection: instanceAiConnectionSchema.optional(),
+	modelName: z.string().trim().min(1).optional(),
+}) {}
+
+export class InstanceAiVerifySandboxRequest extends Z.class({
+	provider: instanceAiSandboxProviderSchema.optional(),
+	connection: instanceAiConnectionSchema.optional(),
+	serviceUrl: z.string().url().optional(),
+}) {}
+
+export class InstanceAiVerifySearchRequest extends Z.class({
+	connection: instanceAiConnectionSchema.optional(),
+}) {}
+
+export type InstanceAiVerificationResponse =
+	| {
+			ok: true;
+			latencyMs?: number;
+			startupMs?: number;
+			resultCount?: number;
+	  }
+	| { ok: false; failure: InstanceAiVerificationFailure };
 
 // ---------------------------------------------------------------------------
 // User preferences — per-user, self-service
@@ -1558,7 +1745,10 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'create-tasks') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
-	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
+	if (
+		['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'].includes(toolName)
+	)
+		return 'skill';
 	return 'default';
 }
 
@@ -1642,6 +1832,9 @@ export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections';
 
 export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
+
+/** Enables adding selected canvas nodes as chat context in the AI Assistant */
+export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
