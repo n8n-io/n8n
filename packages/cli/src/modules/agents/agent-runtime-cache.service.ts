@@ -185,8 +185,10 @@ export class AgentRuntimeCacheService {
 		});
 	}
 
-	acquireRuntimeLease(agent: RuntimeAgent): void {
+	private acquireRuntimeLease(runtime: AgentRuntime): AgentRuntime {
+		const { agent } = runtime;
 		this.activeRuntimeLeases.set(agent, (this.activeRuntimeLeases.get(agent) ?? 0) + 1);
+		return runtime;
 	}
 
 	releaseRuntimeLease(agent: RuntimeAgent): void {
@@ -206,7 +208,8 @@ export class AgentRuntimeCacheService {
 	}
 
 	/**
-	 * Return a cached runtime, or reconstruct one from the DB.
+	 * Return a leased cached runtime, or reconstruct one from the DB.
+	 * Callers must release the lease in a `finally` block.
 	 */
 	async getRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
 		if (this.agentSandboxRuntimeService.isEnabled() && !params.sandboxPrincipalHash) {
@@ -217,10 +220,10 @@ export class AgentRuntimeCacheService {
 		const cacheKey = this.computeRuntimeCacheKey(params);
 
 		const cached = this.runtimes.get(cacheKey);
-		if (cached) return cached;
+		if (cached) return this.acquireRuntimeLease(cached);
 
 		const initialization = this.runtimeInitializations.get(cacheKey);
-		if (initialization) return await initialization.promise;
+		if (initialization) return this.acquireRuntimeLease(await initialization.promise);
 
 		const token = Symbol(cacheKey);
 		const runtimeInitialization: RuntimeInitialization = {
@@ -245,7 +248,7 @@ export class AgentRuntimeCacheService {
 		});
 		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
 
-		return await runtimeInitialization.promise;
+		return this.acquireRuntimeLease(await runtimeInitialization.promise);
 	}
 
 	private async reconstructRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {

@@ -393,7 +393,6 @@ export class AgentExecutionOrchestratorService {
 		const startedAt = recorder.startedAt;
 		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
 		let executionSource = source;
-		this.runtimeCacheService.acquireRuntimeLease(agentInstance);
 
 		try {
 			// A resume request carries no `source` of its own — recover it from
@@ -514,7 +513,6 @@ export class AgentExecutionOrchestratorService {
 			user,
 			sandboxPrincipalHash,
 		});
-		this.runtimeCacheService.acquireRuntimeLease(runtime.agent);
 
 		try {
 			await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
@@ -576,7 +574,6 @@ export class AgentExecutionOrchestratorService {
 			usePublishedVersion: true,
 			sandboxPrincipalHash,
 		});
-		this.runtimeCacheService.acquireRuntimeLease(runtime.agent);
 
 		try {
 			yield* this.streamChatResponse({
@@ -618,7 +615,6 @@ export class AgentExecutionOrchestratorService {
 			usePublishedVersion: true,
 			sandboxPrincipalHash,
 		});
-		this.runtimeCacheService.acquireRuntimeLease(runtime.agent);
 
 		try {
 			yield* this.streamChatResponse({
@@ -662,7 +658,6 @@ export class AgentExecutionOrchestratorService {
 			user,
 			sandboxPrincipalHash,
 		});
-		this.runtimeCacheService.acquireRuntimeLease(runtime.agent);
 
 		try {
 			yield* this.streamChatResponse({

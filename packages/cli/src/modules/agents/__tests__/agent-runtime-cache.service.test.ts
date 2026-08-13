@@ -121,7 +121,6 @@ describe('AgentRuntimeCacheService', () => {
 				.mockResolvedValueOnce(freshRuntime);
 
 			const leasedRuntime = await service.getRuntime({ agentId, projectId });
-			service.acquireRuntimeLease(leasedRuntime.agent);
 			vi.setSystemTime(Date.now() + 30 * 60 * 1000 + 1);
 			const result = await service.getRuntime({ agentId, projectId });
 
@@ -409,6 +408,7 @@ describe('AgentRuntimeCacheService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 		await service.getRuntime({ agentId, projectId });
+		service.releaseRuntimeLease(runtime.agent);
 
 		service.clearRuntimes(agentId);
 
