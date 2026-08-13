@@ -88,10 +88,9 @@ export class AgentIntegrationManagementService {
 	 * step fails, the two still agree:
 	 *
 	 * 1. bring the new connection up — a failed startup persists nothing;
-	 * 2. write the delta — a failed write undoes step 1, restoring the runtime to
-	 *    what it was rather than tearing the channel down unconditionally;
-	 * 3. release the replaced connection — reached only once the write is
-	 *    durable, so a failed write leaves the existing channel live.
+	 * 2. write the delta — a failed write restores the runtime to what it was;
+	 * 3. release the replaced connection — only once the write is durable, so a
+	 *    failed write leaves the existing channel live.
 	 */
 	private async applyChange(options: {
 		agent: Agent;
@@ -125,11 +124,10 @@ export class AgentIntegrationManagementService {
 				{ user: options.user, modifiedBy: options.modifiedBy },
 			);
 		} catch (error) {
-			// Undo step 1 only where it created something. A channel that was
-			// already live is still persisted — the row never changed — so tearing
-			// it down would take a working channel offline over a failed write. The
-			// thread subscriptions stay either way: deleting them is not
-			// recoverable, and the row that justifies them may still exist.
+			// Undo step 1 only where it created something: an already-live channel is
+			// still persisted, so tearing it down would take a working channel offline
+			// over a failed write. Subscriptions always stay — deletion is not
+			// recoverable.
 			if (connected && add && !wasLive) {
 				await this.chatService.disconnectChannel(agent.id, add, { deleteSubscriptions: false });
 			}
@@ -156,13 +154,11 @@ export class AgentIntegrationManagementService {
 	/**
 	 * Settle the runtime against the publication state the write actually read.
 	 *
-	 * Step 1 has to decide whether to connect before the write, so it can only go
-	 * on the caller's copy of `activeVersionId` — and this write deliberately
-	 * leaves that column alone, so a publish or unpublish can land in between.
-	 * Without this step the two races leak: an agent published mid-request would
-	 * keep a persisted channel that was never started, and one unpublished
-	 * mid-request would have a live channel — and a `connect` broadcast — while
-	 * unpublished, which must never receive events.
+	 * Step 1 decides before the write, so it can only go on the caller's copy of
+	 * `activeVersionId`, which a concurrent publish or unpublish can outdate.
+	 * Without this, an agent published mid-request keeps a channel that was never
+	 * started, and one unpublished mid-request gets a live channel — and a
+	 * `connect` broadcast — while unpublished, which must never receive events.
 	 */
 	private async reconcileRuntimeWithPublication(
 		agent: Agent,
@@ -175,8 +171,8 @@ export class AgentIntegrationManagementService {
 				'[AgentIntegrationManagementService] Agent was unpublished while its channel connected — releasing the runtime',
 				{ agentId: agent.id, type: add.type },
 			);
-			// The entry stays persisted, so its thread subscriptions stay too —
-			// mirroring `unpublishAgent`, which preserves them for a later publish.
+			// The entry stays persisted, so its subscriptions do too — as in
+			// `unpublishAgent`, which preserves them for a later publish.
 			await this.chatService.disconnectChannel(agent.id, add, { deleteSubscriptions: false });
 			return false;
 		}
@@ -186,9 +182,8 @@ export class AgentIntegrationManagementService {
 				'[AgentIntegrationManagementService] Agent was published while its channel persisted — starting the runtime',
 				{ agentId: agent.id, type: add.type },
 			);
-			// The entry is already durable at this point, so a failure here leaves it
-			// persisted-but-not-live. That is the same contract `publishAgent` runs
-			// under via `syncToConfig`, and the next publish or restart picks it up.
+			// Already durable, so a failure here leaves it persisted-but-not-live —
+			// the same contract `publishAgent` runs under via `syncToConfig`.
 			try {
 				return await this.startRuntime(agent, add, true);
 			} catch (error) {
@@ -206,14 +201,11 @@ export class AgentIntegrationManagementService {
 	/**
 	 * Start the runtime for an added channel.
 	 *
-	 * Unpublished agents never receive events, so their entry is persisted
-	 * without a connection — matching `syncToConfig`, which picks it up on
-	 * publish. They still get the pre-connect check, which is the only thing that
-	 * would have rejected an unusable credential.
-	 *
-	 * `published` is passed in rather than read off the entity: before the write
-	 * the only copy available is the caller's, and after it the write's own read
-	 * is authoritative.
+	 * Unpublished agents never receive events, so their entry is persisted without
+	 * a connection — matching `syncToConfig`, which picks it up on publish. They
+	 * still get the pre-connect check, the only thing that would have rejected an
+	 * unusable credential. `published` is a parameter because the authority for it
+	 * differs before and after the write.
 	 */
 	private async startRuntime(
 		agent: Agent,

@@ -252,9 +252,8 @@ export class AgentRepository extends Repository<Agent> {
 	}
 
 	/**
-	 * Reads just the columns an integration mutation needs to compute its next
-	 * state, so the write is derived from the current row rather than from a
-	 * request-scoped entity that may have gone stale.
+	 * Reads just the columns an integration mutation needs, so its write derives
+	 * from the current row rather than a possibly-stale request-scoped entity.
 	 */
 	async findIntegrationState(id: string): Promise<AgentIntegrationState | null> {
 		return await this.findOne({
@@ -264,13 +263,10 @@ export class AgentRepository extends Repository<Agent> {
 	}
 
 	/**
-	 * Compare-and-set the two columns an integration mutation owns.
-	 *
-	 * Writing only `integrations` and `versionId` means a channel change can
-	 * never revert a concurrent publish or config write. Guarding on the
-	 * `versionId` that was read makes a lost update visible to the caller —
-	 * which can safely re-read and reapply, because its input is a delta rather
-	 * than a whole array. Returns false when another writer got there first.
+	 * Compare-and-set the two columns an integration mutation owns, so a channel
+	 * change can never revert a concurrent publish or config write. Returns false
+	 * when another writer got there first; the caller can re-read and reapply,
+	 * because its input is a delta rather than a whole array.
 	 */
 	async updateIntegrations(
 		id: string,

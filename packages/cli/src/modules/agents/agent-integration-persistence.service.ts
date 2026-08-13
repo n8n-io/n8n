@@ -37,9 +37,8 @@ export interface IntegrationRef {
 }
 
 /**
- * A single durable change to an agent's channels. Both fields together are a
- * replacement, which has to land in one write so a channel swap can't leave the
- * agent with two live entries or none.
+ * One durable change to an agent's channels. Both fields together are a
+ * replacement, and land in one write so a swap can't leave two entries or none.
  */
 export interface IntegrationDelta {
 	add?: AgentIntegrationConfig;
@@ -53,13 +52,9 @@ export interface IntegrationDeltaResult {
 	/** The entry that was actually removed, for the caller's runtime teardown. */
 	removed?: AgentIntegrationConfig;
 	/**
-	 * Whether the row this delta was applied to was published.
-	 *
-	 * This write deliberately leaves `activeVersionId` alone, so a publish or
-	 * unpublish can land between the caller loading the agent and this write.
-	 * The row read here is the authority on that — callers gating runtime work on
-	 * publication state must use this rather than their own copy. `undefined`
-	 * when no row was read because the delta was empty.
+	 * Publication state of the row this was applied to. The caller's own copy can
+	 * predate a concurrent publish or unpublish; this cannot. `undefined` when no
+	 * row was read.
 	 */
 	published?: boolean;
 }
@@ -134,16 +129,11 @@ export class AgentIntegrationPersistenceService {
 	/**
 	 * Apply one durable change to an agent's channels.
 	 *
-	 * The next array is projected from the freshly read column rather than from
-	 * the caller's entity, and only `integrations`/`versionId` are written — so a
-	 * channel change can neither clobber unrelated columns nor lose a concurrent
-	 * channel change. A lost compare-and-set is retried against a fresh read,
-	 * which is safe precisely because the input is a delta.
-	 *
-	 * Runtime connections are the caller's concern: it decides what has to be
-	 * live before this write and what may be torn down after it. Everything with
-	 * an observable effect outside the row — telemetry, events, cache
-	 * invalidation — happens only once the write has landed.
+	 * The delta is projected onto the freshly read column and only
+	 * `integrations`/`versionId` are written, so it can neither clobber unrelated
+	 * columns nor lose a concurrent channel change; a lost compare-and-set retries
+	 * against a fresh read. Runtime connections are the caller's concern, and
+	 * anything observable outside the row waits until the write has landed.
 	 */
 	async applyIntegrationDelta(
 		agent: Agent,
@@ -173,12 +163,9 @@ export class AgentIntegrationPersistenceService {
 				: undefined;
 
 			const published = state.activeVersionId !== null;
-			// The caller's copy can predate a concurrent publish or unpublish, and
-			// callers derive their response ("configured" vs "connected") and their
-			// runtime decisions from the entity. Carry the value that was actually
-			// read so the entity agrees with the row this delta was applied to. Only
-			// the scalar is set: `activeVersion` is a loaded relation nothing on this
-			// path reads, and inventing one would be worse than leaving it.
+			// Callers derive their response and their runtime decisions from the
+			// entity, so correct it to what was read. Scalar only — nothing here reads
+			// the `activeVersion` relation, and fabricating one would be worse.
 			agent.activeVersionId = state.activeVersionId;
 
 			// A removal of something already gone is not a failure — and with
@@ -189,12 +176,9 @@ export class AgentIntegrationPersistenceService {
 			}
 
 			const integrations = projectIntegrations(current, { add, remove });
-			// Always a fresh draft id, never the one that was read. `versionId` is
-			// the compare-and-set token, so reusing it would guard on a value this
-			// write does not change — and two concurrent channel writes would both
-			// match and silently overwrite each other. Consumers only ever compare
-			// it to `activeVersionId` to tell a draft from a published agent, which
-			// a rotation preserves.
+			// Always fresh: `versionId` is the compare-and-set token, so writing back
+			// the value we guarded on would let two concurrent writes both match.
+			// Consumers only compare it to `activeVersionId`, which a rotation keeps.
 			const versionId = uuid();
 
 			// Gate evaluated against the state about to be written; the marker is
