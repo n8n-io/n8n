@@ -1789,6 +1789,43 @@ describe('WorkflowExecute', () => {
 			]);
 		});
 
+		test.each([
+			{
+				name: 'details',
+				json: { error: 'Error occurred', details: { httpCode: '500' } },
+			},
+			{
+				name: 'message and details',
+				json: {
+					error: 'Error occurred',
+					message: 'Error details',
+					details: { httpCode: '500' },
+				},
+			},
+		])('should handle error in json with $name properties', ({ json }) => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json,
+						pairedItem: { item: 0, input: 0 },
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{
+					json: {
+						...json,
+						someData: 'test',
+					},
+					pairedItem: { item: 0, input: 0 },
+				},
+			]);
+		});
+
 		test('should preserve pairedItem data when routing errors', () => {
 			const nodeSuccessData: INodeExecutionData[][] = [
 				[
