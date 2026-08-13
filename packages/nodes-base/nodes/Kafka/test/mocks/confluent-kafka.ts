@@ -39,8 +39,24 @@ export interface FakeConsumer {
 	};
 }
 
+export interface FakeAdmin {
+	connect: Mock;
+	disconnect: Mock;
+}
+
 const consumers: FakeConsumer[] = [];
+const admins: FakeAdmin[] = [];
 const clientConfigs: KafkaJS.CommonConstructorConfig[] = [];
+
+function createFakeAdmin(): FakeAdmin {
+	const admin: FakeAdmin = {
+		connect: vi.fn(async () => {}),
+		disconnect: vi.fn(async () => {}),
+	};
+
+	admins.push(admin);
+	return admin;
+}
 
 function createFakeConsumer(config: KafkaJS.ConsumerConstructorConfig): FakeConsumer {
 	let eachBatch: EachBatchHandler | undefined;
@@ -117,7 +133,7 @@ function fakeKafkaClient(config?: KafkaJS.CommonConstructorConfig) {
 			disconnect: vi.fn(),
 		})),
 		consumer: vi.fn(createFakeConsumer),
-		admin: vi.fn(),
+		admin: vi.fn(createFakeAdmin),
 	};
 }
 
@@ -147,13 +163,19 @@ export function getFakeConsumers(): FakeConsumer[] {
 	return consumers;
 }
 
+/** Admin clients created through the fake, in creation order. */
+export function getFakeAdmins(): FakeAdmin[] {
+	return admins;
+}
+
 /** Configs passed to the fake `Kafka` constructor, in creation order. */
 export function getFakeClientConfigs(): KafkaJS.CommonConstructorConfig[] {
 	return clientConfigs;
 }
 
-/** Clears the recorded consumers and client configs (not the access count). */
+/** Clears the recorded consumers, admins and client configs (not the access count). */
 export function resetConfluentKafkaRecordings(): void {
 	consumers.length = 0;
+	admins.length = 0;
 	clientConfigs.length = 0;
 }

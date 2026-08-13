@@ -3,8 +3,11 @@ import type { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type {
 	IExecuteFunctions,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INode,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -15,7 +18,7 @@ import { jsonParse, NodeConnectionTypes, NodeError, NodeOperationError } from 'n
 import { generatePairedItemData } from '@utils/utilities';
 
 import { createSchemaRegistry, type KafkaCredentials } from '../utils';
-import { createKafkaProducer, type KafkaProducerOptions } from './transport';
+import { createKafkaClient, createKafkaProducer, type KafkaProducerOptions } from './transport';
 
 const DEFAULT_TIMEOUT_MS = 30000;
 
@@ -115,11 +118,12 @@ const versionDescription: INodeTypeDescription = {
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
-			// Leave the `kafka` credential test to v1: it is resolved per credential type, so a
-			// `methods.credentialTest.kafkaConnectionTest` here would take over v1's test too.
-			// See 'should leave the kafka credential test to v1' in test/Kafka.node.test.ts.
+			// Same test name as v1 on purpose: the test is resolved per credential type and the
+			// implementation is picked newest-version-first, so this one serves every Kafka user.
+			// See 'should own the kafka credential test' in test/Kafka.node.test.ts.
 			name: 'kafka',
 			required: true,
+			testedBy: 'kafkaConnectionTest',
 		},
 		{
 			name: 'schemaRegistryApi',
@@ -319,6 +323,34 @@ export class KafkaV2 implements INodeType {
 			...versionDescription,
 		};
 	}
+
+	methods = {
+		credentialTest: {
+			/**
+			 * Connects with the same client the node executes with, so what the test accepts and
+			 * what a run accepts cannot drift. `createKafkaClient` carries the credential
+			 * conversion, including the mTLS pairing and PEM checks that reject before any I/O.
+			 */
+			async kafkaConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				let admin: KafkaJS.Admin | undefined;
+				try {
+					const kafka = await createKafkaClient(credential.data as unknown as KafkaCredentials);
+					admin = kafka.admin();
+					await admin.connect();
+					return { status: 'OK', message: 'Authentication successful' };
+				} catch (error) {
+					return { status: 'Error', message: ensureError(error).message };
+				} finally {
+					// Never let teardown turn a successful connect into a failure — and the broker
+					// drops the connection anyway once the process is done with it.
+					await admin?.disconnect().catch(() => {});
+				}
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
