@@ -121,9 +121,15 @@ The private marketplace uses the codespace's own GitHub auth — no extra token.
 prompts for it, then remembers). Both repos are in the same org, which is what
 lets this work.
 
-If a user does not authorize it, the clone fails and the skills step is skipped
-(the worker still starts). Existing codespaces created before this change need a
-recreate to get the prompt. The log is at `/tmp/post-start.log`.
+The codespace authenticates git over HTTPS and has no SSH key, so `post-start.mjs`
+sets `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` — Claude Code's plugin loader otherwise
+clones `owner/repo` shorthand over SSH and the private clone fails.
+
+If a user does not authorize the grant, the clone fails and the skills step is
+skipped (the worker still starts). Existing codespaces created before this change
+need a recreate to get the prompt. The log is at `/tmp/post-start.log`: a failed
+`skills repo reachable` line means the grant was not authorized; a failed
+`marketplace add` after a reachable repo means a loader-auth problem.
 
 ## Viewing the dev UI locally
 
@@ -203,7 +209,7 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
 
 ## Costs
 
-Compute bills only while the codespace runs: ~$0.36/hr (4-core) / ~$0.72/hr
-(8-core), ~nothing stopped. Usage draws from a shared monthly org budget, so
+Compute bills only while the codespace runs: ~$0.72/hr for the 8-core box,
+~nothing stopped. Usage draws from a shared monthly org budget, so
 `pnpm session stop` when you leave; the idle timeout is the backstop, not the
 plan.
