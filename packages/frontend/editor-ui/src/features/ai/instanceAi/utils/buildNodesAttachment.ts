@@ -84,3 +84,18 @@ export function partitionSelectionIntoSets(
 
 	return sets;
 }
+
+export function resolveSetNeighbors(
+	set: NodeSet,
+	connections: IConnections,
+): { inputName?: string; outputName?: string } {
+	const inSet = new Set(set.nodeNames);
+	const byDestination = mapConnectionsByDestination(connections);
+	const head = set.nodeNames[0];
+	const tail = set.nodeNames[set.nodeNames.length - 1];
+
+	const inputName = getParentNodes(byDestination, head, 'main', 1).find((n) => !inSet.has(n));
+	const outputName = getChildNodes(connections, tail, 'main', 1).find((n) => !inSet.has(n));
+
+	return { inputName, outputName };
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { IConnections } from 'n8n-workflow';
-import { partitionSelectionIntoSets } from './buildNodesAttachment';
+import { partitionSelectionIntoSets, resolveSetNeighbors } from './buildNodesAttachment';
 
 // Helpers: build a name-keyed IConnections for simple main-type chains.
 function chain(...pairs: Array<[string, string]>): IConnections {
@@ -37,5 +37,27 @@ describe('partitionSelectionIntoSets', () => {
 		const sets = partitionSelectionIntoSets(['Trigger', 'Mid', 'Out'], conns);
 		expect(sets).toHaveLength(1);
 		expect(sets[0].nodeNames).toEqual(['Trigger', 'Mid', 'Out']);
+	});
+});
+
+describe('resolveSetNeighbors', () => {
+	it('finds the external input feeding the set head', () => {
+		const conns = chain(['Webhook', 'A'], ['A', 'B']);
+		const r = resolveSetNeighbors({ nodeNames: ['A', 'B'] }, conns);
+		expect(r.inputName).toBe('Webhook');
+		expect(r.outputName).toBeUndefined();
+	});
+
+	it('finds the external output the set tail feeds', () => {
+		const conns = chain(['A', 'B'], ['B', 'Slack']);
+		const r = resolveSetNeighbors({ nodeNames: ['A', 'B'] }, conns);
+		expect(r.outputName).toBe('Slack');
+	});
+
+	it('returns undefined at both edges when the set spans a whole isolated chain', () => {
+		const conns = chain(['A', 'B']);
+		const r = resolveSetNeighbors({ nodeNames: ['A', 'B'] }, conns);
+		expect(r.inputName).toBeUndefined();
+		expect(r.outputName).toBeUndefined();
 	});
 });
