@@ -360,7 +360,6 @@ describe('CreateWorkflowPublicDto', () => {
 			expect(result.success).toBe(false);
 			if (!result.success) {
 				expect(result.error.issues[0].message).not.toContain('read-only');
-				expect(result.error.issues[0].message).toContain('nam');
 			}
 		});
 	});

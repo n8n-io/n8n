@@ -1,7 +1,7 @@
-import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { workflowPublicSchema } from './workflow-public.dto';
+import { createOpenApiRequestErrorMap } from '../openapi-request-error-map';
 
 /**
  * What the hand-written `workflowNodeGroup.yml` published, which is what callers were allowed to
@@ -23,7 +23,7 @@ const GROUP_DESCRIPTION_PUBLIC_MAX_LENGTH = 155;
  * `satisfies` ties the names to the response schema, so renaming a field there fails the build
  * here rather than silently degrading this message to the generic one.
  */
-const READ_ONLY_PUBLIC_FIELDS = new Set<string>([
+const READ_ONLY_PUBLIC_FIELDS: string[] = [
 	'id',
 	'active',
 	'createdAt',
@@ -34,22 +34,20 @@ const READ_ONLY_PUBLIC_FIELDS = new Set<string>([
 	'meta',
 	'tags',
 	'activeVersion',
-] satisfies Array<keyof typeof workflowPublicSchema.shape>);
+] satisfies Array<keyof typeof workflowPublicSchema.shape>;
 
-/** Tells a caller a rejected key is read-only, rather than leaving it to look like a typo. */
-export const readOnlyPublicFieldErrorMap: z.ZodErrorMap = (issue, ctx) => {
-	if (issue.code === z.ZodIssueCode.unrecognized_keys) {
-		const readOnly = issue.keys.filter((key) => READ_ONLY_PUBLIC_FIELDS.has(key));
+/** `node.yml` and `sharedWorkflow.yml` published only their timestamps as `readOnly`. */
+const READ_ONLY_TIMESTAMP_FIELDS: string[] = ['createdAt', 'updatedAt'];
 
-		if (readOnly.length > 0) {
-			const names = readOnly.map((key) => `'${key}'`).join(', ');
-			const verb = readOnly.length > 1 ? 'are read-only fields' : 'is a read-only field';
-			return { message: `${names} ${verb} and cannot be set` };
-		}
+export const workflowWritePublicErrorMap = createOpenApiRequestErrorMap((path, key) => {
+	const container = path.filter((segment) => typeof segment === 'string').join('.');
+
+	if (container === '') return READ_ONLY_PUBLIC_FIELDS.includes(key);
+	if (container === 'nodes' || container === 'shared') {
+		return READ_ONLY_TIMESTAMP_FIELDS.includes(key);
 	}
-
-	return { message: ctx.defaultError };
-};
+	return false;
+});
 
 /**
  * Mirrors the hand-written `node.yml`, down to `additionalProperties: false` and its lack of any
@@ -92,10 +90,10 @@ const nodeWritePublicSchema = z
 
 const nodesWritePublicSchema = z.array(nodeWritePublicSchema);
 
-const connectionsWritePublicSchema = z.custom<IConnections>(
-	(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
-	{ message: 'Connections must be an object' },
-);
+// `connections` was published as a bare `type: object`, so nothing inside it is checked -- but the
+// object-ness is, and a record reports a missing or wrongly typed value the same way every other
+// property does. A `z.custom` predicate cannot: it answers "missing" and "not an object" alike.
+const connectionsWritePublicSchema = z.record(z.string(), z.unknown());
 
 // Mirrors the hand-written `workflowNodeGroup.yml`: a small, fully specified structure, so it is
 // described rather than waved through. Declared here rather than reusing the internal
@@ -145,17 +143,17 @@ const settingsWritePublicSchema = z
 // column transformer, exactly as it was before this DTO existed. The string still has to *be*
 // JSON: `format: jsonString` made the old API reject anything else with a 400, and without the
 // check the persistence layer throws on a parse failure and the caller sees a 500.
-const jsonStringPublicSchema = z.string().refine(
-	(value) => {
-		try {
-			JSON.parse(value);
-			return true;
-		} catch {
-			return false;
-		}
-	},
-	{ message: 'Must be a JSON string' },
-);
+const jsonStringPublicSchema = z.string().superRefine((value, ctx) => {
+	try {
+		JSON.parse(value);
+	} catch {
+		// Fatal so the surrounding union keeps reporting every branch it tried: a merely failed
+		// refinement is "dirty", and Zod returns a dirty branch instead of the union-wide error.
+		// The format goes in `params` rather than `message` so the error map still gets to word it —
+		// an issue that carries its own message skips the map entirely.
+		ctx.addIssue({ code: z.ZodIssueCode.custom, params: { format: 'jsonString' }, fatal: true });
+	}
+});
 
 const staticDataWritePublicSchema = z
 	.union([jsonStringPublicSchema, z.record(z.string(), z.unknown())])

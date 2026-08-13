@@ -80,7 +80,10 @@ requestBody:
                         additionalProperties: false
                   additionalProperties: false
               additionalProperties: false
-          connections: {}
+          connections:
+            type: object
+            additionalProperties:
+              nullable: true
           nodeGroups:
             type: array
             items:

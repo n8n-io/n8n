@@ -44,31 +44,33 @@ export const Z = {
 		 * default, so without this a client's typo would be silently accepted where it used to
 		 * return 400.
 		 *
-		 * `errorMap` lets a DTO explain those rejections in its own terms - for example, saying a
-		 * key is read-only rather than unrecognised.
+		 * `errorMap` lets a DTO word its own rejections. It is applied at parse time rather than
+		 * attached to the object, so it reaches issues raised anywhere in the shape - an object
+		 * error map only ever sees that one object's own issues, not its properties'.
 		 */
 		options: { strict?: boolean; errorMap?: z.ZodErrorMap } = {},
 	): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> => {
-		const object = options.errorMap
-			? z.object(shape, { errorMap: options.errorMap })
-			: z.object(shape);
+		const object = z.object(shape);
 		const schema = options.strict ? object.strict() : object;
+		const params: z.ParseParams | undefined = options.errorMap
+			? ({ errorMap: options.errorMap } as z.ParseParams)
+			: undefined;
 		type Output = z.objectOutputType<T, z.ZodTypeAny>;
 
 		const DtoClass = class {
 			static schema = schema;
 
 			constructor(data: Output) {
-				const parsed = schema.parse(data);
+				const parsed = schema.parse(data, params);
 				Object.assign(this, parsed);
 			}
 
 			static safeParse(data: unknown) {
-				return schema.safeParse(data);
+				return schema.safeParse(data, params);
 			}
 
 			static parse(data: unknown): Output {
-				return schema.parse(data);
+				return schema.parse(data, params);
 			}
 
 			static extend<U extends z.ZodRawShape>(additionalShape: U) {
