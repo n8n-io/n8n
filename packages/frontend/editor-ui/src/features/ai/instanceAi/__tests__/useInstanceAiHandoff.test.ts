@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	syncThread: vi.fn(),
 	updateThreadMetadata: vi.fn(),
+	deleteThread: vi.fn(),
 	getOrCreateRuntime: vi.fn(),
 	sendMessage: vi.fn(),
 	showError: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('../instanceAi.store', () => ({
 	useInstanceAiStore: () => ({
 		syncThread: mocks.syncThread,
 		updateThreadMetadata: mocks.updateThreadMetadata,
+		deleteThread: mocks.deleteThread,
 		getOrCreateRuntime: mocks.getOrCreateRuntime,
 	}),
 }));
@@ -35,9 +37,15 @@ import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	buildInstanceAiCredentialHandoffContext,
 	clearPendingAgentAttachment,
-	consumePendingHandoffContext,
+	clearPendingComposerDraft,
+	clearPendingHandoffContext,
+	clearPendingThreadHandoff,
 	getPendingAgentAttachment,
+	getPendingComposerDraft,
+	getPendingHandoffContext,
+	provisionContextOnlyThread,
 	stashPendingAgentAttachment,
+	stashPendingComposerDraft,
 	stashPendingHandoffContext,
 	useInstanceAiHandoff,
 } from '../composables/useInstanceAiHandoff';
@@ -48,6 +56,7 @@ describe('useInstanceAiHandoff', () => {
 		localStorage.clear();
 		mocks.syncThread.mockResolvedValue(undefined);
 		mocks.updateThreadMetadata.mockResolvedValue(undefined);
+		mocks.deleteThread.mockResolvedValue(true);
 		mocks.getOrCreateRuntime.mockReturnValue({ sendMessage: mocks.sendMessage });
 	});
 
@@ -123,7 +132,7 @@ describe('useInstanceAiHandoff', () => {
 		});
 	});
 
-	it('stashes and consumes a pending handoff context once', () => {
+	it('keeps a pending handoff context until it is explicitly cleared', () => {
 		const context = buildInstanceAiAgentPreviewHandoffContext({
 			agentId: 'agent-1',
 			threadId: 'thread-1',
@@ -131,8 +140,43 @@ describe('useInstanceAiHandoff', () => {
 
 		stashPendingHandoffContext('thread-1', context);
 
-		expect(consumePendingHandoffContext('thread-1')).toEqual(context);
-		expect(consumePendingHandoffContext('thread-1')).toBeNull();
+		expect(getPendingHandoffContext('thread-1')).toEqual(context);
+		expect(getPendingHandoffContext('thread-1')).toEqual(context);
+		clearPendingHandoffContext('thread-1');
+		expect(getPendingHandoffContext('thread-1')).toBeNull();
+	});
+
+	it('keeps a pending composer draft until it is explicitly cleared', () => {
+		stashPendingComposerDraft('thread-1', 'Fix this tool failure');
+
+		expect(getPendingComposerDraft('thread-1')).toBe('Fix this tool failure');
+		expect(getPendingComposerDraft('thread-1')).toBe('Fix this tool failure');
+		clearPendingComposerDraft('thread-1');
+		expect(getPendingComposerDraft('thread-1')).toBeNull();
+	});
+
+	it('provisions a context-only thread with an optional composer draft', async () => {
+		const context = buildInstanceAiAgentPreviewHandoffContext({
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			executionId: 'exec-1',
+		});
+		const launch = {
+			source: 'agent_preview' as const,
+			origin: 'internal' as const,
+		};
+
+		const threadId = await provisionContextOnlyThread(
+			'project-1',
+			context,
+			launch,
+			'Fix this tool failure',
+		);
+
+		expect(threadId).toBe('thread-1');
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', launch);
+		expect(getPendingHandoffContext('thread-1')).toEqual(context);
+		expect(getPendingComposerDraft('thread-1')).toBe('Fix this tool failure');
 	});
 
 	it('keeps a pending agent attachment until it is explicitly cleared', () => {
@@ -151,8 +195,33 @@ describe('useInstanceAiHandoff', () => {
 		expect(getPendingAgentAttachment('thread-1')).toBeNull();
 	});
 
+	it('clears all pending handoff state for a thread', () => {
+		const context = buildInstanceAiAgentPreviewHandoffContext({
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+		});
+		stashPendingHandoffContext('thread-1', context);
+		stashPendingComposerDraft('thread-1', 'Fix the failed tool calls');
+		stashPendingAgentAttachment('thread-1', {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'project-1',
+		});
+
+		clearPendingThreadHandoff('thread-1');
+
+		expect(getPendingHandoffContext('thread-1')).toBeNull();
+		expect(getPendingComposerDraft('thread-1')).toBeNull();
+		expect(getPendingAgentAttachment('thread-1')).toBeNull();
+	});
+
 	it('opens an agent artifact thread without sending a message', async () => {
 		const { openAgentArtifactThread } = useInstanceAiHandoff();
+		const context = buildInstanceAiAgentPreviewHandoffContext({
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			executionId: 'execution-1',
+		});
 
 		const opened = await openAgentArtifactThread(
 			{
@@ -166,6 +235,7 @@ describe('useInstanceAiHandoff', () => {
 				origin: 'internal',
 				sourceContext: { agentId: 'agent-1' },
 			},
+			{ context, initialDraft: 'Fix the failed tool calls' },
 		);
 
 		expect(opened).toBe(true);
@@ -180,6 +250,10 @@ describe('useInstanceAiHandoff', () => {
 				projectId: 'project-1',
 				name: 'Agent One',
 			},
+			instanceAiAgentPreviewView: {
+				agentId: 'agent-1',
+				threadId: 'preview-thread-1',
+			},
 		});
 		expect(getPendingAgentAttachment('thread-1')).toEqual({
 			type: 'agent',
@@ -187,11 +261,49 @@ describe('useInstanceAiHandoff', () => {
 			name: 'Agent One',
 			projectId: 'project-1',
 		});
+		expect(getPendingHandoffContext('thread-1')).toEqual(context);
+		expect(getPendingComposerDraft('thread-1')).toBe('Fix the failed tool calls');
 		expect(mocks.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(mocks.sendMessage).not.toHaveBeenCalled();
 		expect(mocks.routerPush).toHaveBeenCalledWith({
 			name: 'InstanceAiThread',
 			params: { threadId: 'thread-1' },
 		});
+	});
+
+	it('clears pending agent handoff state when navigation fails', async () => {
+		mocks.routerPush.mockRejectedValueOnce(new Error('Navigation failed'));
+		const context = buildInstanceAiAgentPreviewHandoffContext({
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+		});
+		const { openAgentArtifactThread } = useInstanceAiHandoff();
+
+		const opened = await openAgentArtifactThread(
+			{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			{ source: 'agent_preview', origin: 'internal' },
+			{ context, initialDraft: 'Fix the failed tool calls' },
+		);
+
+		expect(opened).toBe(false);
+		expect(getPendingAgentAttachment('thread-1')).toBeNull();
+		expect(getPendingHandoffContext('thread-1')).toBeNull();
+		expect(getPendingComposerDraft('thread-1')).toBeNull();
+		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1');
+		expect(mocks.showError).toHaveBeenCalled();
+	});
+
+	it('removes the new thread when artifact metadata cannot be saved', async () => {
+		mocks.updateThreadMetadata.mockRejectedValueOnce(new Error('Save failed'));
+		const { openAgentArtifactThread } = useInstanceAiHandoff();
+
+		const opened = await openAgentArtifactThread(
+			{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			{ source: 'agent_preview', origin: 'internal' },
+		);
+
+		expect(opened).toBe(false);
+		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1');
+		expect(mocks.routerPush).not.toHaveBeenCalled();
 	});
 });

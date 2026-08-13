@@ -425,11 +425,22 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			nameCounts: credentialNameCounts,
 		});
 		const seededCredentialIds = createdCredentials.map((c) => c.id);
+		// `createDeclaredCredentials` returns one entry per `declaredCredentials`, in
+		// the same order — index-zip to find which seeded ids the case marked
+		// already-broken (`valid: false`) and must NOT bypass, so their real
+		// connection test runs and fails.
+		const bypassCredentialTestIds = createdCredentials
+			.filter((_, i) => declaredCredentials[i]?.valid !== false)
+			.map((c) => c.id);
 		try {
 			// A seeded credential models one the user already has connected, so its
 			// connection test resolves as passing — same as one set up on a card
 			// during the run. Both carry a placeholder token that would really fail.
-			await client.setThreadCredentialAllowlist(threadId, seededCredentialIds, seededCredentialIds);
+			await client.setThreadCredentialAllowlist(
+				threadId,
+				seededCredentialIds,
+				bypassCredentialTestIds,
+			);
 		} catch (error: unknown) {
 			// Only a missing endpoint (older backend) may degrade to the legacy
 			// unpinned view, and only for cases that declared nothing — any other
@@ -598,7 +609,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				...(credentialViewPinned
 					? {
 							allowlistedCredentialIds: seededCredentialIds,
-							bypassCredentialTestIds: seededCredentialIds,
+							bypassCredentialTestIds,
 							createdCredentialIds: config.createdCredentialIds,
 							credentialNameCounts,
 						}
