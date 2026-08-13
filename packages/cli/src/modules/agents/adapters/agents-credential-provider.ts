@@ -80,8 +80,11 @@ export class AgentsCredentialProvider
 	 *
 	 * Agents have no workflow or execution, so `additionalData` comes from
 	 * `getBase()`, which supplies the secrets proxy and the project's variables.
-	 * `internal` mode keeps dynamic (per-user resolvable) credentials out of
-	 * scope; they need an execution context agents don't have.
+	 *
+	 * `internal` mode skips dynamic-credential resolution, which needs an
+	 * execution context agents don't have. A per-user resolvable credential
+	 * therefore falls back to its static stored data rather than failing — the
+	 * same behaviour as before this path existed.
 	 */
 	private async decryptWithExpressions(
 		credential: CredentialsEntity,

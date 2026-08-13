@@ -95,6 +95,9 @@ function makeBackend() {
 
 describe('AgentVectorStoresService.testConnection', () => {
 	beforeEach(() => {
+		// `credentialsHelper` is module-scoped, so its call counts would otherwise
+		// accumulate across tests (`restoreMocks` only restores spies).
+		vi.clearAllMocks();
 		vi.mocked(buildVectorStoreBackend).mockReset();
 		vi.mocked(resolveEmbeddingProviderOptionsFromCredential).mockReset().mockResolvedValue({});
 	});
