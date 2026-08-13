@@ -1198,7 +1198,7 @@ describe('TriggerExecutionContextFactory', () => {
 			});
 
 			expect(scopedLogger.debug).toHaveBeenCalledWith(
-				expect.stringContaining('the poll no longer holds its lease, or its cursor row is gone'),
+				expect.stringContaining('the poll no longer holds its lease'),
 				{ workflowId: 'wf-1', nodeId: 'node-1', nodeName: 'Poll Node' },
 			);
 		});

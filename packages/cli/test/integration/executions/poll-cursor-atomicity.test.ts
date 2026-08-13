@@ -384,21 +384,22 @@ describe('poll cursor atomicity', () => {
 			});
 		});
 
-		it('leaves no poller_state row behind when a first-ever poll is fenced out', async () => {
+		it('throws and stores nothing when the cursor row disappeared mid-poll, even with a live fence', async () => {
+			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
 			const task = await seedRunningTask();
 			const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
-			await scheduledTaskRepository.update(task.id, { leaseEpoch: task.leaseEpoch + 1 });
+			await pollerStateRepository.delete({ workflowId: workflow.id, nodeId });
 
-			const result = await pollCursorService.commitWithExecution({
-				workflowId: workflow.id,
-				nodeId,
-				cursor: { lastItemId: 'b' },
-				payload: buildPayload(),
-				fence,
-			});
-
-			expect(result).toBeNull();
-			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toBeNull();
+			await expect(
+				pollCursorService.commitWithExecution({
+					workflowId: workflow.id,
+					nodeId,
+					cursor: { lastItemId: 'b' },
+					payload: buildPayload(),
+					fence,
+				}),
+			).rejects.toThrow('Poller cursor row disappeared while its poll was running');
+			expect(await executionRepository.find({ select: ['id'] })).toEqual([]);
 		});
 	});
 });

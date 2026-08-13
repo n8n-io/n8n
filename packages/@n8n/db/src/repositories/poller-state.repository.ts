@@ -74,10 +74,10 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	 * @param nodeId - Poll trigger node whose cursor is advancing.
 	 * @param cursor - New cursor value to store.
 	 * @param ctx - Transaction to run the update in.
-	 * @param fence - Lease to check before writing. If given, returns `false` instead of
-	 *   throwing when someone else now owns this poll.
+	 * @param fence - Lease to check before writing. If given and no longer matching,
+	 *   the cursor is left untouched.
 	 * @returns `true` if the cursor was advanced, `false` if `fence` no longer matches.
-	 * @throws {UnexpectedError} when no `fence` is given and the row is missing, since
+	 * @throws {UnexpectedError} when the row is missing, with or without a `fence`, since
 	 *   the only explanation left is that the workflow or node was deleted mid-poll.
 	 * @remarks Run this in the same transaction as the execution insert for the poll's result,
 	 * 	so the two commit or roll back together. If two polls of the same node overlap,
@@ -109,7 +109,9 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			return true;
 		}
 
-		if (fence) {
+		// The guarded UPDATE alone cannot tell a rejected fence from a missing row, so
+		// the failure path re-reads the row to keep the two outcomes distinct.
+		if (fence && (await manager.existsBy(PollerState, { workflowId, nodeId }))) {
 			return false;
 		}
 
