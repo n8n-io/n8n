@@ -1193,23 +1193,19 @@ setUnauthorizedHandler((baseURL) => {
 	void handleSessionExpired(router, baseURL);
 });
 
-async function initializeForNavigation(to: RouteLocationNormalized) {
-	try {
-		await initializeCore();
-		// Pass undefined for first param to use default
-		await initializeAuthenticatedFeatures(undefined, to.name as string);
-	} catch (error) {
-		if (error instanceof MfaRequiredError) {
-			throw error; // let the caller's MFA redirect handle it
-		}
-		// Swallowed so the caller's permission checks still run on whatever state did initialize.
-		console.error(error);
-	}
-}
-
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 	try {
-		await initializeForNavigation(to);
+		try {
+			await initializeCore();
+			// Pass undefined for first param to use default
+			await initializeAuthenticatedFeatures(undefined, to.name as string);
+		} catch (error) {
+			if (error instanceof MfaRequiredError) {
+				throw error; // let the outer catch's MFA redirect handle it
+			}
+			// Swallowed so the permission checks below still run on whatever state did initialize.
+			console.error(error);
+		}
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once
