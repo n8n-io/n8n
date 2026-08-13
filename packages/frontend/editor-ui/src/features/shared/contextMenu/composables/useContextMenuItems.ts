@@ -577,8 +577,10 @@ export function useContextMenuItems(
 				menuActions.unshift(...singleNodeActions);
 			}
 
-			// The AI "add to chat" action sits at the very top of the menu.
+			// The AI "add to chat" action sits at the very top of the menu, set off
+			// from the rest by a divider on the item that follows it.
 			if (addToChatAction) {
+				if (menuActions[0]) menuActions[0] = { ...menuActions[0], divided: true };
 				menuActions.unshift(addToChatAction);
 			}
 

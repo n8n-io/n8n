@@ -475,7 +475,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 						:shortcut="ADD_TO_CHAT_SHORTCUT"
 					>
 						<N8nIconButton
-							class="nodrag"
+							:class="['nodrag', $style.addToChatButton]"
 							variant="ghost"
 							size="small"
 							icon="sparkles"
@@ -917,6 +917,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 	border-radius: var(--radius);
 	opacity: 0;
 	transition: opacity 0.1s ease-in;
+}
+
+// The add-to-chat entry uses the n8n accent so it reads as the AI action.
+.addToChatButton {
+	--button--color: var(--color--primary);
 }
 
 .titleBar:hover .toolbarItems {

@@ -154,6 +154,7 @@ function onExtractWorkflowClick() {
 				:shortcut="ADD_TO_CHAT_SHORTCUT"
 			>
 				<N8nIconButton
+					:class="$style.addToChatButton"
 					size="small"
 					variant="ghost"
 					icon="sparkles"
@@ -184,5 +185,10 @@ function onExtractWorkflowClick() {
 	background-color: var(--canvas--color--background);
 	border-radius: var(--radius);
 	pointer-events: auto;
+}
+
+// The add-to-chat entry uses the n8n accent so it reads as the AI action.
+.addToChatButton {
+	--button--color: var(--color--primary);
 }
 </style>
