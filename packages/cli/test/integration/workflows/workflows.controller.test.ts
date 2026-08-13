@@ -180,6 +180,39 @@ describe('POST /workflows', () => {
 		expect(created.staticData).toBeNull();
 	});
 
+	test('should reject a workflow whose nodes share a node id', async () => {
+		const payload = {
+			name: 'duplicate node ids',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('share the node ID "uuid-1234"');
+	});
+
 	test('should retain accept `workflow.id`', async () => {
 		const payload = {
 			id: 'HDssU5Ce250UWyLg_MNG4',
@@ -3415,7 +3448,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		});
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain('Duplicate node id "uuid-1234"');
+		expect(response.body.message).toContain('share the node ID "uuid-1234"');
 	});
 
 	test('should broadcast workflow update to collaborators', async () => {
