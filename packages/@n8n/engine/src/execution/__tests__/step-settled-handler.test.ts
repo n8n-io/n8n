@@ -177,6 +177,23 @@ describe('StepSettledHandler', () => {
 		});
 	});
 
+	it("fails the execution when a sibling's settlement sees a failed predecessor", async () => {
+		const stepStore = makeStepStore({ id: 'step-c', nodeId: 'c' }, {}, [
+			...defaultSummaries,
+			summary('b', 'failed'),
+			summary('c', 'completed', [true]),
+		]);
+		const { handler, executionStore, stepQueue, orchestrationQueue } = makeHandler(stepStore);
+
+		await handler.handle({ ...event, stepId: 'step-c' });
+
+		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
+		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.createSteps).not.toHaveBeenCalled();
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
+	});
+
 	it('loads the decision rows in one query: the successors and their predecessors', async () => {
 		const stepStore = makeStepStore({ id: 'step-b', nodeId: 'b' }, {}, [
 			...defaultSummaries,

@@ -41,17 +41,23 @@ export class StepSettledHandler {
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.
 		if (step.status === 'failed') {
-			await this.executionStore.finishExecution(execution.id, 'failed');
-			await this.stepStore.cancelQueuedSteps(execution.id);
+			await this.failExecution(execution.id);
 			return;
 		}
 
 		if (execution.status !== 'running') return;
 
-		const queued =
-			step.status === 'completed' || step.status === 'skipped'
-				? await this.planSuccessors(execution, step.nodeId)
-				: 0;
+		let queued = 0;
+		if (step.status === 'completed' || step.status === 'skipped') {
+			const steps = await this.loadDecisionSteps(execution, step.nodeId);
+
+			if (Object.values(steps).some((summary) => summary.status === 'failed')) {
+				await this.failExecution(execution.id);
+				return;
+			}
+
+			queued = await this.planSuccessors(execution, step.nodeId, steps);
+		}
 
 		// If we've queued steps, we know the execution isn't done yet, so we
 		// definitely don't need to mark it finished.
@@ -60,9 +66,18 @@ export class StepSettledHandler {
 		await this.finishExecutionIfDone(execution);
 	}
 
+	/** Fail-fast: record the execution as failed and cancel work not yet claimed. */
+	private async failExecution(executionId: string): Promise<void> {
+		await this.executionStore.finishExecution(executionId, 'failed');
+		await this.stepStore.cancelQueuedSteps(executionId);
+	}
+
 	/** Plans the direct successors of `nodeId`, returning how many were queued. */
-	private async planSuccessors(execution: ExecutionRecord, nodeId: string): Promise<number> {
-		const steps = await this.loadDecisionSteps(execution, nodeId);
+	private async planSuccessors(
+		execution: ExecutionRecord,
+		nodeId: string,
+		steps: Record<string, StepSummary>,
+	): Promise<number> {
 		const { toQueue, toSkip } = decideSuccessors(execution.graph, nodeId, steps);
 		if (toQueue.length === 0 && toSkip.length === 0) return 0;
 

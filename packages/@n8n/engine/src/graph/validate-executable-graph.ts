@@ -1,5 +1,6 @@
 import { UnimplementedError } from '../common';
 import type { WorkflowGraph } from './workflow-graph';
+import { getDescendantNodeIds } from './workflow-graph-queries';
 
 const MAX_SLOT_INDEX = 100;
 
@@ -32,6 +33,16 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 	// graphs with back-edges are rejected outright rather than deadlocking.
 	if (graph.edges.some((edge) => edge.isBackEdge)) {
 		throw new UnimplementedError('Graphs with back-edges (loops) are not supported yet');
+	}
+
+	const [trigger] = triggers;
+	const reachable = new Set([trigger.id, ...getDescendantNodeIds(graph, trigger.id)]);
+	for (const edge of graph.edges) {
+		if (reachable.has(edge.to) && !reachable.has(edge.from)) {
+			throw new GraphValidationError(
+				`Edge ${edge.from} → ${edge.to} feeds a node the trigger reaches from one it cannot reach; ${edge.to} would wait on ${edge.from} forever`,
+			);
+		}
 	}
 
 	// Slot indices are structural, so they're enforced here rather than left to
