@@ -1,3 +1,11 @@
+## [2.35.2](https://github.com/n8n-io/n8n/compare/n8n@2.35.1...n8n@2.35.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* **core:** Report the real activation mode for triggers activated via the publication outbox ([#36151](https://github.com/n8n-io/n8n/issues/36151)) ([07e3927](https://github.com/n8n-io/n8n/commit/07e3927d0ced53aa1572d278933c424a1bc265ee))
+
+
 ## [2.35.1](https://github.com/n8n-io/n8n/compare/n8n@2.35.0...n8n@2.35.1) (2026-08-12)
 
 
