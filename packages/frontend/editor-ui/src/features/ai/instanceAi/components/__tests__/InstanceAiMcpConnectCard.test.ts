@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
-import { computed, nextTick, reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -16,22 +16,6 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 const mcpStoreMock = vi.fn();
 vi.mock('../../instanceAiMcp.store', () => ({
 	useInstanceAiMcpStore: () => mcpStoreMock(),
-}));
-
-const { mcpGateMock } = vi.hoisted(() => ({
-	mcpGateMock: { isFeatureEnabled: true, mcpAccessEnabled: true },
-}));
-
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: () => ({
-		isFeatureEnabled: computed(() => mcpGateMock.isFeatureEnabled),
-	}),
-}));
-
-vi.mock('../../instanceAiSettings.store', () => ({
-	useInstanceAiSettingsStore: () => ({
-		settings: { mcpAccessEnabled: mcpGateMock.mcpAccessEnabled },
-	}),
 }));
 
 const {
@@ -139,8 +123,6 @@ describe('InstanceAiMcpConnectCard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		credentialsMock.credentials = [];
-		mcpGateMock.isFeatureEnabled = true;
-		mcpGateMock.mcpAccessEnabled = true;
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mcpStoreMock.mockReturnValue(makeMcpStore());
 	});
@@ -296,20 +278,6 @@ describe('InstanceAiMcpConnectCard', () => {
 
 		expect(telemetryMock.trackToolsListOpened).toHaveBeenCalled();
 		expect(uiStoreMock.openModal).toHaveBeenCalledWith(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
-	});
-
-	it.each([
-		['the experiment is off', { isFeatureEnabled: false, mcpAccessEnabled: true }],
-		['the instance disallows MCP access', { isFeatureEnabled: true, mcpAccessEnabled: false }],
-	])('hides browse all when %s', (_case, gate) => {
-		Object.assign(mcpGateMock, gate);
-
-		const { queryByTestId, getByTestId } = renderComponent({
-			props: { servers: [BRAVE_PAYLOAD] },
-		});
-
-		expect(queryByTestId('instance-ai-mcp-connect-browse-all')).toBeNull();
-		expect(getByTestId('instance-ai-mcp-connect-resolve')).toBeVisible();
 	});
 
 	it('renders the expired title with no actions', () => {

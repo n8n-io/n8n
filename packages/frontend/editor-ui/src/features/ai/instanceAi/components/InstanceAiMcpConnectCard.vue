@@ -6,8 +6,6 @@ import { computed, provide, ref, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '@/app/constants/modals';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
-import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import ToolCredentialPicker from '@/features/shared/toolsConnection/ToolCredentialPicker.vue';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
@@ -33,9 +31,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
-const instanceAiSettingsStore = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
-const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
 const { connectServer, connectWithCredential, createCredentialAdapter } = useMcpServerConnect();
@@ -98,9 +94,6 @@ const rows = computed<CardRow[]>(() =>
 
 const isActionable = computed(() => !props.readOnly && !props.expired);
 const anyConnected = computed(() => rows.value.some((row) => row.item.isConnected));
-const showsBrowseAll = computed(
-	() => isMcpFeatureEnabled.value && instanceAiSettingsStore.settings?.mcpAccessEnabled,
-);
 
 function finish(approved: boolean) {
 	if (!isActionable.value) return;
@@ -220,12 +213,8 @@ function openSettings(row: CardRow) {
 			</ConnectionRow>
 		</div>
 
-		<ConfirmationFooter
-			v-if="isActionable"
-			:layout="showsBrowseAll ? 'row-between' : 'row-end'"
-			bordered
-		>
-			<span v-if="showsBrowseAll" :class="$style.browseAll">
+		<ConfirmationFooter v-if="isActionable" layout="row-between" bordered>
+			<span :class="$style.browseAll">
 				<N8nText size="small" color="text-light">
 					{{ i18n.baseText('instanceAi.mcpConnect.browseAll.prompt') }}
 				</N8nText>
