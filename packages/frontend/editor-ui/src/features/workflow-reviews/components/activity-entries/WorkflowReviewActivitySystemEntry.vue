@@ -121,7 +121,6 @@ const actorName = computed(() =>
 						separator on the actorless entries. -->
 					<span aria-hidden="true" :class="$style.separator">|</span>
 				</N8nText>
-				<!-- One phrase in one colour ("Requested changes 2 hours ago"). -->
 				<N8nText
 					size="medium"
 					color="text-base"
@@ -130,7 +129,9 @@ const actorName = computed(() =>
 				>
 					{{ content.text }}
 				</N8nText>
-				<N8nText size="small" color="text-base" :class="$style.line">
+				<!-- Lighter than the phrase it follows: the design gives both the same colour, but
+					the timestamp reads as metadata and recedes better greyed. -->
+				<N8nText size="small" color="text-light" :class="$style.line">
 					<time :datetime="entry.createdAt">
 						<TimeAgo :date="entry.createdAt" />
 					</time>

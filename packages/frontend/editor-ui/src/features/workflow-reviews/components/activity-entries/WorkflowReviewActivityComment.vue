@@ -39,7 +39,8 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 					>
 						{{ authorName(message) }}
 					</N8nText>
-					<N8nText size="small" color="text-base">
+					<!-- Same as a system entry's timestamp: metadata, so lighter than the name. -->
+					<N8nText size="small" color="text-light">
 						<time
 							:datetime="message.createdAt"
 							data-test-id="workflow-review-activity-comment-time"
