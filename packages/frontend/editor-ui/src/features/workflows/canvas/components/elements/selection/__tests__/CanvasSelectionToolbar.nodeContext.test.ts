@@ -9,11 +9,11 @@ vi.mock('@/features/ai/instanceAi/composables/useAddNodesToChat', () => ({
 	useAddNodesToChat: () => ({ isNodeContextEnabled: isEnabled, addSelectedNodesToChat: vi.fn() }),
 }));
 
-function twoNodes(): GraphNode[] {
-	return [
-		{ id: 'n1', type: 'default', position: { x: 0, y: 0 }, data: {} },
-		{ id: 'n2', type: 'default', position: { x: 1, y: 0 }, data: {} },
-	] as GraphNode[];
+function nodes(count: number): GraphNode[] {
+	return Array.from(
+		{ length: count },
+		(_, i) => ({ id: `n${i}`, type: 'default', position: { x: i, y: 0 }, data: {} }) as GraphNode,
+	);
 }
 
 describe('CanvasSelectionToolbar — add to chat', () => {
@@ -22,9 +22,16 @@ describe('CanvasSelectionToolbar — add to chat', () => {
 		isEnabled.value = true;
 	});
 
-	it('shows the button when flag on and >1 selected', () => {
+	it('shows the button when flag on and multiple nodes selected', () => {
 		const { queryByTestId } = renderComponent(CanvasSelectionToolbar, {
-			props: { selectedNodes: twoNodes() },
+			props: { selectedNodes: nodes(2) },
+		});
+		expect(queryByTestId('canvas-selection-toolbar-add-to-chat')).toBeTruthy();
+	});
+
+	it('shows the button for a single selected node (not multi-select gated)', () => {
+		const { queryByTestId } = renderComponent(CanvasSelectionToolbar, {
+			props: { selectedNodes: nodes(1) },
 		});
 		expect(queryByTestId('canvas-selection-toolbar-add-to-chat')).toBeTruthy();
 	});
@@ -32,7 +39,7 @@ describe('CanvasSelectionToolbar — add to chat', () => {
 	it('hides the button when the flag is off', () => {
 		isEnabled.value = false;
 		const { queryByTestId } = renderComponent(CanvasSelectionToolbar, {
-			props: { selectedNodes: twoNodes() },
+			props: { selectedNodes: nodes(2) },
 		});
 		expect(queryByTestId('canvas-selection-toolbar-add-to-chat')).toBeNull();
 	});

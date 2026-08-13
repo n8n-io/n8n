@@ -54,14 +54,17 @@ const canExtractWorkflow = computed(
 	() => !props.readOnly && isSelectionExtractable(selectedNodeIds.value).valid,
 );
 
+// Add-to-chat works on a single node (the context menu already does), so it
+// isn't multi-select-gated like group/extract.
 const showAddToChat = computed(
-	() => isNodeContextEnabled.value && selectedNodeIds.value.length > 1,
+	() => isNodeContextEnabled.value && selectedNodeIds.value.length >= 1,
 );
 
 const isToolbarVisible = computed(
 	() =>
-		(canGroup.value || canExtractWorkflow.value || showAddToChat.value) &&
-		selectedNodeIds.value.length > 1,
+		// group/extract stay multi-select only; add-to-chat also works on a lone node.
+		((canGroup.value || canExtractWorkflow.value) && selectedNodeIds.value.length > 1) ||
+		showAddToChat.value,
 );
 
 const addToChatLabel = computed(() =>
