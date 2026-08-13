@@ -11,6 +11,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationReason,
 	WorkflowPublishedVersionRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -28,9 +29,11 @@ import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-w
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
+import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.service';
 import { WorkflowValidationService } from './workflow-validation.service';
 
@@ -59,6 +62,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
+import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -97,6 +101,7 @@ export class WorkflowService {
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowHookContextService: WorkflowHookContextService,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 	) {}
 
 	async getMany(
@@ -751,7 +756,7 @@ export class WorkflowService {
 
 		if (conflicts.length > 0) {
 			throw new ConflictError(
-				'There is a conflict with one of the webhooks.',
+				WEBHOOK_CONFLICT_MESSAGE,
 				JSON.stringify(
 					conflicts.map(({ trigger, conflict }) => ({
 						trigger,
@@ -832,6 +837,9 @@ export class WorkflowService {
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			this._validateTriggerNodeIds(workflowId, versionToActivate);
+		}
 
 		// Run hook before destructive state changes so a rejection leaves
 		// the previous active version running instead of deactivating it.
@@ -1175,6 +1183,12 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow must be archived before it can be deleted.');
 		}
 
+		// Ahead of every destructive step, including the trigger teardown below: the
+		// hook may throw to abort the delete, and deactivation is not rolled back, so
+		// running it later would strand the workflow as active in the DB but no longer
+		// running.
+		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId);
+
 		if (workflow.active) {
 			// deactivate before deleting
 			await this.activeWorkflowManager.remove(workflowId);
@@ -1186,6 +1200,10 @@ export class WorkflowService {
 		await this.executionPersistence.hardDeleteByWorkflowId(workflowId);
 
 		await this.workflowRepository.delete(workflowId);
+
+		// After the cascade, so it can see the rows the delete orphaned. Observes a
+		// committed delete, so it must not throw — the module swallows its own errors.
+		await this.workflowMutationHooks.afterWorkflowsDeleted([workflowId]);
 
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterDelete', [
@@ -1252,6 +1270,8 @@ export class WorkflowService {
 		});
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+
+		await this.workflowMutationHooks.afterWorkflowArchived(workflowId);
 
 		this.eventService.emit('workflow-archived', {
 			user,
@@ -1439,6 +1459,20 @@ export class WorkflowService {
 		}
 	}
 
+	private _validateTriggerNodeIds(workflowId: string, version: WorkflowHistory) {
+		const validation = this.workflowValidationService.validateTriggerNodeIds(
+			getEnabledTriggerNodes(version, this.nodeTypes),
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed trigger node id validation', {
+				workflowId,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(validation.error ?? 'Trigger node id validation failed');
+		}
+	}
+
 	private async _validateDynamicCredentials(
 		workflowId: string,
 		nodes: INode[],
@@ -1568,7 +1602,12 @@ export class WorkflowService {
 				trx,
 			);
 
-			await this.outboxRepository.enqueue(workflowId, versionIdToActivate, trx);
+			await this.outboxRepository.enqueue(
+				workflowId,
+				versionIdToActivate,
+				WorkflowPublicationReason.Publish,
+				trx,
+			);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without
@@ -1609,7 +1648,12 @@ export class WorkflowService {
 				trx,
 			);
 
-			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
+			await this.outboxRepository.enqueue(
+				workflowId,
+				deactivatedVersionId,
+				WorkflowPublicationReason.Publish,
+				trx,
+			);
 
 			// Durable jobs are DB state, so their removal commits here rather than
 			// waiting on the leader's outbox handler: a lost hand-off would otherwise

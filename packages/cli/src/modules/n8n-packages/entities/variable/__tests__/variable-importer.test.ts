@@ -49,6 +49,8 @@ describe('VariableImporter.apply', () => {
 		matched: [],
 		missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
 		creations: [{ name: 'API_KEY', projectId: 'proj-target', usedByWorkflows: ['wf-1'] }],
+		conflicts: [],
+		overwrites: [],
 	};
 
 	it('reports a creation with an empty package value as stubbed, not created', async () => {
@@ -60,7 +62,7 @@ describe('VariableImporter.apply', () => {
 			creations: [{ ...projectCreationPlan.creations[0], value: '' }],
 		});
 
-		expect(result).toEqual({ created: [], stubbed: ['API_KEY'], skippedExisting: [] });
+		expect(result).toEqual({ created: [], stubbed: ['API_KEY'], skippedExisting: [], updated: [] });
 	});
 
 	it('treats a concurrent create as a skip when the variable now exists at the destination', async () => {
@@ -78,6 +80,6 @@ describe('VariableImporter.apply', () => {
 
 		const result = await importer.apply(context, projectCreationPlan);
 
-		expect(result).toEqual({ created: [], stubbed: [], skippedExisting: ['API_KEY'] });
+		expect(result).toEqual({ created: [], stubbed: [], skippedExisting: ['API_KEY'], updated: [] });
 	});
 });

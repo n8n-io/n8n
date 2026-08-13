@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FrontendSettings } from '@n8n/api-types';
 import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
@@ -184,6 +184,34 @@ describe('Posthog store', () => {
 				DEFAULT_POSTHOG_SETTINGS.apiKey,
 				expect.not.objectContaining({
 					advanced_disable_feature_flags: expect.anything(),
+				}),
+			);
+		});
+
+		it('does not request tracing headers when session recording is disabled', () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.not.objectContaining({
+					tracing_headers: expect.anything(),
+				}),
+			);
+		});
+
+		it('requests tracing headers for the REST host when session recording is enabled', () => {
+			setSettings({
+				posthog: { ...DEFAULT_POSTHOG_SETTINGS, disableSessionRecording: false },
+			});
+
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					tracing_headers: [window.location.hostname],
 				}),
 			);
 		});

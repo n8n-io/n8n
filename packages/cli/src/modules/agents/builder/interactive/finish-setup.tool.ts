@@ -38,6 +38,12 @@ export interface FinishSetupToolDeps {
 	listIntegrationCredentialIds?: () => Promise<string[]>;
 	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
 	listChatIntegrationTypes: () => string[];
+	/**
+	 * Credential types whose every required node-tool slot is already served by an
+	 * n8n Connect managed credential — a card for these is redundant. A type still
+	 * empty on any tool is excluded, so an uncovered node/operation keeps prompting.
+	 */
+	listAiGatewayManagedCredentialTypes?: () => Promise<string[]>;
 }
 
 const finishSetupCredentialRequestInputSchema = z.object({
@@ -203,12 +209,19 @@ async function computeInitialPlan(
 	const collected: Collected = {};
 	const pendingSlots: CredentialSlotInput[] = [];
 
-	if (input.credentialRequests?.length) {
+	// Drop requests for slots the server already covers with an n8n Connect
+	// managed credential — they need no user setup, so never show a card.
+	const aiGatewayManagedTypes = new Set((await deps.listAiGatewayManagedCredentialTypes?.()) ?? []);
+	const credentialRequests = (input.credentialRequests ?? []).filter(
+		(slot) => !aiGatewayManagedTypes.has(slot.credentialType),
+	);
+
+	if (credentialRequests.length) {
 		const integrationCredentialIds = (await deps.listIntegrationCredentialIds?.()) ?? [];
 		const all = await deps.credentialProvider.list();
 		const credentials: Record<string, z.infer<typeof credentialOutcomeSchema>> = {};
 
-		for (const slot of input.credentialRequests) {
+		for (const slot of credentialRequests) {
 			const key = slot.credentialSlot ?? slot.credentialType;
 			const existingCredentials = credentialsOfType(all, slot.credentialType);
 			const channelMatch = existingCredentials.find((credential) =>

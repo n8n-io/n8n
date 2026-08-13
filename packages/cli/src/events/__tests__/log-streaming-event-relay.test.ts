@@ -77,6 +77,7 @@ describe('LogStreamingEventRelay', () => {
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
 					variableMissingMode: 'create-stub',
+					variableConflictPolicy: 'keep-existing',
 					variableParentPolicy: 'project',
 					tagMissingMode: 'create',
 					tagConflictPolicy: 'skip',
@@ -110,6 +111,7 @@ describe('LogStreamingEventRelay', () => {
 						missing: 1,
 						created: 0,
 						stubbed: 0,
+						updated: 0,
 						requirements: 1,
 					},
 					tags: {
@@ -147,6 +149,7 @@ describe('LogStreamingEventRelay', () => {
 						dataTableMissingMode: 'create',
 						dataTableSchemaConflictPolicy: 'keep-existing',
 						variableMissingMode: 'create-stub',
+						variableConflictPolicy: 'keep-existing',
 						variableParentPolicy: 'project',
 						tagMissingMode: 'create',
 						tagConflictPolicy: 'skip',

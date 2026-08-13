@@ -36,7 +36,16 @@ export function registerMcpAppTool<InputArgs extends z.ZodRawShape = z.ZodRawSha
 	);
 }
 
-function normalizeMcpAppToolMeta(meta: Record<string, unknown>): Record<string, unknown> {
+/**
+ * Builds the tool `_meta` that marks a tool as backed by an MCP App resource.
+ * Hosts read the modern `ui.resourceUri` key; older hosts read the legacy
+ * flat key, so both are always written.
+ */
+export function mcpAppToolMeta(resourceUri: string): Record<string, unknown> {
+	return normalizeMcpAppToolMeta({ ui: { resourceUri } });
+}
+
+export function normalizeMcpAppToolMeta(meta: Record<string, unknown>): Record<string, unknown> {
 	const uiMeta = isRecord(meta.ui) ? meta.ui : undefined;
 	const modernUri = typeof uiMeta?.resourceUri === 'string' ? uiMeta.resourceUri : undefined;
 	const legacyUri =

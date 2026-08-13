@@ -10,7 +10,7 @@ import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { Segment } from '@/app/types/expressions';
-import type { INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
 import ExpressionOutput from '@/features/shared/editors/components/InlineExpressionEditor/ExpressionOutput.vue';
@@ -28,7 +28,7 @@ import { ElDialog } from 'element-plus';
 import {
 	N8nIcon,
 	N8nInput,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nResizeWrapper,
 	N8nText,
 	type ResizeData,
@@ -44,6 +44,7 @@ type Props = {
 	eventSource?: string;
 	redactValues?: boolean;
 	isReadOnly?: boolean;
+	additionalExpressionData?: IDataObject;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -51,6 +52,7 @@ const props = withDefaults(defineProps<Props>(), {
 	dialogVisible: false,
 	redactValues: false,
 	isReadOnly: false,
+	additionalExpressionData: () => ({}),
 });
 const emit = defineEmits<{
 	'update:model-value': [value: string];
@@ -223,6 +225,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								:model-value="modelValue"
 								:is-read-only="isReadOnly"
 								:path="path"
+								:additional-data="additionalExpressionData"
 								:class="[
 									$style.editor,
 									{
@@ -244,7 +247,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						</N8nText>
 						<div :class="$style.headerControls">
 							<OutputItemSelect />
-							<N8nRadioButtons
+							<N8nSegmentControl
 								v-model="outputRenderMode"
 								size="small"
 								:options="[

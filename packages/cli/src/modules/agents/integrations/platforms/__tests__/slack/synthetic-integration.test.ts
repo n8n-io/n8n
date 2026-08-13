@@ -4,7 +4,7 @@ import {
 	slackReplayFixtures,
 	slackUser,
 } from '../../../__tests__/helpers/slack/synthetic-fixtures';
-import { SlackIntegration } from '../../slack-integration';
+import { SlackIntegration } from '../../slack/slack-integration';
 
 describe('Slack channel integration scenarios', () => {
 	it('handles Slack URL verification without an active connection', () => {

@@ -142,7 +142,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock('@n8n/agents', () => ({
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents')>()),
 	Agent: agentsSdkMocks.MockAgent,
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
@@ -367,7 +368,7 @@ describe('AgentsBuilderService session isolation', () => {
 
 	it.each([
 		['Anthropic', 'anthropic/claude-sonnet-host-resolved'],
-		['OpenAI', 'openai/gpt-5.5'],
+		['OpenAI', 'openai/gpt-5.6-sol'],
 		['Google', 'google/gemini-2.5-pro'],
 	])('enables generic reasoning for a %s builder model', async (_provider, modelConfig) => {
 		const { service, user, credentialProvider } = setup();

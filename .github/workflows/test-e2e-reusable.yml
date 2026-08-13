@@ -43,7 +43,7 @@ on:
         default: '[{"shard":1,"images":""}]'
         type: string
       n8n-env:
-        description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"vm"}'
+        description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"legacy"}'
         required: false
         default: ''
         type: string

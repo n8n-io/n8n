@@ -248,6 +248,22 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
+	it.each(['integrated', 'manual'] as const)(
+		'reconstructs child workflow tools with the parent %s execution mode',
+		async (workflowToolExecutionMode) => {
+			await runner.runForeground(spawnRequest, {
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				workflowToolExecutionMode,
+			});
+
+			expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowToolExecutionMode }),
+			);
+		},
+	);
+
 	it('filters sub-agent tools by the delegating user access when the parent run has a user', async () => {
 		const user = mock<User>({ id: 'user-1' });
 

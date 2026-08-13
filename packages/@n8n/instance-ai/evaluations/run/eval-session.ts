@@ -145,6 +145,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						createdCredentialIds: lane.createdCredentialIds,
 						timeoutMs: buildArgs.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
+						preRunDataTableIds: lane.preRunDataTableIds,
 						claimedWorkflowIds: lane.claimedWorkflowIds,
 						logger,
 						laneTag,

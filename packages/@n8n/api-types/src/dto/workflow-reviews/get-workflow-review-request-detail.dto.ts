@@ -6,6 +6,7 @@ import type { Iso8601DateTimeString } from '../../datetime';
 /** Immutable content of one workflow-history version, as needed by the diff surface. */
 export interface WorkflowReviewVersionSnapshot {
 	versionId: string;
+	name: string | null;
 	nodes: INode[];
 	connections: IConnections;
 	nodeGroups: IWorkflowGroup[];
@@ -31,7 +32,10 @@ export interface WorkflowReviewRequestWorkflowDetail {
  * map reasons to copy; unknown future reasons should fall back to a generic
  * hint.
  */
-export type WorkflowReviewDecisionIneligibilityReason = 'author' | 'missing_publish_permission';
+export type WorkflowReviewDecisionIneligibilityReason =
+	| 'author'
+	| 'missing_permission'
+	| 'missing_reviewer_permission';
 
 export interface WorkflowReviewRequestDetail extends WorkflowReviewInboxItem {
 	description: string | null;
@@ -46,4 +50,6 @@ export interface WorkflowReviewRequestDetail extends WorkflowReviewInboxItem {
 	viewerCanDecide: boolean;
 	/** Set if `viewerCanDecide` is false. */
 	viewerDecisionIneligibilityReason: WorkflowReviewDecisionIneligibilityReason | null;
+	/** Not advisory, unlike `viewerCanDecide`: the comment endpoint applies the same verdict. */
+	viewerCanComment: boolean;
 }

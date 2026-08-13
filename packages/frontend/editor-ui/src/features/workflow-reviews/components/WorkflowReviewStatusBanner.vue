@@ -4,6 +4,8 @@ import { N8nButton, N8nHeading, N8nPopover, N8nText, N8nTooltip } from '@n8n/des
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
+import { formatUserDisplayName } from '../formatUserDisplayName';
+
 type BannerAction = 'submit-changes' | 'retry-publish';
 
 /**
@@ -55,7 +57,7 @@ const pinnedVersionLabel = computed(() => props.review?.workflowVersionId?.slice
 const actorName = computed(() => {
 	const actor = props.review?.decisionBy;
 	if (!actor) return null;
-	return [actor.firstName, actor.lastName].filter(Boolean).join(' ') || actor.email;
+	return formatUserDisplayName(actor);
 });
 
 /**

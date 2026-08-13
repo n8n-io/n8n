@@ -37,7 +37,7 @@ vi.mock('@/app/composables/useActivationError', () => ({
 	useActivationError: () => ({ errorMessage: { value: 'Node error details' } }),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => mockSettingsStore,
 }));
 

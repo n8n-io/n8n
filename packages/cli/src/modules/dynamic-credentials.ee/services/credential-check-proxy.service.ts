@@ -71,6 +71,10 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 					);
 				}
 
+				if (status.status === 'configured' && status.resolverId) {
+					checkStatus.revokeUrl = this.generateRevokeUrl(status.credentialId, status.resolverId);
+				}
+
 				return checkStatus;
 			}),
 		);
@@ -87,6 +91,13 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 	 * fast and small. The caller identity is captured in a server-side intent so the
 	 * connection binds to the right subject regardless of who opens the link.
 	 */
+	/** Deletes the caller's own connection; mirrors `workflow-status.controller.ts`. */
+	private generateRevokeUrl(credentialId: string, resolverId: string): string {
+		const basePath = this.urlService.getInstanceBaseUrl();
+		const restPath = this.globalConfig.endpoints.rest;
+		return `${basePath}/${restPath}/credentials/${credentialId}/revoke?resolverId=${encodeURIComponent(resolverId)}`;
+	}
+
 	private async generateAuthorizationUrl(
 		credentialId: string,
 		resolverId: string,

@@ -7,6 +7,7 @@ import type {
 	User,
 	UserRepository,
 	WorkflowEntity,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
@@ -14,9 +15,11 @@ import type {
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestWorkflowRepository,
+	WorkflowRepository,
+	Transaction,
+	OperationContext,
 } from '@n8n/db';
 import { DbLock } from '@n8n/db';
-import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -29,11 +32,16 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });
+const requesterUser = mock<User>({
+	id: 'requester-1',
+	disabled: false,
+	role: { slug: 'global:member' },
+});
 
 const requestId = 'req-1';
 const projectId = 'proj-1';
@@ -44,6 +52,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
@@ -58,13 +67,16 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
 	const logger = mock<Logger>();
-	const tx = mock<EntityManager>();
+	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
+	const ctx: OperationContext = { trx: mock<Transaction>() };
 
 	const service = new WorkflowReviewRequestService(
 		logger,
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		workflowFinderService,
 		workflowHistoryService,
+		workflowHistoryRepository,
+		mock<WorkflowRepository>(),
 		sharedWorkflowRepository,
 		publishHistoryRepository,
 		requestRepository,
@@ -74,9 +86,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 		userRepository,
 		// Real service over the same mocks, so the override assertions below
 		// exercise the actual eligibility logic decide() shares with the read side.
-		new WorkflowReviewDecisionEligibilityService(
+		new WorkflowReviewEligibilityService(
 			workflowFinderService,
 			authorRepository,
+			reviewerRepository,
 			projectRelationRepository,
 		),
 		roleService,
@@ -93,6 +106,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			decision: 'pending',
 			closedById: null,
 			approvedAt: null,
+			createdById: requesterUser.id,
 			createdAt: new Date('2026-07-20T10:00:00.000Z'),
 			updatedAt: new Date('2026-07-20T11:00:00.000Z'),
 			...overrides,
@@ -112,8 +126,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 			mock<WorkflowEntity>({ isArchived: false }),
 		);
 		authorRepository.isAuthor.mockResolvedValue(false);
+		reviewerRepository.isReviewer.mockResolvedValue(true);
 		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
-		tx.save.mockImplementation(async (entity) => entity);
+		userRepository.findManyByIds.mockResolvedValue([requesterUser]);
+		requestRepository.saveRequest.mockImplementation(async (request) => request);
 	};
 
 	beforeEach(() => {
@@ -122,7 +138,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
-		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx, {}));
+		dbLockService.withLockContext.mockImplementation(async (_id, fn) => await fn(ctx));
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 		collaborationService.broadcastWorkflowUpdate.mockResolvedValue(undefined);
 	});
@@ -135,7 +151,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		);
 
 		expect(requestRepository.findById).not.toHaveBeenCalled();
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFoundError when the review request does not exist', async () => {
@@ -145,7 +161,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			NotFoundError,
 		);
 
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFoundError when the request has no linked workflow row', async () => {
@@ -157,10 +173,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 		);
 
 		expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
-	it('throws NotFoundError when the user lacks publish access to the workflow', async () => {
+	it('throws NotFoundError when the user cannot view the workflow', async () => {
 		mockSuccessfulDecidePath();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
@@ -171,9 +187,20 @@ describe('WorkflowReviewRequestService.decide', () => {
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
 			'wf-1',
 			expect.anything(),
-			['workflow:publish'],
+			['workflow:read'],
 		);
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+	});
+
+	it('throws NotFoundError for a non-assigned viewer without an admin override', async () => {
+		mockSuccessfulDecidePath();
+		reviewerRepository.isReviewer.mockResolvedValue(false);
+
+		await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
+			NotFoundError,
+		);
+
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -187,20 +214,21 @@ describe('WorkflowReviewRequestService.decide', () => {
 			ConflictError,
 		);
 
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	describe('author eligibility', () => {
-		it('throws ForbiddenError for an author without an admin override', async () => {
+		it('throws ForbiddenError for an author without an admin override, even when assigned', async () => {
 			mockSuccessfulDecidePath();
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(true);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 
 			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
 				ForbiddenError,
 			);
 
-			expect(dbLockService.withLock).not.toHaveBeenCalled();
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
 		it('rejects a caller who became an author while waiting for the lock', async () => {
@@ -218,9 +246,9 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect(authorRepository.isAuthor).toHaveBeenNthCalledWith(
 				2,
 				expect.objectContaining({ workflowReviewRequestId: requestId }),
-				tx,
+				ctx,
 			);
-			expect(tx.save).not.toHaveBeenCalled();
+			expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		});
 
 		it.each([['global:admin'], ['global:owner']])(
@@ -228,6 +256,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			async (slug) => {
 				mockSuccessfulDecidePath();
 				authorRepository.isAuthor.mockResolvedValue(true);
+				reviewerRepository.isReviewer.mockResolvedValue(false);
 				const admin = mock<User>({ id: 'user-1', role: { slug } });
 
 				const result = await service.decide(admin, requestId, approveDto);
@@ -240,6 +269,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		it('allows an author who is a project admin of the review project', async () => {
 			mockSuccessfulDecidePath();
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId]);
 
 			const result = await service.decide(memberUser(), requestId, approveDto);
@@ -260,7 +290,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 				ForbiddenError,
 			);
 
-			expect(dbLockService.withLock).not.toHaveBeenCalled();
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
 		it('resolves the admin override once, before taking the lock', async () => {
@@ -272,7 +302,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			// single-connection pool it would deadlock waiting for a second connection.
 			const [overrideOrder] =
 				projectRelationRepository.getAccessibleProjectsByRoles.mock.invocationCallOrder;
-			const [lockOrder] = dbLockService.withLock.mock.invocationCallOrder;
+			const [lockOrder] = dbLockService.withLockContext.mock.invocationCallOrder;
 			expect(overrideOrder).toBeLessThan(lockOrder);
 			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledOnce();
 		});
@@ -283,13 +313,13 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 		const result = await service.decide(memberUser(), requestId, approveDto);
 
-		expect(dbLockService.withLock).toHaveBeenCalledWith(
+		expect(dbLockService.withLockContext).toHaveBeenCalledWith(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			expect.any(Function),
 		);
 		// Re-checked under the lock through the transaction manager.
-		expect(requestRepository.findById).toHaveBeenCalledWith(requestId, tx);
-		const savedEntity = tx.save.mock.calls[0]?.[0] as unknown as WorkflowReviewRequest;
+		expect(requestRepository.findById).toHaveBeenCalledWith(requestId, ctx);
+		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({
 			decision: 'approved',
 			state: 'closed',
@@ -314,7 +344,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 		const result = await service.decide(memberUser(), requestId, requestChangesDto);
 
-		const savedEntity = tx.save.mock.calls[0]?.[0] as unknown as WorkflowReviewRequest;
+		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({
 			decision: 'changes_requested',
 			state: 'open',
@@ -334,7 +364,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		const result = await service.decide(memberUser('user-2'), requestId, requestChangesDto);
 
 		expect(result.decision).toBe('changes_requested');
-		const savedEntity = tx.save.mock.calls[0]?.[0] as unknown as WorkflowReviewRequest;
+		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({ updatedById: 'user-2' });
 	});
 
@@ -358,7 +388,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			ConflictError,
 		);
 
-		expect(tx.save).not.toHaveBeenCalled();
+		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
 	});
 
@@ -371,30 +401,30 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 		const result = await service.decide(memberUser(), requestId, approveDto);
 
-		expect(workflowRepository.findByRequestId).toHaveBeenLastCalledWith(requestId, tx);
+		expect(workflowRepository.findByRequestId).toHaveBeenLastCalledWith(requestId, ctx);
 		expect(result.workflowVersionId).toBe('ver-2');
 		// The published version must be the one the approval was recorded against.
 		expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
-			expect.objectContaining({ id: 'user-1' }),
+			expect.objectContaining({ id: requesterUser.id }),
 			'wf-1',
 			{ versionId: 'ver-2', source: 'review-approval' },
 		);
 	});
 
 	describe('auto-publish on approval', () => {
-		it('publishes the pinned version as the reviewer, after the approval commits', async () => {
+		it('publishes the pinned version as the requester, after the approval commits', async () => {
 			mockSuccessfulDecidePath();
 
 			const result = await service.decide(memberUser(), requestId, approveDto);
 
 			expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(
-				expect.objectContaining({ id: 'user-1' }),
+				expect.objectContaining({ id: requesterUser.id }),
 				'wf-1',
 				{ versionId: 'ver-1', source: 'review-approval' },
 			);
 			// The approval must commit before publishing: the closed review is what
 			// lets the publish gate pass without a bypass.
-			const [lockOrder] = dbLockService.withLock.mock.invocationCallOrder;
+			const [lockOrder] = dbLockService.withLockContext.mock.invocationCallOrder;
 			const [publishOrder] = workflowService.activateWorkflow.mock.invocationCallOrder;
 			expect(lockOrder).toBeLessThan(publishOrder);
 			expect(result.autoPublish).toEqual({ status: 'published' });
@@ -405,7 +435,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 			await service.decide(memberUser(), requestId, approveDto);
 
-			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', 'user-1');
+			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				'wf-1',
+				requesterUser.id,
+			);
 		});
 
 		it('never publishes on changes_requested and omits the outcome', async () => {
@@ -424,7 +457,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 			const result = await service.decide(memberUser(), requestId, approveDto);
 
 			// The approval is committed and never reverted by a publish failure.
-			expect(tx.save.mock.calls[0]?.[0]).toMatchObject({ decision: 'approved', state: 'closed' });
+			expect(requestRepository.saveRequest.mock.calls[0]?.[0]).toMatchObject({
+				decision: 'approved',
+				state: 'closed',
+			});
 			expect(result).toMatchObject({
 				state: 'closed',
 				decision: 'approved',
@@ -437,6 +473,69 @@ describe('WorkflowReviewRequestService.decide', () => {
 				expect.objectContaining({ workflowId: 'wf-1', pinnedVersionId: 'ver-1' }),
 			);
 			expect(collaborationService.broadcastWorkflowUpdate).not.toHaveBeenCalled();
+		});
+
+		it('keeps the approval as a system close when the requester user has been deleted', async () => {
+			mockSuccessfulDecidePath();
+			userRepository.findManyByIds.mockResolvedValue([]);
+
+			const result = await service.decide(memberUser(), requestId, approveDto);
+
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith([requesterUser.id], {
+				includeRole: true,
+			});
+			expect(requestRepository.saveRequest.mock.calls[0]?.[0]).toMatchObject({
+				decision: 'approved',
+				state: 'closed',
+				closedById: null,
+			});
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result.autoPublish).toEqual({
+				status: 'failed',
+				message: 'The review requester is no longer available',
+			});
+		});
+
+		it('keeps the approval as a system close when the requester has been deactivated', async () => {
+			mockSuccessfulDecidePath();
+			userRepository.findManyByIds.mockResolvedValue([
+				mock<User>({ id: requesterUser.id, disabled: true, role: { slug: 'global:member' } }),
+			]);
+
+			const result = await service.decide(memberUser(), requestId, approveDto);
+
+			expect(requestRepository.saveRequest.mock.calls[0]?.[0]).toMatchObject({
+				decision: 'approved',
+				state: 'closed',
+				closedById: null,
+			});
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result.autoPublish).toEqual({
+				status: 'failed',
+				message: 'The review requester is no longer available',
+			});
+		});
+
+		it('keeps the approval as a system close when the requester lost publish rights', async () => {
+			mockSuccessfulDecidePath();
+			workflowFinderService.findWorkflowForUser
+				// Decider: workflow:read
+				.mockResolvedValueOnce(mock<WorkflowEntity>({ isArchived: false }))
+				// Requester publishability: workflow:publish
+				.mockResolvedValueOnce(null);
+
+			const result = await service.decide(memberUser(), requestId, approveDto);
+
+			expect(requestRepository.saveRequest.mock.calls[0]?.[0]).toMatchObject({
+				decision: 'approved',
+				state: 'closed',
+				closedById: null,
+			});
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result.autoPublish).toEqual({
+				status: 'failed',
+				message: 'The review requester no longer has permission to publish this workflow',
+			});
 		});
 
 		it('skips publishing and reports a failure when the pinned version was pruned', async () => {

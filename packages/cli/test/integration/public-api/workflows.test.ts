@@ -323,6 +323,46 @@ describe('GET /workflows', () => {
 		expect(response.body.data[0].id).not.toEqual(response2.body.data[0].id);
 	});
 
+	test('should reject a cursor that does not decode to JSON', async () => {
+		await createWorkflowWithHistory({}, member);
+
+		const cursor = Buffer.from('not json').toString('base64');
+		const response = await authMemberAgent.get(`/workflows?cursor=${cursor}`);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
+	test('should take the limit from a cursor that carries no offset', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+		]);
+
+		const cursor = Buffer.from(JSON.stringify({ lastId: 'abc', limit: 2 })).toString('base64');
+		const response = await authMemberAgent.get(`/workflows?cursor=${cursor}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(2);
+		expect(response.body.nextCursor).not.toBeNull();
+	});
+
+	test('should fall back to the default limit for a cursor that carries none', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+		]);
+
+		const cursor = Buffer.from(JSON.stringify({ offset: 1 })).toString('base64');
+		const response = await authMemberAgent.get(`/workflows?cursor=${cursor}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(2);
+		expect(response.body.nextCursor).toBeNull();
+	});
+
 	test('should return all owned workflows filtered by tag', async () => {
 		const tag = await createTag({});
 
@@ -363,6 +403,23 @@ describe('GET /workflows', () => {
 
 		expect(wfTags.length).toBe(1);
 		expect(wfTags[0].id).toBe(tag.id);
+	});
+
+	test('should omit tags entirely when tags are disabled', async () => {
+		globalConfig.tags.disabled = true;
+
+		try {
+			const tag = await createTag({ name: 'production' });
+			await createWorkflowWithHistory({ tags: [tag] }, member);
+
+			const response = await authMemberAgent.get('/workflows');
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0]).not.toHaveProperty('tags');
+		} finally {
+			globalConfig.tags.disabled = false;
+		}
 	});
 
 	test('should return all owned workflows filtered by tags', async () => {
@@ -708,9 +765,9 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return workflows ordered by id', async () => {
-		const first = await createWorkflowWithHistory({ name: 'First' }, member);
-		const second = await createWorkflowWithHistory({ name: 'Second' }, member);
-		const third = await createWorkflowWithHistory({ name: 'Third' }, member);
+		const first = await createWorkflowWithHistory({ id: 'sortid01', name: 'First' }, member);
+		const second = await createWorkflowWithHistory({ id: 'sortid02', name: 'Second' }, member);
+		const third = await createWorkflowWithHistory({ id: 'sortid03', name: 'Third' }, member);
 
 		// Editing must not change id order (would move the row under updatedAt sort).
 		const editResponse = await authMemberAgent.put(`/workflows/${second.id}`).send({
@@ -724,9 +781,11 @@ describe('GET /workflows', () => {
 		const response = await authMemberAgent.get('/workflows');
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.map((w: { id: string }) => w.id)).toEqual(
-			[first.id, second.id, third.id].sort(),
-		);
+		expect(response.body.data.map((w: { id: string }) => w.id)).toEqual([
+			first.id,
+			second.id,
+			third.id,
+		]);
 	});
 
 	test('should return share rows without the owning project', async () => {
@@ -814,9 +873,12 @@ describe('GET /workflows/:id', () => {
 			updatedAt,
 			isArchived,
 			versionId,
+			versionCounter,
+			sourceWorkflowId,
 			triggerCount,
 			meta,
 			tags,
+			shared,
 		} = response.body;
 
 		expect(id).toEqual(workflow.id);
@@ -832,8 +894,50 @@ describe('GET /workflows/:id', () => {
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
 		expect(isArchived).toBe(false);
 		expect(versionId).toBeDefined();
+		expect(versionCounter).toEqual(workflow.versionCounter);
+		expect(sourceWorkflowId).toEqual(workflow.sourceWorkflowId);
 		expect(triggerCount).toBe(0);
 		expect(meta).toBeDefined();
+		expect(shared).toEqual([
+			expect.objectContaining({
+				role: 'workflow:owner',
+				workflowId: workflow.id,
+				project: expect.objectContaining({
+					id: memberPersonalProject.id,
+					name: memberPersonalProject.name,
+					type: memberPersonalProject.type,
+					icon: memberPersonalProject.icon,
+					description: memberPersonalProject.description,
+					customTelemetryTags: memberPersonalProject.customTelemetryTags ?? [],
+					creatorId: memberPersonalProject.creatorId,
+				}),
+			}),
+		]);
+	});
+
+	test('should retrieve workflow with its tags', async () => {
+		const tag = await createTag({ name: 'production' });
+		const workflow = await createWorkflowWithHistory({ tags: [tag] }, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.tags).toEqual([expect.objectContaining({ id: tag.id, name: tag.name })]);
+	});
+
+	test('should omit tags entirely when tags are disabled', async () => {
+		globalConfig.tags.disabled = true;
+
+		try {
+			const workflow = await createWorkflowWithHistory({}, member);
+
+			const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).not.toHaveProperty('tags');
+		} finally {
+			globalConfig.tags.disabled = false;
+		}
 	});
 
 	test('should retrieve non-owned workflow for custom global role with workflow:read', async () => {
@@ -933,6 +1037,14 @@ describe('GET /workflows/:id', () => {
 		expect(response.body.activeVersion.versionId).toBe(workflow.versionId);
 		expect(response.body.activeVersion.nodes).toEqual(workflow.nodes);
 		expect(response.body.activeVersion.connections).toEqual(workflow.connections);
+		expect(response.body.activeVersion.workflowPublishHistory).toEqual([
+			expect.objectContaining({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: member.id,
+			}),
+		]);
 	});
 });
 
@@ -2572,6 +2684,65 @@ describe('PUT /workflows/:id', () => {
 		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
 	});
 
+	test('should save as draft without republishing when publishIfActive=false', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const updatedPayload = {
+			name: 'Updated active workflow',
+			nodes: [
+				{
+					id: 'uuid-updated',
+					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
+					name: 'Updated Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [300, 400],
+				},
+			],
+			connections: {},
+			staticData: workflow.staticData,
+			settings: workflow.settings,
+		};
+
+		const updateResponse = await authMemberAgent
+			.put(`/workflows/${workflow.id}?publishIfActive=false`)
+			.send(updatedPayload);
+
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.active).toBe(true);
+		expect(updateResponse.body.activeVersionId).toBe(workflow.versionId);
+		expect(updateResponse.body.nodes).toEqual(updatedPayload.nodes);
+
+		const versionInTheDb = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: Not(workflow.versionId),
+			},
+		});
+
+		expect(versionInTheDb).not.toBeNull();
+		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
+
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow'],
+		});
+
+		// The published version itself is untouched: its history record still has the old content.
+		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
+		const activeVersionInTheDb = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+			},
+		});
+		expect(activeVersionInTheDb!.nodes).toEqual(workflow.nodes);
+		expect(activeVersionInTheDb!.nodes).not.toEqual(updatedPayload.nodes);
+	});
+
 	test('should not allow updating active field', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
@@ -3187,6 +3358,7 @@ describe('GET /workflows/:id/tags', () => {
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
 
 		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
 		expect(response.body.length).toBe(2);
 
 		for (const tag of response.body) {
@@ -3209,6 +3381,7 @@ describe('GET /workflows/:id/tags', () => {
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
 
 		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
 		expect(response.body.length).toBe(0);
 	});
 });
@@ -3233,6 +3406,24 @@ describe('PUT /workflows/:id/tags', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should reject a tag reference carrying anything but an id', async () => {
+		const workflow = await createWorkflow({}, member);
+		const tag = await createTag({ name: 'production' });
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/tags`)
+			.send([{ id: tag.id, name: 'renamed' }]);
+
+		expect(response.statusCode).toBe(400);
+
+		const stored = await Container.get(SharedWorkflowRepository).findOne({
+			where: { projectId: memberPersonalProject.id, workflowId: workflow.id },
+			relations: ['workflow.tags'],
+		});
+
+		expect(stored?.workflow.tags).toEqual([]);
+	});
+
 	test('should add the tags, workflow have not got tags previously', async () => {
 		const workflow = await createWorkflow({}, member);
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
@@ -3249,6 +3440,7 @@ describe('PUT /workflows/:id/tags', () => {
 		const response = await authMemberAgent.put(`/workflows/${workflow.id}/tags`).send(payload);
 
 		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
 		expect(response.body.length).toBe(2);
 
 		for (const tag of response.body) {

@@ -9,6 +9,7 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 
 import {
 	AgentModificationTelemetryService,
@@ -38,6 +39,7 @@ export class AgentIntegrationPersistenceService {
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly eventService: EventService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 		private readonly credentialsService: CredentialsService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
@@ -117,6 +119,7 @@ export class AgentIntegrationPersistenceService {
 			context.user,
 		);
 		const result = await this.agentRepository.save(agent);
+		this.eventService.emit('agent-saved', { agentId: agent.id });
 		await emitSetupCompleted?.();
 		await this.recordIntegrationMutation(
 			result,
@@ -159,6 +162,7 @@ export class AgentIntegrationPersistenceService {
 		markAgentDraftDirty(agent);
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
+		this.eventService.emit('agent-saved', { agentId: agent.id });
 		await this.recordIntegrationMutation(
 			result,
 			previousSchema,
