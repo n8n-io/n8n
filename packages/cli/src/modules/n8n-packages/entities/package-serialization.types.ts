@@ -1,3 +1,10 @@
+/**
+ * The types below are hairy, but they exist for one reason: whenever a field is added to,
+ * renamed on, or removed from a core entity (workflow, credential, ...), package import/export
+ * must be updated too. Each serializer declares an export decision (`copy`, `transform`,
+ * `exclude`) for every entity key, and these types turn any drift between the entity and its
+ * decisions into a compile error — instead of silently dropping data from packages.
+ */
 import type { JoinKeys } from '@n8n/utils/types';
 
 // Entity properties only; methods are ignored.
