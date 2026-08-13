@@ -48,7 +48,12 @@ async function onFileChange(event: Event) {
 		if (!result.success) {
 			throw new Error('Invalid agent JSON');
 		}
-		parsedConfig.value = result.data;
+		// Import the raw JSON, not the parse result: Zod strips fields this
+		// client's schema doesn't know yet, and a client older than the server
+		// would silently drop parts of the config (e.g. inline task/skill
+		// definition bodies) that the server understands. The server sanitizes
+		// on save, so unknown fields are its call to keep or drop.
+		parsedConfig.value = parsed as AgentJsonConfig;
 	} catch {
 		errorMessage.value = i18n.baseText('agents.builder.importJsonModal.invalidJson' as BaseTextKey);
 	}
