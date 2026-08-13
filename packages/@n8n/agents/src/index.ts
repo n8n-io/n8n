@@ -450,5 +450,3 @@ export type {
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
 
 export { isZodSchema, zodToJsonSchema } from './utils/zod';
-export { parseWithSchema } from './utils/parse';
-export type { ParseOptions, ParseResult } from './utils/parse';

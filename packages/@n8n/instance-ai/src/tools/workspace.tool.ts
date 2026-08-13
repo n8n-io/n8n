@@ -2,13 +2,15 @@
  * Consolidated workspace tool — projects, tags, folders, execution cleanup.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	instanceAiApprovalResumeSchema,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
-import { standardApprovalResumeSchema } from './shared/approval-resume.schema';
 
 // ── Shared fields (single source of truth for fields used across actions) ───
 
@@ -100,7 +102,7 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const resumeSchema = standardApprovalResumeSchema;
+const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Input union ─────────────────────────────────────────────────────────────
 

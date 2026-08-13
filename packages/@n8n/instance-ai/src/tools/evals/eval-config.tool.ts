@@ -9,6 +9,7 @@
  */
 import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	LLM_JUDGE_PROVIDER_NODE_TYPES,
 } from '@n8n/api-types';
@@ -17,7 +18,6 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext, UpsertEvaluationConfigInput } from '../../types';
-import { standardApprovalResumeSchema } from '../shared/approval-resume.schema';
 import { EVAL_CONFIG_TOOL_ID } from '../tool-ids';
 
 export { EVAL_CONFIG_TOOL_ID };
@@ -152,7 +152,7 @@ const confirmationSuspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const confirmationResumeSchema = standardApprovalResumeSchema;
+const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
 

@@ -5,6 +5,7 @@
 import { Tool } from '@n8n/agents';
 import {
 	buildRunWorkflowSessionGrantKey,
+	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
@@ -12,7 +13,6 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
-import { standardApprovalResumeSchema } from './shared/approval-resume.schema';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -144,7 +144,7 @@ const suspendSchema = z.object({
 });
 
 /** Includes `scope` for "always allow" session grants (see handler). */
-const resumeSchema = standardApprovalResumeSchema;
+const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 

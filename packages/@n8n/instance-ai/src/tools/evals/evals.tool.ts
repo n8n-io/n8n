@@ -1,5 +1,8 @@
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	instanceAiApprovalResumeSchema,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -26,7 +29,6 @@ import {
 } from './metric-catalog';
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../../types';
-import { standardApprovalResumeSchema } from '../shared/approval-resume.schema';
 import { refreshWorkflowSourceFileBindingFromSave } from '../workflows/workflow-file-bindings';
 
 // ── Action input schemas ───────────────────────────────────────────────────
@@ -123,9 +125,9 @@ const questionsSuspend = z.object({
 
 const suspendSchema = z.union([confirmationSuspend, questionsSuspend]);
 
-const confirmResumeSchema = standardApprovalResumeSchema;
+const confirmResumeSchema = instanceAiApprovalResumeSchema;
 
-const questionsResumeSchema = standardApprovalResumeSchema.extend({
+const questionsResumeSchema = instanceAiApprovalResumeSchema.extend({
 	answers: z
 		.array(
 			z.object({
