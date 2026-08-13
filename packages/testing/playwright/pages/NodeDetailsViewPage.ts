@@ -350,6 +350,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.codeNodeEditor.getLintTooltip();
 	}
 
+	async hoverCodeToken(token: string) {
+		await this.codeNodeEditor.hoverCodeToken(token);
+	}
+
 	getPlaceholderText(text: string) {
 		return this.page.getByText(text);
 	}
@@ -511,10 +515,8 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async toggleCodeMode(switchTo: 'Run Once for Each Item' | 'Run Once for All Items') {
-		await this.getParameterInput('mode').click();
-		await this.getVisiblePopoverOption(switchTo).click();
-		// eslint-disable-next-line playwright/no-wait-for-timeout
-		await this.page.waitForTimeout(2500);
+		await this.selectOptionInParameterDropdown('mode', switchTo);
+		await expect(this.getParameterInputField('mode')).toHaveValue(switchTo);
 	}
 
 	getCopyInputButton() {

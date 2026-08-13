@@ -84,38 +84,45 @@ for (const item of $input.all()) {
 
 return
 `);
-				await expect(n8n.ndv.getLintErrors()).toHaveCount(6);
-				const firstLintError = n8n.ndv.getLintErrors().first();
-				await expect(firstLintError).toBeVisible();
-				await firstLintError.hover({ force: true });
+				// Assert lint errors by message, not by mark count: the TypeScript language
+				// service contributes diagnostics on its own schedule and re-splits the
+				// marks when it does, so the number of marks is not a stable signal.
+				await expect(n8n.ndv.getLintErrors().first()).toBeVisible();
 
-				// Wait for lint tooltip to appear after hover
-				await expect(n8n.ndv.getLintTooltip()).toBeVisible({ timeout: 5000 });
+				await n8n.ndv.hoverCodeToken('itemMatching');
 				await expect(n8n.ndv.getLintTooltip()).toContainText(
 					'`.itemMatching()` expects an item index to be passed in as its argument.',
 				);
+
+				await n8n.ndv.hoverCodeToken('item');
+				await expect(n8n.ndv.getLintTooltip()).toContainText(
+					"`.item` only works correctly in 'Run Once for Each Item' mode.",
+				);
 			});
-		});
 
-		test.describe
-			.serial('Run Once for Each Item', () => {
-				test('should show lint errors in `runOnceForEachItem` mode', async ({ n8n }) => {
-					await n8n.start.fromBlankCanvas();
-					await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-					await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
-					await n8n.ndv.toggleCodeMode('Run Once for Each Item');
+			test('should show lint errors in `runOnceForEachItem` mode', async ({ n8n }) => {
+				await n8n.ndv.toggleCodeMode('Run Once for Each Item');
 
-					await n8n.ndv.getCodeEditor().fill(`$input.itemMatching()
+				await n8n.ndv.getCodeEditor().fill(`$input.itemMatching()
 $input.all()
 $input.first()
 $input.item()
 
 return []
 `);
-					// Verify lint errors are detected (tooltip hover tested in runOnceForAllItems test)
-					await expect(n8n.ndv.getLintErrors()).toHaveCount(7);
-				});
+				await expect(n8n.ndv.getLintErrors().first()).toBeVisible();
+
+				await n8n.ndv.hoverCodeToken('all');
+				await expect(n8n.ndv.getLintTooltip()).toContainText(
+					"Method `$input.all()` is only available in the 'Run Once for All Items' mode.",
+				);
+
+				await n8n.ndv.hoverCodeToken('item');
+				await expect(n8n.ndv.getLintTooltip()).toContainText(
+					'`item` is a property to access, not a method to call.',
+				);
 			});
+		});
 
 		test.describe('Ask AI', () => {
 			test.describe('Enabled', () => {

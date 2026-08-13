@@ -49,6 +49,23 @@ export class CodeNodeEditor {
 		return this.getJsCodeParameter().locator('.cm-lintRange-error');
 	}
 
+	/**
+	 * Hovers a token in the editor so CodeMirror renders the lint tooltip for the
+	 * diagnostics covering it.
+	 *
+	 * Hover the token, not the `.cm-lintRange-error` span: the Code node has two
+	 * lint sources (the synchronous n8n linter and the async TypeScript language
+	 * service), and a diagnostic arriving from the second one splits the first
+	 * one's span into several. The syntax-highlighting span for the token itself
+	 * is unaffected.
+	 */
+	async hoverCodeToken(token: string): Promise<void> {
+		// Park the pointer first: a tooltip left open by a previous hover renders
+		// over the editor and would swallow the next one.
+		await this.page.mouse.move(0, 0);
+		await this.getCodeEditor().getByText(token, { exact: true }).first().hover({ force: true });
+	}
+
 	/** CodeMirror lint tooltip (teleported to the page root). */
 	getLintTooltip(): Locator {
 		return this.page.locator('.cm-tooltip-lint');
