@@ -64,68 +64,19 @@ export class AgentConfigService {
 	) {}
 
 	/**
-	 * Get the JSON config for an agent, with task, skill, and custom tool
-	 * definition bodies inlined so the result is self-contained when exported.
+	 * Get the JSON config for an agent. Refs are bare — task, skill, and custom
+	 * tool definition bodies live in their own stores; the frontend inlines them
+	 * at export time (see `buildExportedAgentJson`), and the write path accepts
+	 * them back inline on import.
 	 */
-	async getConfig(agentId: string, projectId: string): Promise<ExportedAgentJsonConfig> {
+	async getConfig(agentId: string, projectId: string): Promise<AgentJsonConfig> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 		const config = composeJsonConfig(entity);
 		if (!config) {
 			throw new UserError('Agent has no JSON config yet.');
 		}
-		return await this.hydrateDefinitions(entity, config);
-	}
-
-	/**
-	 * Inline the definition body of each task, skill, and custom tool ref so
-	 * the config is self-contained when exported. Without this the config
-	 * carries only bare refs and the bodies are lost when it is downloaded and
-	 * imported elsewhere.
-	 */
-	private async hydrateDefinitions(
-		entity: Agent,
-		config: AgentJsonConfig,
-	): Promise<ExportedAgentJsonConfig> {
-		return {
-			...config,
-			...(config.tasks !== undefined
-				? { tasks: await this.hydrateTaskDefinitions(entity.id, config.tasks) }
-				: {}),
-			...(config.skills !== undefined
-				? { skills: hydrateSkillDefinitions(entity, config.skills) }
-				: {}),
-			...(config.tools !== undefined
-				? { tools: hydrateCustomToolDefinitions(entity, config.tools) }
-				: {}),
-		};
-	}
-
-	/**
-	 * Inline each task ref's body (name/objective/cronExpression) from the
-	 * `agent_task_definition` table so the exported config is self-contained.
-	 * Without this the export carries only `{ type, id, enabled }` refs and the
-	 * task body is lost when the config is downloaded and imported elsewhere.
-	 */
-	private async hydrateTaskDefinitions(
-		agentId: string,
-		refs: NonNullable<AgentJsonConfig['tasks']>,
-	): Promise<NonNullable<ExportedAgentJsonConfig['tasks']>> {
-		if (refs.length === 0) return refs;
-
-		const definitions = await this.agentTaskRepository.findByAgentId(agentId);
-		const definitionById = new Map(definitions.map((task) => [task.id, task]));
-
-		return refs.map((ref) => {
-			const definition = definitionById.get(ref.id);
-			if (!definition) return ref;
-			return {
-				...ref,
-				name: definition.name,
-				objective: definition.objective,
-				cronExpression: definition.cronExpression,
-			};
-		});
+		return config;
 	}
 
 	/**
@@ -189,7 +140,7 @@ export class AgentConfigService {
 		config: unknown,
 		user: User,
 		options: { clearOmittedOptionalFields?: boolean; modifiedBy: AgentActor },
-	): Promise<{ config: ExportedAgentJsonConfig; updatedAt: string; versionId: string | null }> {
+	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
@@ -395,16 +346,8 @@ export class AgentConfigService {
 			await syncAgentIntegrations(saved, previousIntegrations, nextIntegrations, this.logger);
 		}
 
-		// Hydrated like `getConfig`, so a client that keeps working from the
-		// update response (e.g. the builder UI exporting right after an
-		// autosave) still sees a self-contained config.
-		const responseConfig = await this.hydrateDefinitions(
-			saved,
-			composeJsonConfig(saved) ?? validatedConfig,
-		);
-
 		return {
-			config: responseConfig,
+			config: composeJsonConfig(saved) ?? validatedConfig,
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
@@ -628,49 +571,6 @@ export class AgentConfigService {
 			}
 		}
 	}
-}
-
-/**
- * Inline each skill ref's body from the agent's `skills` column so the
- * exported config is self-contained.
- */
-function hydrateSkillDefinitions(
-	entity: Agent,
-	refs: NonNullable<AgentJsonConfig['skills']>,
-): NonNullable<ExportedAgentJsonConfig['skills']> {
-	const skills = entity.skills ?? {};
-
-	return refs.map((ref) => {
-		const body = Object.hasOwn(skills, ref.id) ? skills[ref.id] : undefined;
-		if (!body) return ref;
-		return {
-			...ref,
-			name: body.name,
-			description: body.description,
-			instructions: body.instructions,
-			...(body.allowedTools !== undefined ? { allowedTools: body.allowedTools } : {}),
-			...(body.references !== undefined ? { references: body.references } : {}),
-		};
-	});
-}
-
-/**
- * Inline each custom tool ref's source code from the agent's `tools` column
- * so the exported config is self-contained. The descriptor is not exported —
- * it is re-derived from the code on import.
- */
-function hydrateCustomToolDefinitions(
-	entity: Agent,
-	refs: NonNullable<AgentJsonConfig['tools']>,
-): NonNullable<ExportedAgentJsonConfig['tools']> {
-	const tools = entity.tools ?? {};
-
-	return refs.map((ref) => {
-		if (ref.type !== 'custom') return ref;
-		const stored = Object.hasOwn(tools, ref.id) ? tools[ref.id] : undefined;
-		if (!stored) return ref;
-		return { ...ref, code: stored.code };
-	});
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

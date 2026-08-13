@@ -10,7 +10,7 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 } from '@n8n/api-types';
-import type { AgentFileDto } from '@n8n/api-types';
+import type { AgentFileDto, AgentTaskDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -25,6 +25,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
+	getAgentTasks,
 	createAgent,
 	deleteAgent,
 	listAgentFiles,
@@ -33,6 +34,7 @@ import {
 	warmAgentKnowledgeSandbox,
 	updateAgentSkill,
 } from '../composables/useAgentApi';
+import { buildExportedAgentJson } from '../utils/build-exported-agent-json';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type {
 	AgentResource,
@@ -1181,7 +1183,25 @@ async function exportAgentJson() {
 	}
 	if (!localConfig.value) return;
 
-	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+	// Inline the task/skill/custom-tool definition bodies so the download is
+	// self-contained — the config itself carries only bare refs. Skill bodies
+	// and tool code are on the agent resource; task bodies are fetched here.
+	let tasks: AgentTaskDto[] = [];
+	if (localConfig.value.tasks?.length && !isUnsaved.value) {
+		try {
+			tasks = await getAgentTasks(rootStore.restApiContext, projectId.value, agentId.value);
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.exportJson.tasksLoadError' as BaseTextKey));
+			return;
+		}
+	}
+	const exportedConfig = buildExportedAgentJson(localConfig.value, {
+		skills: agent.value?.skills ?? {},
+		tools: agent.value?.tools ?? {},
+		tasks,
+	});
+
+	const blob = new Blob([`${JSON.stringify(exportedConfig, null, 2)}\n`], {
 		type: 'application/json',
 	});
 	const url = URL.createObjectURL(blob);

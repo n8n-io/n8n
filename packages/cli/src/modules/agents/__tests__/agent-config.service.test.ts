@@ -811,10 +811,11 @@ describe('AgentConfigService', () => {
 
 	// Reproduces AGENT-582: a scheduled task's reference lives in the agent
 	// schema, but its definition (name/objective/cronExpression) lives in the
-	// separate `agent_task_definition` table. Export must carry the definition,
-	// and import must recreate it — otherwise the task is silently lost when an
-	// agent JSON leaves one instance and is imported into another.
-	describe('scheduled task export/import round-trip', () => {
+	// separate `agent_task_definition` table. Exported agent JSON (built by the
+	// frontend from the builder's data) carries the definition inline on the
+	// ref, and import must recreate it — otherwise the task is silently lost
+	// when an agent JSON leaves one instance and is imported into another.
+	describe('scheduled task import', () => {
 		const taskReference = { type: 'task', id: 'weekly_review', enabled: true } as const;
 		const taskDefinition = {
 			id: 'weekly_review',
@@ -824,43 +825,20 @@ describe('AgentConfigService', () => {
 			cronExpression: '0 9 * * 1',
 		};
 
-		it('includes the full task definition in the exported config, not just the reference', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(
-				makeAgent({ schema: { ...baseConfig, tasks: [taskReference] } as AgentJsonConfig }),
-			);
-			agentTaskRepository.findByAgentId.mockResolvedValue([taskDefinition] as never);
-
-			const exported = await service.getConfig(agentId, projectId);
-
-			// The exported JSON carries only `{ type, id, enabled }`, so the
-			// objective and schedule are lost the moment the config is downloaded.
-			const exportedTask = exported.tasks?.[0] as Record<string, unknown> | undefined;
-			expect(exportedTask).toMatchObject({
-				id: 'weekly_review',
-				name: 'Weekly review',
-				objective: 'Summarise the week and post the digest to Slack',
-				cronExpression: '0 9 * * 1',
-			});
-		});
-
 		it('preserves a task when an exported config is imported into a fresh agent', async () => {
-			const { service, agentRepository, agentTaskRepository, txManager } = makeService();
+			const { service, agentRepository, txManager } = makeService();
 
-			const sourceAgentId = agentId;
 			const targetAgentId = 'agent-imported';
-			agentRepository.findByIdAndProjectId.mockImplementation(async (id) =>
-				id === sourceAgentId
-					? makeAgent({ schema: { ...baseConfig, tasks: [taskReference] } as AgentJsonConfig })
-					: makeAgent({ id: targetAgentId, schema: baseConfig }),
-			);
-			agentTaskRepository.findByAgentId.mockImplementation(async (id) =>
-				id === sourceAgentId ? ([taskDefinition] as never) : [],
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ id: targetAgentId, schema: baseConfig }),
 			);
 
-			// Export from the source agent, then import into a fresh agent whose
-			// `agent_task_definition` table is empty.
-			const exported = await service.getConfig(sourceAgentId, projectId);
+			// Import an exported config with the task body inlined on the ref into
+			// a fresh agent whose `agent_task_definition` table is empty.
+			const exported = {
+				...baseConfig,
+				tasks: [{ ...taskReference, ...taskDefinition }],
+			};
 			await service.updateConfig(targetAgentId, projectId, exported, user, byUser);
 
 			// The task reference must survive the import instead of being dropped
@@ -947,9 +925,9 @@ describe('AgentConfigService', () => {
 		});
 	});
 
-	// Same round-trip as tasks, but for skill bodies, which live in the agent's
-	// `skills` column rather than a separate table.
-	describe('skill export/import round-trip', () => {
+	// Same as tasks, but for skill bodies, which live in the agent's `skills`
+	// column rather than a separate table.
+	describe('skill import', () => {
 		const skillReference = { type: 'skill', id: 'skill_summarize' } as const;
 		const skillBody = {
 			name: 'Summarize thread',
@@ -957,38 +935,15 @@ describe('AgentConfigService', () => {
 			instructions: 'Read the thread and produce a concise summary.',
 		};
 
-		it('includes the full skill body in the exported config, not just the reference', async () => {
-			const { service, agentRepository } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(
-				makeAgent({
-					schema: { ...baseConfig, skills: [skillReference] } as AgentJsonConfig,
-					skills: { [skillReference.id]: skillBody },
-				}),
-			);
-
-			const exported = await service.getConfig(agentId, projectId);
-
-			expect(exported.skills?.[0]).toMatchObject({
-				id: skillReference.id,
-				...skillBody,
-			});
-		});
-
 		it('preserves a skill when an exported config is imported into a fresh agent', async () => {
 			const { service, agentRepository } = makeService();
 
-			const sourceAgentId = agentId;
 			const targetAgentId = 'agent-imported';
-			agentRepository.findByIdAndProjectId.mockImplementation(async (id) =>
-				id === sourceAgentId
-					? makeAgent({
-							schema: { ...baseConfig, skills: [skillReference] } as AgentJsonConfig,
-							skills: { [skillReference.id]: skillBody },
-						})
-					: makeAgent({ id: targetAgentId, schema: baseConfig }),
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ id: targetAgentId, schema: baseConfig }),
 			);
 
-			const exported = await service.getConfig(sourceAgentId, projectId);
+			const exported = { ...baseConfig, skills: [{ ...skillReference, ...skillBody }] };
 			await service.updateConfig(targetAgentId, projectId, exported, user, byUser);
 
 			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
@@ -1081,47 +1036,25 @@ describe('AgentConfigService', () => {
 		});
 	});
 
-	// Same round-trip for custom tools: only the source code is exported, and
-	// the descriptor is re-derived from that code in the secure runtime on
-	// import — never taken from the imported JSON.
-	describe('custom tool export/import round-trip', () => {
+	// Same for custom tools: only the source code travels in the exported
+	// JSON, and the descriptor is re-derived from that code in the secure
+	// runtime on import — never taken from the imported JSON.
+	describe('custom tool import', () => {
 		const toolReference = { type: 'custom', id: 'my_tool' } as const;
 		const toolCode = 'export default new Tool("my_tool")';
 		const toolDescriptor = { name: 'my_tool', description: 'demo' } as never;
 		const storedTool = { code: toolCode, descriptor: toolDescriptor };
 
-		it('includes the tool source code in the exported config, not just the reference', async () => {
-			const { service, agentRepository } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(
-				makeAgent({
-					schema: { ...baseConfig, tools: [toolReference] } as AgentJsonConfig,
-					tools: { [toolReference.id]: storedTool } as Agent['tools'],
-				}),
-			);
-
-			const exported = await service.getConfig(agentId, projectId);
-
-			expect(exported.tools?.[0]).toMatchObject({ id: toolReference.id, code: toolCode });
-			// The descriptor is derived state and must not leak into the export.
-			expect(exported.tools?.[0]).not.toHaveProperty('descriptor');
-		});
-
 		it('preserves a custom tool when an exported config is imported into a fresh agent', async () => {
 			const { service, agentRepository, secureRuntime } = makeService();
 			secureRuntime.describeToolSecurely.mockResolvedValue(toolDescriptor);
 
-			const sourceAgentId = agentId;
 			const targetAgentId = 'agent-imported';
-			agentRepository.findByIdAndProjectId.mockImplementation(async (id) =>
-				id === sourceAgentId
-					? makeAgent({
-							schema: { ...baseConfig, tools: [toolReference] } as AgentJsonConfig,
-							tools: { [toolReference.id]: storedTool } as Agent['tools'],
-						})
-					: makeAgent({ id: targetAgentId, schema: baseConfig }),
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ id: targetAgentId, schema: baseConfig }),
 			);
 
-			const exported = await service.getConfig(sourceAgentId, projectId);
+			const exported = { ...baseConfig, tools: [{ ...toolReference, code: toolCode }] };
 			await service.updateConfig(targetAgentId, projectId, exported, user, byUser);
 
 			expect(secureRuntime.describeToolSecurely).toHaveBeenCalledWith(toolCode);

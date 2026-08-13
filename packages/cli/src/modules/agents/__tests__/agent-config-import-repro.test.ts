@@ -183,13 +183,12 @@ describe('agent JSON import reproduction (English Chatbot)', () => {
 		expect(saved.schema?.tasks).toEqual([
 			{ type: 'task', id: 'task_zK4w9IbQSclYjQVm', enabled: true },
 		]);
-		expect(result.config.skills?.[0]).toMatchObject({
-			id: 'skill_sAPb9pNjfMq1Xt6p',
-			name: 'Test',
-		});
+		// The response carries the persisted (bare-ref) config; the frontend
+		// re-inlines bodies at export time.
+		expect(result.config.skills).toEqual([{ type: 'skill', id: 'skill_sAPb9pNjfMq1Xt6p' }]);
 	});
 
-	it('returns a config equal to the imported JSON (round-trip fidelity)', async () => {
+	it('persists everything from the imported JSON, with refs bared in the schema', async () => {
 		const { service, agentRepository } = makeHarness();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeFreshAgent());
 
@@ -197,11 +196,18 @@ describe('agent JSON import reproduction (English Chatbot)', () => {
 			modifiedBy: 'user',
 		});
 
-		expect(result.config).toEqual(exportedJson);
+		// Round-trip fidelity: the persisted config equals the imported document
+		// with definition bodies moved to their own stores (the export flow
+		// re-inlines them from there).
+		expect(result.config).toEqual({
+			...exportedJson,
+			skills: [{ type: 'skill', id: 'skill_sAPb9pNjfMq1Xt6p' }],
+			tasks: [{ type: 'task', id: 'task_zK4w9IbQSclYjQVm', enabled: true }],
+		});
 	});
 
 	it('imports the task under a fresh id when the source agent on the same instance still owns it', async () => {
-		const { service, agentRepository, agentTaskRepository } = makeHarness();
+		const { service, agentRepository, agentTaskRepository, txManager } = makeHarness();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeFreshAgent());
 		agentTaskRepository.findOwningAgentIds.mockResolvedValue(
 			new Map([['task_zK4w9IbQSclYjQVm', 'agent-source']]),
@@ -214,13 +220,18 @@ describe('agent JSON import reproduction (English Chatbot)', () => {
 		const task = result.config.tasks?.[0] as Record<string, unknown>;
 		expect(task.id).toMatch(/^task_/);
 		expect(task.id).not.toBe('task_zK4w9IbQSclYjQVm');
-		expect(task).toMatchObject({
-			enabled: true,
+		expect(task.enabled).toBe(true);
+
+		// The row was created under the fresh id with the imported body.
+		const savedRow = txManager.save.mock.calls
+			.map(([entity]) => entity as Record<string, unknown>)
+			.find((entity) => entity.objective !== undefined);
+		expect(savedRow).toMatchObject({
+			id: task.id,
+			agentId: 'agent-imported',
 			name: 'daily',
 			objective: 'test task content',
 			cronExpression: '0 9 * * *',
 		});
-		// Everything except the re-minted task id still round-trips exactly.
-		expect({ ...result.config, tasks: undefined }).toEqual({ ...exportedJson, tasks: undefined });
 	});
 });
