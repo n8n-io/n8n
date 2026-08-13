@@ -524,9 +524,10 @@ Expected: FAIL — `buildNodesAttachment is not a function`.
 ```ts
 import { instanceAiNodesAttachmentSchema, type InstanceAiNodesAttachment } from '@n8n/api-types';
 
-// Read caps off the schema so they can never drift from the backend contract.
-const MAX_SETS = instanceAiNodesAttachmentSchema.shape.sets._def.maxLength?.value ?? 50;
-const MAX_NODES_PER_SET = 50; // instanceAiNodeSetSchema.nodes max; kept in sync with #36039.
+// Schema caps (instanceAiNodeSetSchema / instanceAiNodesAttachmentSchema, #36039).
+// The safeParse test in this file is the real drift-guard — no need to poke zod internals.
+const MAX_SETS = 50;
+const MAX_NODES_PER_SET = 50;
 
 export function buildNodesAttachment(
 	workflowId: string,
@@ -1424,7 +1425,7 @@ export function useAddNodesToChat() {
 		}
 
 		// Context B: open a thread with the draft pre-staged, unsent.
-		const threadId = await handoff.openThreadForDraft?.(); // see note
+		const threadId = await handoff.openThreadForDraft(); // added to the handoff composable, see note
 		if (!threadId) return;
 		stashPendingDraftAttachment(threadId, built.attachment.sets, params.workflowId);
 		await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
@@ -1537,7 +1538,7 @@ Extend emits with `'add-nodes-to-chat': [ids: string[]]`. Include `showAddToChat
 
 - [ ] **Step 4: Wire `Canvas.vue`**
 
-Where `<CanvasSelectionToolbar>` is rendered, add `@add-nodes-to-chat="onAddNodesToChat"`. Implement:
+Where `<CanvasSelectionToolbar>` is rendered, add `@add-nodes-to-chat="onAddNodesToChat()"` (the handler reads `Canvas.vue`'s own `selectedNodeIdsWithGroupMembers` computed — which already expands groups — so it ignores the emit payload; the emit is just the "clicked" signal). Implement:
 
 ```ts
 import { useAddNodesToChat } from '@/features/ai/instanceAi/composables/useAddNodesToChat';
@@ -1555,17 +1556,12 @@ function buildBuilderWorkflow() {
 	};
 }
 
-async function onAddNodesToChat(ids: string[]) {
-	// Expand any selected canvas GROUP into its member node ids, so a group
-	// resolves to one set with canvasGroupId (→ a single group chip). A raw
-	// selection of a collapsed group otherwise carries the synthetic group-node
-	// id, which the builder (real ids/names only) can't resolve. Prefer the
-	// existing `selectedNodeIdsWithGroupMembers` when the caller is the toolbar
-	// (its ids already exclude group-node ids); for the context menu, expand here.
-	const expanded = expandGroupMembers(ids); // see note
+// Toolbar path: no arg — read Canvas.vue's own group-expanded selection.
+// Context-menu path: pass the menu's nodeIds (already real node ids).
+async function onAddNodesToChat(ids: string[] = selectedNodeIdsWithGroupMembers.value) {
 	await addSelectedNodesToChat({
 		workflowId: workflowDocumentStore.value.workflowId, // confirm exact accessor
-		selectedNodeIds: expanded,
+		selectedNodeIds: ids,
 		workflow: buildBuilderWorkflow(),
 		isInsideThread: instanceAi.value,
 		onStaged: () => instanceAiStore.requestComposerFocus(), // Context A focus (see Notes)
@@ -1574,7 +1570,7 @@ async function onAddNodesToChat(ids: string[]) {
 ```
 
 > Implementer notes:
-> - **Group expansion:** `expandGroupMembers(ids)` maps each id: if it's a synthetic canvas-group-node id (`isCanvasGroupNode` / `parseCanvasGroupNodeId` from `canvas.types.ts`), replace it with `getGroupById(groupId).nodeIds`; otherwise keep it. `Canvas.vue` already has `selectedNodeIdsWithGroupMembers` (≈ line 588) doing this for the current selection — reuse it for the toolbar path (pass `selectedNodeIdsWithGroupMembers.value` as the emit payload instead of `selectedNodeIds`), and for the context-menu path apply the same mapping to the `nodeIds` the menu hands you. Net effect: the builder always receives real member ids.
+> - **Group expansion — reuse, don't rebuild.** `Canvas.vue` already has `selectedNodeIdsWithGroupMembers` (≈ line 588) that expands a collapsed group's synthetic node id into its member ids. The toolbar button emits *that* (not raw `selectedNodeIds`), so `onAddNodesToChat` receives real member ids and needs no expansion helper. If the context-menu `nodeIds` ever include a synthetic group-node id, map it through the same computed rather than writing a second helper.
 > - **Sub-nodes are NOT auto-included.** The Phase-1 partitioner walks `'main'` connections only, so an AI root's `ai_*` sub-nodes (model/tools) are part of a set only if the user also selected them. This is intended (confirmed) — the agent resolves its own sub-nodes via its tools; the backend prose describes only the selected chain.
 > - Confirm the exact `workflowId` accessor on the doc store and the `allNodes`/`allGroups`/`connectionsBySourceNode`/`nodeIdToGroupId` names (verified to exist; double-check casing).
 

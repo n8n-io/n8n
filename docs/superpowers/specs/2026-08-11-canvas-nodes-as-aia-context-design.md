@@ -203,8 +203,8 @@ to the limits (keep the first N sets; within an over-large set keep the first N
 nodes in traversal order) and returns a flag/count so the caller shows a
 non-blocking toast (e.g. "Only the first 50 nodes were added to the chat"). The
 returned attachment is always schema-valid — never emit a payload the backend
-would 400. Limits reference the schema `.max()` values, not inlined magic
-numbers.
+would 400. Caps are two plain consts (`MAX_SETS = 50`, `MAX_NODES_PER_SET = 50`);
+the `safeParse` test guards against drift from the schema.
 
 Tests: the 8 cases in the plan (chain→1 set ordered; disjoint→2 sets;
 trigger+terminal fine; neighbor resolution incl. edges; group same/mixed/none;
