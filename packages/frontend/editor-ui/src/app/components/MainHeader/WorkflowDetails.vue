@@ -407,7 +407,6 @@ onBeforeUnmount(() => {
 $--header-spacing: 20px;
 
 .name-container {
-	margin-right: var(--spacing--sm);
 	min-width: 0;
 
 	:deep(.el-input) {
