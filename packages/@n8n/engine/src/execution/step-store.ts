@@ -77,6 +77,12 @@ export interface StepStore {
 	 * so it returns the claimed step for at most one caller — `null` means the
 	 * claim was lost and duplicate/redelivered events are handled idempotently.
 	 *
+	 * The claim also refuses once any step in the execution has failed, so
+	 * fail-fast holds even for a `step:ready` published before the failure
+	 * landed. This holds under concurrency: the claim serializes with
+	 * `failStep` on the execution, so it never succeeds after a failure is
+	 * recorded.
+	 *
 	 * Transitions are exposed one named method at a time rather than as a generic
 	 * `(from, to)` pair, so the interface can't express a transition the
 	 * lifecycle doesn't allow.

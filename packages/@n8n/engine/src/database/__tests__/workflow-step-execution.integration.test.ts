@@ -180,6 +180,55 @@ describe('workflow_step_execution table (integration)', () => {
 		expect((await store.loadStep(id)).status).toBe('running');
 	});
 
+	it('TypeOrmStepStore.claimStep refuses once any step in the execution failed', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await createStep(store, { executionId, nodeId: 'a', status: 'failed' });
+		const { id } = await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
+
+		// b's step:ready was published before a's failure landed; the fence in
+		// the claim statement keeps it from starting work in a doomed execution
+		expect(await store.claimStep(id)).toBeNull();
+		expect((await store.loadStep(id)).status).toBe('queued');
+
+		// a failure in one execution doesn't fence claims in another
+		const otherExecutionId = await createExecution();
+		const other = await createStep(store, {
+			executionId: otherExecutionId,
+			nodeId: 'a',
+			status: 'queued',
+		});
+		expect(await store.claimStep(other.id)).not.toBeNull();
+	});
+
+	it('TypeOrmStepStore.claimStep waits out a concurrently committing failure and refuses', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const failing = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
+		const { id } = await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
+
+		// An in-flight failStep: execution lock held, failed row written, commit
+		// pending. A snapshot-only claim would see no failure and go through.
+		const failure = dataSource.createQueryRunner();
+		await failure.connect();
+		await failure.startTransaction();
+		await failure.query('SELECT id FROM workflow_execution WHERE id = $1 FOR NO KEY UPDATE', [
+			executionId,
+		]);
+		await failure.query("UPDATE workflow_step_execution SET status = 'failed' WHERE id = $1", [
+			failing.id,
+		]);
+
+		// the claim must park on the execution lock until the failure commits
+		const claim = store.claimStep(id);
+		await new Promise((resolve) => setTimeout(resolve, 150));
+		await failure.commitTransaction();
+		await failure.release();
+
+		expect(await claim).toBeNull();
+		expect((await store.loadStep(id)).status).toBe('queued');
+	});
+
 	it('TypeOrmStepStore.completeStep persists outputs and marks the step completed', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));

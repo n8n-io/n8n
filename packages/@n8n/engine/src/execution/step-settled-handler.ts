@@ -49,13 +49,15 @@ export class StepSettledHandler {
 
 		let queued = 0;
 		if (step.status === 'completed' || step.status === 'skipped') {
-			const steps = await this.loadDecisionSteps(execution, step.nodeId);
-
-			if (Object.values(steps).some((summary) => summary.status === 'failed')) {
+			// Fail-fast is execution-wide: a failure recorded anywhere ends the
+			// run before more work is planned, even when its own settled event is
+			// still queued behind this one.
+			if (await this.stepStore.hasFailedSteps(execution.id)) {
 				await this.failExecution(execution.id);
 				return;
 			}
 
+			const steps = await this.loadDecisionSteps(execution, step.nodeId);
 			queued = await this.planSuccessors(execution, step.nodeId, steps);
 		}
 

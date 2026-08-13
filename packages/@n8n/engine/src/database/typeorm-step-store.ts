@@ -1,6 +1,6 @@
 import { In, type Repository } from '@n8n/typeorm';
 
-import type { WorkflowStepExecution } from './entities';
+import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
 import {
@@ -65,25 +65,47 @@ export class TypeOrmStepStore implements StepStore {
 		// need a second query to learn which node it now runs. RETURNING covers
 		// only the identity columns: a step claimed out of `queued` can't have
 		// an outcome yet, so `outputs`/`error` are `null` by the lifecycle.
-		const result = await this.repo
-			.createQueryBuilder()
-			.update()
-			.set({ status: 'running' })
-			.where({ id, status: 'queued' })
-			.returning(['id', 'executionId', 'nodeId'])
-			.execute();
+		//
+		// The failure fence: the claim and `failStep` contend on the execution
+		// row (shared vs exclusive lock), so the failed-sibling check cannot
+		// miss a concurrently committing failure — the claim either waits it
+		// out and sees it, or committed strictly before it.
+		return await this.repo.manager.transaction(async (manager) => {
+			const [execution] = (await manager.query(
+				`SELECT id FROM workflow_execution
+				 WHERE id = (SELECT execution_id FROM workflow_step_execution WHERE id = $1)
+				 FOR SHARE`,
+				[id],
+			)) as Array<{ id: string }>;
+			if (!execution) return null;
 
-		const [row] = result.raw as Array<{ id: string; execution_id: string; node_id: string }>;
-		if (!row) return null;
+			const result = await manager
+				.createQueryBuilder()
+				.update(WorkflowStepExecution)
+				.set({ status: 'running' })
+				.where({ id, status: 'queued' })
+				.andWhere(
+					`NOT EXISTS (
+						SELECT 1 FROM workflow_step_execution sibling
+						WHERE sibling.execution_id = :executionId AND sibling.status = 'failed'
+					)`,
+					{ executionId: execution.id },
+				)
+				.returning(['id', 'executionId', 'nodeId'])
+				.execute();
 
-		return {
-			id: row.id,
-			executionId: row.execution_id,
-			nodeId: row.node_id,
-			status: 'running',
-			outputs: null,
-			error: null,
-		};
+			const [row] = result.raw as Array<{ id: string; execution_id: string; node_id: string }>;
+			if (!row) return null;
+
+			return {
+				id: row.id,
+				executionId: row.execution_id,
+				nodeId: row.node_id,
+				status: 'running',
+				outputs: null,
+				error: null,
+			};
+		});
 	}
 
 	async completeStep(id: string, outputs: StepSlots): Promise<boolean> {
@@ -95,7 +117,22 @@ export class TypeOrmStepStore implements StepStore {
 	}
 
 	async failStep(id: string, error: StepError): Promise<boolean> {
-		return await this.transition(id, 'running', 'failed', { error });
+		// Exclusive side of the claim fence (see `claimStep`). NO KEY UPDATE
+		// rather than UPDATE so FK-checked step inserts don't queue behind it.
+		return await this.repo.manager.transaction(async (manager) => {
+			await manager.query(
+				`SELECT id FROM workflow_execution
+				 WHERE id = (SELECT execution_id FROM workflow_step_execution WHERE id = $1)
+				 FOR NO KEY UPDATE`,
+				[id],
+			);
+			const result = await manager.update(
+				WorkflowStepExecution,
+				{ id, status: 'running' },
+				{ error, status: 'failed' },
+			);
+			return result.affected === 1;
+		});
 	}
 
 	/**

@@ -177,18 +177,21 @@ describe('StepSettledHandler', () => {
 		});
 	});
 
-	it("fails the execution when a sibling's settlement sees a failed predecessor", async () => {
-		const stepStore = makeStepStore({ id: 'step-c', nodeId: 'c' }, {}, [
-			...defaultSummaries,
-			summary('b', 'failed'),
-			summary('c', 'completed', [true]),
-		]);
+	it('fails the execution before planning when any step has failed', async () => {
+		// b failed while c completed, and settled(c) is handled first: m must not
+		// be planned off c's live edge. The check is execution-wide, so it also
+		// covers failures in branches this settlement's snapshot never sees.
+		const stepStore = makeStepStore(
+			{ id: 'step-c', nodeId: 'c' },
+			{ hasFailedSteps: vi.fn().mockResolvedValue(true) },
+		);
 		const { handler, executionStore, stepQueue, orchestrationQueue } = makeHandler(stepStore);
 
 		await handler.handle({ ...event, stepId: 'step-c' });
 
 		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
 		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.loadStepSummaries).not.toHaveBeenCalled();
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
@@ -391,7 +394,6 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-m' });
 
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
-		expect(stepStore.hasFailedSteps).not.toHaveBeenCalled();
 	});
 
 	it('fails the execution and cancels queued steps the moment a step fails', async () => {
