@@ -226,12 +226,14 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 		const isResumed = exec.hitlStatus === 'resumed';
 		let resumedTagUsed = false;
 
-		if (exec.userMessage) {
+		// Attachment-only sends record a null userMessage but still carry files.
+		if (exec.userMessage || exec.attachments?.length) {
 			items.push({
 				kind: 'user',
 				executionId: exec.id,
-				content: exec.userMessage,
+				content: exec.userMessage ?? '',
 				timestamp: exec.startedAt ? new Date(exec.startedAt).getTime() : 0,
+				...(exec.attachments?.length && { attachments: exec.attachments }),
 			});
 		}
 
@@ -265,7 +267,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					toolCallId: event.toolCallId,
 					toolInput: event.input,
 					toolOutput: event.output,
-					toolSuccess: event.success,
+					toolSuccess: event.endTime === 0 ? undefined : event.success,
 					timestamp: event.startTime,
 					endTimestamp: event.endTime || event.startTime,
 					workflowId: isWorkflow ? event.workflowId : undefined,

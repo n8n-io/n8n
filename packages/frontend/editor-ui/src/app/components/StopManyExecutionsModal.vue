@@ -3,12 +3,12 @@ import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import { N8nButton, N8nFormInput, N8nCallout, N8nText } from '@n8n/design-system';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { ElRow } from 'element-plus';
-import { useTelemetry } from '../composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;

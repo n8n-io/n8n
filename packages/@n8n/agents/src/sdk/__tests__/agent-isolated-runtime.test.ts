@@ -118,6 +118,22 @@ describe('Agent isolated runtimes', () => {
 		});
 	});
 
+	it('maps provider-specific thinking from the Agent SDK into providerOptions', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('ok'));
+		const agent = new Agent('agent')
+			.model('openai/gpt-4o-mini')
+			.instructions('test')
+			.thinking('openai', { reasoningEffort: 'high' });
+
+		await agent.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as { providerOptions: Record<string, unknown> };
+		expect(callArgs.providerOptions.openai).toEqual({
+			reasoningEffort: 'high',
+			reasoningSummary: null,
+		});
+	});
+
 	it('cleans up the active runtime when a wrapped stream is cancelled', async () => {
 		const agent = new Agent('agent').model('openai/gpt-4o-mini').instructions('test');
 		const internals = agent as unknown as AgentInternals;

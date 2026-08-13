@@ -177,14 +177,20 @@ describe('WorkflowPublicationApplier', () => {
 			);
 		});
 
-		test('skips with workflow-inactive when there is no published-version mapping', async () => {
+		test('completes as unpublished when there is no published-version mapping, so stale trigger-status rows are cleared', async () => {
+			// A retried/reconciled unpublish whose mapping is already gone must still
+			// end in `unpublished` (not a skip): the reporter clears the workflow's
+			// trigger-status rows only on that result, and an interrupted unpublish
+			// can leave rows behind after the mapping was removed.
 			workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(null));
 
 			const result = await applier.apply(makeRecord());
 
-			expect(result).toEqual({ type: 'skipped', reason: 'workflow-inactive' });
+			expect(result).toEqual({ type: 'unpublished' });
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
-			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+			);
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
 
@@ -277,11 +283,45 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['b']),
+			'update',
 		);
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
 		);
+	});
+
+	describe('activation mode from the record reason', () => {
+		test.each([
+			['publish', 'update'],
+			['startup', 'init'],
+			['leadership-takeover', 'leadershipChange'],
+			['reconcile', 'update'],
+		] as const)('reason %s activates with mode %s', async (reason, expectedMode) => {
+			setTriggerSets([], [triggerNode('a')]);
+
+			await applier.apply(makeRecord({ reason }));
+
+			expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				newVersion,
+				new Set(['a']),
+				expectedMode,
+			);
+		});
+
+		test('a record without a reason (pre-migration row) activates with update', async () => {
+			setTriggerSets([], [triggerNode('a')]);
+
+			await applier.apply(makeRecord({ reason: undefined }));
+
+			expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				newVersion,
+				new Set(['a']),
+				'update',
+			);
+		});
 	});
 
 	test('reconciles by registering desired non-webhook triggers missing from memory', async () => {
@@ -310,6 +350,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['a']),
+			'update',
 		);
 	});
 
@@ -359,6 +400,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['a']),
+			'update',
 		);
 	});
 
@@ -380,6 +422,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['b', 'c']),
+			'update',
 		);
 	});
 
@@ -447,6 +490,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['a']),
+			'update',
 		);
 		// The cache is invalidated before the version is advanced and repopulated
 		// straight after, so the empty window never serves a stale version, all
@@ -658,6 +702,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['a']),
+			'update',
 		);
 	});
 });

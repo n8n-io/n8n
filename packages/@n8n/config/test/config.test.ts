@@ -170,6 +170,7 @@ describe('GlobalConfig', () => {
 					'workflow-shared': '',
 					'project-shared': '',
 					'api-key-revoked': '',
+					'mcp-client-revoked': '',
 				},
 			},
 		},
@@ -275,6 +276,7 @@ describe('GlobalConfig', () => {
 			mcp: 'mcp',
 			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
+			mcpCanvasGroupsEnabled: false,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
@@ -320,6 +322,9 @@ describe('GlobalConfig', () => {
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
+			vertexProjectId: '',
+			vertexLocation: '',
+			vertexServiceAccountJson: '',
 			mcpServers: '',
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
@@ -356,6 +361,10 @@ describe('GlobalConfig', () => {
 			runDebugEnabled: false,
 			thinkingEnabled: true,
 			durableLog: true,
+			mcpConnectionsEnabled: false,
+			canvasNodeContextEnabled: false,
+			activationCapped: false,
+			activationLockMessageThreshold: 1,
 		},
 		queue: {
 			health: {
@@ -406,6 +415,7 @@ describe('GlobalConfig', () => {
 			maxConcurrency: 10,
 			taskTimeout: 300,
 			taskRequestTimeout: 60,
+			taskAcceptTimeout: 2,
 			heartbeatInterval: 30,
 			grantTokenTtl: 30,
 			insecureMode: false,
@@ -462,9 +472,19 @@ describe('GlobalConfig', () => {
 			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'legacy',
+			enabledForPollTriggers: false,
+			allowSkipDurableScheduler: false,
+			maxAttempts: 5,
+			misfireGraceSeconds: 60,
+		},
+		poller: {
+			durableCursorsEnabled: false,
 		},
 		evaluation: {
 			collectionsEnabled: false,
+			configEvalsEnabled: false,
+			agentEvalsEnabled: false,
+			agentEvalsRunTimeoutMinutes: 60,
 		},
 		generic: {
 			timezone: 'America/New_York',
@@ -494,6 +514,7 @@ describe('GlobalConfig', () => {
 			awsSystemCredentialsSdkSources: 'all',
 			enableGitNodeHooks: false,
 			enableGitNodeAllConfigKeys: false,
+			postMessageAllowedOrigins: '',
 		},
 		executions: {
 			mode: 'regular',
@@ -528,6 +549,8 @@ describe('GlobalConfig', () => {
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
 			maxDisplaySize: 100 * 1024 * 1024,
+			webhookResponseRelaySizeMaxMiB: 64,
+			webhookResponseRelayOffloadEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,
@@ -540,6 +563,9 @@ describe('GlobalConfig', () => {
 		},
 		aiAssistant: {
 			baseUrl: '',
+		},
+		aiGateway: {
+			enabled: true,
 		},
 		aiBuilder: {
 			apiKey: '',
@@ -608,9 +634,10 @@ describe('GlobalConfig', () => {
 			trimmingMinimumAgeDays: 6,
 			trimmingTimeWindowDays: 2,
 			trimOnStartUp: false,
+			skipOnStartUp: false,
 		},
 		expressionEngine: {
-			engine: 'legacy',
+			engine: 'vm',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
@@ -619,6 +646,7 @@ describe('GlobalConfig', () => {
 			tracesEnabled: true,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
+			allowWebhookIsolateSkip: true,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -633,6 +661,8 @@ describe('GlobalConfig', () => {
 			oidcLoginEnabled: false,
 			oidcPrompt: 'select_account',
 			oidcAcrValues: '',
+			oidcAdditionalScopes: '',
+			oidcRpInitiatedLogoutEnabled: false,
 			ssoUserRoleProvisioning: 'disabled',
 			securityPolicyManagedByEnv: false,
 			mfaEnforcedEnabled: false,
@@ -651,15 +681,14 @@ describe('GlobalConfig', () => {
 		agents: {
 			checkpointTtlSeconds: 345600,
 			tracingEnabled: true,
+			tracingRecordInputs: true,
+			tracingRecordOutputs: true,
 			modules: [],
 			sandboxEnabled: false,
-			sandboxProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
-			sandboxSnapshot: '',
+			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
-			daytonaApiUrl: '',
-			daytonaApiKey: '',
 		},
 	} satisfies GlobalConfigShape;
 
@@ -680,6 +709,24 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.tracingEnabled).toBe(false);
+	});
+
+	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {
+		process.env = {
+			N8N_AGENTS_TRACING_RECORD_INPUTS: 'false',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.tracingRecordInputs).toBe(false);
+	});
+
+	it('should parse N8N_AGENTS_TRACING_RECORD_OUTPUTS from env variables', () => {
+		process.env = {
+			N8N_AGENTS_TRACING_RECORD_OUTPUTS: 'false',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.tracingRecordOutputs).toBe(false);
 	});
 
 	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {

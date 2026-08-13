@@ -4,9 +4,11 @@ import type {
 	INodeListSearchResult,
 	INodeParameterResourceLocator,
 	INodeProperties,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { type GraphSearchReply } from '../helpers/utils';
 import {
 	getSharePointCredentialType,
 	microsoftApiRequest,
@@ -58,10 +60,7 @@ export const siteRLC: INodeProperties = {
 	],
 };
 
-type SiteSearchReply = {
-	'@odata.nextLink'?: string;
-	value?: Array<{ id?: string; displayName?: string; webUrl?: string }>;
-};
+type SiteSearchReply = GraphSearchReply<{ id?: string; displayName?: string; webUrl?: string }>;
 
 /**
  * Searches sites by name. Graph quirks: the parameter is literally `search`
@@ -95,18 +94,23 @@ export async function getSites(
 					},
 				)) as SiteSearchReply);
 	} catch (error) {
-		// An app with only per-site permissions can't list what it can't see —
-		// point at the URL mode. Delegated refusals keep the transport's message,
-		// which names the missing permission (URL paste would hit the same 403).
-		if (
-			error instanceof NodeApiError &&
-			error.httpCode === '403' &&
-			getSharePointCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH
-		) {
-			throw new NodeOperationError(this.getNode(), 'This app registration cannot search sites', {
-				description:
-					"An app registration with only per-site permissions can't list sites. Choose the site by pasting its URL instead — that still works — or grant the app the Sites.Read.All application permission to enable search.",
-			});
+		if (error instanceof NodeApiError && error.httpCode === '403') {
+			if (getSharePointCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH) {
+				throw new NodeOperationError(this.getNode(), 'This app registration cannot search sites', {
+					description:
+						"An app registration with only per-site permissions can't list sites. Choose the site by pasting its URL instead — that still works — or grant the app the Sites.Read.All application permission to enable search.",
+				});
+			}
+			throw new NodeApiError(
+				this.getNode(),
+				{ message: 'This credential cannot search sites' } as JsonObject,
+				{
+					message: 'This credential cannot search sites',
+					description:
+						"Switch the Site field to URL or ID mode — Microsoft Graph doesn't support site search under Sites.Selected, and neither mode needs that permission. If URL or ID mode also fails, the credential likely lacks a different permission or consent, not just Sites.Read.All.",
+					httpCode: '403',
+				},
+			);
 		}
 		throw error;
 	}
@@ -129,9 +133,11 @@ export async function getSites(
  * Callers with a per-item loop pass `siteIdCache` (hoisted in the router) so
  * a multi-item run resolves each distinct URL once instead of per item —
  * without it the run doubles its Graph request volume and risks 429 throttling.
+ * Load-options callers (the list-search dropdown) have no per-run cache to
+ * hoist and pass none — each dropdown open is its own one-off lookup.
  */
 export async function resolveSiteId(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
 	siteIdCache?: Map<string, string>,
 ): Promise<string> {

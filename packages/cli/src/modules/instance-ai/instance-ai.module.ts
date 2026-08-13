@@ -3,21 +3,24 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-const YELLOW = '\x1b[33m';
-const CLEAR = '\x1b[0m';
-const WARNING_MESSAGE =
-	"[Instance AI] 'instance-ai' module is experimental, undocumented and subject to change. " +
-	'Before its official release any features may become inaccessible at any point, ' +
-	'and using the module could compromise the stability of your system. Use at your own risk!';
-
 @BackendModule({ name: 'instance-ai', instanceTypes: ['main'] })
 export class InstanceAiModule implements ModuleInterface {
 	async init() {
-		const logger = Container.get(Logger).scoped('instance-ai');
-		logger.warn(`${YELLOW}${WARNING_MESSAGE}${CLEAR}`);
-
-		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service.js');
-		await Container.get(InstanceAiSettingsService).loadFromDb();
+		const { InstanceCredentialBroker } = await import(
+			'@/credentials/instance-credential-broker.js'
+		);
+		const {
+			InstanceAiSettingsService,
+			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+		} = await import('./instance-ai-settings.service.js');
+		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
+		const settingsService = Container.get(InstanceAiSettingsService);
+		const credentialBroker = Container.get(InstanceCredentialBroker);
+		credentialBroker.registerUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
+		Container.get(SandboxSettingsService).registerCredentialUses();
+		credentialBroker.registerUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY);
+		await settingsService.loadFromDb();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 
@@ -33,6 +36,7 @@ export class InstanceAiModule implements ModuleInterface {
 		if (Container.get(GlobalConfig).instanceAi.durableLog) {
 			const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
 			const { InstanceAiService } = await import('./instance-ai.service.js');
+			const logger = Container.get(Logger).scoped('instance-ai');
 			const sweeper = Container.get(InterruptedRunSweeper);
 			sweeper.setResumeHost(Container.get(InstanceAiService));
 			void sweeper.sweep().catch((error: unknown) => {
@@ -56,16 +60,19 @@ export class InstanceAiModule implements ModuleInterface {
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
 		const browserUseEnabled = settingsService.isBrowserUseEnabled();
 		const sandboxStatus = settingsService.getSandboxStatus();
+		const setupCompleted = await settingsService.isSetupCompleted();
 		return {
 			enabled,
 			localGatewayDisabled,
 			browserUseEnabled,
 			proxyEnabled: service.isProxyEnabled(),
 			cloudManaged: globalConfig.deployment.type === 'cloud',
+			setupCompleted,
 			sandboxEnabled: sandboxStatus.enabled,
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
+			activationCapped: settingsService.isActivationCapped(),
 		};
 	}
 

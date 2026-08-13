@@ -8,8 +8,8 @@ import { vi } from 'vitest';
 import type { AllRolesMap, ProjectRole } from '@n8n/permissions';
 import ProjectMembersRoleCell from './ProjectMembersRoleCell.vue';
 import type { ProjectMemberData } from '../projects.types';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');

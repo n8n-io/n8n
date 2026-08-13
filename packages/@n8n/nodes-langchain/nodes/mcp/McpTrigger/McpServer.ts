@@ -220,7 +220,15 @@ export class McpServer {
 			try {
 				await new Promise<void>((resolve) => {
 					this.resolveFunctions[callId] = resolve;
-					void transport.handleRequest(req, resp, message as IncomingMessage).finally(resolve);
+					const requestHandled = transport.handleRequest(req, resp, message as IncomingMessage);
+					if (isToolCall && transport.transportType === 'sse') {
+						// SSE answers the POST with 202 before the tool has run, so completing the
+						// request must not resolve here — the CallTool handler does that once the
+						// tool finished. A transport failure still resolves so we never hang.
+						void requestHandled.catch(() => resolve());
+					} else {
+						void requestHandled.finally(resolve);
+					}
 				});
 			} finally {
 				delete this.resolveFunctions[callId];
@@ -297,6 +305,10 @@ export class McpServer {
 			transport,
 			createdAt: new Date(),
 		};
+	}
+
+	hasSession(sessionId: string): boolean {
+		return this.getTransport(sessionId) !== undefined;
 	}
 
 	handleWorkerResponse(sessionId: string, messageId: string, result: unknown): void {
@@ -603,73 +615,77 @@ export class McpServer {
 		);
 
 		server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-			if (!request.params?.name || !request.params?.arguments) {
-				throw new OperationalError('Require a name and arguments for the tool call');
-			}
 			if (!extra.sessionId) {
 				throw new OperationalError('Require a sessionId for the tool call');
 			}
 
 			const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
-			const toolName = request.params.name;
-			const toolArguments =
-				typeof request.params.arguments === 'object' && request.params.arguments !== null
-					? request.params.arguments
-					: {};
-
-			const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
-			const requestedTool = tools.find((tool) => tool.name === toolName);
-			if (!requestedTool) {
-				throw new OperationalError('Tool not found');
-			}
-
-			// Eager pre-execution credential gate: if the caller has not connected a
-			// required private credential, surface the actionable connection URLs
-			// (via elicitation when supported, otherwise as text) instead of
-			// executing (or enqueuing) the workflow.
-			const gateResult = this.pendingGateResults[callId];
-			if (gateResult && !gateResult.readyToExecute) {
-				return await this.handleCredentialGate(server, gateResult, callId);
-			}
 
 			try {
-				if (this.executionCoordinator.isQueueMode()) {
-					const requestId = extra.requestId?.toString() ?? '';
-					this.storePendingResponse(extra.sessionId, requestId);
+				if (!request.params?.name || !request.params?.arguments) {
+					throw new OperationalError('Require a name and arguments for the tool call');
+				}
 
-					// Resolve handlePostMessage so webhook can return and enqueue execution.
-					// The handler continues running asynchronously, waiting for worker response.
-					if (this.resolveFunctions[callId]) {
-						this.resolveFunctions[callId]();
+				const toolName = request.params.name;
+				const toolArguments =
+					typeof request.params.arguments === 'object' && request.params.arguments !== null
+						? request.params.arguments
+						: {};
+
+				const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
+				const requestedTool = tools.find((tool) => tool.name === toolName);
+				if (!requestedTool) {
+					throw new OperationalError('Tool not found');
+				}
+
+				// Eager pre-execution credential gate: if the caller has not connected a
+				// required private credential, surface the actionable connection URLs
+				// (via elicitation when supported, otherwise as text) instead of
+				// executing (or enqueuing) the workflow.
+				const gateResult = this.pendingGateResults[callId];
+				if (gateResult && !gateResult.readyToExecute) {
+					return await this.handleCredentialGate(server, gateResult, callId);
+				}
+
+				try {
+					if (this.executionCoordinator.isQueueMode()) {
+						const requestId = extra.requestId?.toString() ?? '';
+						this.storePendingResponse(extra.sessionId, requestId);
+
+						// Resolve handlePostMessage so webhook can return and enqueue execution.
+						// The handler continues running asynchronously, waiting for worker response.
+						if (this.resolveFunctions[callId]) {
+							this.resolveFunctions[callId]();
+						}
+
+						const strategy = this.executionCoordinator.getStrategy() as QueuedExecutionStrategy;
+						const result = await strategy.executeTool(requestedTool, toolArguments, {
+							sessionId: extra.sessionId,
+							messageId: requestId,
+						});
+
+						return MessageFormatter.formatToolResult(
+							result,
+							MessageFormatter.isErrorResult(result),
+						);
 					}
 
-					const strategy = this.executionCoordinator.getStrategy() as QueuedExecutionStrategy;
-					const result = await strategy.executeTool(requestedTool, toolArguments, {
+					const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
 						sessionId: extra.sessionId,
-						messageId: requestId,
+						messageId: extra.requestId?.toString(),
 					});
 
 					return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
+				} catch (error) {
+					const errorObject = error instanceof Error ? error : new Error(String(error));
+					this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {
+						error: errorObject,
+					});
+					return MessageFormatter.formatError(errorObject);
 				}
-
-				const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
-					sessionId: extra.sessionId,
-					messageId: extra.requestId?.toString(),
-				});
-
-				if (this.resolveFunctions[callId]) {
-					this.resolveFunctions[callId]();
-				} else {
-					this.logger.warn(`No resolve function found for ${callId}`);
-				}
-
-				return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
-			} catch (error) {
-				const errorObject = error instanceof Error ? error : new Error(String(error));
-				this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {
-					error: errorObject,
-				});
-				return MessageFormatter.formatError(errorObject);
+			} finally {
+				// No-op when already resolved (queue mode, credential gate, non-SSE).
+				this.resolveFunctions[callId]?.();
 			}
 		});
 

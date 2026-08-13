@@ -143,7 +143,7 @@ function onItemFocusIn(event: FocusEvent) {
 }
 
 .label {
-	font-size: var(--font-size--sm);
+	font-size: var(--radio-group-item--label--font-size, var(--font-size--sm));
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--lg);
 }

@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { OAuthResourceGrant } from 'n8n-workflow';
 
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
@@ -65,6 +66,8 @@ export interface ProtectedResource {
 	 */
 	getAllowedRedirectUris?(): Promise<string[]>;
 
+	isFirstParty?: boolean;
+
 	/**
 	 * Determine whether the given user is authorized to access this resource.
 	 * Called during the consent flow to gate access to the resource.
@@ -73,6 +76,14 @@ export interface ProtectedResource {
 	 * @returns A promise that resolves to a boolean indicating whether the user is authorized
 	 **/
 	authorize(user: User): Promise<boolean>;
+
+	/**
+	 * Serializable form of this resource's gate, sealed into the executions it grants
+	 * access to — see {@link OAuthResourceGrant}. Implement it on any resource derived
+	 * from something shorter-lived than an execution; omitting it makes those runs
+	 * depend on the resource still resolving at every credential access.
+	 */
+	getGrant?(): OAuthResourceGrant;
 }
 
 /**
@@ -103,13 +114,23 @@ export interface ProtectedResourceResolver {
 
 	/**
 	 * Resolve a resource by its URL path (e.g. `/webhook/wf-1/mcp`), or
-	 * `undefined` if this resolver owns no such resource. The input is
-	 * pre-normalized (trailing slash trimmed) by the registry.
+	 * `undefined` if this resolver owns no such resource. The path is
+	 * pre-normalized (query split off, trailing slash trimmed) by the registry.
+	 *
+	 * `search` is the resource identifier's query component (RFC 9728 §1.2), which
+	 * selects among resources sharing a path — e.g. the webhook resolver's
+	 * `?method=`. Resolvers keyed on path alone ignore it.
 	 */
-	resolveByPath(pathname: string): Promise<ProtectedResource | undefined>;
+	resolveByPath(pathname: string, search?: string): Promise<ProtectedResource | undefined>;
 }
 
 const trimTrailingSlash = (url: string): string => url.replace(/\/$/, '');
+
+/** Split a path into its path and query components, the latter keeping its `?`. */
+const splitQuery = (pathname: string): [string, string] => {
+	const index = pathname.indexOf('?');
+	return index === -1 ? [pathname, ''] : [pathname.slice(0, index), pathname.slice(index)];
+};
 
 const getResourceUrls = (resource: ProtectedResource): string[] =>
 	resource.getResourceUrls?.() ?? [resource.getResourceUrl()];
@@ -160,7 +181,10 @@ export class ProtectedResourceRegistry {
 
 	/** Look up a resource by its URL path (e.g. `/mcp-server/http`). */
 	async getByResourcePath(pathname: string): Promise<ProtectedResource | undefined> {
-		const normalized = trimTrailingSlash(pathname);
+		// Static resources match on the path alone, so a stray query parameter can't turn
+		// a match into a miss; only resolvers see the query.
+		const [rawPath, search] = splitQuery(pathname);
+		const normalized = trimTrailingSlash(rawPath);
 		for (const resource of this.resources.values()) {
 			for (const url of getResourceUrls(resource)) {
 				try {
@@ -175,7 +199,7 @@ export class ProtectedResourceRegistry {
 
 		for (const resolver of this.resolvers) {
 			try {
-				const resource = await resolver.resolveByPath(normalized);
+				const resource = await resolver.resolveByPath(normalized, search);
 				if (resource) return resource;
 			} catch (error) {
 				this.logResolverFailure(resolver, error);

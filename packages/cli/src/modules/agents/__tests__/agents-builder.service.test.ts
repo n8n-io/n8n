@@ -23,14 +23,10 @@ function suspendedCheckpoint(threadId: string): SerializableAgentState {
 	} as unknown as SerializableAgentState;
 }
 
-function checkpointRow(
-	runId: string,
-	threadId: string,
-	agentId: string | null = 'agent-1',
-): AgentCheckpoint {
+function checkpointRow(runId: string, threadId: string): AgentCheckpoint {
 	return {
 		runId,
-		agentId,
+		agentId: 'agent-1',
 		expired: false,
 		state: JSON.stringify(suspendedCheckpoint(threadId)),
 	} as AgentCheckpoint;
@@ -60,10 +56,7 @@ describe('AgentsBuilderService checkpoint lookup', () => {
 			checkpointRow('run-5', 'thread-newer-5'),
 			checkpointRow('run-target', 'thread-target'),
 		];
-		agentCheckpointRepository.find.mockImplementation(async (options) => {
-			const take = typeof options?.take === 'number' ? options.take : rows.length;
-			return rows.slice(0, take);
-		});
+		agentCheckpointRepository.findActiveForAgent.mockResolvedValue(rows);
 
 		const service = makeService(agentCheckpointRepository);
 
@@ -72,24 +65,25 @@ describe('AgentsBuilderService checkpoint lookup', () => {
 		expect(result?.persistence?.threadId).toBe('thread-target');
 	});
 
-	it('can find legacy unscoped checkpoints only when explicitly requested', async () => {
+	it('does not expose delegated child checkpoints through chat history lookup', async () => {
 		const agentCheckpointRepository = mock<AgentCheckpointRepository>();
-		const legacyRow = checkpointRow('run-legacy', 'thread-target', null);
-		agentCheckpointRepository.find.mockImplementation(async (options) => {
-			const where = options?.where;
-			const includesUnscoped = Array.isArray(where);
-			return includesUnscoped ? [legacyRow] : [];
-		});
+		const delegatedState = suspendedCheckpoint('thread-target');
+		delegatedState.persistence = {
+			threadId: 'thread-target',
+			resourceId: 'user-1',
+			delegated: true,
+		};
+		agentCheckpointRepository.findActiveForAgent.mockResolvedValue([
+			{
+				...checkpointRow('child-run-1', 'thread-target'),
+				state: JSON.stringify(delegatedState),
+			},
+		]);
 
 		const service = makeService(agentCheckpointRepository);
 
 		await expect(
 			service.findOpenCheckpointForThread('agent-1', 'thread-target'),
 		).resolves.toBeNull();
-		const result = await service.findOpenCheckpointForThread('agent-1', 'thread-target', {
-			includeUnscoped: true,
-		});
-
-		expect(result?.persistence?.threadId).toBe('thread-target');
 	});
 });

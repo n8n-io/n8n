@@ -1056,4 +1056,45 @@ describe('ThisSanitizer', () => {
 			expect(result).toEqual({});
 		});
 	});
+
+	describe('global access via concise arrow bodies', () => {
+		it('should resolve a concise arrow body identifier from the data context', () => {
+			const result = tournament.execute('{{ (() => safeVar)() }}', {
+				__sanitize: sanitizer,
+				safeVar: 'ok',
+			});
+			expect(result).toBe('ok');
+		});
+
+		it('should not expose real process members via a concise arrow body', () => {
+			const result = tournament.execute('{{ typeof (() => process)().arch }}', {
+				__sanitize: sanitizer,
+				process: {},
+			});
+			expect(result).toBe('undefined');
+		});
+
+		it('should not expose real Reflect via a concise arrow body', () => {
+			const result = tournament.execute('{{ typeof (() => Reflect)().get }}', {
+				__sanitize: sanitizer,
+				Reflect: {},
+			});
+			expect(result).toBe('undefined');
+		});
+
+		it('should not resolve host globals through arrow-captured identifiers', () => {
+			expect(() => {
+				tournament.execute(
+					// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+					"{{ ((R,p)=>R.get(p,'getBuiltinModule'))((()=>Reflect)(),(()=>process)())('child_process').execSync('id').toString() }}",
+					{ __sanitize: sanitizer },
+				);
+			}).toThrow();
+		});
+
+		it('should not rewrite arrow parameters used in a concise body', () => {
+			const result = tournament.execute('{{ ((x) => x)(42) }}', { __sanitize: sanitizer });
+			expect(result).toBe(42);
+		});
+	});
 });

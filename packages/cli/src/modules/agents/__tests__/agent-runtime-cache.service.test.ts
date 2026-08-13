@@ -89,8 +89,11 @@ describe('AgentRuntimeCacheService', () => {
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
 			agent,
 			expect.anything(),
+			'test',
 			undefined,
 			undefined,
+			undefined,
+			'manual',
 		);
 	});
 
@@ -119,8 +122,11 @@ describe('AgentRuntimeCacheService', () => {
 			2,
 			agent,
 			expect.anything(),
+			'test',
 			'n8n_chat',
 			undefined,
+			undefined,
+			'manual',
 		);
 	});
 
@@ -149,15 +155,21 @@ describe('AgentRuntimeCacheService', () => {
 			1,
 			agent,
 			expect.anything(),
+			'test',
 			undefined,
 			userA,
+			undefined,
+			'manual',
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
 			agent,
 			expect.anything(),
+			'test',
 			undefined,
 			userB,
+			undefined,
+			'manual',
 		);
 	});
 
@@ -279,8 +291,11 @@ describe('AgentRuntimeCacheService', () => {
 				skills: activeVersion.skills,
 			}),
 			expect.anything(),
+			'production',
 			'slack',
 			undefined,
+			undefined,
+			'integrated',
 		);
 	});
 

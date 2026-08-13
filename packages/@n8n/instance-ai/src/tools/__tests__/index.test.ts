@@ -1,6 +1,7 @@
 import { createAllTools, createOrchestrationTools, createOrchestratorDomainTools } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext } from '../../types';
+import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
 
 vi.mock('../../parsers/structured-file-parser', () => ({
 	isParseableAttachment: vi.fn(() => false),
@@ -34,6 +35,10 @@ vi.mock('../nodes.tool', () => ({
 
 vi.mock('../n8n-docs.tool', () => ({
 	createN8nDocsTool: vi.fn(() => ({ id: 'n8n-docs' })),
+}));
+
+vi.mock('../mcp-servers.tool', () => ({
+	createMcpServersTool: vi.fn(() => ({ id: 'mcp-servers' })),
 }));
 
 vi.mock('../orchestration/build-agent.tool', () => ({
@@ -138,6 +143,7 @@ describe('domain tool construction', () => {
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(domainTools.has('templates')).toBe(false);
 	});
 
 	it('creates the native orchestrator domain tool map', async () => {
@@ -158,6 +164,7 @@ describe('domain tool construction', () => {
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(orchestratorTools.has('templates')).toBe(false);
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
 		const { createNodesTool } = await import('../nodes.tool.js');
@@ -204,6 +211,21 @@ describe('domain tool construction', () => {
 		});
 		expect(createAllTools(enabled).get('eval-config')).toBeDefined();
 		expect(createOrchestratorDomainTools(enabled).get('eval-config')).toBeDefined();
+	});
+
+	it('gates the mcp-servers tool on the host-wired mcpService', () => {
+		// Gates off: adapter leaves mcpService unset → tool absent.
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('mcp-servers')).toBeUndefined();
+
+		const enabled = makeContext({ mcpService: {} as InstanceAiContext['mcpService'] });
+		expect(createOrchestratorDomainTools(enabled).get('mcp-servers')).toBeDefined();
+		// Orchestrator only — a sub-agent can't offer the user a connection.
+		expect(createAllTools(enabled).get('mcp-servers')).toBeUndefined();
+	});
+
+	it('never defers mcp-servers behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});
 
 	it('registers create-tasks but not the removed plan orchestration tool', () => {

@@ -30,7 +30,7 @@ vi.mock('@/app/composables/useDocumentVisibility', () => ({
 	useDocumentVisibility: () => ({ onDocumentVisible: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 

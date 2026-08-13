@@ -26,6 +26,13 @@ export const EMPTY_STATE_CONFIG = {
 		ctaKey: 'projects.header.create.credential',
 		disabledTooltipKey: 'credentials.empty.button.disabled.tooltip',
 	},
+	executions: {
+		icon: 'history',
+		headingKey: 'executions.empty.heading',
+		descriptionKey: 'executions.empty.description',
+		ctaKey: 'projects.header.create.workflow',
+		disabledTooltipKey: 'workflows.empty.button.disabled.tooltip',
+	},
 	variables: {
 		icon: 'variable',
 		headingKey: 'variables.empty.heading',

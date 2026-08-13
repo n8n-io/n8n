@@ -23,7 +23,7 @@ describe('assertStaticSubWorkflowsIncluded', () => {
 				[{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' }],
 				new Set(['wf-parent']),
 			),
-		).toThrow('1 sub-workflow dependency not included in the package. Export aborted.');
+		).toThrow('1 workflow dependency not included in the package. Export aborted.');
 	});
 
 	it('dedupes missing static sub-workflow dependencies', () => {
@@ -35,7 +35,7 @@ describe('assertStaticSubWorkflowsIncluded', () => {
 				],
 				new Set(['wf-parent-a', 'wf-parent-b']),
 			),
-		).toThrow('1 sub-workflow dependency not included in the package. Export aborted.');
+		).toThrow('1 workflow dependency not included in the package. Export aborted.');
 	});
 
 	it('allows circular references when all workflows are included', () => {

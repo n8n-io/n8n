@@ -27,12 +27,44 @@ vi.mock('@/features/agents/components/AgentMarkdownChunk.vue', () => ({
 	},
 }));
 
+vi.mock('@/features/ai/shared/components/AiThinkingBlock.vue', () => ({
+	default: {
+		name: 'AiThinkingBlock',
+		template:
+			'<section data-test-id="shared-thinking-block" :data-active="active ? \'true\' : \'false\'" :data-duration="durationSec"><slot /></section>',
+		props: ['segments', 'active', 'durationSec'],
+	},
+}));
+
+vi.mock('@/features/ai/shared/components/AiReasoningBlock.vue', () => ({
+	default: {
+		name: 'AiReasoningBlock',
+		template: '<div data-test-id="shared-reasoning-block">{{ entry.content }}</div>',
+		props: ['entry', 'streaming'],
+	},
+}));
+
 vi.mock('@/features/ai/chatHub/components/ChatTypingIndicator.vue', () => ({
 	default: { template: '<div data-test-id="typing-indicator" />' },
 }));
 
 vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
-	default: { template: '<div />', props: ['toolCalls', 'projectId'] },
+	default: {
+		name: 'AgentChatToolSteps',
+		template: `<button
+			data-test-id="tool-steps-fix-stub"
+			@click="$emit('fixWithAssistant', [{
+				toolCallId: 'tc-1',
+				toolName: 'http_request',
+				toolDisplayName: 'HTTP request',
+				error: 'boom',
+				startedAt: 1000,
+				endedAt: 1250
+			}])"
+		/>`,
+		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId'],
+		emits: ['fixWithAssistant'],
+	},
 }));
 
 vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
@@ -72,6 +104,161 @@ describe('AgentChatMessageList', () => {
 		vi.clearAllMocks();
 	});
 
+	it('renders streamed reasoning with the shared thinking components', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-reasoning',
+						role: 'assistant',
+						content: '',
+						thinkingSegments: [
+							{
+								id: 'reasoning-1',
+								content: 'Inspect the request. Then answer.',
+								startTime: 1_000,
+							},
+						],
+						status: 'streaming',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'receiving',
+			},
+		});
+
+		expect(wrapper.find('[data-test-id="shared-thinking-block"]').attributes('data-active')).toBe(
+			'true',
+		);
+		expect(wrapper.find('[data-test-id="shared-reasoning-block"]').text()).toBe(
+			'Inspect the request. Then answer.',
+		);
+		expect(wrapper.find('[data-test-id="typing-indicator"]').exists()).toBe(false);
+	});
+
+	it('renders thinking below standalone assistant output', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-reasoning',
+						role: 'assistant',
+						content: 'Final answer',
+						thinkingSegments: [
+							{
+								id: 'reasoning-1',
+								content: 'Inspect the request.',
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		const renderOrder = wrapper
+			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
+			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
+		expect(renderOrder).toEqual(['markdown-chunk', 'shared-thinking-block']);
+	});
+
+	it('keeps aggregated thinking below the final output in a tool run', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-tool',
+						role: 'assistant',
+						content: '',
+						thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a tool.' }],
+						toolCalls: [
+							{
+								tool: 'lookup',
+								toolCallId: 'tool-1',
+								state: 'done',
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+					{
+						id: 'assistant-final',
+						role: 'assistant',
+						content: 'Final answer',
+						thinkingSegments: [{ id: 'reasoning-2', content: 'Check the result.' }],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		const renderOrder = wrapper
+			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
+			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
+		expect(renderOrder).toEqual(['markdown-chunk', 'shared-thinking-block']);
+	});
+
+	it('moves narrated tool-step reasoning below the later final output', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-narration',
+						role: 'assistant',
+						content: 'I will search first.',
+						thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a query.' }],
+						toolCalls: [{ tool: 'search', toolCallId: 'tool-1', state: 'done' }],
+						status: 'success',
+					} satisfies ChatMessage,
+					{
+						id: 'assistant-final',
+						role: 'assistant',
+						content: 'Final answer',
+						thinkingSegments: [{ id: 'reasoning-2', content: 'Compose the answer.' }],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		const renderOrder = wrapper
+			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
+			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
+		expect(renderOrder).toEqual(['markdown-chunk', 'markdown-chunk', 'shared-thinking-block']);
+		expect(
+			wrapper.findAll('[data-test-id="shared-reasoning-block"]').map((element) => element.text()),
+		).toEqual(['Choose a query.', 'Compose the answer.']);
+	});
+
+	it('passes persisted reasoning duration to the shared thinking block', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-reasoning',
+						role: 'assistant',
+						content: 'Done',
+						thinkingSegments: [
+							{
+								id: 'reasoning-1',
+								content: 'Inspect the request.',
+								startTime: 1_000,
+								endTime: 6_000,
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		expect(wrapper.find('[data-test-id="shared-thinking-block"]').attributes('data-duration')).toBe(
+			'5',
+		);
+	});
+
 	it('shows copy and read-aloud actions for assistant text messages', async () => {
 		const speakSpy = vi.spyOn(window.speechSynthesis, 'speak');
 		const cancelSpy = vi.spyOn(window.speechSynthesis, 'cancel');
@@ -107,6 +294,7 @@ describe('AgentChatMessageList', () => {
 						id: 'assistant-1',
 						role: 'assistant',
 						content: 'Agent reply',
+						executionId: 'exec-should-not-forward',
 						status: 'success',
 					} satisfies ChatMessage,
 				],
@@ -123,7 +311,60 @@ describe('AgentChatMessageList', () => {
 
 		await wrapper.find('[data-test-id="agent-chat-message-send-to-assistant"]').trigger('click');
 
-		expect(wrapper.emitted('sendToAssistant')).toHaveLength(1);
+		// Whole-session share must not forward message executionId.
+		expect(wrapper.emitted('sendToAssistant')).toEqual([[]]);
+	});
+
+	it('forwards Fix with Assistant with toolRun executionId', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-1',
+						role: 'assistant',
+						content: '',
+						executionId: 'exec-turn-1',
+						toolCalls: [
+							{
+								tool: 'http_request',
+								toolCallId: 'tc-1',
+								state: 'error',
+								output: 'boom',
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				canSendToAssistant: true,
+			},
+		});
+
+		const toolSteps = wrapper.findComponent({ name: 'AgentChatToolSteps' });
+		expect(toolSteps.props('canFixWithAssistant')).toBe(true);
+		expect(toolSteps.props('executionId')).toBe('exec-turn-1');
+
+		await wrapper.find('[data-test-id="tool-steps-fix-stub"]').trigger('click');
+
+		expect(wrapper.emitted('sendToAssistant')).toEqual([
+			[
+				{
+					executionId: 'exec-turn-1',
+					failures: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'http_request',
+							toolDisplayName: 'HTTP request',
+							error: 'boom',
+							startedAt: 1_000,
+							endedAt: 1_250,
+						},
+					],
+				},
+			],
+		]);
 	});
 
 	it('does not render actions for user text messages', () => {

@@ -9,7 +9,6 @@ import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
-	IConnections,
 	INode,
 	IWebhookData,
 	IWorkflowBase,
@@ -18,7 +17,13 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowId,
 } from 'n8n-workflow';
-import { Workflow, WorkflowActivationError } from 'n8n-workflow';
+import {
+	ERROR_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	Workflow,
+	WorkflowActivationError,
+} from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
@@ -29,6 +34,8 @@ import type {
 } from '@/events/maps/workflow-publication-metrics.event-map';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { WorkflowTriggerVersion } from '@/workflows/triggers/enabled-trigger-nodes';
+import { getEnabledTriggerNodes } from '@/workflows/triggers/enabled-trigger-nodes';
 import type { PreparedNonWebhookTriggerRegistration } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { retryTriggerActivation } from '@/workflows/triggers/trigger-activation-retry';
@@ -37,7 +44,15 @@ import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-exe
 import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
+export type { WorkflowTriggerVersion };
+
+// Their trigger() is a no-op — fired by the execution engine, never the
+// registry — so reconciling them against the registry would re-enqueue forever.
+const PSEUDO_TRIGGER_NODE_TYPES = new Set<string>([
+	MANUAL_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
+]);
 
 /** A single trigger node that failed to (de)register during activation. */
 export type TriggerActivationFailure = {
@@ -87,34 +102,23 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
-	 * Returns the enabled trigger-like nodes (active, poll, schedule and webhook
-	 * triggers) of a workflow version. Disabled nodes are excluded, so the result
-	 * is the set of nodes that actually drive trigger registration. Used to
-	 * compute the trigger-level diff during publication.
+	 * The enabled trigger-like nodes of a workflow version, used to compute the
+	 * trigger-level diff during publication. See `getEnabledTriggerNodes`, shared
+	 * with the publish-time node id check.
 	 */
 	getEnabledTriggerNodes(version: WorkflowTriggerVersion | null): INode[] {
-		if (!version) return [];
-
-		const workflow = new Workflow({
-			id: 'trigger-diff',
-			name: 'trigger-diff',
-			nodes: version.nodes,
-			connections: version.connections,
-			active: false,
-			nodeTypes: this.nodeTypes,
-		});
-
-		return workflow.queryNodes(
-			(nodeType) => !!nodeType.trigger || !!nodeType.poll || !!nodeType.webhook,
-		);
+		return getEnabledTriggerNodes(version, this.nodeTypes);
 	}
 
 	/**
 	 * Maps each node to where it lives once activated, decided by which functions
 	 * its node type implements: nodes with a `poll` or `trigger` function register
 	 * `in-memory`, nodes with only a `webhook` function are `persisted` rows in
-	 * `webhook_entity`. Used by reconciliation to tell which triggers should be in
-	 * the in-memory registry.
+	 * `webhook_entity`. The pseudo triggers (manual, executeWorkflow, error) are
+	 * `persisted` despite their `trigger` function: it is a no-op fired by the
+	 * execution engine, so the registry holds nothing worth reconciling for them.
+	 * Used by reconciliation to tell which triggers should be in the in-memory
+	 * registry.
 	 */
 	getTriggerKinds(nodes: INode[]): Map<INode['id'], WorkflowPublicationTriggerKind> {
 		const workflow = new Workflow({
@@ -127,7 +131,9 @@ export class WorkflowTriggerActivator {
 		});
 
 		const inMemoryNodeIds = new Set(
-			[...workflow.getPollNodes(), ...workflow.getTriggerNodes()].map((node) => node.id),
+			[...workflow.getPollNodes(), ...workflow.getTriggerNodes()]
+				.filter((node) => !PSEUDO_TRIGGER_NODE_TYPES.has(node.type))
+				.map((node) => node.id),
 		);
 
 		const kinds = new Map<INode['id'], WorkflowPublicationTriggerKind>();
@@ -225,10 +231,11 @@ export class WorkflowTriggerActivator {
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
+		activationMode: WorkflowActivateMode,
 	): Promise<TriggerActivationOutcome> {
 		const startedAt = Date.now();
 		try {
-			const outcome = await this.activateInternal(dbWorkflow, version, nodeIds);
+			const outcome = await this.activateInternal(dbWorkflow, version, nodeIds, activationMode);
 			this.emitTriggerOperation(
 				'activate',
 				outcome.failures.length === 0 ? 'success' : 'failure',
@@ -246,6 +253,7 @@ export class WorkflowTriggerActivator {
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
+		activationMode: WorkflowActivateMode,
 	): Promise<TriggerActivationOutcome> {
 		return await this.tracing.startSpan(
 			{
@@ -275,7 +283,13 @@ export class WorkflowTriggerActivator {
 					// The two phases share the single isolate acquired here and mutate
 					// `outcome` via synchronous pushes, so overlapping them is safe.
 					const phaseResults = await Promise.allSettled([
-						this.registerWebhookTriggers(workflow, additionalData, nodeIds, outcome),
+						this.registerWebhookTriggers(
+							workflow,
+							additionalData,
+							nodeIds,
+							outcome,
+							activationMode,
+						),
 						this.registerNonWebhookTriggers(
 							dbWorkflow,
 							workflow,
@@ -283,6 +297,7 @@ export class WorkflowTriggerActivator {
 							resolveWorkflowData,
 							nodeIds,
 							outcome,
+							activationMode,
 						),
 					]);
 					this.throwRejectedPhaseError(phaseResults);
@@ -476,12 +491,19 @@ export class WorkflowTriggerActivator {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeIds: Set<INode['id']>,
 		outcome: TriggerActivationOutcome,
+		activationMode: WorkflowActivateMode,
 	) {
 		const webhooksByNode = this.groupWebhookTriggersByNode(workflow, additionalData, nodeIds);
 
 		const tasks = [...webhooksByNode].map(
 			async ([nodeId, { nodeName, webhooks }]) =>
-				await this.registerWebhookTriggersForNode(workflow, nodeId, nodeName, webhooks),
+				await this.registerWebhookTriggersForNode(
+					workflow,
+					nodeId,
+					nodeName,
+					webhooks,
+					activationMode,
+				),
 		);
 
 		for (const result of await Promise.all(tasks)) {
@@ -500,6 +522,7 @@ export class WorkflowTriggerActivator {
 		nodeId: INode['id'],
 		nodeName: string,
 		webhooks: IWebhookData[],
+		activationMode: WorkflowActivateMode,
 	): Promise<Result<{ nodeId: INode['id'] }, TriggerActivationFailure>> {
 		try {
 			for (const webhookData of webhooks) {
@@ -509,7 +532,7 @@ export class WorkflowTriggerActivator {
 							workflow,
 							webhookData,
 							mode: 'trigger',
-							activation: 'update',
+							activation: activationMode,
 						}),
 					TRIGGER_ACTIVATION_MAX_ATTEMPTS,
 				);
@@ -603,12 +626,13 @@ export class WorkflowTriggerActivator {
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 		nodeIds: Set<INode['id']>,
 		outcome: TriggerActivationOutcome,
+		activationMode: WorkflowActivateMode,
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 		if (triggerNodeIds.length === 0) return;
 
 		const registration = this.nonWebhookTriggerRegistrar.createRegistrationContext(dbWorkflow, {
-			activationMode: 'update',
+			activationMode,
 			executionMode: 'trigger',
 			additionalData,
 			resolveWorkflowData,

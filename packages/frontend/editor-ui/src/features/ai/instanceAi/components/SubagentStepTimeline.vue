@@ -15,8 +15,9 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
-import { HIDDEN_TOOLS } from '../agentTimeline.utils';
+import { HIDDEN_TOOLS, isStreamingTimelineEntry } from '../agentTimeline.utils';
 import { getToolIcon, useToolLabel } from '../toolLabels';
+import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
 import ButtonLike from './ButtonLike.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ToolResultJson from './ToolResultJson.vue';
@@ -39,7 +40,7 @@ const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 const CODE_BLOCK_PATTERN = /```/;
 
 interface TimelineStep {
-	type: 'tool-call' | 'text';
+	type: 'tool-call' | 'text' | 'reasoning';
 	icon: IconName;
 	label: string;
 	isLoading: boolean;
@@ -49,6 +50,7 @@ interface TimelineStep {
 	textContent?: string;
 	isLongText?: boolean;
 	shortLabel?: string;
+	entry?: Extract<InstanceAiTimelineEntry, { type: 'reasoning' }>;
 }
 
 function extractShortLabel(content: string): string {
@@ -104,9 +106,16 @@ const steps = computed((): TimelineStep[] => {
 				hideLabel: getHideLabel(tc),
 				toolCall: tc,
 			});
+		} else if (entry.type === 'reasoning') {
+			result.push({
+				type: 'reasoning',
+				icon: 'brain',
+				label: '',
+				isLoading: false,
+				entry,
+			});
 		}
-		// Skip 'child' entries (parent AgentTimeline handles child cards) and
-		// 'reasoning' entries (sub-agent reasoning is not surfaced in this view)
+		// Skip 'child' entries (parent AgentTimeline handles child cards)
 	}
 
 	return result;
@@ -163,6 +172,12 @@ const steps = computed((): TimelineStep[] => {
 					<InstanceAiMarkdown v-else :content="step.label" />
 				</ButtonLike>
 			</template>
+
+			<AiReasoningBlock
+				v-else-if="step.type === 'reasoning' && step.entry"
+				:entry="step.entry"
+				:streaming="isStreamingTimelineEntry(props.agentNode, step.entry)"
+			/>
 		</template>
 	</div>
 </template>

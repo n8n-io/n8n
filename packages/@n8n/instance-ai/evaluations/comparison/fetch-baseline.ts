@@ -29,8 +29,8 @@ import {
 	type EvaluationUnitCounts,
 	type ExperimentBucket,
 } from './compare';
-import { expectationResultsSchema } from '../cli/reshape';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
+import { expectationResultsSchema } from '../run/reshape';
 
 /**
  * Prefix the latest-baseline lookup matches against. The CLI flag

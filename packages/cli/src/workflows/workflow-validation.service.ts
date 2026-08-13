@@ -1,9 +1,8 @@
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
@@ -24,6 +23,7 @@ import type {
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
+import { isFormOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
@@ -230,6 +230,53 @@ export class WorkflowValidationService {
 	}
 
 	/**
+	 * Rejects trigger nodes whose ids do not uniquely identify them.
+	 *
+	 * Publication records one `workflow_publication_trigger_status` row per
+	 * enabled trigger node, keyed by the composite primary key
+	 * `(workflowId, nodeId)`. A shared or absent id therefore collapses two
+	 * triggers onto one key: the diff in `computeTriggerDiff` loses one of them,
+	 * and the row insert fails on the constraint. Catching it here turns a
+	 * constraint violation raised mid-publication into a message naming the
+	 * offending nodes.
+	 *
+	 * An absent id is the same defect as a shared one — `undefined` is just an id
+	 * that every id-less node has in common — so both are reported together.
+	 */
+	validateTriggerNodeIds(triggerNodes: INode[]): WorkflowValidationResult {
+		const violations: string[] = [];
+		const namesById = new Map<string, string[]>();
+
+		for (const node of triggerNodes) {
+			if (!node.id) {
+				violations.push(`trigger "${node.name}" has no node ID`);
+				continue;
+			}
+
+			const names = namesById.get(node.id);
+			if (names) {
+				names.push(node.name);
+			} else {
+				namesById.set(node.id, [node.name]);
+			}
+		}
+
+		for (const [nodeId, names] of namesById) {
+			if (names.length < 2) continue;
+
+			const nameList = names.map((name) => `"${name}"`).join(', ');
+			violations.push(`triggers ${nameList} share the node ID "${nodeId}"`);
+		}
+
+		if (violations.length === 0) return { isValid: true };
+
+		return {
+			isValid: false,
+			error: `Cannot publish workflow: ${violations.join('; ')}. Remove and re-add the affected nodes to give them new IDs.`,
+		};
+	}
+
+	/**
 	 * Returns the credential types that are actively in use on a node — the
 	 * subset of `node.credentials` keys we should validate against.
 	 *
@@ -315,7 +362,7 @@ export class WorkflowValidationService {
 		}
 
 		const resolvableCredentials = await this.credentialsRepository.find({
-			where: { id: In([...credentialIds]), isResolvable: true },
+			where: { id: In([...credentialIds]), isResolvable: true, usageScope: 'project' },
 			select: ['id', 'name'],
 		});
 
@@ -356,16 +403,31 @@ export class WorkflowValidationService {
 		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
 
 		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
-			// System resolver: every trigger must establish the n8n user identity.
-			return allTriggersProvideN8nIdentity
-				? undefined
-				: `end-user credentials (${credNames}) are only supported in workflows triggered manually, via chat, or as a sub-workflow.`;
+			// System resolver: every trigger must establish the n8n user identity. The form
+			// trigger is only listed while the form OAuth2 flag is enabled — without it a
+			// form establishes no identity, so listing it would advertise a fix that
+			// doesn't work.
+			if (allTriggersProvideN8nIdentity) return undefined;
+
+			const triggersList = this.getN8nUserAuthTriggersList();
+			return `end-user credentials (${credNames}) are only supported with ${triggersList}. To use another trigger, switch the credential to Fixed.`;
 		}
 
 		// Custom resolver: every trigger must provide an external identity.
-		return allTriggersProvideExternalIdentity
-			? undefined
-			: `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
+		if (allTriggersProvideExternalIdentity) return undefined;
+		return `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
+	}
+
+	/**
+	 * Describes which triggers the system resolver currently accepts, for the
+	 * publish-error copy. Manual, chat, MCP, sub-workflow, and webhook triggers
+	 * always qualify; form only joins the list while the form OAuth2 flag is
+	 * enabled, mirroring `classifyTriggerIdentities`.
+	 */
+	private getN8nUserAuthTriggersList(): string {
+		const formTrigger = isFormOAuth2Enabled() ? 'form or ' : '';
+
+		return `manual, chat, MCP, sub-workflow, and ${formTrigger}webhook triggers with n8n user authentication`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
@@ -400,10 +462,14 @@ export class WorkflowValidationService {
 	private classifyTriggerIdentities(
 		nodes: INode[],
 		nodeTypes: NodeTypes,
-	): { allTriggersProvideExternalIdentity: boolean; allTriggersProvideN8nIdentity: boolean } {
+	): {
+		allTriggersProvideExternalIdentity: boolean;
+		allTriggersProvideN8nIdentity: boolean;
+	} {
 		let allTriggersProvideExternalIdentity = true;
 		let allTriggersProvideN8nIdentity = true;
 		let hasTrigger = false;
+		const formOAuth2Enabled = isFormOAuth2Enabled();
 
 		for (const node of nodes) {
 			if (node.disabled) continue;
@@ -419,6 +485,7 @@ export class WorkflowValidationService {
 			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
 				node.type,
 				node.parameters,
+				{ isFormOAuth2Enabled: formOAuth2Enabled },
 			);
 			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
 			allTriggersProvideN8nIdentity &&= providesN8nIdentity;

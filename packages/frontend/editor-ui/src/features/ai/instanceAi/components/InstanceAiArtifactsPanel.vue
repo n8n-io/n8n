@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
-import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconName } from '@n8n/design-system';
+import { isIconOrEmoji } from '@n8n/design-system';
 import { N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, ref, type Ref } from 'vue';
@@ -48,8 +48,12 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	'openAgentPreview',
 	undefined,
 );
-const pendingComposerContext = inject<Ref<InstanceAiHandoffContext | null> | undefined>(
+const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
 	'pendingComposerContext',
+	undefined,
+);
+const dismissPendingComposerContext = inject<((key: string) => boolean) | undefined>(
+	'dismissPendingComposerContext',
 	undefined,
 );
 
@@ -61,6 +65,7 @@ interface ContextEntry {
 }
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
+	if (artifact.type === 'agent' && artifact.pending) e.preventDefault();
 	if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
 	if (artifact.type === 'workflow' && artifact.id) {
@@ -119,6 +124,7 @@ function artifactHref(artifact: ResourceEntry) {
 			: '/data-tables';
 	}
 	if (artifact.type === 'agent') {
+		if (artifact.pending) return '#';
 		return artifact.projectId
 			? `/projects/${artifact.projectId}/agents/${artifact.id}`
 			: '/home/agents';
@@ -182,8 +188,9 @@ const contextEntries = computed<ContextEntry[]>(() => {
 
 async function dismissContext(key: string) {
 	const pending = pendingComposerContext?.value;
-	if (pendingComposerContext && pending && handoffContextKey(pending) === key) {
-		pendingComposerContext.value = null;
+	if (pending && handoffContextKey(pending) === key) {
+		dismissPendingComposerContext?.(key);
+		return;
 	}
 	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
 	dismissedKeys.add(key);

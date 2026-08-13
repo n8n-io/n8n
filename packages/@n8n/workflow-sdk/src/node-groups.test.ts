@@ -1,15 +1,17 @@
+import { GROUP_DESCRIPTION_MAX_LENGTH, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+
 import { generateWorkflowCode } from './codegen';
 import { parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
-import type { WorkflowJSON } from './types/base';
+import type { GroupOptions, WorkflowJSON } from './types/base';
 import { workflow } from './workflow-builder';
 import { node, trigger } from './workflow-builder/node-builders/node-builder';
 import { generateDeterministicGroupId } from './workflow-builder/string-utils';
 
 const WF_ID = 'wf-groups-1';
 
-function buildGroupedWorkflow() {
+function buildGroupedWorkflow(options?: GroupOptions) {
 	const start = trigger({
-		type: 'n8n-nodes-base.manualTrigger',
+		type: MANUAL_TRIGGER_NODE_TYPE,
 		version: 1,
 		config: { name: 'Start' },
 	});
@@ -28,7 +30,7 @@ function buildGroupedWorkflow() {
 		.add(start)
 		.to(fetchNode)
 		.to(transform)
-		.group('Ingestion', [fetchNode, transform]);
+		.group('Ingestion', [fetchNode, transform], options);
 }
 
 describe('SDK node groups', () => {
@@ -47,7 +49,7 @@ describe('SDK node groups', () => {
 
 		it('drops members that do not resolve to a node in the workflow', () => {
 			const start = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
 				version: 1,
 				config: { name: 'Start' },
 			});
@@ -63,12 +65,105 @@ describe('SDK node groups', () => {
 
 		it('omits nodeGroups entirely when no group was declared', () => {
 			const start = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
 				version: 1,
 				config: { name: 'Start' },
 			});
 			const json = workflow(WF_ID, 'wf').add(start).toJSON();
 			expect(json.nodeGroups).toBeUndefined();
+		});
+	});
+
+	describe('group description', () => {
+		it('emits the description alongside the group name and members', () => {
+			const json = buildGroupedWorkflow({ description: 'Pulls the CRM contacts' }).toJSON();
+
+			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
+			expect(json.nodeGroups).toHaveLength(1);
+			expect(json.nodeGroups![0].name).toBe('Ingestion');
+			expect(json.nodeGroups![0].nodeIds).toEqual([
+				idByName.get('Fetch data'),
+				idByName.get('Transform'),
+			]);
+			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
+		});
+
+		it('caps the description at the canvas limit', () => {
+			const description = 'x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50);
+			const json = buildGroupedWorkflow({ description }).toJSON();
+
+			expect(json.nodeGroups![0].description).toBe('x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH));
+		});
+
+		it('leaves the description key off a group declared without options', () => {
+			const json = buildGroupedWorkflow().toJSON();
+
+			expect(json.nodeGroups![0]).not.toHaveProperty('description');
+		});
+
+		it('leaves the description key off when the authored description is blank', () => {
+			const json = buildGroupedWorkflow({ description: '' }).toJSON();
+
+			expect(json.nodeGroups![0]).not.toHaveProperty('description');
+		});
+
+		it('keeps a description authored in code through the build', () => {
+			const code = `
+				const start = trigger({ type: '${MANUAL_TRIGGER_NODE_TYPE}', version: 1, config: { name: 'Start' } });
+				const a = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A' } });
+
+				export default workflow('${WF_ID}', 'wf')
+					.add(start)
+					.to(a)
+					.group('G', [a], { description: 'Pulls the CRM contacts' });
+			`;
+
+			const json = parseWorkflowCodeToBuilder(code).toJSON();
+
+			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
+		});
+
+		function describedWorkflowJSON(description: unknown): WorkflowJSON {
+			return {
+				id: WF_ID,
+				name: 'wf',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [
+					{ id: 'random-uuid', name: 'G', nodeIds: ['id-a'], description: description as string },
+				],
+			};
+		}
+
+		it('preserves the description across a fromJSON round-trip', () => {
+			const json = workflow.fromJSON(describedWorkflowJSON('Pulls the CRM contacts')).toJSON();
+
+			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
+		});
+
+		it('keeps the description when the imported workflow is edited', () => {
+			const builder = workflow.fromJSON(describedWorkflowJSON('Pulls the CRM contacts'));
+			builder.add(node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B' } }));
+
+			const json = builder.toJSON();
+
+			expect(json.nodes.map((n) => n.name)).toContain('B');
+			expect(json.nodeGroups![0].description).toBe('Pulls the CRM contacts');
+		});
+
+		it('drops a description that the source JSON carries as a non-string', () => {
+			const json = workflow.fromJSON(describedWorkflowJSON(42)).toJSON();
+
+			expect(json.nodeGroups![0]).not.toHaveProperty('description');
 		});
 	});
 
@@ -87,7 +182,7 @@ describe('SDK node groups', () => {
 
 		it('resolves a grouped auto-renamed duplicate handle to the right node after regeneration', () => {
 			const start = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
 				version: 1,
 				config: { name: 'Start' },
 			});
@@ -210,7 +305,7 @@ describe('SDK node groups', () => {
 	describe('existingGroupIdsByName (toJSON option)', () => {
 		it('reuses an existing group id matched by name and derives one for a new group', () => {
 			const start = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
 				version: 1,
 				config: { name: 'Start' },
 			});
@@ -282,6 +377,40 @@ describe('SDK node groups', () => {
 			// Deterministic ids mean the group survives identically across the round-trip.
 			expect(json2.nodeGroups![0].id).toBe(json1.nodeGroups![0].id);
 			expect(json2.nodeGroups![0].nodeIds).toEqual(json1.nodeGroups![0].nodeIds);
+		});
+
+		it('emits the description as the third argument and preserves it through a re-parse', () => {
+			const builder = buildGroupedWorkflow({ description: 'Pulls the CRM contacts' });
+			builder.regenerateNodeIds();
+
+			const code = generateWorkflowCode(builder.toJSON());
+			expect(code).toContain(
+				".group('Ingestion', [fetch_data, transform], { description: 'Pulls the CRM contacts' })",
+			);
+
+			const rebuilt = parseWorkflowCodeToBuilder(code);
+			rebuilt.regenerateNodeIds();
+
+			expect(rebuilt.toJSON().nodeGroups![0].description).toBe('Pulls the CRM contacts');
+		});
+
+		it('escapes a quote in the description so the emitted code re-parses', () => {
+			const builder = buildGroupedWorkflow({ description: "Bob's contacts" });
+			builder.regenerateNodeIds();
+
+			const code = generateWorkflowCode(builder.toJSON());
+			expect(code).toContain("{ description: 'Bob\\'s contacts' }");
+
+			const rebuilt = parseWorkflowCodeToBuilder(code);
+
+			expect(rebuilt.toJSON().nodeGroups![0].description).toBe("Bob's contacts");
+		});
+
+		it('emits a two-argument .group() call when the group has no description', () => {
+			const code = generateWorkflowCode(buildGroupedWorkflow().toJSON());
+
+			expect(code).toContain(".group('Ingestion', [fetch_data, transform])");
+			expect(code).not.toContain('description:');
 		});
 	});
 });

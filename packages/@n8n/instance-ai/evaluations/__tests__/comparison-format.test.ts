@@ -67,6 +67,7 @@ function evaluation(
 				conversation: [{ role: 'user', text: tc.userText ?? 'Test workflow prompt' }],
 				complexity: 'medium' as const,
 				tags: [],
+				datasets: ['full'],
 				executionScenarios: (tc.scenarios ?? []).map((sa) => ({
 					name: sa.name,
 					description: '',
@@ -76,7 +77,7 @@ function evaluation(
 			} as WorkflowTestCase;
 			const buildSuccessCount = tc.buildSuccessCount ?? totalRuns;
 			const scenarios = (tc.scenarios ?? []).map((sa) => ({
-				scenario: testCase.executionScenarios.find((sc) => sc.name === sa.name)!,
+				scenario: testCase.executionScenarios!.find((sc) => sc.name === sa.name)!,
 				evaluatedCount: sa.passes.length,
 				passCount: sa.passCount,
 				passRate: totalRuns > 0 ? sa.passCount / totalRuns : 0,
@@ -84,7 +85,7 @@ function evaluation(
 				passHatK: new Array(totalRuns).fill(sa.passCount === totalRuns ? 1 : 0) as number[],
 				runs: sa.passes.map(
 					(passed): ExecutionScenarioResult => ({
-						scenario: testCase.executionScenarios.find((sc) => sc.name === sa.name)!,
+						scenario: testCase.executionScenarios!.find((sc) => sc.name === sa.name)!,
 						success: passed,
 						score: passed ? 1 : 0,
 						reasoning: sa.reasoning ?? '',

@@ -383,7 +383,7 @@ test('API-only test', async ({ api }) => {
 To test features behind feature flags (experiments), use `TestRequirements` with storage overrides:
 
 ```typescript
-import type { TestRequirements } from '../config/TestRequirements';
+import type { TestRequirements } from '../../../Types';
 
 const requirements: TestRequirements = {
   storage: {
@@ -421,7 +421,9 @@ const requirements: TestRequirements = {
 };
 ```
 
-**Reference:** `config/TestRequirements.ts` for full interface definition.
+**Reference:** `Types.ts` for the full interface definition. Import depth follows
+the spec's own nesting. The example above assumes `tests/e2e/<area>/`; add one
+`../` per extra level down.
 
 ## Shard Rebalancing
 

@@ -98,6 +98,15 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'variable:list',
 			'variable:read',
 			'dataTable:list',
+			'chatHub:manage', // Chat
+			'chatHub:message', // needed for model listing on the Chat settings page
+			'aiAssistant:manage', // AI Assistant
+			'instanceAi:manage',
+			'instanceAi:message',
+			'mcp:manage', // Instance-level MCP
+			'mcp:oauth', // MCP OAuth clients
+			'mcpApiKey:create', // MCP personal API key
+			'mcpApiKey:rotate',
 		],
 	},
 	user: {
@@ -118,14 +127,10 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		Manage: ['role:read', 'role:manage'],
 	},
 	apiKey: {
-		'Manage own': ['apiKey:create', 'apiKey:list', 'apiKey:delete', 'apiKey:update'],
-		'Manage all': [
-			'apiKey:create',
-			'apiKey:list',
-			'apiKey:delete',
-			'apiKey:update',
-			'apiKey:manage',
-		],
+		// Viewing and revoking your own keys needs no scope (always available),
+		// so these options only gate creating/editing own keys and managing others'.
+		'Manage own': ['apiKey:create', 'apiKey:update'],
+		'Manage all': ['apiKey:create', 'apiKey:update', 'apiKey:manage'],
 	},
 	tag: {
 		// read/list are bundled with write scopes: tags on workflows you can already

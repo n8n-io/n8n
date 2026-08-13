@@ -22,8 +22,12 @@ export function createRmdirTool(filesystem: WorkspaceFilesystem): BuiltTool {
 				success: z.boolean().describe('Whether the directory was removed'),
 			}),
 		)
-		.handler(async (input) => {
-			await filesystem.rmdir(input.path, { recursive: input.recursive, force: input.force });
+		.handler(async (input, ctx) => {
+			await filesystem.rmdir(input.path, {
+				recursive: input.recursive,
+				force: input.force,
+				abortSignal: ctx.abortSignal,
+			});
 			return { success: true };
 		})
 		.build();

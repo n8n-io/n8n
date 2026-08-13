@@ -167,6 +167,10 @@ function setupWebsocketConnection(executionId: string, resumeToken?: string) {
 				resumeToken,
 			);
 			chatStore.ws = new WebSocket(wsUrl);
+			// Keep the typing indicator up while the execution runs: the initial
+			// sendMessage cleared it on `executionStarted`, and the first bot frame
+			// (or socket close) below will clear it again.
+			chatStore.waitingForResponse.value = true;
 			// The first heartbeat locks the protocol: a pre-v3 server sends the string
 			// `n8n|heartbeat`, a v3 server sends `{type:'heartbeat'}`. Once legacy mode is
 			// locked, JSON that merely looks like a control frame is a chat message.

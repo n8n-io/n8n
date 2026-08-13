@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
@@ -100,6 +101,9 @@ export class ScheduleTriggerJobRegistrar {
 	/** How a fixed second/minute interval is represented (see `SchedulerConfig`). */
 	private readonly triggerNodeMode: 'legacy' | 'new';
 
+	/** Whether a node's "Skip Durable Scheduler" toggle is honored (see `SchedulerConfig`). */
+	private readonly allowSkipDurableScheduler: boolean;
+
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -110,6 +114,7 @@ export class ScheduleTriggerJobRegistrar {
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
 		this.defaultTimezone = globalConfig.generic.timezone;
 		this.triggerNodeMode = globalConfig.scheduler.triggerNodeMode;
+		this.allowSkipDurableScheduler = globalConfig.scheduler.allowSkipDurableScheduler;
 		this.logger = this.logger.scoped('scheduler');
 
 		if (globalConfig.scheduler.enabled && !workflowsConfig.useWorkflowPublicationService) {
@@ -124,7 +129,15 @@ export class ScheduleTriggerJobRegistrar {
 	 * @returns `true` to hand the node a durable collector, `false` to leave it on the legacy path.
 	 */
 	interceptsNode(node: INode): boolean {
-		return this.intercepting && node.type === SCHEDULE_TRIGGER_NODE_TYPE;
+		if (
+			!this.intercepting ||
+			node.type !== SCHEDULE_TRIGGER_NODE_TYPE ||
+			(this.allowSkipDurableScheduler && node.parameters?.skipDurableScheduler === true)
+		) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -169,9 +182,16 @@ export class ScheduleTriggerJobRegistrar {
 							);
 							collected.push({ schedule, firstRunAt: null });
 						} else {
+							// Legacy interval jobs (gated minutes) first fire at their next
+							// cron tick, not activation + interval — seed from the cron.
+							const seedSchedule: Schedule =
+								this.triggerNodeMode === 'legacy' && schedule.kind === 'interval'
+									? { kind: 'cron', cronExpression: expression, timezone }
+									: schedule;
+
 							// Validates the expression/timezone and returns the first instant.
 							const computed = computeFirstRunAt(
-								withResolvedTimezone(schedule, this.defaultTimezone),
+								withResolvedTimezone(seedSchedule, this.defaultTimezone),
 								new Date(),
 							);
 
@@ -201,7 +221,10 @@ export class ScheduleTriggerJobRegistrar {
 	 *
 	 * - A second/minute cadence becomes an `interval` job in `new` mode (a steady
 	 *   elapsed-time cadence); in `legacy` mode it stays the node's plain cron so
-	 *   fires remain clock-aligned.
+	 *   fires remain clock-aligned. Exception: a minutes cadence that does not
+	 *   divide 60 (e.g. every 50 min) is an `interval` job in both modes — the
+	 *   legacy engine also runs it by elapsed time (every-minute cron gated by
+	 *   `recurrenceCheck`), and `recurring_cron` can't express a minutes unit.
 	 * - "Every N days/weeks/months" with N >= 2 becomes a `recurring_cron` job:
 	 *   the cron expression names the candidate instants and the job fires on
 	 *   every Nth of them.
@@ -220,8 +243,9 @@ export class ScheduleTriggerJobRegistrar {
 		recurrence: Cron['recurrence'],
 		source: Cron['source'],
 	): Schedule {
+		const isGatedMinutes = source?.field === 'minutes' && recurrence?.activated === true;
 		if (
-			this.triggerNodeMode === 'new' &&
+			(this.triggerNodeMode === 'new' || isGatedMinutes) &&
 			source?.size !== undefined &&
 			(source.field === 'seconds' || source.field === 'minutes')
 		) {
@@ -235,7 +259,11 @@ export class ScheduleTriggerJobRegistrar {
 		// engine rejects a recurrenceSize of 1 to keep one representation per
 		// rule). N = 0/NaN never fires (see isDegenerateRecurrence) and a negative
 		// N fires on every instant in the legacy engine; both are plain crons here.
-		if (recurrence?.activated && recurrence.intervalSize >= 2) {
+		if (
+			recurrence?.activated &&
+			recurrence.typeInterval !== 'minutes' &&
+			recurrence.intervalSize >= 2
+		) {
 			return {
 				kind: 'recurring_cron',
 				cronExpression: expression,
@@ -280,6 +308,7 @@ export class ScheduleTriggerJobRegistrar {
 			SCHEDULE_TRIGGER_TASK_TYPE,
 			{ ...payload },
 			desired,
+			ScheduledJobMisfirePolicy.Coalesce,
 		);
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {

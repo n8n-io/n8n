@@ -1371,6 +1371,113 @@ describe('RoleService', () => {
 			);
 		});
 
+		it('should reassign globally assigned users to another role, then delete', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const roleInUse = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role In Use',
+				roleType: 'global',
+			});
+			const targetRole = await createRole({
+				displayName: 'Target Role',
+				roleType: 'global',
+				systemRole: false,
+			});
+
+			const user = await createMember();
+			user.role = roleInUse;
+			await userRepository.save(user);
+
+			//
+			// ACT
+			//
+			const result = await roleService.removeCustomRole(roleInUse.slug, targetRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(result.slug).toBe(roleInUse.slug);
+			expect(await roleRepository.findBySlug(roleInUse.slug)).toBeNull();
+
+			const reassignedUser = await userRepository.findOneOrFail({
+				where: { id: user.id },
+				relations: ['role'],
+			});
+			expect(reassignedUser.role.slug).toBe(targetRole.slug);
+		});
+
+		it('should throw when the reassignment role does not exist', async () => {
+			const testScopes = await createTestScopes();
+			const roleInUse = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role In Use',
+				roleType: 'global',
+			});
+			const user = await createMember();
+			user.role = roleInUse;
+			await userRepository.save(user);
+
+			await expect(
+				roleService.removeCustomRole(roleInUse.slug, 'global:does-not-exist'),
+			).rejects.toThrow('Reassignment role "global:does-not-exist" does not exist');
+
+			// Role is preserved when reassignment fails.
+			expect(await roleRepository.findBySlug(roleInUse.slug)).not.toBeNull();
+		});
+
+		it('should throw when the reassignment role is of a different type', async () => {
+			const testScopes = await createTestScopes();
+			const roleInUse = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Global Role In Use',
+				roleType: 'global',
+			});
+			const projectTarget = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Project Target',
+				roleType: 'project',
+			});
+			const user = await createMember();
+			user.role = roleInUse;
+			await userRepository.save(user);
+
+			await expect(
+				roleService.removeCustomRole(roleInUse.slug, projectTarget.slug),
+			).rejects.toThrow('Reassignment role must be of the same type as the deleted role');
+		});
+
+		it('should throw when reassigning users to the role being deleted', async () => {
+			const testScopes = await createTestScopes();
+			const roleInUse = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role In Use',
+				roleType: 'global',
+			});
+			const user = await createMember();
+			user.role = roleInUse;
+			await userRepository.save(user);
+
+			await expect(roleService.removeCustomRole(roleInUse.slug, roleInUse.slug)).rejects.toThrow(
+				'Cannot reassign users to the role being deleted',
+			);
+		});
+
+		it('should ignore the reassignment role when no users are assigned', async () => {
+			const targetRole = await createRole({
+				displayName: 'Target Role',
+				roleType: 'global',
+				systemRole: false,
+			});
+			const unusedRole = await createRole({
+				displayName: 'Unused Role',
+				roleType: 'global',
+				systemRole: false,
+			});
+
+			const result = await roleService.removeCustomRole(unusedRole.slug, targetRole.slug);
+
+			expect(result.slug).toBe(unusedRole.slug);
+			expect(await roleRepository.findBySlug(unusedRole.slug)).toBeNull();
+		});
+
 		describe('when referenced by an SSO role mapping rule', () => {
 			let roleMappingRuleRepository: RoleMappingRuleRepository;
 

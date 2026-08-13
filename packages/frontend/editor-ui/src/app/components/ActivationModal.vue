@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 
 import Modal from '@/app/components/Modal.vue';
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';

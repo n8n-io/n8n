@@ -5,6 +5,7 @@ import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 import { ScheduleTrigger } from '../ScheduleTrigger.node';
 
 describe('ScheduleTrigger', () => {
+	const MINUTE = 60 * 1000;
 	const HOUR = 60 * 60 * 1000;
 	const mockDate = new Date('2023-12-28 12:34:56.789Z');
 	const timezone = 'Europe/Berlin';
@@ -102,6 +103,29 @@ describe('ScheduleTrigger', () => {
 			expect(emit).toHaveBeenCalledTimes(3);
 		});
 
+		it('should emit every 50 elapsed minutes instead of clock-aligned minute slots', async () => {
+			vi.setSystemTime(new Date('2023-12-28 12:49:56.789Z'));
+
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 50 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			// First fire at 12:50 — with `*/50` cron this would also fire at 13:00,
+			// only 10 minutes later.
+			vi.advanceTimersByTime(MINUTE);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(10 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(40 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(2);
+		});
+
 		it('should emit every 18 hours when triggerAtMinute is explicitly set to 0', async () => {
 			const { emit } = await testTriggerNode(ScheduleTrigger, {
 				timezone,
@@ -124,6 +148,32 @@ describe('ScheduleTrigger', () => {
 			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
+
+		const DAY = 24 * HOUR;
+		it.each<[string, n8nWorkflow.INodeParameters, number, number]>([
+			[
+				'omits daysInterval',
+				{ rule: { interval: [{ field: 'days', triggerAtHour: 7 }] } },
+				3 * DAY,
+				3,
+			],
+			['omits the field', { rule: { interval: [{ triggerAtHour: 7 }] } }, 3 * DAY, 3],
+			['omits minutesInterval', { rule: { interval: [{ field: 'minutes' }] } }, HOUR, 12],
+			['omits the weekdays', { rule: { interval: [{ field: 'weeks' }] } }, 2 * 7 * DAY, 2],
+			['is missing entirely', {}, 3 * DAY, 3],
+		])(
+			'should emit on the declared default schedule when the stored rule %s',
+			async (_, parameters, elapsed, expected) => {
+				const { emit } = await testTriggerNode(ScheduleTrigger, {
+					timezone,
+					node: { parameters },
+					workflowStaticData: {},
+				});
+
+				vi.advanceTimersByTime(elapsed);
+				expect(emit).toHaveBeenCalledTimes(expected);
+			},
+		);
 
 		it('should emit on schedule defined as a cron expression', async () => {
 			const { emit } = await testTriggerNode(ScheduleTrigger, {

@@ -8,7 +8,7 @@ import {
 import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	INSTANCE_AI_NEW_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
@@ -94,8 +94,6 @@ export const registerModuleModals = () => {
 			modalRegistry.register(modalDef);
 		});
 	});
-	// Subscribe to modal registry changes
-	useUIStore().initializeModalsFromRegistry();
 };
 
 /**

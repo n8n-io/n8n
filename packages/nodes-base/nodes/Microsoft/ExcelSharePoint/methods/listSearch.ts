@@ -3,10 +3,13 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
+	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { SERVICE_PRINCIPAL_AUTH } from '../helpers/constants';
+import { isWorkbookFile, workbookSearchEndpoint } from '../helpers/workbookSearch';
+import type { DriveItem } from '../helpers/workbookSearch';
 import type { GraphListResponse, GraphTable, GraphWorksheet } from '../helpers/interfaces';
 import { listSearchPage } from '../helpers/listSearch';
 import { resolveSiteId, resolveWorkbookRoot, validatePathSegment } from '../helpers/utils';
@@ -63,6 +66,14 @@ function driveToItem(drive: Drive): INodeListSearchItems {
 		name: drive.name ?? String(drive.id),
 		value: String(drive.id),
 		url: drive.webUrl,
+	};
+}
+
+function workbookToItem(item: DriveItem): INodeListSearchItems {
+	return {
+		name: item.name ?? String(item.id),
+		value: String(item.id),
+		url: item.webUrl,
 	};
 }
 
@@ -133,6 +144,43 @@ export async function searchLibraries(
 	return {
 		results: toListItems(response.value, driveToItem),
 		paginationToken: response['@odata.nextLink'],
+	};
+}
+
+export async function searchWorkbooks(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const siteId = await resolveSiteId.call(this, 0);
+	const driveId = validatePathSegment(
+		this.getNode(),
+		'Library',
+		String(
+			(this.getNodeParameter('library', 0) as INodeParameterResourceLocator | undefined)?.value ??
+				'',
+		),
+	);
+
+	const typed = filter?.trim() ?? '';
+	const resource = workbookSearchEndpoint(siteId, driveId, typed);
+
+	let nextLink = paginationToken;
+	let workbooks: DriveItem[] = [];
+	do {
+		const response = await (fetchPage<DriveItem>).call(
+			this,
+			resource,
+			{ $select: 'id,name,webUrl,file' },
+			nextLink,
+		);
+		workbooks = (response.value ?? []).filter(isWorkbookFile);
+		nextLink = response['@odata.nextLink'];
+	} while (typed !== '' && workbooks.length === 0 && nextLink !== undefined);
+
+	return {
+		results: toListItems(workbooks, workbookToItem),
+		paginationToken: nextLink,
 	};
 }
 

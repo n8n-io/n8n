@@ -8,6 +8,7 @@ import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import {
 	type InstanceSettings,
+	type Credentials,
 	Cipher,
 	CipherAes256GCM,
 	CipherAes256CBC,
@@ -26,7 +27,7 @@ import type {
 	INodeCredentialsDetails,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { deepCopy, Workflow } from 'n8n-workflow';
+import { deepCopy, jsonParse, Workflow } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -100,6 +101,21 @@ describe('CredentialsHelper', () => {
 			await expect(
 				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
 			).rejects.toThrow(errorMessage);
+		});
+
+		test('rejects credentials that are not available to workflows', async () => {
+			credentialsRepository.findOneByOrFail.mockResolvedValueOnce(
+				mock<CredentialsEntity>({
+					id: '1',
+					name: 'Instance credential',
+					type: 'bar',
+					usageScope: 'instance',
+				}),
+			);
+
+			await expect(
+				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
+			).rejects.toThrow('This credential cannot be used in workflows');
 		});
 	});
 
@@ -228,6 +244,126 @@ describe('CredentialsHelper', () => {
 					'internal',
 				),
 			).rejects.toThrow('save workflow to view');
+		});
+
+		test('resolves variables and external secrets in marked JSON credential leaves', async () => {
+			const credentialType: ICredentialType = {
+				name: 'httpTemplatedCustomAuth',
+				displayName: 'Simplified Custom Auth',
+				properties: [
+					{
+						displayName: 'Placeholder Values',
+						name: 'placeholderValues',
+						type: 'json',
+						default: '',
+						typeOptions: { resolveCredentialJsonLeaves: true },
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+			const externalSecretsProxy =
+				mock<NonNullable<IWorkflowExecuteAdditionalData['externalSecretsProxy']>>();
+			externalSecretsProxy.hasProvider.mockReturnValue(true);
+			externalSecretsProxy.hasSecret.mockReturnValue(true);
+			externalSecretsProxy.getSecret.mockReturnValue('secret-api-key');
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				variables: { tenant: 'acme' },
+			});
+			additionalData.externalSecretsProxy = externalSecretsProxy;
+			additionalData.externalSecretProviderKeysAccessibleByCredential = new Set(['vault']);
+
+			const result = await helper.applyDefaultsAndOverwrites(
+				additionalData,
+				{
+					placeholderValues: JSON.stringify({
+						api_key: '={{ $secrets.vault.apiKey }}',
+						tenant: '={{ $vars.tenant }}',
+					}),
+				},
+				credentialType.name,
+				'internal',
+			);
+
+			expect(externalSecretsProxy.hasProvider.mock.calls).toEqual([['vault']]);
+			expect(externalSecretsProxy.hasSecret.mock.calls).toEqual([['vault', 'apiKey']]);
+			expect(externalSecretsProxy.getSecret.mock.calls).toEqual([['vault', 'apiKey']]);
+			expect(jsonParse(result.placeholderValues as string)).toEqual({
+				api_key: 'secret-api-key',
+				tenant: 'acme',
+			});
+		});
+
+		test('preserves PKCE flag negotiated by dynamic client registration', async () => {
+			const credentialType: ICredentialType = {
+				name: 'mcpOAuth2Api',
+				displayName: 'MCP OAuth2 API',
+				properties: [
+					{
+						displayName: 'Use Dynamic Client Registration',
+						name: 'useDynamicClientRegistration',
+						type: 'boolean',
+						default: true,
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+			const result = await helper.applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					useDynamicClientRegistration: true,
+					clientId: 'registered-client-id',
+					clientSecret: 'registered-secret',
+					authUrl: 'https://auth.example.com/authorize',
+					accessTokenUrl: 'https://auth.example.com/token',
+					grantType: 'authorizationCode',
+					authentication: 'body',
+					usePkce: true,
+				},
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				useDynamicClientRegistration: true,
+				clientId: 'registered-client-id',
+				clientSecret: 'registered-secret',
+				authUrl: 'https://auth.example.com/authorize',
+				accessTokenUrl: 'https://auth.example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'body',
+				usePkce: true,
+			});
 		});
 	});
 
@@ -497,6 +633,7 @@ describe('CredentialsHelper', () => {
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
 				data: cipher.encrypt(existingCredentialData),
+				usageScope: 'project',
 			};
 
 			credentialsRepository.findOneByOrFail.mockResolvedValue(
@@ -601,6 +738,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
+					usageScope: 'project',
 				} as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -650,6 +788,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: null,
+					usageScope: 'project',
 				} as unknown as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -704,6 +843,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
+					usageScope: 'project',
 				} as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -755,6 +895,7 @@ describe('CredentialsHelper', () => {
 					data: cipher.encrypt(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
+					usageScope: 'project',
 				} as CredentialsEntity;
 
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
@@ -954,6 +1095,7 @@ describe('CredentialsHelper', () => {
 			type: 'testApi',
 			data: cipher.encrypt({ apiKey: 'test' }),
 			isResolvable: false,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		beforeEach(() => {
@@ -1039,6 +1181,7 @@ describe('CredentialsHelper', () => {
 			type: credentialType,
 			data: cipher.encrypt({ apiKey: 'static-key' }),
 			isResolvable: false,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		beforeEach(() => {
@@ -1497,6 +1640,7 @@ describe('CredentialsHelper', () => {
 			data: cipher.encrypt(credentialDataA),
 			isResolvable: false,
 			resolverId: null,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		const credEntityB = {
@@ -1506,6 +1650,7 @@ describe('CredentialsHelper', () => {
 			data: cipher.encrypt(credentialDataB),
 			isResolvable: false,
 			resolverId: null,
+			usageScope: 'project',
 		} as CredentialsEntity;
 
 		const additionalData = {
@@ -1724,6 +1869,7 @@ describe('CredentialsHelper', () => {
 
 		const helpers = mock<IHttpRequestHelper>();
 		let updateSpy: MockInstance;
+		let getSpy: MockInstance;
 		let credentials: ICredentialDataDecryptedObject;
 
 		beforeEach(() => {
@@ -1743,6 +1889,19 @@ describe('CredentialsHelper', () => {
 			// what the request helper merges back into the in-memory credentials for the
 			// next request (see httpRequestWithAuthentication).
 			updateSpy = vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			// preAuthentication reads the raw stored credential before caching the token.
+			getSpy = vi.spyOn(credentialsHelper, 'getCredentials').mockResolvedValue(
+				mock<Credentials>({
+					getData: vi.fn().mockResolvedValue({
+						accessToken: '',
+						instanceUrl: '',
+						clientId: 'connected-app-client-id',
+						username: 'user@example.com',
+						privateKey,
+						environment: 'production',
+					}),
+				}),
+			);
 
 			credentials = {
 				accessToken: '',
@@ -1754,7 +1913,10 @@ describe('CredentialsHelper', () => {
 			};
 		});
 
-		afterEach(() => updateSpy.mockRestore());
+		afterEach(() => {
+			updateSpy.mockRestore();
+			getSpy.mockRestore();
+		});
 
 		test('logs in once and reuses the cached token across requests', async () => {
 			// Request 1: no cached token → exactly one login.
@@ -1828,6 +1990,105 @@ describe('CredentialsHelper', () => {
 
 			expect(mockTokenRequest).toHaveBeenCalledTimes(2);
 			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
+		});
+	});
+
+	describe('preAuthentication expression preservation', () => {
+		// A credential field holding an expression must survive a manual/test run.
+		// preAuthentication resolves the expression to a static value for the run and
+		// caches the fetched token; it must persist only the token, leaving the raw
+		// expression in the stored credential so later runs stay dynamic.
+		const expressionText = "={{ $('Webhook').item.json.body.installation.id }}";
+
+		// Mimics a credential whose preAuthentication spreads the resolved credentials
+		// back into its output (the GitHub App shape) — the strictest case, since the
+		// resolved value is present in `output` itself.
+		class SpreadingExpirableApi implements ICredentialType {
+			name = 'spreadingExpirableApi';
+
+			displayName = 'Spreading Expirable API';
+
+			properties: INodeProperties[] = [
+				{ displayName: 'Installation ID', name: 'installationId', type: 'string', default: '' },
+				{
+					displayName: 'Access Token',
+					name: 'accessToken',
+					type: 'hidden',
+					typeOptions: { expirable: true },
+					default: '',
+				},
+			];
+
+			// eslint-disable-next-line @typescript-eslint/require-await
+			async preAuthentication(
+				this: IHttpRequestHelper,
+				credentials: ICredentialDataDecryptedObject,
+			): Promise<ICredentialDataDecryptedObject> {
+				return { ...credentials, accessToken: 'NEW_TOKEN' };
+			}
+
+			authenticate: IAuthenticateGeneric = { type: 'generic', properties: {} };
+		}
+
+		const spreadingCred = new SpreadingExpirableApi();
+
+		const node: INode = {
+			id: 'uuid-spread',
+			name: 'Node',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { spreadingExpirableApi: { id: 'cred-1', name: 'Cred' } },
+		};
+
+		const helpers = mock<IHttpRequestHelper>();
+		let updateSpy: MockInstance;
+		let getSpy: MockInstance;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockNodesAndCredentials.getCredential
+				.calledWith('spreadingExpirableApi')
+				.mockReturnValue({ type: spreadingCred, sourcePath: '' });
+
+			updateSpy = vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			// The raw stored credential keeps the expression; getData() returns it verbatim.
+			getSpy = vi.spyOn(credentialsHelper, 'getCredentials').mockResolvedValue(
+				mock<Credentials>({
+					getData: vi.fn().mockResolvedValue({ installationId: expressionText, accessToken: '' }),
+				}),
+			);
+		});
+
+		afterEach(() => {
+			updateSpy.mockRestore();
+			getSpy.mockRestore();
+		});
+
+		test('persists only the fetched token and keeps the stored expression intact', async () => {
+			// The credentials the helper receives are already expression-resolved for
+			// this run: installationId is the static value the expression evaluated to.
+			const resolved: ICredentialDataDecryptedObject = {
+				installationId: '12345',
+				accessToken: '',
+			};
+
+			const result = await credentialsHelper.preAuthentication(
+				helpers,
+				resolved,
+				'spreadingExpirableApi',
+				node,
+				false,
+			);
+
+			expect(updateSpy).toHaveBeenCalledTimes(1);
+			expect(updateSpy).toHaveBeenCalledWith(
+				node.credentials!.spreadingExpirableApi,
+				'spreadingExpirableApi',
+				{ installationId: expressionText, accessToken: 'NEW_TOKEN' },
+			);
+			expect(result).toMatchObject({ accessToken: 'NEW_TOKEN' });
 		});
 	});
 });

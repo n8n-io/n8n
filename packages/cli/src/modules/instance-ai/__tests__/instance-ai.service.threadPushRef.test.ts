@@ -73,6 +73,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			runState: { clearThread: Mock };
 			backgroundTasks: { cancelThread: Mock };
 			schedulerLocks: Map<string, unknown>;
+			failedInternalFollowUpStreaks: Map<string, number>;
 			liveness: { clearThreadState: Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
@@ -100,6 +101,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		};
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
 		service.schedulerLocks = new Map();
+		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();

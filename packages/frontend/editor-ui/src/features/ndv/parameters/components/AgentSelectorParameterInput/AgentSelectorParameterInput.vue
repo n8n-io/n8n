@@ -23,7 +23,7 @@ import { useAgentProjectNameResolver } from '@/features/agents/composables/useAg
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
 import { openSafeUrl } from '@/app/utils/htmlUtils';
 
@@ -317,7 +317,6 @@ defineExpose({ showDropdown });
 						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
 					</N8nText>
 					<N8nButton
-						type="tertiary"
 						size="small"
 						:label="i18n.baseText('generic.retry')"
 						data-test-id="rlc-error-retry"

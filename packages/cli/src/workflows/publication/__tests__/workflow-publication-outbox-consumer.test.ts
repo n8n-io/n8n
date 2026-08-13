@@ -346,7 +346,6 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			[{ type: 'completed', triggerStatuses: [] }, 'published', 'none'],
 			[{ type: 'unpublished' }, 'unpublished', 'none'],
 			[{ type: 'skipped', reason: 'workflow-not-found' }, 'skipped', 'workflow_not_found'],
-			[{ type: 'skipped', reason: 'workflow-inactive' }, 'skipped', 'workflow_inactive'],
 			[{ type: 'version-missing' }, 'failed', 'version_missing'],
 			[{ type: 'partial', triggerStatuses: [] }, 'partial_success', 'none'],
 			[{ type: 'failed', error: new Error('boom') }, 'failed', 'none'],
@@ -402,6 +401,16 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 		test('does nothing when the feature flag is off', async () => {
 			consumer = createConsumer(false);
+
+			await consumer.wakeUp();
+
+			expect(outboxRepository.claimNextPendingRecord).not.toHaveBeenCalled();
+			expect(vi.getTimerCount()).toBe(0);
+		});
+
+		test('on a follower, neither polls nor claims a record', async () => {
+			outboxRepository.claimNextPendingRecord.mockResolvedValue(makeRecord({ id: 1 }));
+			consumer = createConsumer(true, false);
 
 			await consumer.wakeUp();
 

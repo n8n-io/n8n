@@ -1,8 +1,8 @@
 {
 	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
-		"rootDir": "src",
-		"outDir": "dist",
+		"noEmit": true,
+		"rootDirs": [".", "../design-system/src"],
 		"target": "esnext",
 		"module": "esnext",
 		"moduleResolution": "bundler",

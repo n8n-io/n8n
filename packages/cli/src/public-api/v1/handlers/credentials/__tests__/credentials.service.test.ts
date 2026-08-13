@@ -1,5 +1,10 @@
 import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/db';
-import { CredentialsRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import {
+	CredentialsRepository,
+	GLOBAL_OWNER_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { validate, type Schema } from 'jsonschema';
@@ -7,9 +12,15 @@ import { Cipher, CipherAes256GCM, CipherAes256CBC, EncryptionKeyProxy } from 'n8
 import type { InstanceSettings } from 'n8n-core';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 
-import { buildSharedForCredential, toJsonSchema, updateCredential } from '../credentials.service';
+import {
+	buildSharedForCredential,
+	saveCredential,
+	toJsonSchema,
+	updateCredential,
+} from '../credentials.service';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import * as checkAccess from '@/permissions.ee/check-access';
@@ -100,6 +111,51 @@ describe('CredentialsService', () => {
 					updatedAt: updatedAt2,
 				},
 			]);
+		});
+	});
+
+	describe('saveCredential', () => {
+		it('forces public API credentials to project usage scope', async () => {
+			const credentialsService = mock<CredentialsService>();
+			const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+			const eventService = mock<EventService>();
+			Container.set(CredentialsService, credentialsService);
+			Container.set(SharedCredentialsRepository, sharedCredentialsRepository);
+			Container.set(EventService, eventService);
+			credentialsService.createUnmanagedCredential.mockResolvedValue({
+				id: 'credential-id',
+				name: 'Credential',
+				type: 'testApi',
+				isManaged: false,
+				isGlobal: false,
+				isResolvable: false,
+				resolvableAllowFallback: false,
+				resolverId: null,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				scopes: [],
+			} as never);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
+			const payload = {
+				type: 'testApi',
+				name: 'Credential',
+				data: { apiKey: 'secret' },
+				usageScope: 'instance',
+			};
+
+			await saveCredential(payload, mock<User>());
+
+			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
+				{
+					type: payload.type,
+					name: payload.name,
+					data: payload.data,
+					projectId: undefined,
+					isResolvable: undefined,
+					usageScope: 'project',
+				},
+				expect.anything(),
+			);
 		});
 	});
 
@@ -508,6 +564,9 @@ describe('CredentialsService', () => {
 			mock(), // externalSecretsConfig
 			mock(), // externalSecretsProviderAccessCheckService
 			mock(), // connectionStatusProxy
+			mock(), // instanceCredentialAssignmentRepository
+			mock(), // instanceCredentialUseRegistry
+			mock(), // dbLockService
 		);
 
 		beforeEach(() => {

@@ -14,6 +14,9 @@ export class ProjectSerializer {
 			name: project.name,
 			...(project.description !== null ? { description: project.description } : {}),
 			...(project.icon !== null ? { icon: project.icon } : {}),
+			...(project.customTelemetryTags?.length
+				? { customTelemetryTags: project.customTelemetryTags }
+				: {}),
 		});
 	}
 }

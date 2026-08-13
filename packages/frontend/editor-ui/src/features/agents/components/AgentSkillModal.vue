@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { AGENT_SKILL_REFERENCE_MAX_COUNT } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nIcon } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+} from '@n8n/api-types';
+import { N8nButton, N8nCallout, N8nHeading, N8nIcon } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
@@ -37,6 +41,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
+const { showMessage } = useToast();
 
 const skill = ref<AgentSkill>(
 	normalizeSkill({
@@ -54,6 +59,14 @@ const selectedPath = ref(SKILL_FILE);
 const isEditing = computed(() => !!props.data.skillId);
 const canAddReference = computed(
 	() => (skill.value.references ?? []).length < AGENT_SKILL_REFERENCE_MAX_COUNT,
+);
+// A skill saved through this modal always has instructions (required below), so
+// empty instructions on an existing ref mean its stored content is gone — the
+// backend validation issue this modal opened from. Detected from the opening
+// data rather than threaded validation state, so it stays correct even if this
+// modal is ever opened from a surface that doesn't know about validation issues.
+const openedWithMissingContent = computed(
+	() => isEditing.value && !(props.data.skill?.instructions ?? '').trim(),
 );
 
 const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() => {
@@ -76,6 +89,13 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 
 	if (!instructions) {
 		errors.instructions = i18n.baseText('agents.builder.skills.validation.instructionsRequired');
+	} else if (
+		new TextEncoder().encode(skill.value.instructions).byteLength >
+		AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH
+	) {
+		errors.instructions = i18n.baseText('agents.builder.skills.validation.instructionsMaxLength', {
+			interpolate: { max: String(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) },
+		});
 	}
 	if (skill.value.references?.some((reference) => !reference.content.trim())) {
 		errors.references = i18n.baseText('agents.builder.skills.references.invalidSummary');
@@ -84,7 +104,9 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 	return errors;
 });
 
-const visibleErrors = computed(() => (submitted.value ? validationErrors.value : {}));
+const visibleErrors = computed(() =>
+	submitted.value || openedWithMissingContent.value ? validationErrors.value : {},
+);
 const canSave = computed(() => formIsValid.value);
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
@@ -158,7 +180,19 @@ function closeModal() {
 
 function onSave() {
 	submitted.value = true;
-	if (!canSave.value) return;
+	if (!canSave.value) {
+		const message =
+			validationErrors.value.name ??
+			validationErrors.value.description ??
+			validationErrors.value.instructions ??
+			validationErrors.value.references;
+		showMessage({
+			title: i18n.baseText('agents.builder.skills.saveError'),
+			...(message ? { message } : {}),
+			type: 'error',
+		});
+		return;
+	}
 
 	const payload = normalizeSkill({
 		name: skill.value.name.trim(),
@@ -193,6 +227,13 @@ function onRemove() {
 		</template>
 
 		<template #content>
+			<N8nCallout
+				v-if="openedWithMissingContent"
+				theme="warning"
+				data-testid="agent-skill-missing-content-callout"
+			>
+				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
+			</N8nCallout>
 			<div :class="$style.content">
 				<AgentSkillFileNav
 					:skill="skill"
@@ -209,7 +250,7 @@ function onRemove() {
 					:selected-path="selectedPath"
 					:errors="visibleErrors"
 					:scrollable="false"
-					:show-validation-warnings="submitted"
+					:show-validation-warnings="submitted || openedWithMissingContent"
 					@import:skill="onImportSkill"
 					@select:path="selectedPath = $event"
 					@update:skill="onSkillUpdate"
@@ -233,12 +274,7 @@ function onRemove() {
 					<N8nButton variant="subtle" @click="closeModal">
 						{{ i18n.baseText('agents.builder.skills.create.cancel') }}
 					</N8nButton>
-					<N8nButton
-						variant="solid"
-						:disabled="!canSave"
-						data-testid="agent-skill-create-save"
-						@click="onSave"
-					>
+					<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
 						{{ i18n.baseText('agents.builder.skills.create.save') }}
 					</N8nButton>
 				</div>

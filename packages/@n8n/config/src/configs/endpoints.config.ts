@@ -190,6 +190,14 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_APPS_ENABLED')
 	mcpAppsEnabled: boolean = false;
 
+	/**
+	 * Force-enable Canvas node-group support in the MCP workflow-builder tools.
+	 * Acts as an operator-level override of the PostHog rollout flag.
+	 * Cannot force-disable: setting this to `false` falls back to PostHog.
+	 */
+	@Env('N8N_MCP_CANVAS_GROUPS_ENABLED')
+	mcpCanvasGroupsEnabled: boolean = false;
+
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
 	mcpMaxRegisteredClients: number = 5000;

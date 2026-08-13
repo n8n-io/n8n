@@ -17,6 +17,8 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
+import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
+import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -34,6 +36,8 @@ describe('ProjectService', () => {
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const agentRepository = mock<AgentRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
+	const agentExecutionService = mock<AgentExecutionService>();
+	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
 	const projectService = new ProjectService(
@@ -42,7 +46,8 @@ describe('ProjectService', () => {
 		projectRelationRepository,
 		roleService,
 		sharedCredentialsRepository,
-		mock(),
+		mock(), // folderRepository
+		mock(), // licenseState
 		moduleRegistry,
 		ownershipService,
 		logger,
@@ -605,6 +610,14 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => agentKnowledgeService,
 			});
+			Object.defineProperty(projectService, 'agentExecutionService', {
+				configurable: true,
+				get: async () => agentExecutionService,
+			});
+			Object.defineProperty(projectService, 'agentChatAttachmentService', {
+				configurable: true,
+				get: async () => agentChatAttachmentService,
+			});
 			manager.findOne.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
@@ -619,6 +632,11 @@ describe('ProjectService', () => {
 			await projectService.deleteProject(user, project.id);
 
 			expect(agentRepository.findByProjectId).toHaveBeenCalledWith(project.id);
+			expect(agentChatAttachmentService.deleteByAgent).toHaveBeenCalledWith('agent-1');
+			expect(agentChatAttachmentService.deleteByAgent).toHaveBeenCalledWith('agent-2');
+			expect(agentChatAttachmentService.deleteByAgent.mock.invocationCallOrder[1]).toBeLessThan(
+				projectRepository.remove.mock.invocationCallOrder[0],
+			);
 			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
 				project.id,
 				'agent-1',
@@ -632,6 +650,8 @@ describe('ProjectService', () => {
 			);
 			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-1');
 			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-2');
+			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
+			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-2');
 		});
 
 		it('destroys agent sandboxes even when knowledge file cleanup fails', async () => {
@@ -644,6 +664,14 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => agentKnowledgeService,
 			});
+			Object.defineProperty(projectService, 'agentExecutionService', {
+				configurable: true,
+				get: async () => agentExecutionService,
+			});
+			Object.defineProperty(projectService, 'agentChatAttachmentService', {
+				configurable: true,
+				get: async () => agentChatAttachmentService,
+			});
 			manager.findOne.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
@@ -652,10 +680,12 @@ describe('ProjectService', () => {
 			projectRelationRepository.findBy.mockResolvedValueOnce([]);
 			agentRepository.findByProjectId.mockResolvedValueOnce([{ id: 'agent-1' }] as never);
 			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
+			agentChatAttachmentService.deleteByAgent.mockRejectedValueOnce(new Error('storage down'));
 
 			await expect(projectService.deleteProject(user, project.id)).resolves.toBeUndefined();
 
 			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-1');
+			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
 			expect(projectRepository.remove).toHaveBeenCalledWith(project);
 		});
 	});

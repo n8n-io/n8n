@@ -15,12 +15,12 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 
-vi.mock('@/app/composables/useToast');
+vi.mock('@n8n/composables/useToast');
 
 describe(useLogsExecutionData, () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
