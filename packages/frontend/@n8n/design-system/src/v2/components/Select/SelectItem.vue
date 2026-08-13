@@ -25,6 +25,15 @@ const trailingProps = computed(() => ({
 	class: $style.itemTrailing,
 	strokeWidth: props.strokeWidth,
 }));
+
+const typeaheadText = computed(() => {
+	const base = props.textValue ?? props.label;
+	if (!props.keywords?.length) {
+		return base;
+	}
+
+	return [base, ...props.keywords].join(' ');
+});
 </script>
 
 <template>
@@ -32,6 +41,7 @@ const trailingProps = computed(() => ({
 		data-test-id="select-item"
 		:disabled="props.disabled"
 		:value="props.value"
+		:text-value="typeaheadText"
 		:class="props.class"
 		@select="props.onSelect?.($event)"
 	>

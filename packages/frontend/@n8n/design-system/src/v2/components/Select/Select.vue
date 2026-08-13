@@ -273,8 +273,12 @@ function normaliseItems(items: SelectItem[] | undefined): SelectItem[] {
 	return result;
 }
 
-function itemSearchText(item: SelectOptionBase): string {
-	return (item.textValue ?? item.label).toLowerCase();
+function itemMatchesQuery(item: SelectOptionBase, query: string): boolean {
+	if ((item.textValue ?? item.label).toLowerCase().includes(query)) {
+		return true;
+	}
+
+	return (item.keywords ?? []).some((keyword) => keyword.toLowerCase().includes(query));
 }
 
 function filterGroupedItems(items: SelectItem[], query: string): SelectItem[] {
@@ -298,7 +302,7 @@ function filterGroupedItems(items: SelectItem[], query: string): SelectItem[] {
 			continue;
 		}
 
-		if (!itemSearchText(item).includes(normalizedQuery)) {
+		if (!itemMatchesQuery(item, normalizedQuery)) {
 			continue;
 		}
 

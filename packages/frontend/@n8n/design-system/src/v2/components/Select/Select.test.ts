@@ -589,6 +589,48 @@ describe('v2/components/Select', () => {
 			});
 		});
 
+		it('should filter items by keywords without replacing label matches', async () => {
+			const items: SelectItem[] = [
+				{ value: 'us', label: 'United States', keywords: ['USA', 'America'] },
+				{ value: 'uk', label: 'United Kingdom' },
+				{ value: 'de', label: 'Germany', textValue: 'Deutschland' },
+			];
+
+			const wrapper = render(Select, {
+				props: {
+					items,
+					searchable: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByTestId('select-trigger'));
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+			const searchInput = within(popover).getByRole('textbox');
+
+			await userEvent.type(searchInput, 'usa');
+
+			await waitFor(() => {
+				expect(within(popover).getByText('United States')).toBeInTheDocument();
+				expect(within(popover).queryByText('United Kingdom')).not.toBeInTheDocument();
+			});
+
+			await userEvent.clear(searchInput);
+			await userEvent.type(searchInput, 'united');
+
+			await waitFor(() => {
+				expect(within(popover).getByText('United States')).toBeInTheDocument();
+				expect(within(popover).getByText('United Kingdom')).toBeInTheDocument();
+			});
+
+			await userEvent.clear(searchInput);
+			await userEvent.type(searchInput, 'deutsch');
+
+			await waitFor(() => {
+				expect(within(popover).getByText('Germany')).toBeInTheDocument();
+				expect(within(popover).queryByText('United States')).not.toBeInTheDocument();
+			});
+		});
+
 		it('should clear search when the dropdown closes', async () => {
 			const wrapper = render(Select, {
 				props: {

@@ -13,10 +13,20 @@ export type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	/**
 	 * String used for search filtering. Defaults to `label`.
 	 * Set this when the filter text should differ from the displayed label
-	 * (e.g. include synonyms or a slot-rendered label).
+	 * (e.g. a slot-rendered label).
 	 */
 	textValue?: string;
-	onSelect?: (e: Event) => void;
+	/**
+	 * Extra strings matched during search filtering (e.g. synonyms).
+	 * Does not replace `textValue` — both the base filter text and these
+	 * keywords are checked.
+	 */
+	keywords?: string[];
+	/**
+	 * Called when the item is chosen. Call `event.preventDefault()` to keep the
+	 * selection from updating (e.g. footer actions that open a modal).
+	 */
+	onSelect?: (event: Event) => void;
 };
 
 export type SelectLabelItem = {
@@ -61,7 +71,8 @@ export type SelectProps<M extends boolean = false> = Omit<
 	clearable?: boolean;
 
 	/**
-	 * When `true`, shows a search field at the top of the dropdown and filters items by label.
+	 * When `true`, shows a search field at the top of the dropdown and filters
+	 * items by `textValue` (falling back to `label`) and `keywords`.
 	 * @defaultValue false
 	 */
 	searchable?: boolean;
@@ -98,7 +109,9 @@ export type SelectEmits<M extends boolean = false> = Omit<SelectRootEmits, 'upda
 	clear: [];
 };
 
-type SlotProps = (props: { item: SelectOptionBase; ui: Record<string, unknown> }) => unknown;
+export type SelectItemUi = { class: string; strokeWidth?: number };
+
+type SlotProps = (props: { item: SelectOptionBase; ui: SelectItemUi }) => unknown;
 
 export type SelectSlots<M extends boolean = false> = {
 	default(props: { modelValue?: SelectModelValue<M>; open: boolean }): unknown;

@@ -1,9 +1,10 @@
 # Component specification
 
-Allows users to choose one or more options from a predefined list. It supports both single and multiple selection modes via the multiple prop.
-Built-in search (`searchable`) filters the dropdown by item label (or `textValue` when provided). For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
+Allows users to choose one or more options from a predefined list. It supports both single and multiple selection modes via the `multiple` prop.
+Built-in search (`searchable`) filters the dropdown by `textValue` (falling back to `label`) and `keywords` (case-insensitive substring). Closing the menu clears the query. Group labels and separators without a matching item are dropped from the filtered list. When search is off, the same fields feed Reka typeahead. For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
 
-- **Component Name:** N8nSelect
+- **Component Name:** N8nSelect2
+- **Related export:** N8nSelect2Item (default menu row; use when replacing the `item` slot)
 - **Figma Component:** [Figma](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2121-630&m=dev)
 - **Element+ Component:** [ElSelect](https://element-plus.org/en-US/component/select)
 - **Reka UI Component:** [Select](https://reka-ui.com/docs/components/select)
@@ -14,9 +15,9 @@ Built-in search (`searchable`) filters the dropdown by item label (or `textValue
 
 **Item shape**
 
-Selectable items must be objects with required `value` and `label`. Structural rows use a discriminant `type`:
+Selectable items must be objects with required `value` and `label`. Empty `value` or `label` is skipped (dev warning). Structural rows use a discriminant `type`:
 
-```Typescript
+```typescript
 type SelectValue = string | number;
 
 type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
@@ -25,17 +26,20 @@ type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	label: string;
 	icon?: IconName;
 	disabled?: boolean;
-	textValue?: string; // optional search text; defaults to label
+	textValue?: string; // search / typeahead text; defaults to label (use for slot-rendered labels)
+	keywords?: string[]; // extra search terms (synonyms); checked in addition to textValue
+	onSelect?: (event: Event) => void; // preventDefault() keeps the value from updating
 };
 
 type SelectLabelItem = { type: 'label'; label: string };
 type SelectSeparatorItem = { type: 'separator' };
 type SelectItem = SelectOptionBase | SelectLabelItem | SelectSeparatorItem;
+type SelectItemUi = { class: string; strokeWidth?: number };
 ```
 
 Consumers that need extra fields should extend the base type and map source data themselves:
 
-```Typescript
+```typescript
 interface CustomOption extends SelectOptionBase<string> {
 	description: string;
 }
@@ -49,9 +53,9 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `placeholder?: string`
 - `items?: SelectItem[]` Array of options / labels / separators to render
 - `defaultValue?: SelectValue | SelectValue[]` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
-- `modelValue?: SelectValue | SelectValue[]` The controlled value of the Select. Can be bind as `v-model`.
+- `modelValue?: SelectValue | SelectValue[]` The controlled value of the Select. Bind as `v-model`. Typed as `SelectValue[]` when `multiple` is `true`.
 - `multiple?: boolean` Whether multiple options can be selected or not.
-- `open?: boolean` The controlled open state of the Select. Can be bind as `v-model:open`.
+- `open?: boolean` The controlled open state of the Select. Bind as `v-model:open`.
 - `defaultOpen?: boolean` The open state of the select when it is initially rendered. Use when you do not need to control its open state.
 - `disabled?: boolean` When `true`, prevents the user from interacting with Select.
 - `required?: boolean` When `true`, indicates that an option must be selected.
@@ -59,10 +63,10 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `autocomplete?: string` Native HTML `autocomplete` attribute.
 - `dir?: 'ltr' | 'rtl'` Reading direction. When omitted, inherits from `ConfigProvider` or defaults to LTR.
 - `icon?: IconName` Icon to be displayed in the trigger.
-- `clearable?: boolean` When `true`, shows a clear button when a value is selected.
-- `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by label.
+- `clearable?: boolean` When `true`, shows a clear button when a value is selected. Hidden when `disabled` or the value is empty. Default: `false`.
+- `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by `textValue` (falling back to `label`) and `keywords`. Default: `false`.
 - `searchPlaceholder?: string` Placeholder for the search field.
-- `searchQuery?: string` Controlled search query (`v-model:searchQuery`).
+- `searchQuery?: string` Controlled search query (`v-model:searchQuery`). Reset to `''` when the dropdown closes.
 - `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. Default: `'item-aligned'`.
 - `side?: 'top' | 'right' | 'bottom' | 'left'` Preferred side when `position` is `'popper'`. Default: `'bottom'`.
 - `sideOffset?: number` Distance in pixels from the trigger when `position` is `'popper'`. Default: `5`.
@@ -76,28 +80,37 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 
 **Events**
 
-- `update:modelValue(value: SelectValue | SelectValue[] | undefined)`
+- `update:modelValue(value: SelectValue | SelectValue[] | undefined)` — single clear emits `undefined`; multiple clear emits `[]`
 - `update:open(value: boolean)`
 - `update:searchQuery(value: string)`
 - `clear()`
 
 **Slots**
 
-- `default`: `{ modelValue?: SelectValue | SelectValue[]; open: boolean }`
-- `item`: `{ item: SelectOptionBase }`
+- `default`: `{ modelValue?: SelectValue | SelectValue[]; open: boolean }` — trigger display. Default is the selected label(s), comma-separated in multiple mode.
+- `item`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour)
 - `label`: `{ item: SelectLabelItem }` — group label rows (`type: 'label'`)
-- `item-leading`: `{ item: SelectOptionBase; ui: object }`
+- `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`)
 - `item-label`: `{ item: SelectOptionBase }`
-- `item-trailing`: `{ item: SelectOptionBase; ui: object }`
+- `item-trailing`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom trailing content
 - `header?: ()`
 - `footer?: ()`
 - `empty?: ()` — shown when there are no selectable items (e.g. search with no matches)
 
+**Expose**
+
+- `triggerRef` — Reka `SelectTrigger` instance
+
 
 ### Template usage example
 
-```Typescript
+**Basic:**
+
+```vue
 <script setup lang="ts">
+import { ref } from 'vue'
+import { N8nSelect2 } from '@n8n/design-system'
+
 const items = ref([
 	{ value: 'backlog', label: 'Backlog' },
 	{ value: 'todo', label: 'Todo' },
@@ -108,12 +121,17 @@ const value = ref('backlog')
 </script>
 
 <template>
-  <N8nSelect v-model="value" :items="items" />
+  <N8nSelect2 v-model="value" :items="items" />
 </template>
 ```
 
-```Typescript
+**Custom item slots:**
+
+```vue
 <script setup lang="ts">
+import { computed, ref } from 'vue'
+import { N8nIcon, N8nSelect2 } from '@n8n/design-system'
+
 const items = ref([
 	{
 		value: 'system',
@@ -133,20 +151,39 @@ const items = ref([
 	},
 ])
 const value = ref('light')
-const icon = computed(() => items.value.find(item => item.value === value.value)?.icon)
+const icon = computed(() => items.value.find((item) => item.value === value.value)?.icon)
 </script>
 
 <template>
-  <Select v-model="value" :items="items" :icon="icon" >
-	<template #item-leading="{ item }">
-		<N8nIcon :icon="item.icon" color="primary"/>
+  <N8nSelect2 v-model="value" :items="items" :icon="icon">
+	<template #item-leading="{ item, ui }">
+		<N8nIcon :icon="item.icon" color="primary" v-bind="ui" />
 	</template>
 	<template #item-label="{ item }">
 		Custom label: {{ item.label }}
 	</template>
-	<template #item-trailing="{ item }">
-		<N8nIcon :icon="item.icon" color="secondary"/>
+	<template #item-trailing="{ item, ui }">
+		<N8nIcon :icon="item.icon" color="secondary" v-bind="ui" />
 	</template>
-</Select>
+  </N8nSelect2>
+</template>
+```
+
+**Searchable (`textValue` + `keywords`):**
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { N8nSelect2 } from '@n8n/design-system'
+
+const items = ref([
+	{ value: 'us', label: 'United States', keywords: ['USA', 'America'] },
+	{ value: 'de', label: 'Germany', textValue: 'Deutschland' },
+])
+const value = ref<string>()
+</script>
+
+<template>
+  <N8nSelect2 v-model="value" :items="items" searchable clearable />
 </template>
 ```

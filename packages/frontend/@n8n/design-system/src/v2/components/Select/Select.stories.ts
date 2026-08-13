@@ -9,9 +9,9 @@ import N8nInput from '@n8n/design-system/components/N8nInput';
 import N8nInputLabel from '@n8n/design-system/components/N8nInputLabel';
 import N8nText from '@n8n/design-system/components/N8nText';
 
-import InputNumber from '../InputNumber/InputNumber.vue';
 import type { SelectItem } from './Select.types';
 import Select from './Select.vue';
+import InputNumber from '../InputNumber/InputNumber.vue';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
@@ -41,6 +41,15 @@ const meta = {
 			options: ['item-aligned', 'popper'],
 			description:
 				'Positioning mode for the dropdown. `item-aligned` aligns the selected item with the trigger (default); `popper` opens below the trigger.',
+		},
+		searchable: {
+			control: 'boolean',
+			description:
+				'Shows a search field and filters items by `textValue` (falling back to `label`) and `keywords`.',
+		},
+		clearable: {
+			control: 'boolean',
+			description: 'Shows a clear button when a value is selected. Hidden when disabled or empty.',
 		},
 	},
 } satisfies GenericMeta<typeof Select>;
@@ -726,15 +735,15 @@ export const ShortItems = {
 } satisfies Story;
 
 const systemRoles = [
-	{ value: 'admin', label: 'Admin' },
-	{ value: 'member', label: 'Member' },
-	{ value: 'viewer', label: 'Viewer' },
+	{ value: 'admin', label: 'Admin', keywords: ['owner', 'superuser'] },
+	{ value: 'member', label: 'Member', keywords: ['user'] },
+	{ value: 'viewer', label: 'Viewer', keywords: ['read-only', 'readonly'] },
 ];
 
 const customRoles = [
-	{ value: 'developer', label: 'Developer' },
-	{ value: 'billing-manager', label: 'Billing Manager' },
-	{ value: 'support-lead', label: 'Support Lead' },
+	{ value: 'developer', label: 'Developer', keywords: ['engineer'] },
+	{ value: 'billing-manager', label: 'Billing Manager', keywords: ['finance', 'invoice'] },
+	{ value: 'support-lead', label: 'Support Lead', keywords: ['helpdesk'] },
 ];
 
 const SelectSearchAndFooterDemo = defineComponent({
@@ -775,10 +784,14 @@ const SelectSearchAndFooterDemo = defineComponent({
 			onUpdate: action('update:modelValue'),
 			Select,
 			N8nIcon,
+			N8nText,
 		};
 	},
 	template: `
-		<div style="padding: 40px;">
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--sm);">
+			<component :is="N8nText" size="small" color="text-light" tag="p" style="margin: 0;">
+				Search matches labels and keywords — try "owner" or "finance".
+			</component>
 			<component
 				:is="Select"
 				v-model="value"
@@ -808,6 +821,14 @@ const SelectSearchAndFooterDemo = defineComponent({
 });
 
 export const WithSearchAndFooter: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Search filters by label/`textValue` and `keywords`. Try "owner", "finance", or "helpdesk". Closing the menu clears the query.',
+			},
+		},
+	},
 	render: () => ({
 		components: { SelectSearchAndFooterDemo },
 		template: '<SelectSearchAndFooterDemo />',
