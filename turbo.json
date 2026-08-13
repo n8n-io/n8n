@@ -75,10 +75,7 @@
 			"cache": false
 		},
 		"watch": { "cache": false, "persistent": true },
-		// `^build` because a dev server can load config that imports a dependency's `dist`
-		// (editor-ui's vite config imports `@n8n/vitest-config/frontend`), which does not exist
-		// in a clean checkout. `typecheck`, `test` and `lint` already declare it.
-		"dev": { "cache": false, "persistent": true, "dependsOn": ["^build"] },
+		"dev": { "cache": false, "persistent": true },
 		"install-browsers": {
 			"cache": true,
 			"inputs": [".playwright-version"],

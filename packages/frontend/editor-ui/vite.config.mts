@@ -1,12 +1,14 @@
+// Node loads this file before anything can build: every import here must resolve without a
+// build step — published deps, source-only workspace packages, or relative files. Test-only
+// config (which may import dist-only packages) lives in `vitest.config.mts`.
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
-import { defineConfig, mergeConfig, type UserConfig } from 'vite';
+import { defineConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import svgLoader from 'vite-svg-loader';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { codecovVitePlugin } from '@codecov/vite-plugin';
 
-import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
 import { lucideIconsPlugin } from '../@n8n/design-system/src/icons/lucide/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
@@ -149,44 +151,41 @@ const plugins: UserConfig['plugins'] = [
 
 const target = browserslistToEsbuild(browsers);
 
-export default mergeConfig(
-	defineConfig({
-		define: {
-			// This causes test to fail but is required for actually running it
-			// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
-			...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
-			BASE_PATH: `'${publicPath}'`,
-		},
-		plugins,
-		resolve: { alias },
-		base: publicPath,
-		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
-		css: {
-			preprocessorMaxWorkers: 2,
-			preprocessorOptions: {
-				scss: {
-					additionalData: [
-						'',
-						'@use "@/app/css/_variables.scss" as *;',
-						'@use "@n8n/design-system/css/mixins" as mixins;',
-					].join('\n'),
-				},
+export default defineConfig({
+	define: {
+		// This causes test to fail but is required for actually running it
+		// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
+		...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
+		BASE_PATH: `'${publicPath}'`,
+	},
+	plugins,
+	resolve: { alias },
+	base: publicPath,
+	envPrefix: ['VUE', 'N8N_ENV_FEAT'],
+	css: {
+		preprocessorMaxWorkers: 2,
+		preprocessorOptions: {
+			scss: {
+				additionalData: [
+					'',
+					'@use "@/app/css/_variables.scss" as *;',
+					'@use "@n8n/design-system/css/mixins" as mixins;',
+				].join('\n'),
 			},
 		},
-		build: {
-			minify: !!release,
-			// Coverage builds emit INLINE maps so browser V8 coverage carries the
-			// map in the script source and monocart resolves offsets back to src.
-			sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
-			target,
-		},
-		optimizeDeps: {
-			exclude: ['wa-sqlite'],
-			rolldownOptions: {},
-		},
-		worker: {
-			format: 'es',
-		},
-	}),
-	vitestConfig,
-);
+	},
+	build: {
+		minify: !!release,
+		// Coverage builds emit INLINE maps so browser V8 coverage carries the
+		// map in the script source and monocart resolves offsets back to src.
+		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
+		target,
+	},
+	optimizeDeps: {
+		exclude: ['wa-sqlite'],
+		rolldownOptions: {},
+	},
+	worker: {
+		format: 'es',
+	},
+});
