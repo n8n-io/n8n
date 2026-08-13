@@ -74,6 +74,7 @@ import {
 	TemplateExamplesCatalog,
 	TEMPLATE_PROMPT_SUFFIX,
 } from '@/experiments/instanceAiTemplateExamples';
+import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -601,7 +602,14 @@ function handleShelfSuggestionInsert(payload: {
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
-				<div ref="centeredInput" :class="[$style.centeredInput, inputPulsing && $style.inputPulse]">
+				<div ref="centeredInput" :class="$style.centeredInput">
+					<InstanceAiFreeNudge
+						:eligible="
+							store.creditsQuota !== undefined &&
+							!creditBanner.visible.value &&
+							settingsStore.isWorkflowBuilderAvailable
+						"
+					/>
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
 						variant="standalone"
@@ -614,6 +622,7 @@ function handleShelfSuggestionInsert(payload: {
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
+						:class="inputPulsing && $style.inputPulse"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:contextual-suggestion="templatePreviewPrompt"

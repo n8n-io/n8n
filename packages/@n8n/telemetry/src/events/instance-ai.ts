@@ -2,7 +2,29 @@ import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
 
+const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
+const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
+
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
+	FREE_NUDGE_EXPOSED: {
+		name: 'Instance AI free nudge exposed',
+		description:
+			'An eligible user reached the Instance AI empty state for the free-use nudge experiment, including the control variant.',
+		properties: z.object({
+			variant: freeNudgeVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/105_instance_ai_free_nudge': freeNudgeVariant,
+		}),
+	},
+	FREE_NUDGE_DISMISSED: {
+		name: 'Instance AI free nudge dismissed',
+		description: 'The user dismissed a visible Instance AI free-use nudge.',
+		properties: z.object({
+			variant: freeNudgeTreatmentVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/105_instance_ai_free_nudge': freeNudgeTreatmentVariant,
+		}),
+	},
 	BUILDER_SPECCED_TEMPLATED_CRED: {
 		name: 'Builder specced templated cred',
 		description:

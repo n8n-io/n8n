@@ -1,10 +1,12 @@
 import { INSTANCE_AI_MCP_CONNECTIONS_FLAG } from '@n8n/api-types';
 
-function createExperiment<T extends Record<string, string>>(
-	name: string,
-	variants: T,
-): { name: string } & T;
-function createExperiment(name: string): { name: string; control: 'control'; variant: 'variant' };
+function createExperiment<
+	const TName extends string,
+	const TVariants extends Record<string, string>,
+>(name: TName, variants: TVariants): { name: TName } & TVariants;
+function createExperiment<const TName extends string>(
+	name: TName,
+): { name: TName; control: 'control'; variant: 'variant' };
 function createExperiment(name: string, variants?: Record<string, string>) {
 	return { name, ...(variants ?? { control: 'control', variant: 'variant' }) } as const;
 }
@@ -135,6 +137,11 @@ export const N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT = createExperiment(
 
 export const TRIAL_INTRO_MODAL_EXPERIMENT = createExperiment('101_trial_intro_modal');
 export const INLINE_AGENTS_EXPERIMENT = createExperiment('103_inline_agents');
+export const INSTANCE_AI_FREE_NUDGE_EXPERIMENT = createExperiment('105_instance_ai_free_nudge', {
+	control: 'control',
+	variant1: 'variant-1',
+	variant2: 'variant-2',
+});
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -173,4 +180,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
+	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
 ];
