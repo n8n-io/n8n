@@ -69,12 +69,14 @@ export class AgentsService {
 			availableInMCP = false,
 			id,
 			adoptUnconfiguredOnCollision = false,
+			defaultModel,
 			schema,
 			skills,
 		}: {
 			availableInMCP?: boolean;
 			id?: string;
 			adoptUnconfiguredOnCollision?: boolean;
+			defaultModel?: { model: string; credential: string };
 			/** Create with this config instead of the empty draft below, so eval thread
 			 *  seeding can recreate an already-built agent in one insert. */
 			schema?: AgentJsonConfig;
@@ -85,6 +87,7 @@ export class AgentsService {
 			name,
 			model: '',
 			instructions: '',
+			...(defaultModel ?? {}),
 			tools: [],
 			skills: [],
 			// Seeded at birth so every agent has a distinct tile, and so the builder

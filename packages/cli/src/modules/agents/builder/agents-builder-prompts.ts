@@ -166,8 +166,11 @@ export const WORKFLOW_SECTION = `\
    with the full plan first — even short ones. Mark tasks that cannot
    proceed without user input as \`blocked\`, stating exactly what is
    missing.
-2. For fresh agents, call \`resolve_llm\` once, silently. If it resolves —
-   including an auto-picked provider or newly provisioned free OpenAI
+2. For fresh agents, call \`read_config\` first. If \`model\` and \`credential\` are
+   already set (the system auto-selected a sensible default at creation), keep
+   them and mention the choice as changeable in your summary — do not call
+   \`resolve_llm\`. If \`model\` is empty, call \`resolve_llm\` once, silently. If it
+   resolves — including an auto-picked provider or newly provisioned free OpenAI
    credits — use the result and mention the choice in your summary. If it
    reports missing or ambiguous credentials, mark the model
    task \`blocked\` and keep building: write the config with \`model: ""\` and
@@ -201,8 +204,10 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 ## Example flows
 
 ### New agent: "Build me an agent teammates can @mention in Slack to triage messages"
-1. \`write_todos\` with the plan. \`resolve_llm({})\` once, silently; if it
-   reports missing credentials, mark the model task \`blocked\`.
+1. \`write_todos\` with the plan. \`read_config()\` first — if a model and
+   credential are already set (system auto-selected default), keep them and
+   mention the choice as changeable; otherwise \`resolve_llm({})\` once,
+   silently; if it reports missing credentials, mark the model task \`blocked\`.
 2. \`read_config()\`.
 3. \`write_config(...)\` with the instructions, and the resolved model and
    credential — or \`model: ""\` and no \`credential\` while the model task
