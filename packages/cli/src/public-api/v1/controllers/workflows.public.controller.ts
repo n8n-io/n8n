@@ -44,6 +44,10 @@ function toPublicJson(value: unknown): Record<string, unknown> | null {
 		: null;
 }
 
+function parseTagNames(tags: string): string[] {
+	return tags.split(',').map((tag) => tag.trim());
+}
+
 function toPublicTag(tag: TagEntity) {
 	return {
 		id: tag.id,
@@ -141,6 +145,10 @@ export class WorkflowsPublicController {
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
+	private get workflowTagsEnabled(): boolean {
+		return !this.globalConfig.tags.disabled;
+	}
+
 	@Get('/')
 	@ApiKeyScope('workflow:list')
 	@ApiSummary('Retrieve all workflows')
@@ -176,13 +184,13 @@ export class WorkflowsPublicController {
 				filters: {
 					name: query.name,
 					active: query.active,
-					tagNames: query.tags ? query.tags.split(',').map((tag) => tag.trim()) : undefined,
+					tagNames: query.tags ? parseTagNames(query.tags) : undefined,
 					projectId: query.projectId,
 				},
 				offset,
 				limit,
 				includePinnedData: !query.excludePinnedData,
-				includeTags: !this.globalConfig.tags.disabled,
+				includeTags: this.workflowTagsEnabled,
 				includeActiveVersion: true,
 			},
 		);
@@ -239,7 +247,7 @@ export class WorkflowsPublicController {
 			req.user,
 			['workflow:read'],
 			{
-				includeTags: !this.globalConfig.tags.disabled,
+				includeTags: this.workflowTagsEnabled,
 				includeActiveVersion: true,
 			},
 		);
