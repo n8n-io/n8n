@@ -38,8 +38,75 @@ requestBody:
           nodeGroups: {}
           settings:
             type: object
-            additionalProperties:
-              nullable: true
+            properties:
+              saveExecutionProgress:
+                type: boolean
+              saveManualExecutions:
+                type: boolean
+              saveDataErrorExecution:
+                type: string
+                enum:
+                  - all
+                  - none
+              saveDataSuccessExecution:
+                type: string
+                enum:
+                  - all
+                  - none
+              executionTimeout:
+                type: number
+              errorWorkflow:
+                type: string
+              timezone:
+                type: string
+              executionOrder:
+                type: string
+              binaryMode:
+                type: string
+                enum:
+                  - separate
+                  - combined
+              credentialResolverId:
+                type: string
+              callerPolicy:
+                type: string
+                enum:
+                  - any
+                  - none
+                  - workflowsFromAList
+                  - workflowsFromSameOwner
+              callerIds:
+                type: string
+              timeSavedMode:
+                type: string
+                enum:
+                  - fixed
+                  - dynamic
+              timeSavedPerExecution:
+                type: number
+              redactionPolicy:
+                type: string
+                enum:
+                  - none
+                  - non-manual
+                  - manual-only
+                  - all
+              availableInMCP:
+                type: boolean
+              customTelemetryTags:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    key:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                    - key
+                    - value
+                  additionalProperties: false
+            additionalProperties: false
           staticData:
             anyOf:
               - type: string

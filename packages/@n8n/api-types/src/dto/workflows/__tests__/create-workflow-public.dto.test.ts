@@ -69,6 +69,93 @@ describe('CreateWorkflowPublicDto', () => {
 		});
 	});
 
+	describe('settings', () => {
+		test('accepts every documented setting', () => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				settings: {
+					saveExecutionProgress: true,
+					saveManualExecutions: false,
+					saveDataErrorExecution: 'all',
+					saveDataSuccessExecution: 'none',
+					executionTimeout: 3600,
+					errorWorkflow: 'VzqKEW0ShTXA5vPj',
+					timezone: 'America/New_York',
+					executionOrder: 'v1',
+					callerPolicy: 'workflowsFromAList',
+					callerIds: '14, 18, 23',
+					timeSavedMode: 'fixed',
+					timeSavedPerExecution: 5,
+					redactionPolicy: 'non-manual',
+					availableInMCP: false,
+					customTelemetryTags: [{ key: 'team', value: 'platform' }],
+				},
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		test.each(['binaryMode', 'credentialResolverId'])(
+			'accepts the derived setting %s, which the controller strips',
+			(field) => {
+				const value = field === 'binaryMode' ? 'separate' : 'resolver-1';
+				const result = CreateWorkflowPublicDto.safeParse({
+					...minimalWorkflow,
+					settings: { [field]: value },
+				});
+
+				expect(result.success).toBe(true);
+			},
+		);
+
+		test('rejects an unknown setting', () => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				settings: { bogusSetting: true },
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		test.each([
+			['saveDataErrorExecution', 'bogus'],
+			['callerPolicy', 'bogus'],
+			['timeSavedMode', 'bogus'],
+			['redactionPolicy', 'bogus'],
+			['binaryMode', 'bogus'],
+		])('rejects an out-of-enum %s', (field, value) => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				settings: { [field]: value },
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		test.each([
+			['executionTimeout', 'not-a-number'],
+			['timeSavedPerExecution', 'not-a-number'],
+			['availableInMCP', 'not-a-boolean'],
+			['timezone', 42],
+		])('rejects a wrongly typed %s', (field, value) => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				settings: { [field]: value },
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects a customTelemetryTags entry missing value', () => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				settings: { customTelemetryTags: [{ key: 'team' }] },
+			});
+
+			expect(result.success).toBe(false);
+		});
+	});
+
 	describe('server-managed fields', () => {
 		test.each([
 			['id', '123'],

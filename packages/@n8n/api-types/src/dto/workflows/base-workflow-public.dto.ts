@@ -32,7 +32,33 @@ const nodeGroupsWritePublicSchema = z.custom<IWorkflowGroup[]>((value) => Array.
 	message: 'Node groups must be an array',
 });
 
-const settingsWritePublicSchema = z.record(z.string(), z.unknown());
+/**
+ * Mirrors the hand-written `workflowSettings.yml`, which set `additionalProperties: false` and
+ * typed every value. `binaryMode` and `credentialResolverId` are listed there too, so a request
+ * carrying them is accepted and then stripped by the controller rather than rejected.
+ */
+const settingsWritePublicSchema = z
+	.object({
+		saveExecutionProgress: z.boolean(),
+		saveManualExecutions: z.boolean(),
+		saveDataErrorExecution: z.enum(['all', 'none']),
+		saveDataSuccessExecution: z.enum(['all', 'none']),
+		executionTimeout: z.number(),
+		errorWorkflow: z.string(),
+		timezone: z.string(),
+		executionOrder: z.string(),
+		binaryMode: z.enum(['separate', 'combined']),
+		credentialResolverId: z.string(),
+		callerPolicy: z.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']),
+		callerIds: z.string(),
+		timeSavedMode: z.enum(['fixed', 'dynamic']),
+		timeSavedPerExecution: z.number(),
+		redactionPolicy: z.enum(['none', 'non-manual', 'manual-only', 'all']),
+		availableInMCP: z.boolean(),
+		customTelemetryTags: z.array(z.object({ key: z.string(), value: z.string() }).strict()),
+	})
+	.partial()
+	.strict();
 
 // Accepts the pre-parsed object shape or a raw JSON string, matching the wire contract
 // (`anyOf: [jsonString, object]`) -- parsing the string is left to the persistence layer's
