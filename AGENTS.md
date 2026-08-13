@@ -331,3 +331,41 @@ names (e.g. `Acme Corp`) in tests and examples.
   description using `https://linear.app/n8n/issue/[TICKET-ID]`. Do not
   create a Linear ticket on your own — ask first.
 - always link to the github issue if mentioned in the linear ticket.
+
+## Cursor Cloud specific instructions
+
+These notes cover non-obvious gotchas for the Cursor Cloud VM. Standard
+commands live in **Essential Commands** above; don't duplicate them here.
+
+- **Node version gotcha (important):** the VM's default `node` on `PATH` is
+  `v22.14.0`, which is **below** this repo's `engines` requirement
+  (`node >=22.22`). The correct version (`v22.22.2`) is installed via `nvm` but
+  is shadowed on `PATH` by `/exec-daemon/node`. Before you build, run, or test,
+  put the right node first on `PATH` for your shell session:
+
+  ```bash
+  export PATH="$HOME/.nvm/versions/node/v22.22.2/bin:$PATH"   # or: nvm use 22.22.2
+  node -v   # expect v22.22.2
+  ```
+
+  `pnpm install` tolerates the mismatch (it only prints an "Unsupported engine"
+  warning because `engine-strict` is off), so the startup update script uses the
+  default node fine — but build/dev/test should use `v22.22.2` to match CI.
+- **Dependencies:** the startup update script already runs
+  `pnpm install --frozen-lockfile`. You do **not** need to reinstall unless the
+  lockfile changed.
+- **Build once before dev:** dev commands rely on each package's compiled
+  `dist`, so run `pnpm build` once (see **Building**) before `pnpm dev:be`. Built
+  output is present in a fresh Cloud VM; after switching branches or editing
+  cross-package code, rebuild (`pnpm build`) or recover with `pnpm reset`.
+- **Running the app (no Docker/DB needed):** from the repo root,
+  `pnpm dev:be` starts the backend with hot reload and serves the editor at
+  http://localhost:5678 (health at `/healthz`). It defaults to a SQLite DB in
+  `~/.n8n` — no Postgres/Redis required for single-main dev. On first launch you
+  must complete the owner-account setup screen at :5678 before the canvas is
+  usable. For live frontend HMR, additionally run `pnpm dev:fe:editor` (Vite on
+  :8080, proxies the API to :5678). `pnpm dev` at the root is intentionally
+  removed — use `pnpm dev:be` / `pnpm dev:fe:editor` (or `pnpm dev:up`).
+- **A benign log line to ignore:** `Failed to load Custom API options for the
+  node "n8n-nodes-base.confluence"` appears on backend startup and does not
+  affect running workflows.
