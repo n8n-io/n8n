@@ -37,6 +37,8 @@ type SelectItem = SelectOptionBase | SelectLabelItem | SelectSeparatorItem;
 type SelectItemUi = { class: string; strokeWidth?: number };
 ```
 
+Item `icon` is rendered in the menu automatically. In single select, the same leading content (`#item-leading`, or the default icon) is shown on the trigger for the selected value.
+
 Consumers that need extra fields should extend the base type and map source data themselves:
 
 ```typescript
@@ -50,7 +52,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 **Props**
 
 - `id?: string`
-- `placeholder?: string` Visual empty-state text in the trigger. Not used as the accessible name — pass `aria-label` / `aria-labelledby`, or associate a `<label>` via `id`.
+- `placeholder?: string` Visual empty-state text in the trigger. Defaults to `t('nds.select.placeholder')` (`Select an option`). Not used as the accessible name — pass `aria-label` / `aria-labelledby`, or associate a `<label>` via `id`.
 - `items?: SelectItem[]` Array of options / labels / separators to render
 - `defaultValue?: SelectValue | SelectValue[]` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
 - `modelValue?: SelectValue | SelectValue[]` The controlled value of the Select. Bind as `v-model`. Typed as `SelectValue[]` when `multiple` is `true`.
@@ -62,10 +64,10 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `name?: string` The name of the native select field used in form submission.
 - `autocomplete?: string` Native HTML `autocomplete` attribute.
 - `dir?: 'ltr' | 'rtl'` Reading direction. When omitted, inherits from `ConfigProvider` or defaults to LTR.
-- `icon?: IconName` Icon to be displayed in the trigger.
+- `icon?: IconName` Fallback leading icon on the trigger when nothing is selected, or the selected item has no `icon`. In single select, a selected item with `icon` is rendered through `#item-leading` instead (see Slots).
 - `clearable?: boolean` When `true`, shows a clear button when a value is selected. Hidden when `disabled` or the value is empty. Default: `false`.
 - `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by `textValue` (falling back to `label`) and `keywords`. Default: `false`.
-- `searchPlaceholder?: string` Placeholder for the search field.
+- `searchPlaceholder?: string` Placeholder for the search field. Defaults to `t('nds.select.searchPlaceholder')` (`Search`).
 - `searchQuery?: string` Controlled search query (`v-model:searchQuery`). Reset to `''` when the dropdown closes.
 - `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. Default: `'item-aligned'`.
 - `side?: 'top' | 'right' | 'bottom' | 'left'` Preferred side when `position` is `'popper'`. Default: `'bottom'`.
@@ -90,7 +92,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `default`: `{ modelValue?: SelectValue | SelectValue[]; open: boolean }` — trigger display. Default is the selected label(s), comma-separated in multiple mode.
 - `item`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour)
 - `label`: `{ item: SelectLabelItem }` — group label rows (`type: 'label'`)
-- `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). Also used for the selected-value icon on the trigger.
+- `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). In single select, the same slot (or the default item icon) is reused for the selected-value icon on the trigger. Not used on the trigger in `multiple` mode.
 - `item-label`: `{ item: SelectOptionBase }`
 - `item-trailing`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom trailing content
 - `header?: ()`
@@ -219,4 +221,12 @@ const items = computed(() => [
   },
 ])
 </script>
+
+<template>
+  <N8nSelect2
+    v-model="value"
+    v-model:open="open"
+    :items="items"
+  />
+</template>
 ```
