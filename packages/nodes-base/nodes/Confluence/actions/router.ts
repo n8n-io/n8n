@@ -5,8 +5,7 @@ import * as page from './page';
 
 /**
  * Compile-checked contract for operation modules. The router calls
- * `<resource>.<operation>.execute.call(this, i)` once per item, SharePoint v2
- * shape; the other op tickets (ENT-126/319/127/305/327/306) implement against this.
+ * `<resource>.<operation>.execute.call(this, i)` once per item.
  */
 export type ConfluenceOperation = (
 	this: IExecuteFunctions,

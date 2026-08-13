@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { confluenceApiRequest } from '../../transport';
-import { PAGE_LIMIT, pageRLC, resolvePageId, spaceOption } from '../common';
+import { PAGE_LIMIT, bodyFormatOption, pageRLC, resolvePageId, spaceOption } from '../common';
 import type { ConfluenceOperation } from '../router';
 
 const MAX_DEPTH = 10;
@@ -10,6 +10,15 @@ export const description: INodeProperties[] = [
 	{
 		...pageRLC,
 		description: 'The page to fetch',
+		displayOptions: {
+			show: {
+				resource: ['page'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		...bodyFormatOption,
 		displayOptions: {
 			show: {
 				resource: ['page'],
@@ -44,35 +53,6 @@ export const description: INodeProperties[] = [
 				resource: ['page'],
 				operation: ['get'],
 				includeDescendants: [true],
-			},
-		},
-	},
-	{
-		displayName: 'Body Format',
-		name: 'bodyFormat',
-		type: 'options',
-		options: [
-			{
-				name: 'Atlas Doc Format',
-				value: 'atlas_doc_format',
-				description: 'The ADF JSON representation',
-			},
-			{
-				name: 'Plain Text',
-				value: 'plainText',
-				description: 'Text extracted from the ADF body (dynamic macros carry no text)',
-			},
-			{
-				name: 'Storage',
-				value: 'storage',
-				description: 'The raw storage-format XHTML',
-			},
-		],
-		default: 'storage',
-		displayOptions: {
-			show: {
-				resource: ['page'],
-				operation: ['get'],
 			},
 		},
 	},

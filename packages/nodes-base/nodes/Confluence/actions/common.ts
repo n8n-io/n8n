@@ -11,8 +11,8 @@ import { confluenceApiRequest } from '../transport';
 export const PAGE_LIMIT = 250;
 
 /**
- * The shared page-selection piece, SharePoint-v2 shape: operations spread
- * `pageRLC` (and `spaceOption` into their Options collection), add their own
+ * Shared page-selection fields: operations spread `pageRLC`/`bodyFormatOption`
+ * (and `spaceOption` into their Options collection), add their own
  * displayOptions, and resolve the selection with `resolvePageId`.
  */
 export const pageRLC: INodeProperties = {
@@ -73,6 +73,30 @@ export const pageRLC: INodeProperties = {
 			placeholder: 'e.g. Project plan',
 		},
 	],
+};
+
+export const bodyFormatOption: INodeProperties = {
+	displayName: 'Body Format',
+	name: 'bodyFormat',
+	type: 'options',
+	options: [
+		{
+			name: 'Atlas Doc Format',
+			value: 'atlas_doc_format',
+			description: 'The ADF JSON representation',
+		},
+		{
+			name: 'Plain Text',
+			value: 'plainText',
+			description: 'Text extracted from the ADF body (dynamic macros carry no text)',
+		},
+		{
+			name: 'Storage',
+			value: 'storage',
+			description: 'The raw storage-format XHTML',
+		},
+	],
+	default: 'storage',
 };
 
 export const spaceOption: INodeProperties = {
