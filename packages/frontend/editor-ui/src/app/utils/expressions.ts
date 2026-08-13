@@ -44,11 +44,10 @@ const lookUpKeys = (
 ): Exclude<ExternalSecretReferenceState, 'none'> => {
 	let value: unknown = secrets;
 
-	// Metadata that never loaded is empty, which must not read as a wrong path.
-	if (isObject(value) && Object.keys(value).length === 0) return 'unknown';
-
 	for (const key of keys) {
 		if (!isObject(value)) return 'unknown';
+		// Metadata that never loaded is empty, which must not read as a wrong path.
+		if (Object.keys(value).length === 0) return 'unknown';
 		if (!Object.hasOwn(value, key)) return 'missing';
 		value = value[key];
 	}

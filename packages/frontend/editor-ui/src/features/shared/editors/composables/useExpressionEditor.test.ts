@@ -522,5 +522,28 @@ describe('useExpressionEditor', () => {
 				]);
 			});
 		});
+
+		test('should leave secret previews to the credential modal', async () => {
+			mockResolveExpression();
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['cred']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[undefined]',
+						state: 'invalid',
+					}),
+				]);
+			});
+		});
 	});
 });

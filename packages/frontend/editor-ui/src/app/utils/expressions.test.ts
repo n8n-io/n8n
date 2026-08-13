@@ -59,7 +59,7 @@ describe('Utils: Expressions', () => {
 			},
 		);
 
-		it.each([undefined, {}])(
+		it.each([undefined, {}, { vault: {} }])(
 			'should not claim a missing secret when metadata is %s',
 			(unavailableSecrets) => {
 				expect(
