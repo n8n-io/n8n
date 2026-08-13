@@ -460,8 +460,8 @@ catalogs:
       specifier: 3.23.1
       version: 3.23.1
     nanoid:
-      specifier: 3.3.17
-      version: 3.3.17
+      specifier: 3.3.18
+      version: 3.3.18
     nock:
       specifier: 14.0.14
       version: 14.0.14
@@ -808,7 +808,7 @@ overrides:
   '@babel/traverse': ^7.23.2
   '@vitest/browser@<4.1.10': 4.1.10
   immutable: 5.1.8
-  nanoid@<3.3.17: 3.3.17
+  nanoid@<3.3.18: 3.3.18
 
 patchedDependencies:
   '@langchain/google-common@2.1.24':
@@ -1624,7 +1624,7 @@ importers:
         version: 17.2.3
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       zx:
         specifier: ^8.8.5
         version: 8.8.5
@@ -2128,7 +2128,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       p-lazy:
         specifier: 3.1.0
         version: 3.1.0
@@ -2705,7 +2705,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       p-limit:
         specifier: ^3.1.0
         version: 3.1.0
@@ -2942,7 +2942,7 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       picocolors:
         specifier: 'catalog:'
         version: 1.0.1
@@ -3741,7 +3741,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       ws:
         specifier: '>=8.21.1'
         version: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -3984,7 +3984,7 @@ importers:
         version: link:../constants
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -4454,7 +4454,7 @@ importers:
         version: link:../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       nodemailer:
         specifier: 8.0.10
         version: 8.0.10
@@ -4839,7 +4839,7 @@ importers:
         version: link:../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -6044,7 +6044,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -6968,7 +6968,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       otplib:
         specifier: ^12.0.1
         version: 12.0.1
@@ -19146,8 +19146,8 @@ packages:
   nanoclone@0.2.1:
     resolution: {integrity: sha512-wynEP02LmIbLpcYw8uBKpcfF6dmg2vcpKqxeH5UcoKEYdExslsdUA4ugFauuaeYdTB76ez6gJW8XAZ6CgkXYxA==}
 
-  nanoid@3.3.17:
-    resolution: {integrity: sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g==}
+  nanoid@3.3.18:
+    resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -25960,7 +25960,7 @@ snapshots:
       json-stringify-safe: 5.0.1
       lil-http-terminator: 1.2.3
       lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       object-sizeof: 2.6.5
       p-debounce: 2.1.0
       p-map: 4.0.0
@@ -36018,7 +36018,7 @@ snapshots:
 
   ics@2.40.0(patch_hash=163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d):
     dependencies:
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       yup: 0.32.11
 
   ieee754@1.2.1: {}
@@ -37580,7 +37580,7 @@ snapshots:
   minifaker@1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33):
     dependencies:
       '@types/uuid': 8.3.4
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       uuid: 13.0.1
 
   minimalistic-assert@1.0.1: {}
@@ -38218,7 +38218,7 @@ snapshots:
 
   nanoclone@0.2.1: {}
 
-  nanoid@3.3.17: {}
+  nanoid@3.3.18: {}
 
   napi-build-utils@2.0.0: {}
 
@@ -39220,7 +39220,7 @@ snapshots:
 
   postcss@8.5.10:
     dependencies:
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -42863,7 +42863,7 @@ snapshots:
       https-proxy-agent: 4.0.0
       json5: 2.2.3
       loglevel: 1.9.2
-      nanoid: 3.3.17
+      nanoid: 3.3.18
     transitivePeerDependencies:
       - encoding
       - supports-color
