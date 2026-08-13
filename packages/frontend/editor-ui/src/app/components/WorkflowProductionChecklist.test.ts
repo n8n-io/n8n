@@ -845,33 +845,6 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
-<<<<<<< HEAD
-||||||| parent of 9e75b0af39 (fix(editor): Make autoExposeNewWorkflows required in MCP settings type)
-		it('should not show workflow-level MCP action when ignored', async () => {
-			const pinia = createTestingPinia();
-			settingsStore = useSettingsStore(pinia);
-
-			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false },
-			});
-
-			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
-				suggestedActions: {
-					'workflow-mcp-access': { ignored: true },
-				},
-			});
-
-			renderComponent({ pinia });
-
-			await vi.waitFor(() => {
-				const actions = mockN8nSuggestedActionsProps.actions;
-				expect(actions).toBeDefined();
-				expect(actions.find((a: { id: string }) => a.id === 'workflow-mcp-access')).toBeUndefined();
-			});
-		});
-
-=======
 		it('should not show workflow-level MCP action when ignored', async () => {
 			const pinia = createTestingPinia();
 			settingsStore = useSettingsStore(pinia);
@@ -896,7 +869,6 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
->>>>>>> 9e75b0af39 (fix(editor): Make autoExposeNewWorkflows required in MCP settings type)
 		it('should navigate to MCP settings when instance-mcp-access action is clicked', async () => {
 			const pinia = createTestingPinia();
 			settingsStore = useSettingsStore(pinia);
