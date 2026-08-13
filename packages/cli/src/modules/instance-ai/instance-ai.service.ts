@@ -3438,6 +3438,12 @@ export class InstanceAiService {
 		const contextAttachments = (attachments ?? []).filter(
 			(attachment): attachment is InstanceAiResourceAttachment => attachment.type !== 'file',
 		);
+		// The subset carrying an `id`/`name` — used for tracing and thread titling.
+		// `nodes` has neither (it's workflowId + sets), so it's excluded here.
+		const namedContextAttachments = contextAttachments.filter(
+			(attachment): attachment is InstanceAiWorkflowAttachment | InstanceAiAgentAttachment =>
+				attachment.type !== 'nodes',
+		);
 
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
@@ -3462,8 +3468,8 @@ export class InstanceAiService {
 			}
 			// `message` is the user's raw text, so without this the trace has no
 			// record that the editor handed the agent a resource.
-			if (contextAttachments.length) {
-				traceInput.resourceAttachments = contextAttachments.map((attachment) => {
+			if (namedContextAttachments.length) {
+				traceInput.resourceAttachments = namedContextAttachments.map((attachment) => {
 					const resource: TracedResourceAttachment = {
 						type: attachment.type,
 						id: attachment.id,
@@ -3695,7 +3701,7 @@ export class InstanceAiService {
 			const thread = await memory.getThread(threadId);
 			if (thread && !thread.title) {
 				const handoffTitle =
-					contextAttachments.find((attachment) => attachment.name)?.name ??
+					namedContextAttachments.find((attachment) => attachment.name)?.name ??
 					agentPreviewTitleFallback;
 				await patchThread(memory, {
 					threadId,
