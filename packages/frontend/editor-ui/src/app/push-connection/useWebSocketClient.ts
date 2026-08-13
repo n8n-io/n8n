@@ -5,6 +5,12 @@ import { createHeartbeatMessage } from '@n8n/api-types';
 export type UseWebSocketClientOptions<T> = {
 	url: string;
 	onMessage: (data: T) => void;
+	/**
+	 * Called whenever the socket (re)connects, after the connection is live so
+	 * messages can be sent immediately. Used to send the reconnect `resume`
+	 * handshake before consuming live events.
+	 */
+	onConnected?: () => void;
 };
 
 /** Defined here as not available in tests */
@@ -42,6 +48,8 @@ export const useWebSocketClient = <T>(options: UseWebSocketClientOptions<T>) => 
 		isConnected.value = true;
 		startHeartbeat();
 		reconnectTimer.resetConnectionAttempts();
+		// Fired after `isConnected` is set so the callback can send immediately.
+		options.onConnected?.();
 	};
 
 	const onConnectionLost = (event: CloseEvent) => {

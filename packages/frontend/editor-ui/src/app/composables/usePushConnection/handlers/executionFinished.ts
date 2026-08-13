@@ -59,8 +59,20 @@ export type SimplifiedExecution = Pick<
 /**
  * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
  */
-export async function executionFinished({ data }: ExecutionFinished, options: PushHandlerOptions) {
+export async function executionFinished(
+	{ data, meta }: ExecutionFinished,
+	options: PushHandlerOptions,
+) {
 	const { documentId, suppressExecutionSuccessToasts, suppressExecutionErrorToasts } = options;
+	// A replayed terminal event is re-delivered on reconnect to converge state
+	// the client missed while disconnected. Apply it idempotently (the matching
+	// logic below already no-ops once the id is cleared), but suppress its
+	// completion toast: the finish happened earlier, and at-least-once delivery
+	// means it can arrive alongside the live event — a second toast would be a
+	// duplicate. Clearing the stranded spinner is the visible recovery.
+	const replayed = meta?.replayed === true;
+	const suppressSuccessToasts = suppressExecutionSuccessToasts || replayed;
+	const suppressErrorToasts = suppressExecutionErrorToasts || replayed;
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
@@ -153,7 +165,7 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 			documentId,
 			data.status,
 			successToastAlreadyShown,
-			suppressExecutionSuccessToasts,
+			suppressSuccessToasts,
 		);
 		successToastAlreadyShown = true;
 	}
@@ -181,14 +193,14 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 			execution,
 			runExecutionData,
 			documentId,
-			suppressExecutionErrorToasts,
+			suppressErrorToasts,
 		);
 	} else {
 		handleExecutionFinishedWithSuccessOrOther(
 			documentId,
 			execution.status,
 			successToastAlreadyShown,
-			suppressExecutionSuccessToasts,
+			suppressSuccessToasts,
 		);
 	}
 

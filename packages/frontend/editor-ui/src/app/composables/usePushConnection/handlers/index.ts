@@ -8,6 +8,7 @@ export * from './nodeExecuteAfterData';
 export * from './nodeExecuteBefore';
 export * from './reloadNodeType';
 export * from './removeNodeType';
+export * from './resumeComplete';
 export * from './sendConsoleMessage';
 export * from './sendWorkerStatusMessage';
 export * from './testWebhookDeleted';

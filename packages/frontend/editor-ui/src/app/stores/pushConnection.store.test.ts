@@ -49,6 +49,7 @@ describe('usePushConnectionStore', () => {
 	} = {}) => {
 		// Mock connected state
 		let onMessage: (data: unknown) => void = vi.fn();
+		let onConnected: (() => void) | undefined;
 		const mockWebSocketClient: WebSocketClient = {
 			isConnected: ref(isConnected),
 			connect: vi.fn(),
@@ -58,15 +59,23 @@ describe('usePushConnectionStore', () => {
 
 		vi.mocked(useWebSocketClient).mockImplementation((opts) => {
 			onMessage = opts.onMessage;
+			onConnected = opts.onConnected;
 			return mockWebSocketClient;
 		});
 
 		setActivePinia(createPinia());
 
+		// Reading the store forces the `client` computed to evaluate (via the
+		// isConnected watcher), which captures the mocked client options above.
+		const store = usePushConnectionStore();
+
 		return {
-			store: usePushConnectionStore(),
+			store,
 			mockWebSocketClient,
 			onMessage,
+			// The WebSocket client's onConnected hook, captured once the client
+			// computed has run.
+			getOnConnected: () => onConnected,
 		};
 	};
 
@@ -87,6 +96,24 @@ describe('usePushConnectionStore', () => {
 
 		removeListener();
 		expect(store.onMessageReceivedHandlers).toHaveLength(0);
+	});
+
+	test('should register, fire, and unregister connected handlers on (re)connect', () => {
+		const { store, getOnConnected } = createTestInitialState();
+		const handler = vi.fn();
+
+		const removeHandler = store.addConnectedHandler(handler);
+
+		// The WebSocket client invokes onConnected on every (re)connect.
+		getOnConnected()?.();
+		expect(handler).toHaveBeenCalledTimes(1);
+
+		getOnConnected()?.();
+		expect(handler).toHaveBeenCalledTimes(2);
+
+		removeHandler();
+		getOnConnected()?.();
+		expect(handler).toHaveBeenCalledTimes(2);
 	});
 
 	describe('connection handling', () => {

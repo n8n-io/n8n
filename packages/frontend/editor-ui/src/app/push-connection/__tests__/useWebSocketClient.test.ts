@@ -119,6 +119,25 @@ describe('useWebSocketClient', () => {
 		expect(MockWebSocket.init).toHaveBeenCalledTimes(3);
 	});
 
+	test('should call onConnected callback after connection opens', () => {
+		const onConnected = vi.fn();
+		const { connect, isConnected } = useWebSocketClient({
+			url: 'ws://test.com',
+			onMessage: vi.fn(),
+			onConnected,
+		});
+		connect();
+
+		expect(onConnected).not.toHaveBeenCalled();
+
+		MockWebSocket.getInstance().simulateConnectionOpen();
+
+		// Fired once per (re)connect, only after the connection is live so the
+		// callback can send the resume handshake immediately.
+		expect(onConnected).toHaveBeenCalledTimes(1);
+		expect(isConnected.value).toBe(true);
+	});
+
 	test('should send message when connected', () => {
 		const { connect, sendMessage } = useWebSocketClient({
 			url: 'ws://test.com',

@@ -7,6 +7,24 @@ import type {
 	WorkflowExecutionSource,
 } from 'n8n-workflow';
 
+/**
+ * Optional, additive envelope metadata carried by terminal execution events
+ * (`executionFinished`, `executionWaiting`). Backward-compatible: old clients
+ * ignore it, and a new client tolerates its absence from an old server.
+ */
+export type PushMessageMeta = {
+	/** Stable id for deduplication / telemetry. */
+	eventId: string;
+	/** Server emit time, ISO-8601. Server clock only. */
+	ts: string;
+	/**
+	 * `true` when the event is re-delivered on reconnect (in response to a
+	 * `resume` handshake) rather than pushed live. Consumers apply it
+	 * idempotently and suppress the duplicate completion toast.
+	 */
+	replayed?: boolean;
+};
+
 export type ExecutionStarted = {
 	type: 'executionStarted';
 	data: {
@@ -31,6 +49,8 @@ export type ExecutionWaiting = {
 		executionId: string;
 		source?: WorkflowExecutionSource;
 	};
+	/** See {@link PushMessageMeta}. Terminal-class event for spinner purposes. */
+	meta?: PushMessageMeta;
 };
 
 export type ExecutionFinished = {
@@ -45,6 +65,8 @@ export type ExecutionFinished = {
 		 */
 		source?: WorkflowExecutionSource;
 	};
+	/** See {@link PushMessageMeta}. */
+	meta?: PushMessageMeta;
 };
 
 export type ExecutionRecovered = {

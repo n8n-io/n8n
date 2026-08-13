@@ -44,6 +44,30 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		};
 	};
 
+	/**
+	 * Handlers invoked whenever the WebSocket transport (re)connects, after the
+	 * connection is live. Only the WebSocket client fires these — the SSE
+	 * transport has no client→server channel and recovers via REST reconcile.
+	 */
+	const onConnectedHandlers = ref<Array<() => void>>([]);
+
+	const addConnectedHandler = (handler: () => void) => {
+		onConnectedHandlers.value.push(handler);
+
+		return () => {
+			const index = onConnectedHandlers.value.indexOf(handler);
+			if (index !== -1) {
+				onConnectedHandlers.value.splice(index, 1);
+			}
+		};
+	};
+
+	const handleConnected = () => {
+		for (const handler of onConnectedHandlers.value) {
+			handler();
+		}
+	};
+
 	const useWebSockets = computed(() => settingsStore.pushBackend === 'websocket');
 
 	const getConnectionUrl = () => {
@@ -87,7 +111,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	const client = computed(() =>
 		useWebSockets.value
-			? useWebSocketClient({ url: url.value, onMessage })
+			? useWebSocketClient({ url: url.value, onMessage, onConnected: handleConnected })
 			: useEventSourceClient({ url: url.value, onMessage }),
 	);
 
@@ -205,6 +229,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		isConnectionRequested,
 		onMessageReceivedHandlers,
 		addEventListener,
+		addConnectedHandler,
 		pushConnect,
 		pushDisconnect,
 		send: serializeAndSend,
