@@ -1,5 +1,6 @@
 process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 
+import type { WorkflowReviewInboxItem } from '@n8n/api-types';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -21,15 +22,15 @@ import {
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
+import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
+import type { SuperAgentTest } from '@test-integration/types';
+import * as utils from '@test-integration/utils';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
-import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
-import type { SuperAgentTest } from '@test-integration/types';
-import * as utils from '@test-integration/utils';
 
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
@@ -160,23 +161,34 @@ async function createOpenReview(
 }
 
 describe('POST /workflow-review-requests', () => {
+	/** A global admin, so it is publish-capable on every project under test. */
+	let reviewer: User;
+
+	beforeEach(async () => {
+		reviewer = await createAdmin();
+	});
+
+	/**
+	 * A reviewer is mandatory, so default one in. Tests asserting on reviewers pass
+	 * their own `reviewerUserIds`, which overrides the default.
+	 */
+	const postReview = (agent: SuperAgentTest, body: object) =>
+		agent.post('/workflow-review-requests').send({ reviewerUserIds: [reviewer.id], ...body });
+
 	test('creates a review request with its workflow reference and author', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
-		const response = await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'Please review my workflow',
-				description: 'It is ready',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(201);
+		const response = await postReview(ownerAgent, {
+			title: 'Please review my workflow',
+			description: 'It is ready',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(201);
 
 		expect(response.body.data.state).toBe('open');
 		expect(response.body.data.decision).toBe('pending');
@@ -212,20 +224,17 @@ describe('POST /workflow-review-requests', () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 		const reviewer = await createAdmin();
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'With a reviewer',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-				reviewerUserIds: [reviewer.id, reviewer.id],
-			})
-			.expect(201);
+		await postReview(ownerAgent, {
+			title: 'With a reviewer',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+			reviewerUserIds: [reviewer.id, reviewer.id],
+		}).expect(201);
 
 		const reviewerRows = await reviewerRepository.find();
 		expect(reviewerRows).toHaveLength(1);
@@ -235,20 +244,17 @@ describe('POST /workflow-review-requests', () => {
 	test('returns 400 when the requester assigns themselves as reviewer', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-				reviewerUserIds: [owner.id],
-			})
-			.expect(400);
+		await postReview(ownerAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+			reviewerUserIds: [owner.id],
+		}).expect(400);
 
 		expect(await requestRepository.find()).toHaveLength(0);
 	});
@@ -257,20 +263,17 @@ describe('POST /workflow-review-requests', () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
 		// A plain member has no publish rights on the owner's personal project
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-				reviewerUserIds: [member.id],
-			})
-			.expect(400);
+		await postReview(ownerAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+			reviewerUserIds: [member.id],
+		}).expect(400);
 
 		expect(await requestRepository.find()).toHaveLength(0);
 		expect(await reviewerRepository.find()).toHaveLength(0);
@@ -279,30 +282,23 @@ describe('POST /workflow-review-requests', () => {
 	test('returns 400 for more than 10 reviewer ids', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-				reviewerUserIds: Array.from({ length: 11 }, (_, i) => `user-${i}`),
-			})
-			.expect(400);
+		await postReview(ownerAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+			reviewerUserIds: Array.from({ length: 11 }, (_, i) => `user-${i}`),
+		}).expect(400);
 	});
 
-	test('returns 400 when the workflows array is empty', async () => {
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({ title: 'x', workflows: [] })
-			.expect(400);
-	});
-
-	test('returns 400 when more than one workflow is submitted', async () => {
+	test.each([
+		{ name: 'no reviewer is sent', reviewerUserIds: undefined },
+		{ name: 'the reviewer list is empty', reviewerUserIds: [] },
+	])('returns 400 and creates nothing when $name', async ({ reviewerUserIds }) => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
 		await ownerAgent
@@ -315,14 +311,37 @@ describe('POST /workflow-review-requests', () => {
 						workflowVersionId: versionId,
 						workflowVersionName: 'Release candidate',
 					},
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
 				],
+				reviewerUserIds,
 			})
 			.expect(400);
+
+		expect(await requestRepository.find()).toHaveLength(0);
+		expect(await reviewerRepository.find()).toHaveLength(0);
+	});
+
+	test('returns 400 when the workflows array is empty', async () => {
+		await postReview(ownerAgent, { title: 'x', workflows: [] }).expect(400);
+	});
+
+	test('returns 400 when more than one workflow is submitted', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+
+		await postReview(ownerAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(400);
 	});
 
 	test('returns 400 for a version belonging to a different workflow', async () => {
@@ -330,127 +349,106 @@ describe('POST /workflow-review-requests', () => {
 		const other = await createWorkflow({}, owner);
 		await createWorkflowHistoryItem(other.id, { versionId: 'version-b' });
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: 'version-b',
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(400);
+		await postReview(ownerAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: 'version-b',
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(400);
 	});
 
 	test('returns 400 for a whitespace-only title', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: '   ',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(400);
+		await postReview(ownerAgent, {
+			title: '   ',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(400);
 	});
 
 	test('returns 400 for a title exceeding 128 characters', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'a'.repeat(129),
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(400);
+		await postReview(ownerAgent, {
+			title: 'a'.repeat(129),
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(400);
 	});
 
 	test('returns 400 for a description exceeding 512 characters', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				description: 'a'.repeat(513),
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(400);
+		await postReview(ownerAgent, {
+			title: 'x',
+			description: 'a'.repeat(513),
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(400);
 	});
 
 	test('returns 400 for an archived workflow', async () => {
 		const workflow = await createWorkflow({ isArchived: true }, owner);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: 'version-1',
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(400);
+		await postReview(ownerAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(400);
 	});
 
 	test('returns 404 for an unknown workflow', async () => {
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [
-					{
-						workflowId: 'unknown-workflow',
-						workflowVersionId: 'version-1',
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(404);
+		await postReview(ownerAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: 'unknown-workflow',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(404);
 	});
 
 	test('returns 404 when the member has no access to the workflow', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
-		await memberAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(404);
+		await postReview(memberAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(404);
 	});
 
 	test('returns 404 for a project:viewer (lacks workflow:publish)', async () => {
@@ -459,19 +457,16 @@ describe('POST /workflow-review-requests', () => {
 		const workflow = await createWorkflow({}, project);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
 
-		await memberAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: 'version-1',
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(404);
+		await postReview(memberAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(404);
 	});
 
 	test('allows a project:editor (has workflow:publish) to request a review', async () => {
@@ -480,19 +475,16 @@ describe('POST /workflow-review-requests', () => {
 		const workflow = await createWorkflow({}, project);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
 
-		await memberAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: 'version-1',
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(201);
+		await postReview(memberAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(201);
 	});
 
 	test('returns 409 pointing at the existing open review (different version)', async () => {
@@ -516,19 +508,16 @@ describe('POST /workflow-review-requests', () => {
 			{},
 		);
 
-		const response = await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'New',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: 'version-2',
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(409);
+		const response = await postReview(ownerAgent, {
+			title: 'New',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: 'version-2',
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(409);
 
 		expect(response.body.meta.workflowReviewRequestId).toBe(existing.id);
 		expect(JSON.stringify(response.body)).not.toMatch(/sync/i);
@@ -559,19 +548,16 @@ describe('POST /workflow-review-requests', () => {
 			{},
 		);
 
-		const response = await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'New',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(409);
+		const response = await postReview(ownerAgent, {
+			title: 'New',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(409);
 
 		expect(response.body.meta.workflowReviewRequestId).toBe(existing.id);
 	});
@@ -597,19 +583,16 @@ describe('POST /workflow-review-requests', () => {
 			{},
 		);
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'New',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(201);
+		await postReview(ownerAgent, {
+			title: 'New',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(201);
 
 		const openRequests = await requestRepository.find({ where: { state: 'open' } });
 		expect(openRequests).toHaveLength(1);
@@ -630,8 +613,8 @@ describe('POST /workflow-review-requests', () => {
 		};
 
 		const [first, second] = await Promise.all([
-			ownerAgent.post('/workflow-review-requests').send(body),
-			ownerAgent.post('/workflow-review-requests').send(body),
+			postReview(ownerAgent, body),
+			postReview(ownerAgent, body),
 		]);
 
 		expect([first.status, second.status].sort()).toEqual([201, 409]);
@@ -645,56 +628,47 @@ describe('POST /workflow-review-requests', () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
 		// Enabled (from beforeEach) → allowed.
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'First',
-				workflows: [
-					{
-						workflowId: workflow.id,
-						workflowVersionId: versionId,
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(201);
+		await postReview(ownerAgent, {
+			title: 'First',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(201);
 
 		// Disabled → rejected, even for an otherwise valid request.
 		await policyService.set(false);
 		const other = await createWorkflow({}, owner);
 		await createWorkflowHistoryItem(other.id, { versionId: 'v-other' });
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'Second',
-				workflows: [
-					{
-						workflowId: other.id,
-						workflowVersionId: 'v-other',
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(403);
+		await postReview(ownerAgent, {
+			title: 'Second',
+			workflows: [
+				{
+					workflowId: other.id,
+					workflowVersionId: 'v-other',
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(403);
 	});
 
 	test('returns 403 when the license lacks feat:workflowReviews', async () => {
 		testServer.license.disable('feat:workflowReviews');
 
-		await ownerAgent
-			.post('/workflow-review-requests')
-			.send({
-				title: 'x',
-				workflows: [
-					{
-						workflowId: 'wf-1',
-						workflowVersionId: 'version-1',
-						workflowVersionName: 'Release candidate',
-					},
-				],
-			})
-			.expect(403);
+		await postReview(ownerAgent, {
+			title: 'x',
+			workflows: [
+				{
+					workflowId: 'wf-1',
+					workflowVersionId: 'version-1',
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(403);
 
 		testServer.license.enable('feat:workflowReviews');
 	});
@@ -703,19 +677,16 @@ describe('POST /workflow-review-requests', () => {
 		test('names the pinned version', async () => {
 			const { workflow, versionId } = await createReviewableWorkflow();
 
-			await ownerAgent
-				.post('/workflow-review-requests')
-				.send({
-					title: 'Please review my workflow',
-					workflows: [
-						{
-							workflowId: workflow.id,
-							workflowVersionId: versionId,
-							workflowVersionName: 'Release candidate',
-						},
-					],
-				})
-				.expect(201);
+			await postReview(ownerAgent, {
+				title: 'Please review my workflow',
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
+			}).expect(201);
 
 			expect(await findVersionName(workflow.id, versionId)).toBe('Release candidate');
 		});
@@ -726,15 +697,10 @@ describe('POST /workflow-review-requests', () => {
 		])('returns 400 and creates nothing when $name', async ({ workflowVersionName }) => {
 			const { workflow, versionId } = await createReviewableWorkflow();
 
-			await ownerAgent
-				.post('/workflow-review-requests')
-				.send({
-					title: 'Please review my workflow',
-					workflows: [
-						{ workflowId: workflow.id, workflowVersionId: versionId, workflowVersionName },
-					],
-				})
-				.expect(400);
+			await postReview(ownerAgent, {
+				title: 'Please review my workflow',
+				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId, workflowVersionName }],
+			}).expect(400);
 
 			expect(await requestRepository.find()).toHaveLength(0);
 			expect(await findVersionName(workflow.id, versionId)).toBeNull();
@@ -743,20 +709,17 @@ describe('POST /workflow-review-requests', () => {
 		test('persists the version description alongside the name', async () => {
 			const { workflow, versionId } = await createReviewableWorkflow();
 
-			await ownerAgent
-				.post('/workflow-review-requests')
-				.send({
-					title: 'Please review my workflow',
-					workflows: [
-						{
-							workflowId: workflow.id,
-							workflowVersionId: versionId,
-							workflowVersionName: 'Release candidate',
-							workflowVersionDescription: '  What changed in this version  ',
-						},
-					],
-				})
-				.expect(201);
+			await postReview(ownerAgent, {
+				title: 'Please review my workflow',
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+						workflowVersionDescription: '  What changed in this version  ',
+					},
+				],
+			}).expect(201);
 
 			const version = await workflowHistoryRepository.findOneBy({
 				workflowId: workflow.id,
@@ -769,20 +732,17 @@ describe('POST /workflow-review-requests', () => {
 		test('returns 400 for a description longer than 2048 characters', async () => {
 			const { workflow, versionId } = await createReviewableWorkflow();
 
-			await ownerAgent
-				.post('/workflow-review-requests')
-				.send({
-					title: 'Please review my workflow',
-					workflows: [
-						{
-							workflowId: workflow.id,
-							workflowVersionId: versionId,
-							workflowVersionName: 'Release candidate',
-							workflowVersionDescription: 'a'.repeat(2049),
-						},
-					],
-				})
-				.expect(400);
+			await postReview(ownerAgent, {
+				title: 'Please review my workflow',
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+						workflowVersionDescription: 'a'.repeat(2049),
+					},
+				],
+			}).expect(400);
 
 			expect(await requestRepository.find()).toHaveLength(0);
 		});
@@ -791,19 +751,16 @@ describe('POST /workflow-review-requests', () => {
 			const { workflow, versionId } = await createReviewableWorkflow();
 			await createOpenReview(workflow.id, versionId);
 
-			await ownerAgent
-				.post('/workflow-review-requests')
-				.send({
-					title: 'Second review',
-					workflows: [
-						{
-							workflowId: workflow.id,
-							workflowVersionId: versionId,
-							workflowVersionName: 'Release candidate',
-						},
-					],
-				})
-				.expect(409);
+			await postReview(ownerAgent, {
+				title: 'Second review',
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
+			}).expect(409);
 
 			expect(await findVersionName(workflow.id, versionId)).toBeNull();
 		});
@@ -811,19 +768,16 @@ describe('POST /workflow-review-requests', () => {
 		test('returns 400 for a name longer than 128 characters', async () => {
 			const { workflow, versionId } = await createReviewableWorkflow();
 
-			await ownerAgent
-				.post('/workflow-review-requests')
-				.send({
-					title: 'Please review my workflow',
-					workflows: [
-						{
-							workflowId: workflow.id,
-							workflowVersionId: versionId,
-							workflowVersionName: 'a'.repeat(129),
-						},
-					],
-				})
-				.expect(400);
+			await postReview(ownerAgent, {
+				title: 'Please review my workflow',
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'a'.repeat(129),
+					},
+				],
+			}).expect(400);
 
 			expect(await requestRepository.find()).toHaveLength(0);
 			expect(await findVersionName(workflow.id, versionId)).toBeNull();
@@ -982,7 +936,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 		versionId: string,
 		author: User,
 		projectId = ownerProject.id,
-		overrides: { state?: 'open' | 'closed'; decision?: 'pending' | 'changes_requested' } = {},
+		overrides: {
+			state?: 'open' | 'closed';
+			decision?: 'pending' | 'changes_requested';
+			description?: string | null;
+		} = {},
 	) {
 		const request = await requestRepository.createRequest(
 			{
@@ -1066,6 +1024,23 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		const updated = await requestRepository.findById(request.id, {});
 		expect(updated).toMatchObject({ updatedById: member.id });
+
+		// Both read surfaces expose every author while keeping the original requester
+		// canonical. Author order is the frontend's concern, so only membership is asserted.
+		const inbox = await ownerAgent.get('/workflow-review-requests/inbox').expect(200);
+		const inboxItem = (inbox.body.data.data as WorkflowReviewInboxItem[]).find(
+			(item) => item.id === request.id,
+		)!;
+		expect(inboxItem.requester).toMatchObject({ id: owner.id });
+		expect(inboxItem.authors.map((author) => author.id).sort()).toEqual(
+			[member.id, owner.id].sort(),
+		);
+
+		const detail = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+		expect(detail.body.data.requester).toMatchObject({ id: owner.id });
+		expect(
+			(detail.body.data as WorkflowReviewInboxItem).authors.map((author) => author.id).sort(),
+		).toEqual([member.id, owner.id].sort());
 	});
 
 	test('returns 200 without writes when the version is unchanged', async () => {
@@ -1093,6 +1068,70 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 		const unchanged = await requestRepository.findById(request.id, {});
 		expect(unchanged?.updatedAt).toEqual(request.updatedAt);
 		expect(unchanged?.decision).toBe('changes_requested');
+	});
+
+	test('updates the review description when re-pinning the version', async () => {
+		const { workflow } = await createReviewableWorkflow('version-1');
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
+		const request = await seedOpenRequest(workflow.id, 'version-1', owner, ownerProject.id, {
+			description: 'Original review description',
+		});
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-2',
+				workflowVersionName: 'Release candidate',
+				description: '  Updated review description  ',
+			})
+			.expect(200);
+
+		const updated = await requestRepository.findById(request.id, {});
+		expect(updated?.description).toBe('Updated review description');
+	});
+
+	test('updates the review description when the version is already pinned', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await seedOpenRequest(workflow.id, versionId, owner, ownerProject.id, {
+			decision: 'changes_requested',
+			description: 'Original review description',
+		});
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+				workflowVersionName: 'Release candidate',
+				description: 'Updated review description',
+			})
+			.expect(200);
+
+		const updated = await requestRepository.findById(request.id, {});
+		expect(updated).toMatchObject({
+			description: 'Updated review description',
+			decision: 'changes_requested',
+		});
+	});
+
+	test('clears the review description when an empty string is sent', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await seedOpenRequest(workflow.id, versionId, owner, ownerProject.id, {
+			description: 'Original review description',
+		});
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+				workflowVersionName: 'Release candidate',
+				description: '',
+			})
+			.expect(200);
+
+		expect((await requestRepository.findById(request.id, {}))?.description).toBeNull();
 	});
 
 	test('returns 404 for an unknown review request id', async () => {
@@ -1345,6 +1384,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			state?: 'open' | 'closed';
 			decision?: 'pending' | 'changes_requested' | 'approved';
 		} = {},
+		reviewerIds: string[] = [member.id],
 	) {
 		const workflow = await createWorkflow({}, teamProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
@@ -1369,6 +1409,12 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			{ workflowReviewRequestId: request.id, userId: author.id },
 			{},
 		);
+		if (reviewerIds.length > 0) {
+			await reviewerRepository.addReviewers(
+				{ workflowReviewRequestId: request.id, userIds: reviewerIds },
+				{},
+			);
+		}
 		return { request, workflow };
 	}
 
@@ -1405,7 +1451,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		expect(updated?.approvedAt).toBeInstanceOf(Date);
 	});
 
-	test('approval publishes the pinned version under the reviewer identity', async () => {
+	test('approval publishes the pinned version under the requester identity', async () => {
 		const { request, workflow } = await seedRequest(owner);
 
 		await memberAgent
@@ -1416,11 +1462,71 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		expect(
 			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
 		).toBe('version-1');
-		// Publish history must record the approving reviewer, not the author.
+		// Publish history must record the requester, not the approving reviewer.
 		const records = await publishHistoryRepository.findBy({ workflowId: workflow.id });
 		expect(records).toEqual([
-			expect.objectContaining({ event: 'activated', versionId: 'version-1', userId: member.id }),
+			expect.objectContaining({ event: 'activated', versionId: 'version-1', userId: owner.id }),
 		]);
+	});
+
+	test('approval without a requester closes as system and reports the publish failure', async () => {
+		const { request, workflow } = await seedRequest(owner);
+		const current = await requestRepository.findById(request.id, {});
+		current!.createdById = null;
+		await requestRepository.saveRequest(current!, {});
+
+		const response = await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: {
+				status: 'failed',
+				message: 'The review requester is no longer available',
+			},
+		});
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			closedById: null,
+			updatedById: member.id,
+		});
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBeNull();
+	});
+
+	test('approval when the requester lost publish rights closes as system and reports the failure', async () => {
+		const demotedRequester = await createUser();
+		await linkUserToProject(demotedRequester, teamProject, 'project:editor');
+		const { request, workflow } = await seedRequest(demotedRequester);
+		// Downgrade after the review was opened — they can no longer publish.
+		await linkUserToProject(demotedRequester, teamProject, 'project:viewer');
+
+		const response = await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: {
+				status: 'failed',
+				message: 'The review requester no longer has permission to publish this workflow',
+			},
+		});
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			closedById: null,
+		});
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBeNull();
 	});
 
 	test('requests changes: the review stays open, unstamped and unpublished', async () => {
@@ -1544,7 +1650,61 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			.expect(200);
 	});
 
-	test('returns 404 for a project:viewer (lacks workflow:publish)', async () => {
+	test('returns 404 for a non-assigned editor', async () => {
+		const { request } = await seedRequest(owner, {}, []);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(404);
+	});
+
+	test('allows an assigned viewer to decide', async () => {
+		const { request } = await seedRequest(owner, {}, [viewer.id]);
+
+		await viewerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'changes_requested' })
+			.expect(200);
+
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
+			state: 'open',
+			decision: 'changes_requested',
+			updatedById: viewer.id,
+		});
+	});
+
+	test('lets an assigned viewer approve and publishes under the requester identity', async () => {
+		// The decider holds workflow:read only, so publishing can only work
+		// because it runs as the requester.
+		const { request, workflow } = await seedRequest(owner, {}, [viewer.id]);
+
+		const response = await viewerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: { status: 'published' },
+		});
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			updatedById: viewer.id,
+			closedById: viewer.id,
+		});
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBe('version-1');
+		const records = await publishHistoryRepository.findBy({ workflowId: workflow.id });
+		expect(records).toEqual([
+			expect.objectContaining({ event: 'activated', versionId: 'version-1', userId: owner.id }),
+		]);
+	});
+
+	test('returns 404 for a project:viewer who is not assigned', async () => {
 		const { request } = await seedRequest(owner);
 
 		await viewerAgent
@@ -1663,7 +1823,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 });
 
 describe('GET /workflow-review-requests/eligible-reviewers', () => {
-	test('returns publish-capable project and instance users, excluding everyone else', async () => {
+	test('returns project viewers, editors, and instance users, excluding everyone else', async () => {
 		const project = await createTeamProject('team', owner);
 		// The requester holds workflow:publish through project:editor
 		await linkUserToProject(member, project, 'project:editor');
@@ -1672,10 +1832,10 @@ describe('GET /workflow-review-requests/eligible-reviewers', () => {
 		await linkUserToProject(projectAdmin, project, 'project:admin');
 		const projectEditor = await createUser();
 		await linkUserToProject(projectEditor, project, 'project:editor');
-		const globalAdmin = await createAdmin();
-
 		const projectViewer = await createUser();
 		await linkUserToProject(projectViewer, project, 'project:viewer');
+		const globalAdmin = await createAdmin();
+
 		const disabledEditor = await createUser({ disabled: true });
 		await linkUserToProject(disabledEditor, project, 'project:editor');
 		const pendingEditor = await createUser({ password: null });
@@ -1689,10 +1849,10 @@ describe('GET /workflow-review-requests/eligible-reviewers', () => {
 			.query({ workflowId: workflow.id })
 			.expect(200);
 
-		expect(response.body.data.count).toBe(4);
+		expect(response.body.data.count).toBe(5);
 		const ids = response.body.data.data.map((reviewer: { id: string }) => reviewer.id);
 		expect(ids.sort()).toEqual(
-			[owner.id, projectAdmin.id, projectEditor.id, globalAdmin.id].sort(),
+			[owner.id, projectAdmin.id, projectEditor.id, projectViewer.id, globalAdmin.id].sort(),
 		);
 	});
 
@@ -1742,7 +1902,7 @@ describe('GET /workflow-review-requests/eligible-reviewers', () => {
 			.query({ workflowId: workflow.id })
 			.expect(200);
 
-		// The requesting owner is excluded; the plain member holds no publish rights
+		// The requesting owner is excluded; the plain member holds no read rights on this personal project
 		expect(response.body.data.count).toBe(1);
 		expect(response.body.data.data[0].id).toBe(globalAdmin.id);
 	});
@@ -1848,12 +2008,43 @@ describe('GET /workflow-review-requests', () => {
 			state: 'open',
 			decision: 'pending',
 			workflowVersionId: versionId,
+			// The owner can act on the review, so the description rides along; the
+			// title stays off the workflow-scoped list entirely.
+			description: 'Confidential description',
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 			// Neither applies to a pending review
 			decisionBy: null,
 			approvedVersionPublicationState: null,
 		});
+	});
+
+	test('withholds the description from a requester who cannot act on the review', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+		const request = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Confidential title',
+				description: 'Confidential description',
+				createdById: owner.id,
+			},
+			{},
+		);
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+
+		const viewerResponse = await viewerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+		expect(viewerResponse.body.data.data[0].description).toBeNull();
+
+		const editorResponse = await memberAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+		expect(editorResponse.body.data.data[0].description).toBe('Confidential description');
 	});
 
 	test('returns the newest review, closed included, with take=1 and no state filter', async () => {
@@ -2794,9 +2985,13 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 	});
 
 	describe('viewer decision eligibility', () => {
-		test('tells a non-author with publish access that they can decide', async () => {
+		test('tells an assigned reviewer that they can decide', async () => {
 			const workflow = await createWorkflow({}, teamProject);
 			const request = await seedRequest(workflow.id, null, owner);
+			await reviewerRepository.addReviewers(
+				{ workflowReviewRequestId: request.id, userIds: [member.id] },
+				{},
+			);
 
 			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 
@@ -2804,9 +2999,25 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			expect(response.body.data.viewerDecisionIneligibilityReason).toBeNull();
 		});
 
-		test('tells an author why they cannot decide their own review', async () => {
+		test('tells a non-assigned editor that they cannot decide', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, owner);
+
+			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(false);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBe(
+				'missing_reviewer_permission',
+			);
+		});
+
+		test('tells an assigned author why they cannot decide their own review', async () => {
 			const workflow = await createWorkflow({}, teamProject);
 			const request = await seedRequest(workflow.id, null, member);
+			await reviewerRepository.addReviewers(
+				{ workflowReviewRequestId: request.id, userIds: [member.id] },
+				{},
+			);
 
 			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 
@@ -2824,7 +3035,7 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			expect(response.body.data.viewerDecisionIneligibilityReason).toBeNull();
 		});
 
-		test('reports missing publish permission once the workflow moved out of the requester reach', async () => {
+		test('reports missing permission once the workflow moved out of the requester reach', async () => {
 			// Same transfer scenario the read filter covers: the requester keeps the
 			// record, but could no longer decide — and the reason says why.
 			const destinationProject = await createTeamProject('Out Of Reach', owner);
@@ -2835,9 +3046,7 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			const response = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 
 			expect(response.body.data.viewerCanDecide).toBe(false);
-			expect(response.body.data.viewerDecisionIneligibilityReason).toBe(
-				'missing_publish_permission',
-			);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBe('missing_permission');
 		});
 	});
 

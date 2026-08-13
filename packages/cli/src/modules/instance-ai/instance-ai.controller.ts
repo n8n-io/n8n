@@ -762,6 +762,9 @@ export class InstanceAiController {
 			async () => {
 				await this.moduleRegistry.refreshModuleSettings('instance-ai');
 			},
+			async () => {
+				await this.moduleRegistry.refreshModuleSettings('agents');
+			},
 		];
 		if (!settings.enabled || !settings.browserUseEnabled) {
 			sideEffects.push(async () => await this.browserSessionService.shutdown());

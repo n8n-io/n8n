@@ -566,12 +566,20 @@ describe('setupSandboxWorkspace', () => {
 	});
 
 	it('retries packing linked workspace packages after a null pack result', async () => {
+		const utilsTarball = Buffer.from('utils');
 		const workflowTarball = Buffer.from('workflow');
 		const sdkTarball = Buffer.from('sdk');
 		const packSandboxLinkedWorkspacePackages = vi
 			.fn()
 			.mockResolvedValueOnce(null)
 			.mockResolvedValueOnce([
+				{
+					filename: 'n8n-utils.tgz',
+					tarball: utilsTarball,
+					version: '1.41.0',
+					packageName: '@n8n/utils',
+					packagePath: '/host/utils',
+				},
 				{
 					filename: 'n8n-workflow.tgz',
 					tarball: workflowTarball,
@@ -622,6 +630,9 @@ describe('setupSandboxWorkspace', () => {
 		await linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger);
 
 		expect(packSandboxLinkedWorkspacePackages).toHaveBeenCalledTimes(2);
+		expect(writeFile).toHaveBeenCalledWith('/workspace/n8n-utils.tgz', utilsTarball, {
+			recursive: true,
+		});
 		expect(writeFile).toHaveBeenCalledWith('/workspace/n8n-workflow.tgz', workflowTarball, {
 			recursive: true,
 		});
@@ -631,7 +642,7 @@ describe('setupSandboxWorkspace', () => {
 		expect(runInSandbox).toHaveBeenCalledWith(
 			workspace,
 			expect.stringContaining(
-				"npm install '/workspace/n8n-workflow.tgz' '/workspace/workflow-sdk.tgz'",
+				"npm install '/workspace/n8n-utils.tgz' '/workspace/n8n-workflow.tgz' '/workspace/workflow-sdk.tgz'",
 			),
 			'/workspace',
 		);
