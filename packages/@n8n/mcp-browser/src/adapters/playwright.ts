@@ -1043,8 +1043,15 @@ export class PlaywrightAdapter {
 		const locator = await this.resolveLocator(pageId, target);
 		try {
 			return await locator.inputValue();
-		} catch {
-			// Not an <input>/<textarea>/<select> — read its text instead.
+		} catch (error) {
+			// Only fall back to reading text when the element is genuinely not an
+			// <input>/<textarea>/<select>. If it's unreachable (timeout / detached /
+			// not connected) rethrow the original error so the caller fails once,
+			// promptly, instead of spending a second implicit timeout on innerText()
+			// and surfacing a misleading "not an input" error on the secret path.
+			const message = error instanceof Error ? error.message : String(error);
+			const isWrongElementKind = /not an?\b.*(input|textarea|select)/i.test(message);
+			if (!isWrongElementKind) throw error;
 			return await locator.innerText();
 		}
 	}
