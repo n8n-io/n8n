@@ -38,16 +38,20 @@ export class SourceControlController {
 	) {}
 
 	@Get('/preferences')
-	async getPreferences(req: AuthenticatedRequest): Promise<Partial<SourceControlPreferences>> {
+	async getPreferences(
+		req: AuthenticatedRequest,
+	): Promise<Partial<SourceControlPreferences> & { branchSelectionEnabled: boolean }> {
 		const preferences = this.sourceControlPreferencesService.getPreferences();
+		const branchSelectionEnabled = this.sourceControlPreferencesService.isBranchSelectionEnabled();
 
 		if (hasGlobalScope(req.user, 'sourceControl:manage')) {
 			const publicKey = await this.sourceControlPreferencesService.getPublicKey();
-			return { ...preferences, publicKey };
+			return { ...preferences, publicKey, branchSelectionEnabled };
 		}
 
 		const publicSubset = {
 			branchReadOnly: preferences.branchReadOnly,
+			branchSelectionEnabled,
 		};
 
 		const ctx = await this.sourceControlContextFactory.createContext(req.user);

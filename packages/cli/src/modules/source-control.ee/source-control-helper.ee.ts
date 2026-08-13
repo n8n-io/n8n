@@ -286,6 +286,11 @@ export function isSourceControlLicensed() {
 	return license.isSourceControlLicensed();
 }
 
+export function isNoUpstreamBranchError(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.toLowerCase().includes('no tracking information');
+}
+
 export async function generateSshKeyPair(keyType: KeyPairType) {
 	// sshpk is CommonJS (`export =`): under nodenext, a native dynamic import only
 	// hoists some named exports onto the namespace (parsePrivateKey is missed), so
