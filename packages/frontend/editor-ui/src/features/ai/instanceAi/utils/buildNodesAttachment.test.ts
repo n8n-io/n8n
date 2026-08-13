@@ -4,8 +4,10 @@ import {
 	partitionSelectionIntoSets,
 	resolveSetNeighbors,
 	resolveSetCanvasGroup,
+	buildNodesAttachment,
 } from './buildNodesAttachment';
 import type { BuilderWorkflow } from './buildNodesAttachment';
+import { instanceAiNodesAttachmentSchema } from '@n8n/api-types';
 
 function wf(over: Partial<BuilderWorkflow> = {}): BuilderWorkflow {
 	return {
@@ -101,5 +103,65 @@ describe('resolveSetCanvasGroup', () => {
 
 	it('returns {} when no node in the set is grouped', () => {
 		expect(resolveSetCanvasGroup({ nodeNames: ['A', 'B'] }, wf())).toEqual({});
+	});
+});
+
+describe('buildNodesAttachment', () => {
+	it('returns null for an empty selection', () => {
+		expect(buildNodesAttachment('w1', [], wf())).toBeNull();
+	});
+
+	it('builds a schema-valid attachment for a chain + a lone node', () => {
+		const w = wf({
+			nodes: [
+				{ id: 'n1', name: 'A', type: 't' },
+				{ id: 'n2', name: 'B', type: 't' },
+				{ id: 'n3', name: 'Lone', type: 't' },
+				{ id: 'n0', name: 'Webhook', type: 't' },
+			],
+			connections: chain(['Webhook', 'A'], ['A', 'B']),
+		});
+		const res = buildNodesAttachment('w1', ['n1', 'n2', 'n3'], w);
+		expect(res).not.toBeNull();
+		expect(res!.truncated).toBe(false);
+		expect(instanceAiNodesAttachmentSchema.safeParse(res!.attachment).success).toBe(true);
+		const setA = res!.attachment.sets.find((s) => s.nodes.length === 2)!;
+		expect(setA.nodes.map((n) => n.name)).toEqual(['A', 'B']);
+		expect(setA.inputNode?.name).toBe('Webhook');
+	});
+
+	it('caps at 50 sets and 50 nodes-per-set and flags truncation', () => {
+		const nodes = Array.from({ length: 60 }, (_, i) => ({ id: `n${i}`, name: `N${i}`, type: 't' }));
+		// 60 lone (unconnected) selected nodes → 60 sets → capped to 50.
+		const w = wf({ nodes, connections: {} });
+		const res = buildNodesAttachment(
+			'w1',
+			nodes.map((n) => n.id),
+			w,
+		);
+		expect(res!.truncated).toBe(true);
+		expect(res!.attachment.sets.length).toBe(50);
+		expect(instanceAiNodesAttachmentSchema.safeParse(res!.attachment).success).toBe(true);
+	});
+
+	it('a fully-grouped selection resolves to one set carrying the group', () => {
+		// Caller passes EXPANDED member ids (n1, n2) — the group-chip case.
+		const w = wf({
+			nodes: [
+				{ id: 'n1', name: 'Extract Fields', type: 't' },
+				{ id: 'n2', name: 'Find Slack User', type: 't' },
+			],
+			connections: chain(['Extract Fields', 'Find Slack User']),
+			groupsById: new Map([['g1', { id: 'g1', name: 'Prepare ticket', nodeIds: ['n1', 'n2'] }]]),
+			nodeIdToGroupId: new Map([
+				['n1', 'g1'],
+				['n2', 'g1'],
+			]),
+		});
+		const res = buildNodesAttachment('w1', ['n1', 'n2'], w);
+		expect(res!.attachment.sets).toHaveLength(1);
+		expect(res!.attachment.sets[0].canvasGroupId).toBe('g1');
+		expect(res!.attachment.sets[0].canvasGroupName).toBe('Prepare ticket');
+		expect(instanceAiNodesAttachmentSchema.safeParse(res!.attachment).success).toBe(true);
 	});
 });

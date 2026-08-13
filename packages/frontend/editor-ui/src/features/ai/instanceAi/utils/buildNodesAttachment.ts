@@ -29,6 +29,11 @@ export interface NodeSet {
 
 export type NodesAttachmentSet = InstanceAiNodesAttachment['sets'][number];
 
+// Schema caps (instanceAiNodeSetSchema / instanceAiNodesAttachmentSchema, #36039).
+// The safeParse test in this file is the real drift-guard — no need to poke zod internals.
+const MAX_SETS = 50;
+const MAX_NODES_PER_SET = 50;
+
 export function partitionSelectionIntoSets(
 	selectedNodeNames: string[],
 	connections: IConnections,
@@ -113,4 +118,50 @@ export function resolveSetCanvasGroup(
 	if (!only) return {}; // the single value is `undefined` → some/all ungrouped
 	const group = workflow.groupsById.get(only);
 	return group ? { canvasGroupId: group.id, canvasGroupName: group.name } : {};
+}
+
+export function buildNodesAttachment(
+	workflowId: string,
+	selectedNodeIds: string[],
+	workflow: BuilderWorkflow,
+): { attachment: InstanceAiNodesAttachment; truncated: boolean } | null {
+	if (selectedNodeIds.length === 0) return null;
+
+	const idToName = new Map(workflow.nodes.map((n) => [n.id, n.name]));
+	const nameToId = new Map(workflow.nodes.map((n) => [n.name, n.id]));
+	const selectedNames = selectedNodeIds
+		.map((id) => idToName.get(id))
+		.filter((n): n is string => Boolean(n));
+	if (selectedNames.length === 0) return null;
+
+	let truncated = false;
+	let sets = partitionSelectionIntoSets(selectedNames, workflow.connections);
+
+	if (sets.length > MAX_SETS) {
+		sets = sets.slice(0, MAX_SETS);
+		truncated = true;
+	}
+
+	const ref = (name: string) => ({ id: nameToId.get(name) ?? name, name });
+
+	const serialized: InstanceAiNodesAttachment['sets'] = sets.map((set) => {
+		let names = set.nodeNames;
+		if (names.length > MAX_NODES_PER_SET) {
+			names = names.slice(0, MAX_NODES_PER_SET);
+			truncated = true;
+		}
+		const { inputName, outputName } = resolveSetNeighbors(
+			{ nodeNames: names },
+			workflow.connections,
+		);
+		const group = resolveSetCanvasGroup({ nodeNames: names }, workflow);
+		return {
+			nodes: names.map(ref),
+			...(inputName ? { inputNode: ref(inputName) } : {}),
+			...(outputName ? { outputNode: ref(outputName) } : {}),
+			...group,
+		};
+	});
+
+	return { attachment: { type: 'nodes', workflowId, sets: serialized }, truncated };
 }
