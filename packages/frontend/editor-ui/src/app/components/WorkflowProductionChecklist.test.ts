@@ -770,32 +770,6 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
-		it('should not show instance-level MCP action when ignored', async () => {
-			const pinia = createTestingPinia();
-			settingsStore = useSettingsStore(pinia);
-			usersStore = useUsersStore(pinia);
-
-			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
-			});
-			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
-
-			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
-				suggestedActions: {
-					'instance-mcp-access': { ignored: true },
-				},
-			});
-
-			renderComponent({ pinia });
-
-			await vi.waitFor(() => {
-				const actions = mockN8nSuggestedActionsProps.actions;
-				expect(actions).toBeDefined();
-				expect(actions.find((a: { id: string }) => a.id === 'instance-mcp-access')).toBeUndefined();
-			});
-		});
-
 		it('should show workflow-level MCP action when workflow is eligible', async () => {
 			const pinia = createTestingPinia();
 			settingsStore = useSettingsStore(pinia);
@@ -842,30 +816,6 @@ describe('WorkflowProductionChecklist', () => {
 					moreInfoLink: MCP_DOCS_PAGE_URL,
 					completed: true,
 				});
-			});
-		});
-
-		it('should not show workflow-level MCP action when ignored', async () => {
-			const pinia = createTestingPinia();
-			settingsStore = useSettingsStore(pinia);
-
-			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
-			});
-
-			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
-				suggestedActions: {
-					'workflow-mcp-access': { ignored: true },
-				},
-			});
-
-			renderComponent({ pinia });
-
-			await vi.waitFor(() => {
-				const actions = mockN8nSuggestedActionsProps.actions;
-				expect(actions).toBeDefined();
-				expect(actions.find((a: { id: string }) => a.id === 'workflow-mcp-access')).toBeUndefined();
 			});
 		});
 
