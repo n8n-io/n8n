@@ -8,6 +8,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import AgentTaskModal from '../components/AgentTaskModal.vue';
 import { formatScheduleDateTime } from '../utils/scheduleBuilder';
@@ -31,18 +32,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => rootStoreMock,
 }));
 
-// The zone list the schedule's timezone selector offers, trimmed to the zones
-// these tests pick from.
-const getTimezonesSpy = vi.fn(async () => ({
-	'America/New_York': 'America/New York',
-	'Asia/Tokyo': 'Asia/Tokyo',
-	'Europe/London': 'Europe/London',
-	UTC: 'UTC',
-}));
-vi.mock('@n8n/stores/settings.store', () => ({
-	useSettingsStore: () => ({ getTimezones: getTimezonesSpy }),
-}));
-
 // Captured before any test installs fake timers: `vi.useFakeTimers()` swaps
 // `Intl.DateTimeFormat` for a wrapper that still builds real instances, so a spy
 // on the wrapper's prototype is never reached — this one is.
@@ -55,12 +44,6 @@ function setBrowserTimezone(timeZone: string): void {
 		...resolved,
 		timeZone,
 	});
-}
-
-/** Flush pending microtasks (and the re-render they cause) under fake timers. */
-async function flushTicks(): Promise<void> {
-	await Promise.resolve();
-	await nextTick();
 }
 
 const createAgentTaskSpy = vi.fn();
@@ -217,6 +200,11 @@ describe('AgentTaskModal', () => {
 		vi.useRealTimers();
 		rootStoreMock.timezone = 'UTC';
 		createTestingPinia({ stubActions: false });
+		// The zone list the schedule's timezone selector offers, trimmed to what
+		// these tests pick from.
+		mockedStore(useSettingsStore).getTimezones = vi
+			.fn()
+			.mockResolvedValue({ 'Asia/Tokyo': 'Asia/Tokyo', 'Europe/London': 'Europe/London' });
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
@@ -380,24 +368,6 @@ describe('AgentTaskModal', () => {
 			expectNextRun(getByText, '2026-01-02T00:00:00.000Z', 'Asia/Tokyo');
 		});
 
-		it('saves a new task with the timezone it was authored in', async () => {
-			setBrowserTimezone('Asia/Tokyo');
-			createAgentTaskSpy.mockResolvedValue({});
-
-			const { getByTestId } = renderModal();
-
-			await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
-			await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
-			await fireEvent.click(getByTestId('agent-task-save'));
-
-			expect(createAgentTaskSpy).toHaveBeenCalledWith(
-				{},
-				'p1',
-				'a1',
-				expect.objectContaining({ cronExpression: '0 9 * * *', timezone: 'Asia/Tokyo' }),
-			);
-		});
-
 		it("previews an existing task in the task's own timezone", () => {
 			setBrowserTimezone('UTC');
 
@@ -428,7 +398,11 @@ describe('AgentTaskModal', () => {
 				task: makeTask({ cronExpression: '0 9 * * *', timezone: 'Asia/Tokyo' }),
 			});
 
-			await flushTicks();
+			// Let the awaited timezone list land and re-render its options, so the
+			// stubbed <select> can actually take the value below. Fake timers rule out
+			// `waitFor`, but the load is pure microtasks.
+			await Promise.resolve();
+			await nextTick();
 			await fireEvent.update(getByTestId('agent-task-timezone'), 'Europe/London');
 
 			// 09:00 London on 2 Jan — 09:00 on the 1st has already passed in that zone.

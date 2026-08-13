@@ -1,8 +1,4 @@
-import {
-	AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
-	AGENT_TASK_ID_MAX_LENGTH,
-	AGENT_TASK_TIMEZONE_MAX_LENGTH,
-} from '@n8n/api-types';
+import { AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH, AGENT_TASK_ID_MAX_LENGTH } from '@n8n/api-types';
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from '@n8n/typeorm';
 
@@ -51,9 +47,10 @@ export class AgentTaskSnapshot extends WithTimestamps {
 	})
 	cronExpression: string;
 
+	// Same shape as `scheduled_job.timezone`.
 	@Column({
 		type: 'varchar',
-		length: AGENT_TASK_TIMEZONE_MAX_LENGTH,
+		length: 64,
 		nullable: true,
 		comment: 'IANA timezone the cron is evaluated in; null falls back to the instance timezone',
 	})

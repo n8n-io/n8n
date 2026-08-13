@@ -1,5 +1,5 @@
 import type { AgentTaskDto, CreateAgentTaskDto, UpdateAgentTaskDto } from '@n8n/api-types';
-import { isValidTimezone } from '@n8n/api-types';
+import { isValidTimeZone } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -7,7 +7,7 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@
 import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
-import { DateTime, IANAZone } from 'luxon';
+import { DateTime } from 'luxon';
 import { InstanceSettings, ScheduledTaskManager, type ScheduledTaskGroup } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -23,6 +23,7 @@ import {
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
+import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
 import {
@@ -433,16 +434,12 @@ export class AgentTaskService {
 		// Bodies come from PUBLISHED snapshot rows, so cron/name/objective/timezone
 		// are all frozen at publish time; draft edits only apply on the next publish.
 		for (const snapshot of snapshots) {
-			this.registerOrRefresh(snapshot.taskId, agent.id, snapshot.cronExpression, snapshot.timezone);
+			this.registerOrRefresh(agent.id, snapshot);
 		}
 	}
 
-	private registerOrRefresh(
-		taskId: string,
-		agentId: string,
-		cronExpression: string,
-		taskTimezone: string | null,
-	): void {
+	private registerOrRefresh(agentId: string, snapshot: AgentTaskSnapshot): void {
+		const { taskId, cronExpression } = snapshot;
 		if (!isValidCronExpression(cronExpression)) {
 			this.logger.warn('[AgentTaskService] Skipping task with invalid cron', { taskId });
 			this.deregister(agentId, taskId);
@@ -451,7 +448,7 @@ export class AgentTaskService {
 
 		this.deregister(agentId, taskId);
 
-		const timezone = this.resolveTaskTimezone(taskTimezone, taskId);
+		const timezone = this.resolveTaskTimezone(snapshot.timezone, taskId);
 		const registered = this.scheduledTaskManager.register(
 			{
 				group: agentTaskScheduleGroup(agentId),
@@ -722,7 +719,7 @@ export class AgentTaskService {
 
 	private assertValidTimezone(timezone: string | null | undefined): void {
 		if (timezone === null || timezone === undefined) return;
-		if (!isValidTimezone(timezone)) {
+		if (!isValidTimeZone(timezone)) {
 			throw new BadRequestError('Invalid timezone');
 		}
 	}
@@ -735,7 +732,7 @@ export class AgentTaskService {
 	 */
 	private resolveTaskTimezone(taskTimezone: string | null | undefined, taskId: string): string {
 		if (!taskTimezone) return this.globalConfig.generic.timezone;
-		if (!IANAZone.isValidZone(taskTimezone)) {
+		if (!isValidTimeZone(taskTimezone)) {
 			this.logger.warn('[AgentTaskService] Task has unknown timezone, using instance timezone', {
 				taskId,
 				timezone: taskTimezone,

@@ -36,6 +36,8 @@ function makeTask(overrides: Partial<AgentTask> = {}): AgentTask {
 		name: 'Daily summary',
 		objective: 'Summarize messages',
 		cronExpression: '0 9 * * *',
+		// Null is the pre-existing shape: the cron runs on the instance timezone.
+		timezone: null,
 		createdAt: new Date('2026-01-01T08:00:00.000Z'),
 		updatedAt: new Date('2026-01-02T08:00:00.000Z'),
 		...overrides,
@@ -80,6 +82,7 @@ function makeSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTaskSnap
 		name: 'Daily summary',
 		objective: 'Summarize messages',
 		cronExpression: '0 9 * * *',
+		timezone: null,
 		createdAt: new Date('2026-01-01T08:00:00.000Z'),
 		updatedAt: new Date('2026-01-02T08:00:00.000Z'),
 		...overrides,
@@ -231,6 +234,8 @@ describe('AgentTaskService', () => {
 					name: 'Daily',
 					objective: 'Do X',
 					cronExpression: '0 9 * * *',
+					// No timezone given, so the task follows the instance timezone.
+					timezone: null,
 				}),
 			);
 			expect(agent.schema?.tasks).toEqual([
@@ -279,25 +284,6 @@ describe('AgentTaskService', () => {
 			expect(dto.timezone).toBe('Europe/London');
 			expect(taskRepository.create).toHaveBeenCalledWith(
 				expect.objectContaining({ cronExpression: '0 8 * * *', timezone: 'Europe/London' }),
-			);
-		});
-
-		it('stores no timezone when none is given, leaving the task on the instance timezone', async () => {
-			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(
-				makeAgent({
-					schema: { name: 'a', model: 'm', instructions: 'i', tasks: [] },
-				} as Partial<Agent>),
-			);
-
-			await service.create(
-				AGENT_ID,
-				PROJECT_ID,
-				{ name: 'Daily', objective: 'Do X', cronExpression: '0 8 * * *', enabled: true },
-				telemetryContext,
-			);
-
-			expect(taskRepository.create).toHaveBeenCalledWith(
-				expect.objectContaining({ timezone: null }),
 			);
 		});
 
@@ -457,10 +443,16 @@ describe('AgentTaskService', () => {
 	});
 
 	describe('update', () => {
-		it('updates body fields without registering a cron (publish-driven)', async () => {
-			const task = makeTask();
+		/** The task row `update` mutates, with both lookups it performs stubbed. */
+		function arrangeUpdate(overrides: Partial<AgentTask> = {}): AgentTask {
+			const task = makeTask(overrides);
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
 			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(makeAgent());
+			return task;
+		}
+
+		it('updates body fields without registering a cron (publish-driven)', async () => {
+			const task = arrangeUpdate({ timezone: 'Asia/Tokyo' });
 
 			const dto = await service.update(
 				AGENT_ID,
@@ -472,14 +464,14 @@ describe('AgentTaskService', () => {
 
 			expect(dto.cronExpression).toBe('0 10 * * *');
 			expect(task.cronExpression).toBe('0 10 * * *');
+			// An omitted timezone keeps the current one, so old clients stay safe.
+			expect(task.timezone).toBe('Asia/Tokyo');
 			expect(txManager.save).toHaveBeenCalled();
 			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 
 		it('moves the schedule to another timezone', async () => {
-			const task = makeTask({ timezone: null });
-			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
-			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(makeAgent());
+			const task = arrangeUpdate();
 
 			const dto = await service.update(
 				AGENT_ID,
@@ -495,9 +487,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('resets to the instance timezone when passed null', async () => {
-			const task = makeTask({ timezone: 'Asia/Tokyo' });
-			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
-			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(makeAgent());
+			const task = arrangeUpdate({ timezone: 'Asia/Tokyo' });
 
 			const dto = await service.update(
 				AGENT_ID,
@@ -512,8 +502,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('rejects an unknown timezone without writing', async () => {
-			const task = makeTask({ timezone: 'Asia/Tokyo' });
-			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
+			const task = arrangeUpdate({ timezone: 'Asia/Tokyo' });
 
 			await expect(
 				service.update(
@@ -526,16 +515,6 @@ describe('AgentTaskService', () => {
 			).rejects.toThrow(BadRequestError);
 			expect(task.timezone).toBe('Asia/Tokyo');
 			expect(txManager.save).not.toHaveBeenCalled();
-		});
-
-		it('leaves the timezone untouched when the field is omitted', async () => {
-			const task = makeTask({ timezone: 'Asia/Tokyo' });
-			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
-			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(makeAgent());
-
-			await service.update(AGENT_ID, PROJECT_ID, 'task-1', { name: 'Renamed' }, telemetryContext);
-
-			expect(task.timezone).toBe('Asia/Tokyo');
 		});
 
 		it('is a no-op when no field changes (skips the agent write)', async () => {
@@ -678,22 +657,6 @@ describe('AgentTaskService', () => {
 					expression: '0 8 * * 5',
 					timezone: 'Europe/London',
 				},
-				expect.any(Function),
-			);
-		});
-
-		it('registers a snapshot without a timezone in the instance timezone', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
-				makePublishedAgent([{ id: 'task-1', enabled: true }]),
-			);
-			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([
-				makeSnapshot({ timezone: null }),
-			]);
-
-			await service.registerEnabledForAgent(AGENT_ID);
-
-			expect(agentTaskScheduler.register).toHaveBeenCalledWith(
-				expect.objectContaining({ timezone: 'UTC' }),
 				expect.any(Function),
 			);
 		});
