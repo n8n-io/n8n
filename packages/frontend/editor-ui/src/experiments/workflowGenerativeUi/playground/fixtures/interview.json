@@ -1,0 +1,139 @@
+{
+	"name": "Coordinate candidate interviews",
+	"nodes": [
+		{
+			"parameters": {
+				"operation": "read",
+				"documentId": "candidate-pipeline",
+				"sheetName": "Interviews"
+			},
+			"id": "candidate-sheet",
+			"name": "Read candidate row",
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.6,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "create",
+				"calendar": "Recruiting",
+				"start": "={{ $json.interviewStart }}",
+				"end": "={{ $json.interviewEnd }}",
+				"additionalFields": {
+					"summary": "=Interview with {{ $json.candidateName }}",
+					"attendees": ["={{ $json.candidateEmail }}"]
+				}
+			},
+			"id": "schedule-interview",
+			"name": "Schedule interview",
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1.3,
+			"position": [240, -100]
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $('Read candidate row').item.json.candidateEmail }}",
+				"subject": "Your interview is scheduled",
+				"message": "=Hi {{ $('Read candidate row').item.json.candidateName }}, your interview is on {{ $('Read candidate row').item.json.interviewStart }}."
+			},
+			"id": "send-invitation",
+			"name": "Send interview invitation",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [480, -100]
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "=Summarize this candidate profile for the interview panel: {{ $json.profile }}"
+			},
+			"id": "prepare-brief",
+			"name": "Prepare candidate brief",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [240, 140]
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "post",
+				"channel": "#hiring",
+				"text": "=Approve the interview brief for {{ $('Read candidate row').item.json.candidateName }}: {{ $json.output }}"
+			},
+			"id": "request-approval",
+			"name": "Request hiring approval",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [480, 140]
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"options": {
+					"webhookSuffix": "candidate-approval"
+				}
+			},
+			"id": "wait-for-approval",
+			"name": "Wait for approval",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [720, 140]
+		}
+	],
+	"connections": {
+		"Read candidate row": {
+			"main": [
+				[
+					{
+						"node": "Schedule interview",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Prepare candidate brief",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule interview": {
+			"main": [
+				[
+					{
+						"node": "Send interview invitation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare candidate brief": {
+			"main": [
+				[
+					{
+						"node": "Request hiring approval",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Request hiring approval": {
+			"main": [
+				[
+					{
+						"node": "Wait for approval",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

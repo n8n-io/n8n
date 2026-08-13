@@ -1,0 +1,181 @@
+{
+	"name": "Recover an unhealthy service",
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes",
+							"minutesInterval": 5
+						}
+					]
+				}
+			},
+			"id": "health-schedule",
+			"name": "Every five minutes",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"method": "GET",
+				"url": "https://status.acme.com/health",
+				"options": {
+					"timeout": 10000
+				}
+			},
+			"id": "health-request",
+			"name": "Check service health",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [240, 0]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": ""
+					},
+					"conditions": [
+						{
+							"leftValue": "={{ $json.status }}",
+							"rightValue": "healthy",
+							"operator": {
+								"type": "string",
+								"operation": "notEquals"
+							}
+						}
+					]
+				}
+			},
+			"id": "health-decision",
+			"name": "Service is unhealthy?",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [480, 0]
+		},
+		{
+			"parameters": {
+				"resource": "command",
+				"operation": "execute",
+				"command": "sudo systemctl restart acme-web"
+			},
+			"id": "restart-service",
+			"name": "Restart web service",
+			"type": "n8n-nodes-base.ssh",
+			"typeVersion": 1,
+			"position": [720, -120]
+		},
+		{
+			"parameters": {
+				"protocol": "sftp",
+				"operation": "upload",
+				"path": "/var/incidents/",
+				"binaryPropertyName": "incidentLog"
+			},
+			"id": "upload-incident",
+			"name": "Upload incident log",
+			"type": "n8n-nodes-base.ftp",
+			"typeVersion": 1,
+			"position": [960, -120]
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "post",
+				"channel": "#incidents",
+				"text": "acme-web was restarted and the incident log was archived."
+			},
+			"id": "notify-incidents",
+			"name": "Notify incidents channel",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [1200, -120]
+		},
+		{
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "INSERT INTO incidents (service, status) VALUES ('acme-web', 'recovered')"
+			},
+			"id": "record-incident",
+			"name": "Record incident",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 2.6,
+			"position": [1440, -120]
+		}
+	],
+	"connections": {
+		"Every five minutes": {
+			"main": [
+				[
+					{
+						"node": "Check service health",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check service health": {
+			"main": [
+				[
+					{
+						"node": "Service is unhealthy?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Service is unhealthy?": {
+			"main": [
+				[
+					{
+						"node": "Restart web service",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Restart web service": {
+			"main": [
+				[
+					{
+						"node": "Upload incident log",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload incident log": {
+			"main": [
+				[
+					{
+						"node": "Notify incidents channel",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notify incidents channel": {
+			"main": [
+				[
+					{
+						"node": "Record incident",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

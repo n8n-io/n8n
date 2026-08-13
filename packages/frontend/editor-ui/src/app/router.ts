@@ -170,6 +170,18 @@ const allowResourceCenterRoute = (
 	}
 };
 
+const generativeUiPlaygroundRoutes: RouteRecordRaw[] = import.meta.env.DEV
+	? [
+			{
+				path: '/generative-ui',
+				name: 'GenerativeUiPlayground',
+				component: async () =>
+					await import('@/experiments/workflowGenerativeUi/playground/PlaygroundView.vue'),
+				meta: { middleware: ['authenticated'] },
+			},
+		]
+	: [];
+
 export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
@@ -194,6 +206,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
+	...generativeUiPlaygroundRoutes,
 	{
 		path: '/collections/:id',
 		name: VIEWS.COLLECTION,

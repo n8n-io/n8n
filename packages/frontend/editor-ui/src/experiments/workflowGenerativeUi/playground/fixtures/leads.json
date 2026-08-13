@@ -1,0 +1,108 @@
+{
+	"name": "Qualify and notify new leads",
+	"nodes": [
+		{
+			"parameters": {
+				"formTitle": "Talk to sales",
+				"formDescription": "Tell us how we can help",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Name",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Email",
+							"fieldType": "email",
+							"requiredField": true
+						}
+					]
+				}
+			},
+			"id": "lead-form",
+			"name": "Capture lead",
+			"type": "n8n-nodes-base.formTrigger",
+			"typeVersion": 2.2,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"email": "={{ $json.Email }}",
+				"additionalFields": {
+					"firstName": "={{ $json.Name }}"
+				}
+			},
+			"id": "create-contact",
+			"name": "Create HubSpot contact",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [240, 0]
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "post",
+				"channel": "#sales",
+				"text": "=New lead: {{ $json.properties.firstname }}"
+			},
+			"id": "notify-sales",
+			"name": "Notify sales",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [480, 0]
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $('Capture lead').item.json.Email }}",
+				"subject": "Thanks for getting in touch",
+				"message": "=Hi {{ $('Capture lead').item.json.Name }}, our sales team will contact you shortly."
+			},
+			"id": "send-welcome",
+			"name": "Send welcome email",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [720, 0]
+		}
+	],
+	"connections": {
+		"Capture lead": {
+			"main": [
+				[
+					{
+						"node": "Create HubSpot contact",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create HubSpot contact": {
+			"main": [
+				[
+					{
+						"node": "Notify sales",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notify sales": {
+			"main": [
+				[
+					{
+						"node": "Send welcome email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}
