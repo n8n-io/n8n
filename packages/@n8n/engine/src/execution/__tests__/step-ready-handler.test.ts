@@ -133,6 +133,111 @@ describe('StepReadyHandler', () => {
 		);
 	});
 
+	it('gathers a fan-in: each input slot from its predecessor', async () => {
+		// trigger fans out to a and b, which converge on m's two input slots
+		const diamond: WorkflowGraph = {
+			nodes: [...graph.nodes, { id: 'm', name: 'M', type: 'v1-node' }],
+			edges: [
+				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'm', outputIndex: 0, inputIndex: 0 },
+				{ from: 'b', to: 'm', outputIndex: 0, inputIndex: 1 },
+			],
+		};
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{
+				loadStepOutputs: vi.fn().mockResolvedValue({
+					a: [[{ json: { from: 'a' } }]],
+					b: [[{ json: { from: 'b' } }]],
+				}),
+			},
+		);
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ graph: diamond }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		// one round trip for all predecessors
+		expect(stepStore.loadStepOutputs).toHaveBeenCalledTimes(1);
+		expect(stepStore.loadStepOutputs).toHaveBeenCalledWith('exec-1', ['a', 'b']);
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({ inputs: [[{ json: { from: 'a' } }], [{ json: { from: 'b' } }]] }),
+		);
+	});
+
+	it('leaves an input slot no edge feeds null', async () => {
+		const gapped: WorkflowGraph = {
+			nodes: [...graph.nodes, { id: 'm', name: 'M', type: 'v1-node' }],
+			edges: [
+				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'm', outputIndex: 0, inputIndex: 0 },
+				{ from: 'b', to: 'm', outputIndex: 0, inputIndex: 2 },
+			],
+		};
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{
+				loadStepOutputs: vi.fn().mockResolvedValue({
+					a: [[{ json: { from: 'a' } }]],
+					b: [[{ json: { from: 'b' } }]],
+				}),
+			},
+		);
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ graph: gapped }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputs: [[{ json: { from: 'a' } }], null, [{ json: { from: 'b' } }]],
+			}),
+		);
+	});
+
+	it('feeds two input slots from one predecessor wired to both', async () => {
+		const doubled: WorkflowGraph = {
+			nodes: [...graph.nodes, { id: 'm', name: 'M', type: 'v1-node' }],
+			edges: [
+				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'm', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'm', outputIndex: 0, inputIndex: 1 },
+			],
+		};
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{ loadStepOutputs: vi.fn().mockResolvedValue({ a: [[{ json: { from: 'a' } }]] }) },
+		);
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ graph: doubled }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(stepStore.loadStepOutputs).toHaveBeenCalledWith('exec-1', ['a']);
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputs: [[{ json: { from: 'a' } }], [{ json: { from: 'a' } }]],
+			}),
+		);
+	});
+
 	it('fails the step when the executor produces more than one output slot', async () => {
 		// A single-wired If passes graph validation but still emits two slots —
 		// this guard is where branch selection gets rejected until it exists.
@@ -200,26 +305,27 @@ describe('StepReadyHandler', () => {
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-b', [null]);
 	});
 
-	it('throws when a predecessor row carries more than one output slot', async () => {
-		// the write-time guard makes this unreachable; reaching it means the store
-		// and this handler disagree, so nothing is recorded
+	it('reads the slot the edge names from a predecessor row carrying more slots', async () => {
+		// write-time guards keep rows single-slot today; the read side doesn't
+		// re-enforce that, it just takes the edge's slot
 		const stepStore = makeStepStore(
 			{ id: 'step-b', nodeId: 'b' },
-			{ loadStepOutputs: vi.fn().mockResolvedValue({ a: [[{ json: {} }], [{ json: {} }]] }) },
+			{
+				loadStepOutputs: vi
+					.fn()
+					.mockResolvedValue({ a: [[{ json: { slot: 0 } }], [{ json: { slot: 1 } }]] }),
+			},
 		);
 		const executor = makeExecutor();
 		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
 			v1StepExecutor: executor,
 		});
 
-		await expect(handler.handle({ ...event, stepId: 'step-b' })).rejects.toMatchObject({
-			name: 'UnexpectedError',
-			message: expect.stringContaining('more than one output slot') as string,
-		});
+		await handler.handle({ ...event, stepId: 'step-b' });
 
-		expect(executor.execute).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).not.toHaveBeenCalled();
-		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({ inputs: [[{ json: { slot: 0 } }]] }),
+		);
 	});
 
 	it('throws, running nothing, when the predecessor step has no completed outputs', async () => {
@@ -440,34 +546,19 @@ describe('StepReadyHandler', () => {
 	 */
 	it.each([
 		{
-			reason: 'more than one edge feeds it (fan-in)',
+			reason: 'two edges feed the same input slot',
 			stepId: 'step-b',
 			steps: () => makeStepStore({ id: 'step-b', nodeId: 'b' }),
 			execution: () =>
 				makeExecutionStore({
 					graph: {
 						nodes: graph.nodes,
-						// second input into b makes it a fan-in
-						edges: [...graph.edges, { from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 1 }],
+						// both a and the trigger feed b's slot 0
+						edges: [...graph.edges, { from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 }],
 					},
 				}),
 			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnexpectedError', message: 'incoming edges' },
-		},
-		{
-			reason: 'one node feeds it through two edges',
-			stepId: 'step-b',
-			steps: () => makeStepStore({ id: 'step-b', nodeId: 'b' }),
-			execution: () =>
-				makeExecutionStore({
-					graph: {
-						nodes: graph.nodes,
-						// 'a' connected to b twice still counts per edge, not per node
-						edges: [...graph.edges, { from: 'a', to: 'b', outputIndex: 1, inputIndex: 1 }],
-					},
-				}),
-			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnexpectedError', message: 'incoming edges' },
+			expected: { name: 'UnexpectedError', message: 'input slot' },
 		},
 		{
 			reason: "its edge leaves the predecessor's second output",
@@ -479,13 +570,13 @@ describe('StepReadyHandler', () => {
 						nodes: graph.nodes,
 						edges: [
 							graph.edges[0],
-							// slot routing beyond 0→0 is rejected at graph validation
+							// output slots beyond 0 are rejected at graph validation
 							{ from: 'a', to: 'b', outputIndex: 1, inputIndex: 0 },
 						],
 					},
 				}),
 			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnexpectedError', message: 'slot 0' },
+			expected: { name: 'UnexpectedError', message: 'output slot' },
 		},
 		{
 			reason: 'its node has no predecessor in the graph',

@@ -1872,15 +1872,12 @@ export class InstanceAiAdapterService {
 					// Fallback for legacy credentials: oauthTokenData is blanked by
 					// redaction, so we need unredacted access here only.
 					const raw = await credentialsService.decrypt(credential, true);
-					const tokenData = raw.oauthTokenData;
-					if (tokenData && typeof tokenData === 'object') {
-						const { OauthService } = await import('@/oauth/oauth.service.js');
-						const identifier = OauthService.extractAccountIdentifier(
-							tokenData as Record<string, unknown>,
-						);
-						if (identifier) {
-							return { accountIdentifier: mask(identifier) };
-						}
+					const { extractAccountIdentifierFromData } = await import(
+						'@/oauth/account-identifier.js'
+					);
+					const identifier = extractAccountIdentifierFromData(raw);
+					if (identifier) {
+						return { accountIdentifier: mask(identifier) };
 					}
 
 					return { accountIdentifier: undefined };

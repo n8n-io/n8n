@@ -194,6 +194,13 @@ export function useCredentialOAuth() {
 		);
 	}
 
+	function showPopupBlockedError(): void {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.title'),
+		);
+	}
+
 	function openOAuthPopup(url: string, signal?: AbortSignal): Window | null {
 		const params =
 			'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
@@ -217,11 +224,26 @@ export function useCredentialOAuth() {
 	/**
 	 * Authorize OAuth credentials by opening a popup and listening for callback.
 	 * Returns true if OAuth was successful, false if cancelled or failed.
+	 *
+	 * Must be called synchronously from the click handler (or be given a popup
+	 * that was opened synchronously from it, see `preopenedPopup`).
 	 */
 	async function authorize(
 		credential: ICredentialsResponse,
 		signal?: AbortSignal,
+		preopenedPopup?: Window,
 	): Promise<boolean> {
+		// window.open must run within the click's transient user activation:
+		// opening after the network round trips below gets the popup blocked on
+		// slow connections (Chrome expires activation after ~5s) and in stricter
+		// browsers (Safari) regardless of timing. Open a blank window now and
+		// navigate it once the authorization URL is known.
+		const popup = preopenedPopup ?? openOAuthPopup('about:blank', signal);
+		if (!popup) {
+			showPopupBlockedError();
+			return false;
+		}
+
 		// Token presence in credential data can only confirm the flow for fixed
 		// credentials that had no token before the popup opened: a reconnect's old
 		// token would read as an immediate false success, and end-user
@@ -231,20 +253,18 @@ export function useCredentialOAuth() {
 
 		const urlResult = await getOAuthAuthorizationUrl(credential);
 		if (!urlResult.ok) {
+			popup.close();
 			if (urlResult.error === 'no-url') showOAuthUrlError();
 			return false;
 		}
 
 		if (!isValidHttpUrl(urlResult.result)) {
+			popup.close();
 			showOAuthUrlError();
 			return false;
 		}
 
-		const popup = openOAuthPopup(urlResult.result, signal);
-		if (!popup) {
-			showOAuthUrlError();
-			return false;
-		}
+		popup.location.href = urlResult.result;
 
 		let outcome = await waitForOAuthCallback({
 			popup,
@@ -301,6 +321,18 @@ export function useCredentialOAuth() {
 			return null;
 		}
 
+		const controller = new AbortController();
+		oauthAbortController.value = controller;
+
+		// Opened before the credential-creation round trips so it stays within
+		// the click's transient user activation (see authorize).
+		const popup = openOAuthPopup('about:blank', controller.signal);
+		if (!popup) {
+			showPopupBlockedError();
+			oauthAbortController.value = null;
+			return null;
+		}
+
 		const data: ICredentialDataDecryptedObject = {};
 		const allowedHttpRequestDomainsProperty = credentialType.properties.find(
 			(prop) => prop.name === 'allowedHttpRequestDomains',
@@ -333,15 +365,15 @@ export function useCredentialOAuth() {
 				workflow_id: workflowsStore.workflowId,
 			});
 		} catch (error) {
+			popup.close();
+			oauthAbortController.value = null;
 			toast.showError(error, i18n.baseText('nodeCredentials.showMessage.title'));
 			return null;
 		}
 
-		const controller = new AbortController();
-		oauthAbortController.value = controller;
 		pendingCredentialId.value = credential.id;
 
-		const success = await authorize(credential, controller.signal);
+		const success = await authorize(credential, controller.signal, popup);
 
 		oauthAbortController.value = null;
 		pendingCredentialId.value = null;

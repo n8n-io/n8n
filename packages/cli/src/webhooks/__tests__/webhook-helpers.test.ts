@@ -4,6 +4,7 @@ import type express from 'express';
 import {
 	BinaryDataService,
 	ErrorReporter,
+	ExecutionContextService,
 	getHtmlSandboxCSP,
 	isWebhookHtmlSandboxingDisabled,
 } from 'n8n-core';
@@ -58,6 +59,8 @@ import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
+import type { ProtectedResource } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -1075,18 +1078,23 @@ describe('getWebhookErrorMessage', () => {
 	});
 });
 
+// Shared by the two `executeWebhook` blocks below: `mockInstance` overwrites the
+// container binding, so registering these per-describe would leave the first block
+// holding a mock the code under test no longer resolves.
+const ownershipService = mockInstance(OwnershipService);
+const webhookService = mockInstance(WebhookService);
+const workflowRunner = mockInstance(WorkflowRunner);
+const activeExecutions = mockInstance(ActiveExecutions);
+const resourceRegistry = mockInstance(ProtectedResourceRegistry);
+const executionContextService = mockInstance(ExecutionContextService);
+mockInstance(AuthService);
+mockInstance(EventService);
+mockInstance(WorkflowStatisticsService);
+
+const WORKFLOW_ID = 'wf-1';
+const EXECUTION_ID = 'exec-1';
+
 describe('executeWebhook credential-status gate', () => {
-	const ownershipService = mockInstance(OwnershipService);
-	const webhookService = mockInstance(WebhookService);
-	const workflowRunner = mockInstance(WorkflowRunner);
-	const activeExecutions = mockInstance(ActiveExecutions);
-	mockInstance(AuthService);
-	mockInstance(EventService);
-	mockInstance(WorkflowStatisticsService);
-
-	const WORKFLOW_ID = 'wf-1';
-	const EXECUTION_ID = 'exec-1';
-
 	const missingGateResult: CredentialCheckResult = {
 		readyToExecute: false,
 		credentials: [
@@ -1279,5 +1287,139 @@ describe('executeWebhook credential-status gate', () => {
 			}),
 		);
 		expect(workflowRunner.run).not.toHaveBeenCalled();
+	});
+});
+
+describe('executeWebhook establishTriggerIdentity', () => {
+	const RESOURCE_URL = 'https://n8n.test/webhook-test/abc?method=POST';
+	const GRANT = { audiences: [RESOURCE_URL], executeAccessWorkflowId: WORKFLOW_ID };
+
+	const resourceWithoutGrant: ProtectedResource = {
+		id: `workflow-webhook-test:${WORKFLOW_ID}:abc`,
+		getResourceUrl: () => RESOURCE_URL,
+		getAudiences: () => [RESOURCE_URL],
+		scopes: [],
+		authorize: async () => true,
+	};
+
+	const resourceWithGrant: ProtectedResource = { ...resourceWithoutGrant, getGrant: () => GRANT };
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
+		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
+		executionContextService.buildTriggerIdentityCredentials.mockResolvedValue('sealed-context');
+		// `establishExecutionContext` runs the hook pass over the seeded stack.
+		executionContextService.augmentExecutionContextWithHooks.mockImplementation(
+			async (_workflow, _startItem, context) => ({ context, triggerItems: null }),
+		);
+	});
+
+	/**
+	 * Drives `executeWebhook` for an `n8nOAuth2` Webhook node whose `webhook()` seeds the
+	 * run with the caller it just authenticated — what `n8nOAuth2Auth` plus
+	 * `context.establishTriggerIdentity` do in the node.
+	 */
+	const runWithTriggerIdentity = async (resource: ProtectedResource | undefined) => {
+		resourceRegistry.getByResourceUrl.mockResolvedValue(resource);
+
+		const additionalData = {
+			webhookWaitingBaseUrl: 'https://n8n.test/webhook-waiting',
+			formWaitingBaseUrl: 'https://n8n.test/form-waiting',
+		} as unknown as IWorkflowExecuteAdditionalData;
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		webhookService.runWebhook.mockImplementation(async (_workflow, _webhookData, _node, data) => {
+			await data.establishTriggerIdentity!('caller-token', RESOURCE_URL);
+			return { workflowData: [[{ json: {} }]] };
+		});
+
+		const workflowStartNode = mock<INode>({
+			name: 'Webhook',
+			type: WEBHOOK_NODE_TYPE,
+			typeVersion: 2,
+			parameters: { authentication: 'n8nOAuth2' },
+		});
+
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			name: 'Test Workflow',
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'webhook' } })),
+			},
+			expression: {
+				getSimpleParameterValue: vi.fn().mockReturnValue('onReceived'),
+				getComplexParameterValue: vi.fn().mockReturnValue('firstEntryJson'),
+			},
+		});
+
+		await executeWebhook(
+			workflow,
+			{
+				webhookDescription: { name: 'default' },
+				workflowId: WORKFLOW_ID,
+			} as unknown as IWebhookData,
+			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
+			workflowStartNode,
+			'manual',
+			undefined,
+			undefined,
+			undefined,
+			mock<WebhookRequest>({ method: 'POST', contentType: undefined }),
+			mock<express.Response>({ headersSent: false }),
+			vi.fn(),
+		);
+
+		return additionalData;
+	};
+
+	it('seals the resource grant, so the run can still verify itself once the trigger is gone', async () => {
+		const additionalData = await runWithTriggerIdentity(resourceWithGrant);
+
+		expect(resourceRegistry.getByResourceUrl).toHaveBeenCalledWith(RESOURCE_URL);
+		expect(executionContextService.buildTriggerIdentityCredentials).toHaveBeenCalledWith(
+			'caller-token',
+			RESOURCE_URL,
+			GRANT,
+		);
+		expect(additionalData.encryptedRunnerIdentity).toBe('sealed-context');
+	});
+
+	it('hands the sealed context to the runner, so it survives the queue hop', async () => {
+		await runWithTriggerIdentity(resourceWithGrant);
+
+		const [runData] = workflowRunner.run.mock.calls[0];
+
+		// Both the field the worker reads and the context persisted with the execution.
+		expect(runData.encryptedRunnerIdentity).toBe('sealed-context');
+		expect(runData.executionData?.executionData?.runtimeData?.credentials).toBe('sealed-context');
+		expect(runData.executionData?.resultData.error).toBeUndefined();
+	});
+
+	it('seals no grant for a resource whose gate cannot be expressed as one', async () => {
+		await runWithTriggerIdentity(resourceWithoutGrant);
+
+		expect(executionContextService.buildTriggerIdentityCredentials).toHaveBeenCalledWith(
+			'caller-token',
+			RESOURCE_URL,
+			undefined,
+		);
+	});
+
+	it('seals no grant when the resource has already stopped resolving', async () => {
+		await runWithTriggerIdentity(undefined);
+
+		expect(executionContextService.buildTriggerIdentityCredentials).toHaveBeenCalledWith(
+			'caller-token',
+			RESOURCE_URL,
+			undefined,
+		);
 	});
 });
