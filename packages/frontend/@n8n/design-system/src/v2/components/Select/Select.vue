@@ -15,7 +15,16 @@ import {
 	useForwardProps,
 } from 'reka-ui';
 import type { AcceptableValue } from 'reka-ui';
-import { computed, nextTick, ref, useAttrs, useCssModule, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	getCurrentInstance,
+	nextTick,
+	ref,
+	useAttrs,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
@@ -64,6 +73,12 @@ const props = withDefaults(defineProps<SelectProps<M>>(), {
 });
 const emit = defineEmits<SelectEmits<M>>();
 defineSlots<SelectSlots<M>>();
+
+const vnodeProps = getCurrentInstance()?.vnode.props ?? {};
+const isModelControlled = 'modelValue' in vnodeProps || 'model-value' in vnodeProps;
+const internalValue = ref<SelectModelValue<M> | undefined>(props.defaultValue);
+
+const rootModelValue = computed(() => (isModelControlled ? props.modelValue : internalValue.value));
 
 const forwardedRootProps = useForwardProps(
 	reactivePick(props, 'open', 'defaultOpen', 'disabled', 'required', 'multiple'),
@@ -354,22 +369,17 @@ const visibleItems = computed(() => {
 
 const hasSelectableItems = computed(() => visibleItems.value.some(isOptionItem));
 
-const showClearButton = computed(() => {
-	if (!props.clearable || props.disabled) {
-		return false;
-	}
-
-	const value = props.modelValue;
-	if (value === undefined || value === null || value === '') {
-		return false;
-	}
-
+function hasValue(value: unknown): boolean {
 	if (Array.isArray(value)) {
 		return value.length > 0;
 	}
 
-	return true;
-});
+	return value !== undefined && value !== null && value !== '';
+}
+
+function showClearButton(value: unknown): boolean {
+	return Boolean(props.clearable && !props.disabled && hasValue(value));
+}
 
 function resolvedPlaceholder() {
 	return props.placeholder ?? t('nds.select.placeholder');
@@ -391,14 +401,22 @@ function isModelValue(value: unknown): value is SelectModelValue<M> {
 	return isSelectValue(value);
 }
 
+function setSelectedValue(value: SelectModelValue<M> | undefined) {
+	if (!isModelControlled) {
+		internalValue.value = value;
+	}
+
+	emit('update:modelValue', value);
+}
+
 function onClear() {
 	if (props.multiple) {
 		const empty: unknown = [];
 		if (isModelValue(empty)) {
-			emit('update:modelValue', empty);
+			setSelectedValue(empty);
 		}
 	} else {
-		emit('update:modelValue', undefined);
+		setSelectedValue(undefined);
 	}
 
 	emit('clear');
@@ -409,7 +427,7 @@ function handleModelValueUpdate(value: AcceptableValue | AcceptableValue[]) {
 		return;
 	}
 
-	emit('update:modelValue', value);
+	setSelectedValue(value);
 }
 
 function slotModelValue(value: AcceptableValue | AcceptableValue[] | null | undefined) {
@@ -454,8 +472,8 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	<SelectRoot
 		v-slot="{ open: isMenuOpen, modelValue: selectedValue }"
 		v-bind="rootBind()"
-		:default-value="defaultValue"
-		:model-value="modelValue"
+		:default-value="isModelControlled ? defaultValue : undefined"
+		:model-value="rootModelValue"
 		@update:model-value="handleModelValueUpdate"
 		@update:open="handleOpenUpdate"
 	>
@@ -481,7 +499,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				</slot>
 			</RSelectValue>
 			<button
-				v-if="showClearButton"
+				v-if="showClearButton(selectedValue)"
 				type="button"
 				data-test-id="select-clear"
 				:class="$style.clearButton"

@@ -847,6 +847,7 @@ describe('v2/components/Select', () => {
 	describe('clearable', () => {
 		test.each([
 			[{ modelValue: 'Option 1', clearable: true }, true],
+			[{ defaultValue: 'Option 1', clearable: true }, true],
 			[{ clearable: true }, false],
 			[{ modelValue: 'Option 1', clearable: true, disabled: true }, false],
 		] as const)('clear button visibility %#', (props, visible) => {
@@ -886,6 +887,32 @@ describe('v2/components/Select', () => {
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([undefined]);
 				expect(wrapper.emitted('clear')).toBeTruthy();
+			});
+		});
+
+		it('should clear an uncontrolled defaultValue', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+					],
+					defaultValue: 'Option 1',
+					clearable: true,
+					placeholder: 'Choose an option',
+				},
+			});
+
+			const trigger = wrapper.getByTestId('select-trigger');
+			expect(trigger).toHaveTextContent('Option 1');
+
+			await userEvent.click(wrapper.getByRole('button', { name: 'Clear selection' }));
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([undefined]);
+				expect(wrapper.emitted('clear')).toBeTruthy();
+				expect(trigger).toHaveTextContent('Choose an option');
+				expect(wrapper.queryByRole('button', { name: 'Clear selection' })).not.toBeInTheDocument();
 			});
 		});
 
