@@ -488,7 +488,11 @@ defineExpose({
 			data-test-id="workflow-import-input"
 			@change="handleFileImport()"
 		/>
-		<WorkflowProductionChecklist v-if="!isNewWorkflow" ref="productionChecklist" hide-trigger />
+		<!-- The zero-size anchor pins the checklist popover (start-aligned, no offset)
+		 to the canvas top-left corner, 16px in from the header's bottom-left edge. -->
+		<span :class="$style.checklistAnchor">
+			<WorkflowProductionChecklist v-if="!isNewWorkflow" ref="productionChecklist" hide-trigger />
+		</span>
 		<N8nActionDropdown
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
@@ -505,6 +509,11 @@ defineExpose({
 }
 .group {
 	display: flex;
+}
+.checklistAnchor {
+	position: absolute;
+	top: calc(100% + var(--spacing--sm));
+	left: var(--spacing--sm);
 }
 .hiddenInput {
 	display: none;
