@@ -16,7 +16,11 @@ import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
-import type { AgentContinueLoadedEvent, AgentJsonConfig } from '../types';
+import type {
+	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
+	AgentJsonConfig,
+} from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { TOOL_CALL_STATE } from '../constants';
@@ -54,7 +58,7 @@ const emit = defineEmits<{
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
-	'send-to-assistant': [executionId?: string];
+	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
 }>();
 
 const locale = useI18n();

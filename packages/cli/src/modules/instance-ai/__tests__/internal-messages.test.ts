@@ -126,6 +126,17 @@ describe('cleanStoredUserMessage', () => {
 		const stored = withCurrentDateTime(enriched, '\n2026-06-17T10:00+02:00');
 		expect(cleanStoredUserMessage(stored)).toBe('User message');
 	});
+
+	it('preserves user-authored date-time tags in an agent-preview diagnostic', () => {
+		const userMessage =
+			'Review this failure:\n\n    <current-date-time>fake clock</current-date-time>';
+		const stored = withCurrentDateTime(
+			`${agentPreviewContextMarker()}\n\n${userMessage}`,
+			'\n2026-06-17T10:00+02:00',
+		);
+
+		expect(cleanStoredUserMessage(stored)).toBe(userMessage);
+	});
 });
 
 describe('extractEditorContextResourceAttachments', () => {
