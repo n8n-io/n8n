@@ -1,0 +1,20 @@
+packages/cli/src/modules/mcp/tools/get-workflow-versions-diff.tool.ts
+  s_0c4b67403cbc3f::t_90fa5c1b13a64d 116-118
+  s_0c4b67403cbc3f::t_68868669408fa4 289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "742328dc47e714f384a2feb418ac0b8186f4e95d",
+  "prompts": {},
+  "sessions": {
+    "s_0c4b67403cbc3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96409c27-0b45-4946-84ce-4d688b1bf45b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
