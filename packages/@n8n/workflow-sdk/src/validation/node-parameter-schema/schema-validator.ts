@@ -397,16 +397,49 @@ function collectIssuesFromBestPath(unionErrors: Array<{ issues: ZodIssue[] }>): 
 }
 
 /**
- * Recursively collect ALL discriminator values from all union variants.
- * Used when a discriminator is missing to show all valid options.
+ * Discriminators from outermost to innermost. An `operation` is chosen within a
+ * `resource`, so a variant for a different resource offers different operations.
+ */
+const DISCRIMINATOR_ORDER = ['mode', 'resource', 'operation'];
+
+function discriminatorRank(path: string): number {
+	return DISCRIMINATOR_ORDER.findIndex((field) => path.endsWith(field));
+}
+
+/**
+ * Whether a union variant already failed on a discriminator that outranks `rank`.
+ *
+ * When listing the operations valid for `resource: "lead"`, the `account` variant
+ * describes a different resource, so its operations are not valid answers. Zod
+ * still reports them, because a failing object surfaces an issue per key.
+ */
+function failsHigherLevelDiscriminator(issues: ZodIssue[], rank: number): boolean {
+	return issues.some((iss) => {
+		if (iss.code !== 'invalid_literal') return false;
+		const otherRank = discriminatorRank(iss.path.join('.'));
+		return otherRank !== -1 && otherRank < rank;
+	});
+}
+
+/**
+ * Recursively collect ALL discriminator values from the union variants that are
+ * reachable given the discriminators already supplied. Used to list valid options
+ * for a discriminator that is missing or invalid.
  */
 function collectAllDiscriminatorValues(
 	unionErrors: Array<{ issues: ZodIssue[] }>,
 	discriminatorPath: string,
 ): unknown[] {
 	const values: unknown[] = [];
+	const rank = discriminatorRank(discriminatorPath);
 
 	for (const unionError of unionErrors) {
+		// Nested unions surface the resource literal one level down, so this check
+		// applies at every level rather than only at the top.
+		if (rank !== -1 && failsHigherLevelDiscriminator(unionError.issues, rank)) {
+			continue;
+		}
+
 		for (const iss of unionError.issues) {
 			if (iss.code === 'invalid_literal' && iss.path.join('.') === discriminatorPath) {
 				values.push((iss as { expected?: unknown }).expected);
@@ -459,10 +492,14 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 				if (literalIssues.length > 0) {
 					const receivedValue = (literalIssues[0] as { received?: unknown }).received;
 
-					// For missing discriminators, collect ALL valid values from ALL variants
+					// Collect ALL valid values from ALL variants, not just the best-matching
+					// one — otherwise a node with 12 resources reports only the first.
+					// The best-path literals are a fallback for schemas whose variants
+					// don't surface an issue at this exact path.
+					const allValues = collectAllDiscriminatorValues(unionErrors, path);
 					const expectedValues =
-						receivedValue === undefined
-							? collectAllDiscriminatorValues(unionErrors, path)
+						allValues.length > 0
+							? allValues
 							: [...new Set(literalIssues.map((i) => (i as { expected?: unknown }).expected))];
 
 					const expectedStr = expectedValues.map((v) => `"${String(v)}"`).join(', ');
