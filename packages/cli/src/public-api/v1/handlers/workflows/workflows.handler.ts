@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
@@ -12,7 +11,6 @@ import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -37,10 +35,6 @@ const handleError = (error: unknown) => {
 	}
 	throw error;
 };
-
-function areWorkflowTagsEnabled(): boolean {
-	return !Container.get(GlobalConfig).tags.disabled;
-}
 
 type WorkflowHandlers = {
 	createWorkflow: PublicAPIEndpoint<WorkflowRequest.Create>;
