@@ -15,7 +15,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
-import { keyRangeToDays } from './insights.constants';
 import { InsightsService } from './insights.service';
 
 @RestController('/insights')
@@ -27,13 +26,14 @@ export class InsightsController {
 	async getInsightsSummary(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Query query: InsightsDateFilterDto = { dateRange: 'week' },
+		@Query query: InsightsDateFilterDto = {},
 	): Promise<InsightsSummary> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsSummary({
 			startDate,
 			endDate,
+			timeZone,
 			projectId: query.projectId,
 		});
 	}
@@ -42,19 +42,21 @@ export class InsightsController {
 	@GlobalScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
 	async getInsightsByWorkflow(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsByWorkflow({
+			user: req.user,
 			skip: query.skip,
 			take: query.take,
 			sortBy: query.sortBy,
 			projectId: query.projectId,
 			startDate,
 			endDate,
+			timeZone,
 		});
 	}
 
@@ -66,7 +68,7 @@ export class InsightsController {
 		_res: Response,
 		@Query query: InsightsDateFilterDto,
 	): Promise<InsightsByTime[]> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
 		// Cast to full insights by time type
 		// as the service returns all types by default
@@ -74,6 +76,7 @@ export class InsightsController {
 			projectId: query.projectId,
 			startDate,
 			endDate,
+			timeZone,
 		})) as InsightsByTime[];
 	}
 
@@ -88,7 +91,7 @@ export class InsightsController {
 		_res: Response,
 		@Query query: InsightsDateFilterDto,
 	): Promise<RestrictedInsightsByTime[]> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
 		// Cast to restricted insights by time type
 		// as the service returns only time saved data
@@ -97,26 +100,15 @@ export class InsightsController {
 			projectId: query.projectId,
 			startDate,
 			endDate,
+			timeZone,
 		})) as RestrictedInsightsByTime[];
 	}
 
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
-		// For backward compatibility, skip validation
-		// when dateRange is provided the new `startDate` and `endDate` query are ignored
-		if (query.dateRange) {
-			return;
-		}
-
-		const inThePast = (date?: Date) => !date || date <= new Date();
-		const dateInThePastSchema = z.coerce
-			.date()
-			.optional()
-			.refine(inThePast, { message: 'must be in the past' });
-
 		const schema = z
 			.object({
-				startDate: dateInThePastSchema,
-				endDate: dateInThePastSchema,
+				startDate: z.coerce.date().optional(),
+				endDate: z.coerce.date().optional(),
 			})
 			.refine(
 				(data) => {
@@ -140,11 +132,12 @@ export class InsightsController {
 	private prepareDateFilters(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto): {
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	} {
 		this.validateQueryDates(query);
-		const { startDate, endDate } = this.getSanitizedDateFilters(query);
+		const { startDate, endDate, timeZone } = this.getSanitizedDateFilters(query);
 		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
-		return { startDate, endDate };
+		return { startDate, endDate, timeZone };
 	}
 
 	/**
@@ -154,29 +147,20 @@ export class InsightsController {
 	private getSanitizedDateFilters(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto): {
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	} {
 		const today = new Date();
-
-		// For backward compatibility, if dateRange is provided it will take precedence over startDate and endDate
-		if (query.dateRange) {
-			const maxAgeInDays = keyRangeToDays[query.dateRange];
-			return {
-				startDate:
-					maxAgeInDays === 1
-						? DateTime.now().startOf('day').toJSDate()
-						: DateTime.now().minus({ days: maxAgeInDays }).toJSDate(),
-				endDate: today,
-			};
-		}
+		const timeZone = query.timeZone;
 
 		if (!query.startDate) {
 			return {
 				startDate: DateTime.now().minus({ days: 7 }).toJSDate(),
 				endDate: today,
+				timeZone,
 			};
 		}
 
-		return { startDate: query.startDate, endDate: query.endDate ?? today };
+		return { startDate: query.startDate, endDate: query.endDate ?? today, timeZone };
 	}
 
 	private checkDatesFiltersAgainstLicense(dateFilters: { startDate: Date; endDate: Date }) {

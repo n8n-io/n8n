@@ -1,9 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { INode, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
@@ -31,8 +31,13 @@ describe('SubworkflowPolicyChecker', () => {
 		urlService,
 	);
 
-	afterEach(() => {
-		jest.restoreAllMocks();
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.restoreAllMocks();
+		ownershipService.getWorkflowProjectCached.mockReset();
+		ownershipService.getPersonalProjectOwnerCached.mockReset();
+		accessService.hasReadAccess.mockReset();
+		urlService.getInstanceBaseUrl.mockReset();
 	});
 
 	describe('no caller policy', () => {

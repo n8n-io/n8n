@@ -12,6 +12,10 @@ const commonDescription: INodeProperties = {
 	description:
 		'Python code to execute.<br><br>Tip: You can use built-in methods and variables like <code>_today</code> for dates and <code>_jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/code/builtin/">Learn more</a>.',
 	noDataExpression: true,
+	builderHint: {
+		propertyHint:
+			'The sandbox has NO network access: requests, urllib, httpx and other HTTP libraries are unavailable and fail at runtime. NEVER make HTTP requests here — use the HTTP Request node and process its output in this node instead.',
+	},
 };
 
 const PRINT_INSTRUCTION =
@@ -37,23 +41,12 @@ export const pythonCodeDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: PRINT_INSTRUCTION,
+		displayName: `${PRINT_INSTRUCTION}<br><br>The Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.`,
 		name: 'notice',
 		type: 'notice',
 		displayOptions: {
 			show: {
-				language: ['python'],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: `${PRINT_INSTRUCTION}<br><br>The native Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.`,
-		name: 'notice',
-		type: 'notice',
-		displayOptions: {
-			show: {
-				language: ['pythonNative'],
+				language: ['python', 'pythonNative'],
 			},
 		},
 		default: '',

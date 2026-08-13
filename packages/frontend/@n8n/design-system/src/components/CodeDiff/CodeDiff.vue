@@ -97,9 +97,9 @@ const diffs = computed(() => {
 					{{ diff.type === 'normal' ? diff.ln2 : diff.type === 'add' ? diff.ln : '' }}
 				</div>
 				<div :class="[$style[diff.type], $style.diffContent]">
-					<span v-if="diff.type === 'add'">&nbsp;+&nbsp;</span>
-					<span v-else-if="diff.type === 'del'">&nbsp;-&nbsp;</span>
-					<span v-else>&nbsp;&nbsp;&nbsp;</span>
+					<span :class="$style.indicator">{{
+						diff.type === 'add' ? '+' : diff.type === 'del' ? '-' : ''
+					}}</span>
 					<span>
 						{{ diff.content }}
 					</span>
@@ -113,8 +113,8 @@ const diffs = computed(() => {
 			</div>
 			<div v-else-if="replaced">
 				<N8nButton
-					type="secondary"
-					size="mini"
+					variant="subtle"
+					size="xsmall"
 					icon="undo-2"
 					data-test-id="undo-replace-button"
 					@click="() => emit('undo')"
@@ -128,8 +128,8 @@ const diffs = computed(() => {
 			</div>
 			<N8nButton
 				v-else
-				:type="replacing ? 'secondary' : 'primary'"
-				size="mini"
+				:variant="replacing ? 'subtle' : 'solid'"
+				size="xsmall"
 				icon="refresh-cw"
 				data-test-id="replace-code-button"
 				:disabled="!content || streaming"
@@ -167,7 +167,7 @@ const diffs = computed(() => {
 }
 
 .diffSection {
-	overflow: scroll;
+	overflow: auto;
 	border-top: var(--border);
 	border-bottom: var(--border);
 	max-height: 218px; // 12 lines
@@ -194,17 +194,24 @@ const diffs = computed(() => {
 }
 
 .add {
-	color: var(--color--success);
-	background-color: var(--color--success--tint-4);
+	color: var(--diff--color--new);
+	background-color: var(--diff--color--new--faint);
 }
 
 .del {
-	color: var(--color--danger);
-	background-color: var(--color--danger--tint-4);
+	color: var(--diff--color--deleted);
+	background-color: var(--diff--color--deleted--faint);
 }
 
 .normal {
-	background-color: var(--color--foreground--tint-2);
+	background-color: var(--color--background);
+}
+
+.indicator {
+	min-width: 20px;
+	text-align: center;
+	opacity: 0.6;
+	user-select: none;
 }
 
 .actions {

@@ -14,6 +14,7 @@ import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import { URL } from 'url';
 
 import { awsApiRequestSOAP } from '../GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,13 +30,9 @@ export class AwsSqs implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Operation',
 				name: 'operation',

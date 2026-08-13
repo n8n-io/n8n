@@ -1,6 +1,6 @@
 import { Factory } from 'miragejs';
 import { faker } from '@faker-js/faker';
-import type { ICredentialsResponse } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 export const credentialFactory = Factory.extend<ICredentialsResponse>({
 	id(i: number) {

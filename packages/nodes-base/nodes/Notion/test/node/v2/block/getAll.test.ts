@@ -205,6 +205,144 @@ const API_RESPONSE = {
 				],
 			},
 		},
+		{
+			object: 'block',
+			id: 'aabbccdd-1234-5678-9012-abcdef123456',
+			parent: {
+				type: 'block_id',
+				block_id: '90e03468-f8aa-4576-95da-02ccad963040',
+			},
+			created_time: '2024-12-13T03:40:00.000Z',
+			last_edited_time: '2024-12-13T06:15:00.000Z',
+			created_by: {
+				object: 'user',
+				id: 'f215e49c-4677-40c0-9adc-87440d341324',
+			},
+			last_edited_by: {
+				object: 'user',
+				id: '88f72c1a-07ed-4bae-9fa0-231365d813d9',
+			},
+			has_children: true,
+			archived: false,
+			in_trash: false,
+			type: 'unsupported',
+		},
+	],
+	has_more: false,
+};
+
+const NESTED_BLOCKS_PARENT_RESPONSE = {
+	results: [
+		{
+			object: 'block',
+			id: '11110000-1111-1111-1111-111100001111',
+			parent: {
+				type: 'block_id',
+				block_id: 'aabb0000-aabb-0000-aabb-0000aabb0000',
+			},
+			created_time: '2023-11-23T10:42:00.000Z',
+			last_edited_time: '2024-12-13T03:35:00.000Z',
+			created_by: {
+				object: 'user',
+				id: '88f72c1a-07ed-4bae-9fa0-231365d813d9',
+			},
+			last_edited_by: {
+				object: 'user',
+				id: '88f72c1a-07ed-4bae-9fa0-231365d813d9',
+			},
+			has_children: true,
+			archived: false,
+			in_trash: false,
+			type: 'toggle',
+			toggle: {
+				color: 'default',
+				text: [
+					{
+						type: 'text',
+						text: { content: 'Toggle block', link: null },
+						annotations: {
+							bold: false,
+							italic: false,
+							strikethrough: false,
+							underline: false,
+							code: false,
+							color: 'default',
+						},
+						plain_text: 'Toggle block',
+						href: null,
+					},
+				],
+			},
+		},
+		{
+			object: 'block',
+			id: '33330000-3333-3333-3333-333300003333',
+			parent: {
+				type: 'block_id',
+				block_id: 'aabb0000-aabb-0000-aabb-0000aabb0000',
+			},
+			created_time: '2024-12-13T03:40:00.000Z',
+			last_edited_time: '2024-12-13T06:15:00.000Z',
+			created_by: {
+				object: 'user',
+				id: '88f72c1a-07ed-4bae-9fa0-231365d813d9',
+			},
+			last_edited_by: {
+				object: 'user',
+				id: '88f72c1a-07ed-4bae-9fa0-231365d813d9',
+			},
+			has_children: true,
+			archived: false,
+			in_trash: false,
+			type: 'unsupported',
+		},
+	],
+	has_more: false,
+};
+
+const TOGGLE_CHILDREN_RESPONSE = {
+	results: [
+		{
+			object: 'block',
+			id: '22220000-2222-2222-2222-222200002222',
+			parent: {
+				type: 'block_id',
+				block_id: '11110000-1111-1111-1111-111100001111',
+			},
+			created_time: '2023-11-23T10:42:00.000Z',
+			last_edited_time: '2024-12-13T03:35:00.000Z',
+			created_by: {
+				object: 'user',
+				id: '88f72c1a-07ed-4bae-9fa0-231365d813d9',
+			},
+			last_edited_by: {
+				object: 'user',
+				id: '88f72c1a-07ed-4bae-9fa0-231365d813d9',
+			},
+			has_children: false,
+			archived: false,
+			in_trash: false,
+			type: 'paragraph',
+			paragraph: {
+				color: 'default',
+				text: [
+					{
+						type: 'text',
+						text: { content: 'Nested paragraph', link: null },
+						annotations: {
+							bold: false,
+							italic: false,
+							strikethrough: false,
+							underline: false,
+							code: false,
+							color: 'default',
+						},
+						plain_text: 'Nested paragraph',
+						href: null,
+					},
+				],
+			},
+		},
 	],
 	has_more: false,
 };
@@ -216,5 +354,20 @@ describe('Test NotionV2, block => getAll', () => {
 
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['getAll.workflow.json'],
+	});
+});
+
+describe('Test NotionV2, block => getAll with nested blocks skips unsupported', () => {
+	nock('https://api.notion.com')
+		.get('/v1/blocks/aabb0000aabb0000aabb0000aabb0000/children')
+		.reply(200, NESTED_BLOCKS_PARENT_RESPONSE)
+		// Mock children for the toggle block - this SHOULD be fetched
+		.get('/v1/blocks/11110000-1111-1111-1111-111100001111/children')
+		.reply(200, TOGGLE_CHILDREN_RESPONSE);
+	// No mock for /v1/blocks/33330000-3333-3333-3333-333300003333/children
+	// If the code tries to fetch children of the unsupported block, nock will fail
+
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['getAllNestedBlocks.workflow.json'],
 	});
 });

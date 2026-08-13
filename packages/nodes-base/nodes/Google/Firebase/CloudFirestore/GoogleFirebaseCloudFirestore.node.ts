@@ -29,6 +29,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		version: [1, 1.1],
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Interact with Google Firebase - Cloud Firestore API',
+		schemaPath: 'Google/Firebase/CloudFirestore',
 		defaults: {
 			name: 'Google Cloud Firestore',
 		},

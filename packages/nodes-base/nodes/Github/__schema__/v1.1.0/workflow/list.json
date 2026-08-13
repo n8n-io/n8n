@@ -1,0 +1,47 @@
+{
+    "type": "object",
+    "properties": {
+        "total_count": {
+            "type": "integer"
+        },
+        "workflows": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "badge_url": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "html_url": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "node_id": {
+                        "type": "string"
+                    },
+                    "path": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

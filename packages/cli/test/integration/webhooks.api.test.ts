@@ -1,10 +1,13 @@
-import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import {
+	testDb,
+	mockInstance,
+	createActiveWorkflow,
+	deleteWorkflowAndWebhooks,
+} from '@n8n/backend-test-utils';
+import { type IWorkflowDb, type User, type WorkflowEntity } from '@n8n/db';
 import { readFileSync } from 'fs';
-import { mock } from 'jest-mock-extended';
 import {
 	type INode,
-	type IWorkflowBase,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -12,14 +15,14 @@ import {
 } from 'n8n-workflow';
 import { agent as testAgent } from 'supertest';
 
-import { NodeTypes } from '@/node-types';
-import { WebhookServer } from '@/webhooks/webhook-server';
-
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import { initActiveWorkflowManager } from './shared/utils';
 
-jest.unmock('node:fs');
+import { NodeTypes } from '@/node-types';
+import { WebhookServer } from '@/webhooks/webhook-server';
+
+vi.unmock('node:fs');
 
 class WebhookTestingNode implements INodeType {
 	description: INodeTypeDescription = {
@@ -66,12 +69,16 @@ class WebhookTestingNode implements INodeType {
 
 describe('Webhook API', () => {
 	const nodeInstance = new WebhookTestingNode();
-	const node = mock<INode>({
+	const node: INode = {
+		id: 'webhook-node-1',
 		name: 'Webhook',
 		type: nodeInstance.description.name,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
 		webhookId: '5ccef736-be16-4d10-b7fb-feed7a61ff22',
-	});
-	const workflowData = { active: true, nodes: [node] } as IWorkflowBase;
+	};
+	const workflowData = { active: true, nodes: [node] } as Partial<IWorkflowDb>;
 
 	const nodeTypes = mockInstance(NodeTypes);
 	nodeTypes.getByName.mockReturnValue(nodeInstance);
@@ -79,6 +86,8 @@ describe('Webhook API', () => {
 
 	let user: User;
 	let agent: SuperAgentTest;
+	let workflow: WorkflowEntity | undefined;
+	let activeWorkflowManager: Awaited<ReturnType<typeof initActiveWorkflowManager>> | undefined;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -91,8 +100,18 @@ describe('Webhook API', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowEntity']);
-		await createWorkflow(workflowData, user);
-		await initActiveWorkflowManager();
+		workflow = await createActiveWorkflow(workflowData, user);
+		activeWorkflowManager = await initActiveWorkflowManager();
+	});
+
+	afterEach(async () => {
+		// The manager is re-inited per test, so without this each run leaves its
+		// registrations live for the rest of the worker.
+		await activeWorkflowManager?.removeAll();
+		if (workflow) {
+			await deleteWorkflowAndWebhooks(workflow.id);
+		}
+		workflow = undefined;
 	});
 
 	afterAll(async () => {

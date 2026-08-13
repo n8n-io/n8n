@@ -4,6 +4,28 @@
         "_links": {
             "type": "object",
             "properties": {
+                "changePassword": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        },
+                        "method": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "changeRecoveryQuestion": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        },
+                        "method": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "deactivate": {
                     "type": "object",
                     "properties": {
@@ -15,7 +37,40 @@
                         }
                     }
                 },
+                "expirePassword": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        },
+                        "method": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "forgotPassword": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        },
+                        "method": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "reactivate": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        },
+                        "method": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "resetFactors": {
                     "type": "object",
                     "properties": {
                         "href": {
@@ -102,6 +157,12 @@
         "profile": {
             "type": "object",
             "properties": {
+                "department": {
+                    "type": "string"
+                },
+                "division": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -112,6 +173,15 @@
                     "type": "string"
                 },
                 "login": {
+                    "type": "string"
+                },
+                "manager": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "userType": {
                     "type": "string"
                 }
             }
@@ -128,5 +198,5 @@
             }
         }
     },
-    "version": 2
+    "version": 4
 }

@@ -2,7 +2,6 @@ import asyncio
 import logging
 import sys
 import platform
-from typing import Optional
 
 from src.constants import ERROR_WINDOWS_NOT_SUPPORTED
 from src.config.health_check_config import HealthCheckConfig
@@ -32,7 +31,7 @@ async def main():
         logger.error(f"Invalid health check configuration: {e}")
         sys.exit(1)
 
-    health_check_server: Optional["HealthCheckServer"] = None
+    health_check_server: "HealthCheckServer | None" = None
     if health_check_config.enabled:
         from src.health_check_server import HealthCheckServer
 

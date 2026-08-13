@@ -1,26 +1,28 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import type { ColumnInfo } from '../../v2/helpers/interfaces';
 import { getEnums, getEnumValues, getTableSchema } from '../../v2/helpers/utils';
 import { getMappingColumns } from '../../v2/methods/resourceMapping';
+import type * as _importType0 from '../../transport';
+import type * as _importType1 from '../../v2/helpers/utils';
 
-jest.mock('../../transport', () => {
-	const originalModule = jest.requireActual('../../transport');
+vi.mock('../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../transport');
 	return {
 		...originalModule,
-		configurePostgres: jest.fn(async () => ({ db: {} })),
+		configurePostgres: vi.fn(async () => ({ db: {} })),
 	};
 });
 
-jest.mock('../../v2/helpers/utils', () => {
-	const originalModule = jest.requireActual('../../v2/helpers/utils');
+vi.mock('../../v2/helpers/utils', async () => {
+	const originalModule = await vi.importActual<typeof _importType1>('../../v2/helpers/utils');
 	return {
 		...originalModule,
-		getEnums: jest.fn(() => new Map()),
-		getEnumValues: jest.fn(),
-		getTableSchema: jest.fn(),
+		getEnums: vi.fn(() => new Map()),
+		getEnumValues: vi.fn(),
+		getTableSchema: vi.fn(),
 	};
 });
 
@@ -50,7 +52,7 @@ describe('Postgres, resourceMapping', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	test.each([
@@ -182,14 +184,14 @@ describe('Postgres, resourceMapping', () => {
 			isEnum,
 			expectedOptions,
 		}) => {
-			jest.mocked(getTableSchema).mockResolvedValueOnce([columnData]);
+			vi.mocked(getTableSchema).mockResolvedValueOnce([columnData]);
 
 			// Mock enum data if this test case represents an enum
 			if (isEnum && columnData.udt_name) {
-				jest
-					.mocked(getEnums)
-					.mockResolvedValueOnce(new Map([[columnData.udt_name, ['active', 'inactive']]]));
-				jest.mocked(getEnumValues).mockReturnValueOnce([
+				vi.mocked(getEnums).mockResolvedValueOnce(
+					new Map([[columnData.udt_name, ['active', 'inactive']]]),
+				);
+				vi.mocked(getEnumValues).mockReturnValueOnce([
 					{ name: 'Active', value: 'active' },
 					{ name: 'Inactive', value: 'inactive' },
 				]);

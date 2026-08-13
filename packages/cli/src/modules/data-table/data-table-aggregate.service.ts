@@ -2,6 +2,7 @@ import type { ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -20,7 +21,12 @@ export class DataTableAggregateService {
 	async shutdown() {}
 
 	async getManyAndCount(user: User, options: ListDataTableQueryDto) {
+		if (hasGlobalScope(user, 'dataTable:listProject')) {
+			return await this.dataTableRepository.getManyAndCount(options);
+		}
+
 		const projects = await this.projectService.getProjectRelationsForUser(user);
+
 		let projectIds = projects.map((x) => x.projectId);
 		if (options.filter?.projectId) {
 			const mask = [options.filter?.projectId].flat();

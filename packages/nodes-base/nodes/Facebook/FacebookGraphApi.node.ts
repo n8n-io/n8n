@@ -28,9 +28,40 @@ export class FacebookGraphApi implements INodeType {
 			{
 				name: 'facebookGraphApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authType: ['accessToken'],
+					},
+				},
+			},
+			{
+				name: 'facebookGraphApiOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authType: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authType',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The authentication method to use',
+			},
 			{
 				displayName: 'Host URL',
 				name: 'hostUrl',
@@ -80,6 +111,14 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v25.0',
+						value: 'v25.0',
+					},
+					{
+						name: 'v24.0',
+						value: 'v24.0',
 					},
 					{
 						name: 'v23.0',
@@ -219,7 +258,8 @@ export class FacebookGraphApi implements INodeType {
 				},
 				default: false,
 				required: true,
-				description: 'Whether binary data should be sent as body',
+				hint: 'Page <code>/photos</code> and <code>/videos</code> edges accept binary uploads. Instagram container endpoints (e.g. <code>/media</code>) require <code>image_url</code> or <code>video_url</code> as Query Parameters instead.',
+				description: 'Whether to upload binary data as multipart/form-data',
 			},
 			{
 				displayName: 'Input Binary Field',
@@ -237,7 +277,7 @@ export class FacebookGraphApi implements INodeType {
 				},
 				hint: 'The name of the input binary field containing the file to be uploaded',
 				description:
-					'For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
+					'For Form-Data Multipart, multiple files can be provided in the format: <code>sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
 			},
 			{
 				displayName: 'Options',
@@ -330,7 +370,16 @@ export class FacebookGraphApi implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const graphApiCredentials = await this.getCredentials('facebookGraphApi');
+			const authType = this.getNodeParameter('authType', itemIndex, 'accessToken') as string;
+			const qs: IDataObject = {};
+
+			let graphApiAccessToken: string | undefined;
+			if (authType === 'accessToken') {
+				const graphApiCredentials = await this.getCredentials('facebookGraphApi');
+				graphApiAccessToken = graphApiCredentials.accessToken as string;
+				qs.access_token = graphApiAccessToken;
+			}
+			// OAuth2: token is injected automatically via requestWithAuthentication
 
 			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
 			const httpRequestMethod = this.getNodeParameter(
@@ -350,10 +399,6 @@ export class FacebookGraphApi implements INodeType {
 			if (edge) {
 				uri = `${uri}/${edge}`;
 			}
-
-			const qs: IDataObject = {
-				access_token: graphApiCredentials.accessToken,
-			};
 			const requestOptions: IRequestOptions = {
 				headers: {
 					accept: 'application/json,text/*;q=0.99',
@@ -433,10 +478,19 @@ export class FacebookGraphApi implements INodeType {
 
 			try {
 				// Now that the options are all set make the actual http request
-				response = await this.helpers.request(requestOptions);
+				if (authType === 'oAuth2') {
+					response = await this.helpers.requestWithAuthentication.call(
+						this,
+						'facebookGraphApiOAuth2Api',
+						requestOptions,
+					);
+				} else {
+					response = await this.helpers.request(requestOptions);
+				}
 			} catch (error) {
+				const apiError = new NodeApiError(this.getNode(), error as JsonObject);
 				if (!this.continueOnFail()) {
-					throw new NodeApiError(this.getNode(), error as JsonObject);
+					throw apiError;
 				}
 
 				let errorItem;
@@ -454,23 +508,36 @@ export class FacebookGraphApi implements INodeType {
 					// Unknown Graph API response, we'll dump everything in the response item
 					errorItem = error;
 				}
-				returnItems.push({ json: { ...errorItem } });
+				// Attach the error and pairedItem so the engine can route this item to
+				// the error output when "Continue (using error output)" is selected.
+				returnItems.push({
+					json: { ...errorItem },
+					error: apiError,
+					pairedItem: { item: itemIndex },
+				});
 
 				continue;
 			}
 
 			if (typeof response === 'string') {
+				const invalidJsonError = new NodeOperationError(
+					this.getNode(),
+					'Response body is not valid JSON.',
+					{ itemIndex },
+				);
 				if (!this.continueOnFail()) {
-					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.', {
-						itemIndex,
-					});
+					throw invalidJsonError;
 				}
 
-				returnItems.push({ json: { message: response } });
+				returnItems.push({
+					json: { message: response },
+					error: invalidJsonError,
+					pairedItem: { item: itemIndex },
+				});
 				continue;
 			}
 
-			returnItems.push({ json: response });
+			returnItems.push({ json: response, pairedItem: { item: itemIndex } });
 		}
 
 		return [returnItems];

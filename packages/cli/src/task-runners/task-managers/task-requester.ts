@@ -1,8 +1,9 @@
+import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
-import { isSerializedBuffer, toBuffer } from 'n8n-core';
-import { createResultOk, createResultError } from 'n8n-workflow';
+import { isSerializedBuffer, toBuffer, ErrorReporter } from 'n8n-core';
+import { createResultOk, createResultError, type Result } from '@n8n/utils/result';
 import type {
 	EnvProviderState,
 	IExecuteFunctions,
@@ -16,18 +17,19 @@ import type {
 	IExecuteData,
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
-	Result,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
+import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
+import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
 import { DataRequestResponseStripper } from './data-request-response-stripper';
 
 export type RequestAccept = (jobId: string) => void;
-export type RequestReject = (reason: string) => void;
+export type RequestReject = (reason: string | Error) => void;
 
 export type TaskAccept = (data: TaskResultData) => void;
 export type TaskReject = (error: unknown) => void;
@@ -49,9 +51,14 @@ interface ExecuteFunctionObject {
 	[name: string]: ((...args: unknown[]) => unknown) | ExecuteFunctionObject;
 }
 
+export type RunnerStatus = { available: true } | { available: false; reason?: string };
+
 @Service()
 export abstract class TaskRequester {
-	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
+	requestAcceptRejects: Map<
+		string,
+		{ accept: RequestAccept; reject: RequestReject; requestedAt: number }
+	> = new Map();
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
 
@@ -61,10 +68,24 @@ export abstract class TaskRequester {
 
 	private readonly executionIdsToTaskIds: Map<string, Set<string>> = new Map();
 
+	private readonly unavailableRunners: Map<string, string> = new Map();
+
 	constructor(
 		private readonly nodeTypes: NodeTypes,
 		private readonly eventService: EventService,
+		private readonly taskRunnersConfig: TaskRunnersConfig,
+		private readonly globalConfig: GlobalConfig,
+		protected readonly errorReporter: ErrorReporter,
 	) {}
+
+	setRunnerUnavailable(taskType: string, reason: string) {
+		this.unavailableRunners.set(taskType, reason);
+	}
+
+	getRunnerStatus(taskType: string): RunnerStatus {
+		const reason = this.unavailableRunners.get(taskType);
+		return reason ? { available: false, reason } : { available: true };
+	}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -118,6 +139,7 @@ export abstract class TaskRequester {
 			this.requestAcceptRejects.set(request.requestId, {
 				accept: resolve,
 				reject,
+				requestedAt: Date.now(),
 			});
 		});
 
@@ -220,7 +242,7 @@ export abstract class TaskRequester {
 
 		const acceptReject = this.taskAcceptRejects.get(taskId);
 		if (acceptReject) {
-			acceptReject.reject(new Error(`Task cancelled: ${reason}`));
+			acceptReject.reject(new TaskCancelledError(reason));
 			this.taskAcceptRejects.delete(taskId);
 		}
 	}
@@ -250,6 +272,9 @@ export abstract class TaskRequester {
 			case 'broker:taskerror':
 				this.taskError(message.taskId, message.error);
 				break;
+			case 'broker:requestexpired':
+				this.requestExpired(message.requestId);
+				break;
 			case 'broker:taskdatarequest':
 				this.sendTaskData(message.taskId, message.requestId, message.requestParams);
 				break;
@@ -273,6 +298,33 @@ export abstract class TaskRequester {
 		}
 
 		acceptReject.accept(taskId);
+		this.requestAcceptRejects.delete(requestId);
+	}
+
+	requestExpired(requestId: string) {
+		const acceptReject = this.requestAcceptRejects.get(requestId);
+		if (!acceptReject) return;
+
+		const elapsedSeconds = Math.round((Date.now() - acceptReject.requestedAt) / 1000);
+
+		const error = new TaskRequestTimeoutError({
+			elapsedSeconds,
+			isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
+		});
+
+		this.errorReporter.error('Task request timed out', {
+			extra: {
+				requestId,
+				elapsedSeconds,
+				timeout: this.taskRunnersConfig.taskRequestTimeout,
+				deploymentType: this.globalConfig.deployment.type,
+			},
+			tags: {
+				issue: 'task-runners-timeouts',
+			},
+		});
+
+		acceptReject.reject(error);
 		this.requestAcceptRejects.delete(requestId);
 	}
 
@@ -397,7 +449,7 @@ export abstract class TaskRequester {
 				}
 			}
 
-			const data = (await func.call(funcs, ...params)) as unknown;
+			const data = await func.call(funcs, ...params);
 
 			this.sendMessage({
 				type: 'requester:rpcresponse',

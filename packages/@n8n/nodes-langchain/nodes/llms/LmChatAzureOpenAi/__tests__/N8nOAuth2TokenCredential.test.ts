@@ -1,27 +1,37 @@
-import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { type ClientOAuth2Options } from '@n8n/client-oauth2';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { N8nOAuth2TokenCredential } from '../credentials/N8nOAuth2TokenCredential';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 
-// Mock ClientOAuth2
-jest.mock('@n8n/client-oauth2', () => {
-	return {
-		ClientOAuth2: jest.fn().mockImplementation(() => {
-			return {
-				credentials: {
-					getToken: jest.fn().mockResolvedValue({
-						data: {
-							access_token: 'fresh-test-token',
-							expires_on: 1234567890,
-						},
-					}),
-				},
-			};
-		}),
-	};
+const { MockClientOAuth2 } = vi.hoisted(() => {
+	class MockClientOAuth2 {
+		credentials: MockCredentialsFlow;
+
+		constructor(readonly options: ClientOAuth2Options) {
+			this.credentials = new MockCredentialsFlow();
+			MockClientOAuth2.init(options);
+		}
+
+		static init = vi.fn();
+	}
+
+	class MockCredentialsFlow {
+		getToken = vi.fn().mockResolvedValue({
+			data: {
+				access_token: 'fresh-test-token',
+				expires_on: 1234567890,
+			},
+		});
+	}
+
+	return { MockClientOAuth2, MockCredentialsFlow };
 });
+
+vi.mock('@n8n/client-oauth2', () => ({
+	ClientOAuth2: MockClientOAuth2,
+}));
 
 const mockNode: INode = {
 	id: '1',
@@ -63,7 +73,7 @@ describe('N8nOAuth2TokenCredential', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getToken', () => {
@@ -76,7 +86,7 @@ describe('N8nOAuth2TokenCredential', () => {
 				token: 'fresh-test-token',
 				expiresOnTimestamp: 1234567890,
 			});
-			expect(ClientOAuth2).toHaveBeenCalledWith(
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
 				expect.objectContaining({
 					clientId: mockCredential.clientId,
 					clientSecret: mockCredential.clientSecret,

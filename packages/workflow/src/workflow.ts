@@ -15,9 +15,8 @@ import {
 	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
 	STARTING_NODE_TYPES,
 } from './constants';
-import { UserError } from './errors';
-import { ApplicationError } from '@n8n/errors';
-import { Expression } from './expression';
+import { UnexpectedError, UserError } from './errors';
+import { WorkflowExpression } from './workflow-expression';
 import { getGlobalState } from './global-state';
 import type {
 	IConnections,
@@ -42,10 +41,7 @@ import * as NodeHelpers from './node-helpers';
 import { renameFormFields } from './node-parameters/rename-node-utils';
 import { applyAccessPatterns } from './node-reference-parser-utils';
 import * as ObservableObject from './observable-object';
-
-function dedupe<T>(arr: T[]): T[] {
-	return [...new Set(arr)];
-}
+import { dedupe } from './utils';
 
 export interface WorkflowParameters {
 	id?: string;
@@ -72,7 +68,7 @@ export class Workflow {
 
 	nodeTypes: INodeTypes;
 
-	expression: Expression;
+	expression: WorkflowExpression;
 
 	active: boolean;
 
@@ -134,7 +130,7 @@ export class Workflow {
 
 		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
-		this.expression = new Expression(this);
+		this.expression = new WorkflowExpression(this);
 	}
 
 	// Save nodes in workflow as object to be able to get the nodes easily by their name.
@@ -224,13 +220,13 @@ export class Workflow {
 			key = 'global';
 		} else if (type === 'node') {
 			if (node === undefined) {
-				throw new ApplicationError(
+				throw new UnexpectedError(
 					'The request data of context type "node" the node parameter has to be set!',
 				);
 			}
 			key = `node:${node.name}`;
 		} else {
-			throw new ApplicationError('Unknown context type. Only `global` and `node` are supported.', {
+			throw new UnexpectedError('Unknown context type. Only `global` and `node` are supported.', {
 				extra: { contextType: type },
 			});
 		}
@@ -498,6 +494,12 @@ export class Workflow {
 		checkedNodes?: string[],
 	): string[] {
 		const currentHighest: string[] = [];
+
+		if (!(nodeName in this.nodes)) {
+			// Node is not in the workflow
+			return currentHighest;
+		}
+
 		if (this.nodes[nodeName].disabled === false) {
 			// If the current node is not disabled itself is the highest
 			currentHighest.push(nodeName);
@@ -610,9 +612,8 @@ export class Workflow {
 		nodeName: string,
 		connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
-		checkedNodesIncoming?: string[],
 	): string[] {
-		return getConnectedNodes(connections, nodeName, connectionType, depth, checkedNodesIncoming);
+		return getConnectedNodes(connections, nodeName, connectionType, depth);
 	}
 
 	/**
@@ -728,7 +729,7 @@ export class Workflow {
 					nonMainNodesConnected.sort();
 					const returnNode = this.getNode(nonMainNodesConnected[0]);
 					if (!returnNode) {
-						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
+						throw new UnexpectedError(`Node "${nonMainNodesConnected[0]}" not found`);
 					}
 					return this.getParentMainInputNode(returnNode);
 				}

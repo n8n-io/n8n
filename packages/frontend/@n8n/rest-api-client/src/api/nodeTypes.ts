@@ -1,11 +1,13 @@
 import type {
 	ActionResultRequestDto,
 	CommunityNodeType,
+	GetNodeTypesByIdentifierRequestDto,
 	OptionsRequestDto,
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
 import type { INodeTranslationHeaders } from '@n8n/i18n';
+import { sleep } from '@n8n/utils/sleep';
 import axios from 'axios';
 import type {
 	INodeListSearchResult,
@@ -15,7 +17,6 @@ import type {
 	NodeParameterValueType,
 	ResourceMapperFields,
 } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
@@ -36,6 +37,26 @@ async function fetchNodeTypesJsonWithRetry(url: string, retries = 5, delay = 500
 
 export async function getNodeTypes(baseUrl: string) {
 	return await fetchNodeTypesJsonWithRetry(baseUrl + 'types/nodes.json');
+}
+
+export async function getNodeTypeVersions(baseUrl: string): Promise<string[]> {
+	return await fetchNodeTypesJsonWithRetry(baseUrl + 'types/node-versions.json');
+}
+
+/**
+ * Fetch specific node types by their identifier (name@version format)
+ * This is useful for incremental syncs where only missing node types need to be fetched
+ *
+ * @param context - The REST API context containing base URL and auth info
+ * @param identifiers - Array of node type identifiers in "name@version" format
+ * @returns Array of node type descriptions for the requested identifiers
+ */
+export async function getNodeTypesByIdentifier(
+	context: IRestApiContext,
+	identifiers: string[],
+): Promise<INodeTypeDescription[]> {
+	const body: GetNodeTypesByIdentifierRequestDto = { identifiers };
+	return await makeRestApiRequest(context, 'POST', '/node-types/by-identifier', body);
 }
 
 export async function fetchCommunityNodeTypes(

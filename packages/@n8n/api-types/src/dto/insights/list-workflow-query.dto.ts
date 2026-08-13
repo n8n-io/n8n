@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
-import { InsightsDateFilterDto } from './date-filter.dto';
+import { TimeZoneSchema } from '../../schemas/timezone.schema';
+import { Z } from '../../zod-class';
 import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
 
 export const MAX_ITEMS_PER_PAGE = 100;
@@ -36,12 +36,9 @@ const sortByValidator = z
 export class ListInsightsWorkflowQueryDto extends Z.class({
 	...paginationSchema,
 	take: createTakeValidator(MAX_ITEMS_PER_PAGE),
-	/**
-	 * @deprecated use startDate and endDate instead
-	 */
-	dateRange: InsightsDateFilterDto.shape.dateRange,
 	startDate: z.coerce.date().optional(),
 	endDate: z.coerce.date().optional(),
 	sortBy: sortByValidator,
 	projectId: z.string().optional(),
+	timeZone: TimeZoneSchema,
 }) {}

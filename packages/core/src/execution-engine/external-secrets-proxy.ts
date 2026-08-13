@@ -1,7 +1,6 @@
 import { Service } from '@n8n/di';
 
 export interface IExternalSecretsManager {
-	updateSecrets(): Promise<void>;
 	hasSecret(provider: string, name: string): boolean;
 	getSecret(provider: string, name: string): unknown;
 	getSecretNames(provider: string): string[];
@@ -15,10 +14,6 @@ export class ExternalSecretsProxy {
 
 	setManager(manager: IExternalSecretsManager) {
 		this.manager = manager;
-	}
-
-	async update() {
-		await this.manager?.updateSecrets();
 	}
 
 	getSecret(provider: string, name: string) {

@@ -1,68 +1,60 @@
-ARG NODE_VERSION=22.18.0
+ARG NODE_VERSION=24.18.1
 ARG N8N_VERSION=snapshot
-ARG LAUNCHER_VERSION=1.4.0
-ARG TARGETPLATFORM
 
-# ==============================================================================
-# STAGE 1: System Dependencies & Base Setup
-# ==============================================================================
-FROM n8nio/base:${NODE_VERSION} AS system-deps
+# The runtime base has no compiler, so this stage supplies one.
+# The digest pins node:24.18.1-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
+FROM node:24.18.1-alpine3.24@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3 AS toolchain
+RUN apk add --no-cache python3 make g++
 
-# ==============================================================================
-# STAGE 2: Application Artifact Processor
-# ==============================================================================
-FROM alpine:3.22.0 AS app-artifact-processor
+# Build isolated-vm in a separate stage. The only cache input is the module source.
+# Below `COPY ./compiled`, each application change starts a new compile.
+FROM toolchain AS native-builder
+# `node_modules/isolated-vm` is a pnpm symlink, so copy the target directory.
+# The wildcard tracks the version in the catalog.
+COPY ./compiled/node_modules/.pnpm/isolated-vm@*/node_modules/isolated-vm /build/isolated-vm
+WORKDIR /build/isolated-vm
+# node-gyp-build reads /etc/alpine-release to detect musl. DHI Alpine has no such file,
+# so the loader takes the glibc prebuild and crashes. Build from source instead.
+# Call node-gyp directly: `npm rebuild` starts two builds that conflict, and
+# `npx node-gyp` downloads a different version at build time.
+RUN rm -rf prebuilds && \
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release -j max
 
-COPY ./compiled /app/
+FROM toolchain AS builder
+COPY ./compiled /usr/local/lib/node_modules/n8n
+# Call node-gyp directly rather than `npm rebuild sqlite3`: sqlite3 is reachable through
+# several symlinks in the pnpm tree, and npm runs one install script per link
+# concurrently in the same store directory, where they collide on build/node_gyp_bins
+# and on each other's make output. npm's bundled node-gyp also fixes the toolchain
+# version to the pinned image digest instead of fetching it at build time.
+RUN cd /usr/local/lib/node_modules/n8n/node_modules/sqlite3 && \
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
+COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
+     /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build/Release/isolated_vm.node
+# node-gyp-build finds build/Release first. Delete the prebuilds to remove the glibc fallback.
+RUN rm -rf /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/prebuilds
 
-# ==============================================================================
-# STAGE 3: Task Runner Launcher
-# ==============================================================================
-FROM alpine:3.22.0 AS launcher-downloader
-ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION
-
-RUN set -e; \
-    case "$TARGETPLATFORM" in \
-        "linux/amd64") ARCH_NAME="amd64" ;; \
-        "linux/arm64") ARCH_NAME="arm64" ;; \
-        *) echo "Unsupported platform: $TARGETPLATFORM" && exit 1 ;; \
-    esac; \
-    mkdir /launcher-temp && cd /launcher-temp; \
-    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz"; \
-    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256"; \
-    echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256; \
-    sha256sum -c checksum.sha256; \
-    mkdir -p /launcher-bin; \
-    tar xzf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz -C /launcher-bin; \
-    cd / && rm -rf /launcher-temp
-
-# ==============================================================================
-# STAGE 4: Final Runtime Image
-# ==============================================================================
-FROM system-deps AS runtime
+# The digest pins n8nio/base:24.18.1 for amd64 and arm64. A separate workflow builds that
+# image, so a new base reaches this image only when you change the digest here.
+FROM n8nio/base:24.18.1@sha256:f7a23e449f093b8b203467919e969ca35d12ba959442aadc1f69bb174b160ad2
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
-ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
 ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
-COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
+COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
-COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
 
-RUN cd /usr/local/lib/node_modules/n8n && \
-		npm rebuild sqlite3 && \
-		ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+# The base keeps node in /usr/bin and has no /usr/local/bin. Make that directory for the symlink.
+RUN mkdir -p /usr/local/bin && \
+    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
-    chown -R node:node /home/node
-
-RUN cd /usr/local/lib/node_modules/n8n/node_modules/pdfjs-dist && npm install @napi-rs/canvas
+    chown -R node:node /home/node && \
+    rm -rf /root/.npm /tmp/*
 
 EXPOSE 5678/tcp
 USER node

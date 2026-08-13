@@ -33,6 +33,9 @@
         "LastModifiedDate": {
             "type": "string"
         },
+        "Name": {
+            "type": "string"
+        },
         "OwnerId": {
             "type": "string"
         },
@@ -40,5 +43,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

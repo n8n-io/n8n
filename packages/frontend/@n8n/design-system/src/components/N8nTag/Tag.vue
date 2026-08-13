@@ -2,15 +2,20 @@
 interface TagProps {
 	text: string;
 	clickable?: boolean;
+	size?: 'sm' | 'md' | 'lg';
 }
 defineOptions({ name: 'N8nTag' });
 withDefaults(defineProps<TagProps>(), {
 	clickable: true,
+	size: 'sm',
 });
 </script>
 
 <template>
-	<span :class="['n8n-tag', $style.tag, { [$style.clickable]: clickable }]" v-bind="$attrs">
+	<span
+		:class="['n8n-tag', $style.tag, $style[size], { [$style.clickable]: clickable }]"
+		v-bind="$attrs"
+	>
 		<slot v-if="$slots['tag']" name="tag" />
 		<span v-else>{{ text }}</span>
 	</span>
@@ -40,5 +45,23 @@ withDefaults(defineProps<TagProps>(), {
 			border-color: var(--tag--border-color--hover);
 		}
 	}
+}
+
+.sm {
+	--tag--height: var(--height--2xs);
+	--tag--padding: 0 var(--spacing--4xs);
+	--tag--font-size: var(--font-size--2xs);
+}
+
+.md {
+	--tag--height: var(--height--xs);
+	--tag--padding: var(--spacing--4xs) var(--spacing--2xs);
+	--tag--font-size: var(--font-size--xs);
+}
+
+.lg {
+	--tag--height: var(--height--sm);
+	--tag--padding: var(--spacing--4xs) var(--spacing--2xs);
+	--tag--font-size: var(--font-size--xs);
 }
 </style>

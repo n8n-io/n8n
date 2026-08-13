@@ -1,6 +1,7 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { SetupWorkflowCredentialsModal } from './components/SetupWorkflowCredentialsModal';
 
 /**
  * Page object for the Workflow Credential Setup Modal
@@ -8,26 +9,20 @@ import { BasePage } from './BasePage';
  * after skipping or partially completing it during template setup
  */
 export class WorkflowCredentialSetupModal extends BasePage {
-	/**
-	 * Get the workflow credential setup modal
-	 * @returns Locator for the modal element
-	 */
-	getModal(): Locator {
-		return this.page.getByTestId('setup-workflow-credentials-modal');
+	readonly modal = SetupWorkflowCredentialsModal.fromPage(this.page);
+
+	get container(): Locator {
+		return this.modal.getModal();
 	}
 
-	/**
-	 * Get the continue button in the modal
-	 * @returns Locator for the continue button
-	 */
 	getContinueButton(): Locator {
-		return this.page.getByTestId('continue-button');
+		return this.modal.getContinueButton();
 	}
 
 	/**
 	 * Click the continue button to close the modal
 	 */
 	async clickContinue(): Promise<void> {
-		await this.getContinueButton().click();
+		await this.modal.clickContinue();
 	}
 }

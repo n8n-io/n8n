@@ -10,11 +10,9 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getMetadataFiltersValues } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
-import { metadataFilterField } from '@utils/sharedFields';
+import { logWrapper, getMetadataFiltersValues, metadataFilterField } from '@n8n/ai-utilities';
 
-import { pineconeIndexSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { pineconeIndexSearch } from '../shared/methods/listSearch';
 import { pineconeIndexRLC } from '../shared/descriptions';
 
 // This node is deprecated. Use VectorStorePinecone instead.

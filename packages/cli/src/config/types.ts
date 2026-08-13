@@ -76,7 +76,6 @@ type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 type ExceptionPaths = {
 	'queue.bull.redis': RedisOptions;
 	processedDataManager: IProcessedDataConfig;
-	'userManagement.isInstanceOwnerSetUp': boolean;
 	'ui.banners.dismissed': string[] | undefined;
 	easyAIWorkflowOnboarded: boolean | undefined;
 };

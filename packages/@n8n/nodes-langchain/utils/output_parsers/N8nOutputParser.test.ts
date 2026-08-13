@@ -1,16 +1,17 @@
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { getOptionalOutputParser } from './N8nOutputParser';
 import type { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
 
 describe('getOptionalOutputParser', () => {
-	let mockContext: jest.Mocked<IExecuteFunctions>;
+	let mockContext: Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
 		mockContext = mock<IExecuteFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return undefined when hasOutputParser is false', async () => {

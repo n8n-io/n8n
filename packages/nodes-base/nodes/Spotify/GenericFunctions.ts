@@ -24,7 +24,6 @@ export async function spotifyApiRequest(
 	const options: IHttpRequestOptions = {
 		method,
 		headers: {
-			'User-Agent': 'n8n',
 			'Content-Type': 'text/plain',
 			Accept: ' application/json',
 		},

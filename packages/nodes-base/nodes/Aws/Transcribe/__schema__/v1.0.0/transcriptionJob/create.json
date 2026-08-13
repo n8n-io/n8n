@@ -1,14 +1,28 @@
 {
     "type": "object",
     "properties": {
+        "CreationTime": {
+            "type": "number"
+        },
         "IdentifyLanguage": {
             "type": "boolean"
+        },
+        "LanguageCode": {
+            "type": "string"
         },
         "Media": {
             "type": "object",
             "properties": {
                 "MediaFileUri": {
                     "type": "string"
+                }
+            }
+        },
+        "Settings": {
+            "type": "object",
+            "properties": {
+                "ChannelIdentification": {
+                    "type": "boolean"
                 }
             }
         },
@@ -22,5 +36,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

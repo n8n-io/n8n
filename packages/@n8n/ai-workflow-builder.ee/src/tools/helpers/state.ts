@@ -2,6 +2,7 @@ import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INode, IConnection } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../types/workflow';
+import { applyOperations } from '../../utils/operations-processor';
 import type { WorkflowState } from '../../workflow-state';
 
 /**
@@ -21,6 +22,27 @@ export function getWorkflowState(): typeof WorkflowState.State {
 export function getCurrentWorkflowFromTaskInput(): SimpleWorkflow {
 	const state = getWorkflowState();
 	return getCurrentWorkflow(state);
+}
+
+/**
+ * Get the effective workflow state including pending operations.
+ *
+ * Within a single agent turn, tools queue operations that are applied after all tools complete.
+ * This means read tools would see stale state if they just read workflowJSON directly.
+ * This function applies any pending operations to return the "effective" current state,
+ * so read tools see the result of writes made earlier in the same turn.
+ */
+export function getEffectiveWorkflow(): SimpleWorkflow {
+	const state = getWorkflowState();
+	const pending = state.workflowOperations;
+
+	if (!pending || pending.length === 0) {
+		return state.workflowJSON;
+	}
+
+	// Apply pending operations to get effective state
+	// Use structuredClone to avoid mutating the original state
+	return applyOperations(structuredClone(state.workflowJSON), pending);
 }
 
 /**
@@ -134,5 +156,18 @@ export function removeConnectionFromWorkflow(
 				targetInputIndex,
 			},
 		],
+	};
+}
+
+/**
+ * Rename a node in the workflow state
+ */
+export function renameNodeInWorkflow(
+	nodeId: string,
+	oldName: string,
+	newName: string,
+): Partial<typeof WorkflowState.State> {
+	return {
+		workflowOperations: [{ type: 'renameNode', nodeId, oldName, newName }],
 	};
 }

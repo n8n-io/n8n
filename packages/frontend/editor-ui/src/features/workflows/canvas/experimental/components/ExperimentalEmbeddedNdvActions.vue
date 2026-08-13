@@ -1,0 +1,40 @@
+<script setup lang="ts">
+import { N8nIconButton } from '@n8n/design-system';
+
+defineProps<{ isExpanded: boolean }>();
+
+const emit = defineEmits<{ openNdv: []; toggleExpand: [] }>();
+</script>
+
+<template>
+	<div :class="$style.actions">
+		<N8nIconButton
+			variant="ghost"
+			icon="expand"
+			size="xsmall"
+			icon-size="small"
+			aria-label="Open..."
+			@click.stop="emit('openNdv')"
+		/>
+		<N8nIconButton
+			variant="ghost"
+			:icon="isExpanded ? 'chevron-down' : 'chevron-up'"
+			size="xsmall"
+			icon-size="medium"
+			aria-label="Toggle expand"
+			@click.stop="emit('toggleExpand')"
+		/>
+	</div>
+</template>
+
+<style lang="scss" module>
+.actions {
+	display: flex;
+	align-items: center;
+	color: var(--color--text);
+
+	& > button {
+		color: var(--color--text--tint-1);
+	}
+}
+</style>

@@ -13,9 +13,19 @@ import type {
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { WebhookNotification, SubscriptionResponse } from './v2/helpers/types';
-import { createSubscription, getResourcePath } from './v2/helpers/utils-trigger';
+import {
+	createSubscription,
+	generateClientState,
+	getResourcePath,
+	verifyWebhook,
+} from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from './v2/transport';
+import {
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+	SERVICE_PRINCIPAL_AUTH,
+	SP_HIDE,
+} from './v2/transport';
 
 export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,6 +44,29 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			{
 				name: 'microsoftTeamsOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftTeamsOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: SERVICE_PRINCIPAL_AUTH,
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [SERVICE_PRINCIPAL_AUTH],
+					},
+				},
 			},
 		],
 		inputs: [],
@@ -47,6 +80,31 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Teams OAuth2',
+						value: 'microsoftTeamsOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+						description:
+							'Generic Microsoft Graph credential. Add the Teams change-notification scopes (e.g. ChannelMessage.Read.All, Chat.Read, Subscription.Read.All) and grant admin consent on the credential. See the docs for the full scope string.',
+					},
+					{
+						name: 'Service Principal (App-Only)',
+						value: SERVICE_PRINCIPAL_AUTH,
+						description:
+							'App-only access via a Microsoft Entra app registration. App-only Graph cannot subscribe to the chats of a signed-in user, so chat triggers are unavailable. Grant the relevant application permissions (e.g. ChannelMessage.Read.All) and admin consent on the credential.',
+					},
+				],
+				default: 'microsoftTeamsOAuth2Api',
+			},
 			{
 				displayName: 'Trigger On',
 				name: 'event',
@@ -82,6 +140,19 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				description: 'Select the event to trigger the workflow',
 			},
 			{
+				displayName:
+					'Chat triggers (New Chat, New Chat Message) are not available with the Service Principal credential. App-only Microsoft Graph cannot subscribe to the chats of a signed-in user; use an OAuth2 credential for chat triggers.',
+				name: 'chatTriggerServicePrincipalNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						event: ['newChat', 'newChatMessage'],
+						authentication: [SERVICE_PRINCIPAL_AUTH],
+					},
+				},
+			},
+			{
 				displayName: 'Watch All Teams',
 				name: 'watchAllTeams',
 				type: 'boolean',
@@ -90,6 +161,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: ['newChannel', 'newChannelMessage', 'newTeamMember'],
+					},
+					hide: {
+						...SP_HIDE,
 					},
 				},
 			},
@@ -135,7 +209,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: ['newChannel', 'newChannelMessage', 'newTeamMember'],
-						watchAllTeams: [false],
+						// `_cnd: { not: true }` matches both `false` and `undefined`. Under SP the
+						// watch-all toggle is hidden (SP_HIDE) and resolves to `undefined`; a plain
+						// `[false]` would not match, so this picker would wrongly disappear.
+						watchAllTeams: [{ _cnd: { not: true } }],
 					},
 				},
 			},
@@ -149,6 +226,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					show: {
 						event: ['newChannelMessage'],
 						watchAllTeams: [false],
+					},
+					hide: {
+						...SP_HIDE,
 					},
 				},
 			},
@@ -193,8 +273,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: ['newChannelMessage'],
-						watchAllTeams: [false],
-						watchAllChannels: [false],
+						// `_cnd: { not: true }` matches `false` and the `undefined` that the SP-hidden
+						// watch-all toggles resolve to, so the channel picker still renders under SP.
+						watchAllTeams: [{ _cnd: { not: true } }],
+						watchAllChannels: [{ _cnd: { not: true } }],
 					},
 				},
 			},
@@ -207,6 +289,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: ['newChatMessage'],
+					},
+					hide: {
+						...SP_HIDE,
 					},
 				},
 			},
@@ -252,6 +337,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					show: {
 						event: ['newChatMessage'],
 						watchAllChats: [false],
+					},
+					hide: {
+						...SP_HIDE,
 					},
 				},
 			},
@@ -319,13 +407,19 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					});
 				}
 
+				const clientState = generateClientState();
 				const resourcePaths = await getResourcePath.call(this, event);
 				const subscriptionIds: string[] = [];
 
 				if (Array.isArray(resourcePaths)) {
 					await Promise.all(
 						resourcePaths.map(async (resource) => {
-							const subscription = await createSubscription.call(this, webhookUrl, resource);
+							const subscription = await createSubscription.call(
+								this,
+								webhookUrl,
+								resource,
+								clientState,
+							);
 							subscriptionIds.push(subscription.id);
 							return subscription;
 						}),
@@ -333,10 +427,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 					webhookData.subscriptionIds = subscriptionIds;
 				} else {
-					const subscription = await createSubscription.call(this, webhookUrl, resourcePaths);
+					const subscription = await createSubscription.call(
+						this,
+						webhookUrl,
+						resourcePaths,
+						clientState,
+					);
 					webhookData.subscriptionIds = [subscription.id];
 				}
 
+				webhookData.webhookSecret = clientState;
 				return true;
 			},
 
@@ -366,6 +466,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					);
 
 					delete webhookData.subscriptionIds;
+					delete webhookData.webhookSecret;
 					return true;
 				} catch (error) {
 					return false;
@@ -380,7 +481,12 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 		// Handle Microsoft Graph validation request
 		if (req.query.validationToken) {
-			res.status(200).send(req.query.validationToken);
+			res.status(200).type('text/plain').send(req.query.validationToken);
+			return { noWebhookResponse: true };
+		}
+
+		if (!verifyWebhook.call(this)) {
+			res.status(401).send('Unauthorized').end();
 			return { noWebhookResponse: true };
 		}
 

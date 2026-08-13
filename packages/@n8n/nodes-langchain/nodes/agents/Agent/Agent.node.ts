@@ -10,7 +10,7 @@ export class Agent extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'AI Agent',
 			name: 'agent',
-			icon: 'fa:robot',
+			icon: 'node:ai-agent',
 			iconColor: 'black',
 			group: ['transform'],
 			description: 'Generates an action plan and executes it. Can use external tools.',
@@ -28,7 +28,98 @@ export class Agent extends VersionedNodeType {
 					],
 				},
 			},
-			defaultVersion: 3,
+			defaultVersion: 3.1,
+			builderHint: {
+				searchHint:
+					"Wire model/memory/tools/outputParser via the SDK `subnodes` config object using factory functions (`languageModel()`, `memory()`, `tool()`, `outputParser()`). Inside subnodes, reference upstream data with `nodeJson(triggerNode, 'path')`, not `$json` — subnodes do not share the main predecessor's item context.",
+				relatedNodes: [
+					{
+						nodeType: 'n8n-nodes-base.aggregate',
+						relationHint: 'Use to combine multiple items together before the agent',
+					},
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						relationHint:
+							'Attach for structured output; reference fields as $json.output.fieldName for use in subsequent nodes (conditions, storing data)',
+					},
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.agentTool',
+						relationHint: 'For multi-agent systems using orchestrator pattern',
+					},
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						relationHint:
+							'Required for conversational workflows - connect memory to every agent that needs to recall previous messages in the conversation',
+					},
+				],
+				extraTypeDefContent: [
+					{
+						content: `<patterns>
+<pattern title="Agent with model, memory, structured output parser">
+const chatTrigger = trigger({
+  type: '@n8n/n8n-nodes-langchain.chatTrigger',
+  version: 1.3,
+  config: {
+    name: 'Chat Trigger',
+    parameters: { public: false },
+    output: [{ sessionId: 'chat-session-id', chatInput: 'Hello' }]
+  }
+});
+
+const model = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'OpenAI Chat Model',
+    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
+    credentials: { openAiApi: { id: 'credId', name: 'OpenAI account' } }
+  }
+});
+
+const parser = outputParser({
+  type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+  version: 1.3,
+  config: {
+    name: 'Output Parser',
+    parameters: {
+      schemaType: 'fromJson',
+      jsonSchemaExample: '{ "score": 75, "tier": "hot" }'
+    }
+  }
+});
+
+const memoryNode = memory({
+  type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+  version: 1.3,
+  config: {
+    name: 'Conversation Memory',
+    parameters: {
+      sessionIdType: 'customKey',
+      sessionKey: nodeJson(chatTrigger, 'sessionId'),
+      contextWindowLength: 10
+    }
+  }
+});
+
+const agent = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'AI Agent',
+    parameters: {
+      promptType: 'define',
+      text: expr('{{ $json.prompt }}'),
+      hasOutputParser: true,
+      options: { systemMessage: 'You are an expert...' }
+    },
+    subnodes: { model, memory: memoryNode, outputParser: parser }
+  }
+});
+</pattern>
+</patterns>`,
+					},
+				],
+			},
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -45,7 +136,9 @@ export class Agent extends VersionedNodeType {
 			2: new AgentV2(baseDescription),
 			2.1: new AgentV2(baseDescription),
 			2.2: new AgentV2(baseDescription),
+			2.3: new AgentV2(baseDescription),
 			3: new AgentV3(baseDescription),
+			3.1: new AgentV3(baseDescription),
 			// IMPORTANT Reminder to update AgentTool
 		};
 

@@ -1,0 +1,56 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "mailEnabled": {
+            "type": "boolean"
+        },
+        "mailNickname": {
+            "type": "string"
+        },
+        "members": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "@odata.type": {
+                        "type": "string"
+                    },
+                    "accountEnabled": {
+                        "type": "boolean"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "securityIdentifier": {
+                        "type": "string"
+                    },
+                    "userPrincipalName": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "securityEnabled": {
+            "type": "boolean"
+        },
+        "securityIdentifier": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

@@ -4,25 +4,26 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
+import type { Mocked } from 'vitest';
 import type WebSocket from 'ws';
 
 import { WebSocketPush } from '@/push/websocket.push';
 
-jest.useFakeTimers();
+vi.useFakeTimers();
 
 class MockWebSocket extends EventEmitter {
 	isAlive = true;
 
-	ping = jest.fn();
+	ping = vi.fn();
 
-	send = jest.fn();
+	send = vi.fn();
 
-	terminate = jest.fn();
+	terminate = vi.fn();
 
-	close = jest.fn();
+	close = vi.fn();
 }
 
-const createMockWebSocket = () => new MockWebSocket() as unknown as jest.Mocked<WebSocket>;
+const createMockWebSocket = () => new MockWebSocket() as unknown as Mocked<WebSocket>;
 
 describe('WebSocketPush', () => {
 	const pushRef1 = 'test-session1';
@@ -47,7 +48,7 @@ describe('WebSocketPush', () => {
 	const mockWebSocket2 = createMockWebSocket();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		mockWebSocket1.removeAllListeners();
 		mockWebSocket2.removeAllListeners();
 	});
@@ -92,7 +93,7 @@ describe('WebSocketPush', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 
-		jest.runOnlyPendingTimers();
+		vi.runOnlyPendingTimers();
 
 		expect(mockWebSocket1.ping).toHaveBeenCalled();
 		expect(mockWebSocket2.ping).toHaveBeenCalled();
@@ -107,9 +108,36 @@ describe('WebSocketPush', () => {
 		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 	});
 
+	it('skips sending when user has no connections', () => {
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.sendToUsers(pushMessage, ['nonexistent-user']);
+
+		expect(mockWebSocket1.send).not.toHaveBeenCalled();
+	});
+
+	it('does not remove replaced connection when old connection closes', () => {
+		const oldSocket = createMockWebSocket();
+		const newSocket = createMockWebSocket();
+
+		webSocketPush.add(pushRef1, userId, oldSocket);
+		expect(webSocketPush.hasPushRef(pushRef1)).toBe(true);
+
+		// Second add with same pushRef replaces the connection and closes old one
+		webSocketPush.add(pushRef1, userId, newSocket);
+
+		// Old connection's close event fires — should NOT remove the new connection
+		oldSocket.emit('close');
+		expect(webSocketPush.hasPushRef(pushRef1)).toBe(true);
+
+		// New connection still works
+		webSocketPush.sendToOne(pushMessage, pushRef1);
+		expect(newSocket.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(oldSocket.send).not.toHaveBeenCalled();
+	});
+
 	it('emits message event when connection receives data', async () => {
-		jest.useRealTimers();
-		const mockOnMessageReceived = jest.fn();
+		vi.useRealTimers();
+		const mockOnMessageReceived = vi.fn();
 		webSocketPush.on('message', mockOnMessageReceived);
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
@@ -130,7 +158,7 @@ describe('WebSocketPush', () => {
 	});
 
 	it("emits doesn' emit message for client heartbeat", async () => {
-		const mockOnMessageReceived = jest.fn();
+		const mockOnMessageReceived = vi.fn();
 		webSocketPush.on('message', mockOnMessageReceived);
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);

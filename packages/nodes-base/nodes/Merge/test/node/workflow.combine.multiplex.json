@@ -11,21 +11,43 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {id: 1, data: 'a', input: 1},\n  {id: 2, data: 'b', input: 1},\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": "a",
+						"input": 1
+					},
+					{
+						"id": 2,
+						"data": "b",
+						"input": 1
+					}
+				]
 			},
 			"id": "263d9c7f-32d4-4112-b271-73d09b73809a",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1020, 220]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {id: 1, data: 'c', input: 2},\n  {id: 2, data: 'd', input: 2},\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": "c",
+						"input": 2
+					},
+					{
+						"id": 2,
+						"data": "d",
+						"input": 2
+					}
+				]
 			},
 			"id": "3defcf5a-ec5e-4d23-a1f6-a99b7362a241",
 			"name": "Code1",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1040, 540]
 		},

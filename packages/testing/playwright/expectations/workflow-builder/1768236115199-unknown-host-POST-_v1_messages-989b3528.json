@@ -1,0 +1,120 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "extract",
+						"description": "A function available to call.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"name": {
+									"type": "string",
+									"minLength": 10,
+									"maxLength": 128,
+									"description": "Name of the workflow based on the prompt"
+								}
+							},
+							"required": ["name"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"tool_choice": {
+					"type": "tool",
+					"name": "extract"
+				},
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "<role>\nBased on the initial user prompt, please generate a name for the workflow that captures its essence and purpose\n</role>\n\n<initial_prompt>\nBuild an n8n workflow that automatically generates YouTube chapter timestamps from video captions. Use the n8n chat trigger for me to enter the URL of the YouTube video. Use the YouTube Get a video node to get the video title, description, and existing metadata. Use the YouTube Captions API to download the transcript for the given video ID. Send the transcript to AI agent using Anthropic's Claude model. Prompt the model to identify topic shifts and return structured output in timestamp - chapter format. Append the generated chapter list to the existing video description. Use the YouTube Update a video node to update the video description. Respond back with the updates using the respond to chat node.\n</initial_prompt>\n\n<output_rules>\nThis name should be concise, descriptive, and suitable for a workflow that automates tasks related to the given prompt. The name should be in a format that is easy to read and understand. Do not include the word \"workflow\" in the name.\n</output_rules>"
+					}
+				]
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01IiwidGVtcGVyYXR1cmUiOjAsInN0cmVhbSI6ZmFsc2UsIm1heF90b2tlbnMiOjE2MDAwLCJ0b29scyI6W3sibmFtZSI6ImV4dHJhY3QiLCJkZXNjcmlwdGlvbiI6IkEgZnVuY3Rpb24gYXZhaWxhYmxlIHRvIGNhbGwuIiwiaW5wdXRfc2NoZW1hIjp7InR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7Im5hbWUiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTAsIm1heExlbmd0aCI6MTI4LCJkZXNjcmlwdGlvbiI6Ik5hbWUgb2YgdGhlIHdvcmtmbG93IGJhc2VkIG9uIHRoZSBwcm9tcHQifX0sInJlcXVpcmVkIjpbIm5hbWUiXSwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlLCIkc2NoZW1hIjoiaHR0cDovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC0wNy9zY2hlbWEjIn19XSwidG9vbF9jaG9pY2UiOnsidHlwZSI6InRvb2wiLCJuYW1lIjoiZXh0cmFjdCJ9LCJ0aGlua2luZyI6eyJ0eXBlIjoiZGlzYWJsZWQifSwibWVzc2FnZXMiOlt7InJvbGUiOiJ1c2VyIiwiY29udGVudCI6Ijxyb2xlPlxuQmFzZWQgb24gdGhlIGluaXRpYWwgdXNlciBwcm9tcHQsIHBsZWFzZSBnZW5lcmF0ZSBhIG5hbWUgZm9yIHRoZSB3b3JrZmxvdyB0aGF0IGNhcHR1cmVzIGl0cyBlc3NlbmNlIGFuZCBwdXJwb3NlXG48L3JvbGU+XG5cbjxpbml0aWFsX3Byb21wdD5cbkJ1aWxkIGFuIG44biB3b3JrZmxvdyB0aGF0IGF1dG9tYXRpY2FsbHkgZ2VuZXJhdGVzIFlvdVR1YmUgY2hhcHRlciB0aW1lc3RhbXBzIGZyb20gdmlkZW8gY2FwdGlvbnMuIFVzZSB0aGUgbjhuIGNoYXQgdHJpZ2dlciBmb3IgbWUgdG8gZW50ZXIgdGhlIFVSTCBvZiB0aGUgWW91VHViZSB2aWRlby4gVXNlIHRoZSBZb3VUdWJlIEdldCBhIHZpZGVvIG5vZGUgdG8gZ2V0IHRoZSB2aWRlbyB0aXRsZSwgZGVzY3JpcHRpb24sIGFuZCBleGlzdGluZyBtZXRhZGF0YS4gVXNlIHRoZSBZb3VUdWJlIENhcHRpb25zIEFQSSB0byBkb3dubG9hZCB0aGUgdHJhbnNjcmlwdCBmb3IgdGhlIGdpdmVuIHZpZGVvIElELiBTZW5kIHRoZSB0cmFuc2NyaXB0IHRvIEFJIGFnZW50IHVzaW5nIEFudGhyb3BpYydzIENsYXVkZSBtb2RlbC4gUHJvbXB0IHRoZSBtb2RlbCB0byBpZGVudGlmeSB0b3BpYyBzaGlmdHMgYW5kIHJldHVybiBzdHJ1Y3R1cmVkIG91dHB1dCBpbiB0aW1lc3RhbXAgLSBjaGFwdGVyIGZvcm1hdC4gQXBwZW5kIHRoZSBnZW5lcmF0ZWQgY2hhcHRlciBsaXN0IHRvIHRoZSBleGlzdGluZyB2aWRlbyBkZXNjcmlwdGlvbi4gVXNlIHRoZSBZb3VUdWJlIFVwZGF0ZSBhIHZpZGVvIG5vZGUgdG8gdXBkYXRlIHRoZSB2aWRlbyBkZXNjcmlwdGlvbi4gUmVzcG9uZCBiYWNrIHdpdGggdGhlIHVwZGF0ZXMgdXNpbmcgdGhlIHJlc3BvbmQgdG8gY2hhdCBub2RlLlxuPC9pbml0aWFsX3Byb21wdD5cblxuPG91dHB1dF9ydWxlcz5cblRoaXMgbmFtZSBzaG91bGQgYmUgY29uY2lzZSwgZGVzY3JpcHRpdmUsIGFuZCBzdWl0YWJsZSBmb3IgYSB3b3JrZmxvdyB0aGF0IGF1dG9tYXRlcyB0YXNrcyByZWxhdGVkIHRvIHRoZSBnaXZlbiBwcm9tcHQuIFRoZSBuYW1lIHNob3VsZCBiZSBpbiBhIGZvcm1hdCB0aGF0IGlzIGVhc3kgdG8gcmVhZCBhbmQgdW5kZXJzdGFuZC4gRG8gbm90IGluY2x1ZGUgdGhlIHdvcmQgXCJ3b3JrZmxvd1wiIGluIHRoZSBuYW1lLlxuPC9vdXRwdXRfcnVsZXM+In1dfQ=="
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["1916"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"request-id": ["req_011CX3pLit37ZZq59Hb2askd"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-01-12T16:41:45Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15499000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-01-12T16:41:45Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["499000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-01-12T16:41:45Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["15000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Mon, 12 Jan 2026 16:41:45 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["9bce1a5fe8342790-PRG"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01Nu38ya6N9u9FSX7FQR1T4E",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01Bo6nfKaFCWVf9y8iVqtyR3",
+						"name": "extract",
+						"input": {
+							"name": "YouTube Video Chapter Generator from Captions with AI"
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 950,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 42,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFOdTM4eWE2Tjl1OUZTWDdGUVIxVDRFIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUJvNm5mS2FGQ1dWZjl5OGlWcXR5UjMiLCJuYW1lIjoiZXh0cmFjdCIsImlucHV0Ijp7Im5hbWUiOiJZb3VUdWJlIFZpZGVvIENoYXB0ZXIgR2VuZXJhdG9yIGZyb20gQ2FwdGlvbnMgd2l0aCBBSSJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjk1MCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjQyLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCJ9fQ=="
+		},
+		"delay": {
+			"timeUnit": "MILLISECONDS",
+			"value": 2000
+		}
+	},
+	"id": "1768236115199-unknown-host-POST-_v1_messages-989b3528.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

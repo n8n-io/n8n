@@ -2,7 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { VeoResponse } from '../../helpers/interfaces';
-import { downloadFile } from '../../helpers/utils';
+import { downloadFile, getFilenameFromMimeType } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -130,6 +130,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const prompt = this.getNodeParameter('prompt', i, '') as string;
+	if (!prompt.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const returnAs = this.getNodeParameter('returnAs', i, 'video');
 	const options = this.getNodeParameter('options', i, {});
 	const binaryPropertyOutput = this.getNodeParameter(
@@ -188,7 +193,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 						key: credentials.apiKey as string,
 					},
 				);
-				const binaryData = await this.helpers.prepareBinaryData(fileContent, 'video.mp4', mimeType);
+				const fileName = getFilenameFromMimeType(mimeType, 'video', 'mp4');
+				const binaryData = await this.helpers.prepareBinaryData(fileContent, fileName, mimeType);
 				return {
 					binary: { [binaryPropertyOutput]: binaryData },
 					json: {

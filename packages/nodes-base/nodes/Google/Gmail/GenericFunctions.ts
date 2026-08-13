@@ -245,7 +245,6 @@ export async function encodeEmail(email: IEmail) {
 	// by default the bcc headers are deleted when the mail is built.
 	// So add keepBcc flag to override such behaviour. Only works when
 	// the flag is set after the compilation.
-	// @ts-expect-error - https://nodemailer.com/extras/mailcomposer/#bcc
 	mail.keepBcc = true;
 
 	const mailBody = await mail.build();
@@ -367,8 +366,8 @@ export function prepareQuery(
 		} else {
 			qs.q = `is:${qs.readStatus}`;
 		}
-		delete qs.readStatus;
 	}
+	delete qs.readStatus;
 
 	if (qs.receivedAfter) {
 		qs.q = prepareTimestamp(
@@ -402,7 +401,7 @@ export function prepareEmailsInput(
 	itemIndex: number,
 ) {
 	let emails = '';
-
+	input = String(input ?? '');
 	input.split(',').forEach((entry) => {
 		const email = entry.trim();
 
@@ -430,7 +429,7 @@ export function prepareEmailBody(
 	instanceId?: string,
 ) {
 	const emailType = this.getNodeParameter('emailType', itemIndex) as string;
-	let message = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	let message = String(this.getNodeParameter('message', itemIndex, '') ?? '').trim();
 
 	if (appendAttribution) {
 		const attributionText = 'This email was sent automatically with ';
@@ -473,7 +472,7 @@ export async function prepareEmailAttachments(
 
 	if (attachments && !isEmpty(attachments)) {
 		for (const { property } of attachments) {
-			for (const name of (property as string).split(',')) {
+			for (const name of String(property ?? '').split(',')) {
 				const binaryData = this.helpers.assertBinaryData(itemIndex, name);
 				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, name);
 

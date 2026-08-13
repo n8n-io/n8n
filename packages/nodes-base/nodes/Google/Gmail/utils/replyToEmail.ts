@@ -1,5 +1,6 @@
 import uniq from 'lodash/uniq';
 import { NodeOperationError, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
+import addressparser from 'nodemailer/lib/addressparser';
 
 import type { IEmail } from '@utils/sendAndWait/interfaces';
 
@@ -17,6 +18,7 @@ export async function replyToEmail(
 	gmailId: string,
 	options: IDataObject,
 	itemIndex: number,
+	nodeVersion: number,
 ) {
 	if (options.replyToSenderOnly && options.replyToRecipientsOnly) {
 		throw new NodeOperationError(
@@ -88,29 +90,32 @@ export async function replyToEmail(
 			? false
 			: (options.replyToRecipientsOnly as boolean);
 
-	const prepareEmailString = (email: string) => {
-		if (email.includes(emailAddress)) return;
-		if (email.includes('<') && email.includes('>')) {
-			to.push(email);
-		} else {
-			to.push(`<${email}>`);
+	// If the name contains an RFC 5322 special, wrap it in quotes and escape any
+	// embedded `"` or `\`; otherwise it can be used as-is.
+	const formatDisplayName = (name: string) =>
+		/["(),:;<>@[\]\\]/.test(name) ? `"${name.replace(/["\\]/g, '\\$&')}"` : name;
+
+	const addRecipients = (headerValue: string, excludeSelf: boolean) => {
+		for (const { address, name } of addressparser(headerValue, { flatten: true })) {
+			if (!address) continue;
+			if (excludeSelf && address.toLowerCase() === emailAddress.toLowerCase()) continue;
+			to.push(name ? `${formatDisplayName(name)} <${address}>` : `<${address}>`);
 		}
 	};
 
+	let replyToHeaderName = 'from';
+	if (nodeVersion >= 2.2 && payload.headers.some((h) => h.name.toLowerCase() === 'reply-to')) {
+		replyToHeaderName = 'reply-to';
+	}
+
 	for (const header of payload.headers) {
 		const headerName = (header.name || '').toLowerCase();
-		if (headerName === 'from' && !replyToRecipientsOnly) {
-			const from = header.value;
-			if (from.includes('<') && from.includes('>')) {
-				to.push(from);
-			} else {
-				to.push(`<${from}>`);
-			}
+		if (headerName === replyToHeaderName && !replyToRecipientsOnly) {
+			addRecipients(header.value, false);
 		}
 
 		if (headerName === 'to' && !replyToSenderOnly) {
-			const toEmails = header.value;
-			toEmails.split(',').forEach(prepareEmailString);
+			addRecipients(header.value, true);
 		}
 	}
 

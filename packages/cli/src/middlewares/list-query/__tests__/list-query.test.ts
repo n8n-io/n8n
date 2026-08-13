@@ -1,5 +1,6 @@
 import type { ListQueryDb } from '@n8n/db';
 import type { Response, NextFunction } from 'express';
+import type { MockInstance } from 'vitest';
 
 import { filterListQueryMiddleware } from '@/middlewares/list-query/filter';
 import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
@@ -12,19 +13,20 @@ import { sortByQueryMiddleware } from '../sort-by';
 describe('List query middleware', () => {
 	let mockReq: ListQuery.Request;
 	let mockRes: Response;
-	const nextFn: NextFunction = jest.fn();
+	const nextFn: NextFunction = vi.fn();
 	let args: [ListQuery.Request, Response, NextFunction];
 
-	let sendErrorResponse: jest.SpyInstance;
+	let sendErrorResponse: MockInstance;
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 
 		mockReq = { baseUrl: '/rest/workflows' } as ListQuery.Request;
-		mockRes = { status: () => ({ json: jest.fn() }) } as unknown as Response;
+		mockRes = { status: () => ({ json: vi.fn() }) } as unknown as Response;
 		args = [mockReq, mockRes, nextFn];
 
-		sendErrorResponse = jest.spyOn(ResponseHelper, 'sendErrorResponse');
+		sendErrorResponse = vi.spyOn(ResponseHelper, 'sendErrorResponse');
 	});
 
 	describe('Query filter', () => {
@@ -38,20 +40,20 @@ describe('List query middleware', () => {
 		});
 
 		test('should parse valid filter', async () => {
-			mockReq.query = { filter: '{ "name": "My Workflow" }' };
+			mockReq.query = { filter: '{ "query": "My Workflow" }' };
 
 			await filterListQueryMiddleware(...args);
 
-			expect(mockReq.listQueryOptions).toEqual({ filter: { name: 'My Workflow' } });
+			expect(mockReq.listQueryOptions).toEqual({ filter: { query: 'My Workflow' } });
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
 		test('should ignore invalid filter', async () => {
-			mockReq.query = { filter: '{ "name": "My Workflow", "foo": "bar" }' };
+			mockReq.query = { filter: '{ "query": "My Workflow", "foo": "bar" }' };
 
 			await filterListQueryMiddleware(...args);
 
-			expect(mockReq.listQueryOptions).toEqual({ filter: { name: 'My Workflow' } });
+			expect(mockReq.listQueryOptions).toEqual({ filter: { query: 'My Workflow' } });
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
@@ -64,7 +66,7 @@ describe('List query middleware', () => {
 		});
 
 		test('should throw on valid filter with invalid type', async () => {
-			mockReq.query = { filter: '{ "name" : 123 }' };
+			mockReq.query = { filter: '{ "query" : 123 }' };
 
 			await filterListQueryMiddleware(...args);
 
@@ -151,12 +153,12 @@ describe('List query middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should cap take at 50', async () => {
-			mockReq.query = { take: '51' };
+		test('should cap take at 100', async () => {
+			mockReq.query = { take: '101' };
 
 			await paginationListQueryMiddleware(...args);
 
-			expect(mockReq.listQueryOptions).toEqual({ skip: 0, take: 50 });
+			expect(mockReq.listQueryOptions).toEqual({ skip: 0, take: 100 });
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
@@ -257,27 +259,27 @@ describe('List query middleware', () => {
 
 	describe('Combinations', () => {
 		test('should combine filter with select', async () => {
-			mockReq.query = { filter: '{ "name": "My Workflow" }', select: '["name", "id"]' };
+			mockReq.query = { filter: '{ "query": "My Workflow" }', select: '["name", "id"]' };
 
 			await filterListQueryMiddleware(...args);
 			await selectListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toEqual({
 				select: { name: true, id: true },
-				filter: { name: 'My Workflow' },
+				filter: { query: 'My Workflow' },
 			});
 
 			expect(nextFn).toBeCalledTimes(2);
 		});
 
 		test('should combine filter with pagination options', async () => {
-			mockReq.query = { filter: '{ "name": "My Workflow" }', skip: '1', take: '2' };
+			mockReq.query = { filter: '{ "query": "My Workflow" }', skip: '1', take: '2' };
 
 			await filterListQueryMiddleware(...args);
 			await paginationListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toEqual({
-				filter: { name: 'My Workflow' },
+				filter: { query: 'My Workflow' },
 				skip: 1,
 				take: 2,
 			});

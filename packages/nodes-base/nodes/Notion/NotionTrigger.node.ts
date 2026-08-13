@@ -15,7 +15,44 @@ import {
 	idValidationRegexp,
 } from './shared/constants';
 import { notionApiRequest, simplifyObjects } from './shared/GenericFunctions';
-import { listSearch } from './shared/methods';
+import { listSearch as legacyListSearch } from './shared/methods';
+import { listSearch as dataSourceListSearch } from './v3/methods';
+import { notionApiRequestV3 } from './v3/transport';
+
+type NotionQueryResponse = {
+	results: IDataObject[];
+	has_more?: boolean;
+	next_cursor?: string | null;
+};
+
+type NotionQueryRequest = (body: IDataObject) => Promise<NotionQueryResponse>;
+
+function createQueryDatabaseRequest(ctx: IPollFunctions): NotionQueryRequest {
+	const nodeVersion = ctx.getNode().typeVersion;
+
+	if (nodeVersion >= 1.1) {
+		const dataSourceId = ctx.getNodeParameter('dataSourceId', '', {
+			extractValue: true,
+		}) as string;
+
+		return async (body) =>
+			(await notionApiRequestV3.call(
+				ctx,
+				'POST',
+				`/data_sources/${dataSourceId}/query`,
+				body,
+			)) as NotionQueryResponse;
+	}
+
+	const databaseId = ctx.getNodeParameter('databaseId', '', { extractValue: true }) as string;
+
+	return async (body) =>
+		(await notionApiRequest.call(ctx, 'POST', `/databases/${databaseId}/query`, body, {}, '', {
+			headers: {
+				'Notion-Version': '2022-02-22',
+			},
+		})) as NotionQueryResponse;
+}
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +60,8 @@ export class NotionTrigger implements INodeType {
 		name: 'notionTrigger',
 		icon: { light: 'file:notion.svg', dark: 'file:notion.dark.svg' },
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Starts the workflow when Notion events occur',
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
@@ -33,12 +71,42 @@ export class NotionTrigger implements INodeType {
 			{
 				name: 'notionApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['apiKey'],
+					},
+				},
+			},
+			{
+				name: 'notionOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiKey',
+			},
 			{
 				displayName: 'Event',
 				name: 'event',
@@ -58,7 +126,7 @@ export class NotionTrigger implements INodeType {
 			},
 			{
 				displayName:
-					'In Notion, make sure to <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
+					'In Notion, make sure to <a href="https://www.notion.com/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
 				name: 'notionNotice',
 				type: 'notice',
 				default: '',
@@ -85,7 +153,7 @@ export class NotionTrigger implements INodeType {
 						name: 'url',
 						type: 'string',
 						placeholder:
-							'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+							'https://www.notion.com/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
 						validation: [
 							{
 								type: 'regex',
@@ -118,15 +186,61 @@ export class NotionTrigger implements INodeType {
 							type: 'regex',
 							regex: idExtractionRegexp,
 						},
-						url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+						url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 					},
 				],
 				displayOptions: {
 					show: {
+						'@version': [1],
 						event: ['pageAddedToDatabase', 'pagedUpdatedInDatabase'],
 					},
 				},
 				description: 'The Notion Database to operate on',
+			},
+			{
+				displayName: 'Data Source',
+				name: 'dataSourceId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'Data Source',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Data Source...',
+						typeOptions: {
+							searchListMethod: 'getDataSources',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: idValidationRegexp,
+									errorMessage: 'Not a valid Notion Data Source ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: idExtractionRegexp,
+						},
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+						event: ['pageAddedToDatabase', 'pagedUpdatedInDatabase'],
+					},
+				},
+				description: 'The Notion Data Source to operate on',
 			},
 			{
 				displayName: 'Simplify',
@@ -145,32 +259,29 @@ export class NotionTrigger implements INodeType {
 	};
 
 	methods = {
-		listSearch,
+		listSearch: {
+			getDatabases: legacyListSearch.getDatabases,
+			getDataSources: dataSourceListSearch.getDataSources,
+		},
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
-		const databaseId = this.getNodeParameter('databaseId', '', { extractValue: true }) as string;
 		const event = this.getNodeParameter('event') as string;
 		const simple = this.getNodeParameter('simple') as boolean;
+		const queryDatabase = createQueryDatabaseRequest(this);
 
 		const lastTimeChecked = webhookData.lastTimeChecked
 			? moment(webhookData.lastTimeChecked as string)
 			: moment().set({ second: 0, millisecond: 0 }); // Notion timestamp accuracy is only down to the minute
 
 		// update lastTimeChecked to now
-		webhookData.lastTimeChecked = moment().set({ second: 0, millisecond: 0 });
+		webhookData.lastTimeChecked = moment().set({ second: 0, millisecond: 0 }).utc().format();
 
 		// because Notion timestamp accuracy is only down to the minute some duplicates can be fetch
 		const possibleDuplicates = (webhookData.possibleDuplicates as string[]) ?? [];
 
 		const sortProperty = event === 'pageAddedToDatabase' ? 'created_time' : 'last_edited_time';
-
-		const option: IDataObject = {
-			headers: {
-				'Notion-Version': '2022-02-22',
-			},
-		};
 
 		const body: IDataObject = {
 			page_size: 1,
@@ -195,15 +306,7 @@ export class NotionTrigger implements INodeType {
 		let hasMore = true;
 
 		//get last record
-		let { results: data } = await notionApiRequest.call(
-			this,
-			'POST',
-			`/databases/${databaseId}/query`,
-			body,
-			{},
-			'',
-			option,
-		);
+		let { results: data } = await queryDatabase(body);
 
 		if (this.getMode() === 'manual') {
 			if (simple) {
@@ -218,22 +321,15 @@ export class NotionTrigger implements INodeType {
 		if (Array.isArray(data) && data.length && Object.keys(data[0] as IDataObject).length !== 0) {
 			do {
 				body.page_size = 10;
-				const { results, has_more, next_cursor } = await notionApiRequest.call(
-					this,
-					'POST',
-					`/databases/${databaseId}/query`,
-					body,
-					{},
-					'',
-					option,
-				);
-				records.push(...(results as IDataObject[]));
-				hasMore = has_more;
-				if (next_cursor !== null) {
+				const { results, has_more, next_cursor } = await queryDatabase(body);
+				records.push(...results);
+				hasMore = has_more ?? false;
+				if (next_cursor !== undefined && next_cursor !== null) {
 					body.start_cursor = next_cursor;
 				}
 				// Only stop when we reach records strictly before last recorded time to be sure we catch records from the same minute
 			} while (
+				records.length > 0 &&
 				!moment(records[records.length - 1][sortProperty] as string).isBefore(lastTimeChecked) &&
 				hasMore
 			);

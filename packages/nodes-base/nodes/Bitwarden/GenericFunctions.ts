@@ -43,7 +43,6 @@ export async function bitwardenApiRequest(
 	const baseUrl = await getBaseUrl.call(this);
 	const options: IRequestOptions = {
 		headers: {
-			'user-agent': 'n8n',
 			Authorization: `Bearer ${token}`,
 			'Content-Type': 'application/json',
 		},

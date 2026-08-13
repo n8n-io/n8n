@@ -6,10 +6,16 @@
             "properties": {
                 "accessState": {
                     "type": "string"
+                },
+                "audience": {
+                    "type": "string"
                 }
             }
         },
         "createTime": {
+            "type": "string"
+        },
+        "customer": {
             "type": "string"
         },
         "displayName": {
@@ -35,6 +41,9 @@
                 "manageApps": {
                     "type": "object",
                     "properties": {
+                        "assistantManagersAllowed": {
+                            "type": "boolean"
+                        },
                         "managersAllowed": {
                             "type": "boolean"
                         },
@@ -46,6 +55,9 @@
                 "manageMembersAndGroups": {
                     "type": "object",
                     "properties": {
+                        "assistantManagersAllowed": {
+                            "type": "boolean"
+                        },
                         "managersAllowed": {
                             "type": "boolean"
                         },
@@ -57,6 +69,9 @@
                 "manageWebhooks": {
                     "type": "object",
                     "properties": {
+                        "assistantManagersAllowed": {
+                            "type": "boolean"
+                        },
                         "managersAllowed": {
                             "type": "boolean"
                         },
@@ -68,6 +83,9 @@
                 "modifySpaceDetails": {
                     "type": "object",
                     "properties": {
+                        "assistantManagersAllowed": {
+                            "type": "boolean"
+                        },
                         "managersAllowed": {
                             "type": "boolean"
                         },
@@ -79,6 +97,9 @@
                 "postMessages": {
                     "type": "object",
                     "properties": {
+                        "assistantManagersAllowed": {
+                            "type": "boolean"
+                        },
                         "managersAllowed": {
                             "type": "boolean"
                         },
@@ -90,6 +111,9 @@
                 "replyMessages": {
                     "type": "object",
                     "properties": {
+                        "assistantManagersAllowed": {
+                            "type": "boolean"
+                        },
                         "managersAllowed": {
                             "type": "boolean"
                         },
@@ -101,6 +125,9 @@
                 "toggleHistory": {
                     "type": "object",
                     "properties": {
+                        "assistantManagersAllowed": {
+                            "type": "boolean"
+                        },
                         "managersAllowed": {
                             "type": "boolean"
                         },
@@ -112,6 +139,9 @@
                 "useAtMentionAll": {
                     "type": "object",
                     "properties": {
+                        "assistantManagersAllowed": {
+                            "type": "boolean"
+                        },
                         "managersAllowed": {
                             "type": "boolean"
                         },
@@ -138,5 +168,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

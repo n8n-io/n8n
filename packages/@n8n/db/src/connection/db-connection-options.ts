@@ -2,16 +2,13 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
-import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
 import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
-import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
 import { UserError } from 'n8n-workflow';
 import type { TlsOptions } from 'node:tls';
 import path from 'path';
 
 import { entities } from '../entities';
-import { mysqlMigrations } from '../migrations/mysqldb';
 import { postgresMigrations } from '../migrations/postgresdb';
 import { sqliteMigrations } from '../migrations/sqlite';
 import { subscribers } from '../subscribers';
@@ -24,14 +21,13 @@ export class DbConnectionOptions {
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
-	getOverrides(dbType: 'postgresdb' | 'mysqldb') {
-		const dbConfig = this.config[dbType];
+	getPostgresOverrides() {
 		return {
-			database: dbConfig.database,
-			host: dbConfig.host,
-			port: dbConfig.port,
-			username: dbConfig.user,
-			password: dbConfig.password,
+			database: this.config.postgresdb.database,
+			host: this.config.postgresdb.host,
+			port: this.config.postgresdb.port,
+			username: this.config.postgresdb.user,
+			password: this.config.postgresdb.password,
 		};
 	}
 
@@ -42,9 +38,6 @@ export class DbConnectionOptions {
 				return this.getSqliteConnectionOptions();
 			case 'postgresdb':
 				return this.getPostgresConnectionOptions();
-			case 'mariadb':
-			case 'mysqldb':
-				return this.getMysqlConnectionOptions(dbType);
 			default:
 				throw new UserError('Database type currently not supported', { extra: { dbType } });
 		}
@@ -75,32 +68,20 @@ export class DbConnectionOptions {
 		};
 	}
 
-	private getSqliteConnectionOptions(): SqliteConnectionOptions | SqlitePooledConnectionOptions {
+	private getSqliteConnectionOptions(): SqlitePooledConnectionOptions {
 		const { sqlite: sqliteConfig } = this.config;
 		const { n8nFolder } = this.instanceSettingsConfig;
 
-		const commonOptions = {
+		return {
+			type: 'sqlite-pooled',
+			poolSize: sqliteConfig.poolSize,
+			enableWAL: true,
+			acquireTimeout: 60_000,
+			destroyTimeout: 5_000,
 			...this.getCommonOptions(),
 			database: path.resolve(n8nFolder, sqliteConfig.database),
 			migrations: sqliteMigrations,
 		};
-
-		if (sqliteConfig.poolSize > 0) {
-			return {
-				type: 'sqlite-pooled',
-				poolSize: sqliteConfig.poolSize,
-				enableWAL: true,
-				acquireTimeout: 60_000,
-				destroyTimeout: 5_000,
-				...commonOptions,
-			};
-		} else {
-			return {
-				type: 'sqlite',
-				enableWAL: sqliteConfig.enableWAL,
-				...commonOptions,
-			};
-		}
 	}
 
 	private getPostgresConnectionOptions(): PostgresConnectionOptions {
@@ -122,27 +103,34 @@ export class DbConnectionOptions {
 		return {
 			type: 'postgres',
 			...this.getCommonOptions(),
-			...this.getOverrides('postgresdb'),
+			...this.getPostgresOverrides(),
 			schema: postgresConfig.schema,
 			poolSize: postgresConfig.poolSize,
 			migrations: postgresMigrations,
 			connectTimeoutMS: postgresConfig.connectionTimeoutMs,
+			statementTimeout: postgresConfig.statementTimeoutMs,
 			ssl,
 			extra: {
 				idleTimeoutMillis: postgresConfig.idleTimeoutMs,
+				keepAlive: postgresConfig.keepAlive,
+				keepAliveInitialDelayMillis: postgresConfig.keepAliveInitialDelayMs,
+				// pg-pool's `maxLifetimeSeconds` is the upstream knob; we accept ms in config for unit consistency.
+				// Clamp to >= 1s so values like 500ms don't silently round down to 0 (which disables it).
+				...(postgresConfig.maxConnectionLifetimeMs > 0
+					? {
+							maxLifetimeSeconds: Math.max(
+								1,
+								Math.round(postgresConfig.maxConnectionLifetimeMs / 1000),
+							),
+						}
+					: {}),
+				// Bound how long acquiring a connection from the pool can wait (waiting for a free
+				// slot, or for a new connection to be established). Without it, pg-pool waits
+				// indefinitely. Reuse the existing connect-timeout knob rather than adding a new env var.
+				...(postgresConfig.connectionTimeoutMs > 0
+					? { connectionTimeoutMillis: postgresConfig.connectionTimeoutMs }
+					: {}),
 			},
-		};
-	}
-
-	private getMysqlConnectionOptions(dbType: 'mariadb' | 'mysqldb'): MysqlConnectionOptions {
-		const { mysqldb: mysqlConfig } = this.config;
-		return {
-			type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
-			...this.getCommonOptions(),
-			...this.getOverrides('mysqldb'),
-			poolSize: mysqlConfig.poolSize,
-			migrations: mysqlMigrations,
-			timezone: 'Z', // set UTC as default
 		};
 	}
 }

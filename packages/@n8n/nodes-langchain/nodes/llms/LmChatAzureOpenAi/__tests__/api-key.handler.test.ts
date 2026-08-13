@@ -19,15 +19,15 @@ describe('setupApiKeyAuthentication', () => {
 		};
 		ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
 		ctx.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		};
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return valid configuration when API key is provided', async () => {
@@ -39,7 +39,7 @@ describe('setupApiKeyAuthentication', () => {
 			endpoint: 'https://test.openai.azure.com',
 		};
 
-		ctx.getCredentials = jest.fn().mockResolvedValue(mockCredentials);
+		ctx.getCredentials = vi.fn().mockResolvedValue(mockCredentials);
 		// Act
 		const result = await setupApiKeyAuthentication.call(ctx, 'testCredential');
 		// Assert
@@ -60,7 +60,7 @@ describe('setupApiKeyAuthentication', () => {
 			apiVersion: '2023-05-15',
 		};
 
-		ctx.getCredentials = jest.fn().mockResolvedValue(mockCredentials);
+		ctx.getCredentials = vi.fn().mockResolvedValue(mockCredentials);
 
 		// Act & Assert
 		await expect(setupApiKeyAuthentication.call(ctx, 'testCredential')).rejects.toThrow(
@@ -71,7 +71,7 @@ describe('setupApiKeyAuthentication', () => {
 	it('should throw NodeOperationError when credential retrieval fails', async () => {
 		// Arrange
 		const testError = new Error('Credential fetch failed');
-		ctx.getCredentials = jest.fn().mockRejectedValue(testError);
+		ctx.getCredentials = vi.fn().mockRejectedValue(testError);
 
 		// Act & Assert
 		await expect(setupApiKeyAuthentication.call(ctx, 'testCredential')).rejects.toThrow(

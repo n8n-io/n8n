@@ -1,12 +1,13 @@
-import { ApiKey, ApiKeyRepository, AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
-import { NextFunction, Response, Request } from 'express';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ApiKeyAudience } from 'n8n-workflow';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { JwtService } from '@/services/jwt.service';
+import { UserWithContext } from '@/services/oauth-token-verifier-proxy.service';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
@@ -23,7 +24,7 @@ export class McpServerApiKeyService {
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
-		private readonly userRepository: UserRepository,
+		private readonly authStrategyRegistry: AuthStrategyRegistry,
 	) {}
 
 	async createMcpServerApiKey(user: User, trx?: EntityManager) {
@@ -64,16 +65,38 @@ export class McpServerApiKeyService {
 		return apiKey;
 	}
 
-	private async getUserForApiKey(apiKey: string) {
-		return await this.userRepository.findOne({
-			where: {
-				apiKeys: {
-					apiKey,
-					audience: API_KEY_AUDIENCE,
+	async verifyApiKey(apiKey: string): Promise<UserWithContext> {
+		try {
+			const tokenGrant = await this.authStrategyRegistry.buildContextFromToken(apiKey, {
+				audience: API_KEY_AUDIENCE,
+			});
+
+			if (tokenGrant) {
+				return {
+					user: tokenGrant.actor ?? tokenGrant.subject,
+					actor: tokenGrant.actor,
+					authType: 'api_key',
+				};
+			}
+
+			return {
+				user: null,
+				context: {
+					reason: 'invalid_token',
+					auth_type: 'api_key',
 				},
-			},
-			relations: ['role'],
-		});
+			};
+		} catch (error) {
+			const errorForSure = ensureError(error);
+			return {
+				user: null,
+				context: {
+					reason: errorForSure.name === 'JsonWebTokenError' ? 'invalid_token' : 'unknown_error',
+					auth_type: 'api_key',
+					error_details: errorForSure.message,
+				},
+			};
+		}
 	}
 
 	async deleteAllMcpApiKeysForUser(user: User, trx?: EntityManager) {
@@ -96,60 +119,6 @@ export class McpServerApiKeyService {
 		);
 
 		return redactedPart + visiblePart;
-	}
-
-	private extractAPIKeyFromHeader(headerValue: string) {
-		if (!headerValue.startsWith('Bearer')) {
-			throw new AuthError('Invalid authorization header format');
-		}
-		const apiKeyMatch = headerValue.match(/^Bearer\s+(.+)$/i);
-		if (apiKeyMatch) {
-			return apiKeyMatch[1];
-		}
-		throw new AuthError('Invalid authorization header format');
-	}
-
-	getAuthMiddleware() {
-		return async (req: Request, res: Response, next: NextFunction) => {
-			const authorizationHeader = req.header('authorization');
-
-			if (!authorizationHeader) {
-				this.responseWithUnauthorized(res);
-				return;
-			}
-
-			const apiKey = this.extractAPIKeyFromHeader(authorizationHeader);
-
-			if (!apiKey) {
-				this.responseWithUnauthorized(res);
-				return;
-			}
-
-			const user = await this.getUserForApiKey(apiKey);
-
-			if (!user) {
-				this.responseWithUnauthorized(res);
-				return;
-			}
-
-			try {
-				this.jwtService.verify(apiKey, {
-					issuer: API_KEY_ISSUER,
-					audience: API_KEY_AUDIENCE,
-				});
-			} catch (e) {
-				this.responseWithUnauthorized(res);
-				return;
-			}
-
-			(req as AuthenticatedRequest).user = user;
-
-			next();
-		};
-	}
-
-	private responseWithUnauthorized(res: Response) {
-		res.status(401).send({ message: 'Unauthorized' });
 	}
 
 	async getOrCreateApiKey(user: User) {

@@ -13,10 +13,6 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * - `waitTill`
  * - `status, workflowId`
  *
- * Remove unused indices in MySQL:
- *
- * - `status`
- *
  * Remove unused indices in all DBs:
  *
  * - `waitTill, id`
@@ -31,7 +27,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * - `deletedAt` for query at `ExecutionRepository.hardDeleteSoftDeletedExecutions`
  */
 export class RefactorExecutionIndices1723796243146 implements ReversibleMigration {
-	async up({ schemaBuilder, isPostgres, isSqlite, isMysql, runQuery, escape }: MigrationContext) {
+	async up({ schemaBuilder, isPostgres, isSqlite, runQuery, escape }: MigrationContext) {
 		if (isSqlite || isPostgres) {
 			const executionEntity = escape.tableName('execution_entity');
 
@@ -59,10 +55,6 @@ export class RefactorExecutionIndices1723796243146 implements ReversibleMigratio
 				ON ${executionEntity} (${stoppedAt}, ${status}, ${deletedAt})
 				WHERE ${stoppedAt} IS NOT NULL AND ${deletedAt} IS NULL;
 			`);
-		} else if (isMysql) {
-			await schemaBuilder.createIndex('execution_entity', ['workflowId', 'startedAt']);
-			await schemaBuilder.createIndex('execution_entity', ['waitTill', 'status', 'deletedAt']);
-			await schemaBuilder.createIndex('execution_entity', ['stoppedAt', 'status', 'deletedAt']);
 		}
 
 		if (isSqlite) {
@@ -72,13 +64,6 @@ export class RefactorExecutionIndices1723796243146 implements ReversibleMigratio
 			});
 
 			await schemaBuilder.dropIndex('execution_entity', ['status', 'workflowId'], {
-				customIndexName: 'IDX_8b6f3f9ae234f137d707b98f3bf43584',
-				skipIfMissing: true,
-			});
-		}
-
-		if (isMysql) {
-			await schemaBuilder.dropIndex('execution_entity', ['status'], {
 				customIndexName: 'IDX_8b6f3f9ae234f137d707b98f3bf43584',
 				skipIfMissing: true,
 			});
@@ -98,10 +83,9 @@ export class RefactorExecutionIndices1723796243146 implements ReversibleMigratio
 			skipIfMissing: true,
 		});
 		await schemaBuilder.dropIndex('execution_entity', ['workflowId', 'id'], {
-			customIndexName:
-				isPostgres || isMysql
-					? 'idx_execution_entity_workflow_id_id'
-					: 'IDX_81fc04c8a17de15835713505e4',
+			customIndexName: isPostgres
+				? 'idx_execution_entity_workflow_id_id'
+				: 'IDX_81fc04c8a17de15835713505e4',
 			skipIfMissing: true,
 		});
 	}

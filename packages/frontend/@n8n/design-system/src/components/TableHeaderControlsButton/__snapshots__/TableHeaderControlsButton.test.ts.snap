@@ -3,7 +3,7 @@
 exports[`TableHeaderControlsButton > Disabled columns > should render correctly when only disabled columns exist 1`] = `
 "<div class="container" width="260px" max-height="300px" scroll-type="auto">
   <trigger>
-    <n8n-button-stub icon="sliders-horizontal" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="secondary"></n8n-button-stub>
+    <n8n-button-stub icon="sliders-horizontal" variant="subtle" size="medium" loading="false" icononly="false" disabled="false" class="false"></n8n-button-stub>
   </trigger>
   <content>
     <div class="contentContainer">
@@ -17,7 +17,7 @@ exports[`TableHeaderControlsButton > Disabled columns > should render correctly 
 exports[`TableHeaderControlsButton > should render correctly with all columns hidden 1`] = `
 "<div class="container" width="260px" max-height="300px" scroll-type="auto">
   <trigger>
-    <n8n-button-stub icon="sliders-horizontal" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="secondary"></n8n-button-stub>
+    <n8n-button-stub icon="sliders-horizontal" variant="subtle" size="medium" loading="false" icononly="false" disabled="false" class="false"></n8n-button-stub>
   </trigger>
   <content>
     <div class="contentContainer">
@@ -53,7 +53,7 @@ exports[`TableHeaderControlsButton > should render correctly with all columns hi
 exports[`TableHeaderControlsButton > should render correctly with all columns visible 1`] = `
 "<div class="container" width="260px" max-height="300px" scroll-type="auto">
   <trigger>
-    <n8n-button-stub icon="sliders-horizontal" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="secondary"></n8n-button-stub>
+    <n8n-button-stub icon="sliders-horizontal" variant="subtle" size="medium" loading="false" icononly="false" disabled="false" class="false"></n8n-button-stub>
   </trigger>
   <content>
     <div class="contentContainer">
@@ -107,7 +107,7 @@ exports[`TableHeaderControlsButton > should render correctly with all columns vi
 exports[`TableHeaderControlsButton > should render correctly with mixed visible and hidden columns 1`] = `
 "<div class="container" width="260px" max-height="300px" scroll-type="auto">
   <trigger>
-    <n8n-button-stub icon="sliders-horizontal" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="secondary"></n8n-button-stub>
+    <n8n-button-stub icon="sliders-horizontal" variant="subtle" size="medium" loading="false" icononly="false" disabled="false" class="false"></n8n-button-stub>
   </trigger>
   <content>
     <div class="contentContainer">
@@ -157,7 +157,7 @@ exports[`TableHeaderControlsButton > should render correctly with mixed visible 
 exports[`TableHeaderControlsButton > should render correctly with no columns 1`] = `
 "<div class="container" width="260px" max-height="300px" scroll-type="auto">
   <trigger>
-    <n8n-button-stub icon="sliders-horizontal" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="secondary"></n8n-button-stub>
+    <n8n-button-stub icon="sliders-horizontal" variant="subtle" size="medium" loading="false" icononly="false" disabled="false" class="false"></n8n-button-stub>
   </trigger>
   <content>
     <div class="contentContainer">

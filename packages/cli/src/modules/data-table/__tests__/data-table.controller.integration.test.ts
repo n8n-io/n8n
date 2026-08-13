@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { DataTable, DataTableCreateColumnSchema } from '@n8n/api-types';
+import type { DataTableCreateColumnSchema } from '@n8n/api-types';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -13,13 +13,17 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import type { DataTableRow } from 'n8n-workflow';
 
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { createDataTable } from '@test-integration/db/data-tables';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
+import type { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { mockDataTableSizeValidator } from './test-helpers';
 
@@ -34,7 +38,7 @@ let memberProject: Project;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['data-table'],
-	modules: ['data-table'],
+	modules: ['data-table', 'source-control'],
 });
 let projectRepository: ProjectRepository;
 let dataTableRepository: DataTableRepository;
@@ -78,8 +82,8 @@ describe('POST /projects/:projectId/data-tables', () => {
 		};
 
 		await authMemberAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(403);
-		await authAdminAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(403);
-		await authOwnerAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(403);
+		await authAdminAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(404);
+		await authOwnerAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(404);
 	});
 
 	test('should not create data table when name is empty', async () => {
@@ -95,6 +99,24 @@ describe('POST /projects/:projectId/data-tables', () => {
 		};
 
 		await authOwnerAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(400);
+	});
+
+	test('should return 409 when column name conflicts with system columns', async () => {
+		const project = await createTeamProject(undefined, owner);
+
+		for (const systemColumnName of ['id', 'ID', 'createdAt', 'updatedAt']) {
+			const payload = {
+				name: `Table with ${systemColumnName}`,
+				columns: [{ name: systemColumnName, type: 'string' }],
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${project.id}/data-tables`)
+				.send(payload)
+				.expect(409);
+
+			expect(response.body.message).toContain('reserved');
+		}
 	});
 
 	test('should not create data table if user has project:viewer role in team project', async () => {
@@ -229,8 +251,8 @@ describe('POST /projects/:projectId/data-tables', () => {
 describe('GET /projects/:projectId/data-tables', () => {
 	test('should not list data tables when project does not exist', async () => {
 		await authMemberAgent.get('/projects/non-existing-id/data-tables').expect(403);
-		await authAdminAgent.get('/projects/non-existing-id/data-tables').expect(403);
-		await authOwnerAgent.get('/projects/non-existing-id/data-tables').expect(403);
+		await authAdminAgent.get('/projects/non-existing-id/data-tables').expect(404);
+		await authOwnerAgent.get('/projects/non-existing-id/data-tables').expect(404);
 	});
 
 	test('should not list data tables if user has no access to project', async () => {
@@ -239,10 +261,10 @@ describe('GET /projects/:projectId/data-tables', () => {
 		await authMemberAgent.get(`/projects/${project.id}/data-tables`).expect(403);
 	});
 
-	test('should not list data tables if admin has no access to project', async () => {
+	test('should list data tables for admins', async () => {
 		const project = await createTeamProject('test project', owner);
 
-		await authAdminAgent.get(`/projects/${project.id}/data-tables`).expect(403);
+		await authAdminAgent.get(`/projects/${project.id}/data-tables`).expect(200);
 	});
 
 	test("should not list data tables from another user's personal project", async () => {
@@ -520,7 +542,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 		await authOwnerAgent
 			.patch('/projects/non-existing-id/data-tables/some-data-table-id')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not update data table when data table does not exist', async () => {
@@ -663,7 +685,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		await authOwnerAgent
 			.delete('/projects/non-existing-id/data-tables/some-data-table-id')
 			.send({})
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not delete data table when data table does not exist', async () => {
@@ -780,7 +802,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		});
 		expect(dataTableColumnInDb).toBeNull();
 
-		await expect(dataTableRowsRepository.getManyAndCount(dataTable.id, {})).rejects.toThrow(
+		await expect(dataTableRowsRepository.getManyAndCount(dataTable.id, {}, [])).rejects.toThrow(
 			QueryFailedError,
 		);
 	});
@@ -790,7 +812,7 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/columns', () => {
 	test('should not list columns when project does not exist', async () => {
 		await authOwnerAgent
 			.get('/projects/non-existing-id/data-tables/non-existing-id/columns')
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not list columns if user has no access to project', async () => {
@@ -889,7 +911,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/columns', () => {
 		await authOwnerAgent
 			.post('/projects/non-existing-id/data-tables/some-data-table-id/columns')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not create column when data table does not exist', async () => {
@@ -1115,7 +1137,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/columns/:columnId
 		await authOwnerAgent
 			.delete('/projects/non-existing-id/data-tables/some-data-table-id/columns/some-column-id')
 			.send({})
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not delete column when data table does not exist', async () => {
@@ -1302,7 +1324,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/
 		await authOwnerAgent
 			.patch('/projects/non-existing-id/data-tables/some-data-table-id/columns/some-column-id/move')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not move column when data table does not exist', async () => {
@@ -1526,7 +1548,7 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/rows', () => {
 	test('should not list rows when project does not exist', async () => {
 		await authOwnerAgent
 			.get('/projects/non-existing-id/data-tables/some-data-table-id/rows')
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not list rows when data table does not exist', async () => {
@@ -1907,7 +1929,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 		await authOwnerAgent
 			.post('/projects/non-existing-id/data-tables/some-data-table-id/insert')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not insert rows when data table does not exist', async () => {
@@ -2026,7 +2048,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			data: [{ id: 1 }],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2067,7 +2093,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			data: [{ id: 1 }],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2105,7 +2135,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			data: [{ id: 1 }],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2162,7 +2196,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2197,7 +2235,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			.expect(400);
 
 		expect(response.body.message).toContain('unknown column');
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(0);
 	});
 
@@ -2508,7 +2550,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 					filters: [{ columnName: 'first', condition: 'eq', value: 'test value' }],
 				}),
 			})
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not delete rows when data table does not exist', async () => {
@@ -2593,7 +2635,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(403);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 	});
 
@@ -2629,7 +2675,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(403);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 	});
 
@@ -2677,7 +2727,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject({
 			first: 'test value 2',
@@ -2722,7 +2776,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject({
 			first: 'test value 1',
@@ -2766,7 +2824,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data.map((r) => r.first)).toEqual(['test value 1']);
 	});
@@ -2809,7 +2871,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data.map((r) => r.first).sort()).toEqual(['test value 1', 'test value 3']);
 	});
@@ -2862,6 +2928,75 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			},
 		]);
 	});
+
+	describe('dryRun', () => {
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'first', condition: 'eq', value: 'keep me' }],
+		});
+
+		const createTable = async () =>
+			await createDataTable(memberProject, {
+				columns: [{ name: 'first', type: 'string' }],
+				data: [{ first: 'keep me' }, { first: 'untouched' }],
+			});
+
+		test('should not delete rows when dryRun is set', async () => {
+			const dataTable = await createTable();
+
+			await authMemberAgent
+				.delete(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter, dryRun: true })
+				.expect(200);
+
+			const remaining = await authMemberAgent
+				.get(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.expect(200);
+
+			expect(remaining.body.data.count).toBe(2);
+		});
+
+		test('should return the rows that would be deleted when dryRun is set', async () => {
+			const dataTable = await createTable();
+
+			const result = await authMemberAgent
+				.delete(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter, dryRun: true })
+				.expect(200);
+
+			expect(result.body.data).toEqual([
+				{
+					id: expect.any(Number),
+					first: 'keep me',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+					dryRunState: 'before',
+				},
+				{
+					id: null,
+					first: null,
+					createdAt: null,
+					updatedAt: null,
+					dryRunState: 'after',
+				},
+			]);
+		});
+
+		test('should still delete rows when dryRun is not set', async () => {
+			const dataTable = await createTable();
+
+			await authMemberAgent
+				.delete(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter })
+				.expect(200);
+
+			const remaining = await authMemberAgent
+				.get(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.expect(200);
+
+			expect(remaining.body.data.count).toBe(1);
+		});
+	});
 });
 
 describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
@@ -2874,7 +3009,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 		await authOwnerAgent
 			.post('/projects/non-existing-id/data-tables/some-data-table-id/upsert')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not upsert rows when data table does not exist', async () => {
@@ -2969,7 +3104,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
@@ -3001,7 +3140,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
@@ -3030,7 +3173,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
@@ -3060,7 +3207,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.expect(400);
 
 		expect(response.body.message).toContain('unknown column');
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(0);
 	});
 
@@ -3121,7 +3272,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/rows', () => {
 		await authOwnerAgent
 			.patch('/projects/non-existing-id/data-tables/some-data-table-id/rows')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not update row when data table does not exist', async () => {
@@ -3700,4 +3851,987 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			expect(result.body.data).toEqual([expect.objectContaining({ name: 'Alice Johnson' })]);
 		},
 	);
+});
+
+describe('POST /projects/:projectId/data-tables - CSV Import', () => {
+	test('should create data table and import rows from CSV file', async () => {
+		// First upload a CSV file
+		const csvContent = 'name,age,email\nAlice,30,alice@example.com\nBob,25,bob@example.com';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Create data table with fileId to trigger import
+		const payload = {
+			name: 'Imported Data Table',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'email', type: 'string' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Verify data was imported
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toHaveLength(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+					email: 'alice@example.com',
+				}),
+				expect.objectContaining({
+					name: 'Bob',
+					age: 25,
+					email: 'bob@example.com',
+				}),
+			]),
+		);
+	});
+
+	test('should map CSV columns to table columns by position', async () => {
+		// Upload CSV with column names that have spaces
+		const csvContent =
+			'Customer Id,Full Name,Email Address\n1001,John Doe,john@example.com\n1002,Jane Smith,jane@example.com';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'customers.csv',
+				contentType: 'text/csv',
+			})
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Create table with different column names (without spaces)
+		const payload = {
+			name: 'Customers',
+			columns: [
+				{ name: 'customerId', type: 'string' },
+				{ name: 'fullName', type: 'string' },
+				{ name: 'emailAddress', type: 'string' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Verify data was mapped correctly by position
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					customerId: '1001',
+					fullName: 'John Doe',
+					emailAddress: 'john@example.com',
+				}),
+				expect.objectContaining({
+					customerId: '1002',
+					fullName: 'Jane Smith',
+					emailAddress: 'jane@example.com',
+				}),
+			]),
+		);
+	});
+
+	test('should create data table with partial column mapping when schema has extra columns', async () => {
+		// Upload a valid CSV with 2 columns
+		const csvContent = 'name,age\nAlice,30';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Create table with more columns than in CSV
+		// The system should map by index: CSV col 0 -> table col 0, CSV col 1 -> table col 1
+		// The extra table column won't have data imported
+		const payload = {
+			name: 'Partial Import Table',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'extra', type: 'string' }, // Extra column not in CSV
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Verify rows - should have mapped only the columns that exist in CSV
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		// Data should be imported with columns mapped by index position
+		// The 'extra' column should be null/empty since it doesn't exist in CSV
+		expect(rowsResponse.body.data.data[0]).toMatchObject({
+			name: 'Alice',
+			age: 30,
+		});
+	});
+
+	test('should handle empty CSV file on import', async () => {
+		// Upload empty CSV
+		const csvContent = '';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'empty.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Empty CSV Import',
+			columns: [{ name: 'name', type: 'string' }],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload);
+
+		// Should either fail or create table with no rows
+		if (createResponse.status === 200) {
+			const dataTableId = createResponse.body.data.id;
+			const rowsResponse = await authOwnerAgent
+				.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+				.expect(200);
+
+			expect(rowsResponse.body.data.count).toBe(0);
+		}
+	});
+
+	test('should handle CSV with only headers on import', async () => {
+		// Upload CSV with only headers
+		const csvContent = 'name,age,city';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'headers-only.csv',
+				contentType: 'text/csv',
+			})
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Headers Only Import',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'city', type: 'string' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Should create table with no rows
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(0);
+	});
+
+	test('should import CSV file with multiple rows', async () => {
+		const csvContent =
+			'itemId,itemName,itemValue\n1,Item 1,10\n2,Item 2,20\n3,Item 3,30\n4,Item 4,40\n5,Item 5,50';
+
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'multiple-rows.csv',
+				contentType: 'text/csv',
+			})
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Multiple Rows Import',
+			columns: [
+				{ name: 'itemId', type: 'string' },
+				{ name: 'itemName', type: 'string' },
+				{ name: 'itemValue', type: 'number' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Verify all rows were imported
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(5);
+	});
+
+	test('should create table without import when fileId is not provided', async () => {
+		const payload = {
+			name: 'Table Without Import',
+			columns: [
+				{ name: 'col1', type: 'string' },
+				{ name: 'col2', type: 'number' },
+			],
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Should create empty table
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(0);
+	});
+
+	test('should handle CSV with quoted values containing commas', async () => {
+		const csvContent =
+			'name,address\n"John Doe","123 Main St, Apt 4"\n"Jane Smith","456 Oak Ave, Suite 10"';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'quoted.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Quoted Values Import',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'address', type: 'string' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'John Doe',
+					address: '123 Main St, Apt 4',
+				}),
+				expect.objectContaining({
+					name: 'Jane Smith',
+					address: '456 Oak Ave, Suite 10',
+				}),
+			]),
+		);
+	});
+
+	test('should handle CSV with Unicode characters', async () => {
+		const csvContent = 'name,city\nJohn Müller,München\nMaría García,São Paulo';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'unicode.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Unicode Import',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'city', type: 'string' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'John Müller',
+					city: 'München',
+				}),
+				expect.objectContaining({
+					name: 'María García',
+					city: 'São Paulo',
+				}),
+			]),
+		);
+	});
+
+	test('should handle CSV with different data types', async () => {
+		const csvContent =
+			'name,age,active,joinDate\nAlice,30,true,2024-01-15T00:00:00Z\nBob,25,false,2024-02-20T00:00:00Z';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'mixed-types.csv',
+				contentType: 'text/csv',
+			})
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Mixed Types Import',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+				{ name: 'joinDate', type: 'date' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		// Data types are converted based on column type definitions
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+					active: true,
+					joinDate: expect.stringContaining('2024-01-15'),
+				}),
+				expect.objectContaining({
+					name: 'Bob',
+					age: 25,
+					active: false,
+					joinDate: expect.stringContaining('2024-02-20'),
+				}),
+			]),
+		);
+	});
+
+	test('should import only included columns when csvColumnName is provided', async () => {
+		// Upload CSV with 3 columns
+		const csvContent = 'name,age,email\nAlice,30,alice@example.com\nBob,25,bob@example.com';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'discard.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Create table with only 2 columns, discarding 'age'
+		const payload = {
+			name: 'Discarded Column Import',
+			columns: [
+				{ name: 'name', type: 'string', csvColumnName: 'name' },
+				{ name: 'email', type: 'string', csvColumnName: 'email' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		// 'age' column should not exist in the imported data
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: 'Alice', email: 'alice@example.com' }),
+				expect.objectContaining({ name: 'Bob', email: 'bob@example.com' }),
+			]),
+		);
+		// Verify no 'age' key exists in the rows
+		for (const row of rowsResponse.body.data.data) {
+			expect(row).not.toHaveProperty('age');
+		}
+	});
+
+	test('should correctly map renamed columns using csvColumnName', async () => {
+		// Upload CSV with original column names
+		const csvContent = 'First Name,Last Name,Age\nAlice,Smith,30\nBob,Jones,25';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'rename.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Create table with renamed columns, mapping via csvColumnName
+		const payload = {
+			name: 'Renamed Columns Import',
+			columns: [
+				{ name: 'firstName', type: 'string', csvColumnName: 'First Name' },
+				{ name: 'lastName', type: 'string', csvColumnName: 'Last Name' },
+				{ name: 'userAge', type: 'number', csvColumnName: 'Age' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ firstName: 'Alice', lastName: 'Smith', userAge: 30 }),
+				expect.objectContaining({ firstName: 'Bob', lastName: 'Jones', userAge: 25 }),
+			]),
+		);
+	});
+
+	test('should correctly handle renamed and discarded columns together', async () => {
+		// Upload CSV with 4 columns
+		const csvContent =
+			'id,name,status,notes\n1,Alice,active,some notes\n2,Bob,inactive,other notes';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'rename-discard.csv',
+				contentType: 'text/csv',
+			})
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Discard 'id' and 'notes', rename 'status' to 'userStatus'
+		const payload = {
+			name: 'Rename And Discard Import',
+			columns: [
+				{ name: 'userName', type: 'string', csvColumnName: 'name' },
+				{ name: 'userStatus', type: 'string', csvColumnName: 'status' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ userName: 'Alice', userStatus: 'active' }),
+				expect.objectContaining({ userName: 'Bob', userStatus: 'inactive' }),
+			]),
+		);
+		// Verify discarded columns are not present
+		for (const row of rowsResponse.body.data.data) {
+			expect(row).not.toHaveProperty('notes');
+		}
+	});
+
+	test('should reject CSV import when all columns are discarded (empty columns array)', async () => {
+		const csvContent = 'name,age\nAlice,30\nBob,25';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Empty Columns Import',
+			columns: [] as DataTableCreateColumnSchema[],
+			fileId,
+		};
+
+		await authOwnerAgent.post(`/projects/${ownerProject.id}/data-tables`).send(payload).expect(400);
+	});
+});
+
+describe('row-content authorization on write endpoints', () => {
+	const SECRET = 'payroll-token-123';
+	const MATCH_ALL_FILTER = {
+		type: 'and' as const,
+		filters: [{ columnName: 'id', condition: 'gte' as const, value: 0 }],
+	};
+
+	let project: Project;
+	let otherProject: Project;
+	let readWriteUser: User;
+	let writeOnlyRoleSlug: string;
+	let writerAgent: SuperAgentTest;
+	let readWriterAgent: SuperAgentTest;
+
+	const createSensitiveTable = async (owningProject: Project = project) =>
+		await createDataTable(owningProject, {
+			name: 'Sensitive Table',
+			columns: [{ name: 'secret', type: 'string' }],
+			data: [{ secret: SECRET }],
+		});
+
+	const readSecrets = async (dataTableId: string) => {
+		const response = await readWriterAgent
+			.get(`/projects/${project.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		return (response.body.data.data as DataTableRow[]).map((row) => row.secret);
+	};
+
+	beforeAll(async () => {
+		project = await createTeamProject('row authorization project', owner);
+		otherProject = await createTeamProject('other row authorization project', owner);
+
+		const writeOnlyRole = await createCustomRoleWithScopeSlugs(['dataTable:writeRow'], {
+			roleType: 'project',
+		});
+		writeOnlyRoleSlug = writeOnlyRole.slug;
+		const writeOnlyUser = await createMember();
+		await linkUserToProject(writeOnlyUser, project, writeOnlyRoleSlug);
+		writerAgent = testServer.authAgentFor(writeOnlyUser);
+
+		const readWriteRole = await createCustomRoleWithScopeSlugs(
+			['dataTable:writeRow', 'dataTable:readRow'],
+			{ roleType: 'project' },
+		);
+		readWriteUser = await createMember();
+		await linkUserToProject(readWriteUser, project, readWriteRole.slug);
+		readWriterAgent = testServer.authAgentFor(readWriteUser);
+	});
+
+	describe('PATCH /projects/:projectId/data-tables/:dataTableId/rows', () => {
+		test('rejects dryRun without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
+				.expect(403);
+		});
+
+		test('rejects returnData without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			const response = await writerAgent
+				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, returnData: true })
+				.expect(403);
+
+			expect(JSON.stringify(response.body)).not.toContain(SECRET);
+			expect(await readSecrets(dataTable.id)).toEqual([SECRET]);
+		});
+
+		test('allows a plain update without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' } })
+				.expect(200);
+
+			expect(await readSecrets(dataTable.id)).toEqual(['overwritten']);
+		});
+
+		test('returns row contents with dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			const response = await readWriterAgent
+				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
+				.expect(200);
+
+			expect(response.body.data).toMatchObject([
+				{ secret: SECRET, dryRunState: 'before' },
+				{ secret: 'overwritten', dryRunState: 'after' },
+			]);
+		});
+	});
+
+	describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
+		test('rejects dryRun without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.post(`/projects/${project.id}/data-tables/${dataTable.id}/upsert`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
+				.expect(403);
+		});
+
+		test('rejects returnData without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			const response = await writerAgent
+				.post(`/projects/${project.id}/data-tables/${dataTable.id}/upsert`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, returnData: true })
+				.expect(403);
+
+			expect(JSON.stringify(response.body)).not.toContain(SECRET);
+		});
+
+		test('allows a plain upsert without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.post(`/projects/${project.id}/data-tables/${dataTable.id}/upsert`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' } })
+				.expect(200);
+
+			expect(await readSecrets(dataTable.id)).toEqual(['overwritten']);
+		});
+
+		test('returns row contents with dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			const response = await readWriterAgent
+				.post(`/projects/${project.id}/data-tables/${dataTable.id}/upsert`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
+				.expect(200);
+
+			expect(response.body.data).toMatchObject([
+				{ secret: SECRET, dryRunState: 'before' },
+				{ secret: 'overwritten', dryRunState: 'after' },
+			]);
+		});
+	});
+
+	describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
+		test('rejects returnData without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			const response = await writerAgent
+				.delete(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter: JSON.stringify(MATCH_ALL_FILTER), returnData: 'true' })
+				.expect(403);
+
+			expect(JSON.stringify(response.body)).not.toContain(SECRET);
+			expect(await readSecrets(dataTable.id)).toEqual([SECRET]);
+		});
+
+		test('allows a plain delete without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.delete(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter: JSON.stringify(MATCH_ALL_FILTER) })
+				.expect(200);
+
+			expect(await readSecrets(dataTable.id)).toEqual([]);
+		});
+
+		test('returns row contents with dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			const response = await readWriterAgent
+				.delete(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter: JSON.stringify(MATCH_ALL_FILTER), returnData: 'true' })
+				.expect(200);
+
+			expect(response.body.data).toMatchObject([{ secret: SECRET }]);
+		});
+	});
+
+	describe('cross-project targeting', () => {
+		test('does not accept dataTable:readRow held on the project in the URL', async () => {
+			await linkUserToProject(readWriteUser, otherProject, writeOnlyRoleSlug);
+			const dataTable = await createSensitiveTable(otherProject);
+
+			const response = await readWriterAgent
+				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
+				.expect(403);
+
+			expect(JSON.stringify(response.body)).not.toContain(SECRET);
+		});
+	});
+});
+
+describe('Source Control read-only mode', () => {
+	let sourceControlPreferencesService: SourceControlPreferencesService;
+	let testDataTable: DataTable;
+	let originalPreferences: SourceControlPreferences;
+
+	beforeAll(async () => {
+		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+
+		// Capture original preferences
+		originalPreferences = sourceControlPreferencesService.getPreferences();
+
+		// Enable read-only mode
+		await sourceControlPreferencesService.setPreferences({
+			connected: true,
+			keyGeneratorType: 'rsa',
+			branchReadOnly: true,
+		});
+	});
+
+	beforeEach(async () => {
+		// Create a test data table with columns for testing in each test
+		testDataTable = await createDataTable(ownerProject, {
+			name: 'Test Table',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+		});
+	});
+
+	afterAll(async () => {
+		// Restore original preferences
+		await sourceControlPreferencesService.setPreferences(originalPreferences);
+	});
+
+	describe('mutating endpoints should return 403', () => {
+		test('POST /projects/:projectId/data-tables should fail', async () => {
+			const payload = {
+				name: 'New Table',
+				columns: [{ name: 'test_column', type: 'string' }],
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /projects/:projectId/data-tables/:dataTableId should fail', async () => {
+			const payload = { name: 'Updated Name' };
+
+			const response = await authOwnerAgent
+				.patch(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /projects/:projectId/data-tables/:dataTableId should fail', async () => {
+			const response = await authOwnerAgent
+				.delete(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}`)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('POST /projects/:projectId/data-tables/:dataTableId/columns should fail', async () => {
+			const payload = { name: 'new_column', type: 'string' };
+
+			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/columns`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /projects/:projectId/data-tables/:dataTableId/columns/:columnId should fail', async () => {
+			const columns = await dataTableColumnRepository.find({
+				where: { dataTableId: testDataTable.id },
+			});
+			const columnId = columns[0].id;
+
+			const response = await authOwnerAgent
+				.delete(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/columns/${columnId}`)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/move should fail', async () => {
+			const columns = await dataTableColumnRepository.find({
+				where: { dataTableId: testDataTable.id },
+			});
+			const columnId = columns[0].id;
+			const payload = { targetIndex: 1 };
+
+			const response = await authOwnerAgent
+				.patch(
+					`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/columns/${columnId}/move`,
+				)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/rename should fail', async () => {
+			const columns = await dataTableColumnRepository.find({
+				where: { dataTableId: testDataTable.id },
+			});
+			const columnId = columns[0].id;
+			const payload = { name: 'renamed_column' };
+
+			const response = await authOwnerAgent
+				.patch(
+					`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/columns/${columnId}/rename`,
+				)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('POST /projects/:projectId/data-tables/:dataTableId/insert should fail', async () => {
+			const payload = {
+				data: [{ name: 'John', age: 30 }],
+				returnType: 'id',
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/insert`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('POST /projects/:projectId/data-tables/:dataTableId/upsert should fail', async () => {
+			const payload = {
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'John' }] },
+				data: { age: 30 },
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/upsert`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /projects/:projectId/data-tables/:dataTableId/rows should fail', async () => {
+			const payload = {
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'John' }] },
+				data: { age: 31 },
+			};
+
+			const response = await authOwnerAgent
+				.patch(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/rows`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /projects/:projectId/data-tables/:dataTableId/rows should fail', async () => {
+			const response = await authOwnerAgent
+				.delete(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/rows`)
+				.query({
+					filter: JSON.stringify({
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'John' }],
+					}),
+				})
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+	});
+
+	describe('read-only endpoints should still work', () => {
+		test('GET /projects/:projectId/data-tables should work', async () => {
+			await authOwnerAgent.get(`/projects/${ownerProject.id}/data-tables`).expect(200);
+		});
+
+		test('GET /projects/:projectId/data-tables/:dataTableId/columns should work', async () => {
+			await authOwnerAgent
+				.get(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/columns`)
+				.expect(200);
+		});
+
+		test('GET /projects/:projectId/data-tables/:dataTableId/rows should work', async () => {
+			await authOwnerAgent
+				.get(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/rows`)
+				.expect(200);
+		});
+
+		test('GET /projects/:projectId/data-tables/:dataTableId/download-csv should work', async () => {
+			await authOwnerAgent
+				.get(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/download-csv`)
+				.expect(200);
+		});
+	});
 });

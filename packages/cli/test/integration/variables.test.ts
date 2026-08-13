@@ -57,7 +57,7 @@ describe('GET /variables', () => {
 
 	test('should return an empty array if there is nothing in the cache', async () => {
 		const cacheService = Container.get(CacheService);
-		const spy = jest.spyOn(cacheService, 'get').mockResolvedValueOnce(undefined);
+		const spy = vi.spyOn(cacheService, 'get').mockResolvedValueOnce(undefined);
 		const response = await authOwnerAgent.get('/variables');
 		expect(spy).toHaveBeenCalledTimes(1);
 		expect(response.statusCode).toBe(200);
@@ -324,6 +324,18 @@ describe('PATCH /variables/:id', () => {
 		expect(byId!.key).toBe(var1.key);
 		expect(byId!.value).toBe(var1.value);
 	});
+
+	test("should not modify a variable if the instance doesn't have a license", async () => {
+		const variable = await createVariable('test1', 'value1');
+		license.disable('feat:variables');
+		const response = await authOwnerAgent.patch(`/variables/${variable.id}`).send(toModify);
+		expect(response.statusCode).toBe(403);
+
+		const byId = await getVariableById(variable.id);
+		expect(byId).not.toBeNull();
+		expect(byId!.key).toBe('test1');
+		expect(byId!.value).toBe('value1');
+	});
 });
 
 // ----------------------------------------
@@ -362,5 +374,15 @@ describe('DELETE /variables/:id', () => {
 
 		const getResponse = await authMemberAgent.get('/variables');
 		expect(getResponse.body.data.length).toBe(3);
+	});
+
+	test("should not delete a variable if the instance doesn't have a license", async () => {
+		const variable = await createVariable('test1', 'value1');
+		license.disable('feat:variables');
+		const response = await authOwnerAgent.delete(`/variables/${variable.id}`);
+		expect(response.statusCode).toBe(403);
+
+		const byId = await getVariableById(variable.id);
+		expect(byId).not.toBeNull();
 	});
 });

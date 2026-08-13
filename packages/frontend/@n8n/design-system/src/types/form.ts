@@ -1,4 +1,4 @@
-import type { N8nLocaleTranslateFnOptions } from '@n8n/design-system/types/i18n';
+import type { N8nLocaleTranslateFnOptions } from './i18n';
 
 export type FormFieldValue = string | number | boolean | null | undefined;
 
@@ -6,7 +6,11 @@ export type FormInputsToFormValues<T extends IFormInput[], V> = {
 	[K in T[number]['name']]: V;
 };
 
-export type FormFieldValueUpdate = { name: string; value: FormFieldValue };
+export type FormFieldValueUpdate<Metadata = Record<string, unknown>> = {
+	name: string;
+	value: FormFieldValue;
+	metadata?: Metadata;
+};
 
 export type Rule = { name: string; config?: unknown };
 
@@ -33,9 +37,13 @@ export type FormState = {
 	hasBlutted: boolean;
 };
 
-export type IFormInput = {
+export type IFormInput<Metadata = Record<string, unknown>> = {
 	name: string;
 	initialValue?: string | number | boolean | null;
+	/**
+	 * Optional key-value pairs metadata that is passed with updates to the form.
+	 */
+	metadata?: Metadata;
 	properties: {
 		label?: string;
 		type?:
@@ -87,8 +95,8 @@ export type IFormBoxConfig = {
 export type CheckboxLabelSizePropType = 'small' | 'medium' | undefined;
 export type CheckboxModelValuePropType = boolean | undefined;
 export type SwitchModelValuePropType = boolean | undefined;
-export type InputModelValuePropType = string | number | undefined;
-export type InputTypePropType = 'number' | 'text' | 'email' | 'password' | 'textarea' | undefined;
+export type InputModelValuePropType = string | number | null | undefined;
+export type InputTypePropType = 'text' | 'email' | 'password' | 'textarea' | 'number' | undefined;
 export type InputAutocompletePropType =
 	| 'off'
 	| 'new-password'

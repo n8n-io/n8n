@@ -71,6 +71,14 @@ export const ollamaOptions: INodeProperties = {
 	default: {},
 	options: [
 		{
+			displayName: 'Enable Thinking',
+			name: 'think',
+			type: 'boolean',
+			default: true,
+			description:
+				"Whether to enable (default) thinking mode for supported models. When enabled, the model's thinking process is separated from the output. When disabled, the model outputs content directly (only for supported models).",
+		},
+		{
 			displayName: 'Sampling Temperature',
 			name: 'temperature',
 			default: 0.7,

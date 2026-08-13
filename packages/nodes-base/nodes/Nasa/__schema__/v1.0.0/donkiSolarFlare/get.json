@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "activeRegionNum": {
+            "type": "integer"
+        },
         "beginTime": {
             "type": "string"
         },
@@ -49,5 +52,5 @@
             "type": "integer"
         }
     },
-    "version": 6
+    "version": 7
 }

@@ -4,8 +4,16 @@ import { rows, columns } from './__tests__/data';
 import N8nDatatable from './Datatable.vue';
 
 export default {
-	title: 'Atoms/Datatable',
+	title: 'Core/Datatable',
 	component: N8nDatatable,
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A tabular data component for displaying rows, columns, and table interactions.',
+			},
+		},
+	},
 };
 
 export const Default: StoryFn = (args, { argTypes }) => ({

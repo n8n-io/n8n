@@ -6,13 +6,12 @@ import type {
 } from '@n8n/db';
 import { Folder, FolderTagMappingRepository, FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { EntityManager } from '@n8n/typeorm';
+import { In, type EntityManager } from '@n8n/typeorm';
 import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import { EventService } from '@/events/event.service';
 import type { ListQuery } from '@/requests';
-// eslint-disable-next-line import-x/no-cycle
 import { WorkflowService } from '@/workflows/workflow.service';
 
 export interface SimpleFolderNode {
@@ -34,15 +33,17 @@ export class FolderService {
 		private readonly folderTagMappingRepository: FolderTagMappingRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
+		private readonly eventService: EventService,
 	) {}
 
-	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string) {
+	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string, id?: string) {
 		let parentFolder = null;
 		if (parentFolderId) {
 			parentFolder = await this.findFolderInProjectOrFail(parentFolderId, projectId);
 		}
 
 		const folderEntity = this.folderRepository.create({
+			...(id ? { id } : {}),
 			name,
 			homeProject: { id: projectId },
 			parentFolder,
@@ -51,6 +52,14 @@ export class FolderService {
 		const { homeProject, ...folder } = await this.folderRepository.save(folderEntity);
 
 		return folder;
+	}
+
+	async getFoldersByIds(folderIds: string[]): Promise<Folder[]> {
+		if (folderIds.length === 0) return [];
+		return await this.folderRepository.find({
+			where: { id: In(folderIds) },
+			relations: { homeProject: true },
+		});
 	}
 
 	async updateFolder(
@@ -88,6 +97,8 @@ export class FolderService {
 				{ parentFolder: parentFolderId !== PROJECT_ROOT ? { id: parentFolderId } : null },
 			);
 		}
+
+		return await this.findFolderInProjectOrFail(folderId, projectId);
 	}
 
 	async findFolderInProjectOrFail(folderId: string, projectId: string, em?: EntityManager) {
@@ -153,7 +164,7 @@ export class FolderService {
 		);
 
 		for (const workflowId of workflowIds) {
-			await this.workflowService.archive(user, workflowId, true);
+			await this.workflowService.archive(user, workflowId, { skipArchived: true });
 		}
 
 		await this.workflowRepository.moveToFolder(workflowIds, PROJECT_ROOT);
@@ -170,6 +181,7 @@ export class FolderService {
 		if (!transferToFolderId) {
 			await this.flattenAndArchive(user, folderId, projectId);
 			await this.folderRepository.delete({ id: folderId });
+			this.eventService.emit('folder-deleted', { folderId, projectId });
 			return;
 		}
 
@@ -181,12 +193,12 @@ export class FolderService {
 			await this.findFolderInProjectOrFail(transferToFolderId, projectId);
 		}
 
-		return await this.folderRepository.manager.transaction(async (tx) => {
+		await this.folderRepository.manager.transaction(async (tx) => {
 			await this.folderRepository.moveAllToFolder(folderId, transferToFolderId, tx);
 			await this.workflowRepository.moveAllToFolder(folderId, transferToFolderId, tx);
 			await tx.delete(Folder, { id: folderId });
-			return;
 		});
+		this.eventService.emit('folder-deleted', { folderId, projectId });
 	}
 
 	async transferAllFoldersToProject(
@@ -239,11 +251,11 @@ export class FolderService {
 		});
 	}
 
-	async getFolderAndWorkflowCount(
+	async findFolderWithContentCounts(
 		folderId: string,
 		projectId: string,
-	): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
-		await this.findFolderInProjectOrFail(folderId, projectId);
+	): Promise<{ folder: Folder; totalSubFolders: number; totalWorkflows: number }> {
+		const folder = await this.findFolderInProjectOrFail(folderId, projectId);
 
 		const baseQuery = this.folderRepository
 			.createQueryBuilder('folder')
@@ -297,6 +309,7 @@ export class FolderService {
 		]);
 
 		return {
+			folder,
 			totalSubFolders: parseInt(subFolderResult?.count ?? '0', 10),
 			totalWorkflows: parseInt(workflowResult?.count ?? '0', 10),
 		};

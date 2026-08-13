@@ -1,0 +1,33 @@
+{
+	"id": "1.3-anthropic-api-key",
+	"category": "browser",
+	"prompt": "Set up an Anthropic credential for me in n8n. I don't have an API key yet.",
+	"budgets": { "maxToolCalls": 50, "maxDurationMs": 600000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 50,
+			"maxToolResultTokensEst": 200000,
+			"maxSingleToolResultTokensEst": 50000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["anthropic|console\\.anthropic\\.com|api key"],
+			"mustNotMatch": [
+				"taking a while",
+				"let me try (a )?different",
+				"couldn['’]t (load|connect|reach)",
+				"timed? out",
+				"unable to (load|access|reach)"
+			]
+		}
+	],
+	"tags": [
+		"browser",
+		"oauth",
+		"requires:browser-bootstrap",
+		"requires:third-party-account:anthropic"
+	]
+}

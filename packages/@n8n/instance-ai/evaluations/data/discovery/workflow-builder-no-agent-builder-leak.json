@@ -1,0 +1,18 @@
+{
+	"id": "workflow-builder-no-agent-builder-leak",
+	"userMessage": "Build a workflow that checks an RSS feed every hour and posts new items to a Slack channel.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["workflow-builder"]
+			}
+		],
+		"noneOfToolCalls": [
+			{
+				"toolName": "build-agent"
+			}
+		]
+	},
+	"rationale": "Regression gate for the agent-builder path into Instance AI. A plain workflow-building prompt must route through the workflow-builder skill and must never invoke the build-agent orchestration tool. Meaningful in both module modes; the strongest signal is a run with N8N_ENABLED_MODULES including 'agents', where build-agent is registered (it is always-loaded, not deferred) yet must still not be selected."
+}

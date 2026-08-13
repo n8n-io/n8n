@@ -1,5 +1,5 @@
 import type { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
@@ -11,7 +11,7 @@ describe('LicenseMetricsService', () => {
 		workflowRepository,
 	);
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	describe('collectPassthroughData', () => {
 		test('should return an object with active workflow IDs', async () => {

@@ -1,7 +1,7 @@
 import type { MigrationContext, IrreversibleMigration } from '../migration-types';
 
 export class MigrateTestDefinitionKeyToString1731582748663 implements IrreversibleMigration {
-	transaction = false as const;
+	withFKsDisabled = true as const;
 
 	async up(context: MigrationContext) {
 		const { queryRunner, tablePrefix } = context;

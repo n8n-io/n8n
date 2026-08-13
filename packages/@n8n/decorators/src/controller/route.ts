@@ -2,20 +2,29 @@ import { Container } from '@n8n/di';
 import type { RequestHandler } from 'express';
 
 import { ControllerRegistryMetadata } from './controller-registry-metadata';
-import type { Controller, Method, RateLimit } from './types';
+import type { KeyedRateLimiterConfig, RateLimiterLimits } from './rate-limit';
+import type { Controller, CorsOptions, Method } from './types';
 
 interface RouteOptions {
 	middlewares?: RequestHandler[];
 	usesTemplates?: boolean;
 	/** When this flag is set to true, auth cookie isn't validated, and req.user will not be set */
 	skipAuth?: boolean;
+	/** When this flag is set to true, requests from bot user agents (e.g. Slackbot) are allowed through */
+	allowBots?: boolean;
 	allowSkipPreviewAuth?: boolean;
+	/** When this flag is set to true, the endpoint can be accessed without authentication */
+	allowUnauthenticated?: boolean;
 	/** When this flag is set to true, the auth cookie does not enforce MFA to be used in the token */
 	allowSkipMFA?: boolean;
-	/** When these options are set, calls to this endpoint are rate limited using the options */
-	rateLimit?: boolean | RateLimit;
+	/** When these options are set, calls to this endpoint are rate limited based on IP address */
+	ipRateLimit?: boolean | RateLimiterLimits;
+	/** When these options are set, calls to this endpoint are rate limited based on a key extracted from the request */
+	keyedRateLimit?: KeyedRateLimiterConfig;
 	/** When this flag is set to true, the endpoint is protected by API key */
 	apiKeyAuth?: boolean;
+	/** CORS options for the route, this does not handle preflight requests */
+	cors?: Partial<CorsOptions> | true;
 }
 
 const RouteFactory =
@@ -31,10 +40,14 @@ const RouteFactory =
 		routeMetadata.middlewares = options.middlewares ?? [];
 		routeMetadata.usesTemplates = options.usesTemplates ?? false;
 		routeMetadata.skipAuth = options.skipAuth ?? false;
+		routeMetadata.allowBots = options.allowBots ?? false;
 		routeMetadata.allowSkipPreviewAuth = options.allowSkipPreviewAuth ?? false;
 		routeMetadata.allowSkipMFA = options.allowSkipMFA ?? false;
+		routeMetadata.allowUnauthenticated = options.allowUnauthenticated ?? false;
 		routeMetadata.apiKeyAuth = options.apiKeyAuth ?? false;
-		routeMetadata.rateLimit = options.rateLimit;
+		routeMetadata.ipRateLimit = options.ipRateLimit;
+		routeMetadata.keyedRateLimit = options.keyedRateLimit;
+		routeMetadata.cors = options.cors;
 	};
 
 export const Get = RouteFactory('get');
@@ -42,3 +55,5 @@ export const Post = RouteFactory('post');
 export const Put = RouteFactory('put');
 export const Patch = RouteFactory('patch');
 export const Delete = RouteFactory('delete');
+export const Head = RouteFactory('head');
+export const Options = RouteFactory('options');

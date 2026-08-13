@@ -1,0 +1,518 @@
+{
+	"name": "Regulatory Compliance Sentinel - RAG Workflow",
+	"nodes": [
+		{
+			"id": "95924ad7-54eb-4528-8686-e587f609736f",
+			"name": "Sticky Note 6605ea88",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [1136, 816],
+			"parameters": {
+				"content": "## STEP 1 - One-Time Setup\n**Run this branch ONCE** to load your regulatory PDFs into the In-Memory Vector Store.\n\n**How to use:**\n1. Set the file path to your regulatory PDF (GDPR, Municipal Codes, etc.)\n2. Click \"Test workflow\" to execute this branch\n3. The regulations are now embedded and searchable\n\n**Note:** In-Memory store resets on n8n restart. For production, switch to Qdrant or PGVector.",
+				"color": 3,
+				"width": 300,
+				"height": 200
+			}
+		},
+		{
+			"id": "5fc62dcd-c68d-4051-8ac0-329b986f0421",
+			"name": "Run Setup Once - Load Regulations",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 112],
+			"parameters": {}
+		},
+		{
+			"id": "ae7e6a59-78fe-453f-934d-543e4086848a",
+			"name": "Read Regulatory PDF",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"position": [224, 112],
+			"parameters": {
+				"filePath": "<__PLACEHOLDER_VALUE__Path to regulatory PDF file (e.g. /data/gdpr.pdf)__>"
+			}
+		},
+		{
+			"id": "24209761-0ffc-4efd-ada7-ec6fd017a1aa",
+			"name": "In-Memory Vector Store - Insert Regulations",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+			"typeVersion": 1,
+			"position": [448, 0],
+			"parameters": {
+				"mode": "insert",
+				"memoryKey": "regulatory_compliance_db"
+			}
+		},
+		{
+			"id": "a2bb665d-b69d-46ab-a86c-a76071029e40",
+			"name": "Gemini Embeddings - Setup",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+			"typeVersion": 1,
+			"position": [528, 224],
+			"parameters": {
+				"modelName": "models/text-embedding-004"
+			},
+			"credentials": {}
+		},
+		{
+			"id": "0f254124-24e0-4f2d-9189-a0dfd5c588dc",
+			"name": "Setup Complete",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [800, 112],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "setup-done",
+							"name": "status",
+							"value": "Regulatory database loaded into In-Memory Vector Store successfully.",
+							"type": "string"
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "20192c00-530a-43a5-8614-5f1b91408118",
+			"name": "Sticky Note 3a91b164",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [1136, 816],
+			"parameters": {
+				"content": "## STEP 2 - Main Compliance Check Workflow\n**Trigger:** POST a policy draft PDF to the webhook endpoint.\n\n**Flow:**\n1. Upload policy draft PDF via webhook\n2. Extract text and detect regulatory keywords\n3. Query Vector Store for relevant regulations (GDPR, local codes)\n4. Gemini 1.5 Pro analyzes draft vs. regulations\n5. Report logged to Google Sheets\n6. Email sent to compliance officer\n\n**Webhook URL:** /webhook/compliance-check\n**Method:** POST with PDF as binary body",
+				"color": 2,
+				"width": 300,
+				"height": 200
+			}
+		},
+		{
+			"id": "aa13651f-baf0-47ec-8464-fa4690d48b33",
+			"name": "Policy Draft Upload",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [0, 544],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "compliance-check",
+				"responseMode": "responseNode",
+				"options": {
+					"binaryData": true
+				}
+			},
+			"webhookId": "e7990c58-745a-4211-9e24-f2534bcc5b41"
+		},
+		{
+			"id": "032ee602-f437-48a6-ab72-aa7e59050f53",
+			"name": "Extract Policy Draft Text",
+			"type": "n8n-nodes-base.extractFromFile",
+			"typeVersion": 1,
+			"position": [224, 544],
+			"parameters": {
+				"operation": "pdf",
+				"options": {}
+			}
+		},
+		{
+			"id": "88ddcc9a-1b67-4d34-8ee9-bfa3708c0ee3",
+			"name": "Extract Keywords for Vector Search",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [448, 544],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const items = $input.all();\nconst fullText = items.map(i => i.json.text || '').join(' ');\n\nconst regulatoryKeywords = [\n  'data storage', 'surveillance', 'personal data', 'privacy', 'consent',\n  'data retention', 'data processing', 'security', 'encryption', 'access control',\n  'data transfer', 'third party', 'user rights', 'notification', 'breach',\n  'monitoring', 'collection', 'sharing', 'deletion', 'anonymization'\n];\n\nconst foundKeywords = regulatoryKeywords.filter(kw =>\n  fullText.toLowerCase().includes(kw.toLowerCase())\n);\n\nconst searchQuery = foundKeywords.length > 0\n  ? foundKeywords.join(', ')\n  : 'regulatory compliance data privacy security';\n\nreturn [{\n  json: {\n    policyText: fullText,\n    searchQuery: searchQuery,\n    foundKeywords: foundKeywords,\n    fileName: items[0] && items[0].binary ? Object.keys(items[0].binary)[0] : 'policy_draft',\n    timestamp: new Date().toISOString()\n  }\n}];"
+			}
+		},
+		{
+			"id": "894d27fc-912d-48a1-9ead-957bcc9d3cd1",
+			"name": "Retrieve Relevant Regulations",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+			"typeVersion": 1,
+			"position": [672, 544],
+			"parameters": {
+				"mode": "retrieve",
+				"memoryKey": "regulatory_compliance_db",
+				"topK": 8
+			}
+		},
+		{
+			"id": "58b097d0-3504-47c3-b6c2-2c4676c8cb9a",
+			"name": "Gemini Embeddings - Query",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+			"typeVersion": 1,
+			"position": [752, 768],
+			"parameters": {
+				"modelName": "models/text-embedding-004"
+			},
+			"credentials": {}
+		},
+		{
+			"id": "01993715-53dc-4b5a-be38-b4e45e0f4c19",
+			"name": "Format Retrieved Regulations",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1024, 544],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const items = $input.all();\nconst policyData = $('Extract Keywords for Vector Search').first().json;\n\nconst regulationChunks = items\n  .filter(i => i.json.pageContent || i.json.text || i.json.content)\n  .map(function(i, idx) {\n    const content = i.json.pageContent || i.json.text || i.json.content || JSON.stringify(i.json);\n    return '[Regulation Excerpt ' + (idx + 1) + ']\\n' + content;\n  })\n  .join('\\n\\n---\\n\\n');\n\nconst context = regulationChunks || 'No specific regulations retrieved. Apply general GDPR and data protection principles.';\n\nconst prompt = 'You are an expert Legal Compliance Officer specializing in data protection law, GDPR, and municipal regulatory codes.\\n\\n' +\n  'TASK: Review the provided policy draft against the retrieved regulatory context below. Identify every clause or section that contradicts, violates, or is non-compliant with the regulations.\\n\\n' +\n  'RETRIEVED REGULATORY CONTEXT:\\n' + context + '\\n\\n' +\n  'POLICY DRAFT TO REVIEW:\\n' + policyData.policyText + '\\n\\n' +\n  'INSTRUCTIONS:\\n' +\n  '1. Analyze each section of the policy draft against the regulatory context.\\n' +\n  '2. For each non-compliant clause found, provide:\\n' +\n  '   - CLAUSE: Quote the exact non-compliant text from the draft\\n' +\n  '   - REGULATION VIOLATED: Name the specific regulation/article breached\\n' +\n  '   - ISSUE: Explain why it is non-compliant\\n' +\n  '   - RECOMMENDATION: Suggest corrective action\\n' +\n  '3. Provide an overall COMPLIANCE SCORE (0-100%) and RISK LEVEL (Low/Medium/High/Critical).\\n' +\n  '4. Summarize all findings in a structured COMPLIANCE REPORT.\\n\\n' +\n  'FORMAT YOUR RESPONSE AS:\\n' +\n  '## COMPLIANCE REPORT\\n' +\n  '**Document Reviewed:** [filename]\\n' +\n  '**Review Date:** [date]\\n' +\n  '**Overall Compliance Score:** [X%]\\n' +\n  '**Risk Level:** [Low/Medium/High/Critical]\\n\\n' +\n  '## NON-COMPLIANT CLAUSES\\n' +\n  '[List each violation with CLAUSE, REGULATION VIOLATED, ISSUE, RECOMMENDATION]\\n\\n' +\n  '## COMPLIANT SECTIONS\\n' +\n  '[List sections that are compliant]\\n\\n' +\n  '## EXECUTIVE SUMMARY\\n' +\n  '[Brief summary for management]';\n\nreturn [{\n  json: {\n    policyText: policyData.policyText,\n    searchQuery: policyData.searchQuery,\n    foundKeywords: policyData.foundKeywords,\n    fileName: policyData.fileName,\n    timestamp: policyData.timestamp,\n    regulatoryContext: context,\n    prompt: prompt\n  }\n}];"
+			}
+		},
+		{
+			"id": "b1c32fd3-77d3-46bb-8f1f-bc02c75a831c",
+			"name": "Compliance Analysis - Gemini",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"typeVersion": 1.9,
+			"position": [1248, 544],
+			"parameters": {
+				"promptType": "define",
+				"text": "={{ $json.prompt }}",
+				"hasOutputParser": false
+			}
+		},
+		{
+			"id": "63be47d1-72f6-45fe-84ce-1f4c1a7ffdd7",
+			"name": "Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"typeVersion": 1,
+			"position": [1328, 768],
+			"parameters": {
+				"modelName": "models/gemini-1.5-pro",
+				"options": {
+					"temperature": 0.2,
+					"maxOutputTokens": 4096
+				}
+			},
+			"credentials": {}
+		},
+		{
+			"id": "3f8072a8-7663-4c03-b6ba-96af7f9a5a26",
+			"name": "Build Compliance Report",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1600, 544],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const analysisResult = $input.first().json;\nconst contextData = $('Format Retrieved Regulations').first().json;\n\nconst reportText = analysisResult.text || analysisResult.response || analysisResult.output || 'Analysis could not be generated.';\n\nconst scoreMatch = reportText.match(/Compliance Score[:\\s]+([\\d]+)%/i);\nconst riskMatch = reportText.match(/Risk Level[:\\s]+(Low|Medium|High|Critical)/i);\nconst complianceScore = scoreMatch ? scoreMatch[1] : 'N/A';\nconst riskLevel = riskMatch ? riskMatch[1] : 'Unknown';\n\nconst violationMatches = reportText.match(/CLAUSE:/gi) || [];\nconst violationCount = violationMatches.length;\n\nconst summary = reportText.length > 500 ? reportText.substring(0, 500) + '...' : reportText;\n\nreturn [{\n  json: {\n    reportDate: contextData.timestamp,\n    fileName: contextData.fileName,\n    searchQuery: contextData.searchQuery,\n    foundKeywords: Array.isArray(contextData.foundKeywords) ? contextData.foundKeywords.join(', ') : '',\n    complianceScore: complianceScore,\n    riskLevel: riskLevel,\n    violationCount: violationCount,\n    fullReport: reportText,\n    reportSummary: summary,\n    status: violationCount > 0 ? 'NON-COMPLIANT' : 'COMPLIANT'\n  }\n}];"
+			}
+		},
+		{
+			"id": "6a3b42df-743d-4e1f-9cfa-2598bd99e237",
+			"name": "Log to Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [1824, 544],
+			"parameters": {
+				"resource": "sheet",
+				"operation": "appendOrUpdate",
+				"documentId": {
+					"__rl": true,
+					"mode": "url",
+					"value": "<__PLACEHOLDER_VALUE__Google Sheets URL for compliance log__>"
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "name",
+					"value": "Compliance Reports"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"Report Date": "={{ $json.reportDate }}",
+						"Document Name": "={{ $json.fileName }}",
+						"Keywords Found": "={{ $json.foundKeywords }}",
+						"Compliance Score": "={{ $json.complianceScore }}",
+						"Risk Level": "={{ $json.riskLevel }}",
+						"Violations Found": "={{ $json.violationCount }}",
+						"Status": "={{ $json.status }}",
+						"Report Summary": "={{ $json.reportSummary }}",
+						"Full Report": "={{ $json.fullReport }}"
+					},
+					"schema": [
+						{
+							"id": "Report Date",
+							"displayName": "Report Date",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "Document Name",
+							"displayName": "Document Name",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Keywords Found",
+							"displayName": "Keywords Found",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "Compliance Score",
+							"displayName": "Compliance Score",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "Risk Level",
+							"displayName": "Risk Level",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "Violations Found",
+							"displayName": "Violations Found",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "Status",
+							"displayName": "Status",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "Report Summary",
+							"displayName": "Report Summary",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": false
+						},
+						{
+							"id": "Full Report",
+							"displayName": "Full Report",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": false
+						}
+					]
+				}
+			},
+			"credentials": {}
+		},
+		{
+			"id": "8607ac50-7904-452c-9837-dd59b8427778",
+			"name": "Send Compliance Report Email",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"position": [2048, 544],
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"toList": ["<__PLACEHOLDER_VALUE__Compliance officer email address__>"],
+				"subject": "={{ $json.status }} - Compliance Report: {{ $json.fileName }} | Risk: {{ $json.riskLevel }} | Score: {{ $json.complianceScore }}%",
+				"message": "=<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:20px;\"><div style=\"background:#1a1a2e;color:white;padding:20px;border-radius:8px 8px 0 0;\"><h1 style=\"margin:0;\">Regulatory Compliance Sentinel</h1><p style=\"margin:5px 0 0 0;opacity:0.8;\">Automated Compliance Analysis Report</p></div><div style=\"background:#f8f9fa;padding:20px;border:1px solid #dee2e6;\"><table style=\"width:100%;border-collapse:collapse;\"><tr><td style=\"padding:8px;font-weight:bold;width:40%;\">Document Reviewed:</td><td style=\"padding:8px;\">{{ $json.fileName }}</td></tr><tr style=\"background:white;\"><td style=\"padding:8px;font-weight:bold;\">Review Date:</td><td style=\"padding:8px;\">{{ $json.reportDate }}</td></tr><tr><td style=\"padding:8px;font-weight:bold;\">Compliance Score:</td><td style=\"padding:8px;font-size:1.2em;font-weight:bold;\">{{ $json.complianceScore }}%</td></tr><tr style=\"background:white;\"><td style=\"padding:8px;font-weight:bold;\">Risk Level:</td><td style=\"padding:8px;font-weight:bold;\">{{ $json.riskLevel }}</td></tr><tr><td style=\"padding:8px;font-weight:bold;\">Violations Found:</td><td style=\"padding:8px;\">{{ $json.violationCount }}</td></tr><tr style=\"background:white;\"><td style=\"padding:8px;font-weight:bold;\">Overall Status:</td><td style=\"padding:8px;font-weight:bold;\">{{ $json.status }}</td></tr><tr><td style=\"padding:8px;font-weight:bold;\">Keywords Detected:</td><td style=\"padding:8px;\">{{ $json.foundKeywords }}</td></tr></table></div><div style=\"background:white;padding:20px;border:1px solid #dee2e6;border-top:none;\"><h2 style=\"color:#1a1a2e;border-bottom:2px solid #1a1a2e;padding-bottom:10px;\">Full Compliance Analysis</h2><div style=\"white-space:pre-wrap;font-family:monospace;font-size:0.9em;background:#f8f9fa;padding:15px;border-radius:4px;border-left:4px solid #1a1a2e;\">{{ $json.fullReport }}</div></div><div style=\"background:#1a1a2e;color:white;padding:15px;border-radius:0 0 8px 8px;text-align:center;font-size:0.85em;opacity:0.8;\">Generated by Regulatory Compliance Sentinel | n8n RAG Workflow | {{ $json.reportDate }}</div></body></html>",
+				"options": {
+					"appendAttribution": false
+				}
+			},
+			"credentials": {}
+		},
+		{
+			"id": "6aa59a6f-5974-45c2-97c9-076dd3c3f72b",
+			"name": "Return Analysis Result",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.5,
+			"position": [2272, 544],
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={{ JSON.stringify({ status: $json.status, complianceScore: $json.complianceScore, riskLevel: $json.riskLevel, violationCount: $json.violationCount, message: \"Compliance report generated and sent.\" }) }}",
+				"options": {
+					"responseCode": 200
+				}
+			}
+		}
+	],
+	"connections": {
+		"Run Setup Once - Load Regulations": {
+			"main": [
+				[
+					{
+						"node": "Read Regulatory PDF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Regulatory PDF": {
+			"main": [
+				[
+					{
+						"node": "In-Memory Vector Store - Insert Regulations",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"In-Memory Vector Store - Insert Regulations": {
+			"main": [
+				[
+					{
+						"node": "Setup Complete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gemini Embeddings - Setup": {
+			"ai_embedding": [
+				[
+					{
+						"node": "In-Memory Vector Store - Insert Regulations",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Policy Draft Upload": {
+			"main": [
+				[
+					{
+						"node": "Extract Policy Draft Text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Policy Draft Text": {
+			"main": [
+				[
+					{
+						"node": "Extract Keywords for Vector Search",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Keywords for Vector Search": {
+			"main": [
+				[
+					{
+						"node": "Retrieve Relevant Regulations",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Retrieve Relevant Regulations": {
+			"main": [
+				[
+					{
+						"node": "Format Retrieved Regulations",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gemini Embeddings - Query": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Retrieve Relevant Regulations",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format Retrieved Regulations": {
+			"main": [
+				[
+					{
+						"node": "Compliance Analysis - Gemini",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compliance Analysis - Gemini": {
+			"main": [
+				[
+					{
+						"node": "Build Compliance Report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Compliance Analysis - Gemini",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Build Compliance Report": {
+			"main": [
+				[
+					{
+						"node": "Log to Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Log to Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Send Compliance Report Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Compliance Report Email": {
+			"main": [
+				[
+					{
+						"node": "Return Analysis Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

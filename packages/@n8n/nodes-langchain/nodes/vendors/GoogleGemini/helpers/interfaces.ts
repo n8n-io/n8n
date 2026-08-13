@@ -51,34 +51,46 @@ export interface Content {
 	role: string;
 }
 
+export interface TextPart {
+	text: string;
+}
+
+export interface InlineDataPart {
+	inlineData: {
+		mimeType: string;
+		data: string;
+	};
+}
+
+export interface FunctionCallPart {
+	functionCall: {
+		id?: string;
+		name: string;
+		args?: IDataObject;
+	};
+}
+
+export interface FunctionResponsePart {
+	functionResponse: {
+		id?: string;
+		name: string;
+		response: IDataObject;
+	};
+}
+
+export interface FileDataPart {
+	fileData?: {
+		mimeType?: string;
+		fileUri?: string;
+	};
+}
+
 export type Part =
-	| { text: string }
-	| {
-			inlineData: {
-				mimeType: string;
-				data: string;
-			};
-	  }
-	| {
-			functionCall: {
-				id?: string;
-				name: string;
-				args?: IDataObject;
-			};
-	  }
-	| {
-			functionResponse: {
-				id?: string;
-				name: string;
-				response: IDataObject;
-			};
-	  }
-	| {
-			fileData?: {
-				mimeType?: string;
-				fileUri?: string;
-			};
-	  };
+	| TextPart
+	| InlineDataPart
+	| FunctionCallPart
+	| FunctionResponsePart
+	| FileDataPart;
 
 export interface ImagenResponse {
 	predictions: Array<{
@@ -104,11 +116,49 @@ export interface VeoResponse {
 	};
 }
 
+/**
+ * File Search operation interface for long-running upload operations
+ * Based on: https://ai.google.dev/api/file-search/file-search-stores#method:-media.uploadtofilesearchstore
+ */
+export interface FileSearchOperation {
+	name: string;
+	done: boolean;
+	error?: { message: string };
+	response?: IDataObject;
+}
+
+/**
+ * User configuration for built-in tools in the node parameters
+ */
+export interface BuiltInTools {
+	googleSearch?: boolean;
+	googleMaps?: {
+		latitude?: number | string;
+		longitude?: number | string;
+	};
+	urlContext?: boolean;
+	fileSearch?: {
+		fileSearchStoreNames?: string;
+		metadataFilter?: string;
+	};
+	codeExecution?: boolean;
+}
+
+/**
+ * Tool structure for the Google Gemini API request
+ */
 export interface Tool {
 	functionDeclarations?: Array<{
 		name: string;
 		description: string;
 		parameters: IDataObject;
 	}>;
+	googleSearch?: object;
+	googleMaps?: object;
+	urlContext?: object;
+	fileSearch?: {
+		fileSearchStoreNames?: string[];
+		metadataFilter?: string;
+	};
 	codeExecution?: object;
 }

@@ -90,7 +90,7 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 		return { booleanValue: value };
 	} else if (value === null) {
 		return { nullValue: null };
-	} else if (value !== '' && !isNaN(value as number)) {
+	} else if (value !== '' && typeof value !== 'object' && !isNaN(value as number)) {
 		if (value.toString().indexOf('.') !== -1) {
 			return { doubleValue: value };
 		} else {

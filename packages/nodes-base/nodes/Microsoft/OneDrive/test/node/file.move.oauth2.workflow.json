@@ -1,0 +1,61 @@
+{
+	"name": "OneDrive OAuth2 file:move",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "11111111-1111-1111-1111-111111111111",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftOneDriveOAuth2Api",
+				"resource": "file",
+				"operation": "move",
+				"fileId": "FILE123",
+				"destinationFolderId": "DESTFOLDER"
+			},
+			"id": "22222222-2222-2222-2222-222222222222",
+			"name": "Microsoft OneDrive",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft OneDrive account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft OneDrive": [
+			{
+				"json": {
+					"id": "FILE123",
+					"name": "report.txt",
+					"parentReference": {
+						"id": "DESTFOLDER"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft OneDrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

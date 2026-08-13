@@ -1,0 +1,192 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a report assistant. Use fetch_report to retrieve reports. Mention the title and page count. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Get report RPT-001"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "fetch_report",
+					"description": "Fetch a detailed report by ID",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"reportId": {
+								"type": "string",
+								"description": "Report ID"
+							}
+						},
+						"required": ["reportId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013c5554d8fda3010bdf32ba23907294165bbf26d2b75b515970a2a0e2d95e58d678917c70ef684b642f9ef95816c3e80b697eee6e6f7c69ef766ec09eed0108b0af45eac917b128e46529060d11ee85789c0a04742dcac81eda1b0123530c8b4a8248e73a136d5f8dd783a9e2493699a2429c4a06438c3af7992ce67b3dcfd582e3fdc5957c845517c5d2c370f100f32410cceea0008ef95276142dacc1a4243c0be7d8fc1932db943e1ad01662aad4f90c76d8526c31e289184d2bec1aa46bd3265459cec068d077633791f4326b21c79e65090b286f72392867728e435aed91b12609963814e683e2dcee35b36cd876c1d83ada80b4d6f63f0e8762a434e0a1d30089591c2c95064f3842e18e76bb4c0c058e2622794168f1aa1aea3f6ab47233c76fd5451fea86db6b9dcfb0b21876c127f1e3d77f960f9b48facd5bcf2d8f43fac2b9ea41f9f6ffdccade96eb17cd86c27ee5eceb7f73710831145d8f78494e5dc61694f89ca8a80edeb505dad83eb97145239cca8e7adb5562ab31e7889208070cdbe444de2cff60f213dfb47a4d574ece2b3b7e625b8148e94d0071018407db501afa460bf0287d0bd11d7efc42b490addfe24573050f5e6ba58b482f9e72fe32439297b633de90a6ab878df87efd4967f7bc9b6ec88690f6a86fd45473d123a0e7ae3b8fbf8ff7128d7ff6f2a9f8dd16127dbdfdb79d1ba1c1c77fd06e23d346b32070000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:48:43Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:48:43Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:48:43Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:48:43Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a154f9e4eee8b4b5-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 03 Jul 2026 09:48:44 GMT",
+			"request-id": "req_011Cceuyac3pSUgt72TDWj91",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-3ca335f04c93bbc9d6bafba5683fc236-689c4f5c7f0cb95f-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a report assistant. Use fetch_report to retrieve reports. Mention the title and page count. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Get report RPT-001"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01Ej8sKrgtASVHkq2rFdRqF6",
+							"name": "fetch_report",
+							"input": {
+								"reportId": "RPT-001"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01Ej8sKrgtASVHkq2rFdRqF6",
+							"content": "{\"id\":\"RPT-001\",\"title\":\"Q4 Sales Report\",\"pageCount\":42}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "fetch_report",
+					"description": "Fetch a detailed report by ID",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"reportId": {
+								"type": "string",
+								"description": "Report ID"
+							}
+						},
+						"required": ["reportId"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013bd53cb6edb3010bcfb2b883d0a1220b97653f0dca0681b14715220401f2036e256224c932a49b90902fd7b41db4a24476e7a69751134b3e4ccce6a694b2670b621efb122e103ba30931890b30708f70d0187110969ff0dfc01365692060ea5c6565256a35ab7d9225b66f37cbe2cf2bc8014948c77f84ae4c5a7fac3eafce3eafafee2e6d7c5eae6d517e7d5bbd7901e29410aceea08a0f7ca073451b6b4269009c0bf7e4fc107db0847e8ad016e5aad0f90a79f2d999246a0a4804afb1e6b7bf7ca346d10c1aec978e067c5590a25963589d21106658d1857e43def08e529ae3f1b05a8a969430eb5586e9ed73fb1457dcc7629d8360ca122054f6eab4a124191030e3118894ec68ccd0f72b16f5191050ec606815b541a6f3541d775b319ed277d4851dc6a5baea7e73d51b2939074b7ef73c8c7360fe702ddc5c2dd8b0374ec49b551a63a9261104138e54c920ef86767bb9291b33d3276f45876f09524d0b1c7e7bfcb5f51635de06cb560d7a8c9b33d9024df4cc692e4fd5b9e24eceaf27396e7c51ebac48a7c4417f3a1f3d3dee33fffd24c6d3370fefcc27ee52763189130687bb49440468ad03a037fbd9addbfdbcda3659abf192539d9fb548c430e46877f032629f25b49050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:48:44Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:48:44Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:48:44Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:48:44Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a154f9eb8da8b4b5-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 03 Jul 2026 09:48:45 GMT",
+			"request-id": "req_011Cceuyf9QBoxYvA3YniXfd",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-07126e31eaf3a42b372e4e7ec68d0440-46ac96da906a98e9-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

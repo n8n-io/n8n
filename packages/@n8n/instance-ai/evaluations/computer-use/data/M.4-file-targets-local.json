@@ -1,0 +1,23 @@
+{
+	"id": "M.4-file-targets-local",
+	"category": "filesystem-write",
+	"prompt": "Create a file called test.txt with the text 'Hello World' on my computer.",
+	"budgets": { "maxToolCalls": 10, "maxDurationMs": 120000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustCallTool", "name": "write_file" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 3 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 10,
+			"maxToolResultTokensEst": 10000,
+			"maxSingleToolResultTokensEst": 5000
+		},
+		{
+			"type": "fs.fileMatches",
+			"glob": "**/test.txt",
+			"anyOf": ["Hello World"]
+		}
+	],
+	"tags": ["filesystem-write", "regression"]
+}

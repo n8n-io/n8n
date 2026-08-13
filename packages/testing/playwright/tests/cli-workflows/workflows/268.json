@@ -1,0 +1,66 @@
+{
+	"id": "268",
+	"name": "Sort Node Code Sorting Type",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-448, 240],
+			"id": "f341af5c-89b6-4277-b47a-1cdd64a8fff8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"type": "code",
+				"code": "const first = a.json.id;\nconst second = b.json.id;\n\nreturn first === second \n  ? 0\n  : first < second\n    ? -1\n    : 1;"
+			},
+			"type": "n8n-nodes-base.sort",
+			"typeVersion": 1,
+			"position": [0, 240],
+			"id": "6d0b50cc-6cee-4215-b04a-902e2c95798f",
+			"name": "Sort",
+			"executeOnce": false
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 3, char: 'c'},\n  {id: 4, char: 'd'},\n  {id: 5, char: 'e'},\n  {id: 1, char: 'a'},\n  {id: 2, char: 'b'},\n];"
+			},
+			"id": "5a813a47-77ed-4781-97cb-22a0d2226e58",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-224, 240]
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sort": {
+			"main": [[]]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Sort",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": null,
+	"tags": []
+}

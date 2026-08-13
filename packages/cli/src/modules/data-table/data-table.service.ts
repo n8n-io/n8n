@@ -4,6 +4,7 @@ import type {
 	DeleteDataTableRowsDto,
 	ListDataTableContentQueryDto,
 	MoveDataTableColumnDto,
+	RenameDataTableColumnDto,
 	DataTableListOptions,
 	UpsertDataTableRowDto,
 	UpdateDataTableDto,
@@ -12,6 +13,8 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { In, type EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import type {
 	DataTableColumnJsType,
@@ -28,12 +31,15 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
 import { RoleService } from '@/services/role.service';
 
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
+import { DataTableCsvImportService } from './data-table-csv-import.service';
 import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
+import type { DataTable } from './data-table.entity';
 import { DataTableRepository } from './data-table.repository';
 import { columnTypeToFieldType } from './data-table.types';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
@@ -52,6 +58,8 @@ export class DataTableService {
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
+		private readonly csvImportService: DataTableCsvImportService,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -59,14 +67,118 @@ export class DataTableService {
 	async start() {}
 	async shutdown() {}
 
-	async createDataTable(projectId: string, dto: CreateDataTableDto) {
+	async getProjectIdForDataTable(dataTableId: string): Promise<string> {
+		const dataTable = await this.dataTableRepository.findOne({
+			select: ['projectId'],
+			where: { id: dataTableId },
+		});
+
+		if (!dataTable) {
+			throw new DataTableNotFoundError(dataTableId);
+		}
+
+		return dataTable.projectId;
+	}
+
+	/**
+	 * `id` is package-import-only: it keeps the id the table had on the exporting
+	 * instance (mirrors `FolderService.createFolder`). REST callers never pass it —
+	 * the public create endpoint always mints a fresh id.
+	 */
+	async createDataTable(projectId: string, dto: CreateDataTableDto, id?: string) {
+		if (dto.fileId && dto.columns.length === 0) {
+			throw new DataTableValidationError(
+				'At least one column must be included when importing from CSV',
+			);
+		}
+
 		await this.validateUniqueName(dto.name, projectId);
 
-		const result = await this.dataTableRepository.createDataTable(projectId, dto.name, dto.columns);
+		const result = await this.dataTableRepository.createDataTable(
+			projectId,
+			dto.name,
+			dto.columns,
+			undefined,
+			id,
+		);
+
+		if (dto.fileId) {
+			try {
+				const tableColumns = await this.getColumns(result.id, projectId);
+				const rows = await this.csvImportService.buildRowsForNewTable(
+					dto.fileId,
+					dto.hasHeaders ?? true,
+					tableColumns,
+					dto.columns,
+				);
+
+				if (rows.length > 0) {
+					await this.insertRows(result.id, projectId, rows);
+				}
+			} catch (error) {
+				await this.deleteDataTable(result.id, projectId);
+				throw error;
+			} finally {
+				await this.csvImportService.cleanupFile(dto.fileId);
+			}
+		}
 
 		this.dataTableSizeValidator.reset();
 
 		return result;
+	}
+
+	/**
+	 * Instance-wide id lookup (with columns) used by package import: same-project
+	 * hits are match candidates, cross-project hits are id conflicts.
+	 * Authorization is the import flow's concern.
+	 */
+	async findDataTablesByIds(dataTableIds: string[]): Promise<DataTable[]> {
+		if (dataTableIds.length === 0) return [];
+
+		return await this.dataTableRepository.find({
+			where: { id: In(dataTableIds) },
+			relations: { columns: true },
+		});
+	}
+
+	/** Project-scoped name lookup used by package import to detect name conflicts before creating tables. */
+	async findDataTablesByNamesInProject(
+		projectId: string,
+		names: string[],
+	): Promise<Array<Pick<DataTable, 'id' | 'name'>>> {
+		if (names.length === 0) return [];
+
+		return await this.dataTableRepository.find({
+			select: ['id', 'name'],
+			where: { projectId, name: In(names) },
+		});
+	}
+
+	async importCsvToExistingTable(
+		dataTableId: string,
+		projectId: string,
+		fileId: string,
+	): Promise<{ importedRowCount: number; systemColumnsIgnored: string[] }> {
+		await this.validateDataTableSize();
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		try {
+			const tableColumns = await this.getColumns(dataTableId, projectId);
+			const { rows, systemColumnsIgnored } =
+				await this.csvImportService.validateAndBuildRowsForExistingTable(fileId, tableColumns);
+
+			if (rows.length > 0) {
+				await this.insertRows(dataTableId, projectId, rows);
+			}
+
+			return {
+				importedRowCount: rows.length,
+				systemColumnsIgnored,
+			};
+		} finally {
+			await this.csvImportService.cleanupFile(fileId);
+		}
 	}
 
 	// Updates data table properties (currently limited to renaming)
@@ -79,14 +191,27 @@ export class DataTableService {
 		return true;
 	}
 
-	async transferDataTablesByProjectId(fromProjectId: string, toProjectId: string) {
-		return await this.dataTableRepository.transferDataTableByProjectId(fromProjectId, toProjectId);
+	async transferDataTablesByProjectId(
+		fromProjectId: string,
+		toProjectId: string,
+		trx?: EntityManager,
+	) {
+		return await this.dataTableRepository.transferDataTableByProjectId(
+			fromProjectId,
+			toProjectId,
+			trx,
+		);
 	}
 
 	async deleteDataTableByProjectId(projectId: string) {
+		const tables = await this.dataTableRepository.findBy({ projectId });
+
 		const result = await this.dataTableRepository.deleteDataTableByProjectId(projectId);
 
 		if (result) {
+			for (const table of tables) {
+				this.eventService.emit('data-table-deleted', { dataTableId: table.id, projectId });
+			}
 			this.dataTableSizeValidator.reset();
 		}
 
@@ -107,6 +232,7 @@ export class DataTableService {
 		await this.validateDataTableExists(dataTableId, projectId);
 
 		await this.dataTableRepository.deleteDataTable(dataTableId);
+		this.eventService.emit('data-table-deleted', { dataTableId, projectId });
 
 		this.dataTableSizeValidator.reset();
 
@@ -116,7 +242,11 @@ export class DataTableService {
 	async addColumn(dataTableId: string, projectId: string, dto: AddDataTableColumnDto) {
 		await this.validateDataTableExists(dataTableId, projectId);
 
-		return await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+		const result = await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
+		return result;
 	}
 
 	async moveColumn(
@@ -139,7 +269,21 @@ export class DataTableService {
 
 		await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn);
 
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
 		return true;
+	}
+
+	async renameColumn(
+		dataTableId: string,
+		projectId: string,
+		columnId: string,
+		dto: RenameDataTableColumnDto,
+	) {
+		await this.validateDataTableExists(dataTableId, projectId);
+		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
+
+		return await this.dataTableColumnRepository.renameColumn(dataTableId, existingColumn, dto.name);
 	}
 
 	async getManyAndCount(options: DataTableListOptions) {
@@ -161,6 +305,7 @@ export class DataTableService {
 			const result = await this.dataTableRowsRepository.getManyAndCount(
 				dataTableId,
 				transformedDto,
+				columns,
 				em,
 			);
 			return {
@@ -174,6 +319,20 @@ export class DataTableService {
 		await this.validateDataTableExists(dataTableId, projectId);
 
 		return await this.dataTableColumnRepository.getColumns(dataTableId);
+	}
+
+	async getColumnById({
+		projectId,
+		dataTableId,
+		columnId,
+	}: {
+		projectId: string;
+		dataTableId: string;
+		columnId: string;
+	}) {
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		return await this.dataTableColumnRepository.getColumnByIdOrFail(dataTableId, columnId);
 	}
 
 	async insertRows<T extends DataTableInsertRowsReturnType = 'count'>(
@@ -206,10 +365,12 @@ export class DataTableService {
 
 		this.dataTableSizeValidator.reset();
 
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
 		return result;
 	}
 
-	async upsertRow<T extends boolean | undefined>(
+	async upsertRow(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
@@ -230,6 +391,13 @@ export class DataTableService {
 		returnData?: false,
 		dryRun?: false,
 	): Promise<true>;
+	async upsertRow(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[] | true>;
 	async upsertRow(
 		dataTableId: string,
 		projectId: string,
@@ -280,6 +448,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -308,7 +478,7 @@ export class DataTableService {
 		return { data: transformedData, filter: transformedFilter };
 	}
 
-	async updateRows<T extends boolean | undefined>(
+	async updateRows(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
@@ -329,6 +499,13 @@ export class DataTableService {
 		returnData?: false,
 		dryRun?: false,
 	): Promise<true>;
+	async updateRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[] | true>;
 	async updateRows(
 		dataTableId: string,
 		projectId: string,
@@ -365,6 +542,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -391,6 +570,13 @@ export class DataTableService {
 		returnData?: false,
 		dryRun?: false,
 	): Promise<true>;
+	async deleteRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | true>;
 	async deleteRows(
 		dataTableId: string,
 		projectId: string,
@@ -423,8 +609,23 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
+		return result;
+	}
+
+	async clearRows(dataTableId: string, projectId: string): Promise<{ deletedCount: number }> {
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
+			const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx);
+			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+			return clearResult;
+		});
+
+		this.dataTableSizeValidator.reset();
 		return result;
 	}
 
@@ -508,7 +709,10 @@ export class DataTableService {
 		return validationResult.newValue as DataTableColumnJsType;
 	}
 
-	private async validateDataTableExists(dataTableId: string, projectId: string) {
+	/**
+	 * Performs no authorization — callers must pass an already-authorized `projectId`.
+	 */
+	async validateDataTableExists(dataTableId: string, projectId: string) {
 		const existingTable = await this.dataTableRepository.findOneBy({
 			id: dataTableId,
 			project: {
@@ -610,26 +814,180 @@ export class DataTableService {
 			async () => await this.dataTableRepository.findDataTablesSize(),
 		);
 
-		const roles = await this.roleService.rolesWithScope('project', ['dataTable:listProject']);
+		let dataTables: DataTableInfoById;
+		if (hasGlobalScope(user, 'dataTable:listProject')) {
+			dataTables = allSizeData.dataTables;
+		} else {
+			const roles = await this.roleService.rolesWithScope('project', ['dataTable:listProject']);
 
+			const accessibleProjectIds =
+				await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, roles);
+
+			const accessibleProjectIdsSet = new Set(accessibleProjectIds);
+
+			// Filter the cached data based on user's accessible projects
+			const accessibleDataTables: DataTableInfoById = Object.fromEntries(
+				Object.entries(allSizeData.dataTables).filter(([, dataTableInfo]) =>
+					accessibleProjectIdsSet.has(dataTableInfo.projectId),
+				),
+			);
+			dataTables = accessibleDataTables;
+		}
+
+		return {
+			totalBytes: allSizeData.totalBytes,
+			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
+			dataTables,
+		};
+	}
+
+	async findDataTablesByIdsForUser(
+		dataTableIds: string[],
+		user: User,
+		scopes: Scope[],
+	): Promise<DataTable[]> {
+		if (dataTableIds.length === 0) return [];
+
+		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			return await this.dataTableRepository.find({
+				where: { id: In(dataTableIds) },
+				relations: { columns: true, project: true },
+			});
+		}
+
+		const roles = await this.roleService.rolesWithScope('project', scopes);
 		const accessibleProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
 			user.id,
 			roles,
 		);
 
-		const accessibleProjectIdsSet = new Set(accessibleProjectIds);
+		if (accessibleProjectIds.length === 0) return [];
 
-		// Filter the cached data based on user's accessible projects
-		const accessibleDataTables: DataTableInfoById = Object.fromEntries(
-			Object.entries(allSizeData.dataTables).filter(([, dataTableInfo]) =>
-				accessibleProjectIdsSet.has(dataTableInfo.projectId),
-			),
+		return await this.dataTableRepository.find({
+			where: { id: In(dataTableIds), projectId: In(accessibleProjectIds) },
+			relations: { columns: true, project: true },
+		});
+	}
+
+	async generateDataTableCsv(
+		dataTableId: string,
+		projectId: string,
+		includeSystemColumns = true,
+	): Promise<{ csvContent: string; dataTableName: string }> {
+		const dataTable = await this.validateDataTableExists(dataTableId, projectId);
+
+		const columns = await this.dataTableColumnRepository.getColumns(dataTableId);
+
+		const { data: rows } = await this.dataTableRowsRepository.getManyAndCount(
+			dataTableId,
+			{
+				skip: 0,
+			},
+			columns,
 		);
 
+		const csvContent = this.buildCsvContent(rows, columns, includeSystemColumns);
+
 		return {
-			totalBytes: allSizeData.totalBytes,
-			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
-			dataTables: accessibleDataTables,
+			csvContent,
+			dataTableName: dataTable.name,
 		};
+	}
+
+	private buildCsvContent(
+		rows: DataTableRowReturn[],
+		columns: DataTableColumn[],
+		includeSystemColumns = true,
+	): string {
+		const sortedColumns = [...columns].sort((a, b) => a.index - b.index);
+
+		const userHeaders = sortedColumns.map((col) => col.name);
+		const headers = includeSystemColumns
+			? ['id', ...userHeaders, 'createdAt', 'updatedAt']
+			: userHeaders;
+
+		const csvRows: string[] = [headers.map((h) => this.escapeCsvValue(h)).join(',')];
+
+		for (const row of rows) {
+			const values: string[] = [];
+
+			if (includeSystemColumns) {
+				values.push(this.escapeCsvValue(row.id));
+			}
+
+			for (const column of sortedColumns) {
+				const value = row[column.name];
+				values.push(this.escapeCsvValue(this.formatValueForCsv(value, column.type)));
+			}
+
+			if (includeSystemColumns) {
+				values.push(this.escapeCsvValue(this.formatDateForCsv(row.createdAt)));
+				values.push(this.escapeCsvValue(this.formatDateForCsv(row.updatedAt)));
+			}
+
+			csvRows.push(values.join(','));
+		}
+
+		return csvRows.join('\n');
+	}
+
+	private formatValueForCsv(value: unknown, columnType: DataTableColumnType): string {
+		if (value === null || value === undefined) {
+			return '';
+		}
+
+		if (columnType === 'date') {
+			if (value instanceof Date || typeof value === 'string') {
+				return this.formatDateForCsv(value);
+			}
+		}
+
+		if (columnType === 'boolean') {
+			if (value === 1 || value === '1') {
+				return 'true';
+			}
+			if (value === 0 || value === '0') {
+				return 'false';
+			}
+			return String(value);
+		}
+
+		if (columnType === 'number') {
+			return String(value);
+		}
+
+		return String(value);
+	}
+
+	private formatDateForCsv(date: Date | string): string {
+		if (date instanceof Date) {
+			return date.toISOString();
+		}
+		// If it's already a string, try to parse and format
+		const parsed = new Date(date);
+		return !isNaN(parsed.getTime()) ? parsed.toISOString() : String(date);
+	}
+
+	private escapeCsvValue(value: unknown): string {
+		const str = String(value);
+
+		// RFC 4180 compliant escaping:
+		// - If value contains comma, quote, or newline, wrap in quotes
+		// - Also wrap if value has leading/trailing spaces to prevent trimming
+		// - Escape quotes by doubling them
+		const hasLeadingOrTrailingSpace =
+			str.length > 0 && (str[0] === ' ' || str[str.length - 1] === ' ');
+
+		if (
+			str.includes(',') ||
+			str.includes('"') ||
+			str.includes('\n') ||
+			str.includes('\r') ||
+			hasLeadingOrTrailingSpace
+		) {
+			return `"${str.replace(/"/g, '""')}"`;
+		}
+
+		return str;
 	}
 }

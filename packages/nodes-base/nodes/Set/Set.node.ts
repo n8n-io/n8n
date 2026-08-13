@@ -9,10 +9,11 @@ export class Set extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Set',
 			name: 'set',
-			icon: 'fa:pen',
+			icon: 'node:edit-fields',
+			iconColor: 'blue',
 			group: ['input'],
 			description: 'Add or edit fields on an input item and optionally remove other fields',
-			defaultVersion: 3.4,
+			defaultVersion: 3.5,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -23,6 +24,7 @@ export class Set extends VersionedNodeType {
 			3.2: new SetV2(baseDescription),
 			3.3: new SetV2(baseDescription),
 			3.4: new SetV2(baseDescription),
+			3.5: new SetV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

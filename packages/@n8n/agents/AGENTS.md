@@ -1,0 +1,155 @@
+# AGENTS.md
+
+Conventions for the `@n8n/agents` package.
+
+## Code Style
+
+- **No `_` prefix on private properties** — use `private` access modifier
+  without underscore. Write `private name: string`, not `private _name: string`.
+- **Builder pattern with lazy build** — all public primitives use a fluent
+  builder API. **User code never calls `.build()`**. Builders are passed
+  directly to the consuming method (e.g. `agent.tool(myTool)`) which calls
+  `.build()` internally. Agent has `generate()`/`stream()` directly on the
+  class, which lazy-build via `ensureBuilt()` on first call. `build()` is
+  `protected` on Agent to keep it out of the public API.
+- **Zod for schemas** — all input/output schemas use Zod.
+
+## Package Structure
+
+```
+src/
+  index.ts              # Public API barrel export
+  types/                # Public TypeScript types
+    index.ts            # Re-exports consumable types
+    telemetry.ts
+    sdk/                # Types aligned with builders (agent, eval, guardrail, mcp, memory, message, provider, tool)
+    runtime/            # Serializable runtime shapes (events, message lists)
+    utils/              # JSON typing helpers re-exported with public types
+  sdk/                  # Fluent builders and SDK entry points
+    agent.ts            # Agent builder
+    catalog.ts          # Provider catalog fetch
+    eval.ts             # Evaluation primitives
+    evaluate.ts         # Evaluation runner over agents + dataset
+    guardrail.ts        # Guardrail builder
+    mcp-client.ts       # MCP client integration
+    memory.ts           # Memory builder
+    message.ts          # LLM/DB message helpers
+    provider-tools.ts   # Provider-defined tool factories
+    telemetry.ts        # Telemetry builder (OTel, redaction)
+    tool.ts             # Tool builder
+    verify.ts           # Verification utilities
+  runtime/              # Internal — never exported
+    agent-runtime.ts    # Core agent execution engine (AI SDK)
+    tool-adapter.ts     # Tool execution, branded suspend detection
+    stream.ts           # Streaming helpers
+    model-factory.ts    # Model instantiation
+    memory-store.ts     # In-memory conversation and observation-log storage
+    observation-log-observer.ts
+    observation-log-reflector.ts
+    observation-log-renderer.ts
+    scoped-memory-task-runner.ts
+    message-list.ts     # Message list + serialization for agent loop
+    messages.ts         # Message normalization
+    mcp-connection.ts   # MCP connection lifecycle
+    mcp-tool-resolver.ts
+    run-state.ts        # Run / checkpoint state
+    event-bus.ts        # Internal agent events
+    runtime-helpers.ts
+    title-generation.ts
+    strip-orphaned-tool-messages.ts
+    logger.ts
+  storage/              # Shared memory backend base class (exported)
+    base-memory.ts
+  workspace/            # Workspace, sandbox, filesystem, built-in tools (exported)
+  integrations/         # Optional integrations (exported where applicable)
+    langsmith.ts        # LangSmith telemetry adapter (peer `langsmith`)
+  utils/                # Internal helpers (e.g. Zod utilities); not barrel-exported
+examples/
+  basic-agent.ts        # Sample snippet; included in format/lint paths
+docs/
+  agent-runtime-architecture.md  # In-package runtime notes
+```
+
+The **`index.ts`** surface also exports `Workspace` / sandbox / filesystem types,
+`InMemoryMemory`, `LangSmithTelemetry`, and `evals` alongside the core SDK builders.
+
+Optional **peer dependencies** (telemetry): `langsmith`, `@opentelemetry/sdk-trace-node`,
+`@opentelemetry/sdk-trace-base`, `@opentelemetry/exporter-trace-otlp-http` — all
+optional; install only when wiring that telemetry.
+
+## Credential Pattern
+
+Agents declare credential requirements via `.credential('name')`. The execution
+engine resolves the name to an API key and injects it into the model config.
+User code never touches raw API keys.
+
+```typescript
+const agent = new Agent('assistant')
+  .model('anthropic/claude-sonnet-4-5')
+  .credential('anthropic')
+  .instructions('You are helpful.');
+```
+
+## Engine Injection (EngineAgent)
+
+The execution engine extends `Agent` and overrides `protected build()` to
+inject infrastructure (checkpoint storage, credentials) before calling
+`super.build()`. This is the pattern for all engine-level concerns:
+
+```typescript
+class EngineAgent extends Agent {
+  build() {
+    this.checkpoint(store);
+    const cred = this.declaredCredential;
+    if (cred) this.resolvedApiKey = resolve(cred);
+    return super.build();
+  }
+}
+```
+
+
+## Testing
+
+- Unit tests live in `src/__tests__/`, integration tests in `src/__tests__/integration/`
+- Unit tests use Vitest (`pnpm test`)
+- Integration tests use Vitest (`pnpm test:integration`) with real LLM calls
+  - A `.env` file at the package root is loaded automatically by the vitest config.
+    Always assume it exists when running integration tests. Never commit it.
+  - Required keys:
+    - `ANTHROPIC_API_KEY` — all integration tests
+  - Tests skip automatically when the required API key is not set
+- Run from the package directory: `cd packages/@n8n/agents && pnpm test`
+
+### Integration tests
+
+Integration tests make real LLM calls. CI replays recorded HTTP cassettes
+instead, so every test must have a matching recording.
+
+**Workflow after changing or adding integration tests:**
+
+1. `pnpm test:integration <file>` — verify the test passes with a live API key
+2. `pnpm test:integration:record <file>` — record HTTP cassettes
+3. `pnpm test:integration:replay` — confirm the test passes from recordings
+
+**Rules:**
+- No random IDs or current timestamps in HTTP requests — the replay matcher
+  must be able to match recorded requests deterministically
+- Run only the affected test files, not the full suite, unless changes affect all tests
+
+## Documentation
+
+- Spec-driven work in the wider repo may use `.agents/specs/` (see repo skill
+  `.agents/skills/spec-driven-development`).
+
+## Building
+
+```bash
+cd packages/@n8n/agents
+pnpm build       # rimraf dist && tsc -p tsconfig.build.json → dist/
+pnpm typecheck   # tsc --noEmit
+pnpm test        # vitest (unit)
+```
+
+## PR naming convention
+
+The Agents feature is not generally available yet, so any PRs related to the Agents package should have (no-changelog) in the title to avoid generating a changelog entry.

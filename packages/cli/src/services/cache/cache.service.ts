@@ -1,19 +1,19 @@
+import { TypedEmitter } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
-import config from '@/config';
-import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
+import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
 	MaybeHash,
 	Hash,
 } from '@/services/cache/cache.types';
-import { TypedEmitter } from '@/typed-emitter';
+import { isObject } from '@/utils';
 
 type CacheEvents = {
 	'metrics.cache.hit': never;
@@ -23,6 +23,8 @@ type CacheEvents = {
 
 @Service()
 export class CacheService extends TypedEmitter<CacheEvents> {
+	private readonly takingKeys = new Set<string>();
+
 	constructor(private readonly globalConfig: GlobalConfig) {
 		super();
 	}
@@ -31,12 +33,12 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 	async init() {
 		const { backend } = this.globalConfig.cache;
-		const mode = config.getEnv('executions.mode');
+		const { mode } = this.globalConfig.executions;
 
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
 		if (useRedis) {
-			const { RedisClientService } = await import('../redis-client.service');
+			const { RedisClientService } = await import('../redis-client.service.js');
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = this.globalConfig.redis.prefix;
@@ -52,7 +54,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 				extraOptions: { keyPrefix: prefix },
 			});
 
-			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager');
+			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager.js');
 			const redisStore = redisStoreUsingClient(redisClient, {
 				ttl: this.globalConfig.cache.redis.ttl,
 			});
@@ -88,6 +90,11 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		return this.cache.kind === 'memory';
 	}
 
+	async exists(key: string) {
+		const ttl = await this.cache?.store.ttl(key);
+		return !!ttl;
+	}
+
 	// ----------------------------------
 	//             storing
 	// ----------------------------------
@@ -98,7 +105,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	async set(key: string, value: unknown, ttl?: number) {
 		if (!this.cache) await this.init();
 
-		if (!key || !value) return;
+		if (!key || value === undefined || value === null) return;
 
 		if (this.cache.kind === 'redis' && !this.cache.store.isCacheable(value)) {
 			throw new UncacheableValueError(key);
@@ -184,8 +191,8 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		if (key?.length === 0) return;
 
 		const value = await this.cache.store.get<T>(key);
-
-		if (value !== undefined) {
+		const cacheHit = await this.isAValidCacheHit(key, value);
+		if (cacheHit) {
 			this.emit('metrics.cache.hit');
 
 			return value;
@@ -205,50 +212,24 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		return fallbackValue;
 	}
 
-	async getMany<T = unknown[]>(
-		keys: string[],
-		{
-			fallbackValue,
-			refreshFn,
-		}: {
-			fallbackValue?: T[];
-			refreshFn?: (keys: string[]) => Promise<T[]>;
-		} = {},
-	) {
+	/** Atomically retrieve and delete a primitive value. */
+	async take<T = unknown>(key: string): Promise<T | undefined> {
 		if (!this.cache) await this.init();
+		if (!key) return undefined;
 
-		if (keys.length === 0) return [];
-
-		const values = await this.cache.store.mget(...keys);
-
-		if (values !== undefined) {
-			this.emit('metrics.cache.hit');
-
-			return values as T[];
+		if (this.cache.kind === 'redis') {
+			return await this.cache.store.getdel<T>(key);
 		}
 
-		this.emit('metrics.cache.miss');
-
-		if (refreshFn) {
-			this.emit('metrics.cache.update');
-
-			const refreshValue: T[] = await refreshFn(keys);
-
-			if (keys.length !== refreshValue.length) {
-				throw new MalformedRefreshValueError();
-			}
-
-			const newValue: Array<[key: string, value: unknown]> = keys.map((key, i) => [
-				key,
-				refreshValue[i],
-			]);
-
-			await this.setMany(newValue);
-
-			return refreshValue;
+		if (this.takingKeys.has(key)) return undefined;
+		this.takingKeys.add(key);
+		try {
+			const value = await this.cache.store.get<T>(key);
+			await this.cache.store.del(key);
+			return value;
+		} finally {
+			this.takingKeys.delete(key);
 		}
-
-		return fallbackValue;
 	}
 
 	/**
@@ -268,7 +249,8 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		const hash: MaybeHash<T> =
 			this.cache.kind === 'redis' ? await this.cache.store.hgetall(key) : await this.get(key);
 
-		if (hash !== undefined) {
+		const cacheHit = await this.isAValidCacheHit(key, hash);
+		if (cacheHit) {
 			this.emit('metrics.cache.hit');
 
 			return hash;
@@ -374,5 +356,30 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		delete hashObject[hashKey];
 
 		await this.cache.store.set(cacheKey, hashObject);
+	}
+
+	private async isAValidCacheHit(key: string, value: unknown): Promise<boolean> {
+		if (value === undefined) {
+			return false;
+		}
+
+		const isEmptyArray = Array.isArray(value) && value.length === 0;
+		const isEmptyObject = isObject(value) && Object.keys(value).length === 0;
+		if (isEmptyArray || isEmptyObject) {
+			// Redis adapters may return [] or {} for missing string or hash keys after restart.
+			const keyExists = await this.doesRedisKeyExist(key);
+			return keyExists;
+		}
+
+		return true;
+	}
+
+	private async doesRedisKeyExist(key: string): Promise<boolean> {
+		if (this.isRedis()) {
+			const ttl = await this.cache.store.ttl(key);
+			return ttl !== REDIS_TTL_KEY_MISSING;
+		}
+
+		return true;
 	}
 }

@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import type { TextSize, BadgeTheme } from '@n8n/design-system/types/';
-
+import type { TextSize, BadgeTheme } from '../../types';
 import N8nText from '../N8nText';
 
 interface BadgeProps {
@@ -33,10 +32,10 @@ withDefaults(defineProps<BadgeProps>(), {
 	align-items: center;
 	padding: var(--spacing--5xs) var(--spacing--4xs);
 	white-space: nowrap;
+}
 
-	&.border {
-		border: var(--border);
-	}
+.border {
+	border: var(--border);
 }
 
 .default {

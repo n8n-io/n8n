@@ -14,13 +14,14 @@ import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overw
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
+import { PrometheusMetricsService } from '@/metrics/prometheus';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { RedisClientService } from '@/services/redis-client.service';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 
 export type WorkerServerEndpointsConfig = {
-	/** Whether the `/healthz` endpoint is enabled. */
+	/** Whether the health check endpoint is enabled. */
 	health: boolean;
 
 	/** Whether the [credentials overwrites endpoint](https://docs.n8n.io/embed/configuration/#credential-overwrites) is enabled. */
@@ -46,6 +47,8 @@ export class WorkerServer {
 	private endpointsConfig: WorkerServerEndpointsConfig;
 
 	private overwritesLoaded = false;
+
+	private fullyReady = false;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -80,12 +83,17 @@ export class WorkerServer {
 		});
 	}
 
+	/** Call once after all initialization is complete. Unblocks the /healthz/readiness endpoint. */
+	markAsReady() {
+		this.fullyReady = true;
+	}
+
 	async init(endpointsConfig: WorkerServerEndpointsConfig) {
 		assert(Object.values(endpointsConfig).some((e) => e));
 
 		this.endpointsConfig = endpointsConfig;
 
-		await this.mountEndpoints();
+		this.mountEndpoints();
 
 		this.logger.debug('Worker server initialized', {
 			endpoints: Object.keys(this.endpointsConfig),
@@ -98,14 +106,17 @@ export class WorkerServer {
 		this.logger.info(`\nn8n worker server listening on port ${this.port}`);
 	}
 
-	private async mountEndpoints() {
+	private mountEndpoints() {
 		const { health, overwrites, metrics } = this.endpointsConfig;
 
 		if (health) {
-			this.app.get('/healthz', async (_, res) => {
+			const healthPath = resolveBackendHealthEndpointPath(this.globalConfig);
+			const readinessPath = `${healthPath}/readiness`;
+
+			this.app.get(healthPath, async (_, res) => {
 				res.send({ status: 'ok' });
 			});
-			this.app.get('/healthz/readiness', async (_, res) => {
+			this.app.get(readinessPath, async (_, res) => {
 				await this.readiness(_, res);
 			});
 		}
@@ -126,7 +137,7 @@ export class WorkerServer {
 		}
 
 		if (metrics) {
-			await this.prometheusMetricsService.init(this.app);
+			this.prometheusMetricsService.init(this.app);
 		}
 	}
 
@@ -135,7 +146,8 @@ export class WorkerServer {
 		const isReady =
 			connectionState.connected &&
 			connectionState.migrated &&
-			this.redisClientService.isConnected();
+			this.redisClientService.isConnected() &&
+			this.fullyReady;
 
 		return isReady
 			? res.status(200).send({ status: 'ok' })

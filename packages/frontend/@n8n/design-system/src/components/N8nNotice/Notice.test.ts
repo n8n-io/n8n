@@ -1,9 +1,8 @@
 import { render } from '@testing-library/vue';
 
-import { N8nText } from '@n8n/design-system/components';
-import { n8nHtml } from '@n8n/design-system/directives';
-
+import N8nText from '../N8nText';
 import N8nNotice from './Notice.vue';
+import { n8nHtml } from '../../directives';
 
 describe('components', () => {
 	describe('N8nNotice', () => {
@@ -41,7 +40,7 @@ describe('components', () => {
 					const wrapper = render(N8nNotice, {
 						props: {
 							id: 'notice',
-							content: '<strong>Hello world!</strong> This is a notice.',
+							content: '<a href="https://example.com">Hello world!</a> This is a notice.',
 						},
 						global: {
 							directives: {
@@ -53,7 +52,7 @@ describe('components', () => {
 						},
 					});
 
-					expect(wrapper.container.querySelectorAll('strong')).toHaveLength(1);
+					expect(wrapper.container.querySelectorAll('a')).toHaveLength(1);
 					expect(wrapper.html()).toMatchSnapshot();
 				});
 

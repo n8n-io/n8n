@@ -2,11 +2,12 @@
 
 import {
 	type INodeInputConfiguration,
-	type INodeInputFilter,
+	type INodeFilter,
 	type NodeConnectionType,
 } from 'n8n-workflow';
 
 // display based on the agent type
+/* istanbul ignore next */
 export function getInputs(
 	hasMainInput?: boolean,
 	hasOutputParser?: boolean,
@@ -14,7 +15,7 @@ export function getInputs(
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
 		type: NodeConnectionType;
-		filter?: INodeInputFilter;
+		filter?: INodeFilter;
 		displayName: string;
 		required?: boolean;
 	}

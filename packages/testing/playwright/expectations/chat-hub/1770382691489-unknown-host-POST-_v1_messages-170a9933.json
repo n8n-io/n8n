@@ -1,0 +1,87 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-opus-4-6",
+				"stream": true,
+				"max_tokens": 8192,
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "text",
+								"text": "What color is this image? Reply with just the color name."
+							},
+							{
+								"type": "image",
+								"source": {
+									"type": "base64",
+									"media_type": "image/png",
+									"data": "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAIAAAD/gAIDAAAAkElEQVR42u3QMQ0AAAjAsPk3DRb4eJpUQZviSIEsWbJkyUKBLFmyZMlCgSxZsmTJQoEsWbJkyUKBLFmyZMlCgSxZsmTJQoEsWbJkyUKBLFmyZMlCgSxZsmTJQoEsWbJkyUKBLFmyZMlCgSxZsmTJQoEsWbJkyUKBLFmyZMlCgSxZsmTJQoEsWbJkyUKBLFnvFp4t6yugc3LNAAAAAElFTkSuQmCC"
+								}
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": "Red"
+					},
+					{
+						"role": "user",
+						"content": "Does the image include text? Reply just yes or no."
+					}
+				],
+				"system": "You are a helpful assistant.\n\n__e2e_system_prompt_placeholder__"
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsInN0cmVhbSI6dHJ1ZSwibWF4X3Rva2VucyI6ODE5MiwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6IldoYXQgY29sb3IgaXMgdGhpcyBpbWFnZT8gUmVwbHkgd2l0aCBqdXN0IHRoZSBjb2xvciBuYW1lLiJ9LHsidHlwZSI6ImltYWdlIiwic291cmNlIjp7InR5cGUiOiJiYXNlNjQiLCJtZWRpYV90eXBlIjoiaW1hZ2UvcG5nIiwiZGF0YSI6ImlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFHUUFBQUJrQ0FJQUFBRC9nQUlEQUFBQWtFbEVRVlI0MnUzUU1RMEFBQWpBc1BrM0RSYjRlSnBVUVp2aVNJRXNXYkpreVVLQkxGbXlaTWxDZ1N4WnNtVEpRb0VzV2JKa3lVS0JMRm15Wk1sQ2dTeFpzbVRKUW9Fc1diSmt5VUtCTEZteVpNbENnU3hac21USlFvRXNXYkpreVVLQkxGbXlaTWxDZ1N4WnNtVEpRb0VzV2JKa3lVS0JMRm15Wk1sQ2dTeFpzbVRKUW9Fc1diSmt5VUtCTEZudkZwNHQ2eXVnYzNMTkFBQUFBRWxGVGtTdVFtQ0MifX1dfSx7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiUmVkIn0seyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJEb2VzIHRoZSBpbWFnZSBpbmNsdWRlIHRleHQ/IFJlcGx5IGp1c3QgeWVzIG9yIG5vLiJ9XSwic3lzdGVtIjoiWW91IGFyZSBhIGhlbHBmdWwgYXNzaXN0YW50LlxuXG5fX2UyZV9zeXN0ZW1fcHJvbXB0X3BsYWNlaG9sZGVyX18ifQ=="
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["1829"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"request-id": ["req_011CXrrWjWvLo6NtFTEKLLuB"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-02-06T12:58:08Z"],
+			"anthropic-ratelimit-tokens-remaining": ["4799000"],
+			"anthropic-ratelimit-tokens-limit": ["4800000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-02-06T12:58:08Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["800000"],
+			"anthropic-ratelimit-output-tokens-limit": ["800000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-02-06T12:58:08Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["3999000"],
+			"anthropic-ratelimit-input-tokens-limit": ["4000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 06 Feb 2026 12:58:10 GMT"],
+			"Content-Type": ["text/event-stream; charset=utf-8"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"],
+			"Cache-Control": ["no-cache"],
+			"CF-RAY": ["9c9ad13bded4b173-TXL"]
+		},
+		"body": {
+			"type": "STRING",
+			"string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-opus-4-6\",\"id\":\"msg_019gMyhsa8Q7xKifgR45pGsU\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":77,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":1,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}          }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}      }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"No\"}         }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0        }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"input_tokens\":77,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":4}            }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"      }\n\n",
+			"rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtb3B1cy00LTYiLCJpZCI6Im1zZ18wMTlnTXloc2E4UTd4S2lmZ1I0NXBHc1UiLCJ0eXBlIjoibWVzc2FnZSIsInJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24iOm51bGwsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6NzcsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0gICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RhcnQKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19zdGFydCIsImluZGV4IjowLCJjb250ZW50X2Jsb2NrIjp7InR5cGUiOiJ0ZXh0IiwidGV4dCI6IiJ9ICAgICAgfQoKZXZlbnQ6IHBpbmcKZGF0YTogeyJ0eXBlIjogInBpbmcifQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiJObyJ9ICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MCAgICAgICAgfQoKZXZlbnQ6IG1lc3NhZ2VfZGVsdGEKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9kZWx0YSIsImRlbHRhIjp7InN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsfSwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo3NywiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwib3V0cHV0X3Rva2VucyI6NH0gICAgICAgICAgICB9CgpldmVudDogbWVzc2FnZV9zdG9wCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2Vfc3RvcCIgICAgICB9Cgo=",
+			"contentType": "text/event-stream; charset=utf-8"
+		}
+	},
+	"id": "1770382691489-unknown-host-POST-_v1_messages-170a9933.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

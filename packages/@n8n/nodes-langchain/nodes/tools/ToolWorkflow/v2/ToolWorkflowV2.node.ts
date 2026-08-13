@@ -9,7 +9,7 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { nodeNameToToolName } from 'n8n-workflow';
+import { nodeNameToToolName, NodeOperationError } from 'n8n-workflow';
 
 import { localResourceMapping } from './methods';
 import { WorkflowToolService } from './utils/WorkflowToolService';
@@ -67,8 +67,27 @@ export class ToolWorkflowV2 implements INodeType {
 			if (item === undefined) {
 				continue;
 			}
-			const result = await tool.invoke(item.json);
-			response.push(result);
+
+			try {
+				const result = await tool.invoke(item.json);
+
+				// When manualLogging is false, tool.invoke returns INodeExecutionData[]
+				// We need to spread these into the response array
+				if (Array.isArray(result)) {
+					response.push(...result);
+				} else {
+					// Fallback for unexpected types (shouldn't happen with manualLogging=false)
+					response.push({
+						json: { response: result },
+						pairedItem: { item: itemIndex },
+					});
+				}
+			} catch (error) {
+				// Catch schema validation errors (ToolInputParsingException) and other errors
+				// Re-throw as NodeOperationError with itemIndex for better error context
+				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+				throw new NodeOperationError(this.getNode(), errorMessage, { itemIndex });
+			}
 		}
 
 		return [response];

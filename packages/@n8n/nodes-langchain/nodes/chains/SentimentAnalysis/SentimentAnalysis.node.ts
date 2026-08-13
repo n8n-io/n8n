@@ -1,8 +1,9 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
+import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -13,7 +14,8 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getBatchingOptionFields } from '@utils/sharedFields';
+import { getBatchingOptionFields } from '@n8n/ai-utilities';
+import { toParserInputText } from '@utils/output_parsers/parserInput';
 import { getTracingConfig } from '@utils/tracing';
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE =
@@ -33,7 +35,7 @@ export class SentimentAnalysis implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sentiment Analysis',
 		name: 'sentimentAnalysis',
-		icon: 'fa:balance-scale-left',
+		icon: 'node:sentiment-analysis',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
@@ -64,6 +66,11 @@ export class SentimentAnalysis implements INodeType {
 			},
 		],
 		outputs: `={{(${configuredOutputs})($parameter, "${DEFAULT_CATEGORIES}")}}`,
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Text to Analyze',
@@ -212,8 +219,12 @@ export class SentimentAnalysis implements INodeType {
 						? OutputFixingParser.fromLLM(llm, structuredParser)
 						: structuredParser;
 
+					const escapedTemplate = (options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE)
+						.replace(/[{}]/g, (match) => match + match)
+						.replaceAll('{{categories}}', '{categories}');
+
 					const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-						`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
+						`${escapedTemplate}
 				{format_instructions}`,
 					);
 
@@ -228,7 +239,11 @@ export class SentimentAnalysis implements INodeType {
 					];
 
 					const prompt = ChatPromptTemplate.fromMessages(messages);
-					const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+					const chain = prompt
+						.pipe(llm)
+						.pipe(toParserInputText)
+						.pipe(parser)
+						.withConfig(getTracingConfig(this));
 
 					try {
 						const output = await chain.invoke(messages);
@@ -352,8 +367,12 @@ export class SentimentAnalysis implements INodeType {
 						? OutputFixingParser.fromLLM(llm, structuredParser)
 						: structuredParser;
 
+					const escapedTemplate = (options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE)
+						.replace(/[{}]/g, (match) => match + match)
+						.replaceAll('{{categories}}', '{categories}');
+
 					const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-						`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
+						`${escapedTemplate}
 			{format_instructions}`,
 					);
 
@@ -368,7 +387,11 @@ export class SentimentAnalysis implements INodeType {
 					];
 
 					const prompt = ChatPromptTemplate.fromMessages(messages);
-					const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+					const chain = prompt
+						.pipe(llm)
+						.pipe(toParserInputText)
+						.pipe(parser)
+						.withConfig(getTracingConfig(this));
 
 					try {
 						const output = await chain.invoke(messages);

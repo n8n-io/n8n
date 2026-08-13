@@ -16,18 +16,10 @@ export class CanvasComposer {
 	}
 
 	/**
-	 * Execute a node and wait for success toast notification
-	 * @param nodeName - The node to execute
-	 */
-	async executeNodeAndWaitForToast(nodeName: string): Promise<void> {
-		await this.n8n.canvas.executeNode(nodeName);
-		await this.n8n.notifications.waitForNotificationAndClose('Node executed successfully');
-	}
-
-	/**
 	 * Copy selected nodes and verify success toast
 	 */
 	async copySelectedNodesWithToast(): Promise<void> {
+		await this.n8n.clipboard.grant();
 		await this.n8n.canvas.copyNodes();
 		await this.n8n.notifications.waitForNotificationAndClose('Copied to clipboard');
 	}
@@ -36,6 +28,7 @@ export class CanvasComposer {
 	 * Select all nodes and copy them
 	 */
 	async selectAllAndCopy(): Promise<void> {
+		await this.n8n.clipboard.grant();
 		await this.n8n.canvas.selectAll();
 		await this.copySelectedNodesWithToast();
 	}
@@ -60,8 +53,8 @@ export class CanvasComposer {
 	 * Switch between editor and workflow history and back
 	 */
 	async switchBetweenEditorAndHistory(): Promise<void> {
-		await this.n8n.page.getByTestId('workflow-history-button').click();
-		await this.n8n.page.getByTestId('workflow-history-close-button').click();
+		await this.n8n.canvas.openWorkflowHistory();
+		await this.n8n.canvas.closeWorkflowHistory();
 		await this.n8n.page.waitForLoadState();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
@@ -71,7 +64,7 @@ export class CanvasComposer {
 	 * Switch between editor and workflow list and back
 	 */
 	async switchBetweenEditorAndWorkflowList(): Promise<void> {
-		await this.n8n.page.getByTestId('menu-item').first().click();
+		await this.n8n.sideBar.clickHomeButton();
 		await this.n8n.workflows.cards.getWorkflows().first().click();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
@@ -83,60 +76,80 @@ export class CanvasComposer {
 	async zoomInAndCheckNodes(): Promise<void> {
 		await this.n8n.canvas.getCanvasNodes().first().waitFor();
 
-		const initialNodeSize = await this.n8n.page.evaluate(() => {
-			const firstNode = document.querySelector('[data-test-id="canvas-node"]');
-			if (!firstNode) {
-				throw new Error('Canvas node not found during initial measurement');
-			}
-			return firstNode.getBoundingClientRect().width;
-		});
+		const measureFirstNodeWidth = async () =>
+			await this.n8n.page.evaluate(() => {
+				const firstNode = document.querySelector('[data-test-id="canvas-node"]');
+				if (!firstNode) {
+					throw new Error('Canvas node not found during measurement');
+				}
+				return firstNode.getBoundingClientRect().width;
+			});
+
+		// Wait for the animated fit-to-view to settle before capturing the baseline.
+		let previousWidth = Number.NaN;
+		await expect
+			.poll(async () => {
+				const width = await measureFirstNodeWidth();
+				const settled = width === previousWidth;
+				previousWidth = width;
+				return settled;
+			})
+			.toBe(true);
+
+		const initialNodeSize = await measureFirstNodeWidth();
 
 		for (let i = 0; i < 4; i++) {
 			await this.n8n.canvas.clickZoomInButton();
 		}
 
-		const finalNodeSize = await this.n8n.page.evaluate(() => {
-			const firstNode = document.querySelector('[data-test-id="canvas-node"]');
-			if (!firstNode) {
-				throw new Error('Canvas node not found during final measurement');
-			}
-			return firstNode.getBoundingClientRect().width;
-		});
+		// Poll the width until the animated zoom transition settles.
+		await expect
+			.poll(measureFirstNodeWidth, {
+				message:
+					"Zoom functionality not working: nodes didn't scale properly. " +
+					`Initial: ${initialNodeSize.toFixed(1)}px`,
+			})
+			.toBeGreaterThan(initialNodeSize * 1.5);
+	}
 
-		// Validate zoom increased node sizes by at least 50%
-		const zoomWorking = finalNodeSize > initialNodeSize * 1.5;
+	/**
+	 * Rename a node using keyboard shortcut
+	 * @param oldName - The current name of the node
+	 * @param newName - The new name for the node
+	 */
+	async renameNodeViaShortcut(oldName: string, newName: string): Promise<void> {
+		await this.n8n.canvas.nodeByName(oldName).click();
+		await this.n8n.page.keyboard.press('F2');
+		await expect(this.n8n.canvas.getRenamePrompt()).toBeVisible();
+		await this.n8n.page.keyboard.type(newName);
+		await this.n8n.page.keyboard.press('Enter');
+	}
 
-		if (!zoomWorking) {
-			throw new Error(
-				"Zoom functionality not working: nodes didn't scale properly. " +
-					`Initial: ${initialNodeSize.toFixed(1)}px, Final: ${finalNodeSize.toFixed(1)}px`,
-			);
+	/**
+	 * Reload the page and wait for canvas to be ready
+	 */
+	async reloadAndWaitForCanvas(): Promise<void> {
+		await this.n8n.page.reload();
+		await expect(this.n8n.canvas.getNodeViewLoader()).toBeHidden();
+		await expect(this.n8n.canvas.getLoadingMask()).toBeHidden();
+	}
+
+	/**
+	 * Wait for workflow save to complete and URL to be updated with the workflow ID.
+	 * Use this when you need the workflow URL/ID immediately after saving.
+	 * @returns The workflow URL after save
+	 */
+	async waitForWorkflowSaveAndUrl(): Promise<string> {
+		const isNewWorkflow = this.n8n.navigate.currentUrl().includes('/workflow/new');
+
+		if (isNewWorkflow) {
+			await this.n8n.canvas.waitForSaveWorkflowCompleted();
+			// Wait for URL to update after response
+			await this.n8n.page.waitForURL(/\/workflow\/[a-zA-Z0-9]+$/);
+		} else {
+			await this.n8n.canvas.waitForSaveWorkflowCompleted();
 		}
-	}
 
-	/**
-	 * Delay workflow GET request to simulate loading during page reload.
-	 * Useful for testing save-blocking behavior during real loading states.
-	 *
-	 * @param workflowId - The workflow ID to delay loading for
-	 * @param delayMs - Delay in milliseconds (default: 2000)
-	 */
-	async delayWorkflowLoad(workflowId: string, delayMs: number = 2000): Promise<void> {
-		await this.n8n.page.route(`**/rest/workflows/${workflowId}`, async (route) => {
-			if (route.request().method() === 'GET') {
-				await new Promise((resolve) => setTimeout(resolve, delayMs));
-			}
-			await route.continue();
-		});
-	}
-
-	/**
-	 * Remove the workflow load delay route handler.
-	 * Should be called after delayWorkflowLoad() when testing is complete.
-	 *
-	 * @param workflowId - The workflow ID to stop delaying
-	 */
-	async undelayWorkflowLoad(workflowId: string): Promise<void> {
-		await this.n8n.page.unroute(`**/rest/workflows/${workflowId}`);
+		return this.n8n.navigate.currentUrl();
 	}
 }

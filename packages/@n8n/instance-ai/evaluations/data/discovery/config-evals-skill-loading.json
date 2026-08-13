@@ -1,0 +1,14 @@
+{
+	"id": "config-evals-skill-loading",
+	"userMessage": "Set up an evaluation on my existing workflow that scores the AI Agent's answers against a test dataset. Use a config-based evaluation — do not add any evaluation nodes to the canvas.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["config-evals"]
+			}
+		],
+		"noneOf": ["evals", "spawn_sub_agent:eval-setup", "eval-setup-with-agent"]
+	},
+	"rationale": "Regression coverage for runtime skill loading of the config-evals skill. Config-based evaluation work must load the config-evals skill, and must never wire on-canvas evaluation nodes via the node-based evals tool or the eval-setup sub-agent."
+}

@@ -10,6 +10,7 @@ export default defineConfig([
 		dts: true,
 		sourcemap: true,
 		tsconfig: 'tsconfig.common.json',
+		hash: false,
 	},
 	{
 		clean: false,
@@ -24,6 +25,7 @@ export default defineConfig([
 		dts: true,
 		sourcemap: true,
 		tsconfig: 'tsconfig.backend.json',
+		hash: false,
 	},
 	{
 		clean: false,
@@ -38,5 +40,6 @@ export default defineConfig([
 		dts: true,
 		sourcemap: true,
 		tsconfig: 'tsconfig.frontend.json',
+		hash: false,
 	},
 ]);

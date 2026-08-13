@@ -5,7 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -312,10 +312,20 @@ function getFileTypeOrThrow(this: IExecuteFunctions, mimeType?: string): 'image'
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
-	const messages = this.getNodeParameter('messages.values', i, []) as Message[];
+	const rawMessages = this.getNodeParameter('messages.values', i, []) as Message[];
 	const addAttachments = this.getNodeParameter('addAttachments', i, false) as boolean;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const options = this.getNodeParameter('options', i, {}) as MessageOptions;
+
+	const messages = rawMessages.filter(
+		(m) => typeof m.content !== 'string' || m.content.trim() !== '',
+	);
+
+	if (!addAttachments && messages.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 
 	const { tools, connectedTools } = await getTools.call(this, options);
 
@@ -342,6 +352,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body,
 		enableAnthropicBetas: { codeExecution: options.codeExecution },
 	})) as MessagesResponse;
+
+	const captureUsage = () => {
+		const usage = (response as unknown as Record<string, unknown>).usage as
+			| { input_tokens: number; output_tokens: number }
+			| undefined;
+		if (usage) {
+			accumulateTokenUsage(this, usage.input_tokens, usage.output_tokens);
+		}
+	};
+
+	captureUsage();
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
@@ -382,6 +403,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			body,
 			enableAnthropicBetas: { codeExecution: options.codeExecution },
 		})) as MessagesResponse;
+
+		captureUsage();
 	}
 
 	const mergedResponse = options.includeMergedResponse

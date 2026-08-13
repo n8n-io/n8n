@@ -73,6 +73,7 @@
 		outline: none;
 		cursor: pointer;
 		font-size: var.$message-close-size;
+		z-index: 2;
 
 		.el-dialog__close {
 			color: var(--color--info);

@@ -48,6 +48,11 @@ export type FormTriggerData = {
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	dangerousCustomCss?: string;
+	authToken?: string;
+	// True when this form is rendered inside the hosting-shell iframe: the submit
+	// button starts disabled (the shell enables it once the submitter's required
+	// credentials are connected). Enforcement is server-side on POST regardless.
+	shellInner?: boolean;
 };
 
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';

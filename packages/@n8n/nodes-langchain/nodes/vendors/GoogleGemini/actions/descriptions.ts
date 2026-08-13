@@ -5,6 +5,9 @@ export const modelRLC = (searchListMethod: string): INodeProperties => ({
 	name: 'modelId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
+	typeOptions: {
+		loadOptionsDependsOn: ['operation', 'resource'],
+	},
 	required: true,
 	modes: [
 		{

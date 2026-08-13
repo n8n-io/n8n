@@ -58,7 +58,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 			SELECT
 				(SELECT COUNT(*) FROM ${userTable} WHERE disabled = false) AS enabled_user_count,
 				(SELECT COUNT(*) FROM ${userTable}) AS total_user_count,
-				(SELECT COUNT(*) FROM ${workflowTable} WHERE active = true) AS active_workflow_count,
+				(SELECT COUNT(*) FROM ${workflowTable} WHERE ${this.toColumnName('activeVersionId')} IS NOT NULL) AS active_workflow_count,
 				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_executions_count,

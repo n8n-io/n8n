@@ -11,6 +11,7 @@ import type {
 import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from './utils';
 
 export class AwsLambda implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,13 +28,9 @@ export class AwsLambda implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Operation',
 				name: 'operation',

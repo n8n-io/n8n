@@ -1,8 +1,8 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { DbConnection } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { ExecutionsPruningService } from '../executions-pruning.service';
 
@@ -21,7 +21,7 @@ describe('PruningService', () => {
 				mock(),
 				mock(),
 			);
-			const startPruningSpy = jest.spyOn(pruningService, 'startPruning');
+			const startPruningSpy = vi.spyOn(pruningService, 'startPruning');
 
 			pruningService.init();
 
@@ -37,7 +37,7 @@ describe('PruningService', () => {
 				mock(),
 				mock(),
 			);
-			const startPruningSpy = jest.spyOn(pruningService, 'startPruning');
+			const startPruningSpy = vi.spyOn(pruningService, 'startPruning');
 
 			pruningService.init();
 
@@ -115,14 +115,14 @@ describe('PruningService', () => {
 				mock<ExecutionsConfig>({ pruneData: false }),
 			);
 
-			const scheduleRollingSoftDeletionsSpy = jest.spyOn(
+			const scheduleRollingSoftDeletionsSpy = vi.spyOn(
 				pruningService,
 				// @ts-expect-error Private method
 				'scheduleRollingSoftDeletions',
 			);
 
 			// @ts-expect-error Private method
-			const scheduleNextHardDeletionSpy = jest.spyOn(pruningService, 'scheduleNextHardDeletion');
+			const scheduleNextHardDeletionSpy = vi.spyOn(pruningService, 'scheduleNextHardDeletion');
 
 			pruningService.startPruning();
 
@@ -140,20 +140,66 @@ describe('PruningService', () => {
 				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
-			const scheduleRollingSoftDeletionsSpy = jest
+			const scheduleRollingSoftDeletionsSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(pruningService, 'scheduleRollingSoftDeletions')
-				.mockImplementation();
+				.mockImplementation((() => {}) as never);
 
-			const scheduleNextHardDeletionSpy = jest
+			const scheduleNextHardDeletionSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(pruningService, 'scheduleNextHardDeletion')
-				.mockImplementation();
+				.mockImplementation((() => {}) as never);
 
 			pruningService.startPruning();
 
 			expect(scheduleRollingSoftDeletionsSpy).toHaveBeenCalled();
 			expect(scheduleNextHardDeletionSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('stopPruning', () => {
+		afterEach(() => vi.restoreAllMocks());
+
+		it('should stop pruning when instance loses leadership', () => {
+			// arrange
+
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+			const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+
+			let isLeader = true;
+			const instanceSettings = mock<InstanceSettings>({
+				instanceType: 'main',
+				isMultiMain: true,
+			});
+			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
+			instanceSettings.markAsFollower.mockImplementation(() => {
+				isLeader = false;
+			});
+
+			const pruningService = new ExecutionsPruningService(
+				mockLogger(),
+				instanceSettings,
+				dbConnection,
+				mock(),
+				mock(),
+				mock<ExecutionsConfig>({
+					pruneData: true,
+					pruneDataIntervals: { softDelete: 60, hardDelete: 15 },
+				}),
+			);
+
+			pruningService.startPruning();
+
+			// act
+
+			instanceSettings.markAsFollower();
+			pruningService.stopPruning();
+
+			// assert
+
+			expect(isLeader).toBe(false);
+			expect(clearIntervalSpy).toHaveBeenCalled();
+			expect(clearTimeoutSpy).toHaveBeenCalled();
 		});
 	});
 });

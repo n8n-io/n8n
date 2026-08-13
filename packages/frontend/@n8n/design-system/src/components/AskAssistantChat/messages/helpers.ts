@@ -1,11 +1,10 @@
-import type { ChatUI } from '@n8n/design-system/types';
-
 import BlockMessage from './BlockMessage.vue';
 import CodeDiffMessage from './CodeDiffMessage.vue';
 import ErrorMessage from './ErrorMessage.vue';
 import EventMessage from './EventMessage.vue';
 import TextMessage from './TextMessage.vue';
 import ToolMessage from './ToolMessage.vue';
+import type { ChatUI } from '../../../types';
 
 export function getSupportedMessageComponent(type: ChatUI.AssistantMessage['type']) {
 	switch (type) {
@@ -21,6 +20,7 @@ export function getSupportedMessageComponent(type: ChatUI.AssistantMessage['type
 			return EventMessage;
 		case 'tool':
 			return ToolMessage;
+		case 'thinking-group': // Handled directly in AskAssistantChat.vue
 		case 'agent-suggestion':
 		case 'workflow-updated':
 		case 'custom':

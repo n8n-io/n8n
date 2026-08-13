@@ -1,6 +1,7 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 export type CommunityNodeType = {
+	id: number;
 	authorGithubUrl: string;
 	authorName: string;
 	checksum: string;

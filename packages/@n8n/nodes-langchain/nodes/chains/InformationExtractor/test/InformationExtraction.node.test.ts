@@ -1,8 +1,8 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { makeZodSchemaFromAttributes } from '../helpers';
 import { InformationExtractor } from '../InformationExtractor.node';
@@ -375,7 +375,7 @@ describe('InformationExtractor', () => {
 			expect(response[0]).toHaveLength(3);
 			expect(response[0][0]).toEqual({ json: { output: { name: 'John', age: 30 } } });
 			expect(response[0][1]).toEqual({
-				json: { error: expect.stringContaining('Failed to parse') },
+				json: { error: "Model output doesn't fit required format" },
 				pairedItem: { item: 1 },
 			});
 			expect(response[0][2]).toEqual({ json: { output: { name: 'Bob', age: 40 } } });
@@ -414,7 +414,9 @@ describe('InformationExtractor', () => {
 				inputData,
 			);
 
-			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('Failed to parse');
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				"Model output doesn't fit required format",
+			);
 		});
 	});
 });

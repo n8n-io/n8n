@@ -10,7 +10,7 @@ export class VercelAiGatewayApi implements ICredentialType {
 
 	displayName = 'Vercel AI Gateway';
 
-	documentationUrl = 'vercelaigateway';
+	documentationUrl = 'vercel';
 
 	properties: INodeProperties[] = [
 		{

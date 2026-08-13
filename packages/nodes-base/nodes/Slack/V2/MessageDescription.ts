@@ -1,4 +1,5 @@
 import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
+import { slackChannelModes } from './utils';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -18,9 +19,24 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Delete a message',
 			},
 			{
+				name: 'Delete Scheduled',
+				value: 'deleteScheduled',
+				action: 'Delete a scheduled message',
+			},
+			{
+				name: 'Get Many Scheduled',
+				value: 'getManyScheduled',
+				action: 'Get many scheduled messages',
+			},
+			{
 				name: 'Get Permalink',
 				value: 'getPermalink',
 				action: 'Get a message permalink',
+			},
+			{
+				name: 'Schedule',
+				value: 'schedule',
+				action: 'Schedule a message',
 			},
 			{
 				name: 'Search',
@@ -55,7 +71,7 @@ export const sendToSelector: INodeProperties = {
 	displayOptions: {
 		show: {
 			resource: ['message'],
-			operation: ['post'],
+			operation: ['post', 'schedule'],
 		},
 	},
 	options: [
@@ -96,9 +112,10 @@ export const channelRLC: INodeProperties = {
 			validation: [
 				{
 					type: 'regex',
+					// chat.postMessage accepts public channel names as well as IDs.
 					properties: {
-						regex: '[a-zA-Z0-9]{2,}',
-						errorMessage: 'Not a valid Slack Channel ID',
+						regex: '^(?:[CGD][A-Z0-9]{2,}|#?[a-z0-9_\\-]{2,})$',
+						errorMessage: 'Not a valid Slack Channel ID or name',
 					},
 				},
 			],
@@ -175,6 +192,198 @@ export const userRLC: INodeProperties = {
 	],
 };
 
+export const advancedInteractivityNotice: INodeProperties = {
+	displayName: 'Advanced Interactivity',
+	name: 'advancedInteractivityNotice',
+	type: 'notice',
+	default: '',
+	// Renders as a section-header divider (like "Options"), not a notice box.
+	typeOptions: {
+		sectionHeader: true,
+	},
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+		},
+	},
+};
+
+export const captureResponderField: INodeProperties = {
+	displayName: 'Capture Who Responded',
+	name: 'captureResponder',
+	type: 'boolean',
+	default: false,
+	// Approval only: the form response types need the plain link button. Both auth modes
+	// carry a signing secret, so either works for the interactive callback.
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+		},
+	},
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+	description:
+		'Whether to return the responder\'s identity with the Slack response. Requires additional setup on the Slack app — <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/approvals#id-1.-create-a-slack-app-and-credential" target="_blank">see docs</a>.',
+};
+
+export const approversField: INodeProperties = {
+	displayName: 'Restrict Who Can Approve',
+	name: 'approvers',
+	type: 'multiOptions',
+	typeOptions: {
+		loadOptionsMethod: 'getUsers',
+	},
+	default: [],
+	// Only meaningful for the interactive-button flow (approval + capture responder).
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description:
+		'Restrict who can approve or decline: a click from anyone not listed is ignored and they get a private notice. Leave empty to let anyone respond. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+};
+
+export const unauthorizedReplyField: INodeProperties = {
+	displayName: 'Unauthorized Reply',
+	name: 'unauthorizedReplyText',
+	type: 'string',
+	default: 'You are not authorized to respond to this request.',
+	// Same gating as the approver list — only the interactive-button flow can reject a click.
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description:
+		'Private (ephemeral) message shown to someone who clicks a button but is not in the approver list',
+};
+
+export const postDecisionBehaviorField: INodeProperties = {
+	displayName: 'After Decision',
+	name: 'postDecisionBehavior',
+	type: 'options',
+	default: 'showOutcome',
+	options: [
+		{ name: 'Show Outcome and Remove Buttons', value: 'showOutcome' },
+		{ name: 'Remove Buttons Only', value: 'removeButtons' },
+		{ name: 'Keep Message Unchanged', value: 'keepMessage' },
+	],
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description: 'What happens to the original message once someone approves or declines',
+};
+
+export const replyToMessageField: INodeProperties = {
+	displayName: 'Reply to a Message',
+	name: 'thread_ts',
+	type: 'fixedCollection',
+	default: {},
+	placeholder: 'Reply to a Message',
+	description: "Provide another message's Timestamp value to make this message a reply",
+	options: [
+		{
+			displayName: 'Reply to a Message',
+			name: 'replyValues',
+			values: [
+				{
+					displayName: 'Message Timestamp to Reply To',
+					name: 'thread_ts',
+					type: 'number',
+					default: undefined,
+					placeholder: '1663233118.856619',
+					description:
+						'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
+				},
+				{
+					displayName: 'Also Send to Channel',
+					name: 'reply_broadcast',
+					type: 'boolean',
+					default: false,
+					description:
+						'Whether the reply should be made visible to everyone in the channel or conversation',
+				},
+			],
+		},
+	],
+};
+
+// Shared between the pre-2.6 (always shown) and 2.6+ (access-token only) variants below.
+const botProfileField: INodeProperties = {
+	displayName: 'Custom Bot Profile Photo',
+	name: 'botProfile',
+	type: 'fixedCollection',
+	default: {
+		imageValues: [
+			{
+				profilePhotoType: '',
+			},
+		],
+	},
+	description:
+		'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user.',
+	options: [
+		{
+			name: 'imageValues',
+			displayName: 'Add Bot Profile Photo',
+			values: [
+				{
+					displayName: 'Profile Photo Type',
+					name: 'profilePhotoType',
+					type: 'options',
+					options: [
+						{
+							name: 'Image URL',
+							value: 'image',
+						},
+						{
+							name: 'Emoji Code',
+							value: 'emoji',
+						},
+					],
+					default: '',
+					placeholder: 'Select a type…',
+				},
+				{
+					displayName: 'Emoji Code',
+					name: 'icon_emoji',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							profilePhotoType: ['emoji'],
+						},
+					},
+					description:
+						'Only used if sending message as a bot. Use emoji codes like +1, not an actual emoji like 👍. <a target="_blank" href=" https://www.webfx.com/tools/emoji-cheat-sheet/">List of common emoji codes</a>',
+				},
+				{
+					displayName: 'Image URL',
+					name: 'icon_url',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							profilePhotoType: ['image'],
+						},
+					},
+					description: 'Only used if sending message as a bot',
+				},
+			],
+		},
+	],
+};
+
 export const messageFields: INodeProperties[] = [
 	/* ----------------------------------------------------------------------- */
 	/*                                 message:getPermalink
@@ -192,52 +401,7 @@ export const messageFields: INodeProperties[] = [
 				operation: ['getPermalink'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 	},
 	{
 		displayName: 'Message Timestamp',
@@ -263,7 +427,7 @@ export const messageFields: INodeProperties[] = [
 		...channelRLC,
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				select: ['channel'],
 			},
@@ -273,7 +437,7 @@ export const messageFields: INodeProperties[] = [
 		...userRLC,
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				select: ['user'],
 			},
@@ -285,7 +449,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 			},
 		},
@@ -318,7 +482,7 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				messageType: ['text'],
 			},
@@ -333,7 +497,7 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				messageType: ['block'],
 			},
@@ -353,7 +517,7 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				messageType: ['block'],
 			},
@@ -367,7 +531,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'notice',
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				messageType: ['attachment'],
 			},
@@ -384,7 +548,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 				messageType: ['attachment'],
 			},
@@ -559,12 +723,27 @@ export const messageFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Post At',
+		name: 'postAt',
+		type: 'dateTime',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['schedule'],
+			},
+		},
+		description:
+			'When the message should be sent. Must be in the future and within 120 days from now.',
+	},
+	{
 		displayName: 'Options',
 		name: 'otherOptions',
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: ['post'],
+				operation: ['post', 'schedule'],
 				resource: ['message'],
 			},
 		},
@@ -581,68 +760,25 @@ export const messageFields: INodeProperties[] = [
 					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending Slack messages.',
 			},
 			{
-				displayName: 'Custom Bot Profile Photo',
-				name: 'botProfile',
-				type: 'fixedCollection',
-				default: {
-					imageValues: [
-						{
-							profilePhotoType: '',
-						},
-					],
-				},
-				description:
-					'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user.',
-				options: [
-					{
-						name: 'imageValues',
-						displayName: 'Add Bot Profile Photo',
-						values: [
-							{
-								displayName: 'Profile Photo Type',
-								name: 'profilePhotoType',
-								type: 'options',
-								options: [
-									{
-										name: 'Image URL',
-										value: 'image',
-									},
-									{
-										name: 'Emoji Code',
-										value: 'emoji',
-									},
-								],
-								default: '',
-								placeholder: 'Select a type…',
-							},
-							{
-								displayName: 'Emoji Code',
-								name: 'icon_emoji',
-								type: 'string',
-								default: '',
-								displayOptions: {
-									show: {
-										profilePhotoType: ['emoji'],
-									},
-								},
-								description:
-									'Only used if sending message as a bot. Use emoji codes like +1, not an actual emoji like 👍. <a target="_blank" href=" https://www.webfx.com/tools/emoji-cheat-sheet/">List of common emoji codes</a>',
-							},
-							{
-								displayName: 'Image URL',
-								name: 'icon_url',
-								type: 'string',
-								default: '',
-								displayOptions: {
-									show: {
-										profilePhotoType: ['image'],
-									},
-								},
-								description: 'Only used if sending message as a bot',
-							},
-						],
+				...botProfileField,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lte: 2.5 } }],
 					},
-				],
+				},
+			},
+			{
+				// Slack ignores icon_url/icon_emoji on user tokens, and the OAuth2 credential
+				// authenticates as the user, so from 2.6 this is only offered for token auth.
+				...botProfileField,
+				description:
+					'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user. Add chat:write.customize scope on Slack API',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.6 } }],
+						'/authentication': ['accessToken'],
+					},
+				},
 			},
 			{
 				displayName: 'Link User and Channel Names',
@@ -651,39 +787,7 @@ export const messageFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to turn @users and #channels in message text into clickable links',
 			},
-			{
-				displayName: 'Reply to a Message',
-				name: 'thread_ts',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Reply to a Message',
-				description: "Provide another message's Timestamp value to make this message a reply",
-				options: [
-					{
-						displayName: 'Reply to a Message',
-						name: 'replyValues',
-						values: [
-							{
-								displayName: 'Message Timestamp to Reply To',
-								name: 'thread_ts',
-								type: 'number',
-								default: undefined,
-								placeholder: '1663233118.856619',
-								description:
-									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
-							},
-							{
-								displayName: 'Also Send to Channel',
-								name: 'reply_broadcast',
-								type: 'boolean',
-								default: false,
-								description:
-									'Whether the reply should be made visible to everyone in the channel or conversation',
-							},
-						],
-					},
-				],
-			},
+			replyToMessageField,
 			{
 				displayName: 'Use Markdown?',
 				name: 'mrkdwn',
@@ -696,14 +800,14 @@ export const messageFields: INodeProperties[] = [
 				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to enable unfurling of primarily text-based content',
+				description: 'Whether to unfurl primarily text-based content in the message',
 			},
 			{
 				displayName: 'Unfurl Media',
 				name: 'unfurl_media',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to disable unfurling of media content',
+				description: 'Whether to unfurl media content in the message',
 			},
 			{
 				displayName: 'Send as Ephemeral Message',
@@ -796,6 +900,114 @@ export const messageFields: INodeProperties[] = [
 	},
 
 	/* ----------------------------------------------------------------------- */
+	/*                                 message:deleteScheduled                 */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a channel...',
+		modes: slackChannelModes,
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['deleteScheduled'],
+			},
+		},
+		description: 'The channel the scheduled message was sent to',
+	},
+	{
+		displayName: 'Scheduled Message ID',
+		name: 'scheduledMessageId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['deleteScheduled'],
+			},
+		},
+		description: 'The ID returned when the message was originally scheduled',
+		placeholder: 'Q1298393284',
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:getManyScheduled                */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getManyScheduled'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getManyScheduled'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['getManyScheduled'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Channel',
+				name: 'channelId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				placeholder: 'Select a channel...',
+				modes: slackChannelModes,
+				description: 'Only show scheduled messages in this channel',
+			},
+			{
+				displayName: 'Latest',
+				name: 'latest',
+				type: 'dateTime',
+				default: '',
+				description: 'A point in time before which scheduled messages should be returned',
+			},
+			{
+				displayName: 'Oldest',
+				name: 'oldest',
+				type: 'dateTime',
+				default: '',
+				description: 'A point in time after which scheduled messages should be returned',
+			},
+		],
+	},
+
+	/* ----------------------------------------------------------------------- */
 	/*                                 message:update                          */
 	/* ----------------------------------------------------------------------- */
 	{
@@ -804,52 +1016,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		required: true,
 		displayOptions: {
 			show: {
@@ -1055,52 +1222,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['delete'],
@@ -1212,6 +1334,8 @@ export const messageFields: INodeProperties[] = [
 		],
 		default: 'desc',
 	},
+	// Dropped from 2.7: the Real-time Search API caps how deep a search can be paged and
+	// warns that paginating past ~10 calls rate limits the whole workspace.
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -1220,6 +1344,7 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				resource: ['message'],
 				operation: ['search'],
+				'@version': [{ _cnd: { lte: 2.6 } }],
 			},
 		},
 		default: false,
@@ -1234,6 +1359,7 @@ export const messageFields: INodeProperties[] = [
 				resource: ['message'],
 				operation: ['search'],
 				returnAll: [false],
+				'@version': [{ _cnd: { lte: 2.6 } }],
 			},
 		},
 		typeOptions: {
@@ -1242,6 +1368,38 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: 25,
 		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+				'@version': [{ _cnd: { gte: 2.7 } }],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 50,
+		},
+		default: 25,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName:
+			'Searches are rate limited by Slack. <a target="_blank" href="https://docs.slack.dev/reference/methods/assistant.search.context#rate-limiting">Check the Slack docs for the current limits</a>.',
+		name: 'searchRateLimitNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+				'@version': [{ _cnd: { gte: 2.7 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -1254,6 +1412,109 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'After',
+				name: 'after',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return messages sent after this date',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Before',
+				name: 'before',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return messages sent before this date',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Channel Types',
+				name: 'channelTypes',
+				type: 'multiOptions',
+				default: ['public_channel', 'private_channel', 'mpim', 'im'],
+				description: 'Which kinds of conversation to search in',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+				options: [
+					{
+						name: 'Public Channel',
+						value: 'public_channel',
+					},
+					{
+						name: 'Private Channel',
+						value: 'private_channel',
+					},
+					{
+						name: 'Group DM',
+						value: 'mpim',
+					},
+					{
+						name: 'DM',
+						value: 'im',
+					},
+				],
+			},
+			{
+				displayName: 'Include Archived Channels',
+				name: 'includeArchivedChannels',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include archived channels in the results',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Include Bots',
+				name: 'includeBots',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include messages sent by bots',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Include Message Blocks',
+				name: 'includeMessageBlocks',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return the rich text blocks of each message alongside its text',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Keyword Search Only',
+				name: 'keywordSearchOnly',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to match keywords only. By default Slack also returns semantically similar messages.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.7 } }],
+					},
+				},
+			},
 			{
 				displayName: 'Search in Channel',
 				name: 'searchChannel',

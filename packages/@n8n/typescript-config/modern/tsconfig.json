@@ -1,5 +1,7 @@
 {
 	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
+		"noUncheckedSideEffectImports": false,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"target": "es2022",
@@ -22,6 +24,7 @@
 		"composite": true,
 		"declarationMap": true,
 		"sourceMap": true,
+		"tsBuildInfoFile": "${configDir}/dist/typecheck.tsbuildinfo",
 
 		"lib": ["es2022", "dom", "dom.iterable"]
 	}

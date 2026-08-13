@@ -20,11 +20,11 @@ const mockResponse = {
 	},
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function (method: string, endpoint: string) {
+		apiRequest: vi.fn(async function (method: string, endpoint: string) {
 			if (method === 'DELETE' && endpoint.includes('/sessions/')) {
 				return { status: 'success' };
 			}
@@ -33,17 +33,19 @@ jest.mock('../../../transport', () => {
 	};
 });
 
-jest.mock('../../../GenericFunctions', () => {
-	const originalModule = jest.requireActual<typeof GenericFunctions>('../../../GenericFunctions');
+vi.mock('../../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof GenericFunctions>(
+		'../../../GenericFunctions',
+	);
 	return {
 		...originalModule,
-		createSessionAndWindow: jest.fn().mockImplementation(async () => {
+		createSessionAndWindow: vi.fn().mockImplementation(async () => {
 			return {
 				sessionId: 'new-session-456',
 				windowId: 'new-win-456',
 			};
 		}),
-		shouldCreateNewSession: jest.fn().mockImplementation(function (this: any) {
+		shouldCreateNewSession: vi.fn().mockImplementation(function (this: any) {
 			const sessionMode = this.getNodeParameter('sessionMode', 0);
 			return sessionMode === 'new';
 		}),
@@ -57,12 +59,10 @@ describe('Test Airtop, scrape operation', () => {
 
 	afterAll(() => {
 		nock.restore();
-		jest.unmock('../../../transport');
-		jest.unmock('../../../GenericFunctions');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should scrape content with minimal parameters using existing session', async () => {

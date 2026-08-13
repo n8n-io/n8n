@@ -314,7 +314,7 @@ export const issueFields: INodeProperties[] = [
 				default: [],
 				displayOptions: {
 					show: {
-						'/jiraVersion': ['cloud'],
+						'/jiraVersion': ['cloud', 'cloudOAuth2'],
 					},
 				},
 			},
@@ -575,7 +575,7 @@ export const issueFields: INodeProperties[] = [
 				default: [],
 				displayOptions: {
 					show: {
-						'/jiraVersion': ['cloud'],
+						'/jiraVersion': ['cloud', 'cloudOAuth2'],
 					},
 				},
 			},

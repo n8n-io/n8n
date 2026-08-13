@@ -2,10 +2,26 @@ import type { EventMessageAiNode } from './event-message-ai-node';
 import type { EventMessageAudit } from './event-message-audit';
 import type { EventMessageExecution } from './event-message-execution';
 import type { EventMessageGeneric } from './event-message-generic';
+import type { EventMessageMcp } from './event-message-mcp';
 import type { EventMessageNode } from './event-message-node';
 import type { EventMessageQueue } from './event-message-queue';
 import type { EventMessageRunner } from './event-message-runner';
 import type { EventMessageWorkflow } from './event-message-workflow';
+
+/**
+ * Naming rules for log streaming events:
+ *
+ * Event names are a public contract with log streaming consumers and cannot be
+ * renamed once released. Events that record a user action (logins, grants,
+ * tool calls, settings changes) must be named under `n8n.audit.`: external
+ * pipelines filter the audit trail by that prefix, and the destination UI
+ * groups events by the first two name segments, so a new top-level prefix
+ * creates its own opt-in group outside the audit trail. A group can keep its
+ * own name list and message class while living under the audit prefix (see
+ * `eventNamesMcp`). Introducing a new operational group (like `n8n.runner.`)
+ * is a taxonomy decision that needs sign-off from the owning team; the guard
+ * test in `__tests__/event-names.test.ts` enforces this.
+ */
 
 export const eventNamesAiNodes = [
 	'n8n.ai.memory.get.messages',
@@ -47,6 +63,7 @@ export const eventNamesWorkflow = [
 	'n8n.workflow.started',
 	'n8n.workflow.success',
 	'n8n.workflow.failed',
+	'n8n.workflow.cancelled',
 ] as const;
 export const eventNamesGeneric = ['n8n.worker.started', 'n8n.worker.stopped'] as const;
 export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
@@ -70,17 +87,84 @@ export const eventNamesAudit = [
 	'n8n.audit.user.credentials.shared',
 	'n8n.audit.user.credentials.updated',
 	'n8n.audit.user.credentials.deleted',
+	'n8n.audit.user.credentials.userDisconnected',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
+	'n8n.audit.user.api.rotated',
+	'n8n.audit.user.mfa.enabled',
+	'n8n.audit.user.mfa.disabled',
+	'n8n.audit.user.execution.deleted',
+	'n8n.audit.workflow.executed',
 	'n8n.audit.package.installed',
 	'n8n.audit.package.updated',
 	'n8n.audit.package.deleted',
+	'n8n.audit.n8n-package.import.success',
+	'n8n.audit.n8n-package.export.success',
+	'n8n.audit.n8n-package.export.failed',
+	'n8n.audit.n8n-package.import.failed',
 	'n8n.audit.workflow.created',
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',
+	'n8n.audit.workflow.waiting',
+	'n8n.audit.workflow.resumed',
 	'n8n.audit.workflow.archived',
 	'n8n.audit.workflow.unarchived',
+	'n8n.audit.workflow.activated',
+	'n8n.audit.workflow.deactivated',
+	'n8n.audit.workflow.version.updated',
+	'n8n.audit.variable.created',
+	'n8n.audit.variable.updated',
+	'n8n.audit.variable.deleted',
+	'n8n.audit.external-secrets.provider.settings.saved',
+	'n8n.audit.external-secrets.provider.reloaded',
+	'n8n.audit.external-secrets.connection.created',
+	'n8n.audit.external-secrets.connection.updated',
+	'n8n.audit.external-secrets.connection.deleted',
+	'n8n.audit.external-secrets.connection.tested',
+	'n8n.audit.external-secrets.connection.reloaded',
+	'n8n.audit.personal-publishing-restricted.enabled',
+	'n8n.audit.personal-publishing-restricted.disabled',
+	'n8n.audit.personal-sharing-restricted.enabled',
+	'n8n.audit.personal-sharing-restricted.disabled',
+	'n8n.audit.2fa-enforcement.enabled',
+	'n8n.audit.2fa-enforcement.disabled',
+	'n8n.audit.redaction-enforcement.updated',
+	'n8n.audit.execution.data.revealed',
+	'n8n.audit.execution.data.reveal_failure',
+	'n8n.audit.token-exchange.succeeded',
+	'n8n.audit.token-exchange.failed',
+	'n8n.audit.token-exchange.embed-login',
+	'n8n.audit.token-exchange.embed-login-failed',
+	'n8n.audit.token-exchange.identity-linked',
+	'n8n.audit.token-exchange.identity-rebound',
+	'n8n.audit.token-exchange.user-provisioned',
+	'n8n.audit.token-exchange.role-updated',
+	'n8n.audit.role-mapping.roles-resolved',
+	'n8n.audit.role-mapping.rule.created',
+	'n8n.audit.role-mapping.rule.updated',
+	'n8n.audit.role-mapping.rule.deleted',
+	'n8n.audit.role-mapping.rules.bulk-deleted',
+	'n8n.audit.cluster.version-mismatch.detected',
+	'n8n.audit.cluster.version-mismatch.resolved',
+	'n8n.audit.cluster.hostid-clash.detected',
+	'n8n.audit.cluster.hostid-clash.resolved',
+	'n8n.audit.cluster.split-brain.detected',
+	'n8n.audit.cluster.split-brain.resolved',
+	'n8n.audit.cluster.instance-joined',
+	'n8n.audit.cluster.instance-left',
+	'n8n.audit.oauth.callback.binding.rejected',
+	'n8n.audit.credentials.authorize.rejected',
 ] as const;
+
+// Instance MCP server events. Kept as their own list and message class because the payload
+// shape differs, but named under `n8n.audit.` so they group with audit events in the UI.
+export const eventNamesMcp = [
+	'n8n.audit.mcp.oauth.completed',
+	'n8n.audit.mcp.tool.called',
+	'n8n.audit.mcp.access.updated',
+] as const;
+
+export type EventNamesMcpType = (typeof eventNamesMcp)[number];
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
 export type EventNamesAuditType = (typeof eventNamesAudit)[number];
@@ -97,6 +181,7 @@ export type EventNamesTypes =
 	| EventNamesAiNodesType
 	| EventNamesRunnerType
 	| EventNamesQueueType
+	| EventNamesMcpType
 	| 'n8n.destination.test';
 
 export const eventNamesAll = [
@@ -107,6 +192,7 @@ export const eventNamesAll = [
 	...eventNamesAiNodes,
 	...eventNamesRunner,
 	...eventNamesQueue,
+	...eventNamesMcp,
 ];
 
 export type EventMessageTypes =
@@ -117,4 +203,8 @@ export type EventMessageTypes =
 	| EventMessageExecution
 	| EventMessageAiNode
 	| EventMessageQueue
-	| EventMessageRunner;
+	| EventMessageRunner
+	| EventMessageMcp;
+
+export const isNodeEventMessage = (message: EventMessageTypes): message is EventMessageNode =>
+	message.eventName.startsWith('n8n.node.');

@@ -3623,7 +3623,7 @@ export const tools = {
 		{
 			k: 'checkDateBetw',
 			d: 'Check Date Is Between Dates',
-			ed: 'Discover if a date (date1) is betwen two dates (date2, date3)',
+			ed: 'Discover if a date (date1) is between two dates (date2, date3)',
 			g: 'personal',
 			p: [
 				{ n: 'date1', r: true, t: 'string', p: '1975-05-20' },

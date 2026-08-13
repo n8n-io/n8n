@@ -1,4 +1,4 @@
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { UserError, jsonParse } from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 
@@ -19,15 +19,9 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 		this.packageJson = this.readJSONSync('package.json');
 		this.packageName = this.packageJson.name;
-		this.excludeNodes = this.extractNodeTypes(excludeNodes);
-		this.includeNodes = this.extractNodeTypes(includeNodes);
-	}
 
-	private extractNodeTypes(fullNodeTypes: string[]) {
-		return fullNodeTypes
-			.map((fullNodeType) => fullNodeType.split('.'))
-			.filter(([packageName]) => packageName === this.packageName)
-			.map(([_, nodeType]) => nodeType);
+		this.excludeNodes = this.extractNodeTypes(excludeNodes, this.packageName);
+		this.includeNodes = this.extractNodeTypes(includeNodes, this.packageName);
 	}
 
 	override async loadAll() {
@@ -93,7 +87,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		try {
 			return jsonParse<T>(fileString);
 		} catch (error) {
-			throw new ApplicationError('Failed to parse JSON', { extra: { filePath } });
+			throw new UserError('Failed to parse JSON', { cause: error, extra: { filePath } });
 		}
 	}
 

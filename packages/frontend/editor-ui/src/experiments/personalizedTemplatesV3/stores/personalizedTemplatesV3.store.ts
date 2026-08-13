@@ -1,19 +1,22 @@
-import { useTelemetry } from '@/composables/useTelemetry';
-import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/constants';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { useTemplatesStore } from '@/features/templates/templates.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/app/constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_TEMPLATES_V3, () => {
 	const telemetry = useTelemetry();
 	const posthogStore = usePostHog();
 	const cloudPlanStore = useCloudPlanStore();
+	const settingsStore = useSettingsStore();
 	const templatesStore = useTemplatesStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 
 	const INTERACTION_STORAGE_KEY = 'n8n-personalizedTemplatesV3-hasInteracted';
 
@@ -44,7 +47,7 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 	});
 
 	const shouldShowTemplateTooltip = computed(() => {
-		const allWorkflows = workflowsStore.allWorkflows;
+		const allWorkflows = workflowsListStore.allWorkflows;
 
 		return (
 			isFeatureEnabled() &&
@@ -98,6 +101,41 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 		hasInteractedWithTemplateRecommendations.value = true;
 		localStorage.setItem(INTERACTION_STORAGE_KEY, 'true');
 	}
+
+	const trackExperimentParticipation = async () => {
+		if (settingsStore.isCloudDeployment && !cloudPlanStore.state.initialized) {
+			try {
+				await cloudPlanStore.initialize();
+			} catch (error) {
+				console.warn('Could not load cloud plan data for experiment tracking:', error);
+				return;
+			}
+		}
+
+		if (!hasChosenHubSpot.value) {
+			return;
+		}
+
+		const variant = posthogStore.getVariant(PERSONALIZED_TEMPLATES_V3.name);
+		if (variant) {
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT, {
+				name: PERSONALIZED_TEMPLATES_V3.name,
+				variant,
+			});
+		}
+	};
+
+	let hasTrackedExperiment = false;
+	watch(
+		hasChosenHubSpot,
+		(hasHubSpot) => {
+			if (hasHubSpot && !hasTrackedExperiment) {
+				hasTrackedExperiment = true;
+				void trackExperimentParticipation();
+			}
+		},
+		{ immediate: true },
+	);
 
 	return {
 		isFeatureEnabled,

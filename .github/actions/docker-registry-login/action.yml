@@ -1,0 +1,56 @@
+# Composite action for logging into Docker registries (GHCR and/or DockerHub).
+# Centralizes the login pattern used across multiple Docker workflows.
+
+name: 'Docker Registry Login'
+description: 'Login to GitHub Container Registry and/or DockerHub'
+
+inputs:
+  login-ghcr:
+    description: 'Login to GitHub Container Registry'
+    required: false
+    default: 'true'
+  login-dockerhub:
+    description: 'Login to DockerHub'
+    required: false
+    default: 'false'
+  login-dhi:
+    description: 'Login to Docker Hardened Images registry (dhi.io)'
+    required: false
+    default: 'false'
+  dockerhub-username:
+    description: 'DockerHub username (required if login-dockerhub or login-dhi is true)'
+    required: false
+  dockerhub-password:
+    description: 'DockerHub password (required if login-dockerhub or login-dhi is true)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Login to GitHub Container Registry
+      if: inputs.login-ghcr == 'true'
+      shell: bash
+      env:
+        GHCR_TOKEN: ${{ github.token }}
+        GHCR_USER: ${{ github.actor }}
+      run: |
+        node .github/scripts/retry.mjs --attempts 3 --delay 10 \
+          'echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin'
+
+    - name: Login to DockerHub
+      if: inputs.login-dockerhub == 'true'
+      shell: bash
+      env:
+        DOCKER_USER: ${{ inputs.dockerhub-username }}
+        DOCKER_PASS: ${{ inputs.dockerhub-password }}
+      run: |
+        node .github/scripts/retry.mjs --attempts 3 --delay 10 \
+          'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+
+    - name: Login to DHI Registry
+      if: inputs.login-dhi == 'true'
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+      with:
+        registry: dhi.io
+        username: ${{ inputs.dockerhub-username }}
+        password: ${{ inputs.dockerhub-password }}

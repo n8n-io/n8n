@@ -10,6 +10,26 @@
         "name": {
             "type": "string"
         },
+        "photo": {
+            "type": "object",
+            "properties": {
+                "image_128x128": {
+                    "type": "string"
+                },
+                "image_21x21": {
+                    "type": "string"
+                },
+                "image_27x27": {
+                    "type": "string"
+                },
+                "image_36x36": {
+                    "type": "string"
+                },
+                "image_60x60": {
+                    "type": "string"
+                }
+            }
+        },
         "resource_type": {
             "type": "string"
         },
@@ -31,5 +51,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

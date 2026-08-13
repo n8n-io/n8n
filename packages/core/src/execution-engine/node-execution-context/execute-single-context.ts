@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
 	IGetNodeParameterOptions,
@@ -10,8 +11,9 @@ import type {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	IExecuteData,
+	IDataObject,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -65,11 +67,28 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 
 			assertBinaryData: (propertyName, inputIndex = 0) =>
-				assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
+				assertBinaryData(
+					inputData,
+					node,
+					itemIndex,
+					propertyName,
+					inputIndex,
+					workflow.settings.binaryMode,
+				),
 			getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
-				await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+				await getBinaryDataBuffer(
+					inputData,
+					itemIndex,
+					propertyName,
+					inputIndex,
+					workflow.settings.binaryMode,
+				),
 			detectBinaryEncoding: (buffer) => detectBinaryEncoding(buffer),
 		};
+	}
+
+	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
+		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
 	}
 
 	evaluateExpression(expression: string, itemIndex: number = this.itemIndex) {
@@ -86,7 +105,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 
 		const data = allItems?.[this.itemIndex];
 		if (data === undefined) {
-			throw new ApplicationError('Value of input with given index was not set', {
+			throw new UnexpectedError('Value of input with given index was not set', {
 				extra: { inputIndex, connectionType, itemIndex: this.itemIndex },
 			});
 		}

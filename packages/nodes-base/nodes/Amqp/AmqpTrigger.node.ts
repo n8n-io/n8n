@@ -1,16 +1,15 @@
 import type {
-	ITriggerFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
+	ITriggerFunctions,
 	ITriggerResponse,
-	IDeferredPromise,
-	IRun,
 } from 'n8n-workflow';
-import { deepCopy, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { ConnectionOptions, EventContext, Message, ReceiverOptions } from 'rhea';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type { ConnectionOptions, EventContext, ReceiverOptions } from 'rhea';
 import { create_container } from 'rhea';
 
+import { handleMessage } from './helpers/handleMessage';
 import type { AmqpCredential } from './types';
 
 export class AmqpTrigger implements INodeType {
@@ -20,7 +19,7 @@ export class AmqpTrigger implements INodeType {
 		icon: 'file:amqp.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Listens to AMQP 1.0 Messages',
+		description: 'Listens to AMQP 1.0 messages',
 		defaults: {
 			name: 'AMQP Trigger',
 		},
@@ -41,16 +40,16 @@ export class AmqpTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'topic://sourcename.something',
-				description: 'Name of the queue of topic to listen to',
+				description: 'Name of the queue or topic to listen to',
 			},
 			{
-				displayName: 'Clientname',
+				displayName: 'Client Name',
 				name: 'clientname',
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. n8n',
 				description: 'Leave empty for non-durable topic subscriptions or queues',
-				hint: 'for durable/persistent topic subscriptions',
+				hint: 'For durable/persistent topic subscriptions',
 			},
 			{
 				displayName: 'Subscription',
@@ -59,7 +58,7 @@ export class AmqpTrigger implements INodeType {
 				default: '',
 				placeholder: 'e.g. order-worker',
 				description: 'Leave empty for non-durable topic subscriptions or queues',
-				hint: 'for durable/persistent topic subscriptions',
+				hint: 'For durable/persistent topic subscriptions',
 			},
 			{
 				displayName: 'Options',
@@ -73,7 +72,7 @@ export class AmqpTrigger implements INodeType {
 						name: 'containerId',
 						type: 'string',
 						default: '',
-						description: 'Will be used to pass to the RHEA Backend as container_id',
+						description: 'Will be passed to the RHEA backend as container_id',
 					},
 					{
 						displayName: 'Convert Body To String',
@@ -81,7 +80,7 @@ export class AmqpTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Whether to convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
+							'Whether to convert JSON body content (["body"]["content"]) from byte array to string. Needed for Azure Service Bus.',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -91,11 +90,11 @@ export class AmqpTrigger implements INodeType {
 						description: 'Whether to parse the body to an object',
 					},
 					{
-						displayName: 'Messages per Cicle',
+						displayName: 'Messages per Cycle',
 						name: 'pullMessagesNumber',
 						type: 'number',
 						default: 100,
-						description: 'Number of messages to pull from the bus for every cicle',
+						description: 'Number of messages to pull from the bus for every cycle',
 					},
 					{
 						displayName: 'Only Body',
@@ -130,7 +129,7 @@ export class AmqpTrigger implements INodeType {
 						name: 'sleepTime',
 						type: 'number',
 						default: 10,
-						description: 'Milliseconds to sleep after every cicle',
+						description: 'Milliseconds to sleep after every cycle',
 					},
 				],
 			},
@@ -164,68 +163,54 @@ export class AmqpTrigger implements INodeType {
 		const container = create_container();
 
 		let lastMsgId: string | number | Buffer | undefined = undefined;
+		let inFlightMessages = 0;
+		// rhea resets link credit when a reconnect attempt starts, so credit added
+		// between disconnect and reattach would double-count with the grant below
+		let receiverReady = true;
 
-		container.on('receiver_open', (context: EventContext) => {
-			context.receiver?.add_credit(pullMessagesNumber);
+		container.on('disconnected', () => {
+			receiverReady = false;
 		});
 
-		container.on('message', async (context: EventContext) => {
-			// No message in the context
-			if (!context.message) {
-				return;
-			}
+		container.on('receiver_open', (context: EventContext) => {
+			receiverReady = true;
+			// on reconnect, executions from before the disconnect may still hold slots
+			context.receiver?.add_credit(Math.max(0, pullMessagesNumber - inFlightMessages));
+		});
 
-			// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
-			if (context.message.message_id && context.message.message_id === lastMsgId) {
-				return;
-			}
-			lastMsgId = context.message.message_id;
-
-			let data = context.message;
-
-			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
-				// The buffer is not ready... Stringify and parse back to load it.
-				const cont = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, cont.data as number[]);
-			}
-
-			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
-				// The buffer is not ready... Stringify and parse back to load it.
-				const cont = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, cont.data as number[]);
-			}
-
-			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
-				// The buffer is not ready... Stringify and parse back to load it.
-				const content = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, content.data as number[]);
-			}
-
-			if (options.jsonParseBody === true) {
-				data.body = jsonParse(data.body as string);
-			}
-			if (options.onlyBody === true) {
-				data = data.body;
-			}
-
-			let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
-			if (!parallelProcessing) {
-				responsePromise = this.helpers.createDeferredPromise();
-			}
-			if (responsePromise) {
-				this.emit([this.helpers.returnJsonArray([data as any])], undefined, responsePromise);
-				await responsePromise.promise;
-			} else {
-				this.emit([this.helpers.returnJsonArray([data as any])]);
-			}
-
-			if (!context.receiver?.has_credit()) {
+		// each delivered message holds 1 link credit until it is done (processed,
+		// skipped or failed), capping concurrent executions at pullMessagesNumber
+		const processMessage = async (context: EventContext) => {
+			if (!context.message) return null;
+			inFlightMessages++;
+			try {
+				return await handleMessage.call(this, context, {
+					lastMessageId: lastMsgId,
+					jsonConvertByteArrayToString: options.jsonConvertByteArrayToString as boolean,
+					jsonParseBody: options.jsonParseBody as boolean,
+					onlyBody: options.onlyBody as boolean,
+					parallelProcessing,
+				});
+			} finally {
 				setTimeout(
 					() => {
-						context.receiver?.add_credit(pullMessagesNumber);
+						inFlightMessages--;
+						// while the link is down its freed slot is granted by receiver_open instead
+						if (receiverReady) context.receiver?.add_credit(1);
 					},
 					(options.sleepTime as number) || 10,
 				);
+			}
+		};
+
+		container.on('message', async (context: EventContext) => {
+			try {
+				const result = await processMessage(context);
+				if (result) {
+					lastMsgId = result.messageId;
+				}
+			} catch (error) {
+				this.saveFailedExecution(new NodeOperationError(this.getNode(), error as Error));
 			}
 		});
 
@@ -262,6 +247,7 @@ export class AmqpTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
+			container.removeAllListeners('disconnected');
 			container.removeAllListeners('receiver_open');
 			container.removeAllListeners('message');
 			connection.close();
@@ -274,7 +260,11 @@ export class AmqpTrigger implements INodeType {
 		// for a new user who doesn't know how this works, it's better to wait and show a respective info message
 		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
+				// remove the default message listener, setup our own for test trigger
+				container.removeAllListeners('message');
+
 				const timeoutHandler = setTimeout(() => {
+					container.removeAllListeners('disconnected');
 					container.removeAllListeners('receiver_open');
 					container.removeAllListeners('message');
 					connection.close();
@@ -282,26 +272,27 @@ export class AmqpTrigger implements INodeType {
 					reject(
 						new NodeOperationError(
 							this.getNode(),
-							'Aborted because no message received within 15 seconds',
+							'Aborted because no message was received within 15 seconds',
 							{
 								description:
-									'This 15sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
+									'This 15-second timeout only applies to manually triggered executions. Active workflows will listen indefinitely.',
 							},
 						),
 					);
 				}, 15000);
-				container.on('message', (context: EventContext) => {
-					// Check if the only property present in the message is body
-					// in which case we only emit the content of the body property
-					// otherwise we emit all properties and their content
-					const message = context.message as Message;
-					if (Object.keys(message)[0] === 'body' && Object.keys(message).length === 1) {
-						this.emit([this.helpers.returnJsonArray([message.body])]);
-					} else {
-						this.emit([this.helpers.returnJsonArray([message as any])]);
+				container.on('message', async (context: EventContext) => {
+					try {
+						const result = await processMessage(context);
+						if (result) {
+							lastMsgId = result.messageId;
+						}
+						clearTimeout(timeoutHandler);
+						resolve(true);
+					} catch (error) {
+						reject(error as Error);
+					} finally {
+						clearTimeout(timeoutHandler);
 					}
-					clearTimeout(timeoutHandler);
-					resolve(true);
 				});
 			});
 		};

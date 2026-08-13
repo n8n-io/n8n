@@ -6,6 +6,9 @@
             "properties": {
                 "friendly_name": {
                     "type": "string"
+                },
+                "supported_features": {
+                    "type": "integer"
                 }
             }
         },
@@ -39,5 +42,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

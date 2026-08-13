@@ -13,10 +13,13 @@ import type {
 	INodeListSearchItems,
 	INodeParameterResourceLocator,
 	ICredentialDataDecryptedObject,
+	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
 import { Parser } from 'xml2js';
 import { firstCharLowerCase, parseBooleans, parseNumbers } from 'xml2js/lib/processors';
+
+import { getUrl } from '@credentials/common/http';
 
 import { compareHeader } from './compare-header';
 
@@ -125,7 +128,8 @@ export async function handleErrorPostReceive(
 
 		const parser = new Parser({
 			explicitArray: false,
-			tagNameProcessors: [firstCharLowerCase],
+			tagNameProcessors: [sanitizeXmlName, firstCharLowerCase],
+			attrNameProcessors: [sanitizeXmlName],
 		});
 		const { error } =
 			((await parser.parseStringPromise(data[0].json as unknown as string)) as {
@@ -252,7 +256,9 @@ export async function handleErrorPostReceive(
 	return data;
 }
 
-export function getCanonicalizedHeadersString(requestOptions: IHttpRequestOptions): string {
+export function getCanonicalizedHeadersString(
+	requestOptions: IHttpRequestOptions | IRequestOptions,
+): string {
 	let headersArray: Array<{ name: string; value: string }> = [];
 	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	for (const [name, value] of Object.entries(requestOptions.headers!) as unknown as [
@@ -287,10 +293,10 @@ export function getCanonicalizedHeadersString(requestOptions: IHttpRequestOption
 }
 
 export function getCanonicalizedResourceString(
-	requestOptions: IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | IRequestOptions,
 	credentials: ICredentialDataDecryptedObject,
 ): string {
-	const path: string = new URL(requestOptions.baseURL + requestOptions.url).pathname || '/';
+	const path: string = new URL(getUrl(requestOptions)).pathname || '/';
 	let canonicalizedResourceString = `/${credentials.account as string}${path}`;
 	if (requestOptions.qs && Object.keys(requestOptions.qs).length > 0) {
 		canonicalizedResourceString +=
@@ -366,7 +372,8 @@ export async function parseBlobList(
 ): Promise<{ blobs: IDataObject[]; maxResults?: number; nextMarker?: string }> {
 	const parser = new Parser({
 		explicitArray: false,
-		tagNameProcessors: [firstCharLowerCase, (name) => name.replace('-', '')],
+		tagNameProcessors: [sanitizeXmlName, firstCharLowerCase, (name) => name.replace('-', '')],
+		attrNameProcessors: [sanitizeXmlName],
 		valueProcessors: [
 			function (value, name) {
 				if (
@@ -448,7 +455,8 @@ export async function parseContainerList(
 ): Promise<{ containers: IDataObject[]; maxResults?: number; nextMarker?: string }> {
 	const parser = new Parser({
 		explicitArray: false,
-		tagNameProcessors: [firstCharLowerCase, (name) => name.replace('-', '')],
+		tagNameProcessors: [sanitizeXmlName, firstCharLowerCase, (name) => name.replace('-', '')],
+		attrNameProcessors: [sanitizeXmlName],
 		valueProcessors: [
 			function (value, name) {
 				if (

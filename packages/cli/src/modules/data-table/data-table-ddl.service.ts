@@ -4,7 +4,15 @@ import { DataSource, DataSourceOptions, EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
-import { addColumnQuery, deleteColumnQuery, toDslColumns, toTableName } from './utils/sql-utils';
+import {
+	addColumnQuery,
+	deleteColumnQuery,
+	isValidDataTableId,
+	renameColumnQuery,
+	renameTableQuery,
+	toDslColumns,
+	toTableName,
+} from './utils/sql-utils';
 
 /**
  * Manages database schema operations for data tables (DDL).
@@ -42,6 +50,33 @@ export class DataTableDDLService {
 		});
 	}
 
+	async renameTable(
+		oldDataTableId: string,
+		newDataTableId: string,
+		dbType: DataSourceOptions['type'],
+		trx?: EntityManager,
+	) {
+		// These ids come from git files and the local DB rather than validated
+		// API requests, so guard before deriving SQL identifiers from them
+		if (!isValidDataTableId(oldDataTableId) || !isValidDataTableId(newDataTableId)) {
+			throw new UnexpectedError('Invalid data table ID');
+		}
+		await withTransaction(this.dataSource.manager, trx, async (em) => {
+			await em.query(
+				renameTableQuery(toTableName(oldDataTableId), toTableName(newDataTableId), dbType),
+			);
+		});
+	}
+
+	async tableExists(dataTableId: string, trx?: EntityManager): Promise<boolean> {
+		return await withTransaction(this.dataSource.manager, trx, async (em) => {
+			if (!em.queryRunner) {
+				throw new UnexpectedError('QueryRunner is not available');
+			}
+			return await em.queryRunner.hasTable(toTableName(dataTableId));
+		});
+	}
+
 	async addColumn(
 		dataTableId: string,
 		column: DataTableColumn,
@@ -61,6 +96,20 @@ export class DataTableDDLService {
 	) {
 		await withTransaction(this.dataSource.manager, trx, async (em) => {
 			await em.query(deleteColumnQuery(toTableName(dataTableId), columnName, dbType));
+		});
+	}
+
+	async renameColumn(
+		dataTableId: string,
+		oldColumnName: string,
+		newColumnName: string,
+		dbType: DataSourceOptions['type'],
+		trx?: EntityManager,
+	) {
+		await withTransaction(this.dataSource.manager, trx, async (em) => {
+			await em.query(
+				renameColumnQuery(toTableName(dataTableId), oldColumnName, newColumnName, dbType),
+			);
 		});
 	}
 }

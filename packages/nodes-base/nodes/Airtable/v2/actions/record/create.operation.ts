@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { processAirtableError, removeIgnored } from '../../helpers/utils';
+import { coerceArrayTypeFields, processAirtableError, removeIgnored } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { insertUpdateOptions } from '../common.descriptions';
 
@@ -75,7 +75,9 @@ export async function execute(
 				const fields = this.getNodeParameter('columns.value', i, [], {
 					skipValidation: typecast,
 				}) as IDataObject;
-
+				if (typecast) {
+					coerceArrayTypeFields(fields, this.getNode().parameters.columns);
+				}
 				body.fields = fields;
 			}
 

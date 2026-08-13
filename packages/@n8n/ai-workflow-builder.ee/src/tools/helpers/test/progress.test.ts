@@ -1,5 +1,6 @@
 import type { ToolRunnableConfig } from '@langchain/core/tools';
 import type { LangGraphRunnableConfig } from '@langchain/langgraph';
+import type { MockedFunction } from 'vitest';
 
 import type { ToolError } from '../../../types/tools';
 import {
@@ -12,11 +13,11 @@ import {
 } from '../progress';
 
 describe('progress helpers', () => {
-	let mockWriter: jest.MockedFunction<(chunk: unknown) => void>;
+	let mockWriter: MockedFunction<(chunk: unknown) => void>;
 	let mockConfig: ToolRunnableConfig & LangGraphRunnableConfig;
 
 	beforeEach(() => {
-		mockWriter = jest.fn();
+		mockWriter = vi.fn();
 		mockConfig = {
 			writer: mockWriter,
 			toolCall: {

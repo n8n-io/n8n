@@ -1,0 +1,58 @@
+{
+	"name": "Databricks SQL Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "databricksSql",
+				"operation": "executeQuery",
+				"warehouseId": {
+					"mode": "id",
+					"value": "warehouse123"
+				},
+				"query": "SELECT id, name FROM test_table"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "sql-execute-001",
+			"name": "Execute SQL",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Execute SQL": [
+			{ "json": { "id": "1", "name": "Alice" } },
+			{ "json": { "id": "2", "name": "Bob" } }
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Execute SQL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -1,5 +1,12 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+
+import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -7,13 +14,73 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+
+interface OpenAIToolCall {
+	function?: { arguments?: unknown };
+}
+
+interface OpenAIChoice {
+	message?: { tool_calls?: OpenAIToolCall[] };
+}
+
+function isOpenAIResponseWithChoices(json: unknown): json is { choices: OpenAIChoice[] } {
+	return (
+		typeof json === 'object' &&
+		json !== null &&
+		'choices' in json &&
+		Array.isArray((json as { choices: unknown }).choices)
+	);
+}
+
+/**
+ * Wraps fetch to fix empty tool call arguments in API responses.
+ *
+ * When Anthropic models are accessed through OpenRouter, tool calls for tools
+ * with no parameters return empty string arguments ("") instead of "{}".
+ * LangChain's parseToolCall does JSON.parse("") which throws, breaking the agent.
+ * This wrapper normalizes empty arguments to "{}" before LangChain sees them.
+ */
+function createOpenRouterFetch(baseFetch: typeof globalThis.fetch): typeof globalThis.fetch {
+	return async (input, init) => {
+		const response = await baseFetch(input, init);
+
+		const contentType = response.headers.get('content-type') ?? '';
+		if (!contentType.includes('json')) return response;
+
+		// Clone before reading, since .json() consumes the body. If no
+		// modification is needed we return the clone with the original body intact.
+		const clone = response.clone();
+		const json: unknown = await response.json();
+
+		if (!isOpenAIResponseWithChoices(json)) return clone;
+
+		const isInvalidArgs = (args: unknown): boolean => typeof args !== 'string' || !args.trim();
+
+		const toolCallsToFix = json.choices
+			.flatMap((choice) => choice.message?.tool_calls ?? [])
+			.filter((tc) => tc.function && isInvalidArgs(tc.function.arguments));
+
+		if (toolCallsToFix.length === 0) return clone;
+
+		for (const tc of toolCallsToFix) {
+			if (!tc.function) continue;
+			const { arguments: args } = tc.function;
+			// Preserve already-parsed plain objects by stringifying them.
+			// Arrays and other non-object types are not valid tool args, so default to '{}'.
+			const isPlainObject = typeof args === 'object' && args !== null && !Array.isArray(args);
+			tc.function.arguments = isPlainObject ? JSON.stringify(args) : '{}';
+		}
+
+		const body = JSON.stringify(json);
+		return new Response(body, {
+			status: response.status,
+			statusText: response.statusText,
+			headers: { 'content-type': contentType },
+		});
+	};
+}
 
 export class LmChatOpenRouter implements INodeType {
 	description: INodeTypeDescription = {
@@ -115,6 +182,10 @@ export class LmChatOpenRouter implements INodeType {
 					},
 				},
 				default: 'openai/gpt-4.1-mini',
+				builderHint: {
+					propertyHint:
+						'Default to a current flagship (e.g. openai/gpt-5.4, anthropic/claude-sonnet-4.6, google/gemini-3.1-pro-preview). Avoid openai/gpt-4o, anthropic/claude-3.x, and other pre-2026 models.',
+				},
 			},
 			{
 				displayName: 'Options',
@@ -204,6 +275,91 @@ export class LmChatOpenRouter implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Provider Routing',
+						name: 'providerRouting',
+						type: 'collection',
+						default: {},
+						description:
+							'Configure which sub-providers handle your requests. <a href="https://openrouter.ai/docs/provider-routing">Learn more</a>.',
+						placeholder: 'Add Provider Routing Option',
+						options: [
+							{
+								displayName: 'Order',
+								name: 'order',
+								type: 'string',
+								default: '',
+								placeholder: 'anthropic,openai,google',
+								description:
+									'Comma-separated list of provider slugs to try in order. <a href="https://openrouter.ai/docs/provider-routing#provider-sorting">Learn more</a>.',
+							},
+							{
+								displayName: 'Allow Fallbacks',
+								name: 'allowFallbacks',
+								type: 'boolean',
+								default: true,
+								description: 'Whether to allow backup providers when the primary is unavailable',
+							},
+							{
+								displayName: 'Require Parameters',
+								name: 'requireParameters',
+								type: 'boolean',
+								default: false,
+								description:
+									'Whether to only use providers that support all parameters in your request',
+							},
+							{
+								displayName: 'Data Collection',
+								name: 'dataCollection',
+								type: 'options',
+								options: [
+									{ name: 'Allow', value: 'allow' },
+									{ name: 'Deny', value: 'deny' },
+								],
+								default: 'allow',
+								description:
+									"Select 'Deny' to route requests only through providers that don't collect your data",
+							},
+							{
+								displayName: 'Zero Data Retention (ZDR)',
+								name: 'zdr',
+								type: 'boolean',
+								default: false,
+								description:
+									'Whether to restrict routing to only providers with Zero Data Retention endpoints',
+							},
+							{
+								displayName: 'Only',
+								name: 'only',
+								type: 'string',
+								default: '',
+								placeholder: 'azure,anthropic',
+								description:
+									'Comma-separated list of provider slugs to allow for this request. Only these providers will be used. <a href="https://openrouter.ai/docs/guides/routing/provider-selection#allowing-only-specific-providers">Learn more</a>.',
+							},
+							{
+								displayName: 'Ignore',
+								name: 'ignore',
+								type: 'string',
+								default: '',
+								placeholder: 'anthropic,openai',
+								description: 'Comma-separated list of provider slugs to skip for this request',
+							},
+							{
+								displayName: 'Sort',
+								name: 'sort',
+								type: 'options',
+								options: [
+									{ name: 'Price', value: 'price' },
+									{ name: 'Throughput', value: 'throughput' },
+									{ name: 'Latency', value: 'latency' },
+								],
+								default: '',
+								description:
+									'Sort providers by a specific attribute. Disables load balancing and tries providers in order. <a href="https://openrouter.ai/docs/provider-routing#provider-sorting">Learn more</a>.',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -223,28 +379,88 @@ export class LmChatOpenRouter implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			providerRouting?: {
+				order?: string;
+				allowFallbacks?: boolean;
+				requireParameters?: boolean;
+				dataCollection?: 'allow' | 'deny';
+				zdr?: boolean;
+				only?: string;
+				ignore?: string;
+				sort?: 'price' | 'throughput' | 'latency';
+			};
 		};
 
+		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			fetch: createOpenRouterFetch(globalThis.fetch),
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url),
+				dispatcher: getProxyAgent(credentials.url, {
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				}),
 			},
 		};
+
+		// Build provider routing object
+		const provider: Record<string, unknown> = {};
+		if (options.providerRouting) {
+			const routing = options.providerRouting;
+
+			if (routing.order) {
+				provider.order = routing.order
+					.split(',')
+					.map((p) => p.trim())
+					.filter((p) => p);
+			}
+			if (routing.allowFallbacks !== undefined) {
+				provider.allow_fallbacks = routing.allowFallbacks;
+			}
+			if (routing.requireParameters !== undefined) {
+				provider.require_parameters = routing.requireParameters;
+			}
+			if (routing.dataCollection) {
+				provider.data_collection = routing.dataCollection;
+			}
+			if (routing.zdr !== undefined) {
+				provider.zdr = routing.zdr;
+			}
+			if (routing.only) {
+				provider.only = routing.only
+					.split(',')
+					.map((p) => p.trim())
+					.filter((p) => p);
+			}
+			if (routing.ignore) {
+				provider.ignore = routing.ignore
+					.split(',')
+					.map((p) => p.trim())
+					.filter((p) => p);
+			}
+			if (routing.sort) {
+				provider.sort = routing.sort;
+			}
+		}
+
+		// Build modelKwargs
+		const modelKwargs: Record<string, unknown> = {};
+		if (options.responseFormat) {
+			modelKwargs.response_format = { type: options.responseFormat };
+		}
+		if (Object.keys(provider).length > 0) {
+			modelKwargs.provider = provider;
+		}
 
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
 			...options,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 

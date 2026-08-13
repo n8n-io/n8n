@@ -7,11 +7,30 @@ describe('OpenAiApi Credential', () => {
 
 	it('should have correct properties', () => {
 		expect(openAiApi.name).toBe('openAiApi');
-		expect(openAiApi.displayName).toBe('OpenAi');
+		expect(openAiApi.displayName).toBe('OpenAI');
 		expect(openAiApi.documentationUrl).toBe('openai');
 		expect(openAiApi.properties).toHaveLength(6);
 		expect(openAiApi.test.request.baseURL).toBe('={{$credentials?.url}}');
 		expect(openAiApi.test.request.url).toBe('/models');
+	});
+
+	it('should allow custom header expressions to be omitted during design-time resolution', () => {
+		expect(openAiApi.properties).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'headerName',
+					typeOptions: expect.objectContaining({
+						ignoreCredentialExpressionResolveError: true,
+					}),
+				}),
+				expect.objectContaining({
+					name: 'headerValue',
+					typeOptions: expect.objectContaining({
+						ignoreCredentialExpressionResolveError: true,
+					}),
+				}),
+			]),
+		);
 	});
 
 	describe('authenticate', () => {

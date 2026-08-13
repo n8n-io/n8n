@@ -1,66 +1,269 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
-import { ServerResponse } from 'node:http';
-import type WebSocket from 'ws';
+import type { Socket } from 'node:net';
+import request from 'supertest';
+import { mock } from 'vitest-mock-extended';
+import type { Server as WSServer, WebSocket } from 'ws';
 
 import type { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 import type { TaskBrokerServerInitRequest } from '@/task-runners/task-broker/task-broker-types';
+import type { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 
 describe('TaskBrokerServer', () => {
-	describe('handleUpgradeRequest', () => {
-		it('should close WebSocket when response status code is > 200', () => {
-			const ws = mock<WebSocket>();
-			const request = mock<TaskBrokerServerInitRequest>({
-				url: '/runners/_ws',
-				ws,
-			});
+	const createServer = (overrides?: {
+		authController?: TaskBrokerAuthController;
+		logger?: Logger;
+	}) => {
+		const authController = overrides?.authController ?? mock<TaskBrokerAuthController>();
+		const taskBrokerWsServer = mock<TaskBrokerWsServer>();
 
-			const server = new TaskBrokerServer(
-				mock(),
-				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
-				mock<TaskBrokerAuthController>(),
-				mock(),
-			);
+		const server = new TaskBrokerServer(
+			overrides?.logger ?? mock<Logger>(),
+			mock<GlobalConfig>({
+				taskRunners: { path: '/runners', authToken: 'token' },
+				endpoints: { health: '/health' },
+				sentry: { backendDsn: '' },
+			}),
+			authController,
+			taskBrokerWsServer,
+			mock(),
+		);
+
+		return { server, authController, taskBrokerWsServer };
+	};
+
+	describe('GET /healthz', () => {
+		it('should return 200 regardless of N8N_ENDPOINT_HEALTH', async () => {
+			const { server } = createServer();
+
+			// @ts-expect-error Private method
+			server.setupCommonMiddlewares();
+			// @ts-expect-error Private method
+			server.configureRoutes();
+
+			await request(server.app).get('/healthz').expect(200, { status: 'ok' });
+		});
+	});
+
+	describe('handleUpgradeRequest', () => {
+		const createSocket = () => {
+			const socket = mock<Socket>();
+			socket.write.mockReturnValue(true);
+			return socket;
+		};
+
+		it('should return 404 when path does not match', async () => {
+			const { server } = createServer();
+			const socket = createSocket();
 
 			// @ts-expect-error Private property
-			server.handleUpgradeRequest(request, mock(), Buffer.from(''));
+			await server.handleUpgradeRequest(
+				mock<TaskBrokerServerInitRequest>({ url: '/wrong-path' }),
+				socket,
+				Buffer.from(''),
+			);
 
-			const response = new ServerResponse(request);
-			response.writeHead = (statusCode) => {
-				if (statusCode > 200) ws.close();
-				return response;
-			};
-
-			response.writeHead(401);
-			expect(ws.close).toHaveBeenCalledWith(); // no args
+			expect(socket.write).toHaveBeenCalledWith('HTTP/1.1 404 Not Found\r\n\r\n');
+			expect(socket.destroy).toHaveBeenCalled();
 		});
 
-		it('should not close WebSocket when response status code is 200', () => {
-			const ws = mock<WebSocket>();
-			const request = mock<TaskBrokerServerInitRequest>({
-				url: '/runners/_ws',
-				ws,
+		it('should return 401 when auth validation fails with 401', async () => {
+			const authController = mock<TaskBrokerAuthController>();
+			authController.validateUpgradeRequest.mockResolvedValue({
+				isValid: false,
+				statusCode: 401,
+				reason: 'missing or invalid Authorization header',
 			});
 
-			const server = new TaskBrokerServer(
-				mock(),
-				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
-				mock<TaskBrokerAuthController>(),
-				mock(),
+			const { server } = createServer({ authController });
+			const socket = createSocket();
+
+			// @ts-expect-error Private property - set wsServer to simulate started server
+			server.wsServer = mock<WSServer>();
+
+			// @ts-expect-error Private property
+			await server.handleUpgradeRequest(
+				mock<TaskBrokerServerInitRequest>({ url: '/runners/_ws?id=runner1', headers: {} }),
+				socket,
+				Buffer.from(''),
+			);
+
+			expect(socket.write).toHaveBeenCalledWith('HTTP/1.1 401 Unauthorized\r\n\r\n');
+			expect(socket.destroy).toHaveBeenCalled();
+		});
+
+		it('should return 403 when grant token is invalid', async () => {
+			const authController = mock<TaskBrokerAuthController>();
+			authController.validateUpgradeRequest.mockResolvedValue({
+				isValid: false,
+				statusCode: 403,
+				reason: 'invalid or expired grant token',
+			});
+
+			const { server } = createServer({ authController });
+			const socket = createSocket();
+
+			// @ts-expect-error Private property
+			server.wsServer = mock<WSServer>();
+
+			// @ts-expect-error Private property
+			await server.handleUpgradeRequest(
+				mock<TaskBrokerServerInitRequest>({
+					url: '/runners/_ws?id=runner1',
+					headers: { authorization: 'Bearer invalid-token' },
+				}),
+				socket,
+				Buffer.from(''),
+			);
+
+			expect(authController.validateUpgradeRequest).toHaveBeenCalledWith('Bearer invalid-token');
+			expect(socket.write).toHaveBeenCalledWith('HTTP/1.1 403 Forbidden\r\n\r\n');
+			expect(socket.destroy).toHaveBeenCalled();
+		});
+
+		it('should return 429 when rate limit is exceeded', async () => {
+			const authController = mock<TaskBrokerAuthController>();
+			authController.validateUpgradeRequest.mockResolvedValue({
+				isValid: false,
+				statusCode: 401,
+				reason: 'missing or invalid Authorization header',
+			});
+
+			const { server } = createServer({ authController });
+			const wsServerMock = mock<WSServer>();
+
+			// @ts-expect-error Private property
+			server.wsServer = wsServerMock;
+
+			// Send 5 requests (the limit)
+			for (let i = 0; i < 5; i++) {
+				const socket = createSocket();
+				// @ts-expect-error Private property
+				await server.handleUpgradeRequest(
+					mock<TaskBrokerServerInitRequest>({
+						url: '/runners/_ws?id=runner1',
+						headers: {},
+					}),
+					socket,
+					Buffer.from(''),
+				);
+				// These should fail auth (401), not rate limit
+				expect(socket.write).toHaveBeenCalledWith('HTTP/1.1 401 Unauthorized\r\n\r\n');
+			}
+
+			// 6th should be rate limited
+			const socket = createSocket();
+			// @ts-expect-error Private property
+			await server.handleUpgradeRequest(
+				mock<TaskBrokerServerInitRequest>({
+					url: '/runners/_ws?id=runner1',
+					headers: {},
+				}),
+				socket,
+				Buffer.from(''),
+			);
+			expect(socket.write).toHaveBeenCalledWith('HTTP/1.1 429 Too Many Requests\r\n\r\n');
+			expect(socket.destroy).toHaveBeenCalled();
+		});
+
+		it('should proceed with upgrade when grant token is valid', async () => {
+			const authController = mock<TaskBrokerAuthController>();
+			authController.validateUpgradeRequest.mockResolvedValue({
+				isValid: true,
+				statusCode: 200,
+			});
+
+			const { server, taskBrokerWsServer } = createServer({ authController });
+			const socket = createSocket();
+
+			const wsServerMock = mock<WSServer>();
+			const mockWs = mock<WebSocket>();
+			wsServerMock.handleUpgrade.mockImplementation(
+				(_req: unknown, _socket: unknown, _head: unknown, cb: (ws: WebSocket) => void) => {
+					cb(mockWs);
+				},
 			);
 
 			// @ts-expect-error Private property
-			server.handleUpgradeRequest(request, mock(), Buffer.from(''));
+			server.wsServer = wsServerMock;
 
-			const response = new ServerResponse(request);
-			response.writeHead = (statusCode) => {
-				if (statusCode > 200) ws.close();
-				return response;
+			// @ts-expect-error Private property
+			await server.handleUpgradeRequest(
+				mock<TaskBrokerServerInitRequest>({
+					url: '/runners/_ws?id=runner1',
+					headers: { authorization: 'Bearer valid-token' },
+				}),
+				socket,
+				Buffer.from(''),
+			);
+
+			expect(authController.validateUpgradeRequest).toHaveBeenCalledWith('Bearer valid-token');
+			expect(wsServerMock.handleUpgrade).toHaveBeenCalled();
+			expect(taskBrokerWsServer.add).toHaveBeenCalledWith('runner1', mockWs);
+			expect(socket.destroy).not.toHaveBeenCalled();
+		});
+
+		describe('runner ID', () => {
+			const upgradeWith = async (
+				reportedRunnerId: string,
+				boundRunnerId?: string,
+				logger = mock<Logger>(),
+			) => {
+				const authController = mock<TaskBrokerAuthController>();
+				authController.validateUpgradeRequest.mockResolvedValue({
+					isValid: true,
+					statusCode: 200,
+					boundRunnerId,
+				});
+
+				const { server, taskBrokerWsServer } = createServer({ authController, logger });
+				const mockWs = mock<WebSocket>();
+				const wsServerMock = mock<WSServer>();
+				wsServerMock.handleUpgrade.mockImplementation(
+					(_req: unknown, _socket: unknown, _head: unknown, cb: (ws: WebSocket) => void) => {
+						cb(mockWs);
+					},
+				);
+
+				// @ts-expect-error Private property
+				server.wsServer = wsServerMock;
+
+				// @ts-expect-error Private property
+				await server.handleUpgradeRequest(
+					mock<TaskBrokerServerInitRequest>({
+						url: `/runners/_ws?id=${reportedRunnerId}`,
+						headers: { authorization: 'Bearer valid-token' },
+					}),
+					createSocket(),
+					Buffer.from(''),
+				);
+
+				return { taskBrokerWsServer, mockWs, logger };
 			};
 
-			response.writeHead(200);
-			expect(ws.close).not.toHaveBeenCalled();
+			it('should register under the ID bound to the grant token', async () => {
+				const { taskBrokerWsServer, mockWs } = await upgradeWith('assigned-1', 'assigned-1');
+
+				expect(taskBrokerWsServer.add).toHaveBeenCalledWith('assigned-1', mockWs);
+			});
+
+			it('should prefer the bound ID over a self-assigned one and warn', async () => {
+				const { taskBrokerWsServer, mockWs, logger } = await upgradeWith(
+					'self-assigned',
+					'assigned-1',
+				);
+
+				expect(taskBrokerWsServer.add).toHaveBeenCalledWith('assigned-1', mockWs);
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('N8N_RUNNERS_ID'));
+			});
+
+			it('should fall back to the reported ID when the token binds none', async () => {
+				const { taskBrokerWsServer, mockWs, logger } = await upgradeWith('external-1', undefined);
+
+				expect(taskBrokerWsServer.add).toHaveBeenCalledWith('external-1', mockWs);
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

@@ -1,5 +1,11 @@
-import { type MockProxy, mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, INodeProperties, IWebhookFunctions } from 'n8n-workflow';
+import type { Request, Response } from 'express';
+import { type MockProxy, mock } from 'vitest-mock-extended';
+import type {
+	IExecuteFunctions,
+	INodeProperties,
+	IWebhookFunctions,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 import { NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import { configureWaitTillDate } from '../configureWaitTillDate.util';
@@ -17,6 +23,7 @@ describe('Send and Wait utils tests', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		mockWebhookFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 	});
 
 	describe('getSendAndWaitProperties', () => {
@@ -29,9 +36,53 @@ describe('Send and Wait utils tests', () => {
 					default: '',
 				},
 			];
+			const extraOptions: INodeProperties[] = [
+				{
+					displayName: 'Extra Property',
+					name: 'extraProperty',
+					type: 'string',
+					default: '',
+				},
+			];
 
-			const result = getSendAndWaitProperties(targetProperties);
+			const result = getSendAndWaitProperties(targetProperties, undefined, undefined, {
+				extraOptions,
+			});
 
+			expect(result).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						name: 'options',
+						options: expect.arrayContaining([
+							expect.objectContaining({
+								name: 'extraProperty',
+							}),
+						]),
+					}),
+				]),
+			);
+		});
+
+		it('should include extra options when provided', () => {
+			const targetProperties: INodeProperties[] = [
+				{
+					displayName: 'Test Property',
+					name: 'testProperty',
+					type: 'string',
+					default: '',
+				},
+			];
+			const extraOptions: INodeProperties[] = [
+				{
+					displayName: 'Extra Property',
+					name: 'extraProperty',
+					type: 'string',
+					default: '',
+				},
+			];
+			const result = getSendAndWaitProperties(targetProperties, undefined, undefined, {
+				extraOptions,
+			});
 			expect(result).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -76,6 +127,7 @@ describe('Send and Wait utils tests', () => {
 						label: 'Approve',
 						style: 'primary',
 						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						approved: true,
 					},
 				],
 			});
@@ -113,14 +165,101 @@ describe('Send and Wait utils tests', () => {
 						label: 'Reject',
 						style: 'secondary',
 						url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+						approved: false,
 					},
 					{
 						label: 'Approve',
 						style: 'primary',
 						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						approved: true,
 					},
 				]),
 			);
+		});
+
+		describe('customForm validation', () => {
+			const mockCustomFormParameters = (params: { [key: string]: any }) =>
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(parameterName: string) =>
+						({
+							message: 'Pick a customer',
+							responseType: 'customForm',
+							...params,
+						})[parameterName],
+				);
+
+			it('should throw when the form JSON resolves to invalid form fields', () => {
+				mockExecuteFunctions.getNode.mockReturnValue({ name: 'Send Email' } as any);
+				mockCustomFormParameters({
+					defineForm: 'json',
+					jsonOutput: '={{ JSON.stringify($json.formFields) }}',
+				});
+				// A customer row without a name resolves to `{ option: null }`
+				mockExecuteFunctions.evaluateExpression.mockReturnValue([
+					{
+						fieldLabel: 'Customer',
+						fieldType: 'dropdown',
+						fieldOptions: { values: [{ option: null }] },
+					},
+				] as any);
+
+				expect(() => getSendAndWaitConfig(mockExecuteFunctions)).toThrow(
+					'Field dropdown in field 0 has an invalid option 0',
+				);
+			});
+
+			it('should return the config when the form JSON resolves to valid form fields', () => {
+				mockCustomFormParameters({
+					defineForm: 'json',
+					jsonOutput: '={{ JSON.stringify($json.formFields) }}',
+					'options.messageButtonLabel': 'Respond',
+				});
+				mockExecuteFunctions.evaluateExpression.mockReturnValue([
+					{
+						fieldLabel: 'Customer',
+						fieldType: 'dropdown',
+						fieldOptions: { values: [{ option: 'Acme Corp' }] },
+					},
+				] as any);
+				mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+					'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+				);
+
+				const config = getSendAndWaitConfig(mockExecuteFunctions);
+
+				expect(config.options).toEqual([
+					{
+						label: 'Respond',
+						style: 'primary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						approved: true,
+					},
+				]);
+			});
+
+			const readParameterNames = () =>
+				mockExecuteFunctions.getNodeParameter.mock.calls.map(([name]) => name);
+
+			it('should not read the form JSON when the form is defined with fields', () => {
+				mockCustomFormParameters({ defineForm: 'fields' });
+
+				getSendAndWaitConfig(mockExecuteFunctions);
+
+				expect(readParameterNames()).not.toContain('jsonOutput');
+			});
+
+			it('should not read the form JSON for approval response types', () => {
+				mockCustomFormParameters({
+					responseType: 'approval',
+					'approvalOptions.values': { approvalType: 'single' },
+					defineForm: 'json',
+					jsonOutput: '={{ JSON.stringify($json.formFields) }}',
+				});
+
+				getSendAndWaitConfig(mockExecuteFunctions);
+
+				expect(readParameterNames()).not.toContain('jsonOutput');
+			});
 		});
 	});
 
@@ -181,7 +320,7 @@ describe('Send and Wait utils tests', () => {
 
 			expect(result).toEqual({
 				webhookResponse: expect.any(String),
-				workflowData: [[{ json: { data: { approved: true } } }]],
+				workflowData: [[{ json: { data: { approved: true, respondedAt: expect.any(String) } } }]],
 			});
 		});
 
@@ -194,12 +333,13 @@ describe('Send and Wait utils tests', () => {
 
 			expect(result).toEqual({
 				webhookResponse: expect.any(String),
-				workflowData: [[{ json: { data: { approved: false } } }]],
+				workflowData: [[{ json: { data: { approved: false, respondedAt: expect.any(String) } } }]],
 			});
 		});
 
 		it('should handle freeText GET webhook', async () => {
-			const mockRender = jest.fn();
+			const mockRender = vi.fn();
+			const mockSetHeader = vi.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -207,6 +347,7 @@ describe('Send and Wait utils tests', () => {
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				render: mockRender,
+				setHeader: mockSetHeader,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -223,6 +364,11 @@ describe('Send and Wait utils tests', () => {
 			expect(result).toEqual({
 				noWebhookResponse: true,
 			});
+
+			expect(mockSetHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
@@ -267,11 +413,14 @@ describe('Send and Wait utils tests', () => {
 
 			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
 
-			expect(result.workflowData).toEqual([[{ json: { data: { text: 'test value' } } }]]);
+			expect(result.workflowData).toEqual([
+				[{ json: { data: { text: 'test value', respondedAt: expect.any(String) } } }],
+			]);
 		});
 
 		it('should handle customForm GET webhook', async () => {
-			const mockRender = jest.fn();
+			const mockRender = vi.fn();
+			const mockSetHeader = vi.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -279,6 +428,7 @@ describe('Send and Wait utils tests', () => {
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				render: mockRender,
+				setHeader: mockSetHeader,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -302,6 +452,11 @@ describe('Send and Wait utils tests', () => {
 			expect(result).toEqual({
 				noWebhookResponse: true,
 			});
+
+			expect(mockSetHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
@@ -327,9 +482,107 @@ describe('Send and Wait utils tests', () => {
 			});
 		});
 
+		it('should resolve expressions in HTML fields for customForm GET webhook', async () => {
+			const mockRender = vi.fn();
+			const mockSetHeader = vi.fn();
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+			} as any);
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				render: mockRender,
+				setHeader: mockSetHeader,
+			} as any);
+
+			// Mock evaluateExpression to resolve the expression
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) => {
+				if (expression === '{{ $json.videoUrl }}') {
+					return 'https://example.com/video.mp4';
+				}
+				return expression;
+			});
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'customForm',
+					message: 'Test message',
+					defineForm: 'fields',
+					'formFields.values': [
+						{
+							fieldLabel: 'Custom HTML',
+							fieldType: 'html',
+							// Use <source> tag inside <video> since sanitizeHtml allows src on source, not video
+							html: '<video controls><source src="{{ $json.videoUrl }}" type="video/mp4" /></video>',
+						},
+					],
+					options: {},
+				};
+				return params[parameterName];
+			});
+
+			await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(mockRender).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({
+					formFields: expect.arrayContaining([
+						expect.objectContaining({
+							html: '<video controls><source src="https://example.com/video.mp4" type="video/mp4"></source></video>',
+						}),
+					]),
+				}),
+			);
+		});
+
+		// Form fields are re-resolved from upstream data when the form is rendered, so an execution
+		// that is already waiting with bad data still breaks the read-only GET. Pins the current
+		// behaviour; unmasking the reason at render time is a separate follow-up.
+		it('should throw when a data-driven customForm resolves to invalid form fields', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as any);
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				render: vi.fn(),
+				setHeader: vi.fn(),
+			} as any);
+			mockWebhookFunctions.getNode.mockReturnValue({ name: 'Dropdown' } as any);
+
+			// A customer row without a name resolves to `{ option: null }`
+			mockWebhookFunctions.evaluateExpression.mockReturnValue([
+				{
+					fieldLabel: 'Customer',
+					fieldType: 'dropdown',
+					fieldOptions: { values: [{ option: 'Acme Corp' }, { option: null }] },
+				},
+			] as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'customForm',
+					message: 'Pick a customer',
+					defineForm: 'json',
+					jsonOutput: '={{ JSON.stringify($json.formFields) }}',
+					options: {},
+				};
+				return params[parameterName];
+			});
+
+			const error = await sendAndWaitWebhook
+				.call(mockWebhookFunctions)
+				.catch((e: NodeOperationError) => e);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			expect((error as NodeOperationError).message).toBe(
+				'Field dropdown in field 0 has an invalid option 1',
+			);
+			// Without `type: 'manual-form-test'` the reason is masked as
+			// "Workflow Webhook Error: Workflow could not be started!" by webhook-helpers
+			expect((error as NodeOperationError).type).toBeUndefined();
+		});
+
 		it('should handle customForm POST webhook', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',
+				contentType: 'multipart/form-data',
 			} as any);
 			mockWebhookFunctions.getNode.mockReturnValue({} as any);
 
@@ -355,7 +608,44 @@ describe('Send and Wait utils tests', () => {
 
 			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
 
-			expect(result.workflowData).toEqual([[{ json: { data: { 'test 1': 'test value' } } }]]);
+			expect(result.workflowData).toEqual([
+				[{ json: { data: { 'test 1': 'test value', respondedAt: expect.any(String) } } }],
+			]);
+		});
+
+		it('overrides a form field named respondedAt with the server timestamp', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'POST',
+				contentType: 'multipart/form-data',
+			} as any);
+			mockWebhookFunctions.getNode.mockReturnValue({} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'customForm',
+					defineForm: 'fields',
+					'formFields.values': [
+						{
+							fieldLabel: 'respondedAt',
+							fieldType: 'text',
+						},
+					],
+				};
+				return params[parameterName];
+			});
+
+			mockWebhookFunctions.getBodyData.mockReturnValue({
+				data: {
+					'field-0': 'user-supplied-value',
+				},
+			} as any);
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			const json = (result.workflowData as any)[0][0].json;
+			// The server-set timestamp must win over a same-named form field.
+			expect(json.data.respondedAt).not.toBe('user-supplied-value');
+			expect(new Date(json.data.respondedAt as string).toISOString()).toBe(json.data.respondedAt);
 		});
 
 		it('should return noWebhookResponse if method GET and user-agent is bot', async () => {
@@ -367,7 +657,7 @@ describe('Send and Wait utils tests', () => {
 				query: { approved: 'false' },
 			} as any);
 
-			const send = jest.fn();
+			const send = vi.fn();
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				send,
@@ -385,6 +675,103 @@ describe('Send and Wait utils tests', () => {
 			expect(send).toHaveBeenCalledWith('');
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
+
+		it('should return noWebhookResponse if user-agent is empty (Microsoft Preview Service)', async () => {
+			const send = vi.fn();
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				headers: {},
+				query: { approved: 'true' },
+			} as unknown as Request);
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				send,
+			} as unknown as Response);
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(parameterName: string, fallbackValue?: any) => {
+					const params: Record<string, unknown> = { responseType: 'approval' };
+					return params[parameterName] ?? fallbackValue;
+				},
+			);
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(send).toHaveBeenCalledWith('');
+		});
+
+		it.each([
+			'SkypeSpaces/1.0',
+			'Microsoft Teams/1.0',
+			'SkypeUriPreview Preview/1.0',
+			'Preview Service/1.0',
+		])(
+			'should return noWebhookResponse if user-agent contains %s (Microsoft Preview Service)',
+			async (userAgent) => {
+				const send = vi.fn();
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					headers: { 'user-agent': userAgent },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({
+					send,
+				} as unknown as Response);
+				mockWebhookFunctions.getNodeParameter.mockImplementation(
+					(parameterName: string, fallbackValue?: any) => {
+						const params: Record<string, unknown> = { responseType: 'approval' };
+						return params[parameterName] ?? fallbackValue;
+					},
+				);
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(send).toHaveBeenCalledWith('');
+			},
+		);
+
+		it.each([
+			['freeText' as const, ''],
+			['freeText' as const, 'SkypeUriPreview Preview/1.0'],
+			['customForm' as const, ''],
+			['customForm' as const, 'SkypeUriPreview Preview/1.0'],
+		])(
+			'should not block Microsoft Preview Service when responseType is %s (user-agent: %s)',
+			async (responseType, userAgent) => {
+				const mockRender = vi.fn();
+				const mockSetHeader = vi.fn();
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': userAgent },
+					query: {},
+				} as unknown as Request);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({
+					render: mockRender,
+					setHeader: mockSetHeader,
+				} as unknown as Response);
+				const formFieldParams: Record<string, unknown> =
+					responseType === 'customForm'
+						? {
+								defineForm: 'fields',
+								'formFields.values': [{ label: 'Field 1', fieldType: 'text', requiredField: true }],
+							}
+						: {};
+				mockWebhookFunctions.getNodeParameter.mockImplementation(
+					(parameterName: string, fallbackValue?: any) => {
+						const params: Record<string, unknown> = {
+							responseType,
+							message: 'Test message',
+							options: {},
+							...formFieldParams,
+						};
+						return params[parameterName] ?? fallbackValue;
+					},
+				);
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(mockRender).toHaveBeenCalled();
+			},
+		);
 	});
 });
 
@@ -396,7 +783,7 @@ describe('configureWaitTillDate', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return WAIT_INDEFINITELY if limitWaitTime is empty', () => {
@@ -554,5 +941,23 @@ describe('configureWaitTillDate', () => {
 			.mockReturnValueOnce('minutes');
 
 		expect(() => configureWaitTillDate(mockExecuteFunctions, 'root')).toThrow(NodeOperationError);
+	});
+});
+
+describe('getSendAndWaitProperties additionalProperties', () => {
+	const hitl: INodeProperties = {
+		displayName: 'Capture Who Responded',
+		name: 'captureResponder',
+		type: 'boolean',
+		default: false,
+	};
+
+	it('renders additionalProperties before the Options collection', () => {
+		const props = getSendAndWaitProperties([], undefined, [hitl]);
+		// The first "options" collection is the approval one, emitted right after "Approval Options".
+		const firstOptionsIndex = props.findIndex((p) => p.name === 'options');
+		const hitlIndex = props.findIndex((p) => p.name === 'captureResponder');
+		expect(hitlIndex).toBeGreaterThan(-1);
+		expect(hitlIndex).toBeLessThan(firstOptionsIndex);
 	});
 });
