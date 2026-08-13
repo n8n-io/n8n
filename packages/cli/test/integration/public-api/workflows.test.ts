@@ -1860,6 +1860,22 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should reject a body carrying an unknown field', async () => {
+		const response = await authOwnerAgent
+			.post('/workflows')
+			.send({ ...mockPostWorkflowPayload(), unexpectedField: 'nope' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject a body setting a server-managed field', async () => {
+		const response = await authOwnerAgent
+			.post('/workflows')
+			.send({ ...mockPostWorkflowPayload(), active: true });
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should reject workflow with pinData exceeding size limit', async () => {
 		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
 		const response = await authOwnerAgent.post('/workflows').send({
@@ -2438,6 +2454,20 @@ describe('PUT /workflows/:id', () => {
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
 			},
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject a body carrying an unknown field', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'testing',
+			nodes: [],
+			connections: {},
+			settings: {},
+			unexpectedField: 'nope',
 		});
 
 		expect(response.statusCode).toBe(400);

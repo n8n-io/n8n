@@ -13,15 +13,13 @@ describe('UpdateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	test('does not accept projectId (create-only field)', () => {
+	test('rejects projectId, which only create accepts', () => {
 		const result = UpdateWorkflowPublicDto.safeParse({
 			...minimalWorkflow,
 			projectId: 'proj123',
 		});
 
-		// Stripped, not rejected -- `Z.class` strips unrecognized top-level keys.
-		expect(result.success).toBe(true);
-		expect(result.data).not.toHaveProperty('projectId');
+		expect(result.success).toBe(false);
 	});
 
 	describe('required fields', () => {

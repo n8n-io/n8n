@@ -71,6 +71,7 @@ requestBody:
           - nodes
           - connections
           - settings
+        additionalProperties: false
 responses:
   '200':
     description: Operation successful.
