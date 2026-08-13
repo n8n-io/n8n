@@ -1,7 +1,14 @@
+import type { CredentialSummary } from '../../types';
+
 /**
  * Maps an LLM-provider credential type to its chat model node, ordered by the
  * provider recommendation precedence. When the user has credentials for several
  * providers, the first match wins; with none, the builder keeps its own default.
+ *
+ * Deliberately scoped to the recommended providers: chat-model nodes outside
+ * this table (Azure OpenAI, OpenRouter, Groq, DeepSeek, Cohere, Ollama,
+ * Bedrock, ...) get no steering, hints, or mismatch warnings. Extending it is
+ * a recommendation decision, not just a lookup fix — keep the precedence order.
  */
 const CHAT_MODEL_BY_CREDENTIAL_TYPE: ReadonlyArray<[credentialType: string, nodeType: string]> = [
 	['anthropicApi', '@n8n/n8n-nodes-langchain.lmChatAnthropic'],
@@ -31,12 +38,6 @@ export function isChatModelProviderCredentialType(credentialType: string): boole
 	return CHAT_MODEL_BY_CREDENTIAL_TYPE.some(([type]) => type === credentialType);
 }
 
-interface StoredCredentialRef {
-	id: string;
-	name: string;
-	type: string;
-}
-
 /**
  * Stored credentials of chat-model providers other than `excludedType`,
  * rendered `"name" (type, id: ...)` in recommendation precedence order.
@@ -44,7 +45,7 @@ interface StoredCredentialRef {
  */
 function listStoredChatModelAlternatives(
 	excludedType: string,
-	storedCredentials: readonly StoredCredentialRef[],
+	storedCredentials: readonly CredentialSummary[],
 ): string | undefined {
 	const alternatives = CHAT_MODEL_BY_CREDENTIAL_TYPE.flatMap(([credentialType]) =>
 		credentialType === excludedType
@@ -64,7 +65,7 @@ function listStoredChatModelAlternatives(
  */
 export function buildChatModelProviderHint(
 	requestedType: string,
-	storedCredentials: readonly StoredCredentialRef[],
+	storedCredentials: readonly CredentialSummary[],
 ): string | undefined {
 	if (!isChatModelProviderCredentialType(requestedType)) return undefined;
 	if (storedCredentials.some((cred) => cred.type === requestedType)) return undefined;
@@ -81,18 +82,27 @@ export function buildChatModelProviderHint(
  * Deterministic post-build counterpart of `buildChatModelProviderHint` for
  * builders that never consult the credential list: one warning per chat-model
  * node whose provider has no stored credential while the user has one for
- * another provider. The decision to switch (or keep an explicitly requested
- * provider and ask) stays with the agent — only it can see the user's intent.
+ * another provider. Nodes the resolver already covered with the n8n credits
+ * managed credential are skipped — they run as built, so a rebuild directive
+ * would be a false alarm. The decision to switch (or keep an explicitly
+ * requested provider and ask) stays with the agent — only it can see the
+ * user's intent.
  */
 export function buildChatModelProviderMismatchWarnings(
 	nodes: ReadonlyArray<{ name?: string; type?: string }>,
-	storedCredentials: readonly StoredCredentialRef[],
+	storedCredentials: readonly CredentialSummary[],
+	resolvedCredentialsByNode: Record<
+		string,
+		ReadonlyArray<{ type: string; __aiGatewayManaged?: boolean }>
+	> = {},
 ): string[] {
 	const storedTypes = new Set(storedCredentials.map((cred) => cred.type));
 	const warnings: string[] = [];
 	for (const node of nodes) {
 		const entry = CHAT_MODEL_BY_CREDENTIAL_TYPE.find(([, nodeType]) => nodeType === node.type);
 		if (!entry) continue;
+		const resolved = node.name ? resolvedCredentialsByNode[node.name] : undefined;
+		if (resolved?.some((cred) => cred.__aiGatewayManaged)) continue;
 		const [credentialType] = entry;
 		if (storedTypes.has(credentialType)) continue;
 		const listed = listStoredChatModelAlternatives(credentialType, storedCredentials);

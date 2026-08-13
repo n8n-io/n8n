@@ -104,4 +104,12 @@ describe('buildChatModelProviderMismatchWarnings', () => {
 		expect(warnings).toHaveLength(1);
 		expect(warnings[0]).toContain('"OpenAI Chat Model"');
 	});
+
+	it('does not warn when the node already runs on the n8n credits managed credential', () => {
+		const warnings = buildChatModelProviderMismatchWarnings([openAiNode], [gemini], {
+			'OpenAI Chat Model': [{ type: 'openAiApi', __aiGatewayManaged: true }],
+		});
+
+		expect(warnings).toEqual([]);
+	});
 });

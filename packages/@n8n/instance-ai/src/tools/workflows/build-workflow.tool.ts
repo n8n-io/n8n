@@ -746,10 +746,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			// Deterministic backstop for a builder that never checked credentials:
 			// a chat-model node for a provider the user has no credential for gets
-			// flagged with the LLM credentials they do have.
+			// flagged with the LLM credentials they do have. Nodes the resolver
+			// covered with n8n credits are exempt — they run as built.
 			for (const message of buildChatModelProviderMismatchWarnings(
 				json.nodes ?? [],
 				[...credentialMap.values()].flat(),
+				mockResult.resolvedCredentialsByNode,
 			)) {
 				informational.push({
 					code: 'chat_model_provider_mismatch',
