@@ -240,11 +240,15 @@ function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo |
  * block so they're available once the user actually asks for something.
  * Returns an empty string when there are none.
  */
-function buildContextResourcesBlock(
-	contextAttachments: Array<InstanceAiWorkflowAttachment | InstanceAiAgentAttachment>,
-): string {
-	if (contextAttachments.length === 0) return '';
-	const lines = contextAttachments.map((attachment) => {
+function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttachment[]): string {
+	// `nodes` context carries no prose yet — it arrives with backend PR #36039.
+	// Drop it here so the workflow/agent rendering below stays exhaustive.
+	const renderable = contextAttachments.filter(
+		(attachment): attachment is InstanceAiWorkflowAttachment | InstanceAiAgentAttachment =>
+			attachment.type !== 'nodes',
+	);
+	if (renderable.length === 0) return '';
+	const lines = renderable.map((attachment) => {
 		const name = attachment.name ? ` "${attachment.name}"` : '';
 		if (attachment.type === 'agent') {
 			if (attachment.pending) {
@@ -258,10 +262,10 @@ function buildContextResourcesBlock(
 			: '';
 		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
 	});
-	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
+	const header = renderable.some((attachment) => attachment.type === 'agent')
 		? 'The user opened this conversation from the agent editor, where they are looking at:'
 		: 'The user opened this conversation from the workflow editor, where they are looking at:';
-	const pendingAgentGuidance = contextAttachments.some(
+	const pendingAgentGuidance = renderable.some(
 		(attachment) => attachment.type === 'agent' && attachment.pending,
 	)
 		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
@@ -3429,18 +3433,11 @@ export class InstanceAiService {
 		const fileAttachments = (attachments ?? []).filter(
 			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
 		);
-		const workflowAttachments = (attachments ?? []).filter(
-			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
+		// Every non-file resource attachment; buildContextResourcesBlock renders the
+		// kinds it knows and skips `nodes` (prose for it arrives with backend PR #36039).
+		const contextAttachments = (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiResourceAttachment => attachment.type !== 'file',
 		);
-		const agentAttachments = (attachments ?? []).filter(
-			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
-		);
-		// Narrowed to workflow|agent, not the full InstanceAiResourceAttachment union: this
-		// prose block doesn't render `nodes` context yet (arrives with backend PR #36039).
-		const contextAttachments: Array<InstanceAiWorkflowAttachment | InstanceAiAgentAttachment> = [
-			...workflowAttachments,
-			...agentAttachments,
-		];
 
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
