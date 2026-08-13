@@ -1,4 +1,4 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, ExportedAgentJsonConfig } from '@n8n/api-types';
 
 import { getAgentConfigHash } from '../agent-config-hash';
 
@@ -21,7 +21,7 @@ describe('getAgentConfigHash', () => {
 	// same agent, so they must hash identically — MCP mutations compare hashes
 	// taken from both sources to detect stale configs.
 	it('hashes a config with inlined definition bodies the same as its bare-ref form', () => {
-		const hydratedConfig: AgentJsonConfig = {
+		const hydratedConfig: ExportedAgentJsonConfig = {
 			...bareConfig,
 			tasks: [
 				{

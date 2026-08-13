@@ -1,4 +1,4 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { ExportedAgentJsonConfig } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
 
@@ -13,7 +13,9 @@ function canonicalizeJson(value: unknown): unknown {
 	return sorted;
 }
 
-export function getAgentConfigHash(config: AgentJsonConfig | null): string | null {
+// Accepts the exported shape (a superset of the persisted shape), so both
+// bare persisted configs and hydrated export/response configs hash cleanly.
+export function getAgentConfigHash(config: ExportedAgentJsonConfig | null): string | null {
 	if (!config) return null;
 
 	// Hash the bare-ref shape so the result is identical whether the config

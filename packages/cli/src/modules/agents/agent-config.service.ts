@@ -1,6 +1,6 @@
 import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import {
-	AgentJsonConfigSchema,
+	ExportedAgentJsonConfigSchema,
 	agentSkillSchema,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
@@ -8,6 +8,7 @@ import {
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 	type AgentSkill,
+	type ExportedAgentJsonConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
@@ -63,17 +64,17 @@ export class AgentConfigService {
 	) {}
 
 	/**
-	 * Get the JSON config for an agent.
+	 * Get the JSON config for an agent, with task, skill, and custom tool
+	 * definition bodies inlined so the result is self-contained when exported.
 	 */
-	async getConfig(agentId: string, projectId: string): Promise<AgentJsonConfig> {
+	async getConfig(agentId: string, projectId: string): Promise<ExportedAgentJsonConfig> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 		const config = composeJsonConfig(entity);
 		if (!config) {
 			throw new UserError('Agent has no JSON config yet.');
 		}
-		await this.hydrateDefinitions(entity, config);
-		return config;
+		return await this.hydrateDefinitions(entity, config);
 	}
 
 	/**
@@ -82,10 +83,22 @@ export class AgentConfigService {
 	 * carries only bare refs and the bodies are lost when it is downloaded and
 	 * imported elsewhere.
 	 */
-	private async hydrateDefinitions(entity: Agent, config: AgentJsonConfig): Promise<void> {
-		await this.hydrateTaskDefinitions(entity.id, config);
-		hydrateSkillDefinitions(entity, config);
-		hydrateCustomToolDefinitions(entity, config);
+	private async hydrateDefinitions(
+		entity: Agent,
+		config: AgentJsonConfig,
+	): Promise<ExportedAgentJsonConfig> {
+		return {
+			...config,
+			...(config.tasks !== undefined
+				? { tasks: await this.hydrateTaskDefinitions(entity.id, config.tasks) }
+				: {}),
+			...(config.skills !== undefined
+				? { skills: hydrateSkillDefinitions(entity, config.skills) }
+				: {}),
+			...(config.tools !== undefined
+				? { tools: hydrateCustomToolDefinitions(entity, config.tools) }
+				: {}),
+		};
 	}
 
 	/**
@@ -94,13 +107,16 @@ export class AgentConfigService {
 	 * Without this the export carries only `{ type, id, enabled }` refs and the
 	 * task body is lost when the config is downloaded and imported elsewhere.
 	 */
-	private async hydrateTaskDefinitions(agentId: string, config: AgentJsonConfig): Promise<void> {
-		if (!config.tasks?.length) return;
+	private async hydrateTaskDefinitions(
+		agentId: string,
+		refs: NonNullable<AgentJsonConfig['tasks']>,
+	): Promise<NonNullable<ExportedAgentJsonConfig['tasks']>> {
+		if (refs.length === 0) return refs;
 
 		const definitions = await this.agentTaskRepository.findByAgentId(agentId);
 		const definitionById = new Map(definitions.map((task) => [task.id, task]));
 
-		config.tasks = config.tasks.map((ref) => {
+		return refs.map((ref) => {
 			const definition = definitionById.get(ref.id);
 			if (!definition) return ref;
 			return {
@@ -113,17 +129,19 @@ export class AgentConfigService {
 	}
 
 	/**
-	 * Validate an AgentJsonConfig: runs Zod schema validation and checks any
-	 * node tool configurations against their JSON-Schema definitions.
+	 * Validate an agent JSON config: runs Zod schema validation and checks any
+	 * node tool configurations against their JSON-Schema definitions. Validates
+	 * against the exported-config schema, since the write path also accepts
+	 * imported agent JSON whose refs carry inline definition bodies.
 	 */
 	async validateConfig(
 		raw: unknown,
-	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
+	): Promise<{ valid: true; config: ExportedAgentJsonConfig } | { valid: false; error: string }> {
 		if (hasNodeToolInputSchema(raw)) {
 			return { valid: false, error: 'Node tool configs must not include inputSchema.' };
 		}
 
-		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
+		const parsed = ExportedAgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
 		if (!parsed.success) {
 			return { valid: false, error: formatAgentConfigZodError(parsed.error) };
 		}
@@ -171,7 +189,7 @@ export class AgentConfigService {
 		config: unknown,
 		user: User,
 		options: { clearOmittedOptionalFields?: boolean; modifiedBy: AgentActor },
-	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
+	): Promise<{ config: ExportedAgentJsonConfig; updatedAt: string; versionId: string | null }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
@@ -380,8 +398,10 @@ export class AgentConfigService {
 		// Hydrated like `getConfig`, so a client that keeps working from the
 		// update response (e.g. the builder UI exporting right after an
 		// autosave) still sees a self-contained config.
-		const responseConfig = composeJsonConfig(saved) ?? validatedConfig;
-		await this.hydrateDefinitions(saved, responseConfig);
+		const responseConfig = await this.hydrateDefinitions(
+			saved,
+			composeJsonConfig(saved) ?? validatedConfig,
+		);
 
 		return {
 			config: responseConfig,
@@ -446,7 +466,7 @@ export class AgentConfigService {
 	 */
 	private async prepareImportedTaskDefinitions(
 		agentId: string,
-		tasks: NonNullable<AgentJsonConfig['tasks']>,
+		tasks: NonNullable<ExportedAgentJsonConfig['tasks']>,
 		existingTaskIds: ReadonlySet<string>,
 	): Promise<AgentTask[]> {
 		const inlineTasks = tasks.flatMap((ref) => {
@@ -507,7 +527,7 @@ export class AgentConfigService {
 	 */
 	private recreateImportedSkillDefinitions(
 		entity: Agent,
-		refs: NonNullable<AgentJsonConfig['skills']>,
+		refs: NonNullable<ExportedAgentJsonConfig['skills']>,
 	): void {
 		const skills = { ...(entity.skills ?? {}) };
 		let changed = false;
@@ -559,7 +579,7 @@ export class AgentConfigService {
 	 */
 	private async recreateImportedCustomToolDefinitions(
 		entity: Agent,
-		refs: NonNullable<AgentJsonConfig['tools']>,
+		refs: NonNullable<ExportedAgentJsonConfig['tools']>,
 	): Promise<void> {
 		const tools = { ...(entity.tools ?? {}) };
 		let changed = false;
@@ -614,12 +634,13 @@ export class AgentConfigService {
  * Inline each skill ref's body from the agent's `skills` column so the
  * exported config is self-contained.
  */
-function hydrateSkillDefinitions(entity: Agent, config: AgentJsonConfig): void {
-	if (!config.skills?.length) return;
-
+function hydrateSkillDefinitions(
+	entity: Agent,
+	refs: NonNullable<AgentJsonConfig['skills']>,
+): NonNullable<ExportedAgentJsonConfig['skills']> {
 	const skills = entity.skills ?? {};
 
-	config.skills = config.skills.map((ref) => {
+	return refs.map((ref) => {
 		const body = Object.hasOwn(skills, ref.id) ? skills[ref.id] : undefined;
 		if (!body) return ref;
 		return {
@@ -638,12 +659,13 @@ function hydrateSkillDefinitions(entity: Agent, config: AgentJsonConfig): void {
  * so the exported config is self-contained. The descriptor is not exported —
  * it is re-derived from the code on import.
  */
-function hydrateCustomToolDefinitions(entity: Agent, config: AgentJsonConfig): void {
-	if (!config.tools?.length) return;
-
+function hydrateCustomToolDefinitions(
+	entity: Agent,
+	refs: NonNullable<AgentJsonConfig['tools']>,
+): NonNullable<ExportedAgentJsonConfig['tools']> {
 	const tools = entity.tools ?? {};
 
-	config.tools = config.tools.map((ref) => {
+	return refs.map((ref) => {
 		if (ref.type !== 'custom') return ref;
 		const stored = Object.hasOwn(tools, ref.id) ? tools[ref.id] : undefined;
 		if (!stored) return ref;

@@ -202,15 +202,6 @@ const AgentJsonSkillConfigSchema = z.object({
 			/^[A-Za-z0-9_-]+$/,
 			'Skill id can only contain letters, numbers, hyphens, and underscores',
 		),
-	// Skill body, carried only in exported/imported agent JSON so a skill
-	// survives a round-trip between instances. Bodies are persisted in the
-	// agent's `skills` column, not on the agent schema, so these fields are
-	// optional and the stored ref keeps only `{ type, id }`.
-	name: agentSkillShape.name.optional(),
-	description: agentSkillShape.description.optional(),
-	instructions: agentSkillShape.instructions.optional(),
-	allowedTools: agentSkillShape.allowedTools,
-	references: agentSkillShape.references,
 });
 
 const AgentJsonTaskConfigSchema = z.object({
@@ -226,11 +217,29 @@ const AgentJsonTaskConfigSchema = z.object({
 			'Task id can only contain letters, numbers, hyphens, and underscores',
 		),
 	enabled: z.boolean(),
-	// Task body, carried only in exported/imported agent JSON so a scheduled
-	// task survives a round-trip between instances. The definition is persisted
-	// in the `agent_task_definition` table, not on the agent schema column, so
-	// these fields are optional and the stored ref keeps only `{ type, id,
-	// enabled }`.
+});
+
+/**
+ * Skill ref with its definition body inlined, as carried in exported/imported
+ * agent JSON so a skill survives a round-trip between instances. Bodies are
+ * persisted in the agent's `skills` column, not on the agent schema, so the
+ * stored ref keeps only `{ type, id }`.
+ */
+export const ExportedAgentSkillConfigSchema = AgentJsonSkillConfigSchema.extend({
+	name: agentSkillShape.name.optional(),
+	description: agentSkillShape.description.optional(),
+	instructions: agentSkillShape.instructions.optional(),
+	allowedTools: agentSkillShape.allowedTools,
+	references: agentSkillShape.references,
+});
+
+/**
+ * Task ref with its definition body inlined, as carried in exported/imported
+ * agent JSON so a scheduled task survives a round-trip between instances. The
+ * definition is persisted in the `agent_task_definition` table, not on the
+ * agent schema column, so the stored ref keeps only `{ type, id, enabled }`.
+ */
+export const ExportedAgentTaskConfigSchema = AgentJsonTaskConfigSchema.extend({
 	name: z.string().min(1).max(AGENT_TASK_NAME_MAX_LENGTH).optional(),
 	objective: z.string().min(1).max(AGENT_TASK_OBJECTIVE_MAX_LENGTH).optional(),
 	cronExpression: z.string().min(1).max(AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH).optional(),
@@ -404,13 +413,18 @@ const CustomToolJsonConfigSchema = z.object({
 			'Custom tool id can only contain letters, numbers, and underscores',
 		),
 	requireApproval: z.boolean().optional(),
-	// Tool source, carried only in exported/imported agent JSON so a custom
-	// tool survives a round-trip between instances. The compiled entry
-	// (code + descriptor) is persisted in the agent's `tools` column, not on
-	// the agent schema, so this field is optional and the stored ref keeps
-	// only `{ type, id, requireApproval }`. On import the descriptor is
-	// re-derived from the code in the secure runtime, never taken from the
-	// imported JSON.
+});
+
+/**
+ * Custom tool ref with its source code inlined, as carried in exported/
+ * imported agent JSON so a custom tool survives a round-trip between
+ * instances. The compiled entry (code + descriptor) is persisted in the
+ * agent's `tools` column, not on the agent schema, so the stored ref keeps
+ * only `{ type, id, requireApproval }`. On import the descriptor is
+ * re-derived from the code in the secure runtime, never taken from the
+ * imported JSON.
+ */
+export const ExportedCustomToolJsonConfigSchema = CustomToolJsonConfigSchema.extend({
 	code: z.string().min(1).optional(),
 });
 
@@ -446,6 +460,29 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	NodeToolJsonConfigSchema,
 ]);
 
+const ExportedAgentJsonToolConfigSchema = z.discriminatedUnion('type', [
+	ExportedCustomToolJsonConfigSchema,
+	WorkflowToolJsonConfigSchema,
+	NodeToolJsonConfigSchema,
+]);
+
+function addDuplicateIdIssues(
+	kind: 'custom tool' | 'skill' | 'task',
+	ids: readonly string[],
+	ctx: z.RefinementCtx,
+): void {
+	const seen = new Set<string>();
+	for (const id of ids) {
+		if (seen.has(id)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `Duplicate ${kind} id: "${id}"`,
+			});
+		}
+		seen.add(id);
+	}
+}
+
 /**
  * Unrefined agent config object shape. Use for schema derivation only
  * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
@@ -461,49 +498,33 @@ export const AgentJsonConfigBaseSchema = z.object({
 	subAgents: SubAgentsConfigSchema.optional(),
 	tools: z
 		.array(AgentJsonToolConfigSchema)
-		.superRefine((tools, ctx) => {
-			const customIds = tools.filter((t) => t.type === 'custom').map((t) => t.id);
-			const seen = new Set<string>();
-			for (const id of customIds) {
-				if (seen.has(id)) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						message: `Duplicate custom tool id: "${id}"`,
-					});
-				}
-				seen.add(id);
-			}
-		})
+		.superRefine((tools, ctx) =>
+			addDuplicateIdIssues(
+				'custom tool',
+				tools.filter((t) => t.type === 'custom').map((t) => t.id),
+				ctx,
+			),
+		)
 		.optional(),
 	skills: z
 		.array(AgentJsonSkillConfigSchema)
-		.superRefine((skills, ctx) => {
-			const seen = new Set<string>();
-			for (const skill of skills) {
-				if (seen.has(skill.id)) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						message: `Duplicate skill id: "${skill.id}"`,
-					});
-				}
-				seen.add(skill.id);
-			}
-		})
+		.superRefine((skills, ctx) =>
+			addDuplicateIdIssues(
+				'skill',
+				skills.map((s) => s.id),
+				ctx,
+			),
+		)
 		.optional(),
 	tasks: z
 		.array(AgentJsonTaskConfigSchema)
-		.superRefine((tasks, ctx) => {
-			const seen = new Set<string>();
-			for (const task of tasks) {
-				if (seen.has(task.id)) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						message: `Duplicate task id: "${task.id}"`,
-					});
-				}
-				seen.add(task.id);
-			}
-		})
+		.superRefine((tasks, ctx) =>
+			addDuplicateIdIssues(
+				'task',
+				tasks.map((t) => t.id),
+				ctx,
+			),
+		)
 		.optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationConfigSchema).optional(),
@@ -543,7 +564,10 @@ export const AgentJsonConfigBaseSchema = z.object({
 		.optional(),
 });
 
-export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((config, ctx) => {
+function requireModelWithCredential(
+	config: { credential?: string; model: string },
+	ctx: z.RefinementCtx,
+): void {
 	if (config.credential?.trim() && isDraftAgentConfig(config)) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
@@ -551,7 +575,60 @@ export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((conf
 			message: 'A credential requires a model to be set',
 		});
 	}
+}
+
+export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine(
+	requireModelWithCredential,
+);
+
+/**
+ * Unrefined shape of {@link ExportedAgentJsonConfigSchema}. Use for schema
+ * derivation only (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
+ * {@link ExportedAgentJsonConfigSchema} instead.
+ */
+export const ExportedAgentJsonConfigBaseSchema = AgentJsonConfigBaseSchema.extend({
+	tools: z
+		.array(ExportedAgentJsonToolConfigSchema)
+		.superRefine((tools, ctx) =>
+			addDuplicateIdIssues(
+				'custom tool',
+				tools.filter((t) => t.type === 'custom').map((t) => t.id),
+				ctx,
+			),
+		)
+		.optional(),
+	skills: z
+		.array(ExportedAgentSkillConfigSchema)
+		.superRefine((skills, ctx) =>
+			addDuplicateIdIssues(
+				'skill',
+				skills.map((s) => s.id),
+				ctx,
+			),
+		)
+		.optional(),
+	tasks: z
+		.array(ExportedAgentTaskConfigSchema)
+		.superRefine((tasks, ctx) =>
+			addDuplicateIdIssues(
+				'task',
+				tasks.map((t) => t.id),
+				ctx,
+			),
+		)
+		.optional(),
 });
+
+/**
+ * Agent config as it travels between instances (export download / JSON
+ * import): task, skill, and custom-tool refs may carry their definition body
+ * inline so the document is self-contained. The persisted agent schema
+ * ({@link AgentJsonConfigSchema}) stores only bare refs — bodies live in
+ * their own stores and are inlined on export / recreated on import.
+ */
+export const ExportedAgentJsonConfigSchema = ExportedAgentJsonConfigBaseSchema.superRefine(
+	requireModelWithCredential,
+);
 
 export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 	model: AgentModelSchema,
@@ -561,6 +638,10 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 });
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+export type ExportedAgentJsonConfig = z.infer<typeof ExportedAgentJsonConfigSchema>;
+export type ExportedAgentJsonToolConfig = z.infer<typeof ExportedAgentJsonToolConfigSchema>;
+export type ExportedAgentSkillConfig = z.infer<typeof ExportedAgentSkillConfigSchema>;
+export type ExportedAgentTaskConfig = z.infer<typeof ExportedAgentTaskConfigSchema>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
