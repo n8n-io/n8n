@@ -322,6 +322,9 @@ describe('GlobalConfig', () => {
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
+			vertexProjectId: '',
+			vertexLocation: '',
+			vertexServiceAccountJson: '',
 			mcpServers: '',
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
@@ -473,6 +476,9 @@ describe('GlobalConfig', () => {
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
 			misfireGraceSeconds: 60,
+		},
+		poller: {
+			durableCursorsEnabled: false,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -628,6 +634,7 @@ describe('GlobalConfig', () => {
 			trimmingMinimumAgeDays: 6,
 			trimmingTimeWindowDays: 2,
 			trimOnStartUp: false,
+			skipOnStartUp: false,
 		},
 		expressionEngine: {
 			engine: 'vm',

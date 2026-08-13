@@ -179,6 +179,12 @@ export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
+	/**
+	 * Cap on completion tokens for each model call (`max_tokens` /
+	 * `maxOutputTokens`). When unset, provider/model defaults from
+	 * `resolveDefaultMaxOutputTokens` apply.
+	 */
+	maxOutputTokens?: number;
 	/** AI SDK `smoothStream` transform. Enabled by default; pass `false` to disable. */
 	smoothStream?: SmoothStreamOptions | false;
 	/**

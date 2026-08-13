@@ -7,6 +7,7 @@ import { computed } from 'vue';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
+import WorkflowReviewCommentComposer from './WorkflowReviewCommentComposer.vue';
 import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
 
 export type WorkflowReviewDetailTab = 'activity' | 'changes';
@@ -29,6 +30,7 @@ const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 );
 
 const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
+const viewerCanComment = computed(() => detail.value?.viewerCanComment ?? false);
 
 const ineligibilityHint = computed(() => {
 	if (!detail.value || detail.value.viewerCanDecide) return '';
@@ -116,6 +118,8 @@ const tabOptions = computed(() => [
 				</div>
 
 				<WorkflowReviewActivityFeed :key="review.id" />
+
+				<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
 			</div>
 
 			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
@@ -186,7 +190,8 @@ const tabOptions = computed(() => [
 	overflow: auto;
 }
 
-/* Separate from `.panel`: the feed brings its own scroll container. */
+/* Separate from `.panel`: the feed brings its own scroll container, and the
+	composer must stay out of it. */
 .activityPanel {
 	display: flex;
 	flex-direction: column;
@@ -195,7 +200,7 @@ const tabOptions = computed(() => [
 	overflow: hidden;
 }
 
-/* Capped so a long description cannot crowd out the feed. */
+/* Capped so a long description cannot push the composer off screen. */
 .activityHeader {
 	flex-shrink: 0;
 	max-height: 30%;
