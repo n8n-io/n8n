@@ -6,6 +6,7 @@ import type { IWebhookFunctions, N8nOAuth2ValidationResult } from '../src/interf
 import { n8nOAuth2Auth } from '../src/n8n-oauth2-auth';
 
 const WEBHOOK_URL = 'https://n8n.example.com/webhook/protected-path';
+const USER = { id: 'u1', email: 'u@example.com', firstName: 'U', lastName: 'One' };
 
 const buildContext = (opts: {
 	authorization?: string;
@@ -31,24 +32,27 @@ const buildContext = (opts: {
 		} as Record<string, string>,
 	};
 	context.getRequestObject.mockReturnValue(request as never);
-	context.validateN8nOAuth2Token.mockResolvedValue(
-		opts.validation ?? { valid: true, user: { id: 'u1' } as never },
-	);
+	context.validateN8nOAuth2Token.mockResolvedValue(opts.validation ?? { valid: true, user: USER });
 
 	return { context, response, request, validateN8nOAuth2Token: context.validateN8nOAuth2Token };
 };
 
 describe('n8nOAuth2Auth', () => {
-	it('returns the token and resource for a valid bearer token', async () => {
+	it('returns the token, resource and resolved user for a valid bearer token', async () => {
 		const { context, validateN8nOAuth2Token } = buildContext({
 			authorization: 'Bearer good-token',
-			validation: { valid: true, user: { id: 'u1' } as never },
+			validation: { valid: true, user: USER },
 		});
 
 		const result = await n8nOAuth2Auth(context, { realm: 'n8n Webhook' });
 
 		expect(validateN8nOAuth2Token).toHaveBeenCalledWith('good-token', WEBHOOK_URL);
-		expect(result).toEqual({ status: 'ok', token: 'good-token', resource: WEBHOOK_URL });
+		expect(result).toEqual({
+			status: 'ok',
+			token: 'good-token',
+			resource: WEBHOOK_URL,
+			user: USER,
+		});
 	});
 
 	it('encodes the served method into the resource and the protected-resource metadata URL', async () => {
@@ -61,7 +65,12 @@ describe('n8nOAuth2Auth', () => {
 
 		const expectedResource = `${WEBHOOK_URL}?method=POST`;
 		expect(validateN8nOAuth2Token).toHaveBeenCalledWith('good-token', expectedResource);
-		expect(result).toEqual({ status: 'ok', token: 'good-token', resource: expectedResource });
+		expect(result).toEqual({
+			status: 'ok',
+			token: 'good-token',
+			resource: expectedResource,
+			user: USER,
+		});
 	});
 
 	it('advertises the method-qualified metadata URL in WWW-Authenticate', async () => {

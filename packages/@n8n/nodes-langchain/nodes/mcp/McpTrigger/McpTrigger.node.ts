@@ -4,6 +4,7 @@ import type {
 	CredentialCheckResult,
 	IDataObject,
 	INodeTypeDescription,
+	IUser,
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
@@ -130,6 +131,20 @@ export class McpTrigger extends Node {
 					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
 			},
 			{
+				displayName: 'Include User in Output',
+				name: 'includeUserInOutput',
+				type: 'boolean',
+				default: true,
+				displayOptions: {
+					show: {
+						authentication: ['n8nOAuth2'],
+						'@version': [{ _cnd: { gte: 2.1 } }],
+					},
+				},
+				description:
+					"Whether to include the calling user's ID, email and name in the trigger output and in the request the connected tools receive",
+			},
+			{
 				displayName: 'Path',
 				name: 'path',
 				type: 'string',
@@ -178,6 +193,8 @@ export class McpTrigger extends Node {
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject() as unknown as CompressionResponse;
 
+		let authedUser: IUser | undefined;
+
 		if (context.getNodeParameter('authentication') === 'n8nOAuth2') {
 			if (context.getNode().typeVersion < 2) {
 				resp.writeHead(401);
@@ -189,6 +206,7 @@ export class McpTrigger extends Node {
 				return { noWebhookResponse: true };
 			}
 			await context.establishTriggerIdentity(authResult.token, authResult.resource);
+			authedUser = authResult.user;
 		} else {
 			try {
 				await validateWebhookAuthentication(context, 'authentication');
@@ -205,10 +223,22 @@ export class McpTrigger extends Node {
 		const node = context.getNode();
 
 		// n8n's own auth credential must never reach the tools — not here, and not on the
-		// worker, which rebuilds their input from `toolInput`.
+		// worker, which rebuilds their input from `toolInput`. The caller's identity is
+		// surfaced as `user` instead, so tools never need the token to know who called.
 		const headers = redactedHeaders(req);
-		const toolInput: IDataObject | undefined =
-			node.typeVersion >= 2.1 ? { body: context.getBodyData(), headers } : undefined;
+		const user =
+			authedUser && context.getNodeParameter('includeUserInOutput', true) !== false
+				? {
+						id: authedUser.id,
+						email: authedUser.email,
+						firstName: authedUser.firstName,
+						lastName: authedUser.lastName,
+					}
+				: undefined;
+		const exposesRequest = node.typeVersion >= 2.1;
+		const toolInput: IDataObject | undefined = exposesRequest
+			? { body: context.getBodyData(), headers, ...(user && { user }) }
+			: undefined;
 
 		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
 		const mcpServer = McpServer.instance(context.logger);
@@ -253,7 +283,7 @@ export class McpTrigger extends Node {
 						const workflowData = {
 							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
 							...(messageId && { mcpMessageId: messageId }),
-							...(node.typeVersion >= 2.1 && { headers }),
+							...(exposesRequest && { headers, ...(user && { user }) }),
 						};
 						return {
 							noWebhookResponse: true,

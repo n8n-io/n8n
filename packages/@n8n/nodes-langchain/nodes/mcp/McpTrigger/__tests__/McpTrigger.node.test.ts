@@ -438,13 +438,22 @@ describe('McpTrigger', () => {
 	describe('n8nOAuth2 authentication', () => {
 		const resourceUrl = 'https://n8n.example.com/mcp/abc';
 		const prmUrl = 'https://n8n.example.com/.well-known/oauth-protected-resource/mcp/abc';
+		const OAUTH_USER = { id: 'u1', email: 'u@example.com', firstName: 'U', lastName: 'One' };
 
-		function setupContext(opts: { typeVersion: number; headers?: Record<string, string> }) {
+		function setupContext(opts: {
+			typeVersion: number;
+			headers?: Record<string, string>;
+			includeUserInOutput?: boolean;
+		}) {
 			const req = createMockRequest({ path: '/mcp/abc', headers: opts.headers ?? {} });
 			const resp = createMockResponse();
 			const node = mock<INode>({ typeVersion: opts.typeVersion, name: 'MCP Server Trigger' });
 
-			mockContext.getNodeParameter.mockReturnValue('n8nOAuth2');
+			mockContext.getNodeParameter.mockImplementation((name, fallback) => {
+				if (name === 'authentication') return 'n8nOAuth2';
+				if (name === 'includeUserInOutput') return opts.includeUserInOutput ?? fallback;
+				return fallback;
+			});
 			mockContext.getWebhookResourceUrl.mockReturnValue(resourceUrl);
 			mockContext.getWebhookName.mockReturnValue('setup');
 			mockContext.getRequestObject.mockReturnValue(req as never);
@@ -452,6 +461,23 @@ describe('McpTrigger', () => {
 			mockContext.getNode.mockReturnValue(node);
 			return { req, resp, node };
 		}
+
+		const setupToolCall = (opts: Parameters<typeof setupContext>[0]) => {
+			const context = setupContext(opts);
+
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getBodyData.mockReturnValue({ method: 'tools/call' });
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockMcpServer.handlePostMessage.mockResolvedValue({
+				wasToolCall: true,
+				toolCallInfo: { toolName: 'test-tool', arguments: {} },
+				messageId: 'msg-123',
+				relaySessionId: undefined,
+				needsListToolsRelay: false,
+			});
+
+			return context;
+		};
 
 		it('fails closed with 401 on node version below 2', async () => {
 			const { resp } = setupContext({ typeVersion: 1.1 });
@@ -514,10 +540,7 @@ describe('McpTrigger', () => {
 
 		it('proceeds to MCP dispatch when the token is valid', async () => {
 			setupContext({ typeVersion: 2, headers: { authorization: 'Bearer good-token' } });
-			mockContext.validateN8nOAuth2Token.mockResolvedValue({
-				valid: true,
-				user: { id: 'u1', email: 'u@example.com', firstName: 'U', lastName: 'One' },
-			});
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: OAUTH_USER });
 
 			const result = await mcpTrigger.webhook(mockContext);
 
@@ -525,15 +548,12 @@ describe('McpTrigger', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('redacts the bearer token in the input the tools see', async () => {
+		it('redacts the bearer token in the input the tools see, exposing the caller as `user`', async () => {
 			const { req } = setupContext({
 				typeVersion: 2.1,
 				headers: { authorization: 'Bearer good-token', 'x-user-id': 'user-1' },
 			});
-			mockContext.validateN8nOAuth2Token.mockResolvedValue({
-				valid: true,
-				user: { id: 'u1', email: 'u@example.com', firstName: 'U', lastName: 'One' },
-			});
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: OAUTH_USER });
 			mockContext.getBodyData.mockReturnValue({ method: 'tools/list' });
 
 			await mcpTrigger.webhook(mockContext);
@@ -541,8 +561,48 @@ describe('McpTrigger', () => {
 			expect(toolInputPassedToSubNodes()).toEqual({
 				body: { method: 'tools/list' },
 				headers: { authorization: REDACTED, 'x-user-id': 'user-1' },
+				user: OAUTH_USER,
 			});
 			expect(req.headers.authorization).toBe('Bearer good-token');
+		});
+
+		it('omits the caller when the user is excluded from the output', async () => {
+			setupContext({
+				typeVersion: 2.1,
+				headers: { authorization: 'Bearer good-token' },
+				includeUserInOutput: false,
+			});
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: OAUTH_USER });
+			mockContext.getBodyData.mockReturnValue({ method: 'tools/list' });
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(toolInputPassedToSubNodes()).not.toHaveProperty('user');
+		});
+
+		it('exposes no user on version 2.0', async () => {
+			setupToolCall({ typeVersion: 2, headers: { authorization: 'Bearer good-token' } });
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: OAUTH_USER });
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0][0].json).not.toHaveProperty('user');
+			expect(result.toolInput).toBeUndefined();
+		});
+
+		it('exposes the caller in the trigger output on a tool call', async () => {
+			setupToolCall({ typeVersion: 2.1, headers: { authorization: 'Bearer good-token' } });
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: OAUTH_USER });
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0][0].json).toEqual({
+				mcpToolCall: { toolName: 'test-tool', arguments: {} },
+				mcpMessageId: 'msg-123',
+				headers: { authorization: REDACTED },
+				user: OAUTH_USER,
+			});
+			expect(result.toolInput).toMatchObject({ user: OAUTH_USER });
 		});
 	});
 
