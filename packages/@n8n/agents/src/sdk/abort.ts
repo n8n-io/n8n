@@ -25,10 +25,12 @@ export function throwIfAborted(signal?: AbortSignal): void {
 
 /**
  * Race work against an abort signal so Stop settles promptly even when the
- * underlying work ignores cancellation. Pass a factory when work must not
- * start until after the abort check (e.g. sandbox recover/retry). Cooperative
- * callers should still forward `abortSignal` into I/O where the provider
- * supports it.
+ * underlying work ignores cancellation. Pass a factory when work must not start
+ * until after the abort check (e.g. sandbox recover/retry). Cooperative callers
+ * should still forward `abortSignal` into I/O where the provider supports it.
+ *
+ * The abort listener is always removed when the race settles so run-scoped
+ * signals do not accumulate listeners across nested tool calls.
  */
 export async function raceWithAbort<T>(
 	work: Promise<T> | (() => Promise<T>),

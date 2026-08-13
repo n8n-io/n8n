@@ -955,7 +955,6 @@ export class ToolCallExecutor {
 			continuation,
 			resumeSchema,
 		} = params;
-
 		return await this.telemetry.withToolSpan(
 			toolCallId,
 			toolName,
