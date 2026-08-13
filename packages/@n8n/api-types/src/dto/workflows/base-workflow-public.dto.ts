@@ -1,4 +1,4 @@
-import type { IConnections, INode } from 'n8n-workflow';
+import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { workflowPublicSchema } from './workflow-public.dto';
@@ -33,7 +33,6 @@ const READ_ONLY_PUBLIC_FIELDS = new Set<string>([
 	'triggerCount',
 	'meta',
 	'tags',
-	'shared',
 	'activeVersion',
 ] satisfies Array<keyof typeof workflowPublicSchema.shape>);
 
@@ -52,15 +51,46 @@ export const readOnlyPublicFieldErrorMap: z.ZodErrorMap = (issue, ctx) => {
 	return { message: ctx.defaultError };
 };
 
-// Nodes, connections, settings, static data, and pin data all carry arbitrary,
-// node-type-specific shapes that only the workflow engine can fully validate --
-// re-validating their internals here would risk rejecting legitimately shaped
-// data. Mirrors the shape-only checks `WorkflowPublicDto` already applies on the
-// way out; the engine (`WorkflowHelpers.validateWorkflowStructure`, etc.) still
-// validates the real structure server-side, exactly as it did before this DTO existed.
-const nodesWritePublicSchema = z.custom<INode[]>((value) => Array.isArray(value), {
-	message: 'Nodes must be an array',
-});
+/**
+ * Mirrors the hand-written `node.yml`, down to `additionalProperties: false` and its lack of any
+ * required property. A node the old API rejected -- an unknown key, a wrongly typed field, a
+ * non-object -- has to keep being rejected here, so every property it listed is reproduced even
+ * where `INode` is wider (`extendsCredential`, `rewireOutputLogTo` and `forceCustomOperation` are
+ * absent on purpose: the published contract never accepted them).
+ *
+ * `createdAt` and `updatedAt` are omitted for the same reason the workflow-level server-managed
+ * fields are -- see `READ_ONLY_PUBLIC_FIELDS` above.
+ */
+const nodeWritePublicSchema = z
+	.object({
+		id: z.string().optional(),
+		name: z.string().optional(),
+		webhookId: z.string().optional(),
+		disabled: z.boolean().optional(),
+		notesInFlow: z.boolean().optional(),
+		notes: z.string().optional(),
+		type: z.string().optional(),
+		typeVersion: z.number().optional(),
+		executeOnce: z.boolean().optional(),
+		alwaysOutputData: z.boolean().optional(),
+		retryOnFail: z.boolean().optional(),
+		maxTries: z.number().optional(),
+		waitBetweenTries: z.number().optional(),
+		continueOnFail: z.boolean().optional(),
+		onError: z.string().optional(),
+		position: z.array(z.number()).optional(),
+		parameters: z.record(z.string(), z.unknown()).optional(),
+		credentials: z.record(z.string(), z.unknown()).optional(),
+		customTelemetryTags: z
+			.object({
+				tag: z.array(z.object({ key: z.string(), value: z.string() }).strict()).optional(),
+			})
+			.strict()
+			.optional(),
+	})
+	.strict();
+
+const nodesWritePublicSchema = z.array(nodeWritePublicSchema);
 
 const connectionsWritePublicSchema = z.custom<IConnections>(
 	(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
@@ -112,21 +142,61 @@ const settingsWritePublicSchema = z
 
 // Accepts the pre-parsed object shape or a raw JSON string, matching the wire contract
 // (`anyOf: [jsonString, object]`) -- parsing the string is left to the persistence layer's
-// column transformer, exactly as it was before this DTO existed.
+// column transformer, exactly as it was before this DTO existed. The string still has to *be*
+// JSON: `format: jsonString` made the old API reject anything else with a 400, and without the
+// check the persistence layer throws on a parse failure and the caller sees a 500.
+const jsonStringPublicSchema = z.string().refine(
+	(value) => {
+		try {
+			JSON.parse(value);
+			return true;
+		} catch {
+			return false;
+		}
+	},
+	{ message: 'Must be a JSON string' },
+);
+
 const staticDataWritePublicSchema = z
-	.union([z.string(), z.record(z.string(), z.unknown())])
+	.union([jsonStringPublicSchema, z.record(z.string(), z.unknown())])
 	.nullable();
 
 const pinDataWritePublicSchema = z.record(z.string(), z.unknown()).nullable();
 
 /**
- * Fields shared by the create and update Public API request bodies: both accept the same
- * writable workflow shape (the update body is a full-object `PUT`, not a partial `PATCH`).
- * `CreateWorkflowPublicDto` extends this with `projectId`; nothing else differs.
+ * `sharedWorkflow.yml` was the one relation the old spec never marked `readOnly`, so a caller could
+ * send `shared` and have it accepted. The entity mapper's write allowlist drops it, so it has never
+ * had any effect -- but rejecting it now would turn a working request into a 400.
+ */
+const sharedWritePublicSchema = z.array(
+	z
+		.object({
+			role: z.string().optional(),
+			workflowId: z.string().optional(),
+			projectId: z.string().optional(),
+			project: z
+				.object({
+					id: z.string().optional(),
+					name: z.string().optional(),
+					type: z.string().optional(),
+				})
+				.passthrough()
+				.optional(),
+		})
+		.strict(),
+);
+
+/**
+ * Fields the create and update Public API request bodies have in common (both are full-object
+ * bodies -- the update is a `PUT`, not a partial `PATCH`).
+ *
+ * The two hand-written bodies were not identical, and each difference is reproduced at the call
+ * site rather than merged in here: `workflowCreate.yml` had `projectId` and no `description`,
+ * `workflow.yml` had `description` and no `projectId`. Sharing either one would start accepting a
+ * field the old API answered with a 400.
  */
 export const workflowWritePublicShape = {
 	name: z.string(),
-	description: z.string().nullable().optional(),
 	nodes: nodesWritePublicSchema,
 	connections: connectionsWritePublicSchema,
 	nodeGroups: nodeGroupsWritePublicSchema.optional(),
@@ -134,4 +204,5 @@ export const workflowWritePublicShape = {
 	staticData: staticDataWritePublicSchema.optional(),
 	pinData: pinDataWritePublicSchema.optional(),
 	parentFolderId: z.string().nullable().optional(),
+	shared: sharedWritePublicSchema.optional(),
 } as const;

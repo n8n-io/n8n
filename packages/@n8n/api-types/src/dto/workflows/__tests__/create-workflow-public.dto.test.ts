@@ -16,7 +16,6 @@ describe('CreateWorkflowPublicDto', () => {
 	test('accepts every writable optional field', () => {
 		const result = CreateWorkflowPublicDto.safeParse({
 			...minimalWorkflow,
-			description: 'A test workflow',
 			staticData: { key: 'value' },
 			pinData: { Start: [{ json: {} }] },
 			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [] }],
@@ -27,6 +26,15 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
+	test('rejects description, which only update accepts', () => {
+		const result = CreateWorkflowPublicDto.safeParse({
+			...minimalWorkflow,
+			description: 'A test workflow',
+		});
+
+		expect(result.success).toBe(false);
+	});
+
 	test('accepts staticData as a raw JSON string', () => {
 		const result = CreateWorkflowPublicDto.safeParse({
 			...minimalWorkflow,
@@ -35,6 +43,24 @@ describe('CreateWorkflowPublicDto', () => {
 
 		expect(result.success).toBe(true);
 		expect(result.data?.staticData).toBe('{"id":1}');
+	});
+
+	test('rejects staticData as a string that is not JSON', () => {
+		const result = CreateWorkflowPublicDto.safeParse({
+			...minimalWorkflow,
+			staticData: 'not json',
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	test('accepts shared, which the old spec never marked read-only', () => {
+		const result = CreateWorkflowPublicDto.safeParse({
+			...minimalWorkflow,
+			shared: [{ role: 'workflow:owner' }],
+		});
+
+		expect(result.success).toBe(true);
 	});
 
 	test('accepts a null parentFolderId', () => {
@@ -115,6 +141,106 @@ describe('CreateWorkflowPublicDto', () => {
 				nodeGroups: [1, 2, 3],
 			});
 
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe('nodes', () => {
+		const node = {
+			id: '0f5532f9-36ba-4bef-86c7-30d607400b15',
+			name: 'Start',
+			type: 'n8n-nodes-base.start',
+			typeVersion: 1,
+			position: [100, 200],
+			parameters: {},
+		};
+
+		test('accepts a fully specified node', () => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				nodes: [
+					{
+						...node,
+						webhookId: 'wh1',
+						disabled: false,
+						notes: 'hello',
+						notesInFlow: true,
+						executeOnce: true,
+						alwaysOutputData: true,
+						retryOnFail: true,
+						maxTries: 3,
+						waitBetweenTries: 1000,
+						continueOnFail: false,
+						onError: 'continueRegularOutput',
+						credentials: { jiraSoftwareCloudApi: { id: '35', name: 'jiraApi' } },
+						customTelemetryTags: { tag: [{ key: 'a', value: 'b' }] },
+					},
+				],
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		test('accepts an empty node object, which the old spec required nothing of', () => {
+			const result = CreateWorkflowPublicDto.safeParse({ ...minimalWorkflow, nodes: [{}] });
+			expect(result.success).toBe(true);
+		});
+
+		test.each([
+			['an unknown property', { ...node, bogusProp: 1 }],
+			['extendsCredential', { ...node, extendsCredential: 'x' }],
+			['rewireOutputLogTo', { ...node, rewireOutputLogTo: 'main' }],
+			[
+				'forceCustomOperation',
+				{ ...node, forceCustomOperation: { resource: 'a', operation: 'b' } },
+			],
+			['the read-only createdAt', { ...node, createdAt: '2024-01-01T00:00:00.000Z' }],
+			['the read-only updatedAt', { ...node, updatedAt: '2024-01-01T00:00:00.000Z' }],
+		])('rejects a node carrying %s', (_label, value) => {
+			const result = CreateWorkflowPublicDto.safeParse({ ...minimalWorkflow, nodes: [value] });
+			expect(result.success).toBe(false);
+		});
+
+		test.each([
+			['name', 7],
+			['type', 7],
+			['typeVersion', '1'],
+			['disabled', 'yes'],
+			['position', { x: 1 }],
+			['parameters', []],
+			['credentials', 'x'],
+		])('rejects a wrongly typed node %s', (field, value) => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				nodes: [{ ...node, [field]: value }],
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects a non-numeric position entry', () => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				nodes: [{ ...node, position: ['a', 'b'] }],
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects a customTelemetryTags entry missing value', () => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				nodes: [{ ...node, customTelemetryTags: { tag: [{ key: 'a' }] } }],
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		test.each([
+			['a scalar', 'x'],
+			['null', null],
+		])('rejects %s in place of a node object', (_label, value) => {
+			const result = CreateWorkflowPublicDto.safeParse({ ...minimalWorkflow, nodes: [value] });
 			expect(result.success).toBe(false);
 		});
 	});
@@ -217,7 +343,6 @@ describe('CreateWorkflowPublicDto', () => {
 			['triggerCount', 3],
 			['meta', { templateId: 't1' }],
 			['tags', [{ id: 't1', name: 'prod' }]],
-			['shared', [{ role: 'workflow:owner' }]],
 			['activeVersion', { versionId: 'v1' }],
 		])('rejects a supplied %s with a read-only error', (field, value) => {
 			const result = CreateWorkflowPublicDto.safeParse({ ...minimalWorkflow, [field]: value });
