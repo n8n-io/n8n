@@ -47,6 +47,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		string,
 		Promise<InstanceAiMcpConnectionToolsResponse>
 	>();
+	let bulkToolsRequestVersion = 0;
 
 	const connectionsByServerSlug = computed(() => {
 		const map = new Map<string, InstanceAiMcpConnection[]>();
@@ -140,9 +141,11 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	}
 
 	async function fetchAllConnectionTools(): Promise<void> {
+		const requestVersion = ++bulkToolsRequestVersion;
 		if (connections.value.length === 0) return;
 		try {
 			const results = await fetchAllMcpConnectionTools(rootStore.restApiContext);
+			if (requestVersion !== bulkToolsRequestVersion) return;
 			results.forEach((result) => {
 				const connection = connections.value.find((item) => item.id === result.id);
 				if (connection?.status === 'connecting' && !inFlightConnectionToolsById.has(result.id)) {
@@ -150,6 +153,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 				}
 			});
 		} catch (error) {
+			if (requestVersion !== bulkToolsRequestVersion) return;
 			connections.value = connections.value.map((connection) => ({
 				...connection,
 				status: connection.status === 'connecting' ? 'disconnected' : connection.status,
@@ -266,6 +270,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		connectionToolsById.clear();
 		inFlightConnectionToolsById.clear();
 		hasLoadedConnections = false;
+		bulkToolsRequestVersion++;
 	}
 
 	return {

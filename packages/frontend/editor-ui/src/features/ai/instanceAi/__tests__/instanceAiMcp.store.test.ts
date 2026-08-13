@@ -202,6 +202,28 @@ describe('useInstanceAiMcpStore', () => {
 			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(2);
 		});
 
+		it('ignores an older bulk result after connections are refetched', async () => {
+			const staleBulkRequest = createDeferred<InstanceAiMcpConnectionToolsResponse[]>();
+			const currentBulkRequest = createDeferred<InstanceAiMcpConnectionToolsResponse[]>();
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools
+				.mockReturnValueOnce(staleBulkRequest.promise)
+				.mockReturnValueOnce(currentBulkRequest.promise);
+
+			await store.fetchConnections();
+			await store.fetchConnections();
+
+			staleBulkRequest.resolve([
+				{ id: 'conn-1', status: 'connected', tools: [{ name: 'stale_tool' }] },
+			]);
+			currentBulkRequest.resolve([
+				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'server_unavailable' },
+			]);
+
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
+			expect(store.connectionToolsById.has('conn-1')).toBe(false);
+		});
+
 		it('loads only once through the lazy entry point', async () => {
 			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
 
