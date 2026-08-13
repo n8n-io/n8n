@@ -1038,11 +1038,11 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.updateCustomRole(
-				existingRole.slug,
-				updateRoleDto,
-				'test-user-id',
-			);
+			const result = await roleService.updateCustomRole({
+				slug: existingRole.slug,
+				newData: updateRoleDto,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1081,11 +1081,11 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.updateCustomRole(
-				existingRole.slug,
-				updateRoleDto,
-				'test-user-id',
-			);
+			const result = await roleService.updateCustomRole({
+				slug: existingRole.slug,
+				newData: updateRoleDto,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1120,10 +1120,18 @@ describe('RoleService', () => {
 			// ACT & ASSERT
 			//
 			await expect(
-				roleService.updateCustomRole(systemRole.slug, updateRoleDto, 'test-user-id'),
+				roleService.updateCustomRole({
+					slug: systemRole.slug,
+					newData: updateRoleDto,
+					userId: 'test-user-id',
+				}),
 			).rejects.toThrow(BadRequestError);
 			await expect(
-				roleService.updateCustomRole(systemRole.slug, updateRoleDto, 'test-user-id'),
+				roleService.updateCustomRole({
+					slug: systemRole.slug,
+					newData: updateRoleDto,
+					userId: 'test-user-id',
+				}),
 			).rejects.toThrow('Cannot update system roles');
 		});
 
@@ -1144,11 +1152,11 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.updateCustomRole(
-				existingRole.slug,
-				updateRoleDto,
-				'test-user-id',
-			);
+			const result = await roleService.updateCustomRole({
+				slug: existingRole.slug,
+				newData: updateRoleDto,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1173,11 +1181,11 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.updateCustomRole(
-				existingRole.slug,
-				updateRoleDto,
-				'test-user-id',
-			);
+			const result = await roleService.updateCustomRole({
+				slug: existingRole.slug,
+				newData: updateRoleDto,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1198,7 +1206,11 @@ describe('RoleService', () => {
 			// ACT & ASSERT
 			//
 			await expect(
-				roleService.updateCustomRole(nonExistentSlug, updateRoleDto, 'test-user-id'),
+				roleService.updateCustomRole({
+					slug: nonExistentSlug,
+					newData: updateRoleDto,
+					userId: 'test-user-id',
+				}),
 			).rejects.toThrow('Role not found');
 		});
 
@@ -1215,7 +1227,11 @@ describe('RoleService', () => {
 			// ACT & ASSERT
 			//
 			await expect(
-				roleService.updateCustomRole(existingRole.slug, updateRoleDto, 'test-user-id'),
+				roleService.updateCustomRole({
+					slug: existingRole.slug,
+					newData: updateRoleDto,
+					userId: 'test-user-id',
+				}),
 			).rejects.toThrow('The following scopes are invalid: invalid:scope');
 		});
 
@@ -1234,7 +1250,11 @@ describe('RoleService', () => {
 			// ACT & ASSERT
 			//
 			await expect(
-				roleService.updateCustomRole(otherExistingRole.slug, updateRoleDto, 'test-user-id'),
+				roleService.updateCustomRole({
+					slug: otherExistingRole.slug,
+					newData: updateRoleDto,
+					userId: 'test-user-id',
+				}),
 			).rejects.toThrow(`A role with the name "${existingRole.displayName}" already exists`);
 		});
 	});

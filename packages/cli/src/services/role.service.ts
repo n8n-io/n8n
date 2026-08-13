@@ -223,7 +223,15 @@ export class RoleService {
 		return scopes;
 	}
 
-	async updateCustomRole(slug: string, newData: UpdateRoleDto, userId: string) {
+	async updateCustomRole({
+		slug,
+		newData,
+		userId,
+	}: {
+		slug: string;
+		newData: UpdateRoleDto;
+		userId: string;
+	}) {
 		const { displayName, description, scopes: scopeSlugs } = newData;
 
 		const roleType = slug.startsWith('project:') ? 'project' : 'global';
