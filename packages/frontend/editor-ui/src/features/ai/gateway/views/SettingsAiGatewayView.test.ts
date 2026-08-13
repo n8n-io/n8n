@@ -93,14 +93,11 @@ describe('SettingsAiGatewayView', () => {
 			);
 
 			const uiStore = useUIStore();
-			vi.spyOn(uiStore, 'openModalWithData');
+			vi.spyOn(uiStore, 'openModal');
 
 			await userEvent.click(screen.getByTestId('ai-gateway-topup-button'));
 
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-				data: { credentialType: undefined, source: 'settings_page' },
-			});
+			expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
 		});
 	});
 

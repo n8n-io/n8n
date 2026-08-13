@@ -9,12 +9,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 
 export type AiGatewayTopUpSource = 'settings_page' | 'credential_selector';
 
-/**
- * Opens the top-up flow for n8n credits.
- *
- * Paid Cloud Instance Owners go straight to the Cloud Admin Panel. Everyone else
- * gets a dialog: trial owners are asked to upgrade, members are told who can top up.
- */
 export function useAiGatewayTopUp() {
 	const uiStore = useUIStore();
 	const usersStore = useUsersStore();
@@ -28,6 +22,7 @@ export function useAiGatewayTopUp() {
 		// Reserve the tab in the click gesture so the later auto-login navigation
 		// isn't treated as a popup.
 		const tab = window.open('', '_blank');
+		if (tab) tab.opener = null;
 		try {
 			const link = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
 				redirectionPath: CLOUD_N8N_CONNECT_TOP_UP_PATH,
@@ -58,13 +53,7 @@ export function useAiGatewayTopUp() {
 			return;
 		}
 
-		uiStore.openModalWithData({
-			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-			data: {
-				credentialType: options.credentialType,
-				source: options.source,
-			},
-		});
+		uiStore.openModal(AI_GATEWAY_TOP_UP_MODAL_KEY);
 	}
 
 	return { openTopUp };

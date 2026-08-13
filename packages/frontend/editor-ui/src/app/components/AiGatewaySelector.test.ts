@@ -262,14 +262,11 @@ describe('AiGatewaySelector', () => {
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
 			const uiStore = useUIStore();
-			vi.spyOn(uiStore, 'openModalWithData');
+			vi.spyOn(uiStore, 'openModal');
 
 			await userEvent.click(screen.getByText('$5.00 remaining'));
 
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-				data: { credentialType: undefined, source: 'credential_selector' },
-			});
+			expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
 		});
 
 		it('renders "Top up" label alongside the balance label in the badge', () => {
@@ -291,14 +288,11 @@ describe('AiGatewaySelector', () => {
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
 			const uiStore = useUIStore();
-			vi.spyOn(uiStore, 'openModalWithData');
+			vi.spyOn(uiStore, 'openModal');
 
 			await userEvent.click(screen.getByText('No credits'));
 
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-				data: { credentialType: undefined, source: 'credential_selector' },
-			});
+			expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
 		});
 	});
 });

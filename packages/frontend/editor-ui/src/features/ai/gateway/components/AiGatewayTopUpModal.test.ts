@@ -64,8 +64,6 @@ vi.mock('@/app/components/NodeIcon.vue', () => ({
 
 const renderComponent = createComponentRenderer(AiGatewayTopUpModal);
 
-// Credential types this instance knows about. The built-in providers ship a logo; the
-// community-node partners are absent entirely until someone installs the package.
 const INSTALLED_CREDENTIAL_TYPES: Record<string, Partial<ICredentialType>> = {
 	openAiApi: { displayName: 'OpenAI', iconUrl: 'icons/openAi.svg' },
 	anthropicApi: { displayName: 'Anthropic', iconUrl: 'icons/anthropic.svg' },
@@ -76,7 +74,6 @@ const INSTALLED_CREDENTIAL_TYPES: Record<string, Partial<ICredentialType>> = {
 	qwenApi: { displayName: 'Qwen Cloud', icon: 'file:qwen.svg' },
 };
 
-// Some packages keep the logo on the node rather than the credential.
 const INSTALLED_NODE_TYPES = [
 	{ name: 'noCredentials' },
 	{ name: 'miniMax', credentials: [{ name: 'miniMaxApi' }] },

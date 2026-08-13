@@ -40,15 +40,7 @@ const variant = computed<TopUpVariant>(() => {
 
 const isOwnerTrial = computed(() => variant.value === 'ownerTrial');
 
-/**
- * Named up front, and named even when the instance can't resolve them: the model providers
- * people look for, then the tool services they don't expect credits to cover. Everything else
- * the gateway covers follows in config order.
- *
- * The partner logos are bundled because those integrations are community packages — without a
- * bundled copy their tiles would render name-only until someone installs the package. The model
- * providers ship with n8n, so their credential icons always resolve.
- */
+// Featured first (always named). Bundled logos: community packages have no credential icon until installed.
 const FEATURED_SERVICES = [
 	{ credentialType: 'openAiApi', labelKey: 'aiGateway.topUp.modal.service.openAi' },
 	{ credentialType: 'anthropicApi', labelKey: 'aiGateway.topUp.modal.service.anthropic' },
@@ -90,11 +82,7 @@ const FEATURED_LABEL_KEYS = new Map<string, BaseTextKey>(
 	FEATURED_SERVICES.map((service) => [service.credentialType, service.labelKey]),
 );
 
-/**
- * Many credentials ship no icon of their own — the logo lives on the node instead (PDF.co ships
- * `pdfco.svg` on its node and nothing on `PdfcoApi`), so fall back to a node that uses the
- * credential. First match wins, which is fine for the vendor credentials the gateway covers.
- */
+// First node that uses the credential wins — some vendors put the logo on the node, not the credential.
 const nodeTypeByCredentialType = computed(() => {
 	const byCredentialType = new Map<string, INodeTypeDescription>();
 	for (const nodeType of nodeTypesStore.allLatestNodeTypes) {
@@ -107,17 +95,11 @@ const nodeTypeByCredentialType = computed(() => {
 	return byCredentialType;
 });
 
-// Display names are written for the credential picker ("Firecrawl API"), so drop the trailing
-// noun to leave the brand.
+// Credential picker names include "API" / "Account"; drop that for the tile.
 function toBrandName(displayName: string): string {
 	return displayName.replace(/\s+(api|account|credentials?)$/i, '').trim();
 }
 
-/**
- * Every service the gateway covers, featured ones first. A service the instance knows nothing
- * about — no credential type, no node — is still named if it's featured, just without a logo;
- * any other unresolvable type is dropped rather than shown as a raw credential id.
- */
 const services = computed(() => {
 	const covered = aiGatewayStore.config?.credentialTypes ?? [];
 	const credentialTypes = [
@@ -134,7 +116,6 @@ const services = computed(() => {
 			? i18n.baseText(labelKey)
 			: toBrandName(credential?.displayName ?? nodeType?.displayName ?? '');
 
-		// Vendors reachable through more than one credential type get one tile, not several.
 		if (!label || seen.has(label)) return [];
 		seen.add(label);
 
@@ -196,10 +177,7 @@ function close(): void {
 }
 
 function onOpenChange(open: boolean): void {
-	isOpen.value = open;
-	if (!open) {
-		uiStore.closeModal(AI_GATEWAY_TOP_UP_MODAL_KEY);
-	}
+	if (!open) close();
 }
 
 function ownerMailtoHref(): string {

@@ -23,11 +23,12 @@ vi.mock('@n8n/composables/useToast', () => ({
 describe('useAiGatewayTopUp', () => {
 	const ADMIN_PANEL_LINK = 'https://app.n8n.cloud/login?code=abc&returnPath=%2Fmanage%2Fconnect';
 	const windowOpen = vi.fn();
-	const reservedTab = { close: vi.fn(), location: { href: '' } };
+	const reservedTab = { close: vi.fn(), location: { href: '' }, opener: {} as Window | null };
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		reservedTab.location.href = '';
+		reservedTab.opener = {} as Window;
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		windowOpen.mockReturnValue(reservedTab);
 		vi.stubGlobal('open', windowOpen);
@@ -42,7 +43,7 @@ describe('useAiGatewayTopUp', () => {
 		usersStore.isInstanceOwner = true;
 		cloudPlanStore.userIsTrialing = false;
 		settingsStore.isCloudDeployment = true;
-		uiStore.openModalWithData = vi.fn();
+		uiStore.openModal = vi.fn();
 		cloudPlanStore.generateCloudDashboardAutoLoginLink = vi
 			.fn()
 			.mockResolvedValue(ADMIN_PANEL_LINK);
@@ -52,7 +53,7 @@ describe('useAiGatewayTopUp', () => {
 
 	it('opens the modal and tracks the click', () => {
 		const uiStore = mockedStore(useUIStore);
-		uiStore.openModalWithData = vi.fn();
+		uiStore.openModal = vi.fn();
 
 		const { openTopUp } = useAiGatewayTopUp();
 		openTopUp({ source: 'credential_selector', credentialType: 'openAiApi' });
@@ -61,10 +62,7 @@ describe('useAiGatewayTopUp', () => {
 			source: 'credential_selector',
 			credential_type: 'openAiApi',
 		});
-		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-			data: { credentialType: 'openAiApi', source: 'credential_selector' },
-		});
+		expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
 	});
 
 	it('sends paid Cloud owners straight to the Cloud Admin Panel', async () => {
@@ -74,7 +72,8 @@ describe('useAiGatewayTopUp', () => {
 		openTopUp({ source: 'settings_page' });
 
 		expect(windowOpen).toHaveBeenCalledWith('', '_blank');
-		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		expect(reservedTab.opener).toBeNull();
+		expect(uiStore.openModal).not.toHaveBeenCalled();
 		await vi.waitFor(() => {
 			expect(cloudPlanStore.generateCloudDashboardAutoLoginLink).toHaveBeenCalledWith({
 				redirectionPath: CLOUD_N8N_CONNECT_TOP_UP_PATH,
@@ -90,10 +89,7 @@ describe('useAiGatewayTopUp', () => {
 		const { openTopUp } = useAiGatewayTopUp();
 		openTopUp({ source: 'settings_page' });
 
-		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-			data: { credentialType: undefined, source: 'settings_page' },
-		});
+		expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
 		expect(cloudPlanStore.generateCloudDashboardAutoLoginLink).not.toHaveBeenCalled();
 		expect(windowOpen).not.toHaveBeenCalled();
 	});
@@ -112,7 +108,7 @@ describe('useAiGatewayTopUp', () => {
 			expect(showErrorMock).toHaveBeenCalled();
 		});
 		expect(reservedTab.close).toHaveBeenCalled();
-		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		expect(uiStore.openModal).not.toHaveBeenCalled();
 	});
 
 	it('opens the upgrade dialog for trial owners', () => {
@@ -122,15 +118,12 @@ describe('useAiGatewayTopUp', () => {
 
 		usersStore.isInstanceOwner = true;
 		cloudPlanStore.userIsTrialing = true;
-		uiStore.openModalWithData = vi.fn();
+		uiStore.openModal = vi.fn();
 
 		const { openTopUp } = useAiGatewayTopUp();
 		openTopUp({ source: 'settings_page' });
 
-		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-			data: { credentialType: undefined, source: 'settings_page' },
-		});
+		expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
 		expect(windowOpen).not.toHaveBeenCalled();
 	});
 });
