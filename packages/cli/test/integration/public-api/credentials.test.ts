@@ -4,6 +4,7 @@ import { createTeamProject, linkUserToProject, randomName, testDb } from '@n8n/b
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Snowflake } from 'n8n-nodes-base/credentials/Snowflake.credentials';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	type ICredentialDataDecryptedObject,
@@ -12,6 +13,7 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
@@ -48,6 +50,14 @@ beforeAll(async () => {
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	await utils.initCredentialsTypes();
+
+	// `snowflake` carries a conditionally-required field (`privateKey` under
+	// `authentication: keyPair`), which none of the shared test credential types
+	// do; the partial-update tests below need that schema shape.
+	Container.get(LoadNodesAndCredentials).loaded.credentials.snowflake = {
+		type: new Snowflake(),
+		sourcePath: '',
+	};
 });
 
 beforeEach(async () => {
@@ -1310,6 +1320,41 @@ describe('PATCH /credentials/:id', () => {
 			.send({ data: { password: 'newPassword' } });
 
 		expect(response.statusCode).toBe(400);
+	});
+
+	test('should not require conditionally-required fields when isPartialData is true', async () => {
+		// `snowflake` requires `privateKey` only while `authentication` is `keyPair`,
+		// a conditional `allOf` block in the schema (unlike ftp's flat `required`).
+		const savedCredential = await saveCredential(
+			{
+				name: randomName(),
+				type: 'snowflake',
+				data: {
+					account: 'acme',
+					database: 'db',
+					warehouse: 'wh',
+					authentication: 'password',
+					username: 'user',
+					password: 'oldPassword',
+				},
+			},
+			{ user: owner },
+		);
+
+		// Pins the partial-update semantics: the payload is validated per key only,
+		// so flipping a mode field without its conditionally-required dependents is
+		// accepted and merged; the merged result is not re-validated against the
+		// full schema.
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ data: { authentication: 'keyPair' }, isPartialData: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.authentication).toBe('keyPair');
+		expect(updatedData.privateKey).toBeUndefined();
+		expect(updatedData.password).toBe('oldPassword');
 	});
 });
 
