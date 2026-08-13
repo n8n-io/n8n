@@ -86,6 +86,7 @@ import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
+import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
@@ -111,6 +112,7 @@ describe('InstanceAiController', () => {
 	const browserSessionService = mock<InstanceAiBrowserSessionService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();
+	const modelCatalogService = mock<InstanceAiModelCatalogService>();
 	const eventBus = mock<InProcessEventBus>();
 	const eventLog = mock<DurableEventLog>();
 	const durableLogMetrics = mock<DurableLogMetrics>();
@@ -138,6 +140,7 @@ describe('InstanceAiController', () => {
 		browserSessionService,
 		memoryService,
 		settingsService,
+		modelCatalogService,
 		mock<EvalExecutionService>(),
 		mock<EvalAgentExecutionService>(),
 		evalCredentialAllowlists,
@@ -1096,6 +1099,22 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('getModelCatalog', () => {
+		it('should require instanceAi:manage scope', () => {
+			expect(scopeOf('getModelCatalog')).toEqual({
+				scope: 'instanceAi:manage',
+				globalOnly: true,
+			});
+		});
+
+		it('should return the model catalog service response', async () => {
+			const response = { models: { anthropic: [], openai: [], openrouter: [] } };
+			modelCatalogService.getModels.mockResolvedValue(response);
+
+			await expect(controller.getModelCatalog(req)).resolves.toEqual(response);
+		});
+	});
+
 	describe('updateAdminSettings', () => {
 		it('should require instanceAi:manage scope', () => {
 			expect(scopeOf('updateAdminSettings')).toEqual({
@@ -1155,7 +1174,7 @@ describe('InstanceAiController', () => {
 			expect(gatewayService.disconnectAllGateways).not.toHaveBeenCalled();
 		});
 
-		it('should publish settings reloads to other mains', async () => {
+		it('should publish settings reloads and refresh affected module settings', async () => {
 			settingsService.updateAdminSettings.mockResolvedValue({ enabled: true } as never);
 
 			await controller.updateAdminSettings(req, res, { enabled: true });
@@ -1163,6 +1182,8 @@ describe('InstanceAiController', () => {
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'reload-instance-ai-settings',
 			});
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('agents');
 		});
 
 		it('should publish and attempt every local side effect when one fails', async () => {
@@ -1945,6 +1966,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
 		settingsService,
+		mock<InstanceAiModelCatalogService>(),
 		mock<EvalExecutionService>(),
 		mock<EvalAgentExecutionService>(),
 		new EvalThreadCredentialAllowlistService(),

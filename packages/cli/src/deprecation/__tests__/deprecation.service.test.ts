@@ -69,6 +69,10 @@ describe('DeprecationService', () => {
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'filesystem', false],
 		['N8N_EXPRESSION_ENGINE', 'legacy', true],
 		['N8N_EXPRESSION_ENGINE', 'vm', false],
+		['N8N_WORKFLOW_TAGS_DISABLED', 'true', true],
+		['N8N_WORKFLOW_TAGS_DISABLED', '1', true],
+		['N8N_WORKFLOW_TAGS_DISABLED', 'false', false],
+		['N8N_WORKFLOW_TAGS_DISABLED', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});

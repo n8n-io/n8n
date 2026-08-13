@@ -469,6 +469,66 @@ describe('AiGatewayService', () => {
 			});
 		});
 
+		it('appends an explicit projectId to the workflow segment (| encoded as %7C)', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/google`,
+			});
+		});
+
+		it('derives projectId from workflow ownership when not explicitly provided', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-from-wf' }),
+			);
+			mockConfigThenToken();
+			const service = makeService({ ownershipService });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('R9JFXwkUCL1jZBuw');
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cproject-from-wf/google`,
+			});
+		});
+
+		it('keeps workflow-only gateway URL when workflow ownership lookup fails', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('Workflow not found'));
+			mockConfigThenToken();
+			const service = makeService({ ownershipService });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('R9JFXwkUCL1jZBuw');
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
+			});
+		});
+
 		it('uses standard gateway URL when executionId is absent', async () => {
 			mockConfigThenToken();
 			const service = makeService();

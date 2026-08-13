@@ -1298,6 +1298,64 @@ describe('resolveCredentials', () => {
 			expect(result.mockedNodeNames).toContain('HTTP Request');
 		});
 	});
+
+	// Bearer/header/query/basic/digest/custom/OAuth all share one type across
+	// every service, so the sole-candidate fallback must not wire them either —
+	// otherwise a build silently sends the user's only key to the node's URL.
+	describe('generic auth types', () => {
+		const bearerNode = () => ({
+			id: '1',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: { endpointUrl: 'http://localhost:5678/mcp-server/http' },
+			credentials: { httpBearerAuth: null as unknown as { id: string; name: string } },
+		});
+
+		it('skips the sole-candidate fallback for a bearer auth credential', async () => {
+			const json = makeWorkflow({ nodes: [bearerNode()] });
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				makeCredentialMap([
+					{ id: 'cred-bearer', name: 'Bearer Auth account', type: 'httpBearerAuth' },
+				]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedNodeNames).toContain('MCP Client');
+			expect(result.resolvedCredentialsByNode).toEqual({});
+		});
+
+		it('still auto-binds the sole candidate of a service-scoped type', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: null as unknown as { id: string; name: string } },
+					},
+				],
+			});
+
+			await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				makeCredentialMap([{ id: 'cred-slack', name: 'My Slack', type: 'slackApi' }]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: 'cred-slack', name: 'My Slack' },
+			});
+		});
+	});
 });
 
 describe('buildCredentialResolutionNote', () => {
