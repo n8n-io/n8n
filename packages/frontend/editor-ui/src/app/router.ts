@@ -1196,6 +1196,11 @@ setUnauthorizedHandler((baseURL) => {
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 	try {
 		try {
+			/**
+			 * Initialize application core
+			 * This step executes before first route is loaded and is required for permission checks
+			 */
+
 			await initializeCore();
 			// Pass undefined for first param to use default
 			await initializeAuthenticatedFeatures(undefined, to.name as string);
