@@ -12,6 +12,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
+	GENERIC_AUTH_CREDENTIAL_TYPES,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiCredentialFlow,
 	type InstanceAiCredentialRequest,
@@ -20,6 +21,7 @@ import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-syst
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -188,15 +190,28 @@ watch(
 	},
 );
 
+/**
+ * A generic auth type (bearer, header, query, basic, digest, custom, OAuth) never
+ * identifies a service, so its credential must not be attached to whatever URL the
+ * workflow points at unless the user says so. Whenever the card carries one, the
+ * Continue button is the only path that may submit — every automatic path bails out.
+ */
+const requiresExplicitContinue = computed(() =>
+	props.credentialRequests.some((request) =>
+		GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType),
+	),
+);
+
 // Auto-continue once every step is handled (selected or skipped) and at
 // least one credential was provided. Runs immediately so a single existing
-// credential auto-selected on init resolves the card without user input, as
-// the setup tool describes. The per-step skip path submits directly instead
-// of relying on this watcher (see handleLater).
+// service-scoped credential auto-selected on init resolves the card without
+// user input, as the setup tool describes. The per-step skip path submits
+// directly instead of relying on this watcher (see handleLater).
 watch(
 	() => allHandled.value && anySelected.value,
 	async (nowReady, wasReady) => {
 		if (nowReady && !wasReady) {
+			if (requiresExplicitContinue.value) return;
 			await nextTick();
 			await handleContinue();
 		}
@@ -467,6 +482,18 @@ async function handleLater() {
 	// Every step is now handled: submit the mixed selected/skipped result if
 	// anything was selected, otherwise defer the whole card as before.
 	if (anySelected.value) {
+		// Skipping the last open step must not submit a generic auth credential on
+		// the user's behalf — park on the step still awaiting confirmation instead.
+		if (requiresExplicitContinue.value) {
+			const awaitingConfirmation = props.credentialRequests.findIndex((r) =>
+				isStepComplete(r.credentialType),
+			);
+			if (awaitingConfirmation >= 0) {
+				userNavigated.value = false;
+				goToStep(awaitingConfirmation);
+			}
+			return;
+		}
 		await handleContinue();
 		return;
 	}
@@ -475,10 +502,11 @@ async function handleLater() {
 	await deferWholeCard();
 }
 
-function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip') {
+function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip', attemptId?: string) {
 	telemetry.track('Instance AI Browser Use User clicked credential setup option', {
 		credential_type: currentRequest.value?.credentialType,
 		choice,
+		...(attemptId ? { credential_setup_attempt_id: attemptId } : {}),
 	});
 }
 
@@ -524,11 +552,12 @@ function handleSetupManually() {
 	openCreateCredential();
 }
 
-async function submitAutoSetup(credentialType: string) {
+async function submitAutoSetup(credentialType: string, attemptId: string) {
 	isSubmitted.value = true;
 	const success = await thread.confirmAction(props.requestId, {
 		kind: 'credentialAutoSetup',
 		credentialType,
+		attemptId,
 	});
 	if (success) {
 		thread.resolveConfirmation(props.requestId, 'approved');
@@ -541,10 +570,11 @@ async function handleSetupAutomatically() {
 	const credentialType = currentRequest.value?.credentialType;
 	if (!credentialType) return;
 
-	trackSetupChoiceClicked('ai');
+	const attemptId = uuidv4();
+	trackSetupChoiceClicked('ai', attemptId);
 
 	if (settingsStore.browserConnected) {
-		await submitAutoSetup(credentialType);
+		await submitAutoSetup(credentialType, attemptId);
 		return;
 	}
 
@@ -556,7 +586,7 @@ async function handleSetupAutomatically() {
 			if (!connected) return;
 			stopWatchingBrowserConnect();
 			uiStore.closeModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
-			await submitAutoSetup(credentialType);
+			await submitAutoSetup(credentialType, attemptId);
 		},
 	);
 }
@@ -601,9 +631,7 @@ async function handleSetupAutomatically() {
 							standalone
 							hide-issues
 							:instance-ai-credential-help="instanceAiCredentialHelp"
-							:skip-auto-select="
-								currentRequest.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
-							"
+							:skip-auto-select="GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType)"
 							:credential-setup-hint="currentRequest.setupHint"
 							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"

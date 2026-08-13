@@ -10,7 +10,11 @@
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { AI_GATEWAY_CREDENTIAL, N8N_CONNECT_DISPLAY_NAME } from './credential-utils';
+import {
+	AI_GATEWAY_CREDENTIAL,
+	GENERIC_AUTH_CREDENTIAL_TYPES,
+	N8N_CONNECT_DISPLAY_NAME,
+} from './credential-utils';
 import type { ResolvedCredential } from './resolved-credential.schema';
 import {
 	getCredentialActivationParameters,
@@ -163,6 +167,35 @@ export async function resolveCredentials(
 			hasStoredCredential,
 		);
 
+	// Managed OAuth (instance-provided OAuth client) is instance-global config;
+	// memoize per type for this call.
+	const managedOAuthCache = new Map<string, boolean>();
+	const isManagedOAuthType = async (credType: string): Promise<boolean> => {
+		if (!ctx.credentialService.isManagedOAuthCredentialType) return false;
+		const cached = managedOAuthCache.get(credType);
+		if (cached !== undefined) return cached;
+		const supported = await ctx.credentialService
+			.isManagedOAuthCredentialType(credType)
+			.catch(() => false);
+		managedOAuthCache.set(credType, supported);
+		return supported;
+	};
+
+	// Fallback for a slot the user would otherwise fill by hand: a sibling
+	// credential type whose OAuth client the instance provides, so setup offers
+	// one-click connect instead of an API-key form (INS-973).
+	const resolveManagedOAuthSiblingType = async (
+		node: NodeJSON,
+		currentType: string,
+	): Promise<string | undefined> =>
+		await resolveSupportedSiblingCredentialType(
+			ctx,
+			node,
+			currentType,
+			isManagedOAuthType,
+			hasStoredCredential,
+		);
+
 	// Switch the node's parameters so the attached credential type is the active
 	// slot (e.g. set `authentication` to match). No-op when the slot is already
 	// active (never rewrite a valid value) or no switch can reach it (version-gated).
@@ -199,6 +232,34 @@ export async function resolveCredentials(
 		}
 	}
 
+	// First stored-credential binding per type, across the in-flight JSON and the
+	// saved workflow, so per-slot sibling reuse below is a map lookup instead of a
+	// rescan of every node. Bindings created during resolution register themselves
+	// so they stay visible to later slots of the same type.
+	const siblingBindingsByType = new Map<string, { id: string; name: string }>();
+	const registerSiblingBinding = (credentialType: string, value: unknown) => {
+		// A generic-auth binding on a sibling node may belong to a different
+		// service than this node calls, so it never qualifies for reuse.
+		// (Templated Custom Auth instances do record their serviceHost, but
+		// matching it against the node's target URL is the setup card's job.)
+		if (GENERIC_AUTH_CREDENTIAL_TYPES.has(credentialType)) return;
+		if (siblingBindingsByType.has(credentialType)) return;
+		const id = getCredentialId(value);
+		if (!id) return;
+		if (!isKnownCredentialForType(value, credentialType, availableCredentials)) return;
+		siblingBindingsByType.set(credentialType, { id, name: getCredentialName(value) ?? id });
+	};
+	for (const node of json.nodes ?? []) {
+		for (const [credentialType, value] of Object.entries(node.credentials ?? {})) {
+			registerSiblingBinding(credentialType, value);
+		}
+	}
+	for (const savedCreds of existingCredsByNode.values()) {
+		for (const [credentialType, value] of Object.entries(savedCreds)) {
+			registerSiblingBinding(credentialType, value);
+		}
+	}
+
 	for (const node of json.nodes ?? []) {
 		if (!node.credentials) continue;
 		const creds = node.credentials as Record<string, unknown>;
@@ -228,10 +289,23 @@ export async function resolveCredentials(
 				return true;
 			};
 
-			const mockCredential = () => {
+			// Try 2: reuse a credential of the same type already bound to another
+			// node (in the in-flight JSON or the saved workflow). The workflow has
+			// already settled on that credential for the service, so a new node of
+			// the same service must not re-prompt setup for it.
+			const reuseSiblingNodeCredential = () => {
+				const sibling = siblingBindingsByType.get(key);
+				if (!sibling) return false;
+				creds[key] = { id: sibling.id, name: sibling.name };
+				recordResolvedCredential(sibling.id, sibling.name);
+				cleanupMockPinData(json, node.name);
+				return true;
+			};
+
+			const mockCredential = (credentialType = key) => {
 				const nodeName = node.name ?? '';
 				delete creds[key];
-				mockedCredentialTypesSet.add(key);
+				mockedCredentialTypesSet.add(credentialType);
 				nodeMocked = true;
 
 				if (nodeName) {
@@ -239,7 +313,7 @@ export async function resolveCredentials(
 					// simulation plan forces these nodes to `simulate`, so verification
 					// pins them with generated fixtures instead of executing them.
 					mockedCredentialsByNode[nodeName] ??= [];
-					mockedCredentialsByNode[nodeName].push(key);
+					mockedCredentialsByNode[nodeName].push(credentialType);
 				}
 			};
 
@@ -272,6 +346,9 @@ export async function resolveCredentials(
 			// With no stored credential for the type, prefer n8n credits over mocking:
 			// attach directly if the written type is gateway-supported, else attach to
 			// a supported sibling (switching auth to it) and drop the unusable slot.
+			// With no gateway option either, still prefer a managed-OAuth sibling —
+			// switch auth to it and mock under that type, so setup asks for one-click
+			// OAuth instead of an API key.
 			const mockOrAttachGateway = async () => {
 				if (!hasStoredCredential(key)) {
 					if (await isGatewayCredentialType(key)) {
@@ -282,6 +359,12 @@ export async function resolveCredentials(
 					if (siblingType) {
 						delete creds[key];
 						await attachGatewayCredential(siblingType);
+						return;
+					}
+					const managedOAuthSibling = await resolveManagedOAuthSiblingType(node, key);
+					if (managedOAuthSibling) {
+						await applyManagedAuth(node, managedOAuthSibling);
+						mockCredential(managedOAuthSibling);
 						return;
 					}
 				}
@@ -314,6 +397,9 @@ export async function resolveCredentials(
 				if (restoreExistingCredential()) {
 					continue;
 				}
+				if (reuseSiblingNodeCredential()) {
+					continue;
+				}
 				await mockOrAttachGateway();
 				continue;
 			}
@@ -322,13 +408,19 @@ export async function resolveCredentials(
 				continue;
 			}
 
-			// The sole-credential fallback is skipped for Templated Custom Auth: the
-			// type is shared by every service, so "the only stored credential" may
-			// belong to a different service — mock instead so setup asks.
+			if (reuseSiblingNodeCredential()) {
+				continue;
+			}
+
+			// The sole-credential fallback is skipped for generic auth types: one
+			// type serves every service, so "the only stored credential" may belong
+			// to a different service and must not be sent to this node's URL — mock
+			// instead so setup asks.
 			const credentialsForType = availableCredentials?.get(key);
-			if (credentialsForType?.length === 1 && key !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+			if (credentialsForType?.length === 1 && !GENERIC_AUTH_CREDENTIAL_TYPES.has(key)) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };
+				registerSiblingBinding(key, creds[key]);
 				recordResolvedCredential(credential.id, credential.name);
 				cleanupMockPinData(json, node.name);
 				continue;
@@ -363,7 +455,14 @@ export async function resolveCredentials(
 			let managedType = credType;
 			if (!(await isGatewayCredentialType(credType))) {
 				const siblingType = await resolveSupportedSiblingType(node, credType);
-				if (!siblingType) continue;
+				if (!siblingType) {
+					// No n8n-credits option — still prefer a managed-OAuth sibling so
+					// setup offers one-click OAuth instead of an API-key form. Nothing
+					// is attached; the slot stays open for setup like today.
+					const managedOAuthSibling = await resolveManagedOAuthSiblingType(node, credType);
+					if (managedOAuthSibling) await applyManagedAuth(node, managedOAuthSibling);
+					continue;
+				}
 				managedType = siblingType;
 			}
 

@@ -1,6 +1,8 @@
+import { UserError } from 'n8n-workflow';
+
 import type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';
 
-/** GET a provider endpoint and parse JSON, throwing a descriptive error on non-2xx. */
+/** GET a provider endpoint and parse JSON, treating rejected credentials as user errors. */
 export async function getJson(
 	url: string,
 	headers: Record<string, string>,
@@ -13,6 +15,13 @@ export async function getJson(
 		headers: { ...headers, ...options.headers },
 	});
 	if (!response.ok) {
+		if (response.status === 401 || response.status === 403) {
+			throw new UserError(
+				"Models couldn't be loaded. Check that the selected credential is valid and has the required permissions, then try again.",
+				{ shouldReport: false },
+			);
+		}
+
 		const body = await response.text().catch(() => '');
 		throw new Error(
 			`Failed to list ${provider} models (status ${response.status})${body ? `: ${body.slice(0, 500)}` : ''}`,

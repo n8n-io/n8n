@@ -20,6 +20,7 @@ import { z } from 'zod';
 
 import {
 	markPublicApiController,
+	WidgetArrayResponseDto,
 	WidgetBodyDto,
 	WidgetPaginationQueryDto,
 	WidgetQueryDto,
@@ -161,6 +162,24 @@ describe('getDecoratorGeneratedOperations', () => {
 			'v1/handlers/decorator-routed.handler',
 		);
 		expect(operation.config['x-decorator-routed']).toBe(true);
+	});
+
+	it('documents a bare-array response DTO as an array schema, not an object envelope', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200, WidgetArrayResponseDto)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		const response = operation.config.responses[200] as {
+			content: { 'application/json': { schema: z.ZodTypeAny } };
+		};
+		const schema = response.content['application/json'].schema;
+		expect(schema).toBeInstanceOf(z.ZodArray);
+		expect(schema).toBe(WidgetArrayResponseDto.schema);
 	});
 
 	it('throws for an @ApiErrorResponse status with no shared response file mapped', () => {

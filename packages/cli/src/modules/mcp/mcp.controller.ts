@@ -45,7 +45,13 @@ export class McpController {
 		// Allow requests from Claude AI playground and other MCP clients
 		res.header('Access-Control-Allow-Origin', '*');
 		res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-		res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+		// MCP-Protocol-Version, Mcp-Method and Mcp-Name are the 2026-07-28 routing
+		// headers. Without listing them here a browser-based client can't send
+		// them, so the server would reject its requests with a header mismatch.
+		res.header(
+			'Access-Control-Allow-Headers',
+			'Content-Type, Authorization, X-Requested-With, MCP-Protocol-Version, Mcp-Method, Mcp-Name',
+		);
 		res.header('Access-Control-Allow-Credentials', 'true');
 		res.header('Access-Control-Max-Age', '86400'); // 24 hours
 	}
