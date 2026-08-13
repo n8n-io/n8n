@@ -108,6 +108,19 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Include Descendants',
+		name: 'includeDescendants',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to also fetch every descendant page of the page, one item per page',
+		displayOptions: {
+			show: {
+				resource: ['page'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
 		displayName: 'Max Pages',
 		name: 'maxPages',
 		type: 'number',
@@ -121,19 +134,6 @@ export const description: INodeProperties[] = [
 				resource: ['page'],
 				operation: ['get'],
 				includeDescendants: [true],
-			},
-		},
-	},
-	{
-		displayName: 'Include Descendants',
-		name: 'includeDescendants',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to also fetch every descendant page of the page, one item per page',
-		displayOptions: {
-			show: {
-				resource: ['page'],
-				operation: ['get'],
 			},
 		},
 	},
