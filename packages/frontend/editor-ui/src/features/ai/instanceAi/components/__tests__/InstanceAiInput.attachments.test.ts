@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { configure, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -53,11 +53,13 @@ describe('InstanceAiInput — staged node attachments', () => {
 	});
 });
 
+configure({ testIdAttribute: 'data-testid' });
+
 const renderAttachmentPreview = createComponentRenderer(AttachmentPreview);
 
-describe('AttachmentPreview — unhandled resource types', () => {
-	it('renders no chip for a nodes attachment (Phase 3 not implemented yet)', () => {
-		const { queryByTestId, container } = renderAttachmentPreview({
+describe('AttachmentPreview — nodes attachment delegation', () => {
+	it('delegates a nodes attachment to NodesAttachmentChips instead of the workflow/file branches', () => {
+		const { queryByTestId, getByTestId, container } = renderAttachmentPreview({
 			props: {
 				attachment: {
 					type: 'nodes',
@@ -69,6 +71,6 @@ describe('AttachmentPreview — unhandled resource types', () => {
 
 		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
 		expect(container.querySelector('[class*="chatFile"]')).not.toBeInTheDocument();
-		expect(container).toBeEmptyDOMElement();
+		expect(getByTestId('nodes-chip-node')).toBeInTheDocument();
 	});
 });

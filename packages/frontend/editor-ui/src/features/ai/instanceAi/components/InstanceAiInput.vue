@@ -543,6 +543,7 @@ const resizable = computed(() => {
 						:attachment="attachment"
 						:is-removable="true"
 						@remove-resource="removeResource(index)"
+						@update:attachment="attachedResources[index] = $event"
 					/>
 				</div>
 				<div v-if="!props.isPlanEditMode && attachedFiles.length > 0" :class="$style.attachments">
