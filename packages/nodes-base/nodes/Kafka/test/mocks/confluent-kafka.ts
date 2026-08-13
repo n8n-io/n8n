@@ -28,6 +28,9 @@ export interface FakeConsumer {
 	// No `stop`: the real consumer's `stop()` calls notImplemented() and throws, so
 	// a fake that resolves would let code depend on something that cannot work.
 	disconnect: Mock;
+	/** Joined by default, so the startup join wait exits on its first check.
+	 * Override via {@link setFakeConsumerAssignment}. */
+	assignment: Mock;
 	/** Feeds a batch through the handler `run()` registered. */
 	deliverBatch: (batch: FakeBatch) => Promise<void>;
 	/** Spies on the `EachBatchPayload` callbacks handed to that handler. */
@@ -41,6 +44,20 @@ export interface FakeConsumer {
 
 const consumers: FakeConsumer[] = [];
 const clientConfigs: KafkaJS.CommonConstructorConfig[] = [];
+
+/** Joined by default, so the startup join wait costs the suites nothing. */
+const joinedAssignment = () => [{ topic: 'test-topic', partition: 0 }];
+let nextAssignment: () => Array<{ topic: string; partition: number }> = joinedAssignment;
+
+/**
+ * Makes every fake consumer report this assignment, e.g. `() => []` for one
+ * that never joins its group. Reset by {@link resetConfluentKafkaRecordings}.
+ */
+export function setFakeConsumerAssignment(
+	assignment: () => Array<{ topic: string; partition: number }>,
+): void {
+	nextAssignment = assignment;
+}
 
 function createFakeConsumer(config: KafkaJS.ConsumerConstructorConfig): FakeConsumer {
 	let eachBatch: EachBatchHandler | undefined;
@@ -61,6 +78,7 @@ function createFakeConsumer(config: KafkaJS.ConsumerConstructorConfig): FakeCons
 			eachBatch = runConfig?.eachBatch;
 		}),
 		disconnect: vi.fn(async () => {}),
+		assignment: vi.fn(() => nextAssignment()),
 		payloadSpies,
 		deliverBatch: async ({
 			messages,
@@ -156,4 +174,5 @@ export function getFakeClientConfigs(): KafkaJS.CommonConstructorConfig[] {
 export function resetConfluentKafkaRecordings(): void {
 	consumers.length = 0;
 	clientConfigs.length = 0;
+	nextAssignment = joinedAssignment;
 }
