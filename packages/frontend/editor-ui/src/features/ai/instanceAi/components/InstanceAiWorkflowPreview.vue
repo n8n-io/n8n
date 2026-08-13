@@ -59,12 +59,16 @@ const i18n = useI18n();
 // fills, which is why the canvas below is hidden rather than unmounted — and
 // why this needs no signal of its own: the refresh that reloads the canvas
 // reloads this too.
-const previewDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(props.workflowId));
-
 const CANVAS_VIEW = 'canvas';
 
-const appNodes = computed(() =>
-	previewDocumentStore.allNodes.filter((node) => node.type === UI_BUILDER_NODE_TYPE),
+// The store the canvas host loaded, taken from the host itself rather than
+// looked up by id: the host owns which document it opened, and it stays null
+// until the workflow arrives, which is also the signal that there is nothing to
+// offer a view of yet.
+const appNodes = computed(
+	() =>
+		hostRef.value?.documentStore?.allNodes.filter((node) => node.type === UI_BUILDER_NODE_TYPE) ??
+		[],
 );
 
 /** Unset means "the first app", so a workflow whose app arrives later still opens on it. */

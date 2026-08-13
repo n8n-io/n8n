@@ -46,7 +46,13 @@ function requestFitView() {
 	bodyRef.value?.requestFitView();
 }
 
-defineExpose({ requestFitView });
+// The document store goes out to the parent as well as down: `provide` only
+// reaches descendants, so a host's *parent* — the Instance AI preview, wanting
+// the nodes to decide what to offer a view of — has no other way to reach the
+// store this host actually loaded. Re-deriving it by id from outside would work
+// only as long as the id this host picks stays the same, which is not something
+// a caller should have to know.
+defineExpose({ requestFitView, documentStore: currentWorkflowDocumentStore });
 </script>
 
 <template>
