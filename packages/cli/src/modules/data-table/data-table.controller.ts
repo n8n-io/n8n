@@ -38,6 +38,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { ProjectService } from '@/services/project.service.ee';
 
+import { assertRowReadAccessIfReturningRows } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { FileUploadError } from './errors/data-table-file-upload.error';
@@ -416,6 +417,7 @@ export class DataTableController {
 		@Body dto: UpsertDataTableRowDto,
 	) {
 		this.checkInstanceWriteAccess();
+		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
 			return await this.dataTableService.upsertRow(
 				dataTableId,
@@ -446,6 +448,7 @@ export class DataTableController {
 		@Body dto: UpdateDataTableRowDto,
 	) {
 		this.checkInstanceWriteAccess();
+		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
 			return await this.dataTableService.updateRows(
 				dataTableId,
@@ -476,6 +479,7 @@ export class DataTableController {
 		@Query dto: DeleteDataTableRowsDto,
 	) {
 		this.checkInstanceWriteAccess();
+		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
 			return await this.dataTableService.deleteRows(
 				dataTableId,

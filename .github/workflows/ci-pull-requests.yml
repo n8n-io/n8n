@@ -33,6 +33,7 @@ jobs:
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
+      db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
@@ -144,7 +145,10 @@ jobs:
               packages/@n8n/scheduler/src/**
               packages/cli/**/__tests__/**
               packages/testing/containers/services/postgres.ts
+              packages/testing/containers/postgres-versions.json
+              packages/testing/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
+              .github/scripts/db-test-matrix.mjs
               docs/generated/**
               .tbls.sqlite.yml
               .tbls.postgres.yml
@@ -154,6 +158,10 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ${{ fromJSON(steps.ci-filter.outputs.results).ci && 'pnpm build' || 'pnpm turbo run build --filter=@n8n/playwright-janitor' }}
+
+      - name: Report build critical path
+        if: fromJSON(steps.ci-filter.outputs.results).ci
+        run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run format check
         if: fromJSON(steps.ci-filter.outputs.results).ci
@@ -170,6 +178,12 @@ jobs:
           MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate --impact "--files=$FILES_CSV" "--base=$MERGE_BASE")
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
+
+      # Generated here because a reusable workflow cannot resolve its own matrix.
+      - name: Generate DB test matrix
+        id: generate-db-test-matrix
+        if: fromJSON(steps.ci-filter.outputs.results).db
+        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs)" >> "$GITHUB_OUTPUT"
 
       - name: Compute affected packages
         id: affected-packages
@@ -318,6 +332,7 @@ jobs:
     uses: ./.github/workflows/test-db-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
+      matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
 
   performance:
     name: Performance

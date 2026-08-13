@@ -32,6 +32,7 @@ export type RedisCache = Cache<RedisStore>;
 export interface RedisStore extends Store {
 	readonly isCacheable: (value: unknown) => boolean;
 	get client(): Redis | Cluster;
+	getdel<T>(key: string): Promise<T | undefined>;
 	hget<T>(key: string, field: string): Promise<T | undefined>;
 	hgetall<T>(key: string): Promise<Record<string, T> | undefined>;
 	hset(key: string, fieldValueRecord: Record<string, unknown>): Promise<void>;
@@ -56,6 +57,11 @@ function builder(
 			const val = await redisCache.get(key);
 			if (val === undefined || val === null) return undefined;
 			else return jsonParse<T>(val);
+		},
+		async getdel<T>(key: string) {
+			const val = await redisCache.getdel(key);
+			if (val === undefined || val === null) return undefined;
+			return jsonParse<T>(val);
 		},
 		async expire(key: string, ttlSeconds: number) {
 			await redisCache.expire(key, ttlSeconds);

@@ -5,7 +5,13 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
+		"GET /roles": {
+			"status": "gap"
+		},
 		"POST /roles": {
+			"status": "gap"
+		},
+		"POST /role-mapping-rules": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

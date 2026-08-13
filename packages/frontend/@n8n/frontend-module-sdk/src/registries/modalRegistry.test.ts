@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { computed, isReactive } from 'vue';
 import type { Component } from 'vue';
 
 import * as modalRegistry from './modalRegistry';
@@ -339,6 +340,37 @@ describe('modalRegistry', () => {
 			const keys = modalRegistry.getKeys();
 
 			expect(keys).toEqual(['test-modal-2', 'test-modal-1', 'test-modal-3']);
+		});
+	});
+
+	// The registry is the single definition source: consumers derive from it rather
+	// than mirroring it, which only works if reading it inside a computed tracks.
+	describe('reactivity', () => {
+		it('should re-evaluate a computed over getAll on register, unregister and clear', () => {
+			const keys = computed(() => [...modalRegistry.getAll().keys()]);
+
+			expect(keys.value).toEqual([]);
+
+			modalRegistry.register(mockModal1);
+			expect(keys.value).toEqual(['test-modal-1']);
+
+			modalRegistry.register(mockModal2);
+			expect(keys.value).toEqual(['test-modal-1', 'test-modal-2']);
+
+			modalRegistry.unregister('test-modal-1');
+			expect(keys.value).toEqual(['test-modal-2']);
+
+			modalRegistry.clear();
+			expect(keys.value).toEqual([]);
+		});
+
+		it('should not make a registered component reactive', () => {
+			modalRegistry.register(mockModal1);
+
+			// Wrapping a component in a reactive proxy costs render performance and
+			// breaks identity checks — the registry is shallow for this reason.
+			expect(isReactive(modalRegistry.get('test-modal-1')?.component)).toBe(false);
+			expect(modalRegistry.get('test-modal-1')?.component).toBe(mockComponent1);
 		});
 	});
 });
