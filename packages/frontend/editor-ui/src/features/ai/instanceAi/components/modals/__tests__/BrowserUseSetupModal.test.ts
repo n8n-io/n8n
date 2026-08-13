@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createComponentRenderer } from '@/__tests__/render';
+import BrowserUseSetupContent from '../BrowserUseSetupContent.vue';
 import BrowserUseSetupModal from '../BrowserUseSetupModal.vue';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -120,6 +121,22 @@ describe('BrowserUseSetupModal', () => {
 		it('tracks the modal opening as unsupported', () => {
 			renderComponent();
 			expect(telemetryMock.trackModalOpened).toHaveBeenCalledWith(false);
+		});
+
+		it('closes the modal via the close button', async () => {
+			const { getByTestId, emitted } = createComponentRenderer(BrowserUseSetupContent)();
+
+			await fireEvent.click(getByTestId('browser-use-unsupported-close'));
+
+			expect(emitted('close')).toHaveLength(1);
+		});
+
+		it('does not render the close button when embedded', () => {
+			const { queryByTestId } = createComponentRenderer(BrowserUseSetupContent)({
+				props: { embedded: true },
+			});
+
+			expect(queryByTestId('browser-use-unsupported-close')).toBeNull();
 		});
 
 		it('does not fetch the browser status or a connect URL', () => {

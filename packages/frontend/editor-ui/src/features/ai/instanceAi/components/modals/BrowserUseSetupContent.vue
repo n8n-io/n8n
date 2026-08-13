@@ -19,6 +19,8 @@ const props = withDefaults(
 	},
 );
 
+const emit = defineEmits<{ close: [] }>();
+
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
@@ -71,13 +73,20 @@ onBeforeUnmount(() => {
 			</N8nHeading>
 		</div>
 
-		<N8nCallout
-			v-if="!isBrowserSupported"
-			theme="warning"
-			data-test-id="browser-use-unsupported-browser"
-		>
-			{{ i18n.baseText('instanceAi.browserUse.unsupportedBrowser') }}
-		</N8nCallout>
+		<template v-if="!isBrowserSupported">
+			<N8nCallout theme="warning" data-test-id="browser-use-unsupported-browser">
+				{{ i18n.baseText('instanceAi.browserUse.unsupportedBrowser') }}
+			</N8nCallout>
+			<div v-if="!props.embedded" :class="$style.footer">
+				<N8nButton
+					:label="i18n.baseText('generic.close')"
+					variant="outline"
+					size="medium"
+					data-test-id="browser-use-unsupported-close"
+					@click="emit('close')"
+				/>
+			</div>
+		</template>
 
 		<template v-else-if="isConnected">
 			<div :class="$style.statusRow">
@@ -180,6 +189,11 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	background: var(--color--background--light-2);
 	border-radius: var(--radius);
+}
+
+.footer {
+	display: flex;
+	justify-content: flex-end;
 }
 
 .statusRow {
