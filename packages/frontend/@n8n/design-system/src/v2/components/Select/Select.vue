@@ -393,6 +393,26 @@ function iconStrokeWidth() {
 	return props.size === 'mini' || props.size === 'small' ? 1 : 1.5;
 }
 
+function selectedIconUi() {
+	return { class: $style.selectedIconGlyph, strokeWidth: iconStrokeWidth() };
+}
+
+function getSelectedItem(
+	value: AcceptableValue | AcceptableValue[] | undefined | null,
+): SelectOptionBase | undefined {
+	if (props.multiple) {
+		return undefined;
+	}
+
+	if (value === undefined || value === null || Array.isArray(value)) {
+		return undefined;
+	}
+
+	return normalisedItems.value.find(
+		(item): item is SelectOptionBase => isOptionItem(item) && item.value === value,
+	);
+}
+
 function isModelValue(value: unknown): value is SelectModelValue<M> {
 	if (props.multiple) {
 		return Array.isArray(value) && value.every(isSelectValue);
@@ -486,13 +506,19 @@ function resolveDisplayValue(value: unknown): string | undefined {
 			:tabindex="disabled ? -1 : 0"
 			:class="[$style.selectTrigger, variantClasses[variant], size, triggerClass()]"
 		>
-			<Icon
-				v-if="icon"
-				:icon="icon"
-				:class="$style.selectedIcon"
-				color="text-base"
-				:stroke-width="iconStrokeWidth()"
-			/>
+			<template
+				v-for="selectedItem in [getSelectedItem(selectedValue)]"
+				:key="selectedItem?.value ?? 'none'"
+			>
+				<span v-if="!multiple && selectedItem?.icon" :class="$style.selectedIcon">
+					<slot name="item-leading" :item="selectedItem" :ui="selectedIconUi()">
+						<Icon :icon="selectedItem.icon" color="text-base" v-bind="selectedIconUi()" />
+					</slot>
+				</span>
+				<span v-else-if="icon" :class="$style.selectedIcon">
+					<Icon :icon="icon" color="text-base" v-bind="selectedIconUi()" />
+				</span>
+			</template>
 			<RSelectValue :placeholder="resolvedPlaceholder()" :class="$style.selectValue">
 				<slot :model-value="slotModelValue(selectedValue)" :open="isMenuOpen">
 					{{ resolveDisplayValue(selectedValue) ?? resolvedPlaceholder() }}
@@ -661,18 +687,26 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .variantGhost {
+	--input--border-color: transparent;
+	--input--border-color--hover: transparent;
+	--input--shadow--hover: 0 0 0 0 transparent;
+
 	border-color: transparent;
 	background-color: transparent;
 	box-shadow: none;
 
 	&:hover:not([data-disabled]):not(:focus-visible) {
-		border-color: transparent;
 		background-color: var(--background--hover);
-		box-shadow: none;
 	}
 }
 
 .variantFlush {
+	--input--border-color: transparent;
+	--input--border-color--hover: transparent;
+	--input--border-color--focus: transparent;
+	--input--shadow--hover: 0 0 0 0 transparent;
+	--input--shadow--focus: 0 0 0 0 transparent;
+
 	border-color: transparent;
 	background-color: transparent;
 	box-shadow: none;
@@ -681,9 +715,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	color: var(--text-color--subtle);
 
 	&:hover:not([data-disabled]):not(:focus-visible) {
-		border-color: transparent;
 		background-color: transparent;
-		box-shadow: none;
 		color: var(--text-color);
 	}
 
@@ -714,6 +746,15 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .selectedIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	line-height: 0;
+}
+
+.selectedIconGlyph {
+	display: block;
 	flex-shrink: 0;
 }
 
@@ -771,10 +812,11 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .selectViewport {
+	--select-viewport--padding: var(--spacing--4xs);
+
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--5xs);
-	padding: var(--spacing--4xs);
+	padding: var(--select-viewport--padding);
 }
 
 .empty {
@@ -858,14 +900,14 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--4xs);
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	line-height: var(--line-height--md);
 }
 
 .selectSeparator {
-	height: 1px;
-	background-color: var(--border-color);
-	margin: var(--spacing--5xs) calc(var(--spacing--4xs) * -1);
+	--select-separator-outline-inset: 1px;
+
+	margin-block: var(--select-viewport--padding);
+	margin-inline: calc(-1 * var(--select-viewport--padding) + var(--select-separator-outline-inset));
+	border-top: 1px solid var(--border-color);
 }
 
 .selectScrollButton {

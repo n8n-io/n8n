@@ -14,7 +14,6 @@ import N8nText from '@n8n/design-system/components/N8nText';
 
 import type { SelectItem } from './Select.types';
 import Select from './Select.vue';
-import InputNumber from '../InputNumber/InputNumber.vue';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
@@ -182,36 +181,17 @@ export const WithIcons = {
 	},
 } satisfies Story;
 
-function findItemIcon(items: SelectItem[] | undefined, selected: unknown) {
-	if (!items) {
-		return undefined;
-	}
-
-	for (const item of items) {
-		if (item.type === 'label' || item.type === 'separator') {
-			continue;
-		}
-
-		if (item.value === selected) {
-			return item.icon;
-		}
-	}
-
-	return undefined;
-}
-
 export const WithSlots = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nIcon },
 		setup() {
 			const value = ref(args.modelValue);
-			const icon = computed(() => findItemIcon(args.items, value.value));
-			return { args, value, icon };
+			return { args, value };
 		},
 		template: `
 		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
-			<Select v-bind="args" v-model="value" :icon="icon" >
+			<Select v-bind="args" v-model="value">
 				<template #item-leading="{ item, ui }">
 					<N8nIcon :icon="item.icon" color="primary" v-bind="ui" />
 				</template>
@@ -538,7 +518,6 @@ export const MultipleWithSwatches = {
 									borderRadius: 'var(--radius--full)',
 									background: item.color,
 									flexShrink: 0,
-									transform: 'translateY(1px)',
 								}"
 							/>
 							{{ item.label }}<template v-if="index < selectedItems.length - 1">,&nbsp;</template>
@@ -558,7 +537,6 @@ export const MultipleWithSwatches = {
 							borderRadius: 'var(--radius--full)',
 							background: item.color,
 							flexShrink: 0,
-							transform: 'translateY(1px)',
 						}"
 					/>
 				</template>
@@ -879,7 +857,6 @@ const FormExampleDemo = defineComponent({
 		const email = ref('');
 		const department = ref<string | undefined>();
 		const country = ref<string | undefined>();
-		const seats = ref(1);
 
 		function onSubmit(event: Event) {
 			event.preventDefault();
@@ -888,7 +865,6 @@ const FormExampleDemo = defineComponent({
 				email: email.value,
 				department: department.value,
 				country: country.value,
-				seats: seats.value,
 			});
 		}
 
@@ -897,12 +873,10 @@ const FormExampleDemo = defineComponent({
 			email,
 			department,
 			country,
-			seats,
 			departmentItems,
 			countryItems,
 			onSubmit,
 			Select,
-			InputNumber,
 			N8nInput,
 			N8nInputLabel,
 			N8nButton,
@@ -950,18 +924,6 @@ const FormExampleDemo = defineComponent({
 					placeholder="Select a country"
 					searchable
 					clearable
-				/>
-			</N8nInputLabel>
-
-			<N8nInputLabel label="Seats">
-				<component
-					:is="InputNumber"
-					v-model="seats"
-					:min="1"
-					:max="100"
-					:controls="true"
-					controls-position="both"
-					size="small"
 				/>
 			</N8nInputLabel>
 

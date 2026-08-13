@@ -90,7 +90,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `default`: `{ modelValue?: SelectValue | SelectValue[]; open: boolean }` — trigger display. Default is the selected label(s), comma-separated in multiple mode.
 - `item`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour)
 - `label`: `{ item: SelectLabelItem }` — group label rows (`type: 'label'`)
-- `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`)
+- `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). Also used for the selected-value icon on the trigger.
 - `item-label`: `{ item: SelectOptionBase }`
 - `item-trailing`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom trailing content
 - `header?: ()`
@@ -129,7 +129,7 @@ const value = ref('backlog')
 
 ```vue
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { N8nIcon, N8nSelect2 } from '@n8n/design-system'
 
 const items = ref([
@@ -151,11 +151,10 @@ const items = ref([
 	},
 ])
 const value = ref('light')
-const icon = computed(() => items.value.find((item) => item.value === value.value)?.icon)
 </script>
 
 <template>
-  <N8nSelect2 v-model="value" :items="items" :icon="icon">
+  <N8nSelect2 v-model="value" :items="items">
 	<template #item-leading="{ item, ui }">
 		<N8nIcon :icon="item.icon" color="primary" v-bind="ui" />
 	</template>
