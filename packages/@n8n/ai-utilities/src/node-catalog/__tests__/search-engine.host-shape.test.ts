@@ -1,6 +1,15 @@
-import { NodeSearchEngine, SCORE_WEIGHTS } from '../node-search-engine';
-import type { SearchableNodeType } from '../node-search-engine.types';
-import { AI_CONNECTION_TYPES } from '../node-search-engine.types';
+/**
+ * Engine behaviour over a host-supplied `SearchableNodeType` rather than a full
+ * `INodeTypeDescription`: result caching, n8n Connect metadata, and builder
+ * hints. Moved here from @n8n/instance-ai when its forked search engine was
+ * consolidated into this package.
+ */
+
+import type { NodeConnectionType } from 'n8n-workflow';
+
+import { NodeSearchEngine, SCORE_WEIGHTS } from '../search-engine';
+import type { SearchableNodeType } from '../types';
+import { AI_CONNECTION_TYPES } from '../types';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -37,26 +46,34 @@ const slackNode = makeNode({
 	description: 'Send messages to Slack',
 });
 
+/**
+ * A host's `builderHint` carries fields the engine does not declare, such as
+ * `extraTypeDefContent`. Built outside the `makeNode` literal so it reaches the
+ * engine the same way a real host's wider object does, rather than tripping the
+ * excess-property check that only applies to fresh literals.
+ */
+const agentBuilderHint = {
+	searchHint: 'Use an AI Agent for autonomous task execution',
+	inputs: {
+		ai_languageModel: { required: true },
+		ai_memory: { required: false },
+		ai_tool: { required: false, displayOptions: { show: { hasTools: [true] } } },
+	},
+	extraTypeDefContent: [
+		{
+			content:
+				'<patterns>\n<pattern title="basic">\nconst agent = node({ ... })\n</pattern>\n</patterns>',
+		},
+	],
+};
+
 const agentNode = makeNode({
 	name: '@n8n/n8n-nodes-langchain.agent',
 	displayName: 'AI Agent',
 	description: 'An AI agent that uses tools',
 	inputs: ['main', 'ai_languageModel', 'ai_memory', 'ai_tool'],
 	outputs: ['main'],
-	builderHint: {
-		message: 'Use an AI Agent for autonomous task execution',
-		inputs: {
-			ai_languageModel: { required: true },
-			ai_memory: { required: false },
-			ai_tool: { required: false, displayOptions: { show: { hasTools: [true] } } },
-		},
-		extraTypeDefContent: [
-			{
-				content:
-					'<patterns>\n<pattern title="basic">\nconst agent = node({ ... })\n</pattern>\n</patterns>',
-			},
-		],
-	},
+	builderHint: agentBuilderHint,
 });
 
 const openAiNode = makeNode({
@@ -206,7 +223,7 @@ describe('NodeSearchEngine', () => {
 			expect(results.length).toBeLessThanOrEqual(2);
 		});
 
-		it('should include builder hint message when present', () => {
+		it('should include the builder search hint alongside subnode requirements', () => {
 			const results = engine.searchByName('AI Agent');
 			const agentResult = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent');
 			expect(agentResult).toBeDefined();
@@ -319,7 +336,7 @@ describe('NodeSearchEngine', () => {
 		});
 
 		it('should return empty for unknown connection type', () => {
-			const results = engine.searchByConnectionType('ai_nonexistent');
+			const results = engine.searchByConnectionType('ai_nonexistent' as NodeConnectionType);
 			expect(results).toEqual([]);
 		});
 
@@ -533,6 +550,40 @@ describe('NodeSearchEngine', () => {
 			expect(nodeType).toBeDefined();
 			// The version with max 3 should win
 			expect(nodeType?.version).toEqual([1, 2, 3]);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// Input handling
+	// -----------------------------------------------------------------------
+
+	describe('host shapes carrying extra fields', () => {
+		it('reads a host node that also carries a properties array, leaving it untouched', () => {
+			// `properties` is the field a full INodeTypeDescription is recognised by,
+			// and a host shape is free to carry one too. Its presence must not make the
+			// engine reshape the node.
+			const hostNodeWithProperties = {
+				...makeNode({
+					name: 'n8n-nodes-base.hostish',
+					displayName: 'Hostish Node',
+					description: 'A host shape that also exposes properties',
+					outputs: ['ai_tool'],
+					builderHint: { searchHint: 'host hint' },
+				}),
+				properties: [{ name: 'resource', type: 'options' }],
+			};
+
+			const engine = new NodeSearchEngine([hostNodeWithProperties]);
+
+			// Same object back, so nothing converted or copied it on the way in.
+			expect(engine.getNodeType('n8n-nodes-base.hostish')).toBe(hostNodeWithProperties);
+
+			const [byName] = engine.searchByName('Hostish');
+			expect(byName.displayName).toBe('Hostish Node');
+			expect(byName.builderHintMessage).toBe('host hint');
+
+			const [byConnection] = engine.searchByConnectionType('ai_tool' as NodeConnectionType);
+			expect(byConnection.name).toBe('n8n-nodes-base.hostish');
 		});
 	});
 
