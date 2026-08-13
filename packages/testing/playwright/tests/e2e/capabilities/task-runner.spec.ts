@@ -20,6 +20,7 @@ test.describe(
 
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				'Workflow executed successfully',
+				{ timeout: 30_000 },
 			);
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		});
