@@ -1,6 +1,8 @@
 import type { IConnections, INode } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { workflowPublicSchema } from './workflow-public.dto';
+
 /**
  * What the hand-written `workflowNodeGroup.yml` published, which is what callers were allowed to
  * send. Deliberately not `GROUP_DESCRIPTION_MAX_LENGTH` (145): the engine truncates to that rather
@@ -17,8 +19,11 @@ const GROUP_DESCRIPTION_PUBLIC_MAX_LENGTH = 155;
  * for it — so the published contract would invite callers to send fields the server always
  * rejects. Left out, the `strict` object rejects them as unrecognised keys, and the error map
  * below restores the specific message.
+ *
+ * `satisfies` ties the names to the response schema, so renaming a field there fails the build
+ * here rather than silently degrading this message to the generic one.
  */
-const READ_ONLY_PUBLIC_FIELDS = [
+const READ_ONLY_PUBLIC_FIELDS = new Set<string>([
 	'id',
 	'active',
 	'createdAt',
@@ -30,12 +35,12 @@ const READ_ONLY_PUBLIC_FIELDS = [
 	'tags',
 	'shared',
 	'activeVersion',
-];
+] satisfies Array<keyof typeof workflowPublicSchema.shape>);
 
 /** Tells a caller a rejected key is read-only, rather than leaving it to look like a typo. */
 export const readOnlyPublicFieldErrorMap: z.ZodErrorMap = (issue, ctx) => {
 	if (issue.code === z.ZodIssueCode.unrecognized_keys) {
-		const readOnly = issue.keys.filter((key) => READ_ONLY_PUBLIC_FIELDS.includes(key));
+		const readOnly = issue.keys.filter((key) => READ_ONLY_PUBLIC_FIELDS.has(key));
 
 		if (readOnly.length > 0) {
 			const names = readOnly.map((key) => `'${key}'`).join(', ');
