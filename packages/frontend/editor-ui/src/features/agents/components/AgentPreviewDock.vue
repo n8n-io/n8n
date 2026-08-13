@@ -6,7 +6,12 @@ import { useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
-import type { AgentContinueLoadedEvent, AgentJsonConfig, AgentResource } from '../types';
+import type {
+	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
+	AgentJsonConfig,
+	AgentResource,
+} from '../types';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 
 const props = defineProps<{
@@ -30,7 +35,7 @@ const emit = defineEmits<{
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
-	'send-to-assistant': [executionId?: string];
+	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
 }>();
 
 const i18n = useI18n();

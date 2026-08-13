@@ -1,17 +1,17 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-import { jiraDefaultScopes } from './common/atlassian-scopes';
+import { confluenceDefaultScopes } from './common/atlassian-scopes';
 
-const defaultScopes = jiraDefaultScopes;
+const defaultScopes = confluenceDefaultScopes;
 
-export class JiraSoftwareCloudOAuth2Api implements ICredentialType {
-	name = 'jiraSoftwareCloudOAuth2Api';
+export class ConfluenceCloudOAuth2Api implements ICredentialType {
+	name = 'confluenceCloudOAuth2Api';
 
 	extends = ['atlassianOAuth2Api'];
 
-	displayName = 'Jira SW Cloud OAuth2 API';
+	displayName = 'Confluence Cloud OAuth2 API';
 
-	documentationUrl = 'jira';
+	documentationUrl = 'confluence';
 
 	properties: INodeProperties[] = [
 		{
