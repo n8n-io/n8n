@@ -1672,6 +1672,8 @@
 	"expressionEditor.uncalledFunction": "[this is a function, please add ()]",
 	"expressionEditor.deprecated.getPairedItem": "$getPairedItem is deprecated and will be removed",
 	"expressionModalInput.empty": "[empty]",
+	"expressionModalInput.evaluatedDuringExecution": "[evaluated during execution]",
+	"expressionModalInput.secretNotFound": "[secret not found]",
 	"expressionModalInput.undefined": "[undefined]",
 	"expressionModalInput.null": "null",
 	"expressionTip.noExecutionData": "Execute previous nodes to use input data",
