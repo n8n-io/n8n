@@ -87,7 +87,9 @@ export class SlackMethodsService {
 					ignoreHttpStatusErrors: true,
 				});
 			const data: unknown = response.body;
-			return isRecord(data) ? (data as { ok: true } & T) : { ok: false, error: 'invalid_response' };
+			return isRecord(data)
+				? (data as ({ ok: true } & T) | { ok: false; error: string })
+				: { ok: false, error: 'invalid_response' };
 		} catch {
 			return { ok: false, error: 'slack_request_failed' };
 		}
