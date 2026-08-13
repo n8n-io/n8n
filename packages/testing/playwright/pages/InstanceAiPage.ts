@@ -186,12 +186,16 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	/**
-	 * Files staged in the composer but not yet sent. Counted via each preview's
-	 * remove control, which is the one marker every staged-file variant renders —
-	 * image thumbnails and the non-image chip alike.
+	 * Files staged in the composer but not yet sent, counted via each preview's remove
+	 * control. Two markers are needed: `AttachmentPreview` renders
+	 * `attachment-preview-remove` for image thumbnails, while non-image files fall
+	 * through to `ChatFile`, whose control is `chat-file-remove`. Matching only the
+	 * first would silently count 0 for a staged PDF or CSV.
 	 */
 	getComposerAttachments(): Locator {
-		return this.getContainer().getByTestId('attachment-preview-remove');
+		return this.getContainer().locator(
+			'[data-test-id="attachment-preview-remove"], [data-test-id="chat-file-remove"]',
+		);
 	}
 
 	// ── Confirmations ─────────────────────────────────────────────────

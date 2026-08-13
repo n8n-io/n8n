@@ -23,11 +23,15 @@ const props = withDefaults(
 		showAttach?: boolean;
 		acceptedMimeTypes?: string;
 		/**
-		 * Raw size of the files already staged in the composer. Needed because the
-		 * combined budget spans the whole message, not just the batch being added,
-		 * and this component does not own the attachment list.
+		 * Base64-encoded size of the files already staged in the composer. Needed
+		 * because the combined budget spans the whole message, not just the batch being
+		 * added, and this component does not own the attachment list.
+		 *
+		 * Encoded rather than raw: base64 pads each file up to a multiple of 4, so
+		 * encoding a raw total undercounts the real payload and would let through a
+		 * batch the backend then rejects.
 		 */
-		attachedDecodedBytes?: number;
+		attachedEncodedBytes?: number;
 		autosize?: boolean | { minRows: number; maxRows: number };
 		buttonLabel?: string;
 		// Send button turns active only while focused with text (default: follows canSubmit).
@@ -37,7 +41,7 @@ const props = withDefaults(
 	{
 		placeholder: undefined,
 		acceptedMimeTypes: undefined,
-		attachedDecodedBytes: 0,
+		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
 		buttonLabel: undefined,
 		activeRequiresFocus: false,
@@ -132,7 +136,7 @@ function withinSizeLimit(files: File[]): File[] {
 
 	// Take files in order while they still fit the message-wide budget, so a partial
 	// selection still goes through rather than failing the batch wholesale.
-	let usedBytes = base64EncodedSize(props.attachedDecodedBytes);
+	let usedBytes = props.attachedEncodedBytes;
 	const accepted: File[] = [];
 	let droppedForBudget = false;
 

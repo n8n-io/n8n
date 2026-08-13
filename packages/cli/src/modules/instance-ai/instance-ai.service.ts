@@ -1079,6 +1079,12 @@ export class InstanceAiService {
 	 * a conversation that can never recover.
 	 */
 	private shouldDropTurnAttachments(args: {
+		/**
+		 * Whether this turn introduced files. Unknown on a resumed run — it replays
+		 * history rather than accepting new input — so callers there pass `true` and
+		 * rely on `dropRejectedAttachmentsFromHistory` no-opping when the thread holds
+		 * no inline files.
+		 */
 		turnHadAttachments: boolean;
 		producedNoOutput: boolean;
 	}): boolean {
@@ -5491,8 +5497,22 @@ export class InstanceAiService {
 					},
 				);
 			}
+			// A turn that suspended for a confirmation replays its inline files on resume,
+			// so a refusal here strands the thread exactly as it would on the first run.
+			const attachmentRemoved = this.shouldDropTurnAttachments({
+				turnHadAttachments: true,
+				producedNoOutput: result.status === 'errored' && outputText.length === 0,
+			})
+				? (await dropRejectedAttachmentsFromHistory(
+						this.agentMemory,
+						{ threadId: opts.threadId, resourceId: opts.user.id },
+						this.logger,
+					)) > 0
+				: undefined;
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(terminalError) : undefined;
+				result.status === 'errored'
+					? getUserFacingErrorMessage(terminalError, undefined, { attachmentRemoved })
+					: undefined;
 			const userFacingErrorCode =
 				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
@@ -5634,8 +5654,23 @@ export class InstanceAiService {
 				threadId: opts.threadId,
 				runId: opts.runId,
 			});
+			// Same reasoning as the resumed errored-result path above: a suspended
+			// file-bearing turn replays its attachments, so a thrown refusal here would
+			// leave them in history too.
+			const attachmentRemoved = this.shouldDropTurnAttachments({
+				turnHadAttachments: true,
+				producedNoOutput: true,
+			})
+				? (await dropRejectedAttachmentsFromHistory(
+						this.agentMemory,
+						{ threadId: opts.threadId, resourceId: opts.user.id },
+						this.logger,
+					)) > 0
+				: undefined;
 			const errorMessage = getErrorMessage(terminalError);
-			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError, undefined, {
+				attachmentRemoved,
+			});
 			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);

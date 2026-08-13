@@ -88,6 +88,23 @@ test.describe(
 		);
 
 		test(
+			'stages a non-image attachment that fits',
+			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
+			async ({ n8n }) => {
+				// Non-image files render through ChatFile rather than a thumbnail, so this
+				// also covers the second marker `getComposerAttachments` has to match.
+				const csv = path.join(tmpDir, 'rows.csv');
+				await fs.writeFile(csv, 'id,name\n1,ok\n');
+
+				await n8n.navigate.toInstanceAi();
+				await n8n.instanceAi.getFileInput().setInputFiles(csv);
+
+				await expect(n8n.instanceAi.getComposerAttachments()).toHaveCount(1);
+				await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
+			},
+		);
+
+		test(
 			'rejects an oversized attachment at the API even when the composer guard is bypassed',
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
 			async ({ n8n }) => {

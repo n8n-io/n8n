@@ -3,7 +3,12 @@ import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
-import { MAX_ATTACHMENT_BASE64_BYTES, MAX_TOTAL_ATTACHMENT_DECODED_BYTES } from '@n8n/api-types';
+import {
+	base64EncodedSize,
+	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
+} from '@n8n/api-types';
 
 const mockStart = vi.fn();
 const mockStop = vi.fn();
@@ -266,10 +271,32 @@ describe('ChatInputBase', () => {
 			expect(mockShowError).toHaveBeenCalled();
 		});
 
+		// base64 pads each file up to a multiple of 4, so encoding the *sum* of raw sizes
+		// yields less than the sum of each file's encoded size. Three 4 MiB files encode
+		// to exactly the limit in aggregate but 8 bytes over it individually — and the
+		// backend measures per file, so a batch accepted here would be rejected there.
+		it('measures each file encoded, not the raw total', () => {
+			const perFile = 4 * 1024 * 1024;
+			expect(base64EncodedSize(perFile * 3)).toBeLessThanOrEqual(MAX_TOTAL_ATTACHMENT_BASE64_BYTES);
+			expect(base64EncodedSize(perFile) * 3).toBeGreaterThan(MAX_TOTAL_ATTACHMENT_BASE64_BYTES);
+
+			const { getByRole, emitted } = renderComponent({ props: makeProps({ showAttach: true }) });
+
+			pasteInto(getByRole('textbox'), [
+				fileOfSize('a.png', perFile),
+				fileOfSize('b.png', perFile),
+				fileOfSize('c.png', perFile),
+			]);
+
+			const events = emitted()['files-selected'] as Array<[File[]]>;
+			expect(events[0][0].map((f) => f.name)).toEqual(['a.png', 'b.png']);
+			expect(mockShowError).toHaveBeenCalled();
+		});
+
 		it('counts files already in the composer toward the budget', () => {
 			const half = MAX_TOTAL_ATTACHMENT_DECODED_BYTES / 2;
 			const { getByRole, emitted } = renderComponent({
-				props: makeProps({ showAttach: true, attachedDecodedBytes: half * 2 }),
+				props: makeProps({ showAttach: true, attachedEncodedBytes: base64EncodedSize(half * 2) }),
 			});
 
 			pasteInto(getByRole('textbox'), [fileOfSize('one-too-many.png', half)]);
