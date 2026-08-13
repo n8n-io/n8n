@@ -352,7 +352,7 @@ describe('WorkflowExecutionService', () => {
 			expect(responsePromise.resolve).not.toHaveBeenCalled();
 			expect(logger.debug).toHaveBeenCalledWith(
 				'Poll cursor commit skipped: the poll no longer holds its lease, or its cursor row is gone',
-				{ workflowId: 'wf-1', nodeName: 'Poll Node' },
+				{ workflowId: 'wf-1', nodeId: 'node-1', nodeName: 'Poll Node' },
 			);
 		});
 	});
