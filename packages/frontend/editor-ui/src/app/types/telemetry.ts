@@ -9,6 +9,7 @@ export type TelemetryNdvSource =
 	| 'focus_panel'
 	| 'logs_view'
 	| 'command_bar'
+	| 'generative_ui'
 	| 'other';
 
 export type TelemetryContext = Partial<{

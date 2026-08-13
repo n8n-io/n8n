@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
-import { ref, shallowReactive, shallowRef } from 'vue';
+import type { Spec } from '@json-render/core';
+import { computed, ref, shallowReactive, shallowRef } from 'vue';
 import { useStorage } from '@/app/composables/useStorage';
 import { generateSpec, GenerateSpecError } from './generate';
 import { SpecHistory, historyKey } from './history';
@@ -22,9 +23,9 @@ type WorkflowGetter = () => {
 	connections: unknown;
 };
 
-function fallbackSpec(payload: WorkflowUiPayload) {
+export function buildFallbackSpec(payload: WorkflowUiPayload): Spec {
 	const childKeys = payload.nodes.map((_, index) => `step-${index}`);
-	const elements: Record<string, unknown> = {
+	const elements: Spec['elements'] = {
 		screen: {
 			type: 'Screen',
 			props: { title: payload.name },
@@ -67,6 +68,10 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 	const histories = shallowReactive(new Map<string, SpecHistory>());
 	const activeHistoryKey = ref<string | null>(null);
 	const activeSpec = shallowRef<unknown>();
+	const canUndo = computed(() => {
+		if (activeHistoryKey.value === null) return false;
+		return (histories.get(activeHistoryKey.value)?.length ?? 0) >= 2;
+	});
 	let getWorkflow: WorkflowGetter | undefined;
 	let activeRequest: AbortController | undefined;
 
@@ -129,7 +134,7 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 		} catch (generationError) {
 			if (activeRequest !== request || isAbortError(generationError)) return;
 			setGenerationError(generationError);
-			const spec = fallbackSpec(context.payload);
+			const spec = buildFallbackSpec(context.payload);
 			history.reset(spec);
 			activeSpec.value = spec;
 		} finally {
@@ -170,7 +175,6 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 		const context = currentContext();
 		if (!context) return;
 		histories.delete(context.key);
-		activeSpec.value = undefined;
 		await generateCurrent();
 	}
 
@@ -208,7 +212,7 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 			if (activeRequest !== request || isAbortError(generationError)) return;
 			setGenerationError(generationError);
 			if (currentSpec === undefined) {
-				const spec = fallbackSpec(context.payload);
+				const spec = buildFallbackSpec(context.payload);
 				history.reset(spec);
 				activeSpec.value = spec;
 			}
@@ -226,6 +230,14 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 		if (spec !== undefined) activeSpec.value = spec;
 	}
 
+	function invalidateHistories(): void {
+		abortActiveRequest();
+		histories.clear();
+		activeHistoryKey.value = null;
+		activeSpec.value = undefined;
+		error.value = null;
+	}
+
 	return {
 		view,
 		lookOnly,
@@ -234,10 +246,12 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 		error,
 		histories,
 		activeSpec,
+		canUndo,
 		setWorkflowGetter,
 		setView,
 		regenerate,
 		followUp,
 		undo,
+		invalidateHistories,
 	};
 });

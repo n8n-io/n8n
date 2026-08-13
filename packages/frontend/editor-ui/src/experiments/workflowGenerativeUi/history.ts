@@ -9,6 +9,10 @@ export class SpecHistory {
 		return this.specs.at(-1);
 	}
 
+	get length(): number {
+		return this.specs.length;
+	}
+
 	undo(): unknown | undefined {
 		if (this.specs.length > 1) this.specs.pop();
 		return this.current();

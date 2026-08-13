@@ -36,6 +36,14 @@ import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
+import ViewPicker from '@/experiments/workflowGenerativeUi/ViewPicker.vue';
+import GenerativeUiOverlay from '@/experiments/workflowGenerativeUi/GenerativeUiOverlay.vue';
+import FollowUpBar from '@/experiments/workflowGenerativeUi/FollowUpBar.vue';
+import { useWorkflowGenerativeUiStore } from '@/experiments/workflowGenerativeUi/workflowGenerativeUi.store';
+import {
+	buildWorkflowUiPayload,
+	hashWorkflowUiPayload,
+} from '@/experiments/workflowGenerativeUi/workflowPayload';
 
 defineOptions({
 	inheritAttrs: false,
@@ -69,6 +77,26 @@ const props = withDefaults(
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const generativeUiStore = useWorkflowGenerativeUiStore();
+
+const getGenerativeUiWorkflow = () => ({
+	name: workflowDocumentStore.value.name,
+	nodes: workflowDocumentStore.value.allNodes.map((node) => ({ ...node })),
+	connections: workflowDocumentStore.value.connectionsBySourceNode,
+});
+generativeUiStore.setWorkflowGetter(getGenerativeUiWorkflow);
+
+const generativeUiWorkflowHash = computed(() =>
+	hashWorkflowUiPayload(buildWorkflowUiPayload(getGenerativeUiWorkflow())),
+);
+watch(generativeUiWorkflowHash, (hash, previousHash) => {
+	if (previousHash !== undefined && hash !== previousHash) {
+		generativeUiStore.invalidateHistories();
+		if (generativeUiStore.view !== 'canvas') {
+			void generativeUiStore.setView(generativeUiStore.view);
+		}
+	}
+});
 
 // `useWorkflowDocumentRenderData` is side-effectful (subscribes to the document
 // store and creates per-node effect scopes), so it must run once per document
@@ -297,7 +325,8 @@ defineExpose({
 
 <template>
 	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
-		<div id="canvas" :class="$style.canvas">
+		<ViewPicker />
+		<div v-show="generativeUiStore.view === 'canvas'" id="canvas" :class="$style.canvas">
 			<Canvas
 				:id="id"
 				ref="canvas"
@@ -315,6 +344,8 @@ defineExpose({
 				v-bind="$attrs"
 			/>
 		</div>
+		<GenerativeUiOverlay v-if="generativeUiStore.view !== 'canvas'" />
+		<FollowUpBar />
 		<slot />
 	</div>
 </template>
