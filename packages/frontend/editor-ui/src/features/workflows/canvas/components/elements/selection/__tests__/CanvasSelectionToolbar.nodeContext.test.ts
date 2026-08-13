@@ -29,11 +29,11 @@ describe('CanvasSelectionToolbar — add to chat', () => {
 		expect(queryByTestId('canvas-selection-toolbar-add-to-chat')).toBeTruthy();
 	});
 
-	it('shows the button for a single selected node (not multi-select gated)', () => {
+	it('hides the button for a single selected node (its own hover toolbar owns that)', () => {
 		const { queryByTestId } = renderComponent(CanvasSelectionToolbar, {
 			props: { selectedNodes: nodes(1) },
 		});
-		expect(queryByTestId('canvas-selection-toolbar-add-to-chat')).toBeTruthy();
+		expect(queryByTestId('canvas-selection-toolbar-add-to-chat')).toBeNull();
 	});
 
 	it('hides the button when the flag is off', () => {
