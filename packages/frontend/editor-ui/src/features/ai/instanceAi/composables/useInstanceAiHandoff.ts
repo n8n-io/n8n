@@ -2,13 +2,16 @@ import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	instanceAiAgentAttachmentSchema,
+	instanceAiNodesAttachmentSchema,
 	type InstanceAiAgentAttachment,
 	type InstanceAiHandoffContext,
+	type InstanceAiNodesAttachment,
 	type InstanceAiThreadOrigin,
 	type InstanceAiThreadSource,
 	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { jsonParse } from 'n8n-workflow';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import { useToast } from '@n8n/composables/useToast';
@@ -187,6 +190,33 @@ export function getPendingAgentAttachment(threadId: string): InstanceAiAgentAtta
 
 export function clearPendingAgentAttachment(threadId: string): void {
 	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
+}
+
+const pendingDraftAttachmentKey = (threadId: string) =>
+	`n8n-instance-ai-draft-attachment:${threadId}`;
+
+/**
+ * Stash a canvas node selection made before navigating into the thread view (the
+ * composer doesn't exist yet to hold it). The thread view consumes it once on mount
+ * and stages it into the store, where the composer's chip watcher picks it up.
+ */
+export function stashPendingDraftAttachment(
+	threadId: string,
+	sets: InstanceAiNodesAttachment['sets'],
+	workflowId: string,
+): void {
+	const attachment: InstanceAiNodesAttachment = { type: 'nodes', workflowId, sets };
+	localStorage.setItem(pendingDraftAttachmentKey(threadId), JSON.stringify(attachment));
+}
+
+export function consumePendingDraftAttachment(threadId: string): InstanceAiNodesAttachment | null {
+	const raw = localStorage.getItem(pendingDraftAttachmentKey(threadId));
+	if (!raw) return null;
+	localStorage.removeItem(pendingDraftAttachmentKey(threadId));
+	const parsed = instanceAiNodesAttachmentSchema.safeParse(
+		jsonParse(raw, { fallbackValue: undefined }),
+	);
+	return parsed.success ? parsed.data : null;
 }
 
 /** Resolve the personal project a launched thread binds to, loading it on first use. */

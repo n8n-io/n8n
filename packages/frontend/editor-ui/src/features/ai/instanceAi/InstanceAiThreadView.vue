@@ -42,6 +42,7 @@ import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	clearPendingAgentAttachment,
+	consumePendingDraftAttachment,
 	consumePendingFirstMessage,
 	consumePendingHandoffContext,
 	getPendingAgentAttachment,
@@ -694,6 +695,8 @@ function reconnectThreadAfterHydration(): void {
 		pendingAgentAttachment.value = agentAttachment;
 		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
 	}
+	const draftAttachment = consumePendingDraftAttachment(props.threadId);
+	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
