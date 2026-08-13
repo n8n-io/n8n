@@ -276,10 +276,6 @@ function mergeIntoObject(value: unknown[], extraArgs: unknown[][]): unknown {
 			'mergeIntoObject(): expected array arg, e.g. .mergeIntoObject([{ id: 1, otherValue: 3 }])',
 		);
 	}
-	// Merge whichever side at this index is a non-null object, so elements
-	// past the shorter array's length are not dropped when the arrays differ
-	// in length. Only pass the counterpart to mergeObjects when it's itself a
-	// non-null object, otherwise it throws on a mismatched-type argument.
 	const listLength = value.length > others.length ? value.length : others.length;
 	let merged = {};
 	for (let i = 0; i < listLength; i++) {
@@ -548,11 +544,11 @@ merge.doc = {
 mergeIntoObject.doc = {
 	name: 'mergeIntoObject',
 	description:
-		'Merges two Object-arrays into one object by merging the key-value pairs of each element. Unlike merge(), if the arrays have different lengths, elements from the longer array are kept.',
+		'Merges two Object-arrays into one object by merging the key-value pairs of each element. If the arrays have different lengths, elements from the longer array are kept.',
 	examples: [
 		{
-			example: '[{ a: 1 }, { b: 2 }].mergeIntoObject([{ c: 3 }])',
-			evaluated: '{ a: 1, b: 2, c: 3 }',
+			example: "[{ name: 'Nathan' }, { age: 42 }].mergeIntoObject([{ city: 'Berlin' }])",
+			evaluated: "{ name: 'Nathan', age: 42, city: 'Berlin' }",
 		},
 	],
 	returnType: 'Object',
