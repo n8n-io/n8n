@@ -4330,55 +4330,6 @@ describe('AgentRuntime — Tool builder with JSON Schema input', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tool-call timeout — a hung tool settles as a tool error, not a cancellation
-// ---------------------------------------------------------------------------
-
-describe('AgentRuntime — tool-call timeout', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it('settles a hanging tool as a tool error within toolCallTimeoutMs and continues the loop', async () => {
-		// Handler never resolves — simulates a hung MCP/Linear call.
-		const hangingHandler = vi.fn().mockReturnValue(new Promise(() => undefined));
-
-		const tool = new Tool('create_issue')
-			.description('Create an issue')
-			.input({ type: 'object', properties: { title: { type: 'string' } }, required: ['title'] })
-			.handler(hangingHandler)
-			.build();
-
-		generateText
-			// First turn: LLM emits the hanging tool call.
-			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'create_issue', { title: 'x' }))
-			// Second turn: LLM stops after seeing the tool error.
-			.mockResolvedValueOnce(makeGenerateSuccess('recovered'));
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'test',
-			tools: [tool],
-			toolCallTimeoutMs: 50,
-		});
-
-		const result = await runtime.generate('go');
-
-		// The loop continued past the hung tool instead of blocking forever.
-		expect(result.finishReason).toBe('stop');
-
-		const assistantMsg = result.messages.find(
-			(m) =>
-				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
-		) as Message;
-		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
-		// A timeout is a tool error (rejected), not a cancellation.
-		expect(call.state).toBe('rejected');
-		expect(call.state === 'rejected' && call.error).toMatch(/timed out/i);
-	});
-});
-
-// ---------------------------------------------------------------------------
 // Runtime validation — resume data schema
 // ---------------------------------------------------------------------------
 

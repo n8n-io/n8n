@@ -678,9 +678,6 @@ describe('AgentAdvancedPanel', () => {
 			wrapper.find('[data-testid="agent-concurrency-input"]').attributes('disabled'),
 		).toBeDefined();
 		expect(
-			wrapper.find('[data-testid="agent-tool-call-timeout-input"]').attributes('disabled'),
-		).toBeDefined();
-		expect(
 			wrapper.find('[data-testid="agent-max-iterations-input"]').attributes('disabled'),
 		).toBeDefined();
 	});
@@ -751,63 +748,5 @@ describe('AgentAdvancedPanel', () => {
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect(last.config?.toolCallConcurrency).toBe(5);
-	});
-
-	it('renders the tool-call-timeout input', () => {
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config: makeConfig() },
-			global: { stubs: globalStubs },
-		});
-		expect(wrapper.find('[data-testid="agent-tool-call-timeout-input"]').exists()).toBe(true);
-	});
-
-	it('initialises tool-call-timeout input to the default when unset in config', () => {
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config: makeConfig() },
-			global: { stubs: globalStubs },
-		});
-		const input = wrapper.find('[data-testid="agent-tool-call-timeout-input"]');
-		expect(Number(input.element.getAttribute('value'))).toBe(120000);
-	});
-
-	it('initialises tool-call-timeout input from config', () => {
-		const config = makeConfig({
-			config: { toolCallTimeoutMs: 30000 },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-		const input = wrapper.find('[data-testid="agent-tool-call-timeout-input"]');
-		expect(Number(input.element.getAttribute('value'))).toBe(30000);
-	});
-
-	it('emits update:config with toolCallTimeoutMs when the field changes', async () => {
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config: makeConfig() },
-			global: { stubs: globalStubs },
-		});
-		const input = wrapper.find('[data-testid="agent-tool-call-timeout-input"]');
-		await input.setValue('60000');
-		const events = wrapper.emitted('update:config') ?? [];
-		expect(events.length).toBeGreaterThan(0);
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(last.config?.toolCallTimeoutMs).toBe(60000);
-	});
-
-	it('removes toolCallTimeoutMs from config when the field is cleared (NaN)', async () => {
-		const config = makeConfig({
-			config: { toolCallTimeoutMs: 30000 },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-		const input = wrapper.find('[data-testid="agent-tool-call-timeout-input"]');
-		await input.setValue('abc');
-		const events = wrapper.emitted('update:config') ?? [];
-		expect(events.length).toBeGreaterThan(0);
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(last.config).not.toHaveProperty('toolCallTimeoutMs');
 	});
 });

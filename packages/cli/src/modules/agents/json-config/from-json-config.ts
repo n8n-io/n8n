@@ -44,9 +44,6 @@ import { buildVectorStore } from './vector-store-factory';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 
-/** Default per-tool-call timeout for JSON-config agents (2 minutes). */
-const DEFAULT_TOOL_CALL_TIMEOUT_MS = 120_000;
-
 const WEB_SEARCH_TOOL_NAME = 'web_search';
 const WEB_SEARCH_INPUT_SCHEMA = z.object({
 	query: z.string().min(1).describe('Search query'),
@@ -242,12 +239,6 @@ export async function buildFromJson(
 			agent.configuration({ maxIterations: config.config.maxIterations });
 		}
 	}
-
-	// Default to 2 minutes; an explicit 0 disables the timeout. A hung tool
-	// call otherwise blocks its batch (Promise.allSettled) until the MCP fetch
-	// timeout (~1h), making the agent appear stuck with no recovery. Applied
-	// unconditionally so agents without a `config` block are also protected.
-	agent.toolCallTimeoutMs(config.config?.toolCallTimeoutMs ?? DEFAULT_TOOL_CALL_TIMEOUT_MS);
 
 	return agent;
 }

@@ -481,15 +481,6 @@ export const AgentJsonConfigBaseSchema = z.object({
 			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
-			toolCallTimeoutMs: z
-				.number()
-				.int()
-				.min(0)
-				.max(3_600_000)
-				.optional()
-				.describe(
-					'Per-tool-call timeout in milliseconds. A tool that has not settled by the deadline is reported as a tool error instead of blocking the run. 0 disables the timeout.',
-				),
 			maxIterations: z
 				.number()
 				.int()

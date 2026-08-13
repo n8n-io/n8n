@@ -7471,8 +7471,6 @@
 	"agents.builder.advanced.promptCachingTtl.label": "Cache duration",
 	"agents.builder.advanced.concurrency.label": "Tool call concurrency",
 	"agents.builder.advanced.concurrency.hint": "How many tool calls the agent can run in parallel.",
-	"agents.builder.advanced.toolCallTimeout.label": "Tool call timeout (ms)",
-	"agents.builder.advanced.toolCallTimeout.hint": "Maximum time a single tool call can run before it's reported as an error to the agent. 0 disables the timeout. Defaults to 120000 (2 minutes).",
 	"agents.builder.advanced.recentMessages.label": "Session memory window",
 	"agents.builder.advanced.recentMessages.hint": "How many recent messages from this thread the agent sees on each turn.",
 	"agents.builder.advanced.recentMessages.memoryDisabledTooltip": "Enable Session Memory in the Memory section to configure the window.",

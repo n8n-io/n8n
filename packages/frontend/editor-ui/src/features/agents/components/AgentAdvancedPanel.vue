@@ -184,9 +184,6 @@ const CONCURRENCY_DEFAULT = 5;
 const MAX_ITERATIONS_MIN = 1;
 const MAX_ITERATIONS_MAX = 200;
 const MAX_ITERATIONS_DEFAULT = 30;
-const TOOL_CALL_TIMEOUT_MIN = 0;
-const TOOL_CALL_TIMEOUT_MAX = 3_600_000;
-const TOOL_CALL_TIMEOUT_DEFAULT = 120_000;
 const PROMPT_CACHING_TTL_DEFAULT: AnthropicCacheTtl = '1h';
 
 const {
@@ -200,12 +197,6 @@ const {
 	onChange: onMaxIterationsChange,
 	sync: syncMaxIterations,
 } = makeNumberField('maxIterations', { displayDefault: MAX_ITERATIONS_DEFAULT });
-
-const {
-	modelValue: toolCallTimeoutModelValue,
-	onChange: onToolCallTimeoutChange,
-	sync: syncToolCallTimeout,
-} = makeNumberField('toolCallTimeoutMs', { displayDefault: TOOL_CALL_TIMEOUT_DEFAULT });
 
 // ---------------------------------------------------------------------------
 // Reasoning
@@ -262,7 +253,6 @@ watch(
 		anthropicTtl.value = anthropicTtlFrom(cfg);
 		syncConcurrency(cfg);
 		syncMaxIterations(cfg);
-		syncToolCallTimeout(cfg);
 		webSearchEnabled.value = cfg.config?.webSearch?.enabled === true;
 		webSearchMethod.value = webSearchEnabled.value
 			? getWebSearchMethod(cfg, hasNativeWebSearch.value)
@@ -674,27 +664,6 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 					:class="$style.shortInput"
 					data-testid="agent-concurrency-input"
 					@update:model-value="onConcurrencyChange"
-				/>
-			</div>
-
-			<div :class="$style.row">
-				<div :class="$style.rowLabel">
-					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
-						i18n.baseText('agents.builder.advanced.toolCallTimeout.label')
-					}}</N8nText>
-					<N8nText size="small" :class="shared.dataEntrySubLabel">
-						{{ i18n.baseText('agents.builder.advanced.toolCallTimeout.hint') }}
-					</N8nText>
-				</div>
-				<N8nInputNumber2
-					:model-value="toolCallTimeoutModelValue"
-					:min="TOOL_CALL_TIMEOUT_MIN"
-					:max="TOOL_CALL_TIMEOUT_MAX"
-					:precision="0"
-					:disabled="props.disabled"
-					:class="$style.shortInput"
-					data-testid="agent-tool-call-timeout-input"
-					@update:model-value="onToolCallTimeoutChange"
 				/>
 			</div>
 

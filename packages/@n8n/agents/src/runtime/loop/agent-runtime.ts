@@ -111,7 +111,6 @@ export interface AgentRuntimeConfig {
 	eventBus?: AgentEventBus;
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
 	toolCallConcurrency?: number;
-	toolCallTimeoutMs?: number;
 	titleGeneration?: TitleGenerationConfig;
 	telemetry?: BuiltTelemetry;
 	/** Existing run id to continue, used when resuming a suspended run. */
@@ -220,9 +219,6 @@ export class AgentRuntime {
 			telemetry: this.telemetry,
 			eventBus: this.eventBus,
 			concurrency: config.toolCallConcurrency ?? 1,
-			...(config.toolCallTimeoutMs !== undefined
-				? { toolCallTimeoutMs: config.toolCallTimeoutMs }
-				: {}),
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
 		});

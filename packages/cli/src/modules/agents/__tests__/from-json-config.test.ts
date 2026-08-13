@@ -931,30 +931,6 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.toolCallConcurrency).toBe(5);
 	});
 
-	it('applies the default toolCallTimeoutMs when unset and honours an explicit value', async () => {
-		const defaulted = await buildFromJson(
-			makeConfig({}),
-			{},
-			{
-				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
-				memoryFactory: makeMockMemoryFactory(),
-			},
-		);
-		expect(defaulted.snapshot.toolCallTimeoutMs).toBe(120_000);
-
-		const explicit = await buildFromJson(
-			makeConfig({ config: { toolCallTimeoutMs: 30_000 } }),
-			{},
-			{
-				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
-				memoryFactory: makeMockMemoryFactory(),
-			},
-		);
-		expect(explicit.snapshot.toolCallTimeoutMs).toBe(30_000);
-	});
-
 	it('sets maxIterations via configuration()', async () => {
 		const config = makeConfig({ config: { maxIterations: 10 } });
 

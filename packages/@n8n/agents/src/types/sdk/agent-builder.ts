@@ -26,7 +26,6 @@ export interface AgentBuilder {
 	thinking(provider: string, config?: Record<string, unknown>): this;
 	reasoning(level?: ReasoningLevel): this;
 	toolCallConcurrency(n: number): this;
-	toolCallTimeoutMs(ms: number): this;
 	memory(m: unknown): this;
 	fileStore(store: unknown): this;
 	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this;
