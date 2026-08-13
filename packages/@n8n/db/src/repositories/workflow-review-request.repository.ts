@@ -102,13 +102,8 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	/**
 	 * Closes every open request left with no linked workflow, returning the ids closed.
 	 *
-	 * A workflow hard delete cascades the link rows away, so an open request that has
-	 * lost its last one covers nothing and can never be acted on again. `create` writes
-	 * the request and its link row in one transaction, so a request is only ever visible
-	 * without links once the workflow behind it is gone — the two steps here cannot see
-	 * a half-written create. They can race another sweep or a concurrent decision though,
-	 * since the update keys off the ids selected rather than off the state: the caller holds
-	 * the review-request lock for that.
+	 * Keys off the ids selected rather than off the state, so the caller must hold the
+	 * review-request lock.
 	 */
 	async closeOrphanedOpenRequests(ctx: OperationContext): Promise<string[]> {
 		const openState: WorkflowReviewRequestState = 'open';
