@@ -337,21 +337,18 @@ names (e.g. `Acme Corp`) in tests and examples.
 These notes cover non-obvious gotchas for the Cursor Cloud VM. Standard
 commands live in **Essential Commands** above; don't duplicate them here.
 
-- **Node version gotcha (important):** the VM's default `node` on `PATH` is
-  `v22.14.0`, which is **below** this repo's `engines` requirement
-  (`node >=22.22`). The correct version (`v22.22.2`) is installed via `nvm` but
-  is shadowed on `PATH` by `/exec-daemon/node`. Before you build, run, or test,
-  put the right node first on `PATH` for your shell session:
-
-  ```bash
-  export PATH="$HOME/.nvm/versions/node/v22.22.2/bin:$PATH"   # or: nvm use 22.22.2
-  node -v   # expect v22.22.2
-  ```
-
-  `pnpm install` tolerates the mismatch (it only prints an "Unsupported engine"
-  warning because `engine-strict` is off), so the startup update script uses the
-  default node fine — but build/dev/test should use `v22.22.2` to match CI.
-- **Dependencies:** the startup update script already runs
+- **Node version is pinned by the environment — no action needed.** The VM's
+  built-in `node` (`/exec-daemon/node`, `v22.14.0`) is below this repo's
+  `engines` requirement (`node >=22.22`) and is injected ahead of `nvm` on
+  `PATH`. The Cloud environment's install script fixes this at the environment
+  level by symlinking the `nvm`-provided `v22.22.2` binaries (`node`, `npm`,
+  `npx`, `corepack`) into `/usr/local/cargo/bin` — the first entry on `PATH`,
+  which is inherited by every process — so all shells, scripts, and the app
+  resolve `node v22.22.2` with no `PATH` juggling. Sanity check: `node -v` should
+  print `v22.22.2`. If you ever see `v22.14.0`, the symlink step didn't run;
+  re-run the install script, or as a one-off:
+  `ln -sf "$HOME/.nvm/versions/node/v22.22.2/bin/node" /usr/local/cargo/bin/node`.
+- **Dependencies:** the startup install script pins node (above) and runs
   `pnpm install --frozen-lockfile`. You do **not** need to reinstall unless the
   lockfile changed.
 - **Build once before dev:** dev commands rely on each package's compiled
