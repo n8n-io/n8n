@@ -3,6 +3,12 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
+	USER_CLICKED_AI_CREDIT_BALANCE: {
+		name: 'User clicked AI credit balance',
+		description:
+			'The user clicked the AI Assistant credit balance button to open or close the balance dropdown.',
+		properties: z.object({}),
+	},
 	BUILDER_SPECCED_TEMPLATED_CRED: {
 		name: 'Builder specced templated cred',
 		description:
