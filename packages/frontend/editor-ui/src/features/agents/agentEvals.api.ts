@@ -146,3 +146,20 @@ export const startRun = async (
 		{},
 	);
 };
+
+// Asks the runner to stop; the cases already in flight settle on their own, so the
+// caller keeps polling the summary until nothing is pending. Gated on `agent:update`
+// server-side rather than `agent:execute` — cancelling stops work someone else may
+// have started, which is a write.
+export const cancelRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	runId: string,
+) => {
+	return await makeRestApiRequest<AgentEvalRunRecord>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/runs/${runId}/cancel`,
+	);
+};
