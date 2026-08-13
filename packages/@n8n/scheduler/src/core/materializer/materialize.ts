@@ -1,7 +1,7 @@
 import { Time } from '@n8n/constants';
 
 import type { ScheduledJob } from '../types';
-import { coalesceSiblingCatchUps } from './coalesce-group';
+import { applyCoalesceOwnerPolicy } from './coalesce-group';
 import { countMisfires, type MisfireCount } from './misfire';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
@@ -121,7 +121,7 @@ export async function materialize(
 			options,
 			hooks.onPlanError,
 		);
-		const occurrencesPlanned = coalesceSiblingCatchUps(jobsPlanned);
+		const occurrencesPlanned = applyCoalesceOwnerPolicy(jobsPlanned);
 		const rows = toNewOccurrences(occurrencesPlanned, claimed.now);
 		const { recorded, created } = await tx.recordOccurrences(rows);
 		signal?.throwIfAborted();
@@ -172,9 +172,9 @@ function toNewOccurrences(planned: PlannedJob[], now: Date): NewOccurrence[] {
 }
 
 /**
- * Jobs whose plan set `retireBefore`: normally their own catch-up instant, but
- * also a group's loser, whose dropped catch-up still leaves an already-recorded
- * pending occurrence that needs retiring.
+ * Jobs whose plan set `retireBefore`: normally the instant of their own late
+ * run, but also a group's loser, whose dropped late run still leaves an
+ * already-recorded pending occurrence that needs retiring.
  */
 function toSuperseded(planned: PlannedJob[]): SupersededOccurrences[] {
 	return planned.flatMap(({ job, plan }) =>

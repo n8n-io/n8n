@@ -260,7 +260,7 @@ export class DurableJobProvisioner {
 						(job) => job.enabled && job.nextRunAt !== null,
 					);
 					// Grouping never triggers here: every seeded job starts from a freshly
-					// computed `nextRunAt`, so none of them has a backlog to catch up on.
+					// computed `nextRunAt`, so none of them has missed anything yet.
 					return claimed.length > 0 ? withOwnerKeys({ now, jobs: claimed }) : undefined;
 				},
 				recordOccurrences: async (occurrences) =>

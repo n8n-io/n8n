@@ -17,7 +17,7 @@ const POLICY_VALUES = [...POLICY_VALUES_BEFORE, 'coalesce_owner'];
 const POLICY_COMMENT_BEFORE =
 	"What to do with occurrences that came due while nothing ran them: ''coalesce'' records a single catch-up run, ''skip'' records none.";
 const POLICY_COMMENT =
-	"What to do with occurrences that came due while nothing ran them: ''coalesce'' records a single catch-up run per job, ''coalesce_owner'' a single one across every job the same owner scheduled, ''skip'' records none.";
+	"What to do with occurrences that came due while nothing ran them: ''coalesce'' records a single late run per job, ''coalesce_owner'' a single one across every job the same owner scheduled, ''skip'' records none.";
 
 /**
  * Two changes to `misfirePolicy`:

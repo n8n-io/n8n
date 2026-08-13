@@ -432,7 +432,7 @@ describe('materialize', () => {
 			tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
 		};
 
-		it('records one catch-up run for the whole owner, retires every sibling, and advances every clock', async () => {
+		it('records one late run for the whole owner, retires every sibling, and advances every clock', async () => {
 			const tx = makeTx();
 			claimSiblings(tx);
 
@@ -495,7 +495,7 @@ describe('materialize', () => {
 			}
 		});
 
-		it("a group's dropped catch-up run does not itself count as a misfire when the member discarded no backlog", async () => {
+		it("a group's dropped late run does not itself count as a misfire when the member discarded no backlog", async () => {
 			const tx = makeTx();
 			const hourly = (id: number, nextRunAt: string): ScheduledJob => ({
 				...makeSibling(id),
@@ -539,7 +539,7 @@ describe('materialize', () => {
 			]);
 		});
 
-		it('records a single catch-up run for the owner when none of their schedules has a further run', async () => {
+		it('records a single late run for the owner when none of their schedules has a further run', async () => {
 			const tx = makeTx();
 			const oneOff = (id: number, fireAt: string): ScheduledJob => ({
 				...makeSibling(id),

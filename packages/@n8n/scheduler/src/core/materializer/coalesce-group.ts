@@ -4,69 +4,73 @@ import type { PlannedJob } from './transaction';
 
 interface GroupMember {
 	entry: PlannedJob;
-	catchUpAt: number;
-}
-
-export function coalesceSiblingCatchUps(planned: PlannedJob[]): PlannedJob[] {
-	const losers = new Set<PlannedJob>();
-
-	for (const members of groupOwnerCatchUps(planned).values()) {
-		if (members.length < 2) continue;
-		const winner = members.reduce(latestThenLowestId);
-		for (const member of members) {
-			if (member === winner) continue;
-			losers.add(member.entry);
-		}
-	}
-
-	if (losers.size === 0) return planned;
-	return planned.map((entry) => (losers.has(entry) ? dropCatchUp(entry) : entry));
-}
-
-function ownerCatchUpAt({ job, plan }: PlannedJob): Date | null {
-	if (job.ownerKey === null || job.misfirePolicy !== ScheduledJobMisfirePolicy.CoalesceOwner) {
-		return null;
-	}
-	return plan.catchUpAt;
+	latestMissedAt: number;
 }
 
 /**
- * Grouped by `ownerKey` alone: `coalesce_owner` collapses catch-up runs across
- * an owner's rules unconditionally, so the whole trigger fires once, however
+ * Applies `coalesce_owner` across one planning pass: per owner, only the job
+ * with the latest missed occurrence keeps its late run; the other jobs drop
+ * theirs. Jobs on another policy, without an owner, or with nothing missed
+ * are left untouched.
+ */
+export function applyCoalesceOwnerPolicy(planned: PlannedJob[]): PlannedJob[] {
+	const losers = new Set(
+		[...groupByOwner(planned).values()].flatMap((members) => {
+			const winner = members.reduce(latestThenLowestId);
+			return members.filter((member) => member !== winner).map((member) => member.entry);
+		}),
+	);
+
+	if (losers.size === 0) {
+		return planned;
+	}
+	return planned.map((entry) => (losers.has(entry) ? dropLateRun(entry) : entry));
+}
+
+/**
+ * Grouped by `ownerKey` alone: `coalesce_owner` keeps one late run across an
+ * owner's rules unconditionally, so the whole trigger fires once, however
  * many rules missed occurrences. Per-rule deduplication isn't this policy's
- * job: plain `coalesce` already collapses backlog within a single job, and
+ * job: plain `coalesce` already keeps one late run per job, and
  * distinguishing rules is a workflow-definition concern, not a misfire one.
  */
-function groupOwnerCatchUps(planned: PlannedJob[]): Map<string, GroupMember[]> {
-	const groups = new Map<string, GroupMember[]>();
+function groupByOwner(planned: PlannedJob[]): Map<string, GroupMember[]> {
+	return planned
+		.flatMap(toOwnedMember)
+		.reduce(
+			(groups, { key, member }) => groups.set(key, [...(groups.get(key) ?? []), member]),
+			new Map<string, GroupMember[]>(),
+		);
+}
 
-	for (const entry of planned) {
-		const catchUpAt = ownerCatchUpAt(entry);
-		if (catchUpAt === null) continue;
-
-		const key = entry.job.ownerKey;
-		if (key === null) continue;
-
-		const member: GroupMember = { entry, catchUpAt: catchUpAt.getTime() };
-		const members = groups.get(key);
-		if (members === undefined) groups.set(key, [member]);
-		else members.push(member);
+/** Empty when the policy does not touch the job: no owner, another policy, or nothing missed. */
+function toOwnedMember(entry: PlannedJob): Array<{ key: string; member: GroupMember }> {
+	const { job, plan } = entry;
+	if (
+		job.ownerKey === null ||
+		plan.catchUpAt === null ||
+		job.misfirePolicy !== ScheduledJobMisfirePolicy.CoalesceOwner
+	) {
+		return [];
 	}
-
-	return groups;
+	return [{ key: job.ownerKey, member: { entry, latestMissedAt: plan.catchUpAt.getTime() } }];
 }
 
 function latestThenLowestId(current: GroupMember, candidate: GroupMember): GroupMember {
-	if (candidate.catchUpAt > current.catchUpAt) return candidate;
-	if (candidate.catchUpAt < current.catchUpAt) return current;
+	if (candidate.latestMissedAt !== current.latestMissedAt) {
+		return candidate.latestMissedAt > current.latestMissedAt ? candidate : current;
+	}
 	return candidate.entry.job.id < current.entry.job.id ? candidate : current;
 }
 
-function dropCatchUp({ job, plan }: PlannedJob): PlannedJob {
-	// `nextRunAt`/`lastFiredAt` stay as already planned: the loser's clock still
-	// has to advance past its backlog, or it reclaims the same backlog next pass.
-	// `retireBefore` also stays, so its already-recorded pending occurrence still
-	// retires even though its catch-up is no longer recorded.
+/**
+ * Removes the loser's late run from its plan. `nextRunAt`/`lastFiredAt` stay
+ * as already planned: the loser's clock still has to advance past its
+ * backlog, or it reclaims the same backlog next pass. `retireBefore` also
+ * stays, so its already-recorded pending occurrence still retires even though
+ * it no longer runs late.
+ */
+function dropLateRun({ job, plan }: PlannedJob): PlannedJob {
 	return {
 		job,
 		plan: {
