@@ -571,18 +571,9 @@ function openArtifactPreview(preferredSessionId?: string) {
 	persistedPreviewOpen.value = true;
 }
 
-function openSessionTarget(target: RouteLocationRaw) {
-	if (isArtifactMode.value) {
-		window.open(router.resolve(target).href, '_blank');
-		return;
-	}
-
-	void router.push(target);
-}
-
 function viewPreviewTrace() {
 	if (!currentSessionHasMessages.value || !effectiveSessionId.value) return;
-	openSessionTarget({
+	void router.push({
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: {
 			projectId: projectId.value,
