@@ -45,8 +45,6 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
 
-// Their trigger() is a no-op — fired by the execution engine, never the
-// registry — so reconciling them against the registry would re-enqueue forever.
 /**
  * How callers request that trigger (de)activation be abortable. Node
  * registration and teardown code cannot be cancelled, only abandoned, and an
@@ -87,6 +85,8 @@ async function raceAbort<T>(promise: Promise<T>, abort?: TriggerOperationAbort):
 	}
 }
 
+// Their trigger() is a no-op — fired by the execution engine, never the
+// registry — so reconciling them against the registry would re-enqueue forever.
 const PSEUDO_TRIGGER_NODE_TYPES = new Set<string>([
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
