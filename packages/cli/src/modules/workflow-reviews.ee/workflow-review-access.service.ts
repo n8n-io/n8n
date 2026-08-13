@@ -1,15 +1,26 @@
 import {
+	ProjectRelationRepository,
+	ProjectRepository,
+	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
+	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
+	type InboxVisibility,
 	type User,
 	type WorkflowReviewRequest,
 	type WorkflowReviewRequestWorkflowDetailRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import {
+	GLOBAL_ADMIN_ROLE_SLUG,
+	GLOBAL_OWNER_ROLE_SLUG,
+	PROJECT_ADMIN_ROLE_SLUG,
+	hasGlobalScope,
+} from '@n8n/permissions';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 export interface ReadableWorkflowReviewRequest {
@@ -29,29 +40,71 @@ export class WorkflowReviewAccessService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly projectService: ProjectService,
+		private readonly roleService: RoleService,
+		private readonly projectRepository: ProjectRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
+		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
+		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 	) {}
 
 	/**
-	 * Project IDs for inbox queries. `null` means "all projects, unfiltered" —
-	 * correct for users with `workflow:publish` scoped globally. Requesters always
-	 * see their own reviews regardless (repository OR-matches `requesterId`), so no
-	 * personal-project fallback is needed.
+	 * Who may see which reviews: global admins/owners see everything, project admins
+	 * see everything in their projects (so the decide override never applies to a
+	 * review its holder cannot see), and everyone else sees only reviews they are
+	 * involved in — as author (the requester included) or assigned reviewer. Both
+	 * paths further require read access to one of the workflows the review covers.
+	 *
+	 * Built-in role slugs only, matching the eligibility service's admin override.
 	 */
-	async resolveAccessibleProjectIds(user: User): Promise<string[] | null> {
-		if (hasGlobalScope(user, 'workflow:publish')) {
-			return null;
+	async resolveInboxVisibility(user: User): Promise<InboxVisibility> {
+		if (user.role.slug === GLOBAL_ADMIN_ROLE_SLUG || user.role.slug === GLOBAL_OWNER_ROLE_SLUG) {
+			return { scope: 'all' };
 		}
 
-		return await this.projectService.getProjectIdsWithScope(user, ['workflow:publish']);
+		const [adminProjectIds, readableProjectIds, readableWorkflowRoles] = await Promise.all([
+			this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, [
+				PROJECT_ADMIN_ROLE_SLUG,
+			]),
+			this.resolveReadableProjectIds(user),
+			this.roleService.rolesWithScope('workflow', ['workflow:read']),
+		]);
+
+		return {
+			scope: 'involved',
+			userId: user.id,
+			adminProjectIds,
+			readableProjectIds,
+			readableWorkflowRoles,
+		};
 	}
 
 	/**
-	 * Visibility starts from the inbox rule (requester OR `workflow:publish` in the
-	 * review's project OR globally), then narrows per workflow to what the caller can
-	 * currently read — see {@link filterReadableWorkflowRows}. Throws `NotFoundError`
-	 * rather than a 403 so a review's existence never leaks.
+	 * A custom global role granting `workflow:read` reads every project, so
+	 * return `null` (unrestricted) instead of enumerating every project on the
+	 * instance into an `IN (...)` list on every inbox query.
+	 */
+	private async resolveReadableProjectIds(user: User): Promise<string[] | null> {
+		if (hasGlobalScope(user, ['workflow:read'], { mode: 'allOf' })) {
+			return null;
+		}
+
+		const [teamProjectIds, personalProject] = await Promise.all([
+			this.projectService.getProjectIdsWithScope(user, ['workflow:read']),
+			// `getProjectIdsWithScope` covers team projects only, but workflows shared
+			// directly to the caller hang off their personal project.
+			this.projectRepository.getPersonalProjectForUser(user.id),
+		]);
+
+		return personalProject ? [...teamProjectIds, personalProject.id] : teamProjectIds;
+	}
+
+	/**
+	 * Visibility starts from the inbox rule (see {@link resolveInboxVisibility}),
+	 * then narrows per workflow to what the caller can currently read — see
+	 * {@link filterReadableWorkflowRows}. Throws `NotFoundError` rather than a 403
+	 * so a review's existence never leaks.
 	 */
 	async findReadableRequestOrFail(
 		user: User,
@@ -70,14 +123,10 @@ export class WorkflowReviewAccessService {
 				request.id,
 			);
 		const readableWorkflowRows = await this.filterReadableWorkflowRows(user, workflowRows);
-		// Someone who reached this review through its project has nothing to see once they can
-		// read none of the workflows it covers. The requester is exempt: they created it and
-		// their inbox lists it, so keeping the record leaks nothing.
-		if (
-			request.createdById !== user.id &&
-			workflowRows.length > 0 &&
-			readableWorkflowRows.length === 0
-		) {
+		// Whoever reached this review has nothing to see once they can read none of the
+		// workflows it covers — requesters included: seeing a review requires still
+		// holding read on what it reviews.
+		if (workflowRows.length > 0 && readableWorkflowRows.length === 0) {
 			throw new NotFoundError('Could not find review request');
 		}
 
@@ -93,13 +142,31 @@ export class WorkflowReviewAccessService {
 		};
 	}
 
+	/**
+	 * Mirrors the SQL predicate in the repository's inbox visibility for one review:
+	 * project admin, or participant. The predicate's other half — read access to a
+	 * covered workflow — is enforced by {@link filterReadableWorkflowRows} in the
+	 * caller, so the two gates stay equivalent and a listed row never 404s on open.
+	 */
 	private async canAccessRequest(user: User, request: WorkflowReviewRequest): Promise<boolean> {
-		if (request.createdById === user.id) {
+		const visibility = await this.resolveInboxVisibility(user);
+		if (visibility.scope === 'all') {
 			return true;
 		}
 
-		const projectIds = await this.resolveAccessibleProjectIds(user);
-		return projectIds === null || projectIds.includes(request.projectId);
+		if (visibility.adminProjectIds.includes(request.projectId)) {
+			return true;
+		}
+
+		// No separate requester check: `create` writes the requester's author row in the
+		// same transaction as the review, and nothing ever removes one.
+		const participant = { workflowReviewRequestId: request.id, userId: user.id };
+		const [isAuthor, isReviewer] = await Promise.all([
+			this.workflowReviewRequestAuthorRepository.isAuthor(participant, {}),
+			this.workflowReviewRequestReviewerRepository.isReviewer(participant, {}),
+		]);
+
+		return isAuthor || isReviewer;
 	}
 
 	/**
