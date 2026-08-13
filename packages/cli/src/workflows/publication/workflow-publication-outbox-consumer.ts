@@ -32,8 +32,13 @@ const TIMED_OUT = Symbol('timed-out');
  */
 const ABORT_AFTER_LEASE_FRACTION = 0.5;
 
-/** How long an aborted record may take to unwind before it is abandoned. */
+/**
+ * How long an aborted record may take to unwind before it is abandoned, capped
+ * at a quarter of the lease: deadline plus grace must stay within the lease so
+ * a record is never still being waited on after it became reclaimable.
+ */
 const ABANDON_GRACE_MS = 10 * Time.seconds.toMilliseconds;
+const ABANDON_GRACE_LEASE_FRACTION = 0.25;
 
 /** Node's maximum timer delay (2^31 - 1 ms). */
 const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
@@ -226,10 +231,10 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Returns whether the record settled in time.
 	 */
 	private async processRecordWithAbort(record: WorkflowPublicationOutbox): Promise<boolean> {
-		const abortAfterMs =
-			this.workflowsConfig.publicationOutboxLeaseSeconds *
-			Time.seconds.toMilliseconds *
-			ABORT_AFTER_LEASE_FRACTION;
+		const leaseMs =
+			this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
+		const abortAfterMs = leaseMs * ABORT_AFTER_LEASE_FRACTION;
+		const abandonGraceMs = Math.min(ABANDON_GRACE_MS, leaseMs * ABANDON_GRACE_LEASE_FRACTION);
 
 		const controller = new AbortController();
 		const work = this.processRecord(record, controller.signal);
@@ -238,7 +243,7 @@ export class WorkflowPublicationOutboxConsumer {
 
 		controller.abort(new OperationalError('Workflow publication processing exceeded its deadline'));
 
-		if ((await this.raceTimeout(work, ABANDON_GRACE_MS)) !== TIMED_OUT) return true;
+		if ((await this.raceTimeout(work, abandonGraceMs)) !== TIMED_OUT) return true;
 
 		// A late rejection of the abandoned work must not become an unhandled rejection.
 		void work.catch((error) =>
@@ -314,10 +319,12 @@ export class WorkflowPublicationOutboxConsumer {
 					}
 
 					// The worker may have aborted this record while it queued on the lock;
-					// starting now would apply work long after it was abandoned.
+					// starting now would apply work long after it was abandoned. The row is
+					// left `in_progress` for lease reclaim rather than returned to pending:
+					// the wait may have outlived the lease, and flipping the row here would
+					// release the claim of whichever worker has since reclaimed it.
 					if (signal?.aborted) {
-						await this.outboxRepository.returnToPending(record.id);
-						this.logger.debug('Returned publication outbox record to queue: aborted', {
+						this.logger.debug('Skipped applying publication outbox record: aborted', {
 							outboxId: record.id,
 							workflowId: record.workflowId,
 						});

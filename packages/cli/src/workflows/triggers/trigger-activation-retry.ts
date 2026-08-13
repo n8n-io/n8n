@@ -34,12 +34,21 @@ export async function retryTriggerActivation(
 			if (!isTransientActivationError(ensureError(error)) || isLastAttempt || signal?.aborted)
 				throw error;
 
-			await sleep(
-				Math.min(
-					WORKFLOW_REACTIVATE_INITIAL_TIMEOUT * 2 ** attempt,
-					WORKFLOW_REACTIVATE_MAX_TIMEOUT,
-				),
-			);
+			// `sleep` rejects as soon as the signal fires, so an abandoned retry
+			// unwinds promptly instead of sleeping out the backoff (up to a day)
+			// while its caller holds the workflow's lifecycle lock.
+			try {
+				await sleep(
+					Math.min(
+						WORKFLOW_REACTIVATE_INITIAL_TIMEOUT * 2 ** attempt,
+						WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+					),
+					signal,
+				);
+			} catch {
+				signal?.throwIfAborted();
+				throw error;
+			}
 		}
 	}
 }

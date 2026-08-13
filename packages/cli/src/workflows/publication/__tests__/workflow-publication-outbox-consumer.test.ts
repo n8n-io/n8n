@@ -473,16 +473,40 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(observedSignal?.aborted).toBe(false);
 		});
 
-		test('returns an aborted record to the queue instead of applying it', async () => {
+		test('leaves an aborted record in progress for lease reclaim instead of applying it', async () => {
 			const record = makeRecord({ id: 7, workflowId: 'wf-7' });
 			const controller = new AbortController();
 			controller.abort();
 
 			await consumer.processRecord(record, controller.signal);
 
-			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7);
+			// Not returned to pending: the wait for the lock may have outlived the
+			// lease, and flipping the row would release a newer claimant's claim.
+			expect(outboxRepository.returnToPending).not.toHaveBeenCalled();
 			expect(applier.apply).not.toHaveBeenCalled();
 			expect(reporter.report).not.toHaveBeenCalled();
+		});
+
+		test('scales the abandon grace down for short leases so abandonment stays within the lease', async () => {
+			// Lease 16s: abort fires at 8s, grace is capped at 4s (a quarter of the
+			// lease) instead of the fixed 10s, so abandonment lands at 12s — still
+			// inside the lease.
+			consumer = createConsumer(true, true, 1, 16);
+			const stuck = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(stuck).mockResolvedValue(null);
+			applier.apply.mockImplementationOnce(async () => await new Promise(() => {}));
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(12_000);
+
+			await expect(drain).resolves.toBe(0);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringContaining('Abandoned workflow publication outbox record'),
+				}),
+				{ shouldBeLogged: true },
+			);
 		});
 	});
 

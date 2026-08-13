@@ -660,17 +660,33 @@ export class WorkflowTriggerActivator {
 				),
 			);
 
-			for (const result of deregistrationResults) {
-				if (result.status === 'rejected') firstFailure ??= ensureError(result.reason);
-				else removedNodeNames.push(result.value);
+			// Row cleanup is per node, so only a node whose EVERY webhook
+			// deregistered may be cleared: a failed or abandoned webhook's row is
+			// the only record left for deregistering it externally later.
+			const pendingWebhooksByNode = new Map<string, number>();
+			for (const webhookData of webhooks) {
+				pendingWebhooksByNode.set(
+					webhookData.node,
+					(pendingWebhooksByNode.get(webhookData.node) ?? 0) + 1,
+				);
 			}
+			deregistrationResults.forEach((result, index) => {
+				if (result.status === 'rejected') {
+					firstFailure ??= ensureError(result.reason);
+					return;
+				}
+				const nodeName = webhooks[index].node;
+				const pending = (pendingWebhooksByNode.get(nodeName) ?? 0) - 1;
+				pendingWebhooksByNode.set(nodeName, pending);
+				if (pending === 0) removedNodeNames.push(nodeName);
+			});
 		} finally {
 			await workflow.expression.releaseIsolate();
 		}
 
-		// Clear rows for the nodes that did deregister even when another node's
-		// teardown failed or was abandoned, so their `webhook_entity` rows don't
-		// outlive the deregistration.
+		// Clear rows for the nodes that fully deregistered even when another
+		// node's teardown failed or was abandoned, so their `webhook_entity` rows
+		// don't outlive the deregistration.
 		await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(workflow.id, removedNodeNames);
 		if (firstFailure) throw firstFailure;
 

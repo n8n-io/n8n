@@ -1121,13 +1121,20 @@ describe('WorkflowTriggerActivator', () => {
 			expect(onDetached).toHaveBeenCalledWith(expect.any(Promise));
 		});
 
-		test('clears webhook rows for nodes that deregistered before a sibling teardown was aborted', async () => {
+		test('clears webhook rows only for nodes whose every webhook deregistered before the abort', async () => {
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			const webhookOk = mock<IWebhookData>({ node: 'Webhook OK' });
-			const webhookStuck = mock<IWebhookData>({ node: 'Webhook Stuck' });
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookOk, webhookStuck]);
+			const webhookOk = mock<IWebhookData>({ node: 'Webhook OK', path: 'ok' });
+			// The stuck node has two webhooks; only one of them hangs. Its fulfilled
+			// sibling must not cause the node's rows to be cleared.
+			const webhookStuck = mock<IWebhookData>({ node: 'Webhook Stuck', path: 'hang' });
+			const webhookStuckSibling = mock<IWebhookData>({ node: 'Webhook Stuck', path: 'fine' });
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([
+				webhookOk,
+				webhookStuck,
+				webhookStuckSibling,
+			]);
 			webhookTriggerRegistrar.deregister.mockImplementation(async ({ webhookData }) => {
-				if (webhookData.node === 'Webhook Stuck') await new Promise(() => {});
+				if (webhookData.path === 'hang') await new Promise(() => {});
 				return webhookData.node;
 			});
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();

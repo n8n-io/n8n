@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
 import {
@@ -8,6 +9,8 @@ import {
 vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn(),
 }));
+
+const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
 const MAX_ATTEMPTS = 3;
 
@@ -47,6 +50,27 @@ describe('retryTriggerActivation', () => {
 
 		await expect(retryTriggerActivation(activate, MAX_ATTEMPTS)).rejects.toBe(error);
 		expect(activate).toHaveBeenCalledTimes(1);
+	});
+
+	test('stops sleeping and rethrows the abort reason when the signal fires during backoff', async () => {
+		vi.mocked(sleep).mockImplementationOnce(
+			async (_ms, signal) =>
+				await new Promise((_resolve, reject) => {
+					signal?.addEventListener('abort', () => reject(new Error('sleep aborted')), {
+						once: true,
+					});
+				}),
+		);
+		const activate = vi.fn().mockRejectedValue(new Error('transient'));
+		const controller = new AbortController();
+
+		const retrying = retryTriggerActivation(activate, MAX_ATTEMPTS, controller.signal);
+		await flushPromises();
+		controller.abort(new Error('deadline'));
+
+		await expect(retrying).rejects.toThrow('deadline');
+		expect(activate).toHaveBeenCalledTimes(1);
+		expect(sleep).toHaveBeenCalledWith(expect.any(Number), controller.signal);
 	});
 });
 
