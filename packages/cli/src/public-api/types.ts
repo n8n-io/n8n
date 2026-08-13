@@ -137,13 +137,6 @@ export declare namespace WorkflowRequest {
 	>;
 
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
-	type Delete = Get;
-	type Update = AuthenticatedRequest<
-		{ id: string },
-		{},
-		WorkflowEntity & { parentFolderId?: string | null },
-		{ publishIfActive?: boolean }
-	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
 		{},
