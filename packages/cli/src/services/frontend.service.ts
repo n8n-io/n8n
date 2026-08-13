@@ -607,6 +607,7 @@ export class FrontendService {
 			this.settings.aiGateway = {
 				enabled: true,
 				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
+				cloudUbbEnabled: this.licenseState.isAiGatewayCloudUbbLicensed(),
 			};
 		}
 

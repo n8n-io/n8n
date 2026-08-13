@@ -1,5 +1,6 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { StepStatus } from '../../execution/execution.types';
@@ -14,7 +15,7 @@ describe('workflow_step_execution table (integration)', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer('postgres:18-alpine').start();
+		container = await new PostgreSqlContainer(postgresVersions.primary).start();
 		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
@@ -103,6 +104,18 @@ describe('workflow_step_execution table (integration)', () => {
 	it('TypeOrmStepStore.createSteps is a no-op for an empty batch', async () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		expect(await store.createSteps([])).toEqual([]);
+	});
+
+	it('TypeOrmStepStore.createSteps rejects a step created with outputs but not completed', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+
+		await expect(
+			store.createSteps([{ executionId, nodeId: 'x', status: 'queued', outputs: [{}] }]),
+		).rejects.toMatchObject({
+			name: 'UnexpectedError',
+			message: expect.stringContaining('completed') as string,
+		});
 	});
 
 	it('cascades step deletion when the parent execution is deleted', async () => {
@@ -273,9 +286,9 @@ describe('workflow_step_execution table (integration)', () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id: aId } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
-		// completed with null outputs — indistinguishable from not-completed via
-		// loadStepOutputs, which is why readiness has its own method
-		await store.completeStep(aId, null);
+		// completed without firing its slot — readiness must not depend on what
+		// the outputs contain, which is why it has its own method
+		await store.completeStep(aId, [null]);
 		await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
 		const { id: cId } = await createStep(store, { executionId, nodeId: 'c', status: 'running' });
 		await store.failStep(cId, { name: 'Error', message: 'node blew up' });

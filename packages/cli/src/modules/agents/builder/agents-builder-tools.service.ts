@@ -1,7 +1,5 @@
-import { isDeepStrictEqual } from 'node:util';
 import {
 	isAbortError,
-	zodToJsonSchema,
 	type BuiltTool,
 	type CredentialProvider,
 	type InterruptibleToolContext,
@@ -22,6 +20,7 @@ import {
 	type AgentConfigValidationMessages,
 } from '@n8n/ai-utilities/agent-config';
 import {
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
@@ -62,8 +61,9 @@ import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import {
 	AgentTestRunService,
+	collectStandardApprovals,
+	InvalidAgentTestRunCheckpointError,
 	type AgentTestRunResult,
-	type AgentTestRunSuspension,
 } from '../agent-test-run.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
@@ -98,30 +98,6 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 		'Agent config changed since you last read it. Call read_config, then retry using the config and configHash it returns.',
 };
 
-const callAgentContinuationSchema = z
-	.object({
-		runId: z.string(),
-		toolCallId: z.string(),
-		sessionId: z.string(),
-		response: z.string(),
-	})
-	.strict();
-
-const expectedApprovalResumeJsonSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
-
-function parseStandardApprovalSuspension(
-	suspension: AgentTestRunSuspension,
-): ApprovalSuspendPayload | undefined {
-	const payload = APPROVAL_SUSPEND_SCHEMA.safeParse(suspension.suspendPayload);
-	if (
-		!payload.success ||
-		!isDeepStrictEqual(suspension.resumeSchema, expectedApprovalResumeJsonSchema)
-	) {
-		return undefined;
-	}
-	return payload.data;
-}
-
 /** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
 const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 	emptyInstructionsFollowUp: 'saving the config again.',
@@ -147,6 +123,49 @@ const createSkillInputSchema = z
 	.strict();
 
 type CreateSkillInput = z.infer<typeof createSkillInputSchema>;
+
+const readSkillInputSchema = z
+	.object({
+		skillId: z.string().min(1).describe('Persisted target-agent skill id to read.'),
+		referencePaths: z
+			.array(z.string().min(1))
+			.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
+			.optional()
+			.describe(
+				'Optional reference paths whose content is needed. Omit to receive paths and UTF-8 byte sizes only.',
+			),
+	})
+	.strict();
+
+type ReadSkillInput = z.infer<typeof readSkillInputSchema>;
+
+const updateSkillFieldsSchema = z
+	.object({
+		name: agentSkillSchema.shape.name.optional(),
+		description: agentSkillSchema.shape.description.optional(),
+		instructions: agentSkillSchema.shape.instructions.optional(),
+		allowedTools: agentSkillSchema.shape.allowedTools.unwrap().min(1).nullable().optional(),
+		references: agentSkillSchema.shape.references
+			.unwrap()
+			.refine((references) => references.length > 0, 'Pass null to clear references.')
+			.nullable()
+			.optional(),
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, {
+		message: 'At least one skill field must be supplied.',
+	});
+
+const updateSkillInputSchema = z
+	.object({
+		skillId: z.string().min(1).describe('Persisted target-agent skill id to update.'),
+		updates: updateSkillFieldsSchema.describe(
+			'Only the fields to change. Pass null for allowedTools or references to remove that field; empty arrays are invalid.',
+		),
+	})
+	.strict();
+
+type UpdateSkillInput = z.infer<typeof updateSkillInputSchema>;
 
 interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
@@ -704,27 +723,13 @@ export class AgentsBuilderToolsService {
 								...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
 							});
 						} else {
-							const continuation = callAgentContinuationSchema.safeParse(ctx.continuation);
-							if (
-								!continuation.success ||
-								!APPROVAL_SUSPEND_SCHEMA.safeParse(ctx.suspendPayload).success
-							) {
-								return {
-									status: 'error',
-									code: 'invalid_checkpoint',
-									message: 'This test run can no longer be resumed.',
-								};
-							}
-							result = await this.agentTestRunService.resumeDraftRun({
+							result = await this.agentTestRunService.resumeDraftApproval({
 								agentId,
 								projectId,
-								sessionId: continuation.data.sessionId,
-								runId: continuation.data.runId,
-								toolCallId: continuation.data.toolCallId,
-								resumeData: { approved: ctx.resumeData.approved },
+								continuation: ctx.continuation,
+								approved: ctx.resumeData.approved,
 								user,
 								source: 'instance-ai',
-								response: continuation.data.response,
 								...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
 							});
 						}
@@ -746,37 +751,19 @@ export class AgentsBuilderToolsService {
 						}
 						if (result.status === 'completed') return result;
 
-						const approvals = result.suspensions.map(parseStandardApprovalSuspension);
-						if (approvals.every((approval) => approval !== undefined)) {
-							const firstSuspension = result.suspensions[0];
-							const firstApproval = approvals[0];
-							if (firstSuspension && firstApproval) {
-								return await ctx.suspend(firstApproval, {
-									continuation: {
-										runId: firstSuspension.runId,
-										toolCallId: firstSuspension.toolCallId,
-										sessionId: result.sessionId,
-										response: result.response,
-									},
-								});
-							}
+						const approvals = collectStandardApprovals(result);
+						const firstApproval = approvals?.[0];
+						if (firstApproval) {
+							const { continuation, ...approval } = firstApproval;
+							return await ctx.suspend(approval, { continuation });
 						}
 
-						const runIds = [...new Set(result.suspensions.map(({ runId }) => runId))];
-						const cancellations = await Promise.all(
-							runIds.map(
-								async (runId) =>
-									await this.agentTestRunService.cancelSuspendedRun({
-										agentId,
-										runId,
-										userId: user.id,
-									}),
-							),
-						).catch(() => []);
-						if (
-							cancellations.length !== runIds.length ||
-							cancellations.some((cancelled) => !cancelled)
-						) {
+						const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
+							agentId,
+							suspensions: result.suspensions,
+							userId: user.id,
+						});
+						if (!cancelled) {
 							return {
 								status: 'error',
 								code: 'cancellation_failed',
@@ -801,6 +788,13 @@ export class AgentsBuilderToolsService {
 						};
 					} catch (error) {
 						if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error)) throw error;
+						if (error instanceof InvalidAgentTestRunCheckpointError) {
+							return {
+								status: 'error',
+								code: error.code,
+								message: error.message,
+							};
+						}
 						return {
 							status: 'error',
 							code: 'execution_failed',
@@ -1039,6 +1033,118 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const readSkillTool = new Tool(BUILDER_TOOLS.READ_SKILL)
+			.description(
+				'Read an existing target-agent skill by id. The response includes its instructions, but ' +
+					'references are returned as { path, sizeBytes } metadata by default to keep context small. ' +
+					'Pass only the referencePaths whose content you need. Returns { ok: true, id, skill } or ' +
+					'{ ok: false, errors }.',
+			)
+			.input(readSkillInputSchema)
+			.handler(async ({ skillId, referencePaths = [] }: ReadSkillInput) => {
+				try {
+					const skill = await this.agentSkillsService.getSkill(agentId, projectId, skillId);
+					const { references, ...body } = skill;
+					const requestedPaths = new Set(referencePaths);
+					const knownPaths = new Set(references?.map((reference) => reference.path) ?? []);
+					const missingPaths = referencePaths.filter((path) => !knownPaths.has(path));
+					if (missingPaths.length > 0) {
+						return {
+							ok: false,
+							errors: [
+								{
+									message: `Reference path${missingPaths.length === 1 ? '' : 's'} not found: ${missingPaths.join(', ')}`,
+								},
+							],
+						};
+					}
+
+					return {
+						ok: true,
+						id: skillId,
+						skill: {
+							...body,
+							...(references
+								? {
+										references: references.map((reference) => ({
+											path: reference.path,
+											sizeBytes: new TextEncoder().encode(reference.content).byteLength,
+											...(requestedPaths.has(reference.path) ? { content: reference.content } : {}),
+										})),
+									}
+								: {}),
+						},
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const listSkillsTool = new Tool(BUILDER_TOOLS.LIST_SKILLS)
+			.description(
+				'List lightweight metadata for persisted target-agent skills. Use this to identify which ' +
+					'existing skill owns a capability before reading or creating a skill. Returns ' +
+					'{ ok: true, skills: [{ id, name, description }] } or { ok: false, errors }.',
+			)
+			.input(z.object({}).strict())
+			.handler(async () => {
+				try {
+					const skills = await this.agentSkillsService.listSkills(agentId, projectId);
+					return {
+						ok: true,
+						skills: Object.entries(skills).map(([id, skill]) => ({
+							id,
+							name: skill.name,
+							description: skill.description,
+						})),
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const updateSkillTool = new Tool(BUILDER_TOOLS.UPDATE_SKILL)
+			.description(
+				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
+					'agent config reference. Pass null for allowedTools to remove the tool restriction, or null ' +
+					'for references to remove all references; empty arrays are invalid. Returns ' +
+					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }.',
+			)
+			.input(updateSkillInputSchema)
+			.handler(async ({ skillId, updates }: UpdateSkillInput) => {
+				const { allowedTools, references, ...requiredUpdates } = updates;
+				const normalizedUpdates = {
+					...requiredUpdates,
+					...(allowedTools !== undefined ? { allowedTools: allowedTools ?? undefined } : {}),
+					...(references !== undefined ? { references: references ?? undefined } : {}),
+				};
+
+				try {
+					const updated = await this.agentSkillsService.updateSkill(
+						agentId,
+						projectId,
+						skillId,
+						normalizedUpdates,
+						{ user, modifiedBy: 'builder' },
+					);
+					return { ok: true, id: updated.id, name: updated.skill.name };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
 		const createTasksTool = new Tool(BUILDER_TOOLS.CREATE_TASKS)
 			.description(
 				'Create one or more recurring scheduled tasks for the target agent (name + objective + cron ' +
@@ -1138,6 +1244,9 @@ export class AgentsBuilderToolsService {
 		return [
 			buildCustomToolTool,
 			createSkillsTool,
+			listSkillsTool,
+			readSkillTool,
+			this.withConfigMutationMarker(updateSkillTool, agentId),
 			this.withConfigMutationMarker(createTasksTool, agentId),
 			listWorkflowsTool,
 			buildGetResourceLocatorOptionsTool({

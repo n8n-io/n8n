@@ -88,6 +88,17 @@ For callable (non-chat) services, call \`resolve_integration\` separately per
 service and follow the returned \`kind\`: \`"mcp"\` -> MCP Servers section
 below, \`"node"\` -> Node Tools section below.
 
+## Web Search vs Direct HTTP Requests
+
+Generic web search, browsing, research, current-information, and source-finding
+requests must use \`config.webSearch\` according to the system prompt's
+web-search rules. Do not call \`resolve_integration\` or \`search_nodes\` for
+these requests.
+
+Never add \`n8n-nodes-base.httpRequestTool\` or
+\`@n8n/n8n-nodes-langchain.toolHttpRequest\` unless the user explicitly
+requests the HTTP Request Tool or direct HTTP, API, or specific-page fetching.
+
 ## Chat Integrations
 
 The \`integrations\` array controls how the target agent is triggered.

@@ -19,8 +19,21 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	}),
 	custom: apiKeyCreds.extend({
 		baseURL: z.string().min(1, 'baseURL is required'),
+		supportsStructuredOutputs: z.boolean().optional(),
 	}),
 	anthropic: apiKeyCreds,
+	/**
+	 * Claude on Google Vertex (Anthropic Messages via `:rawPredict`).
+	 * `googleCredentials` is a service-account JSON string; omit it to use ADC
+	 * (`gcloud auth application-default login`).
+	 */
+	'google-vertex-anthropic': z.object({
+		project: z.string().min(1, 'project is required'),
+		location: z.string().min(1, 'location is required').default('global'),
+		googleCredentials: z.string().optional(),
+		baseURL: z.string().optional(),
+		headers: z.record(z.string(), z.string()).optional(),
+	}),
 	google: apiKeyCreds,
 	xai: apiKeyCreds,
 	groq: apiKeyCreds,

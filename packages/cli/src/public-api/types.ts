@@ -148,7 +148,7 @@ export declare namespace WorkflowRequest {
 		{ id: string },
 		{},
 		WorkflowEntity & { parentFolderId?: string | null },
-		{}
+		{ publishIfActive?: boolean }
 	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
@@ -156,8 +156,6 @@ export declare namespace WorkflowRequest {
 		{ versionId?: string; name?: string; description?: string },
 		{}
 	>;
-	type GetTags = Get;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }

@@ -10,7 +10,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
-import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -53,7 +52,6 @@ type WorkflowHandlers = {
 	createWorkflow: PublicAPIEndpoint<WorkflowRequest.Create>;
 	transferWorkflow: PublicAPIEndpoint<WorkflowRequest.Transfer>;
 	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
-	getWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
 	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
 	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
@@ -61,8 +59,6 @@ type WorkflowHandlers = {
 	unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	deactivateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
-	getWorkflowTags: PublicAPIEndpoint<WorkflowRequest.GetTags>;
-	updateWorkflowTags: PublicAPIEndpoint<WorkflowRequest.UpdateTags>;
 	archiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	unarchiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 };
@@ -172,42 +168,6 @@ const workflowHandlers: WorkflowHandlers = {
 			return res.json(workflow);
 		},
 	],
-	getWorkflow: [
-		publicApiScope('workflow:read'),
-		projectScope('workflow:read', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const { excludePinnedData = false } = req.query;
-
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:read'],
-				{
-					includeTags: areWorkflowTagsEnabled(),
-					includeActiveVersion: true,
-				},
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow they do not own
-				// and was not shared to them
-				// Or does not exist.
-				throw new NotFoundError('Not Found');
-			}
-
-			if (excludePinnedData) {
-				delete workflow.pinData;
-			}
-
-			Container.get(EventService).emit('user-retrieved-workflow', {
-				userId: req.user.id,
-				publicApi: true,
-			});
-
-			return res.json(workflow);
-		},
-	],
 	getWorkflowVersion: [
 		publicApiScope('workflow:read'),
 		projectScope('workflow:read', 'workflow'),
@@ -294,6 +254,10 @@ const workflowHandlers: WorkflowHandlers = {
 			// null moves the workflow to the project root, (undefined) leaves the current folder untouched
 			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
 
+			// Defaults to true so existing integrations keep publishing on save; callers that want
+			// to stage a change on an already-published workflow can opt out explicitly.
+			const { publishIfActive = true } = req.query;
+
 			// binaryMode and credentialResolverId are derived, internal settings
 			// rather than something users are expected to control programmatically;
 			// strip them so the settings merge in WorkflowService.update preserves
@@ -315,7 +279,7 @@ const workflowHandlers: WorkflowHandlers = {
 						parentFolderId: resolvedParentFolderId,
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
-						publishIfActive: true,
+						publishIfActive,
 						source: 'api',
 					},
 				);
@@ -332,52 +296,6 @@ const workflowHandlers: WorkflowHandlers = {
 	deactivateWorkflow: [
 		deprecated({ since: new Date('2026-07-23T00:00:00Z') }),
 		...unpublishWorkflow,
-	],
-	getWorkflowTags: [
-		publicApiScope('workflowTags:list'),
-		projectScope('workflow:read', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-
-			if (!areWorkflowTagsEnabled()) {
-				throw new BadRequestError('Workflow Tags Disabled');
-			}
-
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:read'],
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow he does not own
-				// or workflow does not exist
-				throw new NotFoundError('Not Found');
-			}
-
-			const tags = await Container.get(TagService).getAllByWorkflowId(id);
-
-			return res.json(tags);
-		},
-	],
-	updateWorkflowTags: [
-		publicApiScope('workflowTags:update'),
-		projectScope('workflow:update', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const newTags = req.body.map((newTag) => newTag.id);
-
-			if (!areWorkflowTagsEnabled()) {
-				throw new BadRequestError('Workflow Tags Disabled');
-			}
-
-			try {
-				const tags = await Container.get(WorkflowService).updateWorkflowTags(req.user, id, newTags);
-				return res.json(tags);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
 	],
 	archiveWorkflow: [
 		publicApiScope('workflow:delete'),

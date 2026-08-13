@@ -7,6 +7,7 @@ import {
 	ApiTags,
 	Body,
 	ControllerRegistryMetadata,
+	Deprecated,
 	Get,
 	Param,
 	Post,
@@ -19,6 +20,7 @@ import { z } from 'zod';
 
 import {
 	markPublicApiController,
+	WidgetArrayResponseDto,
 	WidgetBodyDto,
 	WidgetPaginationQueryDto,
 	WidgetQueryDto,
@@ -87,6 +89,20 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config['x-required-scope']).toBe('workflow:read');
 	});
 
+	it('marks the operation deprecated when @Deprecated is present', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@Deprecated({ since: new Date('2026-07-23T00:00:00Z') })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.deprecated).toBe(true);
+	});
+
 	it('includes shared pagination parameters when the query DTO declares them', () => {
 		class WidgetsPublicController {
 			@Get('/')
@@ -136,6 +152,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config['x-required-scope']).toBeUndefined();
 		expect(operation.config.parameters).toBeUndefined();
 		expect(operation.config.request).toBeUndefined();
+		expect(operation.config.deprecated).toBeUndefined();
 		expect(operation.config.responses[200]).toEqual({ description: 'Operation successful.' });
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',
@@ -145,6 +162,24 @@ describe('getDecoratorGeneratedOperations', () => {
 			'v1/handlers/decorator-routed.handler',
 		);
 		expect(operation.config['x-decorator-routed']).toBe(true);
+	});
+
+	it('documents a bare-array response DTO as an array schema, not an object envelope', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200, WidgetArrayResponseDto)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		const response = operation.config.responses[200] as {
+			content: { 'application/json': { schema: z.ZodTypeAny } };
+		};
+		const schema = response.content['application/json'].schema;
+		expect(schema).toBeInstanceOf(z.ZodArray);
+		expect(schema).toBe(WidgetArrayResponseDto.schema);
 	});
 
 	it('throws for an @ApiErrorResponse status with no shared response file mapped', () => {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
+import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -144,7 +144,7 @@ function openChannelModal() {
 
 function openChannelEdit(channelType: string) {
 	const hasEditableChannelView = catalog.value?.some(({ type }) => type === channelType) ?? false;
-	channelModalView.value = hasEditableChannelView ? (`${channelType}_edit` as ChannelView) : 'list';
+	channelModalView.value = hasEditableChannelView ? `${channelType}_edit` : 'list';
 	channelModalOpen.value = true;
 }
 
