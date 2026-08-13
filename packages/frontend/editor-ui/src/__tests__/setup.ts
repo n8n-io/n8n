@@ -103,6 +103,13 @@ Object.defineProperty(window, 'matchMedia', {
 	})),
 });
 
+// jsdom logs an error for every unmocked popup even though the call itself does not fail.
+Object.defineProperty(window, 'open', {
+	configurable: true,
+	writable: true,
+	value: vi.fn(() => null),
+});
+
 // Create DOM containers for Element Plus components before each test
 beforeEach(() => {
 	// Create app-grid container for toasts
