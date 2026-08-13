@@ -181,7 +181,7 @@ catalog:
   mqtt-packet: 9.0.0
   ms: 2.1.3
   mysql2: 3.23.1
-  nanoid: 3.3.17
+  nanoid: 3.3.18
   nock: 14.0.14
   nodemailer: 8.0.10
   openai: 6.46.0
