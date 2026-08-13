@@ -78,6 +78,7 @@ function makeInboxItem(overrides: Partial<WorkflowReviewInboxItem> = {}): Workfl
 		workflowName: 'My workflow',
 		workflowVersionId: null,
 		requester: null,
+		authors: [],
 		reviewers: [],
 		decision: 'pending',
 		state: 'open',
@@ -352,7 +353,7 @@ describe('WorkflowReviewDetailTabs', () => {
 				props: {
 					review: makeDetail({
 						viewerCanDecide: false,
-						viewerDecisionIneligibilityReason: 'missing_publish_permission',
+						viewerDecisionIneligibilityReason: 'missing_reviewer_permission',
 					}),
 					tab: 'activity',
 					deciding: false,

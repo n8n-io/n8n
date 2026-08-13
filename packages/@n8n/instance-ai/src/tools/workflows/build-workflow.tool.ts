@@ -1,5 +1,8 @@
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	instanceAiApprovalResumeSchema,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { SDK_IMPORTABLE_FUNCTIONS } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -84,11 +87,7 @@ const confirmationSuspendSchema = z.object({
 	workflowId: z.string(),
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-	/** `'session'` — user chose "always allow"; persist a per-workflow update grant. */
-	scope: z.enum(['once', 'session']).optional(),
-});
+const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 interface BuildCtx {
 	toolCallId?: string;

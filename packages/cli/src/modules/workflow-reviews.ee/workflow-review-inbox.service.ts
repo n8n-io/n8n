@@ -11,6 +11,7 @@ import type {
 import {
 	UserRepository,
 	WorkflowPublishedVersionRepository,
+	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
@@ -18,6 +19,7 @@ import {
 	type User,
 	type WorkflowHistory,
 	type WorkflowReviewRequest,
+	type WorkflowReviewRequestAuthor,
 	type WorkflowReviewRequestLinkedWorkflow,
 	type WorkflowReviewRequestReviewer,
 	type WorkflowReviewRequestWorkflowDetailRow,
@@ -48,6 +50,7 @@ export class WorkflowReviewInboxService {
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
+		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly userRepository: UserRepository,
 		private readonly eligibilityService: WorkflowReviewEligibilityService,
 	) {}
@@ -73,23 +76,26 @@ export class WorkflowReviewInboxService {
 		const lastRow = data.at(-1);
 		const nextCursor = hasMore && lastRow ? this.encodeInboxCursor(lastRow) : null;
 		const requestIds = data.map((row) => row.id);
-		const [linkedWorkflowByRequestId, reviewerRows] = await Promise.all([
+		const [linkedWorkflowByRequestId, reviewerRows, authorRows] = await Promise.all([
 			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(requestIds),
 			this.workflowReviewRequestReviewerRepository.findByRequestIds(requestIds),
+			this.workflowReviewRequestAuthorRepository.findByRequestIds(requestIds),
 		]);
 
-		const participantsByRequestId = await this.hydrateParticipants(data, reviewerRows);
+		const participantsByRequestId = await this.hydrateParticipants(data, reviewerRows, authorRows);
 
 		return {
 			data: data.map((row) => {
-				const { requester, reviewers } = participantsByRequestId.get(row.id) ?? {
+				const { requester, authors, reviewers } = participantsByRequestId.get(row.id) ?? {
 					requester: null,
+					authors: [],
 					reviewers: [],
 				};
 				return this.toInboxItem(
 					row,
 					linkedWorkflowByRequestId.get(row.id) ?? null,
 					requester,
+					authors,
 					reviewers,
 				);
 			}),
@@ -128,13 +134,14 @@ export class WorkflowReviewInboxService {
 			this.eligibilityService.resolveViewerEligibility(user, access),
 		]);
 
-		const { requester, reviewers } = participantsByRequestId.get(request.id) ?? {
+		const { requester, authors, reviewers } = participantsByRequestId.get(request.id) ?? {
 			requester: null,
+			authors: [],
 			reviewers: [],
 		};
 		return {
 			// One workflow per review for now, so the summary fields mirror the first row
-			...this.toInboxItem(request, workflows.at(0) ?? null, requester, reviewers),
+			...this.toInboxItem(request, workflows.at(0) ?? null, requester, authors, reviewers),
 			description: request.description,
 			workflows,
 			viewerCanDecide: eligibility.canDecide,
@@ -144,10 +151,11 @@ export class WorkflowReviewInboxService {
 	}
 
 	private async resolveParticipants(request: WorkflowReviewRequest) {
-		const reviewerRows = await this.workflowReviewRequestReviewerRepository.findByRequestIds([
-			request.id,
+		const [reviewerRows, authorRows] = await Promise.all([
+			this.workflowReviewRequestReviewerRepository.findByRequestIds([request.id]),
+			this.workflowReviewRequestAuthorRepository.findByRequestIds([request.id]),
 		]);
-		return await this.hydrateParticipants([request], reviewerRows);
+		return await this.hydrateParticipants([request], reviewerRows, authorRows);
 	}
 
 	/**
@@ -200,31 +208,32 @@ export class WorkflowReviewInboxService {
 	}
 
 	/**
-	 * Batch-resolve the requester and requested reviewers for each request row,
-	 * keyed by request id. Deleted users simply drop out of the result.
+	 * Batch-resolve the requester, authors, and requested reviewers for each request
+	 * row, keyed by request id. Deleted users simply drop out of the result. The
+	 * requester stays in `authors` too — deduplication is the caller's presentation
+	 * concern, and the canonical requester is returned separately.
 	 */
 	private async hydrateParticipants(
 		rows: WorkflowReviewRequest[],
 		reviewerRows: WorkflowReviewRequestReviewer[],
+		authorRows: WorkflowReviewRequestAuthor[],
 	): Promise<
 		Map<
 			string,
 			{
 				requester: WorkflowReviewEligibleReviewer | null;
+				authors: WorkflowReviewEligibleReviewer[];
 				reviewers: WorkflowReviewEligibleReviewer[];
 			}
 		>
 	> {
-		const reviewerIdsByRequestId = new Map<string, string[]>();
-		for (const { workflowReviewRequestId, userId } of reviewerRows) {
-			const ids = reviewerIdsByRequestId.get(workflowReviewRequestId) ?? [];
-			ids.push(userId);
-			reviewerIdsByRequestId.set(workflowReviewRequestId, ids);
-		}
+		const reviewerIdsByRequestId = groupUserIdsByRequestId(reviewerRows);
+		const authorIdsByRequestId = groupUserIdsByRequestId(authorRows);
 
 		const userIds = new Set([
 			...rows.map((row) => row.createdById).filter((id) => id !== null),
 			...reviewerRows.map((row) => row.userId),
+			...authorRows.map((row) => row.userId),
 		]);
 
 		const usersById = new Map<string, WorkflowReviewEligibleReviewer>();
@@ -234,14 +243,16 @@ export class WorkflowReviewInboxService {
 			}
 		}
 
+		const resolve = (userIdsForRequest: string[]) =>
+			userIdsForRequest.map((userId) => usersById.get(userId)).filter((user) => user !== undefined);
+
 		return new Map(
 			rows.map((row) => [
 				row.id,
 				{
 					requester: row.createdById ? (usersById.get(row.createdById) ?? null) : null,
-					reviewers: (reviewerIdsByRequestId.get(row.id) ?? [])
-						.map((userId) => usersById.get(userId))
-						.filter((reviewer) => reviewer !== undefined),
+					authors: resolve(authorIdsByRequestId.get(row.id) ?? []),
+					reviewers: resolve(reviewerIdsByRequestId.get(row.id) ?? []),
 				},
 			]),
 		);
@@ -276,6 +287,7 @@ export class WorkflowReviewInboxService {
 		entity: WorkflowReviewRequest,
 		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
 		requester: WorkflowReviewEligibleReviewer | null,
+		authors: WorkflowReviewEligibleReviewer[],
 		reviewers: WorkflowReviewEligibleReviewer[],
 	): WorkflowReviewInboxItem {
 		return {
@@ -289,7 +301,22 @@ export class WorkflowReviewInboxService {
 			createdAt: entity.createdAt.toISOString(),
 			updatedAt: entity.updatedAt.toISOString(),
 			requester,
+			authors,
 			reviewers,
 		};
 	}
+}
+
+/** Junction rows (reviewers, authors) collapsed into user ids per request. */
+function groupUserIdsByRequestId(
+	rows: Array<{ workflowReviewRequestId: string; userId: string }>,
+): Map<string, string[]> {
+	const idsByRequestId = new Map<string, string[]>();
+	for (const { workflowReviewRequestId, userId } of rows) {
+		const ids = idsByRequestId.get(workflowReviewRequestId) ?? [];
+		ids.push(userId);
+		idsByRequestId.set(workflowReviewRequestId, ids);
+	}
+
+	return idsByRequestId;
 }

@@ -2,9 +2,11 @@ import {
 	CreateWorkflowPublicDto,
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
+	TagIdsPublicDto,
 	UpdateWorkflowPublicDto,
 	UpdateWorkflowQueryDto,
 	WorkflowPublicDto,
+	WorkflowTagsPublicDto,
 	WorkflowVersionHistoryListPublicDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
@@ -44,6 +46,7 @@ import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.
 import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
+import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -133,10 +136,17 @@ export class WorkflowsPublicController {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
-		private readonly workflowCreationService: WorkflowCreationService,
+		private readonly tagService: TagService,
 		private readonly workflowService: WorkflowService,
+		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 	) {}
+
+	private assertWorkflowTagsEnabled() {
+		if (this.globalConfig.tags.disabled) {
+			throw new BadRequestError('Workflow Tags Disabled');
+		}
+	}
 
 	@Get('/:workflowId')
 	@ApiKeyScope('workflow:read')
@@ -373,5 +383,56 @@ export class WorkflowsPublicController {
 			}
 			throw error;
 		}
+	}
+
+	@Get('/:workflowId/tags')
+	@ApiKeyScope('workflowTags:list')
+	@ProjectScope('workflow:read')
+	@ApiSummary('Get workflow tags')
+	@ApiDescription('Get workflow tags.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowTagsPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	async getWorkflowTags(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowTagsPublicDto> {
+		this.assertWorkflowTagsEnabled();
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
+			throw new NotFoundError('Not Found');
+		}
+
+		const tags = await this.tagService.getAllByWorkflowId(workflowId);
+
+		return tags.map(toPublicTag);
+	}
+
+	@Put('/:workflowId/tags')
+	@ApiKeyScope('workflowTags:update')
+	@ProjectScope('workflow:update')
+	@ApiSummary('Update tags of a workflow')
+	@ApiDescription('Update tags of a workflow.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowTagsPublicDto)
+	@ApiErrorResponse(404)
+	async updateWorkflowTags(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body body: TagIdsPublicDto,
+	): Promise<WorkflowTagsPublicDto> {
+		this.assertWorkflowTagsEnabled();
+
+		const tagIds = body.map((tag) => tag.id);
+		const tags = await this.workflowService.updateWorkflowTags(req.user, workflowId, tagIds);
+
+		return tags.map(toPublicTag);
 	}
 }
