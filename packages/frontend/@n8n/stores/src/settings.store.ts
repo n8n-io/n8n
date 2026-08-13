@@ -367,6 +367,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
+		rootStore.setPublicApiPath(
+			`${fetchedSettings.publicApi.path}/v${fetchedSettings.publicApi.latestVersion}`,
+		);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata ?? {});

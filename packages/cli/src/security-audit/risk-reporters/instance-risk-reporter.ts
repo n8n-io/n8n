@@ -9,7 +9,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { isApiEnabled } from '@/public-api';
+import { isApiKeyAuthEnabled } from '@/public-api';
 import {
 	ENV_VARS_DOCS_URL,
 	INSTANCE_REPORT,
@@ -103,7 +103,7 @@ export class InstanceRiskReporter implements RiskReporter {
 			communityPackagesEnabled: Container.get(CommunityPackagesConfig).enabled,
 			versionNotificationsEnabled: this.globalConfig.versionNotifications.enabled,
 			templatesEnabled: this.globalConfig.templates.enabled,
-			publicApiEnabled: isApiEnabled(),
+			publicApiEnabled: isApiKeyAuthEnabled(),
 		};
 
 		const { exclude, include } = this.globalConfig.nodes;

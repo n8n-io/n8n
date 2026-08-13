@@ -9,7 +9,7 @@ import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
-import type { License } from '@/license';
+import { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -200,6 +200,9 @@ describe('FrontendService', () => {
 				enabled: false,
 			}),
 		);
+		// isApiKeyAuthEnabled() reads License via the container directly, so the
+		// constructor-injected mock above must also be registered here.
+		Container.set(License, license);
 
 		return {
 			service: new FrontendService(

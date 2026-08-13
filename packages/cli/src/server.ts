@@ -25,7 +25,7 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
-import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
+import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
@@ -77,6 +77,7 @@ import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-serv
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from './services/auth-strategy.registry';
+import { SessionCookieAuthStrategy } from './services/session-cookie-auth.strategy';
 
 @Service()
 export class Server extends AbstractServer {
@@ -184,22 +185,17 @@ export class Server extends AbstractServer {
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that returns a non-null result wins.
 		// API key auth is registered first so existing behavior is preserved.
+		// Session cookie auth is registered last: an explicit but wrong API
+		// key/bearer token fails fast rather than silently falling back to an
+		// ambient browser session cookie.
 		// Additional strategies (e.g. scoped JWT from the token-exchange module)
 		// can be appended later during their own module initialization.
 		const registry = Container.get(AuthStrategyRegistry);
 		registry.register(Container.get(ApiKeyAuthStrategy));
+		registry.register(Container.get(SessionCookieAuthStrategy));
 
-		// ----------------------------------------
-		// Public API
-		// ----------------------------------------
-
-		if (isApiEnabled()) {
-			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
-			this.app.use(...apiRouters);
-			if (frontendService) {
-				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
-			}
-		}
+		// Parse cookies for easier access
+		this.app.use(cookieParser());
 
 		// Extract BrowserId from headers
 		this.app.use((req: APIRequest, _, next) => {
@@ -207,8 +203,15 @@ export class Server extends AbstractServer {
 			next();
 		});
 
-		// Parse cookies for easier access
-		this.app.use(cookieParser());
+		// ----------------------------------------
+		// Public API
+		// ----------------------------------------
+
+		const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
+		this.app.use(...apiRouters);
+		if (frontendService) {
+			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
+		}
 
 		const { restEndpoint, app } = this;
 
@@ -437,7 +440,6 @@ export class Server extends AbstractServer {
 				'e2e',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
-				isApiEnabled() ? '' : publicApiEndpoint,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);

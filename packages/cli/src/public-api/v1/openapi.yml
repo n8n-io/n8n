@@ -221,7 +221,13 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      # Must match AUTH_COOKIE_NAME in packages/cli/src/constants.ts
+      name: n8n-auth
 
 security:
   - ApiKeyAuth: []
   - BearerAuth: []
+  - CookieAuth: []

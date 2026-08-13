@@ -3,6 +3,7 @@ import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-uti
 import { type User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
 
 import { createOwnerWithApiKey } from '../shared/db/users';
@@ -79,6 +80,47 @@ beforeEach(async () => {
 describe('GET /insights/summary', () => {
 	test('returns 401 without API key', async () => {
 		await testServer.publicApiAgentWithoutApiKey().get('/insights/summary').expect(401);
+	});
+
+	test('returns data via session cookie, without an API key', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createSummaryMetrics(workflow, {
+			success: 3,
+			failure: 1,
+			runtimeMs: 400,
+			timeSavedMin: 20,
+		});
+
+		const response = await testServer
+			.publicApiAgentWithCookie(scopedOwner)
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(200);
+
+		expect(response.body.total.value).toBe(4);
+		expect(response.body.failed.value).toBe(1);
+	});
+
+	test('returns 401 with an invalid session cookie', async () => {
+		const agent = testServer.publicApiAgentWithoutApiKey();
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
+
+		const response = await agent.get('/insights/summary').expect(401);
+
+		expect(response.body).toEqual({ message: 'Unauthorized' });
+	});
+
+	test('returns 401 with a hint to use an API key when no credentials are sent at all', async () => {
+		const agent = testServer.publicApiAgentWithoutApiKey();
+
+		const response = await agent.get('/insights/summary').expect(401);
+
+		expect(response.body).toEqual({ message: "'X-N8N-API-KEY' header required" });
 	});
 
 	test('returns 403 without insights:read scope', async () => {
