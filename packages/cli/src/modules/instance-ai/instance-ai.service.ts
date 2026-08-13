@@ -240,7 +240,9 @@ function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo |
  * block so they're available once the user actually asks for something.
  * Returns an empty string when there are none.
  */
-function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttachment[]): string {
+function buildContextResourcesBlock(
+	contextAttachments: Array<InstanceAiWorkflowAttachment | InstanceAiAgentAttachment>,
+): string {
 	if (contextAttachments.length === 0) return '';
 	const lines = contextAttachments.map((attachment) => {
 		const name = attachment.name ? ` "${attachment.name}"` : '';
@@ -3433,7 +3435,9 @@ export class InstanceAiService {
 		const agentAttachments = (attachments ?? []).filter(
 			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
 		);
-		const contextAttachments: InstanceAiResourceAttachment[] = [
+		// Narrowed to workflow|agent, not the full InstanceAiResourceAttachment union: this
+		// prose block doesn't render `nodes` context yet (arrives with backend PR #36039).
+		const contextAttachments: Array<InstanceAiWorkflowAttachment | InstanceAiAgentAttachment> = [
 			...workflowAttachments,
 			...agentAttachments,
 		];
