@@ -21,7 +21,7 @@ import type {
 	OutboundHttp,
 	SsrfProtectionService,
 } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -40,6 +40,7 @@ import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstructi
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
+import type { GoalGraphStateService } from '../goal-graph';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -131,6 +132,8 @@ function makeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<GoalGraphStateService>(),
+		{ modules: [] } as unknown as AgentsConfig,
 	);
 }
 

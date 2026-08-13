@@ -207,6 +207,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private concurrencyValue?: number;
 
+	private toolsFilterFn?: AgentRuntimeConfig['toolsFilter'];
+
+	private instructionsSuffixFn?: AgentRuntimeConfig['instructionsSuffix'];
+
 	private telemetryBuilder?: Telemetry;
 
 	private telemetryConfig?: BuiltTelemetry;
@@ -548,6 +552,26 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			throw new Error('toolCallConcurrency must be a positive integer or Infinity');
 		}
 		this.concurrencyValue = n;
+		return this;
+	}
+
+	/**
+	 * Set a per-iteration tool list transform (e.g. goal-graph gating). Must
+	 * be synchronous and stateless — per-run state belongs in the platform
+	 * layer, keyed by `persistence`. See `AgentRuntimeConfig.toolsFilter`.
+	 */
+	toolsFilter(fn: NonNullable<AgentRuntimeConfig['toolsFilter']>): this {
+		this.toolsFilterFn = fn;
+		return this;
+	}
+
+	/**
+	 * Set a per-iteration dynamic instructions suffix (e.g. goal-graph status
+	 * overview), appended after the configured instructions. Same constraints
+	 * as `toolsFilter`. See `AgentRuntimeConfig.instructionsSuffix`.
+	 */
+	instructionsSuffix(fn: NonNullable<AgentRuntimeConfig['instructionsSuffix']>): this {
+		this.instructionsSuffixFn = fn;
 		return this;
 	}
 
@@ -1127,6 +1151,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			runState,
 			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
 			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
+			toolsFilter: this.toolsFilterFn,
+			instructionsSuffix: this.instructionsSuffixFn,
 		};
 	}
 

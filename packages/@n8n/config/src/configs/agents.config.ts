@@ -8,7 +8,7 @@ import { Config, Env } from '../decorators';
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = [] as const;
+export const AGENTS_MODULE_NAMES = ['goal-graph'] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -66,7 +66,12 @@ export class AgentsConfig {
 	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
 	 * gates a specific frontend/runtime capability inside the agents module.
-	 * Add supported module tokens to `AGENTS_MODULE_NAMES`.
+	 * Currently known:
+	 * - `goal-graph` — experimental goal-graph steering (`slots`/`goals` in the
+	 *   agent config).
+	 *
+	 * Gates the UI surface only — existing agents persisted with a given
+	 * capability turned on continue to run even if its token is removed here.
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];

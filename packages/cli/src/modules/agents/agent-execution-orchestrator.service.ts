@@ -25,6 +25,7 @@ import {
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
+import type { GoalGraphRuntime } from './goal-graph';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import type { ToolRegistry } from './tool-registry';
@@ -150,6 +151,7 @@ export interface StreamChatResponseConfig {
 	source?: string;
 	taskId?: string;
 	taskVersionId?: string;
+	goalGraph?: GoalGraphRuntime;
 	telemetry: {
 		runType: AgentRunTelemetryType;
 		configuration: IAgentConfigurationTelemetryProperties;
@@ -370,6 +372,10 @@ export class AgentExecutionOrchestratorService {
 		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
 		let executionSource = source;
 
+		// Resume paths also need goal-graph state hydrated (post-resume output
+		// mappings and re-derivation read from the in-memory cache).
+		await runtime.goalGraph?.ensureLoaded(threadId);
+
 		try {
 			// A resume request carries no `source` of its own — recover it from
 			// the suspended run being resumed so tracing stays consistent across
@@ -495,6 +501,7 @@ export class AgentExecutionOrchestratorService {
 			attachments,
 			memory,
 			projectId: runtime.projectId,
+			goalGraph: runtime.goalGraph,
 			source,
 			telemetry: {
 				runType: 'test',
@@ -536,6 +543,7 @@ export class AgentExecutionOrchestratorService {
 			memory,
 			projectId: runtime.projectId,
 			source: integrationType,
+			goalGraph: runtime.goalGraph,
 			telemetry: {
 				runType: 'production',
 				configuration: runtime.telemetryConfiguration,
@@ -572,6 +580,7 @@ export class AgentExecutionOrchestratorService {
 			source: 'task',
 			taskId,
 			taskVersionId,
+			goalGraph: runtime.goalGraph,
 			telemetry: {
 				runType: 'production',
 				configuration: runtime.telemetryConfiguration,
@@ -605,6 +614,7 @@ export class AgentExecutionOrchestratorService {
 			projectId: runtime.projectId,
 			source: 'task',
 			taskId,
+			goalGraph: runtime.goalGraph,
 			telemetry: {
 				runType: 'test',
 				configuration: runtime.telemetryConfiguration,
@@ -628,6 +638,7 @@ export class AgentExecutionOrchestratorService {
 			source,
 			taskId,
 			taskVersionId,
+			goalGraph,
 			telemetry,
 			onExecutionRecorded,
 			abortSignal,
@@ -641,6 +652,22 @@ export class AgentExecutionOrchestratorService {
 			threadId,
 		});
 		const startedAt = recorder.startedAt;
+
+		// Hydrate goal-graph state before the run: the runtime hooks are
+		// synchronous and read from the in-memory cache only.
+		await goalGraph?.ensureLoaded(threadId);
+
+		// Emit a baseline snapshot so the live canvas shows correct goal/slot
+		// state at turn start (before any tool runs). Ephemeral — not recorded
+		// into the persisted timeline; the next turn re-emits a fresh one.
+		if (goalGraph) {
+			yield {
+				type: 'custom-event',
+				name: 'goal-graph-snapshot',
+				payload: goalGraph.getSnapshot(threadId),
+				timestamp: Date.now(),
+			};
+		}
 
 		try {
 			const tracing = await this.agentRunTracingService.build({

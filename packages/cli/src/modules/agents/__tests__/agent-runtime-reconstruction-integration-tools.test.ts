@@ -8,7 +8,7 @@ import type {
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { AgentsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type {
 	User,
 	CredentialsEntity,
@@ -34,6 +34,7 @@ import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { GoalGraphStateService } from '../goal-graph';
 import { AgentConfigService } from '../agent-config.service';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -113,7 +114,7 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 }
 
 function makeRuntimeReconstructionService(
-	_modules: string[] = [],
+	modules: string[] = [],
 ): AgentRuntimeReconstructionService {
 	const transport = mock<HttpTransport>();
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
@@ -141,6 +142,8 @@ function makeRuntimeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<GoalGraphStateService>(),
+		{ modules } as unknown as AgentsConfig,
 	);
 }
 
@@ -262,6 +265,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
+			mock<AgentsConfig>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,

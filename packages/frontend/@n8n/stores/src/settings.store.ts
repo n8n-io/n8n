@@ -155,6 +155,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		);
 	};
 
+	// Opt-in flag: the `goal-graph` token must be listed in the backend
+	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
+	const isAgentsGoalGraphFeatureEnabled = computed(() => isAgentModuleActive('goal-graph'));
+
 	const isAiCreditsEnabled = computed(
 		() => settings.value.aiCredits?.enabled && settings.value.aiCredits?.setup,
 	);
@@ -519,6 +523,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		activeModules,
 		isModuleActive,
 		isAgentModuleActive,
+		isAgentsGoalGraphFeatureEnabled,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isOtelCustomSpanAttributesEnabled,

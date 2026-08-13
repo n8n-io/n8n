@@ -1,5 +1,6 @@
 import { type APPROVAL_TOOL_NAME, type N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 
+import type { GoalEventChip } from './goalEvents';
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
 import type { ChatMessageStatus, ToolCallState } from './constants';
@@ -122,6 +123,8 @@ export interface AgentsChatMessage {
 	attachments?: ChatMessageAttachment[];
 	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
 	executionId?: string;
+	/** Goal-graph state/status changes that arrived during this message. */
+	goalEvents?: GoalEventChip[];
 }
 
 export type ChatMessage = AgentsChatMessage;

@@ -34,6 +34,7 @@ import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
+import type { GoalGraphRuntime } from '../goal-graph';
 import {
 	resolveEmbeddingProviderOptionsFromCredential,
 	type ManagedEmbeddingProviderOptions,
@@ -124,6 +125,13 @@ export interface BuildFromJsonOptions {
 	 * the eval path when its mock MCP transport is injected.
 	 */
 	attachAuthPendingMcpServers?: boolean;
+	/**
+	 * Goal-graph steering overlay (experimental). When set, goal-attached
+	 * tools are wrapped (param bindings, output mappings, gating), the
+	 * built-in `fill_slot` tool is attached, and the per-iteration runtime
+	 * hooks (`toolsFilter` / `instructionsSuffix`) are installed.
+	 */
+	goalGraph?: GoalGraphRuntime;
 }
 
 /**
@@ -154,15 +162,19 @@ export async function buildFromJson(
 	);
 	agent.instructions(getInstructionsWithWebSearchPolicy(config));
 
-	// Tools
+	// Tools — goal-attached ones get wrapped with bindings/mappings/gating.
+	const maybeWrapGoalTool = (built: BuiltTool): BuiltTool =>
+		options.goalGraph?.wrapTool(built) ?? built;
 	if (config.tools) {
 		for (const ref of config.tools) {
 			const built = await resolveToolRef(ref, toolDescriptors, options);
 			if (built) {
-				agent.tool(built);
+				agent.tool(maybeWrapGoalTool(built));
 			}
 		}
 	}
+
+	if (options.goalGraph) applyGoalGraph(agent, options.goalGraph);
 
 	if (config.mcpServers?.length && options.buildMcpClient) {
 		for (const server of config.mcpServers) {
@@ -427,6 +439,13 @@ function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
 		examples: [],
 		other: [],
 	};
+}
+
+/** Goal-graph steering: attach the fill_slot tool + per-iteration runtime hooks. */
+function applyGoalGraph(agent: RuntimeAgent, goalGraph: GoalGraphRuntime): void {
+	if (goalGraph.fillSlotTool) agent.tool(goalGraph.fillSlotTool);
+	agent.toolsFilter((tools, persistence) => goalGraph.toolsFilter(tools, persistence));
+	agent.instructionsSuffix((persistence) => goalGraph.instructionsSuffix(persistence));
 }
 
 async function resolveToolRef(

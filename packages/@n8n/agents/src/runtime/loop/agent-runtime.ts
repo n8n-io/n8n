@@ -44,6 +44,7 @@ import type {
 } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type {
+	AgentPersistenceOptions,
 	ExecutionOptions,
 	ModelConfig,
 	PersistedExecutionOptions,
@@ -137,6 +138,20 @@ export interface AgentRuntimeConfig {
 	 * aborting the run.
 	 */
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
+	/**
+	 * Optional per-iteration tool list transform (e.g. goal-graph gating).
+	 * Applied in `buildToolLoopContext` only — resume/HITL validation paths
+	 * intentionally still see the full tool list. Must be synchronous and
+	 * stateless; per-run state belongs in the platform layer (keyed by
+	 * `persistence`).
+	 */
+	toolsFilter?: (tools: BuiltTool[], persistence?: AgentPersistenceOptions) => BuiltTool[];
+	/**
+	 * Optional per-iteration dynamic instructions suffix (e.g. goal-graph
+	 * status overview), appended after the configured instructions. Same
+	 * constraints as `toolsFilter`.
+	 */
+	instructionsSuffix?: (persistence?: AgentPersistenceOptions) => string | undefined;
 }
 
 const MAX_LOOP_ITERATIONS = 30;

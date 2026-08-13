@@ -2,18 +2,20 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AgentGoalsConfigSchema, AgentSlotsConfigSchema } from './goal-graph.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
-/**
- * Regex for valid custom tool ids. Shared with the backend service layer
- * so validation stays in sync with the JSON config schema.
- */
-export const CUSTOM_TOOL_ID_REGEX = /^[A-Za-z0-9_]+$/;
 import {
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from './sub-agent.schema';
+
+/**
+ * Regex for valid custom tool ids. Shared with the backend service layer
+ * so validation stays in sync with the JSON config schema.
+ */
+export const CUSTOM_TOOL_ID_REGEX = /^[A-Za-z0-9_]+$/;
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
@@ -457,6 +459,9 @@ export const AgentJsonConfigBaseSchema = z.object({
 		.optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
+	/** Goal-graph steering (experimental, requires the `goal-graph` agents module). */
+	slots: AgentSlotsConfigSchema.optional(),
+	goals: AgentGoalsConfigSchema.optional(),
 	integrations: z.array(AgentIntegrationConfigSchema).optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)

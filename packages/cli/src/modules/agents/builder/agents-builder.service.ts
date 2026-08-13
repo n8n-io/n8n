@@ -13,7 +13,8 @@ import type {
 import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { AgentsConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
 
@@ -227,7 +228,9 @@ export class AgentsBuilderService {
 		const finalInstructions = session.instructionsAddendum
 			? `${instructions}\n\n${session.instructionsAddendum}`
 			: instructions;
-		const runtimeSkills = getBuilderRuntimeSkills();
+		const runtimeSkills = getBuilderRuntimeSkills({
+			goalGraphEnabled: Container.get(AgentsConfig).modules.includes('goal-graph'),
+		});
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,

@@ -8,7 +8,7 @@ import type {
 	OutboundHttp,
 	SsrfProtectionService,
 } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -24,6 +24,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { GoalGraphStateService } from '../goal-graph';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
@@ -144,6 +145,8 @@ function makeService(overrides: {
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
+		mock<GoalGraphStateService>(),
+		{ modules: [] } as unknown as AgentsConfig,
 	);
 
 	return { service, credentialsFinderService, workflowFinderService, workflowRepository };

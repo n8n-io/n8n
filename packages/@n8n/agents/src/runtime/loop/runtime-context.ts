@@ -96,13 +96,23 @@ export class RuntimeContextBuilder {
 		persistence?: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
 	) {
-		const allUserTools = this.getCurrentTools(persistence, executionCounter);
+		let allUserTools = this.getCurrentTools(persistence, executionCounter);
+		if (this.config.toolsFilter) {
+			allUserTools = this.config.toolsFilter(allUserTools, persistence);
+		}
 		const aiTools = toAiSdkTools(allUserTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
 		const toolMap = buildToolMap(allUserTools);
-		const { instructions: effectiveInstructions, volatileInstructions } =
+		const { instructions: effectiveInstructions, volatileInstructions: baseVolatileInstructions } =
 			this.composeEffectiveInstructions(allUserTools);
+		// The dynamic suffix changes between iterations, so it goes into the
+		// volatile (uncached) system message rather than the stable instructions.
+		const instructionsSuffix = this.config.instructionsSuffix?.(persistence);
+		const volatileInstructions =
+			baseVolatileInstructions && instructionsSuffix
+				? `${baseVolatileInstructions}\n\n${instructionsSuffix}`
+				: (instructionsSuffix ?? baseVolatileInstructions);
 
 		return {
 			toolMap,

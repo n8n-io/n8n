@@ -7,6 +7,7 @@ import {
 	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
+	AGENT_GOAL_PREVIEW_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
@@ -14,6 +15,7 @@ import {
 	AGENT_SUB_AGENTS_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_GOAL_EDIT_MODAL_KEY,
 	NEW_AGENT_VIEW,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
@@ -27,6 +29,8 @@ const AgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentView.vue');
 const AgentBuilderView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentBuilderView.vue');
+const AgentGoalGraphPreviewView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentGoalGraphPreviewView.vue');
 const NewAgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/NewAgentView.vue');
 const AgentSessionsListView = async (): Promise<unknown> =>
@@ -125,6 +129,20 @@ export const AgentsModule: FrontendModuleDescription = {
 				},
 			},
 		},
+		{
+			key: AGENT_GOAL_EDIT_MODAL_KEY,
+			component: async () => await import('./components/AgentGoalEditModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					goalId: '',
+					goals: [],
+					toolNames: [],
+					onSave: () => {},
+					onDelete: () => {},
+				},
+			},
+		},
 	],
 	routes: [
 		{
@@ -172,6 +190,12 @@ export const AgentsModule: FrontendModuleDescription = {
 					path: 'preview',
 					props: true,
 					component: AgentBuilderView,
+				},
+				{
+					name: AGENT_GOAL_PREVIEW_VIEW,
+					path: 'goal-preview',
+					props: true,
+					component: AgentGoalGraphPreviewView,
 				},
 				{
 					name: AGENT_SESSIONS_LIST_VIEW,

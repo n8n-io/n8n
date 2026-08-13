@@ -8,6 +8,7 @@ export * from './agent-node-tool-operations';
 export * from './agent-personalisation';
 export * from './agent-skill.schema';
 export * from './child-trace';
+export * from './goal-graph.schema';
 export * from './inline-agent-config.schema';
 export * from './sanitize-agent-json-config';
 export * from './slack';

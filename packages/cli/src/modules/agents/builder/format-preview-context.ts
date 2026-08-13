@@ -43,6 +43,9 @@ function formatTimelineEvent(event: TimelineEvent): string {
 	if (event.type === 'suspension') {
 		return `[suspended waiting on ${event.toolName}]`;
 	}
+	if (event.type === 'custom-event') {
+		return `[${event.name}] ${stringifyToolValue(event.payload)}`;
+	}
 	const durationMs = event.endTime > 0 ? event.endTime - event.startTime : null;
 	const headerParts = [
 		`Tool call: ${event.name}`,

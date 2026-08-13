@@ -238,7 +238,14 @@ export type TimelineEvent =
 			nodeParameters?: Record<string, unknown>;
 			childTrace?: PersistedChildTrace;
 	  }
-	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
+	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number }
+	| {
+			/** App-defined runtime event (e.g. goal-graph state/status changes). */
+			type: 'custom-event';
+			name: string;
+			payload: unknown;
+			timestamp: number;
+	  };
 
 /**
  * Collects execution data from agent stream chunks.
@@ -387,6 +394,15 @@ export class ExecutionRecorder {
 					toolName: chunk.toolName ?? '',
 					toolCallId: chunk.toolCallId ?? '',
 					timestamp: Date.now(),
+				});
+				break;
+			case 'custom-event':
+				this.flushTextBuffer();
+				this.timeline.push({
+					type: 'custom-event',
+					name: chunk.name,
+					payload: chunk.payload,
+					timestamp: chunk.timestamp,
 				});
 				break;
 			case 'error': {

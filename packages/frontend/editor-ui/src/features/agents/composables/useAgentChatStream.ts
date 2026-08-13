@@ -7,6 +7,7 @@ import type {
 	AgentPersistedMessageDto,
 	AgentSseEvent,
 	CancellationResumeData,
+	GoalStatus,
 } from '@n8n/api-types';
 import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
@@ -32,12 +33,27 @@ import {
 import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import { goalEventToChips } from '@/features/ai/shared/agentsChat/goalEvents';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 
 export interface FatalAgentError {
 	message: string;
 	missing: string[];
+}
+
+/** Per-tool execution state, surfaced on the canvas tool pills. */
+export type ToolExecState = 'running' | 'done' | 'error';
+
+/**
+ * Live goal-graph state accumulated from the run's `custom-event` stream
+ * (experimental `goal-graph` agents module). Drives the Preview-chat canvas.
+ */
+export interface GoalGraphLiveState {
+	slots: Record<string, unknown>;
+	statuses: Record<string, GoalStatus>;
+	/** Tool name → execution state (persists across the conversation). */
+	tools: Record<string, ToolExecState>;
 }
 
 export interface UseAgentChatStreamParams {
@@ -70,6 +86,11 @@ function getApprovalDecision(value: unknown): boolean | undefined {
 	return value.approved;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
@@ -95,6 +116,43 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 */
 	const warnings = ref<Array<{ message: string; server?: string; code?: string }>>([]);
 
+	// Live goal-graph state for the Preview-chat canvas. Seeded by the
+	// `goal-graph-snapshot` event at each turn start, then updated by
+	// slot/status change events. Empty for agents without a goal graph.
+	const goalGraphState = reactive<GoalGraphLiveState>({
+		slots: {},
+		statuses: {},
+		tools: {},
+	});
+
+	function resetGoalGraphState(): void {
+		goalGraphState.slots = {};
+		goalGraphState.statuses = {};
+		goalGraphState.tools = {};
+	}
+
+	function setToolState(toolName: string, execState: ToolExecState): void {
+		goalGraphState.tools = { ...goalGraphState.tools, [toolName]: execState };
+	}
+
+	function applyGoalGraphEvent(name: string, payload: unknown): void {
+		if (!isPlainObject(payload)) return;
+		if (name === 'goal-graph-snapshot') {
+			if (isPlainObject(payload.state)) goalGraphState.slots = { ...payload.state };
+			if (isPlainObject(payload.statuses)) {
+				goalGraphState.statuses = { ...payload.statuses } as Record<string, GoalStatus>;
+			}
+			return;
+		}
+		if (name === 'goal-status-changed' && isPlainObject(payload.statuses)) {
+			goalGraphState.statuses = { ...payload.statuses } as Record<string, GoalStatus>;
+			return;
+		}
+		if (name === 'goal-slot-changed' && typeof payload.slot === 'string') {
+			goalGraphState.slots = { ...goalGraphState.slots, [payload.slot]: payload.value };
+		}
+	}
+
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
 		const lastMsg = messages.value[messages.value.length - 1];
@@ -105,6 +163,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function refreshHistory({
 		clearOnNotFound = false,
 	}: { clearOnNotFound?: boolean } = {}): Promise<boolean> {
+		// History reload doesn't replay goal-graph events (POC: live-only). Reset
+		// so a stale prior thread's state doesn't linger; the next send re-seeds
+		// from the per-turn snapshot (which reflects persisted slot values).
+		resetGoalGraphState();
 		const continueId = params.continueSessionId?.value;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
@@ -439,6 +501,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-execution-start': {
 				// Timing is server-measured: store the backend `startTime` verbatim
 				// (no client clock) so the live duration matches the persisted one.
+				setToolState(event.toolName, 'running');
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
 					found.tc.startTime = event.startTime;
@@ -458,6 +521,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// rather than waiting for the batched `tool-result` events. The later
 				// `tool-result` still fills in the output/summary. `endTime` is the
 				// server-measured settle time (no client clock).
+				setToolState(event.toolName, event.isError ? 'error' : 'done');
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
 					if (
@@ -557,6 +621,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				});
 				break;
 			}
+			case 'custom-event': {
+				// Goal-graph (experimental): update the live canvas state, and
+				// render state/status changes as small chips on the current
+				// message. Other custom events yield no chips and are ignored.
+				applyGoalGraphEvent(event.name, event.payload);
+				const chips = goalEventToChips(event.name, event.payload);
+				if (chips.length > 0) {
+					const msg = ensureCurrent(session);
+					msg.goalEvents = [...(msg.goalEvents ?? []), ...chips];
+				}
+				break;
+			}
 			case 'error': {
 				session.errorEmitted = true;
 				settleOpenReasoning(session);
@@ -629,6 +705,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	function finalizeStream(session: StreamSession): void {
 		settleOpenReasoning(session);
+		// No tool is running once the stream ends — settle any lingering
+		// "running" highlight to "done" so it doesn't pulse forever.
+		const settled = Object.fromEntries(
+			Object.entries(goalGraphState.tools).map(([name, s]) => [name, s === 'running' ? 'done' : s]),
+		) as Record<string, ToolExecState>;
+		goalGraphState.tools = settled;
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 		}
@@ -946,6 +1028,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		messagingState,
 		fatalError,
 		warnings,
+		goalGraphState,
 		loadHistory,
 		clearHistory,
 		sendMessage,

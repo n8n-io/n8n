@@ -72,6 +72,7 @@ export const enum AgentEvent {
 	SubAgentStarted = 'subagent_started',
 	SubAgentCompleted = 'subagent_completed',
 	SubAgentChunk = 'subagent_chunk',
+	Custom = 'custom_event',
 	Error = 'error',
 }
 
@@ -91,6 +92,17 @@ export type AgentEventData =
 	| ({ type: AgentEvent.SubAgentStarted } & SubAgentStartedPayload)
 	| ({ type: AgentEvent.SubAgentCompleted } & SubAgentCompletedPayload)
 	| ({ type: AgentEvent.SubAgentChunk } & SubAgentChunkPayload)
+	| {
+			/**
+			 * App-defined event emitted by a tool handler via `ctx.emitEvent`
+			 * (e.g. goal-graph state changes). Bridged to a `custom-event` stream
+			 * chunk so platform consumers can persist/surface it; the payload shape
+			 * is determined by `name`.
+			 */
+			type: AgentEvent.Custom;
+			name: string;
+			payload: unknown;
+	  }
 	| {
 			type: AgentEvent.Error;
 			message: string;

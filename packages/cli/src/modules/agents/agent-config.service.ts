@@ -8,6 +8,7 @@ import {
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -26,6 +27,10 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
+import {
+	findUnknownGoalTools,
+	validateGoalGraphConfig,
+} from './goal-graph/validate-goal-graph-config';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
@@ -52,6 +57,7 @@ export class AgentConfigService {
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	/**
@@ -91,6 +97,19 @@ export class AgentConfigService {
 				valid: false,
 				error: `Vector store tool name collides with an existing tool: ${toolNameCollisions.join(', ')}`,
 			};
+		}
+
+		if (config.goals?.length || config.slots?.length) {
+			if (!this.agentsConfig.modules.includes('goal-graph')) {
+				return {
+					valid: false,
+					error: 'slots/goals require the goal-graph agents module to be enabled.',
+				};
+			}
+			const goalGraphError = validateGoalGraphConfig(config);
+			if (goalGraphError) {
+				return { valid: false, error: goalGraphError };
+			}
 		}
 
 		try {
@@ -150,6 +169,20 @@ export class AgentConfigService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
+		// Goal tool attachments reference tools by their runtime name; resolving a
+		// custom tool's name needs the entity's descriptors, so this check lives
+		// here (not in validateConfig). Catches the common "goal references a tool
+		// the agent doesn't have" mismatch with the real names.
+		if (result.config.goals?.length) {
+			const unknownToolError = findUnknownGoalTools(
+				result.config,
+				this.collectAgentToolNames(result.config, entity),
+			);
+			if (unknownToolError) {
+				throw new UserError(`Invalid agent config: ${unknownToolError}`);
+			}
+		}
+
 		// Reconcile native web-search provider tools with the config's explicit
 		// `webSearch` state. This is the single write path, so persisted config
 		// always agrees with read/compose paths.
@@ -189,6 +222,8 @@ export class AgentConfigService {
 		const configBlockProvided = validatedConfig.config !== undefined;
 		const mcpServersProvided = validatedConfig.mcpServers !== undefined;
 		const vectorStoresProvided = validatedConfig.vectorStores !== undefined;
+		const slotsProvided = validatedConfig.slots !== undefined;
+		const goalsProvided = validatedConfig.goals !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
 			decomposeJsonConfig(validatedConfig);
@@ -222,6 +257,8 @@ export class AgentConfigService {
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
+			...(slotsProvided ? { slots: decomposedSchema.slots } : {}),
+			...(goalsProvided ? { goals: decomposedSchema.goals } : {}),
 		};
 
 		if (options?.clearOmittedOptionalFields) {
@@ -303,6 +340,26 @@ export class AgentConfigService {
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
+	}
+
+	/**
+	 * Runtime tool names attached to the agent — the names a goal tool
+	 * attachment must match. Custom tools resolve to their descriptor name
+	 * (stored on the entity); workflow/node tools to their config name.
+	 */
+	private collectAgentToolNames(config: AgentJsonConfig, entity: Agent): Set<string> {
+		const names = new Set<string>();
+		for (const ref of config.tools ?? []) {
+			if (ref.type === 'custom') {
+				const name = entity.tools?.[ref.id]?.descriptor?.name;
+				if (name) names.add(name);
+			} else if (ref.type === 'workflow') {
+				names.add(ref.name ?? ref.workflow);
+			} else if (ref.type === 'node') {
+				names.add(ref.name);
+			}
+		}
+		return names;
 	}
 
 	private async removeMissingConfigRefs(
