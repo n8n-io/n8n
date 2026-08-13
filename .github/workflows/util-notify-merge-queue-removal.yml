@@ -1,7 +1,8 @@
 name: 'Util: Notify Merge Queue Removal'
 
+# pull_request_target so the token can comment on fork PRs; safe as no PR code is checked out
 on:
-  pull_request:
+  pull_request_target:
     types: [dequeued]
 
 permissions:
