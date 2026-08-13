@@ -150,8 +150,10 @@ function collectPendingConfirmations(
 			// would block the chat input on a confirmation the user can no
 			// longer act on.
 			!tc.confirmation.expired &&
-			// Plan review renders inline in the timeline, not in the confirmation panel
-			tc.confirmation.inputType !== 'plan-review'
+			// Plan review and the MCP connect card render inline in the timeline, not
+			// in the confirmation panel
+			tc.confirmation.inputType !== 'plan-review' &&
+			!tc.confirmation.mcpConnectRequest
 		) {
 			out.push({
 				toolCall: tc as InstanceAiToolCallState & { confirmation: InstanceAiConfirmation },
@@ -167,7 +169,7 @@ function collectPendingConfirmations(
 
 /**
  * Whether any tool call in the tree still waits on user input. Broader than
- * `collectPendingConfirmations`: plan-review and expired confirmations also
+ * `collectPendingConfirmations`: timeline-rendered and expired confirmations also
  * pause the run, so the stall watchdog must not count them as thinking time.
  */
 function hasUnresolvedConfirmation(

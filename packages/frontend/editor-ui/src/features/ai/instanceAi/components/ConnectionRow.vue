@@ -10,6 +10,8 @@ type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
 /** `none` lets consumers omit the indicator when no connection status applies. */
 export type ConnectionStatus = ToolConnectionStatus;
 export type ConnectionRowIcon = IconName | ToolIconSource;
+/** `compact` fits the settings sidebar list; `default` matches the rows in the tools connection modal. */
+export type ConnectionRowSize = 'compact' | 'default';
 
 const props = withDefaults(
 	defineProps<{
@@ -20,9 +22,13 @@ const props = withDefaults(
 		actions?: RowAction[];
 		dropdownPortalTarget?: HTMLElement;
 		clickable?: boolean;
+		size?: ConnectionRowSize;
 	}>(),
-	{ status: 'none', actions: () => [], clickable: true },
+	{ status: 'none', actions: () => [], clickable: true, size: 'compact' },
 );
+
+const nameSize = computed(() => (props.size === 'default' ? 'medium' : 'small'));
+const subtitleSize = computed(() => (props.size === 'default' ? 'small' : 'xsmall'));
 
 const iconSource = computed<ToolIconSource>(() => {
 	if (typeof props.icon === 'string') {
@@ -85,8 +91,8 @@ function handleRowClick() {
 	<div :class="[$style.row, !clickable && $style.rowStatic]" @click="handleRowClick">
 		<ToolIcon :source="iconSource" />
 		<div :class="$style.labels">
-			<N8nText bold size="small" :class="$style.name">{{ name }}</N8nText>
-			<N8nText size="xsmall" color="text-light">{{ subtitle }}</N8nText>
+			<N8nText bold :size="nameSize" :class="$style.name">{{ name }}</N8nText>
+			<N8nText :size="subtitleSize" color="text-light">{{ subtitle }}</N8nText>
 		</div>
 		<div :class="$style.action" @click.stop>
 			<slot name="action">

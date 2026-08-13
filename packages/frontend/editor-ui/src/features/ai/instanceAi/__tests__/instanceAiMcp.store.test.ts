@@ -173,20 +173,6 @@ describe('useInstanceAiMcpStore', () => {
 			expect(store.connections[0].status).toBe('disconnected');
 		});
 
-		it('loads connections and tools only once', async () => {
-			const connectionsRequest = createDeferred<InstanceAiMcpConnectionResponse[]>();
-			mockFetchMcpConnections.mockReturnValue(connectionsRequest.promise);
-
-			const firstFetch = store.fetchConnections();
-			await store.fetchConnections();
-			connectionsRequest.resolve([makeConnection()]);
-			await firstFetch;
-			await store.fetchConnections();
-
-			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(1);
-			expect(mockFetchAllMcpConnectionTools).toHaveBeenCalledTimes(1);
-		});
-
 		it('surfaces errors via toast', async () => {
 			const error = new Error('boom');
 			mockFetchMcpConnections.mockRejectedValue(error);
@@ -195,6 +181,36 @@ describe('useInstanceAiMcpStore', () => {
 
 			expect(mockShowError).toHaveBeenCalledWith(error, 'instanceAi.mcp.error.fetchConnections');
 			expect(store.connections).toEqual([]);
+		});
+
+		it('sends one request for callers that mount together', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+
+			await Promise.all([store.fetchConnections(), store.fetchConnections()]);
+
+			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(1);
+			expect(mockFetchAllMcpConnectionTools).toHaveBeenCalledTimes(1);
+			expect(store.connections).toHaveLength(1);
+		});
+
+		it('refetches once the in-flight request has settled', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+
+			await store.fetchConnections();
+			await store.fetchConnections();
+
+			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(2);
+		});
+
+		it('leaves a failed fetch for the next caller to retry', async () => {
+			mockFetchMcpConnections.mockRejectedValueOnce(new Error('boom'));
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+
+			await store.fetchConnections();
+			await store.fetchConnections();
+
+			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(2);
+			expect(store.connections).toHaveLength(1);
 		});
 	});
 
@@ -206,6 +222,25 @@ describe('useInstanceAiMcpStore', () => {
 			await store.fetchCatalogLazy();
 
 			expect(mockFetchMcpRegistryServers).toHaveBeenCalledTimes(1);
+			expect(store.catalog).toHaveLength(1);
+		});
+
+		it('fetches once for concurrent callers', async () => {
+			mockFetchMcpRegistryServers.mockResolvedValue([makeServer('linear')]);
+
+			await Promise.all([store.fetchCatalogLazy(), store.fetchCatalogLazy()]);
+
+			expect(mockFetchMcpRegistryServers).toHaveBeenCalledTimes(1);
+		});
+
+		it('leaves a failed fetch for the next caller to retry', async () => {
+			mockFetchMcpRegistryServers.mockRejectedValueOnce(new Error('boom'));
+			mockFetchMcpRegistryServers.mockResolvedValue([makeServer('linear')]);
+
+			await store.fetchCatalogLazy();
+			await store.fetchCatalogLazy();
+
+			expect(mockFetchMcpRegistryServers).toHaveBeenCalledTimes(2);
 			expect(store.catalog).toHaveLength(1);
 		});
 	});
