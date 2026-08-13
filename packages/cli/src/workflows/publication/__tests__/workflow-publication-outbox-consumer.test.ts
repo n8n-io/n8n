@@ -25,12 +25,17 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	let consumer: WorkflowPublicationOutboxConsumer;
 
 	const POLL_INTERVAL_MS = 15_000;
+	const LEASE_SECONDS = 120;
+	// Abort fires at half the lease; abandonment follows after the grace period.
+	const ABORT_AFTER_MS = (LEASE_SECONDS / 2) * 1000;
+	const ABANDON_GRACE_MS = 10_000;
 
 	function createConsumer(useWorkflowPublicationService = true, isLeader = true, concurrency = 1) {
 		const workflowsConfig = mock<WorkflowsConfig>({
 			useWorkflowPublicationService,
 			publicationOutboxPollIntervalMs: POLL_INTERVAL_MS,
 			workflowPublicationConcurrency: concurrency,
+			publicationOutboxLeaseSeconds: LEASE_SECONDS,
 		});
 		return new WorkflowPublicationOutboxConsumer(
 			logger,
@@ -293,7 +298,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			await consumer.processRecord(record);
 
-			expect(applier.apply).toHaveBeenCalledWith(record);
+			expect(applier.apply).toHaveBeenCalledWith(record, undefined);
 			expect(reporter.report).toHaveBeenCalledWith(record, result);
 		});
 
@@ -325,6 +330,98 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			const record = makeRecord({ id: 7, workflowId: 'wf-7' });
 
 			await consumer.processRecord(record);
+
+			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7);
+			expect(applier.apply).not.toHaveBeenCalled();
+			expect(reporter.report).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('abort and abandon', () => {
+		test('abandons a record that ignores the abort signal and keeps the drain alive', async () => {
+			const stuck = makeRecord({ id: 1, workflowId: 'wf-stuck' });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(stuck).mockResolvedValue(null);
+			applier.apply.mockImplementationOnce(async () => await new Promise(() => {}));
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(ABORT_AFTER_MS + ABANDON_GRACE_MS);
+
+			// The drain settles without the stuck record; no terminal status is
+			// written for it (it stays in_progress for lease reclaim).
+			await expect(drain).resolves.toBe(0);
+			expect(reporter.report).not.toHaveBeenCalled();
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringContaining('Abandoned workflow publication outbox record'),
+				}),
+				{ shouldBeLogged: true },
+			);
+
+			// A fresh drain still processes new records.
+			const next = makeRecord({ id: 2, workflowId: 'wf-2' });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(next).mockResolvedValue(null);
+			await expect(consumer.drainPending()).resolves.toBe(1);
+			expect(reporter.report).toHaveBeenCalledTimes(1);
+		});
+
+		test('a record that settles during the grace period still gets its terminal status', async () => {
+			const record = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+			// Settles after the abort deadline but within the grace period.
+			applier.apply.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) =>
+						setTimeout(
+							() => resolve({ type: 'completed', triggerStatuses: [] }),
+							ABORT_AFTER_MS + 1000,
+						),
+					),
+			);
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(ABORT_AFTER_MS + 2000);
+
+			await expect(drain).resolves.toBe(1);
+			expect(reporter.report).toHaveBeenCalledWith(
+				record,
+				expect.objectContaining({ type: 'completed' }),
+			);
+		});
+
+		test('an abort honored by the applier still writes a terminal failed status', async () => {
+			const record = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+			applier.apply.mockImplementationOnce(
+				async (_record, signal) =>
+					await new Promise((_resolve, reject) => {
+						signal?.addEventListener('abort', () => reject(signal.reason));
+					}),
+			);
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(ABORT_AFTER_MS);
+
+			await expect(drain).resolves.toBe(1);
+			expect(reporter.report).toHaveBeenCalledWith(
+				record,
+				expect.objectContaining({
+					type: 'failed',
+					error: expect.objectContaining({
+						message: expect.stringContaining('exceeded its deadline'),
+					}),
+				}),
+			);
+		});
+
+		test('returns an aborted record to the queue instead of applying it', async () => {
+			const record = makeRecord({ id: 7, workflowId: 'wf-7' });
+			const controller = new AbortController();
+			controller.abort();
+
+			await consumer.processRecord(record, controller.signal);
 
 			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7);
 			expect(applier.apply).not.toHaveBeenCalled();

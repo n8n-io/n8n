@@ -47,6 +47,27 @@ export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections
 
 // Their trigger() is a no-op — fired by the execution engine, never the
 // registry — so reconciling them against the registry would re-enqueue forever.
+/**
+ * Resolves with `promise`, or rejects with the signal's reason once it aborts.
+ * The underlying operation is left running detached: node registration and
+ * teardown code cannot be cancelled, only abandoned.
+ */
+async function raceAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+	if (!signal) return await promise;
+	signal.throwIfAborted();
+
+	let onAbort!: () => void;
+	const aborted = new Promise<never>((_resolve, reject) => {
+		onAbort = () => reject(ensureError(signal.reason));
+		signal.addEventListener('abort', onAbort, { once: true });
+	});
+	try {
+		return await Promise.race([promise, aborted]);
+	} finally {
+		signal.removeEventListener('abort', onAbort);
+	}
+}
+
 const PSEUDO_TRIGGER_NODE_TYPES = new Set<string>([
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -245,10 +266,17 @@ export class WorkflowTriggerActivator {
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
 		activationMode: WorkflowActivateMode,
+		signal?: AbortSignal,
 	): Promise<TriggerActivationOutcome> {
 		const startedAt = Date.now();
 		try {
-			const outcome = await this.activateInternal(dbWorkflow, version, nodeIds, activationMode);
+			const outcome = await this.activateInternal(
+				dbWorkflow,
+				version,
+				nodeIds,
+				activationMode,
+				signal,
+			);
 			this.emitTriggerOperation(
 				'activate',
 				outcome.failures.length === 0 ? 'success' : 'failure',
@@ -267,6 +295,7 @@ export class WorkflowTriggerActivator {
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
 		activationMode: WorkflowActivateMode,
+		signal?: AbortSignal,
 	): Promise<TriggerActivationOutcome> {
 		return await this.tracing.startSpan(
 			{
@@ -302,6 +331,7 @@ export class WorkflowTriggerActivator {
 							nodeIds,
 							outcome,
 							activationMode,
+							signal,
 						),
 						this.registerNonWebhookTriggers(
 							dbWorkflow,
@@ -311,6 +341,7 @@ export class WorkflowTriggerActivator {
 							nodeIds,
 							outcome,
 							activationMode,
+							signal,
 						),
 					]);
 					this.throwRejectedPhaseError(phaseResults);
@@ -346,12 +377,13 @@ export class WorkflowTriggerActivator {
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
+		signal?: AbortSignal,
 	) {
 		if (nodeIds.size === 0) return;
 
 		const startedAt = Date.now();
 		try {
-			await this.deactivateInternal(dbWorkflow, version, nodeIds);
+			await this.deactivateInternal(dbWorkflow, version, nodeIds, signal);
 			this.emitTriggerOperation('deactivate', 'success', startedAt);
 			this.emitTriggerNodeOperations('deactivate', nodeIds.size, 0);
 		} catch (error) {
@@ -365,6 +397,7 @@ export class WorkflowTriggerActivator {
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
+		signal?: AbortSignal,
 	) {
 		await this.tracing.startSpan(
 			{
@@ -387,14 +420,14 @@ export class WorkflowTriggerActivator {
 				// The non-webhook phase doesn't touch the expression isolate that the
 				// webhook deregister acquires, so the two phases can overlap.
 				const phaseResults = await Promise.allSettled([
-					this.deregisterWebhookTriggers(workflow, additionalData, nodeIds).then(
+					this.deregisterWebhookTriggers(workflow, additionalData, nodeIds, signal).then(
 						async (removedNodeNames) =>
 							await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
 								dbWorkflow.id,
 								removedNodeNames,
 							),
 					),
-					this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds),
+					this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds, signal),
 				]);
 				this.throwRejectedPhaseError(phaseResults);
 
@@ -505,6 +538,7 @@ export class WorkflowTriggerActivator {
 		nodeIds: Set<INode['id']>,
 		outcome: TriggerActivationOutcome,
 		activationMode: WorkflowActivateMode,
+		signal?: AbortSignal,
 	) {
 		const webhooksByNode = this.groupWebhookTriggersByNode(workflow, additionalData, nodeIds);
 
@@ -516,6 +550,7 @@ export class WorkflowTriggerActivator {
 					nodeName,
 					webhooks,
 					activationMode,
+					signal,
 				),
 		);
 
@@ -536,18 +571,22 @@ export class WorkflowTriggerActivator {
 		nodeName: string,
 		webhooks: IWebhookData[],
 		activationMode: WorkflowActivateMode,
+		signal?: AbortSignal,
 	): Promise<Result<{ nodeId: INode['id'] }, TriggerActivationFailure>> {
 		try {
 			for (const webhookData of webhooks) {
-				await retryTriggerActivation(
-					async () =>
-						await this.webhookTriggerRegistrar.register({
-							workflow,
-							webhookData,
-							mode: 'trigger',
-							activation: activationMode,
-						}),
-					TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+				await raceAbort(
+					retryTriggerActivation(
+						async () =>
+							await this.webhookTriggerRegistrar.register({
+								workflow,
+								webhookData,
+								mode: 'trigger',
+								activation: activationMode,
+							}),
+						TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+					),
+					signal,
 				);
 			}
 			return createResultOk({ nodeId });
@@ -588,6 +627,7 @@ export class WorkflowTriggerActivator {
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeIds: Set<INode['id']>,
+		signal?: AbortSignal,
 	) {
 		const removedNodeNames: string[] = [];
 
@@ -598,7 +638,10 @@ export class WorkflowTriggerActivator {
 			const deregistrationResults = await Promise.allSettled(
 				webhooks.map(
 					async (webhookData) =>
-						await this.webhookTriggerRegistrar.deregister({ workflow, webhookData }),
+						await raceAbort(
+							this.webhookTriggerRegistrar.deregister({ workflow, webhookData }),
+							signal,
+						),
 				),
 			);
 
@@ -640,6 +683,7 @@ export class WorkflowTriggerActivator {
 		nodeIds: Set<INode['id']>,
 		outcome: TriggerActivationOutcome,
 		activationMode: WorkflowActivateMode,
+		signal?: AbortSignal,
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 		if (triggerNodeIds.length === 0) return;
@@ -665,10 +709,13 @@ export class WorkflowTriggerActivator {
 		const results = await Promise.all(
 			triggerNodeIds.map(async (nodeId): Promise<Result<INode['id'], TriggerActivationFailure>> => {
 				try {
-					await retryTriggerActivation(
-						async () =>
-							await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
-						TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+					await raceAbort(
+						retryTriggerActivation(
+							async () =>
+								await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
+							TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+						),
+						signal,
 					);
 
 					return createResultOk(nodeId);
@@ -703,12 +750,14 @@ export class WorkflowTriggerActivator {
 		workflowId: WorkflowId,
 		workflow: Workflow,
 		nodeIds: Set<INode['id']>,
+		signal?: AbortSignal,
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 
 		await Promise.all(
 			triggerNodeIds.map(
-				async (nodeId) => await this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId),
+				async (nodeId) =>
+					await raceAbort(this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId), signal),
 			),
 		);
 	}

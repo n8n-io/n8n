@@ -1046,4 +1046,73 @@ describe('WorkflowTriggerActivator', () => {
 			);
 		});
 	});
+
+	describe('abort', () => {
+		beforeEach(() => {
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+		});
+
+		test('records a node whose registration hangs as failed once the signal aborts, keeping other nodes', async () => {
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.createRegistrationContext.mockReturnValue(
+				mock<PreparedNonWebhookTriggerRegistration>(),
+			);
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['ok', 'stuck']);
+			nonWebhookTriggerRegistrar.register.mockImplementation(async (_workflow, _reg, nodeId) => {
+				if (nodeId === 'stuck') await new Promise(() => {});
+			});
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+			const controller = new AbortController();
+
+			const activation = activator.activate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{ nodes: [node('ok', 'trigger'), node('stuck', 'trigger')], connections: {} },
+				new Set(['ok', 'stuck']),
+				'update',
+				controller.signal,
+			);
+			await flushPromises();
+			controller.abort(new Error('deadline'));
+
+			const outcome = await activation;
+			expect(outcome.activated).toEqual(['ok']);
+			expect(outcome.failures).toEqual([
+				expect.objectContaining({
+					nodeId: 'stuck',
+					error: expect.objectContaining({ message: 'deadline' }),
+				}),
+			]);
+		});
+
+		test('a deactivation whose teardown hangs rejects with the abort reason once the signal fires', async () => {
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['stuck']);
+			nonWebhookTriggerRegistrar.deregister.mockImplementation(
+				async () => await new Promise(() => {}),
+			);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+			const controller = new AbortController();
+
+			const deactivation = activator.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{ nodes: [node('stuck', 'trigger')], connections: {} },
+				new Set(['stuck']),
+				controller.signal,
+			);
+			await flushPromises();
+			controller.abort(new Error('deadline'));
+
+			await expect(deactivation).rejects.toThrow('deadline');
+		});
+	});
 });

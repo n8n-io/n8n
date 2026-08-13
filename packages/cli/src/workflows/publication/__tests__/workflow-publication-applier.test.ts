@@ -153,6 +153,7 @@ describe('WorkflowPublicationApplier', () => {
 				expect.objectContaining({ id: 'wf-1' }),
 				oldVersion,
 				new Set(['a', 'b']),
+				undefined,
 			);
 			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
 				'wf-1',
@@ -284,6 +285,7 @@ describe('WorkflowPublicationApplier', () => {
 			newVersion,
 			new Set(['b']),
 			'update',
+			undefined,
 		);
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
@@ -307,6 +309,7 @@ describe('WorkflowPublicationApplier', () => {
 				newVersion,
 				new Set(['a']),
 				expectedMode,
+				undefined,
 			);
 		});
 
@@ -320,6 +323,7 @@ describe('WorkflowPublicationApplier', () => {
 				newVersion,
 				new Set(['a']),
 				'update',
+				undefined,
 			);
 		});
 	});
@@ -351,6 +355,7 @@ describe('WorkflowPublicationApplier', () => {
 			newVersion,
 			new Set(['a']),
 			'update',
+			undefined,
 		);
 	});
 
@@ -401,6 +406,7 @@ describe('WorkflowPublicationApplier', () => {
 			newVersion,
 			new Set(['a']),
 			'update',
+			undefined,
 		);
 	});
 
@@ -423,6 +429,7 @@ describe('WorkflowPublicationApplier', () => {
 			newVersion,
 			new Set(['b', 'c']),
 			'update',
+			undefined,
 		);
 	});
 
@@ -441,6 +448,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			oldVersion,
 			new Set(['b']),
+			undefined,
 		);
 		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 		expect(workflowTriggerActivator.updateTriggerCount).toHaveBeenCalledWith(
@@ -485,12 +493,14 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			oldVersion,
 			new Set(['a']),
+			undefined,
 		);
 		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['a']),
 			'update',
+			undefined,
 		);
 		// The cache is invalidated before the version is advanced and repopulated
 		// straight after, so the empty window never serves a stale version, all
@@ -703,6 +713,51 @@ describe('WorkflowPublicationApplier', () => {
 			newVersion,
 			new Set(['a']),
 			'update',
+			undefined,
 		);
+	});
+
+	describe('abort', () => {
+		function abortedSignal() {
+			const controller = new AbortController();
+			controller.abort(new Error('deadline'));
+			return controller.signal;
+		}
+
+		test('a publish aborted before teardown neither deactivates nor advances the version', async () => {
+			setTriggerSets([triggerNode('a')], []);
+
+			await expect(applier.apply(makeRecord(), abortedSignal())).rejects.toThrow('deadline');
+
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		test('a publish aborted after teardown advances the version but fails before activation', async () => {
+			setTriggerSets([triggerNode('a')], [triggerNode('b')]);
+			const controller = new AbortController();
+			workflowTriggerActivator.deactivate.mockImplementation(async () => {
+				controller.abort(new Error('deadline'));
+			});
+
+			const result = await applier.apply(makeRecord(), controller.signal);
+
+			expect(result).toEqual({
+				type: 'failed',
+				error: expect.objectContaining({ message: 'deadline' }),
+			});
+			expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalled();
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+		});
+
+		test('an unpublish aborted before teardown leaves the published-version mapping in place', async () => {
+			workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: null }));
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([triggerNode('a')]);
+
+			await expect(applier.apply(makeRecord(), abortedSignal())).rejects.toThrow('deadline');
+
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
+		});
 	});
 });
