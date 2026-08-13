@@ -36,20 +36,40 @@ export class TypeOrmStepStore implements StepStore {
 		// instances, and these are plain values.
 		const rows = records.map((record) => ({ ...record, id: generateId() }));
 
-		// `orIgnore` is the unique key doing its job: a node another planner already
-		// queued is skipped, leaving the rest of the batch to land. RETURNING emits
-		// exactly the rows that were inserted, keyed by database column name.
-		const result = await this.repo
-			.createQueryBuilder()
-			.insert()
-			.values(rows)
-			.orIgnore()
-			.returning(['id', 'nodeId'])
-			.execute();
+		// Shared side of the failure fence (see `claimStep`): a concurrent
+		// `failStep` either committed before the check below, which then creates
+		// nothing, or waits for this insert to commit, whereupon the failure's
+		// cancellation sweep sees the new rows. Without it, an insert landing
+		// after the sweep would strand rows `queued` forever.
+		const executionIds = [...new Set(records.map((record) => record.executionId))];
+		return await this.repo.manager.transaction(async (manager) => {
+			await manager.query('SELECT id FROM workflow_execution WHERE id = ANY($1) FOR SHARE', [
+				executionIds,
+			]);
+			const [failed] = await manager.query<Array<{ id: string }>>(
+				`SELECT id FROM workflow_step_execution
+				 WHERE execution_id = ANY($1) AND status = 'failed'
+				 LIMIT 1`,
+				[executionIds],
+			);
+			if (failed) return [];
 
-		return (result.raw as Array<{ id: string; node_id: string }>).map(
-			({ id, node_id: nodeId }) => ({ id, nodeId }),
-		);
+			// `orIgnore` is the unique key doing its job: a node another planner already
+			// queued is skipped, leaving the rest of the batch to land. RETURNING emits
+			// exactly the rows that were inserted, keyed by database column name.
+			const result = await manager
+				.createQueryBuilder()
+				.insert()
+				.into(WorkflowStepExecution)
+				.values(rows)
+				.orIgnore()
+				.returning(['id', 'nodeId'])
+				.execute();
+
+			return (result.raw as Array<{ id: string; node_id: string }>).map(
+				({ id, node_id: nodeId }) => ({ id, nodeId }),
+			);
+		});
 	}
 
 	async loadStep(id: string): Promise<StepRecord> {

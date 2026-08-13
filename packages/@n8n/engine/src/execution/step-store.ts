@@ -66,6 +66,10 @@ export interface StepStore {
 	 * and not returned. This allows multiple planners to race to enqueue the same
 	 * node without erroring or duplicating work. We return the actually created rows
 	 * so the caller knows which step creations it needs to publish.
+	 *
+	 * Creates nothing once any step in the execution has failed, serialized with
+	 * `failStep` like `claimStep`, so a planning insert cannot land after the
+	 * failure's cancellation sweep and strand rows `queued` forever.
 	 */
 	createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>>;
 

@@ -183,11 +183,12 @@ describe('workflow_step_execution table (integration)', () => {
 	it('TypeOrmStepStore.claimStep refuses once any step in the execution failed', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		await createStep(store, { executionId, nodeId: 'a', status: 'failed' });
+		// b is planned first; a's failure lands before b's step:ready is claimed
 		const { id } = await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
+		await createStep(store, { executionId, nodeId: 'a', status: 'failed' });
 
-		// b's step:ready was published before a's failure landed; the fence in
-		// the claim statement keeps it from starting work in a doomed execution
+		// the fence in the claim statement keeps b from starting work in a
+		// doomed execution
 		expect(await store.claimStep(id)).toBeNull();
 		expect((await store.loadStep(id)).status).toBe('queued');
 
@@ -199,6 +200,44 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'queued',
 		});
 		expect(await store.claimStep(other.id)).not.toBeNull();
+	});
+
+	it('TypeOrmStepStore.createSteps creates nothing once any step in the execution failed', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await createStep(store, { executionId, nodeId: 'a', status: 'failed' });
+
+		// planned after the failure's cancellation sweep, these rows would be
+		// unclaimable and stuck queued forever, so they must not exist at all
+		const created = await store.createSteps([{ executionId, nodeId: 'b', status: 'queued' }]);
+
+		expect(created).toEqual([]);
+		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
+		expect(await stepRepo.count({ where: { executionId } })).toBe(1);
+	});
+
+	it('TypeOrmStepStore.createSteps waits out a concurrently committing failure and creates nothing', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const failing = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
+
+		const failure = dataSource.createQueryRunner();
+		await failure.connect();
+		await failure.startTransaction();
+		await failure.query('SELECT id FROM workflow_execution WHERE id = $1 FOR NO KEY UPDATE', [
+			executionId,
+		]);
+		await failure.query("UPDATE workflow_step_execution SET status = 'failed' WHERE id = $1", [
+			failing.id,
+		]);
+
+		// the insert must park on the execution lock until the failure commits
+		const create = store.createSteps([{ executionId, nodeId: 'b', status: 'queued' }]);
+		await new Promise((resolve) => setTimeout(resolve, 150));
+		await failure.commitTransaction();
+		await failure.release();
+
+		expect(await create).toEqual([]);
 	});
 
 	it('TypeOrmStepStore.claimStep waits out a concurrently committing failure and refuses', async () => {
