@@ -1,4 +1,5 @@
 import {
+	CreateWorkflowPublicDto,
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
@@ -27,6 +28,7 @@ import {
 	Body,
 	Get,
 	Param,
+	Post,
 	ProjectScope,
 	PublicApiController,
 	Put,
@@ -38,8 +40,11 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { EventService } from '@/events/event.service';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
 import { TagService } from '@/services/tag.service';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -48,6 +53,16 @@ function toPublicJson(value: unknown): Record<string, unknown> | null {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
 		? (value as Record<string, unknown>)
 		: null;
+}
+
+/**
+ * `binaryMode` and `credentialResolverId` are derived internally rather than set by callers.
+ * Dropping them lets the settings merge in `WorkflowService` keep whatever is already stored.
+ */
+function stripDerivedSettings(settings: Record<string, unknown> | undefined) {
+	if (!settings) return;
+	if (settings.binaryMode !== undefined) delete settings.binaryMode;
+	if (settings.credentialResolverId !== undefined) delete settings.credentialResolverId;
 }
 
 function parseTagNames(tags: string): string[] {
@@ -151,6 +166,8 @@ export class WorkflowsPublicController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 		private readonly workflowService: WorkflowService,
+		private readonly workflowCreationService: WorkflowCreationService,
+		private readonly redactionEnforcementService: RedactionEnforcementService,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -237,6 +254,38 @@ export class WorkflowsPublicController {
 			})),
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
 		};
+	}
+
+	@Post('/')
+	@ApiKeyScope('workflow:create')
+	@ApiSummary('Create a workflow')
+	@ApiDescription('Create a workflow in your instance.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(404)
+	async createWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: CreateWorkflowPublicDto,
+	): Promise<WorkflowPublicDto> {
+		const { projectId, parentFolderId, ...rest } = body;
+
+		stripDerivedSettings(rest.settings);
+
+		const workflow = createWorkflowEntityFromPayload(rest);
+
+		await this.redactionEnforcementService.assertNewPolicyAllowed(
+			workflow.settings?.redactionPolicy,
+		);
+
+		const createdWorkflow = await this.workflowCreationService.createWorkflow(req.user, workflow, {
+			projectId,
+			parentFolderId: parentFolderId ?? undefined,
+			publicApi: true,
+			source: 'api',
+		});
+
+		return this.toWorkflowPublicDto(createdWorkflow);
 	}
 
 	@Get('/:workflowId')

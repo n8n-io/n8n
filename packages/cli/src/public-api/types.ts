@@ -118,12 +118,6 @@ export declare namespace CredentialTypeRequest {
 }
 
 export declare namespace WorkflowRequest {
-	type Create = AuthenticatedRequest<
-		{},
-		{},
-		WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
-		{}
-	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<
