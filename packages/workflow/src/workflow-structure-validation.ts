@@ -135,17 +135,17 @@ export function safeParseWorkflowStructure(input: unknown): WorkflowStructureVal
 	const nodeNameById = new Map<string, string>();
 
 	for (const [index, node] of nodes.entries()) {
-		// Ids are optional in the schema because the backend fills them in on save. A supplied
-		// id must be unique: it identifies a node independently of its name, and per-node state
-		// keyed on it would otherwise be shared between two nodes.
-		if (node.id !== undefined) {
+		// Ids are optional in the schema because the backend fills in absent and empty ones on
+		// save. A supplied id must be unique: it identifies a node independently of its name, and
+		// per-node state keyed on it would otherwise be shared between two nodes.
+		if (node.id !== undefined && node.id !== '') {
 			const firstNodeName = nodeNameById.get(node.id);
 
 			if (firstNodeName === undefined) nodeNameById.set(node.id, node.name);
 			else
 				issues.push({
 					path: ['nodes', index, 'id'],
-					message: `Duplicate node id "${node.id}" on nodes "${firstNodeName}" and "${node.name}"`,
+					message: `Nodes "${firstNodeName}" and "${node.name}" share the node ID "${node.id}"`,
 					code: 'duplicate_node_id',
 				});
 		}

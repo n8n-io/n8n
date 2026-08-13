@@ -198,7 +198,7 @@ describe('workflow-structure-validation', () => {
 			expect.objectContaining({
 				code: 'duplicate_node_id',
 				path: ['nodes', 1, 'id'],
-				message: 'Duplicate node id "node-1" on nodes "Start" and "Set"',
+				message: 'Nodes "Start" and "Set" share the node ID "node-1"',
 			}),
 		);
 	});
@@ -249,6 +249,15 @@ describe('workflow-structure-validation', () => {
 		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			nodes: validWorkflow.nodes.map(({ id: _id, ...node }) => node),
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test('accepts several nodes with empty-string ids', () => {
+		const result = safeParseWorkflowStructure({
+			...validWorkflow,
+			nodes: validWorkflow.nodes.map((node) => ({ ...node, id: '' })),
 		});
 
 		expect(result.success).toBe(true);
