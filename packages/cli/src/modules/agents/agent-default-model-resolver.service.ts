@@ -159,12 +159,11 @@ export class AgentDefaultModelResolverService {
 				credential.type,
 				defaults.provider,
 			);
-			const model = availableModels.find(
-				(candidate) => candidate.value.toLowerCase() === defaults.defaultModel.toLowerCase(),
+			return this.resolveFromVerifiedModelIds(
+				defaults.provider,
+				credential.id,
+				availableModels.map(({ value }) => value),
 			);
-			return model
-				? { model: `${defaults.provider}/${model.value}`, credential: credential.id }
-				: null;
 		} catch {
 			return null;
 		}

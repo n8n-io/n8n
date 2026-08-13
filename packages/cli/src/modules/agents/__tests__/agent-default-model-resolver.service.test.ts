@@ -41,6 +41,20 @@ describe('AgentDefaultModelResolverService', () => {
 		});
 	});
 
+	it('resolves creation to the dated snapshot when the live list has only that form', async () => {
+		const { service, modelLookupService } = makeService([
+			{ id: 'anthropic-credential', name: 'Anthropic', type: 'anthropicApi' },
+		]);
+		modelLookupService.list.mockResolvedValue([
+			{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6-20251001' },
+		]);
+
+		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
+			model: 'anthropic/claude-sonnet-4-6-20251001',
+			credential: 'anthropic-credential',
+		});
+	});
+
 	it('leaves a credential unresolved when its default is not live', async () => {
 		const { service, modelLookupService } = makeService([
 			{ id: 'anthropic-credential', name: 'Anthropic', type: 'anthropicApi' },

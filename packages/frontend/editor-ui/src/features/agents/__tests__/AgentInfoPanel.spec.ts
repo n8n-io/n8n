@@ -360,6 +360,55 @@ describe('AgentInfoPanel', () => {
 			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(true);
 		});
 
+		it('seeds the managed openai fallback on mount when only n8n credits are available', async () => {
+			credsHolder.value = { openai: AI_GATEWAY_MANAGED_TAG };
+			defaultModelHolder.value = {
+				provider: 'openai',
+				model: 'gpt-5-mini',
+				name: 'GPT-5 mini',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
+
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: '',
+				instructions: 'Help users.',
+			});
+			await wrapper.vm.$nextTick();
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('update:config')).toContainEqual([
+				expect.objectContaining({
+					model: 'openai/gpt-5-mini',
+					credential: AI_GATEWAY_MANAGED_TAG,
+				}),
+			]);
+		});
+
+		it('does not seed a managed non-openai provider on mount (creation resolver falls back to openai only)', async () => {
+			credsHolder.value = { anthropic: AI_GATEWAY_MANAGED_TAG };
+			defaultModelHolder.value = {
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				name: 'Claude Sonnet 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
+
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: '',
+				instructions: 'Help users.',
+			});
+			await wrapper.vm.$nextTick();
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('update:config')).toBeUndefined();
+		});
+
 		it('does not touch a draft that already has a model on mount', async () => {
 			defaultModelHolder.value = {
 				provider: 'anthropic',
