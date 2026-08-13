@@ -34,13 +34,6 @@ summarize or add status text — the user already approved the plan and the
 checklist shows progress. Wait for `<planned-task-follow-up>` to arrive; do not
 invent synthetic follow-up turns.
 
-## Overview panel is frozen during execution
-
-Planned-task follow-up turns (`build-workflow`, `checkpoint`, `replan`,
-`synthesize`) and verification/setup follow-ups must not call
-`update-workflow-overview` — the overview reflects the approved plan and does
-not update while tasks execute.
-
 ## Never poll
 
 **Never poll and never sleep.** Background tasks settle via

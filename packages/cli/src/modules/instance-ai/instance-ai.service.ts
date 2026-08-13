@@ -107,6 +107,8 @@ import {
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
+	WorkflowOverviewSidecar,
+	type WorkflowOverviewBundle,
 } from '@n8n/instance-ai';
 import type { Scope } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -349,6 +351,48 @@ function isTextMessagePart(part: unknown): part is { type: 'text'; text: string 
 		'text' in part &&
 		typeof part.text === 'string'
 	);
+}
+
+/**
+ * Pair ask-user resume answers with their question texts from the suspension
+ * payload for the workflow-overview sidecar bundle. Skipped questions are
+ * dropped; option selections and free text are joined into one answer string.
+ */
+function mapQaAnswersForOverview(
+	suspendPayload: Record<string, unknown> | undefined,
+	answers: NonNullable<ConfirmationData['answers']>,
+): Array<{ question: string; answer: string }> {
+	const questionTextById = new Map<string, string>();
+	const rawQuestions = suspendPayload?.questions;
+	if (Array.isArray(rawQuestions)) {
+		const questions: unknown[] = rawQuestions;
+		for (const q of questions) {
+			if (
+				typeof q === 'object' &&
+				q !== null &&
+				'id' in q &&
+				typeof q.id === 'string' &&
+				'question' in q &&
+				typeof q.question === 'string'
+			) {
+				questionTextById.set(q.id, q.question);
+			}
+		}
+	}
+
+	const result: Array<{ question: string; answer: string }> = [];
+	for (const answer of answers) {
+		if (answer.skipped) continue;
+		const parts = [...answer.selectedOptions];
+		if (answer.customText) parts.push(answer.customText);
+		const text = parts.join(', ').trim();
+		if (!text) continue;
+		result.push({
+			question: questionTextById.get(answer.questionId) ?? answer.questionId,
+			answer: text,
+		});
+	}
+	return result;
 }
 
 function isSandboxEndpointNotAllowedError(error: unknown): boolean {
@@ -696,6 +740,9 @@ export class InstanceAiService {
 	private checkpointPruneTimer: NodeJS.Timeout | undefined;
 
 	private checkpointPruningStopped = true;
+
+	/** Lazily created — see {@link workflowOverviewSidecar}. */
+	private workflowOverviewSidecarInstance: WorkflowOverviewSidecar | undefined;
 
 	/**
 	 * In-flight `executeRun` / `processResumedStream` promises. Tracked so
@@ -1216,6 +1263,10 @@ export class InstanceAiService {
 			timeZone,
 		);
 
+		// Sidecar: refresh the workflow overview panel from the new user message
+		// (T1). Runs outside the agent loop; never blocks or fails the run.
+		void this.refreshWorkflowOverview(user, threadId, runId, { latestUserMessage: message });
+
 		return runId;
 	}
 
@@ -1672,6 +1723,7 @@ export class InstanceAiService {
 		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
+		this.workflowOverviewSidecarInstance?.clearThread(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
 		this.tracing.deleteTraceContextsForThread(threadId);
 		await this.deleteAgentBuilderSessions(threadId);
@@ -3959,6 +4011,11 @@ export class InstanceAiService {
 				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(user.id, threadId, result.confirmationEvent);
 					this.eventBus.publish(threadId, result.confirmationEvent);
+					// Sidecar: a plan just went up for review (T3) — refresh the
+					// workflow overview panel grounded in the plan's task spec.
+					if (result.confirmationEvent.payload.inputType === 'plan-review') {
+						void this.refreshWorkflowOverview(user, threadId, runId, { includePlan: true });
+					}
 				}
 
 				// Persist the agent tree so the confirmation UI survives page refresh.
@@ -5056,6 +5113,16 @@ export class InstanceAiService {
 			resumeTracing,
 			unregisteredResumeTracing,
 		});
+
+		// Sidecar: an ask-user wizard just resolved with answers (T2) — refresh
+		// the workflow overview panel with the structured Q&A in the bundle.
+		if (toolName === 'ask-user' && data.answers && data.answers.length > 0) {
+			const qaAnswers = mapQaAnswersForOverview(suspendPayload, data.answers);
+			if (qaAnswers.length > 0) {
+				void this.refreshWorkflowOverview(activeUser, threadId, runId, { qaAnswers });
+			}
+		}
+
 		return { ok: true, runId };
 	}
 
@@ -5280,6 +5347,13 @@ export class InstanceAiService {
 				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(opts.user.id, opts.threadId, result.confirmationEvent);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
+					// Sidecar: a revised plan re-suspended for review (T3) — refresh
+					// the overview from the updated task spec.
+					if (result.confirmationEvent.payload.inputType === 'plan-review') {
+						void this.refreshWorkflowOverview(opts.user, opts.threadId, opts.runId, {
+							includePlan: true,
+						});
+					}
 				}
 
 				// Persist the refreshed agent tree so repeated HITL waits
@@ -6400,6 +6474,97 @@ export class InstanceAiService {
 			toolErrors: options?.workSummary?.totalToolErrors ?? 0,
 			...(options?.usage ? { usage: options.usage } : {}),
 		});
+	}
+
+	/** Lazily constructed sidecar owning per-thread workflow-overview refresh state. */
+	private get workflowOverviewSidecar(): WorkflowOverviewSidecar {
+		this.workflowOverviewSidecarInstance ??= new WorkflowOverviewSidecar({
+			publish: (threadId, event) => this.eventBus.publish(threadId, event),
+			logger: this.logger,
+		});
+		return this.workflowOverviewSidecarInstance;
+	}
+
+	/**
+	 * Sidecar refresh of the three-pane workflow overview panel (Triggers /
+	 * Steps / Results). Fire-and-forget and best-effort: assembles a context
+	 * bundle from thread state; the sidecar dedupes by bundle hash and publishes
+	 * `workflow-overview-update` only when a pane actually changes.
+	 */
+	private async refreshWorkflowOverview(
+		user: User,
+		threadId: string,
+		runId: string,
+		extras: {
+			latestUserMessage?: string;
+			qaAnswers?: Array<{ question: string; answer: string }>;
+			includePlan?: boolean;
+		} = {},
+	): Promise<void> {
+		try {
+			const modelId = await this.modelService.resolveAgentModelConfig(user);
+
+			// Last N stored messages, oldest first — service-injected blocks stripped
+			// from user turns so they don't leak into the overview prompt.
+			const history = await this.agentMemory.getMessages(threadId, { limit: 20 });
+			const conversation: WorkflowOverviewBundle['conversation'] = [];
+			for (const m of history) {
+				if (!('role' in m) || (m.role !== 'user' && m.role !== 'assistant')) continue;
+				const raw = this.extractStoredMessageText(m.content);
+				const text = m.role === 'user' ? cleanStoredUserMessage(raw) : raw;
+				if (text) conversation.push({ role: m.role, text });
+			}
+
+			let planTaskSpec: string | undefined;
+			if (extras.includePlan) {
+				const { plannedTaskService } = await this.createPlannedTaskState();
+				const graph = await plannedTaskService.getGraph(threadId);
+				const buildTasks = (graph?.tasks ?? []).filter((t) => t.kind === 'build-workflow');
+				// Single-workflow scope: multi-workflow plans don't drive the panel.
+				if (buildTasks.length !== 1) return;
+				planTaskSpec = `${buildTasks[0].title}\n${buildTasks[0].spec}`;
+			}
+
+			const builtWorkflowSummary = await this.summarizeBuiltWorkflowForOverview(threadId);
+
+			this.workflowOverviewSidecar.refresh({
+				threadId,
+				runId,
+				agentId: orchestratorAgentId(runId),
+				modelId,
+				bundle: {
+					conversation,
+					...(extras.latestUserMessage ? { latestUserMessage: extras.latestUserMessage } : {}),
+					...(extras.qaAnswers && extras.qaAnswers.length > 0
+						? { qaAnswers: extras.qaAnswers }
+						: {}),
+					...(planTaskSpec ? { planTaskSpec } : {}),
+					...(builtWorkflowSummary ? { builtWorkflowSummary } : {}),
+				},
+			});
+		} catch (error) {
+			this.logger.warn('Failed to refresh workflow overview', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/** Compact facts about the latest built workflow in this thread, if any. */
+	private async summarizeBuiltWorkflowForOverview(threadId: string): Promise<string | undefined> {
+		const records = await this.listWorkflowLoopRecords(threadId);
+		for (let i = records.length - 1; i >= 0; i--) {
+			const record = records[i];
+			const workflowId = record.state.workflowId;
+			if (!workflowId) continue;
+			const triggerType = record.lastBuildOutcome?.triggerType;
+			return (
+				`A workflow (id: ${workflowId}${triggerType ? `, trigger type: ${triggerType}` : ''}) ` +
+				'was already built in this thread. Treat the current request as editing that ' +
+				'workflow unless the user clearly asks for a new one.'
+			);
+		}
+		return undefined;
 	}
 
 	/**

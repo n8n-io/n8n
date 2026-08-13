@@ -35,6 +35,7 @@ import type * as EvalAgentsMod from './utils/eval-agents';
 import type * as StreamHelpersMod from './utils/stream-helpers';
 import type * as WorkflowLoopMod from './workflow-loop';
 import type * as WorkflowLoopRuntimeMod from './workflow-loop/runtime';
+import type * as WorkflowOverviewSidecarMod from './workflow-overview/workflow-overview-sidecar';
 import type * as BuilderTemplatesServiceMod from './workspace/builder-templates-service';
 import type * as CreateWorkspaceMod from './workspace/create-workspace';
 import type * as LazyRuntimeWorkspaceMod from './workspace/lazy-runtime-workspace';
@@ -111,6 +112,10 @@ const loadAgentPersistence = lazyModule(
 const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeof TitleUtilsMod);
 const loadMcpClientManager = lazyModule(
 	() => require('./mcp/mcp-client-manager') as typeof McpClientManagerMod,
+);
+const loadWorkflowOverviewSidecar = lazyModule(
+	() =>
+		require('./workflow-overview/workflow-overview-sidecar') as typeof WorkflowOverviewSidecarMod,
 );
 const loadStreamHelpers = lazyModule(
 	() => require('./utils/stream-helpers') as typeof StreamHelpersMod,
@@ -362,6 +367,11 @@ export type McpClientManager = McpClientManagerMod.McpClientManager;
 export const McpClientManager: typeof McpClientManagerMod.McpClientManager = lazyClass(
 	() => loadMcpClientManager().McpClientManager,
 );
+export type WorkflowOverviewSidecar = WorkflowOverviewSidecarMod.WorkflowOverviewSidecar;
+export const WorkflowOverviewSidecar: typeof WorkflowOverviewSidecarMod.WorkflowOverviewSidecar =
+	lazyClass(() => loadWorkflowOverviewSidecar().WorkflowOverviewSidecar);
+export type { WorkflowOverviewRefreshArgs } from './workflow-overview/workflow-overview-sidecar';
+export type { WorkflowOverviewBundle } from './workflow-overview/workflow-overview-generator';
 export const mapAgentChunkToEvent: typeof MapChunkMod.mapAgentChunkToEvent = lazyFunction(
 	() => loadMapChunk().mapAgentChunkToEvent,
 );
