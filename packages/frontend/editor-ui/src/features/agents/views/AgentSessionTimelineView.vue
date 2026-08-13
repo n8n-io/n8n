@@ -65,14 +65,28 @@ const {
 	onNewChat,
 } = useAgentBuilderSession({ routeBacked: computed(() => false) });
 
-const triggerSource = computed((): string | null => {
+const triggerSource = computed((): string => {
 	if (executions.value.length === 0) return null;
 	const first = executions.value[0];
+
+	/** Relabel InstanceAI to AI Assistant for the UI */
+	if (first.source === 'instance-ai') return 'AI Assistant';
+
 	return first.source ?? 'chat';
 });
 
-const triggerIcon = computed((): 'slack' | 'bolt-filled' => {
-	return triggerSource.value === 'slack' ? 'slack' : 'bolt-filled';
+const triggerIcon = computed((): string => {
+	const source = triggerSource.value;
+	if (!source) return 'bolt-filled';
+
+	switch (source) {
+		case 'slack':
+			return 'slack';
+		case 'AI Assistant':
+			return 'sparkles';
+		default:
+			return 'bolt-filled';
+	}
 });
 
 const triggerLabel = computed((): string => {
