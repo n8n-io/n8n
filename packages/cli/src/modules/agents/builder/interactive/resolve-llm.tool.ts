@@ -270,7 +270,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					.string()
 					.optional()
 					.describe(
-						'Requested model without the selected provider prefix. For OpenRouter use the routed id, e.g. "anthropic/claude-sonnet-4.6".',
+						'Requested model without the selected provider prefix. For OpenRouter use the routed id, e.g. "anthropic/claude-sonnet-5".',
 					),
 				credentialId: z
 					.string()

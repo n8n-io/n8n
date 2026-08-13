@@ -378,7 +378,7 @@ function onInstructionsInput(value: string) {
 
 .defaultHintBody {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 }
