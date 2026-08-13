@@ -1,7 +1,7 @@
 import type { IConnections, INode } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { workflowPublicSchema } from './workflow-public.dto';
+import type { workflowPublicSchema } from './workflow-public.dto';
 
 /**
  * What the hand-written `workflowNodeGroup.yml` published, which is what callers were allowed to
