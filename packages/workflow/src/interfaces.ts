@@ -1713,6 +1713,10 @@ export interface INodeExecutionData {
 		| number
 		| string
 		| undefined;
+	/**
+	 * JSON output.
+	 * In `continueErrorOutput` mode, engine will try to read item.error or fallback to item.json.error with allowed optional keys: message, details.
+	 */
 	json: IDataObject;
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
