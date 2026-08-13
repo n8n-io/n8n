@@ -27,27 +27,26 @@ describe('CreateGitConnectionTable migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	it('creates a table that stores disconnected SSH and HTTPS connections', async () => {
+	it('creates a table that stores SSH and HTTPS connections', async () => {
 		const context = createTestMigrationContext(dataSource);
 		const table = context.escape.tableName('git_connection');
 		const now = new Date();
 		await context.runQuery(
-			`INSERT INTO ${table} ("id", "name", "repositoryUrl", "connectionType", "connected", "createdAt", "updatedAt")
-			 VALUES (:id, :name, :repositoryUrl, :connectionType, :connected, :createdAt, :updatedAt)`,
+			`INSERT INTO ${table} ("id", "name", "repositoryUrl", "connectionType", "createdAt", "updatedAt")
+			 VALUES (:id, :name, :repositoryUrl, :connectionType, :createdAt, :updatedAt)`,
 			{
 				id: 'git-connection-id',
 				name: 'Deployments',
 				repositoryUrl: 'https://example.com/org/repo.git',
 				connectionType: 'https',
-				connected: false,
 				createdAt: now,
 				updatedAt: now,
 			},
 		);
-		const rows = await context.runQuery<Array<{ branchName: string | null; connected: boolean }>>(
-			`SELECT "branchName", "connected" FROM ${table}`,
+		const rows = await context.runQuery<Array<{ branchName: string | null }>>(
+			`SELECT "branchName" FROM ${table}`,
 		);
-		expect(rows).toEqual([{ branchName: null, connected: context.isSqlite ? 0 : false }]);
+		expect(rows).toEqual([{ branchName: null }]);
 		await context.queryRunner.release();
 	});
 });

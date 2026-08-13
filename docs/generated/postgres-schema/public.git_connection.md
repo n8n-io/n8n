@@ -6,7 +6,6 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | baseCommit | varchar(64) |  | true |  |  | Last commit successfully reconciled for this connection; the base for three-way reconciliation. |
 | branchName | varchar(255) |  | true |  |  |  |
-| connected | boolean | false | false |  |  | Whether the connection is currently connected to the remote; false while configured-only. |
 | connectionType | varchar(16) |  | false |  |  | GitConnectionType enum: "ssh", "https" |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | encryptedPassword | text |  | true |  |  | Encrypted HTTPS password/token; set when connectionType is 'https', null for 'ssh'. |
@@ -26,7 +25,6 @@
 | CHK_git_connection_connectionType | CHECK | CHECK ((("connectionType")::text = ANY ((ARRAY['ssh'::character varying, 'https'::character varying])::text[]))) |
 | CHK_git_connection_keyGeneratorType | CHECK | CHECK ((("keyGeneratorType")::text = ANY ((ARRAY['ed25519'::character varying, 'rsa'::character varying])::text[]))) |
 | PK_92966b7ba4ce2cf61a62017a6ff | PRIMARY KEY | PRIMARY KEY (id) |
-| git_connection_connected_not_null | n | NOT NULL connected |
 | git_connection_connectionType_not_null | n | NOT NULL "connectionType" |
 | git_connection_createdAt_not_null | n | NOT NULL "createdAt" |
 | git_connection_id_not_null | n | NOT NULL id |
@@ -49,7 +47,6 @@ erDiagram
 "public.git_connection" {
   varchar_64_ baseCommit
   varchar_255_ branchName
-  boolean connected
   varchar_16_ connectionType
   timestamp_3__with_time_zone createdAt
   text encryptedPassword

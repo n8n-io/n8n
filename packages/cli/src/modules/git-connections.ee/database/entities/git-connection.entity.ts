@@ -20,10 +20,6 @@ export class GitConnection extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	connectionType: GitConnectionType;
 
-	/** Whether the connection is currently connected to the remote; false while configured-only. */
-	@Column({ type: 'boolean', default: false })
-	connected: boolean;
-
 	/** SSH public key; set when {@link connectionType} is `ssh`, null for `https`. */
 	@Column({ type: 'text', nullable: true })
 	publicKey: string | null;

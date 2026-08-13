@@ -11,11 +11,6 @@ export class CreateGitConnectionTable1786547629549 implements ReversibleMigratio
 				.varchar(16)
 				.notNull.withEnumCheck(['ssh', 'https'])
 				.comment('GitConnectionType enum: "ssh", "https"'),
-			column('connected')
-				.bool.notNull.default(false)
-				.comment(
-					'Whether the connection is currently connected to the remote; false while configured-only.',
-				),
 			column('publicKey').text.comment(
 				"SSH public key; set when connectionType is 'ssh', null for 'https'.",
 			),

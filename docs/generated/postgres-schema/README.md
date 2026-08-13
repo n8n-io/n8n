@@ -63,7 +63,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 6 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
-| [public.git_connection](public.git_connection.md) | 14 |  | BASE TABLE |
+| [public.git_connection](public.git_connection.md) | 13 |  | BASE TABLE |
 | [public.insights_by_period](public.insights_by_period.md) | 6 |  | BASE TABLE |
 | [public.insights_metadata](public.insights_metadata.md) | 5 |  | BASE TABLE |
 | [public.insights_raw](public.insights_raw.md) | 5 |  | BASE TABLE |
@@ -910,7 +910,6 @@ erDiagram
 "public.git_connection" {
   varchar_64_ baseCommit
   varchar_255_ branchName
-  boolean connected
   varchar_16_ connectionType
   timestamp_3__with_time_zone createdAt
   text encryptedPassword

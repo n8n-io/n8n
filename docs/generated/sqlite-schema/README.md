@@ -63,7 +63,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
-| [git_connection](git_connection.md) | 14 |  | table |
+| [git_connection](git_connection.md) | 13 |  | table |
 | [insights_by_period](insights_by_period.md) | 6 |  | table |
 | [insights_metadata](insights_metadata.md) | 5 |  | table |
 | [insights_raw](insights_raw.md) | 5 |  | table |
@@ -897,7 +897,6 @@ erDiagram
 "git_connection" {
   varchar_64_ baseCommit
   varchar_255_ branchName
-  boolean connected
   varchar_16_ connectionType
   datetime_3_ createdAt
   TEXT encryptedPassword
