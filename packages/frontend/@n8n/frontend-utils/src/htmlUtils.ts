@@ -8,11 +8,7 @@ import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from './constants/sanitiza
 */
 
 // `xss` is CJS with no `exports` map, so Node's lexer cannot see these as named
-// exports and `import { ... }` throws at link time under native ESM. At runtime
-// `module.exports` is the filter function with the helpers hung off it, which the
-// shipped typings don't model. Signatures are spelled out rather than reusing xss's
-// `EscapeHandler`, whose ambient `XSS` namespace would leak into our emitted
-// declarations via the `escapeHtml` re-export and break consumers with TS2503.
+// exports and `import { ... }` throws at link time under native ESM. 
 const { escapeAttrValue, escapeHtml } = xss as unknown as {
 	escapeAttrValue: (str: string) => string;
 	escapeHtml: (str: string) => string;
