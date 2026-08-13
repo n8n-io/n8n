@@ -8023,6 +8023,7 @@
 	"tools.connection.action.connected": "Connected",
 	"tools.connection.action.connecting": "Connecting…",
 	"tools.connection.action.disconnected": "Disconnected",
+	"tools.connection.action.reconnect": "Reconnect",
 	"tools.connection.action.configure": "Configure",
 	"tools.connection.action.close": "Close",
 	"tools.connection.install.contactAdmin": "Ask an administrator to install this community node",
