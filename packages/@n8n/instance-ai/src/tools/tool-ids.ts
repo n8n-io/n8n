@@ -39,7 +39,6 @@ export const ORCHESTRATION_TOOL_IDS = {
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
 	BUILD_AGENT: 'build-agent',
 	GET_SESSION: 'get-session',
-	UPDATE_WORKFLOW_OVERVIEW: 'update-workflow-overview',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
@@ -64,10 +63,6 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 	DOMAIN_TOOL_IDS.NODES,
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
-	// Core on purpose: the overview must refresh on every planning iteration;
-	// deferring it prices each refresh at search_tools + load_tool and the
-	// panel silently goes stale when the agent skips that detour.
-	ORCHESTRATION_TOOL_IDS.UPDATE_WORKFLOW_OVERVIEW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	// Paired with RESEARCH on purpose: the research tool tells the agent to prefer
 	// n8n's own docs for n8n questions, but deferring n8n-docs priced that route at

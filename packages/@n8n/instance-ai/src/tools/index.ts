@@ -64,10 +64,6 @@ const loadReportVerificationVerdictTool = lazyMod(
 	() =>
 		require('./orchestration/report-verification-verdict.tool') as typeof import('./orchestration/report-verification-verdict.tool'),
 );
-const loadUpdateWorkflowOverviewTool = lazyMod(
-	() =>
-		require('./orchestration/update-workflow-overview.tool') as typeof import('./orchestration/update-workflow-overview.tool'),
-);
 const loadVerifyBuiltWorkflowTool = lazyMod(
 	() =>
 		require('./orchestration/verify-built-workflow.tool') as typeof import('./orchestration/verify-built-workflow.tool'),
@@ -185,10 +181,6 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 			loadEvalSetupAgentTool().createEvalSetupAgentTool(context),
 		],
 		[ORCHESTRATION_TOOL_IDS.EVAL_DATA, loadEvalDataAgentTool().createEvalDataAgentTool(context)],
-		[
-			ORCHESTRATION_TOOL_IDS.UPDATE_WORKFLOW_OVERVIEW,
-			loadUpdateWorkflowOverviewTool().createUpdateWorkflowOverviewTool(context),
-		],
 	];
 
 	if (context.workflowTaskService) {
