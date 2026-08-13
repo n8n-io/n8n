@@ -393,6 +393,7 @@ export class AgentExecutionOrchestratorService {
 		const startedAt = recorder.startedAt;
 		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
 		let executionSource = source;
+		this.runtimeCacheService.acquireRuntimeLease(agentInstance);
 
 		try {
 			// A resume request carries no `source` of its own — recover it from
@@ -451,29 +452,36 @@ export class AgentExecutionOrchestratorService {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
-			// Always record resumed executions — even if they suspend again (chained HITL)
-			// or fail while streaming. Don't repeat the original user message — the
-			// pre-suspension execution already has it.
-			const messageRecord = normalizeAbortedMessageRecord(recorder.getMessageRecord(), abortSignal);
-			await this.persistRecordedExecution({
-				executionId,
-				onExecutionRecorded,
-				failureMessage: 'Failed to record resumed agent execution',
-				params: {
-					threadId,
-					agentId,
-					agentName: agentInstance.name,
-					projectId,
-					userMessage: null,
-					...(executionSource !== undefined ? { source: executionSource } : {}),
-					record: messageRecord,
-					hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
-					telemetry: {
-						runType,
-						configuration: runtime.telemetryConfiguration,
+			try {
+				// Always record resumed executions — even if they suspend again (chained HITL)
+				// or fail while streaming. Don't repeat the original user message — the
+				// pre-suspension execution already has it.
+				const messageRecord = normalizeAbortedMessageRecord(
+					recorder.getMessageRecord(),
+					abortSignal,
+				);
+				await this.persistRecordedExecution({
+					executionId,
+					onExecutionRecorded,
+					failureMessage: 'Failed to record resumed agent execution',
+					params: {
+						threadId,
+						agentId,
+						agentName: agentInstance.name,
+						projectId,
+						userMessage: null,
+						...(executionSource !== undefined ? { source: executionSource } : {}),
+						record: messageRecord,
+						hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
+						telemetry: {
+							runType,
+							configuration: runtime.telemetryConfiguration,
+						},
 					},
-				},
-			});
+				});
+			} finally {
+				this.runtimeCacheService.releaseRuntimeLease(agentInstance);
+			}
 		}
 	}
 
@@ -506,33 +514,38 @@ export class AgentExecutionOrchestratorService {
 			user,
 			sandboxPrincipalHash,
 		});
+		this.runtimeCacheService.acquireRuntimeLease(runtime.agent);
 
-		await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
-			integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
-			platform: N8N_CHAT_INTEGRATION_TYPE,
-			target: { type: 'dm', userId: user.id, threadId: memory.threadId },
-			interactingUserId: user.id,
-			updatedAt: new Date().toISOString(),
-		});
+		try {
+			await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
+				integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+				platform: N8N_CHAT_INTEGRATION_TYPE,
+				target: { type: 'dm', userId: user.id, threadId: memory.threadId },
+				interactingUserId: user.id,
+				updatedAt: new Date().toISOString(),
+			});
 
-		yield* this.streamChatResponse({
-			agentInstance: runtime.agent,
-			toolRegistry: runtime.toolRegistry,
-			agentId,
-			userId: user.id,
-			message,
-			attachments,
-			memory,
-			projectId: runtime.projectId,
-			source,
-			telemetry: {
-				runType: 'test',
-				configuration: runtime.telemetryConfiguration,
-			},
-			onExecutionRecorded,
-			abortSignal,
-			sandboxPrincipalHash,
-		});
+			yield* this.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId: user.id,
+				message,
+				attachments,
+				memory,
+				projectId: runtime.projectId,
+				source,
+				telemetry: {
+					runType: 'test',
+					configuration: runtime.telemetryConfiguration,
+				},
+				onExecutionRecorded,
+				abortSignal,
+				sandboxPrincipalHash,
+			});
+		} finally {
+			this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
+		}
 	}
 
 	/**
@@ -563,22 +576,27 @@ export class AgentExecutionOrchestratorService {
 			usePublishedVersion: true,
 			sandboxPrincipalHash,
 		});
+		this.runtimeCacheService.acquireRuntimeLease(runtime.agent);
 
-		yield* this.streamChatResponse({
-			agentInstance: runtime.agent,
-			toolRegistry: runtime.toolRegistry,
-			agentId,
-			message,
-			attachments,
-			memory,
-			projectId: runtime.projectId,
-			source: integrationType,
-			telemetry: {
-				runType: 'production',
-				configuration: runtime.telemetryConfiguration,
-			},
-			sandboxPrincipalHash,
-		});
+		try {
+			yield* this.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				message,
+				attachments,
+				memory,
+				projectId: runtime.projectId,
+				source: integrationType,
+				telemetry: {
+					runType: 'production',
+					configuration: runtime.telemetryConfiguration,
+				},
+				sandboxPrincipalHash,
+			});
+		} finally {
+			this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
+		}
 	}
 
 	/**
@@ -600,23 +618,28 @@ export class AgentExecutionOrchestratorService {
 			usePublishedVersion: true,
 			sandboxPrincipalHash,
 		});
+		this.runtimeCacheService.acquireRuntimeLease(runtime.agent);
 
-		yield* this.streamChatResponse({
-			agentInstance: runtime.agent,
-			toolRegistry: runtime.toolRegistry,
-			agentId,
-			message,
-			memory,
-			projectId: runtime.projectId,
-			source: 'task',
-			taskId,
-			taskVersionId,
-			telemetry: {
-				runType: 'production',
-				configuration: runtime.telemetryConfiguration,
-			},
-			sandboxPrincipalHash,
-		});
+		try {
+			yield* this.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				message,
+				memory,
+				projectId: runtime.projectId,
+				source: 'task',
+				taskId,
+				taskVersionId,
+				telemetry: {
+					runType: 'production',
+					configuration: runtime.telemetryConfiguration,
+				},
+				sandboxPrincipalHash,
+			});
+		} finally {
+			this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
+		}
 	}
 
 	/**
@@ -639,23 +662,28 @@ export class AgentExecutionOrchestratorService {
 			user,
 			sandboxPrincipalHash,
 		});
+		this.runtimeCacheService.acquireRuntimeLease(runtime.agent);
 
-		yield* this.streamChatResponse({
-			agentInstance: runtime.agent,
-			toolRegistry: runtime.toolRegistry,
-			agentId,
-			userId: user.id,
-			message,
-			memory,
-			projectId: runtime.projectId,
-			source: 'task',
-			taskId,
-			telemetry: {
-				runType: 'test',
-				configuration: runtime.telemetryConfiguration,
-			},
-			sandboxPrincipalHash,
-		});
+		try {
+			yield* this.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId: user.id,
+				message,
+				memory,
+				projectId: runtime.projectId,
+				source: 'task',
+				taskId,
+				telemetry: {
+					runType: 'test',
+					configuration: runtime.telemetryConfiguration,
+				},
+				sandboxPrincipalHash,
+			});
+		} finally {
+			this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
+		}
 	}
 
 	/**

@@ -80,6 +80,10 @@ export class AgentRuntimeCacheService {
 
 	private readonly runtimeInitializations = new Map<string, RuntimeInitialization>();
 
+	private readonly activeRuntimeLeases = new Map<RuntimeAgent, number>();
+
+	private readonly runtimesPendingClose = new Map<RuntimeAgent, string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
@@ -167,13 +171,38 @@ export class AgentRuntimeCacheService {
 	 * which disposes the runtime and disconnects any attached MCP clients.
 	 * Errors are logged but never thrown.
 	 */
-	private closeAgentResources(agent: { close(): Promise<void> }, agentId: string): void {
+	private closeAgentResources(agent: RuntimeAgent, agentId: string): void {
+		if (this.activeRuntimeLeases.has(agent)) {
+			this.runtimesPendingClose.set(agent, agentId);
+			return;
+		}
+
 		agent.close().catch((error) => {
 			this.logger.warn('[AgentRuntimeCacheService] Failed to close agent resources on eviction', {
 				agentId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});
+	}
+
+	acquireRuntimeLease(agent: RuntimeAgent): void {
+		this.activeRuntimeLeases.set(agent, (this.activeRuntimeLeases.get(agent) ?? 0) + 1);
+	}
+
+	releaseRuntimeLease(agent: RuntimeAgent): void {
+		const activeLeases = this.activeRuntimeLeases.get(agent);
+		if (activeLeases === undefined) return;
+		if (activeLeases > 1) {
+			this.activeRuntimeLeases.set(agent, activeLeases - 1);
+			return;
+		}
+
+		this.activeRuntimeLeases.delete(agent);
+		const agentId = this.runtimesPendingClose.get(agent);
+		if (agentId !== undefined) {
+			this.runtimesPendingClose.delete(agent);
+			this.closeAgentResources(agent, agentId);
+		}
 	}
 
 	/**

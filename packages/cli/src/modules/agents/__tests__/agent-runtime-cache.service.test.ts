@@ -107,7 +107,7 @@ describe('AgentRuntimeCacheService', () => {
 		);
 	});
 
-	it('closes a cached agent when its runtime expires', async () => {
+	it('defers closing an expired runtime until its active lease is released', async () => {
 		vi.useFakeTimers();
 		try {
 			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
@@ -120,12 +120,16 @@ describe('AgentRuntimeCacheService', () => {
 				.mockResolvedValueOnce(expiredRuntime)
 				.mockResolvedValueOnce(freshRuntime);
 
-			await service.getRuntime({ agentId, projectId });
+			const leasedRuntime = await service.getRuntime({ agentId, projectId });
+			service.acquireRuntimeLease(leasedRuntime.agent);
 			vi.setSystemTime(Date.now() + 30 * 60 * 1000 + 1);
 			const result = await service.getRuntime({ agentId, projectId });
 
-			expect(expiredRuntime.agent.close).toHaveBeenCalledOnce();
+			expect(expiredRuntime.agent.close).not.toHaveBeenCalled();
 			expect(result.agent).toBe(freshRuntime.agent);
+
+			service.releaseRuntimeLease(leasedRuntime.agent);
+			expect(expiredRuntime.agent.close).toHaveBeenCalledOnce();
 		} finally {
 			vi.useRealTimers();
 		}
