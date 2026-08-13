@@ -5,7 +5,7 @@ import type { Middleware } from './middlewares/global.middleware';
 
 /**
  * Final handler in a public API route tuple. `TReq` must be an `AuthenticatedRequest`
- * instantiation (including aliases like `WorkflowRequest.Create`).
+ * instantiation (including aliases like `WorkflowRequest.Transfer`).
  */
 type PublicAPIEndpointHandler<TReq extends AuthenticatedRequest> = (
 	req: TReq,

@@ -4,6 +4,8 @@ import {
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
 	TagIdsPublicDto,
+	UpdateWorkflowPublicDto,
+	UpdateWorkflowQueryDto,
 	WorkflowListPublicDto,
 	WorkflowPublicDto,
 	WorkflowTagsPublicDto,
@@ -26,6 +28,7 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -35,7 +38,10 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -286,6 +292,94 @@ export class WorkflowsPublicController {
 		});
 
 		return this.toWorkflowPublicDto(createdWorkflow);
+	}
+
+	@Put('/:workflowId')
+	@ApiKeyScope('workflow:update')
+	@ProjectScope('workflow:update')
+	@ApiSummary('Update a workflow')
+	@ApiDescription(
+		'Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async updateWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body body: UpdateWorkflowPublicDto,
+		@Query query: UpdateWorkflowQueryDto,
+	): Promise<WorkflowPublicDto> {
+		const { parentFolderId, ...rest } = body;
+
+		// null moves the workflow to the project root, undefined leaves the current folder untouched
+		const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
+
+		stripDerivedSettings(rest.settings);
+
+		const updateData = createWorkflowEntityFromPayload(rest);
+
+		try {
+			// Credential tamper protection is enforced centrally in WorkflowService.update
+			await this.workflowService.update(req.user, updateData, workflowId, {
+				parentFolderId: resolvedParentFolderId,
+				forceSave: true, // Skip version conflict check for public API
+				publicApi: true,
+				publishIfActive: query.publishIfActive,
+				source: 'api',
+			});
+
+			// `update` returns the workflow without its `shared` relation, which the response needs.
+			const updatedWorkflow = await this.workflowFinderService.findWorkflowForUser(
+				workflowId,
+				req.user,
+				['workflow:read'],
+				{ includeTags: !this.globalConfig.tags.disabled, includeActiveVersion: true },
+			);
+
+			if (!updatedWorkflow) {
+				throw new NotFoundError('Not Found');
+			}
+
+			return this.toWorkflowPublicDto(updatedWorkflow);
+		} catch (error) {
+			if (error instanceof FolderNotFoundError) {
+				throw new NotFoundError(error.message);
+			}
+			if (error instanceof ResponseError) {
+				throw error;
+			}
+			if (error instanceof Error) {
+				throw new BadRequestError(error.message);
+			}
+			throw error;
+		}
+	}
+
+	@Delete('/:workflowId')
+	@ApiKeyScope('workflow:delete')
+	@ProjectScope('workflow:delete')
+	@ApiSummary('Delete a workflow')
+	@ApiDescription('Delete a workflow.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async deleteWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowPublicDto> {
+		const workflow = await this.workflowService.delete(req.user, workflowId, true);
+
+		if (!workflow) {
+			// user trying to access a workflow they do not own, or workflow does not exist
+			throw new NotFoundError('Not Found');
+		}
+
+		return this.toWorkflowPublicDto(workflow);
 	}
 
 	@Get('/:workflowId')
