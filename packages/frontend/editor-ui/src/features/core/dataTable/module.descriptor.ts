@@ -1,11 +1,14 @@
 import { useI18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import {
-	ADD_DATA_TABLE_MODAL_KEY,
 	DATA_TABLE_DETAILS,
 	DATA_TABLE_VIEW,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
+import {
+	DATA_TABLE_AD_HOC_MODAL_KEY_PREFIXES,
+	DATA_TABLE_MODALS,
+} from '@/features/core/dataTable/modals';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 
 const i18n = useI18n();
@@ -19,13 +22,8 @@ export const DataTableModule: FrontendModuleDescription = {
 	name: 'Data Table',
 	description: 'Manage and store data efficiently with the Data Table module.',
 	icon: 'database',
-	modals: [
-		{
-			key: ADD_DATA_TABLE_MODAL_KEY,
-			component: async () => await import('./components/AddDataTableModal.vue'),
-			initialState: { open: false },
-		},
-	],
+	modals: DATA_TABLE_MODALS,
+	adHocModalKeyPrefixes: DATA_TABLE_AD_HOC_MODAL_KEY_PREFIXES,
 	routes: [
 		{
 			name: DATA_TABLE_VIEW,

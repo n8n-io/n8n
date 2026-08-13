@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '@/app/constants/modals';
+import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/instanceAiBrowserCredentialSetup';

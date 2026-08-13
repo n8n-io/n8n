@@ -3,9 +3,9 @@ import Modal from '@/app/components/Modal.vue';
 import {
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED,
-	MFA_SETUP_MODAL_KEY,
 	VIEWS,
 } from '@/app/constants';
+import { MFA_SETUP_MODAL_KEY } from '../auth.constants';
 import { ref, onMounted } from 'vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mfaEventBus } from '../auth.eventBus';
@@ -18,6 +18,9 @@ import router from '@/app/router';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+
+// DynamicModalLoader's modal-state props must not reach the dialog root.
+defineOptions({ inheritAttrs: false });
 // ---------------------------------------------------------------------------
 // #region Reactive properties
 // ---------------------------------------------------------------------------

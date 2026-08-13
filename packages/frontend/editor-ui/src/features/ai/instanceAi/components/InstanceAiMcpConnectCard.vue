@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import type { InstanceAiMcpConnectServer, McpRegistryServerResponse } from '@n8n/api-types';
 import { computed, provide, ref, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '@/app/constants/modals';
+import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ToolCredentialPicker from '@/features/shared/toolsConnection/ToolCredentialPicker.vue';
 import {

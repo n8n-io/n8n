@@ -60,3 +60,7 @@ const INSTANCE_AI_CHAT_ROUTE_NAMES: ReadonlySet<string> = new Set([
 export function isInstanceAiChatRoute(name: unknown): boolean {
 	return typeof name === 'string' && INSTANCE_AI_CHAT_ROUTE_NAMES.has(name);
 }
+
+export const INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY = 'instanceAiComputerUseSetup';
+export const INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY = 'instanceAiBrowserUseSetup';
+export const INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY = 'instanceAiToolsConnection';

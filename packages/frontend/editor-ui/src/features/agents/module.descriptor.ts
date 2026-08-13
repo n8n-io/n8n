@@ -7,19 +7,13 @@ import {
 	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
-	AGENT_TOOLS_MODAL_KEY,
-	AGENT_TOOL_CONFIG_MODAL_KEY,
-	AGENT_SKILL_MODAL_KEY,
-	AGENT_TASK_MODAL_KEY,
-	AGENT_SUB_AGENTS_MODAL_KEY,
-	AGENT_VECTOR_STORES_MODAL_KEY,
-	AGENT_JSON_IMPORT_MODAL_KEY,
 	NEW_AGENT_VIEW,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
+import { AGENTS_MODALS } from '@/features/agents/modals';
 
 const AgentsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentsListView.vue');
@@ -41,91 +35,7 @@ export const AgentsModule: FrontendModuleDescription = {
 	name: 'Agents',
 	description: 'Build and manage AI agents',
 	icon: 'robot',
-	modals: [
-		{
-			key: AGENT_TOOLS_MODAL_KEY,
-			component: async () => await import('./components/AgentToolsConnectionModalWrapper.vue'),
-			initialState: {
-				open: false,
-				data: {
-					tools: [],
-					mcpServers: [],
-					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_TOOL_CONFIG_MODAL_KEY,
-			component: async () => await import('./components/AgentToolConfigModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					kind: 'node',
-					toolRef: null,
-					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_SKILL_MODAL_KEY,
-			component: async () => await import('./components/AgentSkillModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					projectId: '',
-					agentId: '',
-					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_TASK_MODAL_KEY,
-			component: async () => await import('./components/AgentTaskModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					projectId: '',
-					agentId: '',
-					isPublished: false,
-					onSaved: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_SUB_AGENTS_MODAL_KEY,
-			component: async () => await import('./components/AgentSubAgentsModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					agents: [],
-					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_VECTOR_STORES_MODAL_KEY,
-			component: async () => await import('./components/AgentVectorStoresModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					projectId: '',
-					agentId: '',
-					existingNames: [],
-					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_JSON_IMPORT_MODAL_KEY,
-			component: async () => await import('./components/AgentJsonImportModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					onConfirm: () => {},
-				},
-			},
-		},
-	],
+	modals: AGENTS_MODALS,
 	routes: [
 		{
 			name: AGENTS_LIST_VIEW,

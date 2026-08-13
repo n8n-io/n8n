@@ -11,7 +11,7 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '@/app/constants/modals';
+import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 
 // Toggleable state for the 094 experiment and easy-setup detection.
 const experiment = vi.hoisted(() => ({ enabled: false }));
