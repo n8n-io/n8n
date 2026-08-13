@@ -1,0 +1,29 @@
+packages/cli/src/modules/slack-comms/slack-stream-renderer.ts
+  s_60dfaf9586b4e7::t_1a305d3a12673a 412-416,431-449
+  s_60dfaf9586b4e7::t_a62799fe028e81 460-463
+  s_60dfaf9586b4e7::t_0c6f1a982e9f81 625-631,633,637-657
+  s_60dfaf9586b4e7::t_aedbf4325ba639 186-194
+  s_60dfaf9586b4e7::t_ce3d36562ff970 231-236
+  s_60dfaf9586b4e7::t_e8a5efd212a8b5 237-239
+packages/cli/src/modules/slack-comms/__tests__/slack-stream-renderer.test.ts
+  s_60dfaf9586b4e7::t_08ccd652972c2a 1165-1197
+  s_60dfaf9586b4e7::t_0840f589a3bf57 864-924,927,931,933,942
+  s_60dfaf9586b4e7::t_76023838673304 925-926,932,934-941
+  ai_agent 928-930
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f329b25932878a1f657a2a50d2d9d1d11f75372f",
+  "prompts": {},
+  "sessions": {
+    "s_60dfaf9586b4e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc0705c0-a9e7-42d1-901f-f21c693be3e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}
