@@ -1,0 +1,40 @@
+packages/cli/src/commands/base-command.ts
+  s_ee871748970946::t_638c9a4e088d34 148-150,152-155
+packages/cli/src/modules/chat-hub/chat-hub-execution-store.service.ts
+  s_ee871748970946::t_af6e4a2e80cfa2 68-73
+  s_ee871748970946::t_2942f3f1ac454b 6,10
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_ee871748970946::t_21ccd827ad655e 52
+packages/cli/src/modules/chat-hub/chat-stream-state.service.ts
+  s_ee871748970946::t_9060029a3394bd 78-83
+  s_ee871748970946::t_2942f3f1ac454b 6,10
+packages/cli/src/scaling/pubsub/publisher.service.ts
+  s_ee871748970946::t_82fa92c5796f04 3,9
+  s_ee871748970946::t_25543a8ebbfd01 29
+  s_ee871748970946::t_11c1d685116115 73
+  s_ee871748970946::t_27a84998416350 136-143,146,151,155,159
+  s_ee871748970946::t_24682bcc609266 6
+  s_ee871748970946::t_6cbc6c9e7ce110 58-63
+  s_ee871748970946::t_754de733ac1e87 67-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bf0d27d1c67d5ada312937b24559c689bf7548c3",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ee871748970946": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0aca0d0f-1b2b-435b-891c-746f9b5703b3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
