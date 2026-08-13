@@ -1,6 +1,4 @@
-import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { PROJECT_ROOT } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -35,9 +33,7 @@ const handleError = (error: unknown) => {
 
 type WorkflowHandlers = {
 	transferWorkflow: PublicAPIEndpoint<WorkflowRequest.Transfer>;
-	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
-	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
 	publishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
@@ -104,22 +100,6 @@ const workflowHandlers: WorkflowHandlers = {
 			return res.status(204).send();
 		},
 	],
-	deleteWorkflow: [
-		publicApiScope('workflow:delete'),
-		projectScope('workflow:delete', 'workflow'),
-		async (req, res) => {
-			const { id: workflowId } = req.params;
-
-			const workflow = await Container.get(WorkflowService).delete(req.user, workflowId, true);
-			if (!workflow) {
-				// user trying to access a workflow they do not own
-				// or workflow does not exist
-				throw new NotFoundError('Not Found');
-			}
-
-			return res.json(workflow);
-		},
-	],
 	getWorkflowVersion: [
 		publicApiScope('workflow:read'),
 		projectScope('workflow:read', 'workflow'),
@@ -144,54 +124,6 @@ const workflowHandlers: WorkflowHandlers = {
 				return res.json(versionWithoutInternalFields);
 			} catch {
 				throw new NotFoundError('Version not found');
-			}
-		},
-	],
-	updateWorkflow: [
-		publicApiScope('workflow:update'),
-		projectScope('workflow:update', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const { parentFolderId, ...rest } = req.body;
-			const updateData = new WorkflowEntity();
-			Object.assign(updateData, rest);
-
-			// null moves the workflow to the project root, (undefined) leaves the current folder untouched
-			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
-
-			// Defaults to true so existing integrations keep publishing on save; callers that want
-			// to stage a change on an already-published workflow can opt out explicitly.
-			const { publishIfActive = true } = req.query;
-
-			// binaryMode and credentialResolverId are derived, internal settings
-			// rather than something users are expected to control programmatically;
-			// strip them so the settings merge in WorkflowService.update preserves
-			// whatever is already stored.
-			if (updateData.settings?.binaryMode !== undefined) {
-				delete updateData.settings.binaryMode;
-			}
-			if (updateData.settings?.credentialResolverId !== undefined) {
-				delete updateData.settings.credentialResolverId;
-			}
-
-			try {
-				// Credential tamper protection is enforced centrally in WorkflowService.update
-				const updatedWorkflow = await Container.get(WorkflowService).update(
-					req.user,
-					updateData,
-					id,
-					{
-						parentFolderId: resolvedParentFolderId,
-						forceSave: true, // Skip version conflict check for public API
-						publicApi: true,
-						publishIfActive,
-						source: 'api',
-					},
-				);
-
-				return res.json(updatedWorkflow);
-			} catch (error) {
-				return handleError(error);
 			}
 		},
 	],

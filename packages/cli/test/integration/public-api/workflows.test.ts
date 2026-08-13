@@ -2516,6 +2516,20 @@ describe('PUT /workflows/:id', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should reject a body carrying an unknown field', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'testing',
+			nodes: [],
+			connections: {},
+			settings: {},
+			unexpectedField: 'nope',
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should reject workflow update with pinData exceeding size limit', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB

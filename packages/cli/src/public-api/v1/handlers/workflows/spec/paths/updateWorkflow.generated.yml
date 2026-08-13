@@ -1,0 +1,167 @@
+operationId: updateWorkflow
+tags:
+  - Workflow
+summary: Update a workflow
+description: Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`.
+x-required-scope: workflow:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: workflowId
+    in: path
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'true'
+    required: false
+    name: publishIfActive
+    in: query
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+          description:
+            type: string
+            nullable: true
+          nodes: {}
+          connections: {}
+          nodeGroups:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                nodeIds:
+                  type: array
+                  items:
+                    type: string
+                description:
+                  type: string
+                  maxLength: 155
+              required:
+                - id
+                - name
+                - nodeIds
+              additionalProperties: false
+          settings:
+            type: object
+            properties:
+              saveExecutionProgress:
+                type: boolean
+              saveManualExecutions:
+                type: boolean
+              saveDataErrorExecution:
+                type: string
+                enum:
+                  - all
+                  - none
+              saveDataSuccessExecution:
+                type: string
+                enum:
+                  - all
+                  - none
+              executionTimeout:
+                type: number
+              errorWorkflow:
+                type: string
+              timezone:
+                type: string
+              executionOrder:
+                type: string
+              binaryMode:
+                type: string
+                enum:
+                  - separate
+                  - combined
+              credentialResolverId:
+                type: string
+              callerPolicy:
+                type: string
+                enum:
+                  - any
+                  - none
+                  - workflowsFromAList
+                  - workflowsFromSameOwner
+              callerIds:
+                type: string
+              timeSavedMode:
+                type: string
+                enum:
+                  - fixed
+                  - dynamic
+              timeSavedPerExecution:
+                type: number
+              redactionPolicy:
+                type: string
+                enum:
+                  - none
+                  - non-manual
+                  - manual-only
+                  - all
+              availableInMCP:
+                type: boolean
+              customTelemetryTags:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    key:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                    - key
+                    - value
+                  additionalProperties: false
+            additionalProperties: false
+          staticData:
+            anyOf:
+              - type: string
+              - type: object
+                additionalProperties:
+                  nullable: true
+              - nullable: true
+          pinData:
+            type: object
+            nullable: true
+            additionalProperties:
+              nullable: true
+          parentFolderId:
+            type: string
+            nullable: true
+        required:
+          - name
+          - nodes
+          - connections
+          - settings
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/workflowPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
