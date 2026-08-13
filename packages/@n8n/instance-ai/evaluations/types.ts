@@ -210,6 +210,12 @@ export interface TestCaseCredential {
 	type: string;
 	/** Display name; defaults to the template's name, auto-suffixed on duplicates. */
 	name?: string;
+	/** Defaults to true. false models a credential that was already broken before
+	 *  the conversation started (expired/revoked/scope-changed) — left off the
+	 *  connection-test bypass list, so its real test runs and fails. Distinct from
+	 *  a credential set up on a card mid-conversation (UserProxyLlm), which always
+	 *  passes. */
+	valid?: boolean;
 }
 
 export interface WorkflowTestCase {

@@ -153,4 +153,28 @@ describe('buildWorkflow declared credentials', () => {
 			['cred-seeded'],
 		);
 	});
+
+	it('filters an already-broken credential out of the connection-test bypass list', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const createCredential = vi
+			.fn()
+			.mockResolvedValueOnce({ id: 'cred-working' })
+			.mockResolvedValueOnce({ id: 'cred-broken' });
+		const client = makeClient({ setThreadCredentialAllowlist, createCredential });
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			credentials: [{ type: 'slackApi' }, { type: 'notionApi', valid: false }],
+		});
+
+		expect(build.success).toBe(true);
+		// Both credentials are created for real and visible to the build (2nd arg) —
+		// only the one NOT marked already-broken bypasses its connection test (3rd arg).
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			['cred-working', 'cred-broken'],
+			['cred-working'],
+		);
+	});
 });
