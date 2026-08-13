@@ -9,6 +9,11 @@ import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
 export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
 
+export interface AgentContinueLoadedEvent {
+	sessionId: string;
+	count: number;
+}
+
 /**
  * Agent resource type definition.
  * This extends the ModuleResources interface to add Agent as a resource type.

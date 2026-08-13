@@ -23,6 +23,7 @@ import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import type {
+	CredentialCheckResult,
 	FormFieldsParameter,
 	IDataObject,
 	INode,
@@ -32,7 +33,7 @@ import type {
 	MultiPartFormData,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
-import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
 
 import {
 	formWebhook,
@@ -1046,10 +1047,12 @@ describe('FormTrigger, formWebhook', () => {
 				query?: IDataObject;
 				headers?: Record<string, string>;
 				originalUrl?: string;
+				nodeType?: string;
 			} = { method: 'GET' },
 		) => {
 			const send = vi.fn();
-			const status = vi.fn(() => ({ send })) as any;
+			const json = vi.fn();
+			const status = vi.fn(() => ({ send, json })) as any;
 			const writeHead = vi.fn();
 			const end = vi.fn();
 			const setHeader = vi.fn();
@@ -1065,7 +1068,10 @@ describe('FormTrigger, formWebhook', () => {
 				contentType: overrides.method === 'POST' ? 'multipart/form-data' : undefined,
 			};
 
-			ctx.getNode.mockReturnValue({ typeVersion: 2.6 } as INode);
+			ctx.getNode.mockReturnValue({
+				typeVersion: 2.6,
+				type: overrides.nodeType ?? FORM_TRIGGER_NODE_TYPE,
+			} as INode);
 			ctx.getNodeParameter.calledWith('options').mockReturnValue({});
 			ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
 			ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('Test Description');
@@ -1091,7 +1097,7 @@ describe('FormTrigger, formWebhook', () => {
 			ctx.getChildNodes.mockReturnValue([]);
 			(ctx as any).logger = { warn: vi.fn(), error: vi.fn(), debug: vi.fn(), info: vi.fn() };
 
-			return { status, send, writeHead, end, setHeader, render, cookie, clearCookie };
+			return { status, send, json, writeHead, end, setHeader, render, cookie, clearCookie };
 		};
 
 		beforeEach(() => {
@@ -1314,6 +1320,140 @@ describe('FormTrigger, formWebhook', () => {
 			expect(status).toHaveBeenCalledWith(401);
 			expect(send).toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		describe('submit-time credential readiness gate', () => {
+			const notReady: CredentialCheckResult = {
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'cred-missing',
+						credentialName: 'My Gmail',
+						credentialType: 'gmailOAuth2',
+						resolverId: 'resolver-1',
+						status: 'missing',
+						authorizationUrl: 'https://example.com/authorize',
+						revokeUrl: 'https://example.com/revoke',
+					},
+					{
+						credentialId: 'cred-connected',
+						credentialName: 'My CRM',
+						credentialType: 'hubspotOAuth2',
+						resolverId: 'resolver-2',
+						status: 'configured',
+					},
+				],
+			};
+
+			const setupAuthedPost = (
+				ctx: ReturnType<typeof mock<IWebhookFunctions>>,
+				nodeType?: string,
+			) => {
+				const res = setupContext(ctx, {
+					method: 'POST',
+					headers: { 'x-auth-token': 'as-token' },
+					nodeType,
+				});
+				ctx.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: authedUser });
+				return res;
+			};
+
+			it('returns 428 with the structured body and no workflowData when not ready', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { status, json } = setupAuthedPost(ctx);
+				ctx.checkTriggerCredentialStatus.mockResolvedValue(notReady);
+
+				const result = await formWebhook(ctx);
+
+				expect(status).toHaveBeenCalledWith(428);
+				expect(json).toHaveBeenCalledWith({
+					status: 'credential_connections_required',
+					readyToExecute: false,
+					credentials: [
+						{
+							credentialId: 'cred-missing',
+							credentialName: 'My Gmail',
+							credentialType: 'gmailOAuth2',
+							credentialStatus: 'missing',
+						},
+						{
+							credentialId: 'cred-connected',
+							credentialName: 'My CRM',
+							credentialType: 'hubspotOAuth2',
+							credentialStatus: 'configured',
+						},
+					],
+				});
+				// The connect links belong to the trusted host, not the sandboxed page.
+				for (const credential of json.mock.calls[0][0].credentials) {
+					expect(credential).not.toHaveProperty('authorizationUrl');
+					expect(credential).not.toHaveProperty('revokeUrl');
+				}
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			it('enqueues the execution when the check reports ready', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { status } = setupAuthedPost(ctx);
+				ctx.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: true,
+					credentials: [notReady.credentials[1]],
+				});
+
+				const result = await formWebhook(ctx);
+
+				expect(status).not.toHaveBeenCalled();
+				expect(result).toMatchObject({
+					webhookResponse: { status: 200 },
+					workflowData: [[expect.anything()]],
+				});
+			});
+
+			it('enqueues the execution when no check applies', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { status } = setupAuthedPost(ctx);
+				ctx.checkTriggerCredentialStatus.mockResolvedValue(undefined);
+
+				const result = await formWebhook(ctx);
+
+				expect(status).not.toHaveBeenCalled();
+				expect(result).toMatchObject({
+					webhookResponse: { status: 200 },
+					workflowData: [[expect.anything()]],
+				});
+			});
+
+			it('fails closed with 503 when the check throws', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { status, json } = setupAuthedPost(ctx);
+				const error = new Error('could not decrypt credential context');
+				ctx.checkTriggerCredentialStatus.mockRejectedValue(error);
+
+				const result = await formWebhook(ctx);
+
+				expect(status).toHaveBeenCalledWith(503);
+				expect(json).toHaveBeenCalledWith({ status: 'credential_readiness_check_failed' });
+				expect(ctx.logger.error).toHaveBeenCalledWith(
+					'Form submit credential readiness check failed',
+					{ error },
+				);
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			it('does not gate a Wait node form resume', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { status } = setupAuthedPost(ctx, WAIT_NODE_TYPE);
+				ctx.checkTriggerCredentialStatus.mockResolvedValue(notReady);
+
+				const result = await formWebhook(ctx);
+
+				expect(ctx.checkTriggerCredentialStatus).not.toHaveBeenCalled();
+				expect(status).not.toHaveBeenCalled();
+				expect(result).toMatchObject({
+					webhookResponse: { status: 200 },
+					workflowData: [[expect.anything()]],
+				});
+			});
 		});
 	});
 });

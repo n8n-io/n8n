@@ -7,6 +7,7 @@ export const toolCallSummarySchema = z.object({
 	toolCallId: z.string(),
 	toolName: z.string(),
 	succeeded: z.boolean(),
+	configMutated: z.literal(true).optional(),
 	errorSummary: z.string().optional(),
 });
 
@@ -18,6 +19,15 @@ export const workSummarySchema = z.object({
 
 export type ToolCallSummary = z.infer<typeof toolCallSummarySchema>;
 export type WorkSummary = z.infer<typeof workSummarySchema>;
+
+function hasConfigMutationMarker(result: unknown): boolean {
+	return (
+		typeof result === 'object' &&
+		result !== null &&
+		'configMutated' in result &&
+		result.configMutated === true
+	);
+}
 
 // ── Accumulator ─────────────────────────────────────────────────────────────
 
@@ -52,6 +62,11 @@ export class WorkSummaryAccumulator {
 				const existing = this.calls.get(toolCallId);
 				if (existing) {
 					existing.succeeded = true;
+					if (hasConfigMutationMarker(event.payload.result)) {
+						existing.configMutated = true;
+					} else {
+						delete existing.configMutated;
+					}
 				}
 				break;
 			}

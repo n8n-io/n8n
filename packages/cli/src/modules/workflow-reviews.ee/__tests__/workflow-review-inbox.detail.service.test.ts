@@ -2,37 +2,31 @@ import type { LicenseState } from '@n8n/backend-common';
 import type {
 	User,
 	UserRepository,
-	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
+	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
+	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+
+import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
+import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';
 
-/** Plain member: no global scopes, so visibility falls through to project scopes. */
-const member = mock<User>({ id: 'user-1', role: { slug: 'global:member', scopes: [] } });
+/** No global scopes, so visibility falls through to project scopes. */
 const requester = mock<User>({ id: 'requester-1', role: { slug: 'global:member', scopes: [] } });
-const globalPublisher = mock<User>({
-	id: 'admin-1',
-	role: { slug: 'global:admin', scopes: [{ slug: 'workflow:publish' }] },
-});
 
 function reviewRequest(overrides: Partial<WorkflowReviewRequest> = {}) {
 	return mock<WorkflowReviewRequest>({
@@ -66,59 +60,64 @@ function historyVersion(versionId: string) {
 
 describe('WorkflowReviewInboxService.getDetail', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
-	const workflowFinderService = mock<WorkflowFinderService>();
+	const accessService = mock<WorkflowReviewAccessService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
+	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const userRepository = mock<UserRepository>();
-	const projectService = mock<ProjectService>();
-	const decisionEligibilityService = mock<WorkflowReviewDecisionEligibilityService>();
+	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const licenseState = mock<LicenseState>();
 
 	const service = new WorkflowReviewInboxService(
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
-		workflowFinderService,
+		accessService,
 		workflowHistoryService,
 		publishedVersionRepository,
 		requestRepository,
 		workflowRepository,
 		reviewerRepository,
+		authorRepository,
 		userRepository,
-		projectService,
-		decisionEligibilityService,
+		eligibilityService,
 	);
+
+	/** The read gate resolved: `readableWorkflowRows` are what the caller may still read. */
+	function mockGate(readableWorkflowRows: WorkflowReviewRequestWorkflowDetailRow[] = []) {
+		accessService.findReadableRequestOrFail.mockResolvedValue({
+			request: reviewRequest(),
+			readableWorkflowRows,
+			pinnedWorkflowId: readableWorkflowRows.at(0)?.workflowId ?? null,
+			canReadPinnedWorkflow: readableWorkflowRows.length > 0,
+		});
+	}
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
-		requestRepository.findById.mockResolvedValue(reviewRequest());
-		// By default the review covers one workflow the caller can still read
-		workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
-		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
-			{ workflowId, workflowName: 'My workflow', workflowVersionId: null },
-		]);
+		mockGate();
 		reviewerRepository.findByRequestIds.mockResolvedValue([]);
+		authorRepository.findByRequestIds.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
 		publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 		workflowHistoryService.findVersion.mockResolvedValue(null);
-		decisionEligibilityService.resolveViewerEligibility.mockResolvedValue({
+		eligibilityService.resolveViewerEligibility.mockResolvedValue({
 			canDecide: true,
-			reason: null,
+			decisionIneligibilityReason: null,
+			canComment: true,
 		});
 	});
 
-	/** One child row pinned to `pinnedVersionId`. */
+	/** One readable child row pinned to `pinnedVersionId`. */
 	function mockChildRow(
 		pinnedVersionId: string | null = 'ver-pinned',
 		workflowName = 'My workflow',
 	) {
-		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
-			{ workflowId, workflowName, workflowVersionId: pinnedVersionId },
-		]);
+		mockGate([{ workflowId, workflowName, workflowVersionId: pinnedVersionId }]);
 	}
 
 	describe('when reviews are unavailable', () => {
@@ -126,76 +125,14 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(false);
 
 			await expect(service.getDetail(requester, requestId)).rejects.toThrow(ForbiddenError);
-			expect(requestRepository.findById).not.toHaveBeenCalled();
+			expect(accessService.findReadableRequestOrFail).not.toHaveBeenCalled();
 		});
 
 		it('refuses to open a review when an admin has turned reviews off', async () => {
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
 
 			await expect(service.getDetail(requester, requestId)).rejects.toThrow(ForbiddenError);
-			expect(requestRepository.findById).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('who is allowed to open a review', () => {
-		it('reports a review that does not exist as not found', async () => {
-			requestRepository.findById.mockResolvedValue(null);
-
-			await expect(service.getDetail(requester, requestId)).rejects.toThrow(NotFoundError);
-		});
-
-		it('hides a review from someone who cannot publish in its project, without revealing that it exists', async () => {
-			projectService.getProjectIdsWithScope.mockResolvedValue(['other-proj']);
-
-			// Same error as a review that does not exist: existence must not leak
-			await expect(service.getDetail(member, requestId)).rejects.toThrow(NotFoundError);
-			await expect(service.getDetail(member, requestId)).rejects.toThrow(
-				'Could not find review request',
-			);
-			// Nothing beyond the record itself is loaded for someone who cannot see it
-			expect(workflowRepository.findLinkedWorkflowDetailsByRequestId).not.toHaveBeenCalled();
-		});
-
-		it('lets someone who can publish in the review project open it', async () => {
-			projectService.getProjectIdsWithScope.mockResolvedValue(['proj-1']);
-
-			const detail = await service.getDetail(member, requestId);
-
-			expect(detail.id).toBe(requestId);
-		});
-
-		it('always lets the person who asked for the review open it', async () => {
-			const detail = await service.getDetail(requester, requestId);
-
-			expect(detail.id).toBe(requestId);
-			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
-		});
-
-		it('lets someone who can publish anywhere on the instance open any review', async () => {
-			const detail = await service.getDetail(globalPublisher, requestId);
-
-			expect(detail.id).toBe(requestId);
-			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
-		});
-
-		it('leaves out a workflow the person who asked for the review can no longer read', async () => {
-			mockChildRow('ver-pinned');
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
-
-			const detail = await service.getDetail(requester, requestId);
-
-			// They keep their own review, but none of the workflow content
-			expect(detail.id).toBe(requestId);
-			expect(detail.workflows).toEqual([]);
-			expect(workflowHistoryService.findVersion).not.toHaveBeenCalled();
-		});
-
-		it('hides the review when someone else can read none of the workflows it covers', async () => {
-			projectService.getProjectIdsWithScope.mockResolvedValue(['proj-1']);
-			mockChildRow('ver-pinned');
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
-
-			await expect(service.getDetail(member, requestId)).rejects.toThrow(NotFoundError);
+			expect(accessService.findReadableRequestOrFail).not.toHaveBeenCalled();
 		});
 	});
 
@@ -235,55 +172,132 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.workflowVersionId).toBeNull();
 		});
 
-		// An open review with no covered workflow is a dead leftover (nothing can
-		// decide or update it), so it is hidden — from its requester too
-		it('reports an open review whose workflows were all deleted as not found', async () => {
+		// An open review can transiently cover no workflow when a delete orphaned
+		// it and the sweep hasn't closed it yet — it stays readable until then
+		it('returns an open review with no workflows when its workflow was deleted', async () => {
 			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
 
-			await expect(service.getDetail(requester, requestId)).rejects.toThrow(NotFoundError);
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.state).toBe('open');
+			expect(detail.workflows).toEqual([]);
+			expect(detail.workflowName).toBeNull();
 		});
 	});
 
-	describe('viewer decision eligibility', () => {
-		it('carries the resolved capability on the detail', async () => {
+	describe('the people on the review', () => {
+		function mockUsers(...ids: string[]) {
+			userRepository.findManyByIds.mockResolvedValue(
+				ids.map((id) =>
+					mock<User>({ id, email: `${id}@example.com`, firstName: id, lastName: id }),
+				),
+			);
+		}
+
+		it('returns the requester, every author, and the reviewers', async () => {
+			authorRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: requestId, userId: requester.id }),
+				mock({ workflowReviewRequestId: requestId, userId: 'author-2' }),
+			]);
+			reviewerRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: requestId, userId: 'reviewer-1' }),
+			]);
+			mockUsers(requester.id, 'author-2', 'reviewer-1');
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(authorRepository.findByRequestIds).toHaveBeenCalledWith([requestId]);
+			expect(detail.requester).toMatchObject({ id: requester.id });
+			// The requester stays in `authors`; deduplication is the frontend's job.
+			expect(detail.authors.map((author) => author.id)).toEqual([requester.id, 'author-2']);
+			expect(detail.reviewers.map((reviewer) => reviewer.id)).toEqual(['reviewer-1']);
+		});
+
+		it('resolves a user holding several roles with a single deduplicated lookup', async () => {
+			authorRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: requestId, userId: requester.id }),
+				mock({ workflowReviewRequestId: requestId, userId: 'reviewer-1' }),
+			]);
+			reviewerRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: requestId, userId: 'reviewer-1' }),
+			]);
+			mockUsers(requester.id, 'reviewer-1');
+
+			await service.getDetail(requester, requestId);
+
+			expect(userRepository.findManyByIds).toHaveBeenCalledTimes(1);
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith([requester.id, 'reviewer-1']);
+		});
+
+		it('omits an author whose user no longer resolves, keeping the others', async () => {
+			authorRepository.findByRequestIds.mockResolvedValue([
+				mock({ workflowReviewRequestId: requestId, userId: requester.id }),
+				mock({ workflowReviewRequestId: requestId, userId: 'deleted-author' }),
+			]);
+			mockUsers(requester.id);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.authors.map((author) => author.id)).toEqual([requester.id]);
+		});
+
+		it('returns no authors when the review has no author rows', async () => {
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.authors).toEqual([]);
+		});
+	});
+
+	describe('viewer eligibility', () => {
+		it('tells the client the viewer may both decide and comment', async () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.viewerCanDecide).toBe(true);
 			expect(detail.viewerDecisionIneligibilityReason).toBeNull();
+			expect(detail.viewerCanComment).toBe(true);
 		});
 
-		it('surfaces the ineligibility reason for an author', async () => {
-			decisionEligibilityService.resolveViewerEligibility.mockResolvedValue({
+		it('tells an author why they cannot decide while still letting them comment', async () => {
+			eligibilityService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
-				reason: 'author',
+				decisionIneligibilityReason: 'author',
+				canComment: true,
 			});
 
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.viewerCanDecide).toBe(false);
 			expect(detail.viewerDecisionIneligibilityReason).toBe('author');
+			expect(detail.viewerCanComment).toBe(true);
 		});
 
-		it('resolves eligibility against the pinned workflow, even one the caller cannot read', async () => {
-			// The requester keeps their record after losing read access to the covered
+		it('checks what the viewer may do against the workflow under review, even one they cannot open', async () => {
+			// The requester keeps their record after losing view access to the covered
 			// workflow — eligibility must still be checked against that pinned row.
-			mockChildRow('ver-pinned');
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
-			decisionEligibilityService.resolveViewerEligibility.mockResolvedValue({
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest(),
+				readableWorkflowRows: [],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: false,
+			});
+			eligibilityService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
-				reason: 'missing_publish_permission',
+				decisionIneligibilityReason: 'missing_permission',
+				canComment: false,
 			});
 
 			const detail = await service.getDetail(requester, requestId);
 
-			expect(decisionEligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
-				requester,
-				expect.objectContaining({ id: requestId }),
-				workflowId,
-			);
+			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(requester, {
+				request: expect.objectContaining({ id: requestId }),
+				readableWorkflowRows: [],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: false,
+			});
 			expect(detail.workflows).toEqual([]);
 			expect(detail.viewerCanDecide).toBe(false);
-			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_publish_permission');
+			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_permission');
+			expect(detail.viewerCanComment).toBe(false);
 		});
 
 		it('passes no workflow id when a closed review no longer covers any workflow', async () => {
@@ -292,10 +306,9 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			await service.getDetail(requester, requestId);
 
-			expect(decisionEligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
+			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
 				requester,
-				expect.objectContaining({ id: requestId }),
-				null,
+				expect.objectContaining({ pinnedWorkflowId: null, canReadPinnedWorkflow: false }),
 			);
 		});
 	});

@@ -1,5 +1,6 @@
 process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 
+import type { SourceControlledFile } from '@n8n/api-types';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -9,24 +10,44 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import {
+	FolderRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	UserRepository,
 	WorkflowRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { InstanceSettings } from 'n8n-core';
+import { readFile } from 'node:fs/promises';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
 mockInstance(ActiveWorkflowManager);
+
+// `readFile` must be mocked at the module level: the source-control import service
+// imports it as a named binding, which `vi.spyOn` can't intercept under Vitest.
+// The default implementation passes through to the real fs.
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:fs/promises')>();
+	const mockedReadFile = vi.fn(actual.readFile);
+	return { ...actual, readFile: mockedReadFile, default: { ...actual, readFile: mockedReadFile } };
+});
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflow-reviews', 'workflows'],
@@ -64,6 +85,7 @@ beforeEach(async () => {
 		'WorkflowPublishHistory',
 		'WorkflowEntity',
 		'WorkflowHistory',
+		'Folder',
 		'ProjectRelation',
 		'Project',
 		'User',
@@ -228,5 +250,154 @@ describe('auto-close with the instance policy disabled', () => {
 
 		const closed = await requestRepository.findById(request.id, {});
 		expect(closed?.state).toBe('closed');
+	});
+});
+
+describe('auto-close on source-control pull', () => {
+	const mockFileData = new Map<string, string>();
+	const fsReadFile = vi.mocked(readFile);
+	let importService: SourceControlImportService;
+
+	beforeAll(() => {
+		// Manual construction with real persistence + the real hooks proxy (whose
+		// provider the workflow-reviews module registered), fs and non-workflow
+		// dependencies mocked — same pattern as the environments integration tests.
+		importService = new SourceControlImportService(
+			mock(), // logger
+			mock(), // errorReporter
+			mock(), // variablesService
+			mock(), // credentialsRepository
+			Container.get(ProjectRepository),
+			mock(), // projectRelationRepository
+			mock(), // tagRepository
+			Container.get(SharedWorkflowRepository),
+			mock(), // sharedCredentialsRepository
+			Container.get(UserRepository),
+			mock(), // variablesRepository
+			Container.get(WorkflowRepository),
+			mock(), // workflowTagMappingRepository
+			mock(), // workflowService
+			mock(), // credentialsService
+			mock(), // tagService
+			Container.get(FolderRepository),
+			mock<InstanceSettings>({ n8nFolder: '/mock' }),
+			mock(), // sourceControlContextFactory
+			mock(), // sourceControlScopedService
+			Container.get(WorkflowHistoryService),
+			mock(), // dataTableRepository
+			mock(), // dataTableColumnRepository
+			mock(), // dataTableDDLService
+			mock(), // redactionEnforcementService
+			mock(), // dataTableSizeValidator
+			mock(), // activeWorkflowManager
+			mock(), // executionPersistence
+			mock(), // workflowPublishGuard
+			Container.get(WorkflowMutationHooksProxy),
+		);
+	});
+
+	beforeEach(() => {
+		mockFileData.clear();
+		fsReadFile.mockImplementation(async (path) => {
+			const pathStr = typeof path === 'string' ? path : path.toString();
+			const data = mockFileData.get(pathStr);
+			if (data === undefined) throw new Error(`Trying to access invalid file in test: ${pathStr}`);
+			return data;
+		});
+	});
+
+	afterAll(() => {
+		// Restore the pass-through implementation given to vi.fn(actual.readFile)
+		fsReadFile.mockReset();
+	});
+
+	const putWorkflowFile = (remote: { id: string }) => {
+		const file = `/mock/${remote.id}.json`;
+		mockFileData.set(file, JSON.stringify(remote));
+		return mock<SourceControlledFile>({ id: remote.id, file });
+	};
+
+	const remoteWorkflow = (id: string, overrides: Record<string, unknown> = {}) => ({
+		id,
+		name: 'Remote Workflow',
+		versionId: uuid(),
+		nodes: [],
+		connections: {},
+		settings: {},
+		parentFolderId: null,
+		active: false,
+		isArchived: false,
+		owner: { type: 'personal', personalEmail: owner.email },
+		...overrides,
+	});
+
+	test('a pull that archives the workflow closes the open review, decision unchanged', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId, {
+			decision: 'changes_requested',
+		});
+
+		const candidate = putWorkflowFile(remoteWorkflow(workflow.id, { isArchived: true }));
+		await importService.importWorkflowFromWorkFolder([candidate], owner.id);
+
+		const archived = await Container.get(WorkflowRepository).findOneBy({ id: workflow.id });
+		expect(archived?.isArchived).toBe(true);
+
+		const closed = await requestRepository.findById(request.id, {});
+		expect(closed?.state).toBe('closed');
+		expect(closed?.decision).toBe('changes_requested');
+		expect(closed?.closedById).toBeNull();
+		// The publish guard keys off open requests — none left to block publishing
+		expect(await requestRepository.findOpenRequestForWorkflow(workflow.id, {})).toBeNull();
+	});
+
+	test('an already-approved (closed) review is untouched by a pull-archive', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId, {
+			state: 'closed',
+			decision: 'approved',
+		});
+
+		const candidate = putWorkflowFile(remoteWorkflow(workflow.id, { isArchived: true }));
+		await importService.importWorkflowFromWorkFolder([candidate], owner.id);
+
+		const untouched = await requestRepository.findById(request.id, {});
+		expect(untouched?.state).toBe('closed');
+		expect(untouched?.decision).toBe('approved');
+		expect(untouched?.updatedAt).toEqual(request.updatedAt);
+	});
+
+	test('a pull that updates the workflow without archiving leaves the review open', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId);
+
+		const candidate = putWorkflowFile(remoteWorkflow(workflow.id, { name: 'Updated by pull' }));
+		await importService.importWorkflowFromWorkFolder([candidate], owner.id);
+
+		const updated = await Container.get(WorkflowRepository).findOneBy({ id: workflow.id });
+		expect(updated?.name).toBe('Updated by pull');
+
+		const stillOpen = await requestRepository.findById(request.id, {});
+		expect(stillOpen?.state).toBe('open');
+	});
+
+	test('a pull that deletes a folder closes reviews of cascade-deleted workflows', async () => {
+		const folder = await createFolder(ownerProject, { name: 'Deleted remotely' });
+		const { workflow, versionId } = await createReviewableWorkflow();
+		await Container.get(WorkflowRepository).save({ id: workflow.id, parentFolder: folder });
+		const request = await createOpenReview(workflow.id, versionId);
+
+		await importService.deleteFoldersNotInWorkfolder([
+			mock<SourceControlledFile>({ id: folder.id, name: folder.name }),
+		]);
+
+		// The workflow went with the folder cascade...
+		expect(await Container.get(WorkflowRepository).findOneBy({ id: workflow.id })).toBeNull();
+
+		// ...but its review was properly closed first, not left orphaned open
+		const closed = await requestRepository.findById(request.id, {});
+		expect(closed?.state).toBe('closed');
+		expect(closed?.closedById).toBeNull();
+		expect(await linkRepository.findByRequestId(request.id, {})).toHaveLength(0);
 	});
 });

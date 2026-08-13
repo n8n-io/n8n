@@ -349,7 +349,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 
 | Service | Helper | Description |
 |---------|--------|-------------|
-| `postgres` | - | PostgreSQL database |
+| `postgres` | - | PostgreSQL database (version from `postgres-versions.json`) |
 | `redis` | - | Redis for queue mode |
 | `mailpit` | ✓ | Email testing (SMTP + UI) |
 | `gitea` | ✓ | Git server for source control |

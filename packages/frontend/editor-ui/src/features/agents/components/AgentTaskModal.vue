@@ -11,13 +11,13 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nMarkdownEditor,
+	N8nOption,
+	N8nSelect,
 	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
-import N8nOption from '@n8n/design-system/components/N8nOption';
-import N8nSelect from '@n8n/design-system/components/N8nSelect';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';

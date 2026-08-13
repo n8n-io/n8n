@@ -20,8 +20,11 @@ import {
 	combineWarnings,
 	formatWarning,
 	getBuildFailureTrackingKey,
+	grantSessionWorkflowUpdate,
 	isApprovedBuildContext,
+	canSkipWorkflowUpdateHitl,
 	markSourceBuildFailed,
+	recordSessionOwnedWorkflow,
 	resolveBuildIdentifiers,
 	resolveWorkflowName,
 	sourceResponseBase,
@@ -77,10 +80,14 @@ const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
 	severity: instanceAiConfirmationSeveritySchema,
+	/** Resolved target workflow — used by the UI for per-workflow always-allow keys. */
+	workflowId: z.string(),
 });
 
 const confirmationResumeSchema = z.object({
 	approved: z.boolean(),
+	/** `'session'` — user chose "always allow"; persist a per-workflow update grant. */
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 interface BuildCtx {
@@ -90,24 +97,42 @@ interface BuildCtx {
 	abortSignal?: AbortSignal;
 }
 
+/**
+ * Structural (schema-level) filePath check. Absolute paths are accepted here
+ * even though only paths under the workspace root are valid: the root is only
+ * known at handler time, and a schema rejection surfaces as a hard
+ * AI_InvalidToolInputError instead of a recoverable tool result. The handler
+ * does the authoritative normalization against the workspace root.
+ */
+function isStructurallyValidWorkflowSourceFilePath(value: string): boolean {
+	try {
+		normalizeWorkflowSourceFilePath(value);
+		return true;
+	} catch {
+		const trimmed = value.trim();
+		return (
+			trimmed.startsWith('/') &&
+			trimmed.length > 1 &&
+			!trimmed.includes('\\') &&
+			!trimmed.includes('\0') &&
+			!trimmed.split('/').some((segment) => segment === '..')
+		);
+	}
+}
+
 export const buildWorkflowInputSchema = z
 	.object({
 		filePath: z
 			.string()
 			.min(1)
-			.refine(
-				(value) => {
-					try {
-						normalizeWorkflowSourceFilePath(value);
-						return true;
-					} catch {
-						return false;
-					}
-				},
-				{ message: 'Workflow source file path must stay within the workspace root.' },
-			)
+			.refine(isStructurallyValidWorkflowSourceFilePath, {
+				message:
+					'Workflow source file path must stay within the workspace ' +
+					'(no "..", "~", backslashes, or null bytes). ' +
+					'Pass a workspace-relative path like src/workflows/my-workflow.workflow.ts.',
+			})
 			.describe(
-				'Workspace path to the workflow source file to build. Supports TypeScript SDK files and WorkflowJSON .json files.',
+				'Workspace-relative path to the workflow source file to build, e.g. src/workflows/my-workflow.workflow.ts. Supports TypeScript SDK files and WorkflowJSON .json files.',
 			),
 		sourceCode: z
 			.string()
@@ -119,7 +144,9 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Existing workflow ID to bind this file to on the first update. Once bound, omit this on retries.',
+				'Real n8n workflow id from a prior build-workflow or workflows() tool result, used to bind this file on the first update. ' +
+					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
+					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
 		projectId: z
 			.string()
@@ -321,7 +348,28 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
-			const filePath = normalizeWorkflowSourceFilePath(input.filePath);
+			let filePath: string;
+			try {
+				// Accepts absolute paths under the workspace root (models often echo
+				// them from prompts/shell output) and converts them to relative.
+				filePath = normalizeWorkflowSourceFilePath(input.filePath, {
+					workspaceRoot: context.workspaceRoot,
+				});
+			} catch (error) {
+				const guidance =
+					'Call build-workflow again with a workspace-relative filePath like src/workflows/my-workflow.workflow.ts.';
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: [error instanceof Error ? error.message : String(error)],
+					remediation: createRemediation({
+						category: 'code_fixable',
+						shouldEdit: false,
+						reason: 'invalid_file_path',
+						guidance,
+					}),
+				};
+			}
 			let binding = (await getWorkflowSourceFileBinding(context, filePath)) ?? { filePath };
 
 			if (input.workflowId && binding.workflowId && input.workflowId !== binding.workflowId) {
@@ -352,7 +400,29 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			if (input.workflowId && !binding.workflowId) {
-				binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
+				try {
+					binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					// File is not bound yet, so not-found maps to workflow_id_not_found (not bound_*).
+					const remediation = createSaveFailureRemediation(error, false);
+
+					trackWorkflowSourceBuild(context, {
+						result: 'blocked',
+						stage: 'save',
+						binding,
+						targetWorkflowId: input.workflowId,
+						remediation,
+						errorCount: 1,
+					});
+
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						errors: [`Failed to bind source file to workflow ${input.workflowId}: ${message}`],
+						remediation,
+					};
+				}
 			}
 
 			const targetWorkflowId = binding.workflowId;
@@ -382,13 +452,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			const isOwnInFlightWorkflow =
-				targetWorkflowId !== undefined &&
-				(context.aiCreatedWorkflowIds?.has(targetWorkflowId) ?? false);
+			const canSkipUpdateHitl =
+				targetWorkflowId !== undefined && canSkipWorkflowUpdateHitl(context, targetWorkflowId);
 
 			if (
 				targetWorkflowId &&
-				!isOwnInFlightWorkflow &&
+				!canSkipUpdateHitl &&
 				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
@@ -455,7 +524,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						requestId: nanoid(),
 						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
 						severity: 'warning',
+						workflowId: targetWorkflowId,
 					});
+				}
+				// "Always allow" — persist so later edits of this workflow skip HITL.
+				if (ctx.resumeData.approved && ctx.resumeData.scope === 'session') {
+					await grantSessionWorkflowUpdate(context, targetWorkflowId);
 				}
 			}
 
@@ -929,7 +1003,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					...(projectId ? { projectId } : {}),
 					markAsAiTemporary: true,
 				});
-				(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
+				await recordSessionOwnedWorkflow(context, created.id);
 				return await createSuccessResponse(created, 'create');
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Unknown error';

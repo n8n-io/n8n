@@ -27,7 +27,9 @@ export type { BuiltFileStore } from './sdk/file-store';
 
 export type {
 	Provider,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,

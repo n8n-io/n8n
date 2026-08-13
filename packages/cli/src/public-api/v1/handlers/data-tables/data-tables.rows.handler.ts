@@ -9,6 +9,7 @@ import { Container } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { assertRowReadAccessIfReturningRows } from '@/modules/data-table/data-table-permissions';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
@@ -148,6 +149,8 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
 
+				await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
 				const result = await service.updateRows(dataTableId, projectId, params, returnData, dryRun);
 
 				return res.json(result);
@@ -174,6 +177,8 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const service = Container.get(DataTableService);
 				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
+
+				await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
 
 				const result = await service.upsertRow(dataTableId, projectId, params, returnData, dryRun);
 
@@ -220,6 +225,8 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const service = Container.get(DataTableService);
 				const { filter, returnData = false, dryRun = false } = payload.data;
 				const params = { filter };
+
+				await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
 
 				const result = await service.deleteRows(dataTableId, projectId, params, returnData, dryRun);
 

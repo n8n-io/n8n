@@ -35,6 +35,101 @@ describe('Roles in Public API', () => {
 		owner = await createOwnerWithApiKey();
 	});
 
+	describe('GET /roles', () => {
+		it('returns all roles grouped by type', async () => {
+			const response = await testServer.publicApiAgentFor(owner).get('/roles');
+
+			expect(response.status).toBe(200);
+			expect(Object.keys(response.body).sort()).toEqual(['global', 'project']);
+
+			const systemRole = (slug: string, roleType: string) => ({
+				slug,
+				displayName: expect.any(String),
+				description: expect.any(String),
+				systemRole: true,
+				roleType,
+				licensed: expect.any(Boolean),
+				scopes: expect.any(Array),
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			});
+			expect(response.body.global).toContainEqual(systemRole('global:owner', 'global'));
+			expect(response.body.project).toContainEqual(systemRole('project:admin', 'project'));
+		});
+
+		it('places a newly created custom role in its type group', async () => {
+			await testServer
+				.publicApiAgentFor(owner)
+				.post('/roles')
+				.send({ displayName: 'PA listed role', roleType: 'global', scopes: ['user:read'] });
+
+			const response = await testServer.publicApiAgentFor(owner).get('/roles');
+
+			expect(response.status).toBe(200);
+			const custom = response.body.global.find(
+				(r: { displayName: string }) => r.displayName === 'PA listed role',
+			);
+			expect(custom).toEqual({
+				slug: expect.stringMatching(/^global:.+-[a-z0-9]{6}$/),
+				displayName: 'PA listed role',
+				description: null,
+				systemRole: false,
+				roleType: 'global',
+				licensed: expect.any(Boolean),
+				scopes: ['user:read'],
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			});
+		});
+
+		const allRolesOf = (body: Record<string, Array<Record<string, unknown>>>) => [
+			...body.global,
+			...body.project,
+		];
+
+		it('omits usage counts by default', async () => {
+			const response = await testServer.publicApiAgentFor(owner).get('/roles');
+
+			expect(response.status).toBe(200);
+			for (const role of allRolesOf(response.body)) {
+				expect(role).not.toHaveProperty('usedByUsers');
+				expect(role).not.toHaveProperty('usedByProjects');
+			}
+		});
+
+		it('includes usage counts when withUsageCount is set', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/roles')
+				.query({ withUsageCount: 'true' });
+
+			expect(response.status).toBe(200);
+			for (const role of allRolesOf(response.body)) {
+				expect(role.usedByUsers).toBeGreaterThanOrEqual(0);
+				expect(role.usedByProjects).toBeGreaterThanOrEqual(0);
+			}
+			// The owner holds the global:owner role, so its user count is at least 1.
+			const ownerRole = response.body.global.find(
+				(r: { slug: string }) => r.slug === 'global:owner',
+			);
+			expect(ownerRole.usedByUsers).toBeGreaterThanOrEqual(1);
+		});
+
+		it('rejects with 401 without an API key', async () => {
+			const response = await testServer.publicApiAgentWithoutApiKey().get('/roles');
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the key lacks the role:list scope', async () => {
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
+
+			const response = await testServer.publicApiAgentFor(scopedOwner).get('/roles');
+
+			expect(response.status).toBe(403);
+		});
+	});
+
 	describe('POST /roles', () => {
 		it('creates a global role and returns 201', async () => {
 			const response = await testServer

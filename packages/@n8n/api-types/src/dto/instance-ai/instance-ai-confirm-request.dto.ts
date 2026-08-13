@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
 	domainAccessActionSchema,
 	instanceGatewayResourceDecisionSchema,
+	mcpConnectResumeSchema,
 } from '../../schemas/instance-ai.schema';
 
 /**
@@ -44,6 +45,9 @@ const credentialSelectionConfirmSchema = z.object({
 const credentialAutoSetupConfirmSchema = z.object({
 	kind: z.literal('credentialAutoSetup'),
 	credentialType: z.string(),
+	/** Client-generated id shared by the setup-choice telemetry events and the
+	 *  terminal setup-completed event, so retries can be told apart in the funnel. */
+	attemptId: z.string().trim().min(1).max(64).optional(),
 });
 
 /** Domain-access approval — `domainAccessAction` carries which scope the user picked. */
@@ -91,6 +95,10 @@ const setupWorkflowTestTriggerConfirmSchema = z.object({
 	nodeParameters: nodeParametersRecord,
 });
 
+const mcpConnectConfirmSchema = mcpConnectResumeSchema.extend({
+	kind: z.literal('mcpConnect'),
+});
+
 export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
@@ -102,6 +110,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	resourceDecisionConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
+	mcpConnectConfirmSchema,
 ]);
 
 export type InstanceAiConfirmRequest = z.infer<typeof InstanceAiConfirmRequestDto>;

@@ -2,6 +2,7 @@ import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow'
 import { VersionedNodeType } from 'n8n-workflow';
 
 import { KafkaTriggerV1 } from './v1/KafkaTriggerV1.node';
+import { KafkaTriggerV2 } from './v2/KafkaTriggerV2.node';
 
 export class KafkaTrigger extends VersionedNodeType {
 	constructor() {
@@ -19,6 +20,7 @@ export class KafkaTrigger extends VersionedNodeType {
 			1.1: new KafkaTriggerV1(baseDescription),
 			1.2: new KafkaTriggerV1(baseDescription),
 			1.3: new KafkaTriggerV1(baseDescription),
+			2: new KafkaTriggerV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

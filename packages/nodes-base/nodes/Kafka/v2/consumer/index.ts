@@ -4,7 +4,7 @@ export {
 	DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY,
 } from './ConsumeTopic';
 export type { ConsumeTopicOptions, KafkaConsumerHandle } from './ConsumeTopic';
-export { createDataEmitter } from './DataEmitter';
+export { createDataEmitter, DEFAULT_EXECUTION_TIMEOUT_SECONDS } from './DataEmitter';
 export type {
 	DataEmitter,
 	DataEmitterContext,

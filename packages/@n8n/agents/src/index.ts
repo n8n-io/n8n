@@ -25,7 +25,9 @@ export type {
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
@@ -119,6 +121,11 @@ export {
 	raceWithAbort,
 	throwIfAborted,
 } from './sdk/abort';
+export {
+	DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+	DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
+	ModelStreamStallError,
+} from './runtime/streaming/stream-stall';
 export {
 	APPROVAL_RESUME_SCHEMA,
 	APPROVAL_SUSPEND_SCHEMA,
@@ -248,6 +255,7 @@ export type {
 	ModelInfo,
 	ModelCost,
 	ModelLimits,
+	ModelModalities,
 } from './sdk/catalog';
 export { BaseMemory } from './storage/base-memory';
 export { BaseVectorStore } from './storage/base-vector-store';
@@ -412,7 +420,12 @@ export type {
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';
-export { createWorkspaceTools } from './workspace';
+export {
+	CORE_WORKSPACE_TOOL_NAMES,
+	createScopedWorkspace,
+	createWorkspaceTools,
+	getToolResultThreadDirectory,
+} from './workspace';
 export { SandboxProcessManager, ProcessHandle } from './workspace';
 
 export type {
