@@ -1,0 +1,30 @@
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_c39a7cd506b312::t_40396a8174b18b 1201
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_c39a7cd506b312::t_9ae66110820d61 206-210
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_c39a7cd506b312::t_168a4197b90ba2 354
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_c39a7cd506b312::t_b64c06638dee53 380
+packages/cli/test/integration/executions/poll-cursor-atomicity.test.ts
+  s_c39a7cd506b312::t_fb6ff7404f35ff 387-388,391,393-402
+packages/@n8n/db/src/repositories/poller-state.repository.ts
+  s_c39a7cd506b312::t_293cf044dd6811 77-78,80
+  s_c39a7cd506b312::t_a65149d5415731 112-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49f6b6a3a4cacfb9d2f5ef17b2418562618b9a87",
+  "prompts": {},
+  "sessions": {
+    "s_c39a7cd506b312": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20ca5f44-d9f2-4578-ab0f-ce8938465417",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
