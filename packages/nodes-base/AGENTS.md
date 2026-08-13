@@ -15,11 +15,21 @@ Every node implements the `INodeType` interface with:
 
 ## Node Types
 
-### Programmatic Nodes
-Use `execute` function for custom logic. Example: `nodes/Discord/v2/DiscordV2.node.ts`
+Default to declarative for a new node, and pick programmatic only when the
+integration actually needs it. See
+[choose a node building style](https://docs.n8n.io/connect/create-nodes/plan-your-node/choose-a-node-building-style).
 
 ### Declarative Nodes
-Use `requestDefaults` and routing configuration instead of `execute`. Example: `nodes/Okta/Okta.node.ts`
+Use `requestDefaults` and `routing` on properties instead of `execute`. The
+engine owns the item loop, `pairedItem`, and `continueOnFail`, and the loader
+injects the `Request Options` node setting (batching, proxy, timeout, ignore SSL
+issues), so core improvements reach the node without editing it. Example:
+`nodes/Okta/Okta.node.ts`
+
+### Programmatic Nodes
+Use `execute` when the work needs multiple dependent API calls, control flow
+across them, or heavy transformation of requests/responses. Example:
+`nodes/Discord/v2/DiscordV2.node.ts`
 
 ### Trigger Nodes
 - **Webhook triggers**: Implement `webhook` and `webhookMethods` (checkExists, create, delete). Example: `nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts`
@@ -53,6 +63,23 @@ Credentials are defined in `credentials/` directory and implement `ICredentialTy
 
 Nodes can test credentials via `methods.credentialTest`.
 
+### Registration
+
+Nodes and credentials are only loaded if they are listed in
+`packages/nodes-base/package.json` (`n8n.nodes` / `n8n.credentials`).
+
+A credential name in a node's `credentials` array must resolve to a registered
+credential **in the same release** — either in this package or in
+`@n8n/n8n-nodes-langchain`, the two packages n8n loads. Otherwise the instance
+logs `Failed to load Custom API options for the node "...": Unknown credential
+name "..."` on every boot and the node cannot authenticate.
+
+This bites when a node is split across PRs (e.g. a hidden shell first, then
+operations): a release can be cut between the PR that references the credential
+and the PR that adds it. Register the credential in, or before, the PR that
+first references it. `packages/cli/test/unit/node-credential-references.test.ts`
+gates this.
+
 ## Testing
 
 ### Unit Tests
@@ -74,7 +101,8 @@ Nodes can test credentials via `methods.credentialTest`.
 3. Add icon SVG files in node directory
 4. Define credentials in `credentials/` if needed
 5. Write tests following testing guidelines
-6. Register in `package.json` nodes array if needed
+6. Register the node and any new credential in `package.json` (see Registration
+   under Credentials)
 
 ### Adding Dynamic Options
 Add `loadOptionsMethod` to parameter's `typeOptions` and implement method in `methods.loadOptions`.
