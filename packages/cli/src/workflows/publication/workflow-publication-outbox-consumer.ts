@@ -1,11 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import type {
@@ -16,6 +17,28 @@ import type { PublicationResult } from '@/workflows/publication/publication-resu
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
+import type { TriggerOperationAbort } from '@/workflows/triggers/workflow-trigger-activator';
+
+/**
+ * Resolved by {@link WorkflowPublicationOutboxConsumer.raceTimeout} when the
+ * timeout elapses before the raced promise settles.
+ */
+const TIMED_OUT = Symbol('timed-out');
+
+/**
+ * Fraction of the outbox lease after which a record's processing is aborted.
+ * Below 1 so that an abandoned record is not reclaimable the moment its worker
+ * moves on — the same drain could otherwise claim it straight back.
+ */
+const ABORT_AFTER_LEASE_FRACTION = 0.7;
+
+/**
+ * How long an aborted record may take to unwind before it is abandoned, capped
+ * at a quarter of the lease: deadline plus grace must stay within the lease so
+ * a record is never still being waited on after it became reclaimable.
+ */
+const ABANDON_GRACE_MS = 10 * Time.seconds.toMilliseconds;
+const ABANDON_GRACE_LEASE_FRACTION = 0.25;
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It owns the
@@ -165,20 +188,19 @@ export class WorkflowPublicationOutboxConsumer {
 				let processed = 0;
 				// Run worker loops in parallel. Each claims and processes records
 				// until none remain (claiming is atomic, so workers never grab the same record).
-				let aborted = false;
+				let workerFailed = false;
 				const runWorker = async () => {
-					while (!aborted && this.shouldKeepPolling()) {
+					while (!workerFailed && this.shouldKeepPolling()) {
 						const record = await this.outboxRepository.claimNextPendingRecord();
 						if (!record) break;
 
-						await this.processRecord(record);
-						processed++;
+						if (await this.processRecordWithAbort(record)) processed++;
 					}
 				};
 
 				const workerTasks = Array.from({ length: concurrency }, async () => {
 					await runWorker().catch((error) => {
-						aborted = true;
+						workerFailed = true;
 						throw error;
 					});
 				});
@@ -200,6 +222,59 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	/**
+	 * Processes a record under a deadline: on expiry the record's abort signal
+	 * fires, and after a further grace period the record is abandoned (left
+	 * `in_progress` for lease reclaim) so a hung record never wedges the drain.
+	 * Returns whether the record settled in time.
+	 */
+	private async processRecordWithAbort(record: WorkflowPublicationOutbox): Promise<boolean> {
+		const leaseMs =
+			this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
+		const abortAfterMs = leaseMs * ABORT_AFTER_LEASE_FRACTION;
+		const abandonGraceMs = Math.min(ABANDON_GRACE_MS, leaseMs * ABANDON_GRACE_LEASE_FRACTION);
+
+		const controller = new AbortController();
+		const work = this.processRecord(record, controller.signal);
+
+		if ((await this.raceTimeout(work, abortAfterMs)) !== TIMED_OUT) return true;
+
+		controller.abort(new OperationalError('Workflow publication processing exceeded its deadline'));
+
+		if ((await this.raceTimeout(work, abandonGraceMs)) !== TIMED_OUT) return true;
+
+		// A late rejection of the abandoned work must not become an unhandled rejection.
+		void work.catch((error) =>
+			this.errorReporter.error(ensureError(error), { shouldBeLogged: true }),
+		);
+		this.errorReporter.error(
+			new OperationalError(
+				'Abandoned workflow publication outbox record: processing did not stop after abort',
+				{ extra: { outboxId: record.id, workflowId: record.workflowId } },
+			),
+			{ shouldBeLogged: true },
+		);
+		return false;
+	}
+
+	/** Resolves with the raced promise, or with {@link TIMED_OUT} after `timeoutMs`. */
+	private async raceTimeout<T>(
+		promise: Promise<T>,
+		timeoutMs: number,
+	): Promise<T | typeof TIMED_OUT> {
+		let timer: NodeJS.Timeout | undefined;
+		try {
+			return await Promise.race([
+				promise,
+				new Promise<typeof TIMED_OUT>((resolve) => {
+					timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs);
+				}),
+			]);
+		} finally {
+			clearTimeout(timer);
+		}
+	}
+
+	/**
 	 * Applies a single claimed record and reports the outcome. The applier returns
 	 * a `failed` result for expected failures; an unexpected throw is wrapped into
 	 * a `failed` result so the reporter still writes a terminal status. A failure
@@ -212,7 +287,7 @@ export class WorkflowPublicationOutboxConsumer {
 	 * between claiming the record and entering the critical section, the record is returned
 	 * to the queue (so the new leader reprocesses it) and nothing is applied here.
 	 */
-	async processRecord(record: WorkflowPublicationOutbox): Promise<void> {
+	async processRecord(record: WorkflowPublicationOutbox, signal: AbortSignal): Promise<void> {
 		await this.tracing.startSpan(
 			{
 				name: 'Publication outbox record',
@@ -237,6 +312,19 @@ export class WorkflowPublicationOutboxConsumer {
 						return;
 					}
 
+					// The worker may have aborted this record while it queued on the lock;
+					// starting now would apply work long after it was abandoned. The row is
+					// left `in_progress` for lease reclaim rather than returned to pending:
+					// the wait may have outlived the lease, and flipping the row here would
+					// release the claim of whichever worker has since reclaimed it.
+					if (signal.aborted) {
+						this.logger.debug('Skipped applying publication outbox record: aborted', {
+							outboxId: record.id,
+							workflowId: record.workflowId,
+						});
+						return;
+					}
+
 					this.logger.debug('Started processing workflow publication outbox record', {
 						outboxId: record.id,
 						workflowId: record.workflowId,
@@ -246,13 +334,25 @@ export class WorkflowPublicationOutboxConsumer {
 					const startedAt = Date.now();
 					let result: PublicationResult;
 
+					// An aborted per-node operation is abandoned, not cancelled; collect
+					// every orphan so the lock outlives whatever may still mutate this
+					// workflow's registrations.
+					const detachedWork: Array<Promise<unknown>> = [];
+					const abort: TriggerOperationAbort = {
+						signal,
+						onDetached: (work) => detachedWork.push(work),
+					};
+
 					try {
-						result = await this.applier.apply(record);
+						result = await this.applier.apply(record, abort);
 					} catch (error) {
 						const cause = ensureError(error);
 						result = {
 							type: 'failed',
-							error: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+							// An abort is our own doing, not an unexpected applier failure.
+							error: signal.aborted
+								? cause
+								: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
 						};
 					}
 
@@ -276,6 +376,17 @@ export class WorkflowPublicationOutboxConsumer {
 					});
 
 					span.setAttribute('n8n.publication.result', result.type);
+
+					// The terminal status is already written; keep the lock until the
+					// abandoned operations settle so the next record for this workflow
+					// can never run concurrently with them.
+					if (detachedWork.length > 0) {
+						this.logger.warn(
+							'Keeping workflow publication lock held until abandoned trigger operations settle',
+							{ outboxId: record.id, workflowId: record.workflowId },
+						);
+						await Promise.allSettled(detachedWork);
+					}
 				});
 
 				span.setStatus({ code: SpanStatus.ok });
