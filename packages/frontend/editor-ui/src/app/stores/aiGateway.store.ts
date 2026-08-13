@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type { INode } from 'n8n-workflow';
 import type { AiGatewayConfigDto, AiGatewayUsageEntry } from '@n8n/api-types';
@@ -22,12 +22,24 @@ function toError(e: unknown): Error {
 export const stripToolSuffix = (nodeName: string) =>
 	nodeName.replace(/HitlTool$/, '').replace(/Tool$/, '');
 
+/** Included-allowance framing: never topped up, and still remaining (or wallet not loaded yet). */
+export function usesFreeCreditsLabel(
+	hasEverToppedUp: boolean | undefined,
+	balance: number | undefined,
+): boolean {
+	return hasEverToppedUp !== true && (balance === undefined || balance > 0);
+}
+
 export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	const rootStore = useRootStore();
 
 	const config = ref<AiGatewayConfigDto | null>(null);
 	const balance = ref<number | undefined>(undefined);
 	const budget = ref<number | undefined>(undefined);
+	const hasEverToppedUp = ref<boolean | undefined>(undefined);
+	const showFreeCreditsLabel = computed(() =>
+		usesFreeCreditsLabel(hasEverToppedUp.value, balance.value),
+	);
 	const usageEntries = ref<AiGatewayUsageEntry[]>([]);
 	const usageTotal = ref<number>(0);
 	const fetchError = ref<Error | null>(null);
@@ -56,6 +68,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			const data = await getGatewayWallet(rootStore.restApiContext);
 			balance.value = data.balance;
 			budget.value = data.budget;
+			hasEverToppedUp.value = data.hasEverToppedUp;
 			fetchError.value = null;
 		} catch (error) {
 			fetchError.value = toError(error);
@@ -189,6 +202,8 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		config,
 		balance,
 		budget,
+		hasEverToppedUp,
+		showFreeCreditsLabel,
 		usageEntries,
 		usageTotal,
 		fetchError,

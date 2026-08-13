@@ -47,6 +47,9 @@ const aiGatewayState = vi.hoisted(() => ({
 	fetchWallet: vi.fn(),
 	fetchConfig: vi.fn(),
 }));
+const aiGatewayStoreState = vi.hoisted(() => ({
+	showFreeCreditsLabel: true,
+}));
 const baseText = vi.hoisted(() =>
 	vi.fn((key: string, options?: { interpolate?: Record<string, string | number> }) => {
 		const template =
@@ -56,6 +59,7 @@ const baseText = vi.hoisted(() =>
 				'agents.modelSelector.connectTo': 'Connect to {provider}',
 				'agents.modelSelector.models': 'Models',
 				'generic.freeCredits': 'Free credits',
+				'generic.n8nCredits': 'n8n credits',
 				'agents.modelSelector.credentialsMissing': 'Credentials missing',
 				'agents.modelSelector.noMatch': 'No match',
 				'agents.modelSelector.noModels': 'No models',
@@ -142,6 +146,10 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		fetchWallet: aiGatewayState.fetchWallet,
 		fetchConfig: aiGatewayState.fetchConfig,
 	}),
+}));
+
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: () => aiGatewayStoreState,
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
@@ -232,6 +240,7 @@ describe('AgentModelSelector', () => {
 		aiGatewayState.isEnabled.value = false;
 		aiGatewayState.supportedTypes = new Set<string>();
 		aiGatewayState.balance.value = undefined;
+		aiGatewayStoreState.showFreeCreditsLabel = true;
 		aiGatewayState.fetchWallet.mockReset();
 		aiGatewayState.fetchConfig.mockReset();
 	});
@@ -265,6 +274,19 @@ describe('AgentModelSelector', () => {
 
 		expect(getProviderItem(wrapper, 'anthropic')?.data?.actionPill).toEqual({
 			text: 'Free credits',
+			type: 'default',
+		});
+	});
+
+	it('shows the n8n credits pill on covered providers after a top-up', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+		aiGatewayStoreState.showFreeCreditsLabel = false;
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'anthropic')?.data?.actionPill).toEqual({
+			text: 'n8n credits',
 			type: 'default',
 		});
 	});

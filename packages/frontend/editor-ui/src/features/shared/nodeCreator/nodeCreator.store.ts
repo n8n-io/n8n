@@ -358,10 +358,11 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}) {
 		resetNodesPanelSession();
 
-		// Warm up the AI Gateway config so the n8n Connect search boost has the
-		// supported-node list by the time the user types. Cached after first load.
+		// Warm up gateway config (search boost) and wallet (Free credits vs n8n credits pill).
 		if (useSettingsStore().isAiGatewayEnabled) {
-			void useAiGatewayStore().fetchConfig();
+			const aiGatewayStore = useAiGatewayStore();
+			void aiGatewayStore.fetchConfig();
+			void aiGatewayStore.fetchWallet();
 		}
 
 		trackNodeCreatorEvent('User opened nodes panel', {

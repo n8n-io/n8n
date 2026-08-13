@@ -14,6 +14,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
@@ -81,6 +82,7 @@ const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const aiGateway = useAiGateway();
+const aiGatewayStore = useAiGatewayStore();
 
 const aiGatewayBalancePill = computed(() => {
 	const balance = aiGateway.balance.value;
@@ -386,7 +388,12 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 					? i18n.baseText('agents.modelSelector.freeCredits.badge')
 					: undefined,
 			actionPill: isAiGatewayManagedAvailable
-				? { text: i18n.baseText('generic.freeCredits'), type: 'default' as const }
+				? {
+						text: i18n.baseText(
+							aiGatewayStore.showFreeCreditsLabel ? 'generic.freeCredits' : 'generic.n8nCredits',
+						),
+						type: 'default' as const,
+					}
 				: undefined,
 		},
 		children: [...connectHeader, ...connectItems, ...modelsHeader, ...modelsSection],
