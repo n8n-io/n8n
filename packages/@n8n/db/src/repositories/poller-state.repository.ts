@@ -129,9 +129,11 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			.from(ScheduledTask, 'fenced_task')
 			.where('fenced_task.id = :fenceTaskId')
 			.andWhere('fenced_task.leaseEpoch = :fenceLeaseEpoch')
-			// `<> 'pending'`, not `= 'running'`: a fire-and-forget commit can land after
-			// the task already succeeded, and only a pending task's lease can be reclaimed.
-			.andWhere('fenced_task.status != :fenceExcludedStatus')
+			// A commit may only land while its poll still owns the task (`running`), or
+			// right after the task finished well (`succeeded`), since nothing waits on the
+			// commit and the status can flip first. Any other status means the poll lost
+			// the task, so a commit arriving now is late and must not land.
+			.andWhere('fenced_task.status IN (:...fenceAllowedStatuses)')
 			.getQuery();
 
 		return {
@@ -139,7 +141,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			params: {
 				fenceTaskId: Number(fence.taskId),
 				fenceLeaseEpoch: fence.leaseEpoch,
-				fenceExcludedStatus: ScheduledTaskStatus.Pending,
+				fenceAllowedStatuses: [ScheduledTaskStatus.Running, ScheduledTaskStatus.Succeeded],
 			},
 		};
 	}

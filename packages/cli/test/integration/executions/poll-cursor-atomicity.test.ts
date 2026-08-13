@@ -302,6 +302,17 @@ describe('poll cursor atomicity', () => {
 				title: 'the fenced task id never existed',
 				prepareFence: (): PollLeaseFence => ({ taskId: '999999999', leaseEpoch: 1 }),
 			},
+			{
+				// Marking a task failed does not bump its lease epoch, so the status
+				// alone must stop the late commit.
+				title: 'the fenced task was marked failed, with its lease epoch unchanged',
+				prepareFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask();
+					const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
+					await scheduledTaskRepository.update(task.id, { status: ScheduledTaskStatus.Failed });
+					return fence;
+				},
+			},
 		])('does not commit when $title', async ({ prepareFence }) => {
 			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
 			const fence = await prepareFence();
