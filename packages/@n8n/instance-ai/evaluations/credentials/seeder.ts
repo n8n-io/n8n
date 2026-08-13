@@ -10,6 +10,8 @@
 // POST /rest/credentials takes raw values -- n8n encrypts them server-side.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
+
 import type { N8nClient } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
 import type { TestCaseCredential } from '../types';
@@ -131,7 +133,9 @@ export async function createOneCredential(
 	credentialType: string,
 	name: string | undefined,
 	usedNames: Map<string, number>,
-	options?: { logger?: EvalLogger },
+	// `setupHint` is threaded through but not yet consumed here — Simplified
+	// Custom Auth minting (using the template/placeholders recipe) lands separately.
+	options?: { logger?: EvalLogger; setupHint?: InstanceAiCredentialSetupHint },
 ): Promise<CreatedCredential> {
 	const template = CREDENTIAL_TEMPLATES[credentialType];
 	if (!template) {
