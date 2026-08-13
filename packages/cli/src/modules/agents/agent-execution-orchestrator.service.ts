@@ -354,7 +354,13 @@ export class AgentExecutionOrchestratorService {
 		const sandboxPrincipalHash = sandboxScope?.principalHash;
 		if (
 			this.agentSandboxRuntimeService.isEnabled() &&
-			(!sandboxScope || sandboxScope.projectId !== projectId || !sandboxPrincipalHash)
+			(!sandboxScope ||
+				sandboxScope.projectId !== projectId ||
+				!sandboxPrincipalHash ||
+				(!usePublishedVersion &&
+					(!user ||
+						sandboxPrincipalHash !==
+							hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }))))
 		) {
 			throw new UserError(`Checkpoint ${runId} is unavailable and cannot be resumed`);
 		}

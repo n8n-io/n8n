@@ -796,6 +796,44 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('rejects a draft resume when the checkpoint principal differs from the caller', async () => {
+		const { service, checkpointStorage, runtimeCacheService } = makeService(true);
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: makeCheckpoint(
+				{},
+				{
+					threadId: 'thread-1',
+					resourceId: 'draft-chat:user-2',
+					hostMetadata: encodeAgentSandboxHostMetadata({
+						projectId,
+						principalHash: hashAgentSandboxPrincipal({
+							type: 'n8n-user',
+							userId: 'user-2',
+						}),
+					}),
+				},
+			),
+		});
+		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { value: 'yes' },
+					user,
+					usePublishedVersion: false,
+					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+				}),
+			),
+		).rejects.toThrow('unavailable');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
 	it('rejects an old checkpoint without sandbox scope when workspaces are enabled', async () => {
 		const { service, checkpointStorage, runtimeCacheService } = makeService(true);
 		checkpointStorage.getStatus.mockResolvedValue({
