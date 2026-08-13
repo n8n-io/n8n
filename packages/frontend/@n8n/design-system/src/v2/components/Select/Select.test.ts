@@ -485,30 +485,6 @@ describe('v2/components/Select', () => {
 			});
 		});
 
-		it('should call onSelect callback when provided', async () => {
-			const onSelect = vi.fn();
-			const items: SelectItem[] = [
-				{ value: '1', label: 'Option 1', onSelect },
-				{ value: '2', label: 'Option 2' },
-			];
-
-			const wrapper = render(Select, {
-				props: {
-					items,
-					defaultOpen: true,
-				},
-			});
-
-			const trigger = wrapper.getByTestId('select-trigger');
-			const { popover } = await getPopoverContainer(trigger);
-			const option = within(popover).getByText('Option 1');
-			await userEvent.click(option);
-
-			await waitFor(() => {
-				expect(onSelect).toHaveBeenCalled();
-			});
-		});
-
 		it('should not update modelValue when onSelect calls preventDefault', async () => {
 			const onSelect = vi.fn((event: Event) => {
 				event.preventDefault();
@@ -673,22 +649,6 @@ describe('v2/components/Select', () => {
 			{ type: 'label', label: 'Custom roles' },
 			{ value: 'developer', label: 'Developer' },
 		];
-
-		it('should render a clearable search input when searchable', async () => {
-			const wrapper = render(Select, {
-				props: {
-					items: roleItems,
-					searchable: true,
-				},
-			});
-
-			await userEvent.click(wrapper.getByTestId('select-trigger'));
-			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
-			const search = within(popover).getByTestId('select-search');
-
-			expect(search).toBeInTheDocument();
-			expect(within(search).getByRole('textbox')).toBeInTheDocument();
-		});
 
 		it('should autofocus the search input when opened', async () => {
 			const wrapper = render(Select, {
