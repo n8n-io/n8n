@@ -23,7 +23,8 @@ RUN apk add --no-cache busybox-binsh && \
         tini \
         tzdata \
         ca-certificates \
-        libc6-compat && \
+        libc6-compat \
+        librdkafka && \
     # Cleanup
     rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
     apk del apk-tools
