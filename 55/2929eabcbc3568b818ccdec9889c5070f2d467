@@ -1,0 +1,27 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_157f08ca3b0299::t_42897b4120d1e2 1393-1397
+  s_157f08ca3b0299::t_3333209aa9544a 1153-1157
+  s_157f08ca3b0299::t_48eaf356ec268d 1253-1257
+  s_157f08ca3b0299::t_ba85f3c184705e 1322-1326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "552929eabcbc3568b818ccdec9889c5070f2d467",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_157f08ca3b0299": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8158bab5-b092-4dee-bd6c-3fef6d0146f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
