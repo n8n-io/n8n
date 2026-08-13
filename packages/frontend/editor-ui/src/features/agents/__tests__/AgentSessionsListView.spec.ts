@@ -40,11 +40,12 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string) =>
 			({
 				'agentSessions.viewTrace': 'View session trace',
-				'agentSessions.origin.agent': 'Agent',
+				'agentSessions.origin.preview': 'Preview',
 				'agentSessions.origin.instanceAi': 'AI Assistant',
 				'agentSessions.origin.mcp': 'MCP',
 				'agentSessions.origin.subAgent': 'Sub-agent',
-				'agentSessions.origin.task': 'Task',
+				'agentSessions.origin.schedule': 'Schedule',
+				'agentSessions.origin.workflow': 'Workflow',
 				'agentSessions.empty': 'No agent sessions',
 			})[key] ?? key,
 	}),
@@ -63,7 +64,7 @@ vi.mock('@n8n/design-system', () => ({
 		emits: ['select'],
 	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
-	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
+	N8nIcon: { template: '<span :data-icon="icon" />', props: ['icon', 'size'] },
 	N8nIconButton: {
 		template: '<button v-bind="$attrs"><slot /></button>',
 	},
@@ -363,19 +364,30 @@ describe('AgentSessionsListView', () => {
 	});
 
 	it.each([
-		[{ source: 'slack' }, 'Slack'],
-		[{ source: 'telegram' }, 'Telegram'],
-		[{ source: 'instance-ai' }, 'AI Assistant'],
-		[{ source: 'mcp' }, 'MCP'],
-		[{ source: null }, 'Agent'],
-		[{ source: 'chat' }, 'Agent'],
-		[{ parentThreadId: 'parent-1', source: 'slack' }, 'Sub-agent'],
-		[{ taskId: 'task-1', source: 'slack' }, 'Task'],
-	] as const)('renders origin chip label for %j as %s', async (overrides, expectedLabel) => {
-		const wrapper = await mountView({ threads: [makeThread(overrides)] });
+		[{ source: 'slack' }, 'Slack', 'slack'],
+		[{ source: 'telegram' }, 'Telegram', 'telegram'],
+		[{ source: 'linear' }, 'Linear', 'linear'],
+		[{ source: 'discord' }, 'Discord', 'discord'],
+		[{ source: 'instance-ai' }, 'AI Assistant', 'flask-conical'],
+		[{ source: 'mcp' }, 'MCP', 'flask-conical'],
+		[{ source: null }, 'Preview', 'flask-conical'],
+		[{ source: 'chat' }, 'Preview', 'flask-conical'],
+		[{ source: 'n8n_chat' }, 'Preview', 'flask-conical'],
+		[{ source: 'workflow' }, 'Workflow', 'workflow'],
+		[{ source: 'subagent' }, 'Sub-agent', 'bot'],
+		[{ parentThreadId: 'parent-1', source: 'slack' }, 'Sub-agent', 'bot'],
+		[{ source: 'task' }, 'Schedule', 'clock'],
+		[{ taskId: 'task-1', source: 'slack' }, 'Schedule', 'clock'],
+		[{ source: 'teams' }, 'Teams', 'plug'],
+		[{ source: ' Slack ' }, 'Slack', 'slack'],
+	] as const)(
+		'renders origin chip for %j as %s with the %s icon',
+		async (overrides, expectedLabel, expectedIcon) => {
+			const wrapper = await mountView({ threads: [makeThread(overrides)] });
+			const originPill = wrapper.get('[data-test-id="agent-session-origin-pill"]');
 
-		expect(wrapper.find('[data-test-id="agent-session-origin-pill"]').text()).toContain(
-			expectedLabel,
-		);
-	});
+			expect(originPill.text()).toContain(expectedLabel);
+			expect(originPill.get('[data-icon]').attributes('data-icon')).toBe(expectedIcon);
+		},
+	);
 });

@@ -24,10 +24,11 @@ import {
 	N8nTableBase,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system';
+import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 type TraceTarget = { agentId: string; threadId: string };
+type OriginPresentation = { icon: IconName; label: string };
 
 const props = withDefaults(
 	defineProps<{
@@ -105,45 +106,41 @@ function formatDuration(ms: number): string {
 	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
-function originLabel(thread: AgentExecutionThread): string {
-	if (thread.parentThreadId) return i18n.baseText('agentSessions.origin.subAgent');
-	if (thread.taskId) return i18n.baseText('agentSessions.origin.task');
-	const source = thread.source?.trim();
-	if (source === 'instance-ai') return i18n.baseText('agentSessions.origin.instanceAi');
-	if (source === 'mcp') return i18n.baseText('agentSessions.origin.mcp');
-	if (
-		source &&
-		source !== 'chat' &&
-		source !== 'task' &&
-		source !== 'subagent' &&
-		source !== 'workflow'
-	) {
-		return source.charAt(0).toUpperCase() + source.slice(1);
-	}
-	return i18n.baseText('agentSessions.origin.agent');
-}
+function originPresentation(thread: AgentExecutionThread): OriginPresentation {
+	const rawSource = thread.source?.trim();
+	const source = rawSource ? rawSource.toLowerCase() : undefined;
 
-function originIcon(thread: AgentExecutionThread): string {
-	const source = thread.source?.trim();
+	if (thread.parentThreadId || source === 'subagent' || source === 'sub-agent') {
+		return { icon: 'bot', label: i18n.baseText('agentSessions.origin.subAgent') };
+	}
+	if (thread.taskId || source === 'task') {
+		return { icon: 'clock', label: i18n.baseText('agentSessions.origin.schedule') };
+	}
+
 	switch (source) {
-		case 'chat':
-			return 'zap';
-		case 'task':
-			return 'clock';
-		case 'workflow':
-			return 'workflow';
-		case 'slack':
-			return 'slack';
-		case 'telegram':
-			return 'telegram';
-		case 'linear':
-			return 'linear';
-		case 'discord':
-			return 'discord';
+		case 'instance-ai':
+			return {
+				icon: 'flask-conical',
+				label: i18n.baseText('agentSessions.origin.instanceAi'),
+			};
 		case 'mcp':
-			return 'plug';
+			return { icon: 'flask-conical', label: i18n.baseText('agentSessions.origin.mcp') };
+		case 'workflow':
+			return { icon: 'workflow', label: i18n.baseText('agentSessions.origin.workflow') };
+		case 'slack':
+		case 'telegram':
+		case 'linear':
+		case 'discord':
+			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
+		case 'chat':
+		case 'n8n_chat':
+		case undefined:
+			return { icon: 'flask-conical', label: i18n.baseText('agentSessions.origin.preview') };
 		default:
-			return 'zap';
+			return {
+				icon: 'plug',
+				label: rawSource ? rawSource.charAt(0).toUpperCase() + rawSource.slice(1) : '',
+			};
 	}
 }
 
@@ -270,8 +267,8 @@ async function loadMore() {
 						</td>
 						<td :class="$style.originCell" data-test-id="agent-session-origin">
 							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
-								<N8nIcon :icon="originIcon(thread)" size="large" />
-								<span>{{ originLabel(thread) }}</span>
+								<N8nIcon :icon="originPresentation(thread).icon" size="large" />
+								<span>{{ originPresentation(thread).label }}</span>
 							</span>
 						</td>
 						<td :class="$style.dateCell" data-test-id="agent-session-updated-at">
@@ -373,6 +370,8 @@ async function loadMore() {
 
 .titleCell {
 	width: 46%;
+	min-width: var(--spacing--3xl);
+	max-width: 0;
 }
 
 .sessionTitle {
