@@ -235,6 +235,15 @@ export default mergeConfig(
 		},
 		plugins,
 		resolve: { alias },
+		server: {
+			proxy: {
+				'/dev/anthropic': {
+					target: 'https://api.anthropic.com',
+					changeOrigin: true,
+					rewrite: () => '/v1/messages',
+				},
+			},
+		},
 		base: publicPath,
 		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {

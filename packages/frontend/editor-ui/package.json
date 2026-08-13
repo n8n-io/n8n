@@ -37,6 +37,8 @@
     "@codemirror/view": "catalog:",
     "@dagrejs/dagre": "^1.1.4",
     "@internationalized/date": "catalog:frontend",
+    "@json-render/core": "catalog:",
+    "@json-render/vue": "catalog:",
     "@lezer/common": "catalog:",
     "@lezer/highlight": "catalog:",
     "@n8n/api-types": "workspace:*",
@@ -127,8 +129,8 @@
     "web-tree-sitter": "0.24.3",
     "xss": "catalog:",
     "yaml": "catalog:",
-    "zod": "catalog:",
-    "z-vue-scan": "^0.0.35"
+    "z-vue-scan": "^0.0.35",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@codecov/vite-plugin": "^1.9.1",
@@ -171,8 +173,8 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "sass-embedded": "catalog:",
-    "stylelint": "catalog:",
     "storybook": "catalog:storybook",
+    "stylelint": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-plugin-node-polyfills": "^0.25.0",
