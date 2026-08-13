@@ -110,6 +110,14 @@ describe('ToolRow', () => {
 		expect(getByTestId('tool-credential-picker')).toBeTruthy();
 	});
 
+	it('shows a static connected marker when the item does not use credentials', () => {
+		const item = { ...connectedMcp, credentials: undefined };
+		const { getByTestId, queryByTestId } = renderWithAdapter(item);
+
+		expect(getByTestId('tools-connection-row-connected')).toBeTruthy();
+		expect(queryByTestId('tool-credential-picker')).toBeNull();
+	});
+
 	it('shows a static connected marker when no credential adapter is provided', () => {
 		// The picker cannot list or create anything without an adapter, so
 		// consumers that manage credentials elsewhere get status only.

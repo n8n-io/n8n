@@ -29,13 +29,11 @@ const i18n = useI18n();
 const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
 
 /**
- * The picker only does anything with an injected adapter: without one it lists
- * nothing and its create/edit actions go nowhere. Consumers that manage
- * credentials elsewhere (the agents panel does it in its tool config modal)
- * simply provide no adapter and get the static marker below instead.
+ * The picker needs both credential definitions and an injected adapter.
+ * Consumers that manage credentials elsewhere simply get the static marker below.
  */
 const shouldShowCredentialPicker = computed(() => {
-	if (!credentialAdapter) return false;
+	if (!credentialAdapter || !props.item.credentials?.length) return false;
 	if (props.item.status === 'connecting') return false;
 	if (hasToolConnection(props.item.status)) return true;
 
