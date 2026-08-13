@@ -30,13 +30,21 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const ABORT_AFTER_MS = (LEASE_SECONDS / 2) * 1000;
 	const ABANDON_GRACE_MS = 10_000;
 
-	function createConsumer(useWorkflowPublicationService = true, isLeader = true, concurrency = 1) {
+	let lifecycleLock: WorkflowPublicationLifecycleLock;
+
+	function createConsumer(
+		useWorkflowPublicationService = true,
+		isLeader = true,
+		concurrency = 1,
+		leaseSeconds = LEASE_SECONDS,
+	) {
 		const workflowsConfig = mock<WorkflowsConfig>({
 			useWorkflowPublicationService,
 			publicationOutboxPollIntervalMs: POLL_INTERVAL_MS,
 			workflowPublicationConcurrency: concurrency,
-			publicationOutboxLeaseSeconds: LEASE_SECONDS,
+			publicationOutboxLeaseSeconds: leaseSeconds,
 		});
+		lifecycleLock = new WorkflowPublicationLifecycleLock();
 		return new WorkflowPublicationOutboxConsumer(
 			logger,
 			workflowsConfig,
@@ -45,7 +53,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			applier,
 			reporter,
 			mock<InstanceSettings>({ isLeader }),
-			new WorkflowPublicationLifecycleLock(),
+			lifecycleLock,
 			tracing,
 			eventService,
 		);
@@ -394,9 +402,9 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			const record = makeRecord({ id: 1 });
 			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
 			applier.apply.mockImplementationOnce(
-				async (_record, signal) =>
+				async (_record, abort) =>
 					await new Promise((_resolve, reject) => {
-						signal?.addEventListener('abort', () => reject(signal.reason));
+						abort?.signal.addEventListener('abort', () => reject(abort.signal.reason));
 					}),
 			);
 			consumer.startPolling();
@@ -414,6 +422,55 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 					}),
 				}),
 			);
+		});
+
+		test('holds the workflow lock until abandoned trigger operations settle', async () => {
+			const record = makeRecord({ id: 1, workflowId: 'wf-1' });
+			let releaseDetached!: () => void;
+			const detachedWork = new Promise<void>((resolve) => {
+				releaseDetached = resolve;
+			});
+			applier.apply.mockImplementationOnce(async (_record, abort) => {
+				abort?.onDetached(detachedWork);
+				return { type: 'failed', error: new Error('deadline') };
+			});
+			const controller = new AbortController();
+
+			const processing = consumer.processRecord(record, controller.signal);
+			await vi.advanceTimersByTimeAsync(0);
+
+			// The terminal status is written, but the lock is still held for the orphan.
+			expect(reporter.report).toHaveBeenCalledWith(
+				record,
+				expect.objectContaining({ type: 'failed' }),
+			);
+			expect(lifecycleLock.isLocked('wf-1')).toBe(true);
+
+			releaseDetached();
+			await processing;
+			expect(lifecycleLock.isLocked('wf-1')).toBe(false);
+		});
+
+		test('clamps the deadline for very large lease values instead of overflowing the timer', async () => {
+			// A lease this large would push the deadline past Node's max timer delay.
+			consumer = createConsumer(true, true, 1, 10 ** 10);
+			const record = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+			let observedSignal: AbortSignal | undefined;
+			applier.apply.mockImplementationOnce(async (_record, abort) => {
+				observedSignal = abort?.signal;
+				return await new Promise((resolve) =>
+					setTimeout(() => resolve({ type: 'completed', triggerStatuses: [] }), 50),
+				);
+			});
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(50);
+
+			await expect(drain).resolves.toBe(1);
+			// With an overflowing timer the deadline would fire at ~1ms and abort this.
+			expect(observedSignal?.aborted).toBe(false);
 		});
 
 		test('returns an aborted record to the queue instead of applying it', async () => {

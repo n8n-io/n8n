@@ -17,6 +17,7 @@ import type { PublicationResult } from '@/workflows/publication/publication-resu
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
+import type { TriggerOperationAbort } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
  * Resolved by {@link WorkflowPublicationOutboxConsumer.raceTimeout} when the
@@ -33,6 +34,9 @@ const ABORT_AFTER_LEASE_FRACTION = 0.5;
 
 /** How long an aborted record may take to unwind before it is abandoned. */
 const ABANDON_GRACE_MS = 10 * Time.seconds.toMilliseconds;
+
+/** Node's maximum timer delay (2^31 - 1 ms). */
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It owns the
@@ -255,12 +259,15 @@ export class WorkflowPublicationOutboxConsumer {
 		promise: Promise<T>,
 		timeoutMs: number,
 	): Promise<T | typeof TIMED_OUT> {
+		// Node clamps larger delays to ~1ms, which would abort every record
+		// immediately when an operator configures a very long lease.
+		const delayMs = Math.min(timeoutMs, MAX_TIMER_DELAY_MS);
 		let timer: NodeJS.Timeout | undefined;
 		try {
 			return await Promise.race([
 				promise,
 				new Promise<typeof TIMED_OUT>((resolve) => {
-					timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs);
+					timer = setTimeout(() => resolve(TIMED_OUT), delayMs);
 				}),
 			]);
 		} finally {
@@ -326,8 +333,16 @@ export class WorkflowPublicationOutboxConsumer {
 					const startedAt = Date.now();
 					let result: PublicationResult;
 
+					// An aborted per-node operation is abandoned, not cancelled; collect
+					// every orphan so the lock outlives whatever may still mutate this
+					// workflow's registrations.
+					const detachedWork: Array<Promise<unknown>> = [];
+					const abort: TriggerOperationAbort | undefined = signal
+						? { signal, onDetached: (work) => detachedWork.push(work) }
+						: undefined;
+
 					try {
-						result = await this.applier.apply(record, signal);
+						result = await this.applier.apply(record, abort);
 					} catch (error) {
 						const cause = ensureError(error);
 						result = {
@@ -359,6 +374,17 @@ export class WorkflowPublicationOutboxConsumer {
 					});
 
 					span.setAttribute('n8n.publication.result', result.type);
+
+					// The terminal status is already written; keep the lock until the
+					// abandoned operations settle so the next record for this workflow
+					// can never run concurrently with them.
+					if (detachedWork.length > 0) {
+						this.logger.warn(
+							'Keeping workflow publication lock held until abandoned trigger operations settle',
+							{ outboxId: record.id, workflowId: record.workflowId },
+						);
+						await Promise.allSettled(detachedWork);
+					}
 				});
 
 				span.setStatus({ code: SpanStatus.ok });

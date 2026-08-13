@@ -1070,13 +1070,14 @@ describe('WorkflowTriggerActivator', () => {
 
 			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
 			const controller = new AbortController();
+			const onDetached = vi.fn();
 
 			const activation = activator.activate(
 				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 				{ nodes: [node('ok', 'trigger'), node('stuck', 'trigger')], connections: {} },
 				new Set(['ok', 'stuck']),
 				'update',
-				controller.signal,
+				{ signal: controller.signal, onDetached },
 			);
 			await flushPromises();
 			controller.abort(new Error('deadline'));
@@ -1089,6 +1090,9 @@ describe('WorkflowTriggerActivator', () => {
 					error: expect.objectContaining({ message: 'deadline' }),
 				}),
 			]);
+			// The hung registration is handed back so the caller can outlive it.
+			expect(onDetached).toHaveBeenCalledTimes(1);
+			expect(onDetached).toHaveBeenCalledWith(expect.any(Promise));
 		});
 
 		test('a deactivation whose teardown hangs rejects with the abort reason once the signal fires', async () => {
@@ -1102,17 +1106,55 @@ describe('WorkflowTriggerActivator', () => {
 
 			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
 			const controller = new AbortController();
+			const onDetached = vi.fn();
 
 			const deactivation = activator.deactivate(
 				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 				{ nodes: [node('stuck', 'trigger')], connections: {} },
 				new Set(['stuck']),
-				controller.signal,
+				{ signal: controller.signal, onDetached },
 			);
 			await flushPromises();
 			controller.abort(new Error('deadline'));
 
 			await expect(deactivation).rejects.toThrow('deadline');
+			expect(onDetached).toHaveBeenCalledWith(expect.any(Promise));
+		});
+
+		test('clears webhook rows for nodes that deregistered before a sibling teardown was aborted', async () => {
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			const webhookOk = mock<IWebhookData>({ node: 'Webhook OK' });
+			const webhookStuck = mock<IWebhookData>({ node: 'Webhook Stuck' });
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookOk, webhookStuck]);
+			webhookTriggerRegistrar.deregister.mockImplementation(async ({ webhookData }) => {
+				if (webhookData.node === 'Webhook Stuck') await new Promise(() => {});
+				return webhookData.node;
+			});
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+			const controller = new AbortController();
+
+			const deactivation = activator.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{
+					nodes: [
+						node('ok-node', 'webhook', { name: 'Webhook OK' }),
+						node('stuck-node', 'webhook', { name: 'Webhook Stuck' }),
+					],
+					connections: {},
+				},
+				new Set(['ok-node', 'stuck-node']),
+				{ signal: controller.signal, onDetached: vi.fn() },
+			);
+			await flushPromises();
+			controller.abort(new Error('deadline'));
+
+			await expect(deactivation).rejects.toThrow('deadline');
+			expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+				'Webhook OK',
+			]);
 		});
 	});
 });

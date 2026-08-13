@@ -718,16 +718,16 @@ describe('WorkflowPublicationApplier', () => {
 	});
 
 	describe('abort', () => {
-		function abortedSignal() {
+		function abortedContext() {
 			const controller = new AbortController();
 			controller.abort(new Error('deadline'));
-			return controller.signal;
+			return { signal: controller.signal, onDetached: vi.fn() };
 		}
 
 		test('a publish aborted before teardown neither deactivates nor advances the version', async () => {
 			setTriggerSets([triggerNode('a')], []);
 
-			await expect(applier.apply(makeRecord(), abortedSignal())).rejects.toThrow('deadline');
+			await expect(applier.apply(makeRecord(), abortedContext())).rejects.toThrow('deadline');
 
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
@@ -740,7 +740,10 @@ describe('WorkflowPublicationApplier', () => {
 				controller.abort(new Error('deadline'));
 			});
 
-			const result = await applier.apply(makeRecord(), controller.signal);
+			const result = await applier.apply(makeRecord(), {
+				signal: controller.signal,
+				onDetached: vi.fn(),
+			});
 
 			expect(result).toEqual({
 				type: 'failed',
@@ -754,7 +757,7 @@ describe('WorkflowPublicationApplier', () => {
 			workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: null }));
 			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([triggerNode('a')]);
 
-			await expect(applier.apply(makeRecord(), abortedSignal())).rejects.toThrow('deadline');
+			await expect(applier.apply(makeRecord(), abortedContext())).rejects.toThrow('deadline');
 
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
