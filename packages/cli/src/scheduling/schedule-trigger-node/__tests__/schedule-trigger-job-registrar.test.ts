@@ -5,8 +5,9 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';
-import type { Cron, CronExpression, INode, Workflow } from 'n8n-workflow';
-import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
+import type { Cron, CronExpression, INode, INodeParameters, INodeTypes } from 'n8n-workflow';
+import { SCHEDULE_TRIGGER_NODE_TYPE, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { DurableJobProvisioner } from '../../durable-job-provisioner';
@@ -25,6 +26,22 @@ const jobNamePattern = new RegExp(`^${WORKFLOW_ID}:${NODE_ID}:[0-9a-f]{16}:\\d+$
 
 const workflow = { id: WORKFLOW_ID, settings: {} } as unknown as Workflow;
 const scheduleNode = mock<INode>({ id: NODE_ID, type: SCHEDULE_TRIGGER_NODE_TYPE });
+
+const makeNode = ({
+	id = NODE_ID,
+	typeVersion = 1.4,
+	parameters = {},
+}: {
+	id?: string;
+	typeVersion?: number;
+	parameters?: INodeParameters;
+} = {}): INode =>
+	mock<INode>({
+		id,
+		type: SCHEDULE_TRIGGER_NODE_TYPE,
+		typeVersion,
+		parameters,
+	});
 
 const dailyAtNine: Cron = {
 	expression: '0 0 9 * * *' as CronExpression,
@@ -154,7 +171,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 						firstRunAt: NEXT_NINE,
 					},
 				],
-				ScheduledJobMisfirePolicy.Coalesce,
+				ScheduledJobMisfirePolicy.Skip,
 			);
 		});
 
@@ -355,7 +372,236 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				SCHEDULE_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[],
+				ScheduledJobMisfirePolicy.Skip,
+			);
+		});
+
+		it.each<[string, INodeParameters | undefined, ScheduledJobMisfirePolicy]>([
+			['1.4', undefined, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: 'coalesce' }, ScheduledJobMisfirePolicy.Coalesce],
+			['1.4', { misfirePolicy: 'skip' }, ScheduledJobMisfirePolicy.Skip],
+			['1.3', undefined, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: 'nonsense' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: 'Coalesce' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: ' coalesce' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: 'coalesce ' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
+		])(
+			'resolves misfirePolicy %s with parameters %s to %s',
+			async (typeVersionLabel, parameters, expected) => {
+				const node = makeNode({
+					typeVersion: Number(typeVersionLabel),
+					parameters: parameters ?? {},
+				});
+				const session = makeRegistrar().createSession();
+				session.createCollector(workflow, node).registerCron(dailyAtNine, vi.fn());
+
+				await session.commit(WORKFLOW_ID, NODE_ID);
+
+				expect(jobProvisioner.provision).toHaveBeenCalledWith(
+					WORKFLOW_ID,
+					NODE_ID,
+					SCHEDULE_TRIGGER_TASK_TYPE,
+					{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+					expect.anything(),
+					expected,
+				);
+			},
+		);
+
+		const buildRealNormalizedNode = (typeVersion: number, parameters: INodeParameters) => {
+			const scheduleTriggerNodeTypes = mock<INodeTypes>({
+				getByNameAndVersion: () => new ScheduleTrigger(),
+			});
+			const realWorkflow = new Workflow({
+				id: WORKFLOW_ID,
+				nodes: [
+					{
+						id: NODE_ID,
+						name: 'Schedule Trigger',
+						type: SCHEDULE_TRIGGER_NODE_TYPE,
+						typeVersion,
+						position: [0, 0],
+						parameters,
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes: scheduleTriggerNodeTypes,
+			});
+			return { workflow: realWorkflow, node: realWorkflow.nodes['Schedule Trigger'] };
+		};
+
+		it('resolves a typeVersion 1.3 node to Skip even when its raw JSON carries misfirePolicy, because Workflow normalisation strips a parameter gated to 1.4+', async () => {
+			const { workflow: realWorkflow, node: normalizedNode } = buildRealNormalizedNode(1.3, {
+				misfirePolicy: 'coalesce',
+			});
+			expect(normalizedNode.parameters.misfirePolicy).toBeUndefined();
+
+			const session = makeRegistrar().createSession();
+			session.createCollector(realWorkflow, normalizedNode).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				expect.anything(),
+				ScheduledJobMisfirePolicy.Skip,
+			);
+		});
+
+		it("keeps a typeVersion 1.4 node's coalesce parameter through Workflow normalisation, since the version gate is satisfied", async () => {
+			const { workflow: realWorkflow, node: normalizedNode } = buildRealNormalizedNode(1.4, {
+				misfirePolicy: 'coalesce',
+			});
+			expect(normalizedNode.parameters.misfirePolicy).toBe('coalesce');
+
+			const session = makeRegistrar().createSession();
+			session.createCollector(realWorkflow, normalizedNode).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				expect.anything(),
 				ScheduledJobMisfirePolicy.Coalesce,
+			);
+		});
+
+		it('resolves misfirePolicy to skip without throwing when the node has no parameters object at all', async () => {
+			const node = mock<INode>({
+				id: NODE_ID,
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				typeVersion: 1.4,
+				parameters: undefined,
+			});
+			const session = makeRegistrar().createSession();
+			session.createCollector(workflow, node).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				expect.anything(),
+				ScheduledJobMisfirePolicy.Skip,
+			);
+		});
+
+		it('provisions a node with no rules left as an empty desired set alongside a coalesce policy', async () => {
+			const node = makeNode({ parameters: { misfirePolicy: 'coalesce' } });
+			const session = makeRegistrar().createSession();
+			session.createCollector(workflow, node);
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				[],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+		});
+
+		it("a discarded session's policy does not leak into the other session's later commit", async () => {
+			const registrar = makeRegistrar();
+			const attemptA = registrar.createSession();
+			const attemptB = registrar.createSession();
+			const coalescingNode = makeNode({ parameters: { misfirePolicy: 'coalesce' } });
+			const skippingNode = makeNode({ parameters: { misfirePolicy: 'skip' } });
+
+			attemptA.createCollector(workflow, coalescingNode).registerCron(dailyAtNine, vi.fn());
+			attemptB.createCollector(workflow, skippingNode).registerCron(dailyAtNine, vi.fn());
+
+			attemptA.discard(WORKFLOW_ID, NODE_ID);
+			await attemptA.commit(WORKFLOW_ID, NODE_ID);
+			await attemptB.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledTimes(1);
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				expect.anything(),
+				ScheduledJobMisfirePolicy.Skip,
+			);
+		});
+
+		it('two sessions collecting different policies for the same workflow and node each provision their own resolved policy', async () => {
+			const registrar = makeRegistrar();
+			const attemptA = registrar.createSession();
+			const attemptB = registrar.createSession();
+			const coalescingNode = makeNode({ parameters: { misfirePolicy: 'coalesce' } });
+			const skippingNode = makeNode({ parameters: { misfirePolicy: 'skip' } });
+
+			attemptA.createCollector(workflow, coalescingNode).registerCron(dailyAtNine, vi.fn());
+			attemptB.createCollector(workflow, skippingNode).registerCron(dailyAtNine, vi.fn());
+
+			await attemptA.commit(WORKFLOW_ID, NODE_ID);
+			await attemptB.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledTimes(2);
+			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
+				1,
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				expect.anything(),
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
+				2,
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				expect.anything(),
+				ScheduledJobMisfirePolicy.Skip,
+			);
+		});
+
+		it('commits each of two nodes collected in one session with its own distinct misfire policy', async () => {
+			const session = makeRegistrar().createSession();
+			const coalescingNode = makeNode({
+				id: 'node-coalesce',
+				parameters: { misfirePolicy: 'coalesce' },
+			});
+			const skippingNode = makeNode({ id: 'node-skip', parameters: { misfirePolicy: 'skip' } });
+
+			session.createCollector(workflow, coalescingNode).registerCron(dailyAtNine, vi.fn());
+			session.createCollector(workflow, skippingNode).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, 'node-coalesce');
+			await session.commit(WORKFLOW_ID, 'node-skip');
+
+			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
+				1,
+				WORKFLOW_ID,
+				'node-coalesce',
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: 'node-coalesce' },
+				expect.anything(),
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
+				2,
+				WORKFLOW_ID,
+				'node-skip',
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: 'node-skip' },
+				expect.anything(),
+				ScheduledJobMisfirePolicy.Skip,
 			);
 		});
 

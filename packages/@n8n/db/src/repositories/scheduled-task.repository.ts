@@ -129,6 +129,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	private readonly leaseExpiresAtColumn: string;
 	private readonly dispatchedAtColumn: string;
 	private readonly runAtColumn: string;
+	private readonly missedAfterColumn: string;
 
 	constructor(dataSource: DataSource, config: DatabaseConfig) {
 		super(ScheduledTask, dataSource.manager);
@@ -137,6 +138,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		this.leaseExpiresAtColumn = this.manager.connection.driver.escape('leaseExpiresAt');
 		this.dispatchedAtColumn = this.manager.connection.driver.escape('dispatchedAt');
 		this.runAtColumn = this.manager.connection.driver.escape('runAt');
+		this.missedAfterColumn = this.manager.connection.driver.escape('missedAfter');
 	}
 
 	/**
@@ -250,10 +252,11 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	/**
 	 * Recompute `missedAfter` on a job's still-`pending` occurrences from the given
 	 * grace, anchored to each row's own `runAt` or DB-now, whichever is later, so a
-	 * policy or grace change reaches rows already queued under the old grace
-	 * without dragging an overdue-but-still-live row's deadline into the past. Rows
-	 * with a `null` `missedAfter` are left alone: reconciliation only adjusts an
-	 * existing deadline, never gives one to a row that never had one.
+	 * grace change reaches rows already queued under the old grace without dragging
+	 * an overdue-but-still-live row's deadline into the past. Rows with a `null`
+	 * `missedAfter` are left alone: reconciliation only adjusts an existing
+	 * deadline, never gives one to a row that never had one. A deadline already in
+	 * the past stays as it is, so an overdue occurrence is never made live again.
 	 */
 	async updateMissedAfterForJobs(
 		manager: EntityManager,
@@ -269,6 +272,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 					columnOrNowPlusMsLiteral(this.isPostgres, this.runAtColumn, misfireGraceSeconds * 1000),
 			})
 			.where({ jobId: In(jobIds), status: ScheduledTaskStatus.Pending, missedAfter: Not(IsNull()) })
+			.andWhere(`${this.missedAfterColumn} > ${dbNowLiteral(this.isPostgres)}`)
 			.execute();
 	}
 
