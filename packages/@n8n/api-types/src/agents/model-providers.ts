@@ -67,6 +67,8 @@ export interface AgentCatalogModel {
 /** Response of `GET /agents/v2/catalog/models/:provider`. */
 export interface AgentProviderModelsResponse {
 	provider: string;
+	/** The provider default verified for the selected credential, when available. */
+	defaultModelId?: string;
 	/**
 	 * True when the list was confirmed against the provider's own model API
 	 * (only models the credential can actually call). False means the static

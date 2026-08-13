@@ -18,6 +18,7 @@ import {
 	confluentKafkaModuleMock,
 	getFakeConsumers,
 	resetConfluentKafkaRecordings,
+	setFakeConsumerAssignment,
 	type FakeConsumer,
 } from '../mocks/confluent-kafka';
 
@@ -33,8 +34,8 @@ vi.mock('../../v2/consumer', async (importOriginal) => {
 	return {
 		...actual,
 		consumeTopic: vi.fn(async (...args: Parameters<typeof actual.consumeTopic>) => {
-			consumeTopicSpy(...args);
-			return await actual.consumeTopic(...args);
+			consumeTopicSpy.apply(undefined, args);
+			return await actual.consumeTopic.apply(actual, args);
 		}),
 	};
 });
@@ -636,6 +637,81 @@ describe('KafkaTriggerV2 Node', () => {
 			libraryLogger(consumer).error('Broker: Group authorization failed');
 
 			expect(emitError).not.toHaveBeenCalled();
+		});
+
+		describe('while startup is still waiting on the group join', () => {
+			// A fatal here must fail activation instead of reaching emitError, which
+			// would flap deactivate-reactivate with no backoff (ENT-340).
+			beforeEach(() => {
+				vi.useFakeTimers();
+				setFakeConsumerAssignment(() => []);
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('fails activation instead of reporting a successful start', async () => {
+				const starting = startTrigger('v2-unjoinable');
+				await vi.advanceTimersByTimeAsync(0);
+				const consumer = await lastFakeConsumer();
+
+				libraryLogger(consumer).error('Broker: Group authorization failed');
+
+				await expect(starting).rejects.toThrow(/authorization failed/i);
+				expect(consumer.disconnect).toHaveBeenCalledTimes(1);
+			});
+
+			it('keeps the manual-run ACL explanation when the denial fails the join wait', async () => {
+				// The rewritten ACL hint must survive the startup-failure path; the raw
+				// broker message names neither the throwaway group nor the fix.
+				const started = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+					mode: 'manual',
+					node: {
+						parameters: {
+							topic: 'test-topic',
+							groupId: 'orders-consumer',
+							useSchemaRegistry: false,
+						},
+					},
+					credential,
+				});
+
+				const starting = started.manualTriggerFunction?.();
+				await vi.advanceTimersByTimeAsync(0);
+				const consumer = await lastFakeConsumer();
+
+				libraryLogger(consumer).error('Broker: Group authorization failed');
+
+				await expect(starting).rejects.toMatchObject({
+					message: expect.stringContaining(
+						'Kafka refused the consumer group used for a test run',
+					) as string,
+					description: expect.stringContaining('orders-consumer-n8n-manual-') as string,
+				});
+				expect(started.emitError).not.toHaveBeenCalled();
+			});
+
+			it('closes the consumer when a manual run is cancelled during the join wait', async () => {
+				const started = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+					mode: 'manual',
+					node: {
+						parameters: { topic: 'test-topic', groupId: 'v2-join-wait', useSchemaRegistry: false },
+					},
+					credential,
+				});
+
+				// Cancel while the start is held open by the join wait.
+				const starting = started.manualTriggerFunction?.();
+				await vi.advanceTimersByTimeAsync(0);
+				const closing = started.close?.();
+				await vi.advanceTimersByTimeAsync(3000);
+				await Promise.all([starting, closing]);
+
+				const consumer = await lastFakeConsumer();
+				expect(consumer.disconnect).toHaveBeenCalled();
+				expect(started.emitError).not.toHaveBeenCalled();
+			});
 		});
 	});
 

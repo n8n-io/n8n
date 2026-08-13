@@ -5,6 +5,7 @@
 import { Tool } from '@n8n/agents';
 import {
 	buildRunWorkflowSessionGrantKey,
+	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
@@ -142,12 +143,8 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const resumeSchema = z.object({
-	approved: z.boolean(),
-	/** `'session'` — the user chose "always allow"; persist a thread-level grant so
-	 *  subsequent runs skip HITL for this action. */
-	scope: z.enum(['once', 'session']).optional(),
-});
+/** Includes `scope` for "always allow" session grants (see handler). */
+const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 

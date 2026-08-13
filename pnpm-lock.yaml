@@ -760,7 +760,7 @@ overrides:
   lodash: 4.18.1
   minimatch@<=5.1.8: 5.1.8
   minimatch@10: 10.2.3
-  '@hono/node-server': 1.19.13
+  '@hono/node-server': 1.19.15
   follow-redirects: 1.16.0
   express-rate-limit: 8.2.2
   underscore: 1.13.8
@@ -2755,6 +2755,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
+      playwright-core:
+        specifier: 'catalog:'
+        version: 1.60.0
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -9044,8 +9047,8 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  '@hono/node-server@1.19.13':
-    resolution: {integrity: sha512-TsQLe4i2gvoTtrHje625ngThGBySOgSK3Xo2XRYOdqGN1teR8+I7vchQC46uLJi8OF62YTYA3AhSpumtkhsaKQ==}
+  '@hono/node-server@1.19.15':
+    resolution: {integrity: sha512-Za2ai6TLdKjUvnur+eenO6nuYYipVAEhyCAdaV8IRvmU9kK8crOZUSYvIXn72E4f8fJqyAbpcJuTsYYmZp9Deg==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
       hono: 4.12.27
@@ -26552,7 +26555,7 @@ snapshots:
       protobufjs: 7.6.5
       yargs: 17.7.2
 
-  '@hono/node-server@1.19.13(hono@4.12.27)':
+  '@hono/node-server@1.19.15(hono@4.12.27)':
     dependencies:
       hono: 4.12.27
 
@@ -27685,14 +27688,14 @@ snapshots:
 
   '@modelcontextprotocol/node@2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.12.27)':
     dependencies:
-      '@hono/node-server': 1.19.13(hono@4.12.27)
+      '@hono/node-server': 1.19.15(hono@4.12.27)
       '@modelcontextprotocol/server': 2.0.0
     optionalDependencies:
       hono: 4.12.27
 
   '@modelcontextprotocol/sdk@1.26.0(zod@3.25.76)':
     dependencies:
-      '@hono/node-server': 1.19.13(hono@4.12.27)
+      '@hono/node-server': 1.19.15(hono@4.12.27)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5

@@ -87,7 +87,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	submit: [message: string, attachments?: InstanceAiAttachment[]];
+	submit: [message: string, attachments?: InstanceAiAttachment[], restoreDraft?: () => boolean];
 	stop: [];
 	'cancel-plan-edit': [];
 	'dismiss-context-chip': [];
@@ -156,10 +156,20 @@ function setText(text: string) {
 	inputText.value = text;
 }
 
+function clearTextIfMatches(text: string) {
+	if (inputText.value === text) inputText.value = '';
+}
+
+function isDirty() {
+	return inputText.value.trim().length > 0 || attachedFiles.value.length > 0;
+}
+
 defineExpose({
 	focus,
 	appendText,
 	setText,
+	clearTextIfMatches,
+	isDirty,
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,
@@ -257,8 +267,16 @@ watch(
 	},
 );
 
-function emitSubmittedMessage(message: string, attachments?: InstanceAiAttachment[]) {
+function emitSubmittedMessage(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	restoreDraft?: () => boolean,
+) {
 	previewPrompt.value = null;
+	if (restoreDraft) {
+		emit('submit', message, attachments, restoreDraft);
+		return;
+	}
 	emit('submit', message, attachments);
 }
 
@@ -271,13 +289,25 @@ function canSubmitMessage(message: string, attachmentCount = 0) {
 	return (message.length > 0 || attachmentCount > 0) && !isBusy.value && !isGatedBySetup.value;
 }
 
+function restoreSubmittedDraft(message: string, files: File[]) {
+	if (isDirty()) return false;
+	inputText.value = message;
+	attachedFiles.value = [...files];
+	return true;
+}
+
 function submitComposerMessage(message: string, attachments?: InstanceAiAttachment[]) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
 		return;
 	}
 
 	trackSelectedSuggestionSubmitted(message);
-	emitSubmittedMessage(message, attachments);
+	const submittedFiles = [...attachedFiles.value];
+	emitSubmittedMessage(
+		message,
+		attachments,
+		submittedFiles.length > 0 ? () => restoreSubmittedDraft(message, submittedFiles) : undefined,
+	);
 	resetDraftComposer();
 }
 

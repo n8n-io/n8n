@@ -1,7 +1,9 @@
 import {
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
+	ListWorkflowsQueryDto,
 	TagIdsPublicDto,
+	WorkflowListPublicDto,
 	WorkflowPublicDto,
 	WorkflowTagsPublicDto,
 	WorkflowVersionHistoryListPublicDto,
@@ -48,6 +50,10 @@ function toPublicJson(value: unknown): Record<string, unknown> | null {
 		: null;
 }
 
+function parseTagNames(tags: string): string[] {
+	return tags.split(',').map((tag) => tag.trim());
+}
+
 function toPublicTag(tag: TagEntity) {
 	return {
 		id: tag.id,
@@ -75,6 +81,34 @@ function toPublicSharedWorkflow(sharedWorkflow: SharedWorkflow) {
 		},
 		createdAt: sharedWorkflow.createdAt.toISOString(),
 		updatedAt: sharedWorkflow.updatedAt.toISOString(),
+	};
+}
+
+/** List rows come back without the joined project, so they map a share row without one. */
+function toPublicListSharedWorkflow(sharedWorkflow: SharedWorkflow) {
+	return {
+		role: sharedWorkflow.role,
+		workflowId: sharedWorkflow.workflowId,
+		projectId: sharedWorkflow.projectId,
+		createdAt: sharedWorkflow.createdAt.toISOString(),
+		updatedAt: sharedWorkflow.updatedAt.toISOString(),
+	};
+}
+
+/** Same, for the active version: the list query does not load its publish history. */
+function toPublicListActiveVersion(activeVersion: WorkflowHistory) {
+	return {
+		versionId: activeVersion.versionId,
+		workflowId: activeVersion.workflowId,
+		nodes: activeVersion.nodes,
+		connections: activeVersion.connections,
+		nodeGroups: activeVersion.nodeGroups,
+		authors: activeVersion.authors,
+		name: activeVersion.name,
+		description: activeVersion.description,
+		autosaved: activeVersion.autosaved,
+		createdAt: activeVersion.createdAt.toISOString(),
+		updatedAt: activeVersion.updatedAt.toISOString(),
 	};
 }
 
@@ -119,10 +153,90 @@ export class WorkflowsPublicController {
 		private readonly workflowService: WorkflowService,
 	) {}
 
+	private get workflowTagsEnabled(): boolean {
+		return !this.globalConfig.tags.disabled;
+	}
+
 	private assertWorkflowTagsEnabled() {
-		if (this.globalConfig.tags.disabled) {
+		if (!this.workflowTagsEnabled) {
 			throw new BadRequestError('Workflow Tags Disabled');
 		}
+	}
+
+	@Get('/')
+	@ApiKeyScope('workflow:list')
+	@ApiSummary('Retrieve all workflows')
+	@ApiDescription('Retrieve all workflows from your instance.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowListPublicDto)
+	async getWorkflows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListWorkflowsQueryDto,
+	): Promise<WorkflowListPublicDto> {
+		let { offset, limit } = query;
+
+		if (query.cursor) {
+			try {
+				const decoded = decodeCursor(query.cursor);
+				if ('offset' in decoded) {
+					offset = decoded.offset;
+				}
+				limit = decoded.limit ?? limit;
+			} catch {
+				throw new BadRequestError('An invalid cursor was provided');
+			}
+		}
+
+		const { workflows, count } = await this.workflowFinderService.findWorkflowsForUser(
+			req.user,
+			['workflow:read'],
+			{
+				filters: {
+					name: query.name,
+					active: query.active,
+					tagNames: query.tags ? parseTagNames(query.tags) : undefined,
+					projectId: query.projectId,
+				},
+				offset,
+				limit,
+				includePinnedData: !query.excludePinnedData,
+				includeTags: this.workflowTagsEnabled,
+				includeActiveVersion: true,
+			},
+		);
+
+		this.eventService.emit('user-retrieved-all-workflows', {
+			userId: req.user.id,
+			publicApi: true,
+		});
+
+		return {
+			data: workflows.map((workflow) => ({
+				id: workflow.id,
+				name: workflow.name,
+				active: workflow.active,
+				activeVersionId: workflow.activeVersionId,
+				createdAt: workflow.createdAt.toISOString(),
+				updatedAt: workflow.updatedAt.toISOString(),
+				isArchived: workflow.isArchived,
+				versionId: workflow.versionId,
+				triggerCount: workflow.triggerCount,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				nodeGroups: workflow.nodeGroups,
+				settings: toPublicJson(workflow.settings),
+				staticData: toPublicJson(workflow.staticData),
+				meta: toPublicJson(workflow.meta),
+				...(query.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
+				...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
+				shared: workflow.shared.map(toPublicListSharedWorkflow),
+				activeVersion: workflow.activeVersion
+					? toPublicListActiveVersion(workflow.activeVersion)
+					: null,
+			})),
+			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+		};
 	}
 
 	@Get('/:workflowId')
@@ -144,7 +258,7 @@ export class WorkflowsPublicController {
 			req.user,
 			['workflow:read'],
 			{
-				includeTags: !this.globalConfig.tags.disabled,
+				includeTags: this.workflowTagsEnabled,
 				includeActiveVersion: true,
 			},
 		);

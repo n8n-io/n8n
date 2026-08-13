@@ -1910,6 +1910,8 @@ type SuspendedRunResumeServiceInternals = {
 			approved: boolean;
 			autoSetup?: { credentialType: string };
 			userInput?: string;
+			scope?: 'once' | 'session';
+			denied?: boolean;
 			credentials?: Record<string, string>;
 			answers?: Array<{
 				questionId: string;
@@ -2736,6 +2738,46 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		});
 		expect(options.input).not.toHaveProperty('credentials');
 		expect((options.input as { resumeFields: string[] }).resumeFields).toContain('credentials');
+	});
+
+	it('forwards approval envelope fields (userInput, scope) into resumeData', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			userInput: 'rename it first',
+			scope: 'session',
+		});
+
+		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [
+			unknown,
+			Record<string, unknown>,
+		];
+		expect(resumeDataArg).toEqual({
+			approved: true,
+			userInput: 'rename it first',
+			scope: 'session',
+		});
+	});
+
+	it('forwards planDeny denied flag into resumeData', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: false,
+			denied: true,
+		});
+
+		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [
+			unknown,
+			Record<string, unknown>,
+		];
+		expect(resumeDataArg).toEqual({
+			approved: false,
+			denied: true,
+		});
 	});
 });
 
