@@ -9,16 +9,43 @@ import { z } from 'zod';
 const GROUP_DESCRIPTION_PUBLIC_MAX_LENGTH = 155;
 
 /**
- * Fields the public GET/POST/PUT response includes but that are server-managed. The previous
- * hand-written OpenAPI schema (`workflow.yml`/`workflowCreate.yml`) marked these `readOnly`,
- * which express-openapi-validator enforced by rejecting the request when one was present. This
- * reproduces that rejection instead of silently accepting or stripping the value.
+ * Server-managed fields: present in the response, rejected in a request. The hand-written spec
+ * marked them `readOnly`, which express-openapi-validator enforced.
+ *
+ * They are deliberately absent from the shape below rather than declared and rejected. A declared
+ * field would appear in the generated request spec, and the generator cannot express `readOnly`
+ * for it — so the published contract would invite callers to send fields the server always
+ * rejects. Left out, the `strict` object rejects them as unrecognised keys, and the error map
+ * below restores the specific message.
  */
-function readOnlyPublicField(fieldName: string) {
-	return z.custom<undefined>((value) => value === undefined, {
-		message: `'${fieldName}' is a read-only field and cannot be set`,
-	});
-}
+const READ_ONLY_PUBLIC_FIELDS = [
+	'id',
+	'active',
+	'createdAt',
+	'updatedAt',
+	'isArchived',
+	'versionId',
+	'triggerCount',
+	'meta',
+	'tags',
+	'shared',
+	'activeVersion',
+];
+
+/** Tells a caller a rejected key is read-only, rather than leaving it to look like a typo. */
+export const readOnlyPublicFieldErrorMap: z.ZodErrorMap = (issue, ctx) => {
+	if (issue.code === z.ZodIssueCode.unrecognized_keys) {
+		const readOnly = issue.keys.filter((key) => READ_ONLY_PUBLIC_FIELDS.includes(key));
+
+		if (readOnly.length > 0) {
+			const names = readOnly.map((key) => `'${key}'`).join(', ');
+			const verb = readOnly.length > 1 ? 'are read-only fields' : 'is a read-only field';
+			return { message: `${names} ${verb} and cannot be set` };
+		}
+	}
+
+	return { message: ctx.defaultError };
+};
 
 // Nodes, connections, settings, static data, and pin data all carry arbitrary,
 // node-type-specific shapes that only the workflow engine can fully validate --
@@ -102,16 +129,4 @@ export const workflowWritePublicShape = {
 	staticData: staticDataWritePublicSchema.optional(),
 	pinData: pinDataWritePublicSchema.optional(),
 	parentFolderId: z.string().nullable().optional(),
-
-	id: readOnlyPublicField('id'),
-	active: readOnlyPublicField('active'),
-	createdAt: readOnlyPublicField('createdAt'),
-	updatedAt: readOnlyPublicField('updatedAt'),
-	isArchived: readOnlyPublicField('isArchived'),
-	versionId: readOnlyPublicField('versionId'),
-	triggerCount: readOnlyPublicField('triggerCount'),
-	meta: readOnlyPublicField('meta'),
-	tags: readOnlyPublicField('tags'),
-	shared: readOnlyPublicField('shared'),
-	activeVersion: readOnlyPublicField('activeVersion'),
 } as const;

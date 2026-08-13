@@ -228,5 +228,15 @@ describe('CreateWorkflowPublicDto', () => {
 				expect(result.error.issues[0].message).toContain(field);
 			}
 		});
+
+		test('does not call an unrecognised field read-only', () => {
+			const result = CreateWorkflowPublicDto.safeParse({ ...minimalWorkflow, nam: 'typo' });
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).not.toContain('read-only');
+				expect(result.error.issues[0].message).toContain('nam');
+			}
+		});
 	});
 });
