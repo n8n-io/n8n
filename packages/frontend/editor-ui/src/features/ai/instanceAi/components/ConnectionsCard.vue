@@ -190,7 +190,7 @@ function openMcpSettings(connectionId: string) {
 				:name="conn.serverTitle"
 				:subtitle="conn.credentialName"
 				:icon="iconForTool(conn.serverIcons, uiStore.appliedTheme)"
-				status="connected"
+				:status="conn.status"
 				:actions="MCP_ROW_ACTIONS"
 				:dropdown-portal-target="props.dropdownPortalTarget"
 				@open-settings="openMcpSettings(conn.id)"

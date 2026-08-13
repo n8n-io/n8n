@@ -471,6 +471,7 @@ export type {
 	InstanceAiMcpConnectionResponse,
 	InstanceAiMcpConnectionToolFilterResponse,
 	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpConnectionToolsResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,

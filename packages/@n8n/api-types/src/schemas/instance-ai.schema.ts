@@ -1699,6 +1699,12 @@ export interface InstanceAiMcpConnectionToolResponse {
 	description?: string;
 }
 
+export interface InstanceAiMcpConnectionToolsResponse {
+	id: string;
+	status: 'connected' | 'disconnected';
+	tools: InstanceAiMcpConnectionToolResponse[];
+}
+
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
