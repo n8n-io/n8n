@@ -39,8 +39,8 @@ import type {
 	Segment,
 } from '@/app/types/expressions';
 import {
-	containsExternalSecretReference,
 	getExpressionErrorMessage,
+	getExternalSecretPreview,
 	getResolvableState,
 } from '@/app/utils/expressions';
 import { isCredentialsModalOpen } from '../plugins/codemirror/completions/utils';
@@ -453,9 +453,13 @@ export const useExpressionEditor = ({
 		}
 
 		if (result.resolved === undefined) {
-			if (isCredentialModal && containsExternalSecretReference(resolvable)) {
-				result.resolved = i18n.baseText('expressionModalInput.evaluatedDuringExecution');
-				result.state = 'pending';
+			const secretPreview = isCredentialModal
+				? getExternalSecretPreview(resolvable, toValue(additionalData).$secrets)
+				: undefined;
+
+			if (secretPreview) {
+				result.resolved = secretPreview.text;
+				result.state = secretPreview.exists ? 'pending' : 'invalid';
 			} else {
 				result.resolved = isUncalledExpressionExtension(resolvable)
 					? i18n.baseText('expressionEditor.uncalledFunction')

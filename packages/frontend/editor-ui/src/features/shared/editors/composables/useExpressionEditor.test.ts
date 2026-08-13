@@ -499,5 +499,28 @@ describe('useExpressionEditor', () => {
 				]);
 			});
 		});
+
+		test('should keep unknown external secret references invalid', async () => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['name-with-typo']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[secret not found]',
+						state: 'invalid',
+					}),
+				]);
+			});
+		});
 	});
 });

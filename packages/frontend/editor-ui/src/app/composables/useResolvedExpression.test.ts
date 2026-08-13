@@ -90,10 +90,27 @@ describe('useResolvedExpression', () => {
 		const { resolvedExpressionString } = await renderTestComponent({
 			expression: "={{ JSON.parse($secrets.aws['preview-test']).password }}",
 			isForCredential: true,
+			additionalData: {
+				$secrets: { aws: { 'preview-test': '*********' } },
+			},
 		});
 
 		await nextTick();
 		expect(toValue(resolvedExpressionString)).toBe('[evaluated during execution]');
+	});
+
+	it('should not defer credential secret previews with an unknown secret reference', async () => {
+		mockResolveExpression().mockResolvedValue(undefined);
+		const { resolvedExpressionString } = await renderTestComponent({
+			expression: "={{ JSON.parse($secrets.aws['name-with-typo']).password }}",
+			isForCredential: true,
+			additionalData: {
+				$secrets: { aws: { 'preview-test': '*********' } },
+			},
+		});
+
+		await nextTick();
+		expect(toValue(resolvedExpressionString)).toBe('[secret not found]');
 	});
 
 	it('should debounce updates', async () => {

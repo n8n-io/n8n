@@ -1,8 +1,7 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { i18n } from '@n8n/i18n';
 import {
-	containsExternalSecretReference,
+	getExternalSecretPreview,
 	isExpression as isExpressionUtil,
 	stringifyExpressionResult,
 } from '@/app/utils/expressions';
@@ -111,20 +110,21 @@ export function useResolvedExpression({
 
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
 			const expressionString = toValue(expression);
-			const isDeferredSecretExpression =
+			const secretPreview =
 				resolved.ok &&
 				resolved.result === undefined &&
 				toValue(isForCredential) &&
-				typeof expressionString === 'string' &&
-				containsExternalSecretReference(expressionString);
+				typeof expressionString === 'string'
+					? getExternalSecretPreview(expressionString, toValue(additionalData)?.$secrets)
+					: undefined;
 
-			resolvedExpressionString.value = isDeferredSecretExpression
-				? i18n.baseText('expressionModalInput.evaluatedDuringExecution')
-				: stringifyExpressionResult(
-						resolved,
-						workflowDocumentStore.value.getPinDataSnapshot(),
-						hasRunData.value,
-					);
+			resolvedExpressionString.value =
+				secretPreview?.text ??
+				stringifyExpressionResult(
+					resolved,
+					workflowDocumentStore.value.getPinDataSnapshot(),
+					hasRunData.value,
+				);
 		} else {
 			resolvedExpression.value = null;
 			resolvedExpressionString.value = '';
