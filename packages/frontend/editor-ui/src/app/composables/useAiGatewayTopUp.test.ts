@@ -4,6 +4,7 @@ import { setActivePinia } from 'pinia';
 import { mockedStore } from '@/__tests__/utils';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY, CLOUD_N8N_CONNECT_TOP_UP_PATH } from '@/app/constants';
 import { useAiGatewayTopUp } from './useAiGatewayTopUp';
@@ -20,13 +21,34 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 describe('useAiGatewayTopUp', () => {
+	const ADMIN_PANEL_LINK = 'https://app.n8n.cloud/login?code=abc&returnPath=%2Fmanage%2Fconnect';
 	const windowOpen = vi.fn();
+	const reservedTab = { close: vi.fn(), location: { href: '' } };
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		reservedTab.location.href = '';
 		setActivePinia(createTestingPinia({ stubActions: false }));
+		windowOpen.mockReturnValue(reservedTab);
 		vi.stubGlobal('open', windowOpen);
 	});
+
+	function mockPaidCloudOwner() {
+		const usersStore = mockedStore(useUsersStore);
+		const cloudPlanStore = mockedStore(useCloudPlanStore);
+		const settingsStore = mockedStore(useSettingsStore);
+		const uiStore = mockedStore(useUIStore);
+
+		usersStore.isInstanceOwner = true;
+		cloudPlanStore.userIsTrialing = false;
+		settingsStore.isCloudDeployment = true;
+		uiStore.openModalWithData = vi.fn();
+		cloudPlanStore.generateCloudDashboardAutoLoginLink = vi
+			.fn()
+			.mockResolvedValue(ADMIN_PANEL_LINK);
+
+		return { usersStore, cloudPlanStore, settingsStore, uiStore };
+	}
 
 	it('opens the modal and tracks the click', () => {
 		const uiStore = mockedStore(useUIStore);
@@ -45,42 +67,39 @@ describe('useAiGatewayTopUp', () => {
 		});
 	});
 
-	it('sends paid owners straight to the Cloud Admin Panel', async () => {
-		const usersStore = mockedStore(useUsersStore);
-		const cloudPlanStore = mockedStore(useCloudPlanStore);
-		const uiStore = mockedStore(useUIStore);
-
-		usersStore.isInstanceOwner = true;
-		cloudPlanStore.userIsTrialing = false;
-		uiStore.openModalWithData = vi.fn();
-		cloudPlanStore.generateCloudDashboardAutoLoginLink = vi
-			.fn()
-			.mockResolvedValue('https://app.n8n.cloud/login?code=abc&returnPath=%2Fmanage%2Fconnect');
+	it('sends paid Cloud owners straight to the Cloud Admin Panel', async () => {
+		const { cloudPlanStore, uiStore } = mockPaidCloudOwner();
 
 		const { openTopUp } = useAiGatewayTopUp();
 		openTopUp({ source: 'settings_page' });
 
+		expect(windowOpen).toHaveBeenCalledWith('', '_blank');
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 		await vi.waitFor(() => {
 			expect(cloudPlanStore.generateCloudDashboardAutoLoginLink).toHaveBeenCalledWith({
 				redirectionPath: CLOUD_N8N_CONNECT_TOP_UP_PATH,
 			});
 		});
-		expect(windowOpen).toHaveBeenCalledWith(
-			'https://app.n8n.cloud/login?code=abc&returnPath=%2Fmanage%2Fconnect',
-			'_blank',
-			'noopener',
-		);
+		expect(reservedTab.location.href).toBe(ADMIN_PANEL_LINK);
+	});
+
+	it('opens the modal for paid owners on non-cloud instances', () => {
+		const { cloudPlanStore, settingsStore, uiStore } = mockPaidCloudOwner();
+		settingsStore.isCloudDeployment = false;
+
+		const { openTopUp } = useAiGatewayTopUp();
+		openTopUp({ source: 'settings_page' });
+
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+			data: { credentialType: undefined, source: 'settings_page' },
+		});
+		expect(cloudPlanStore.generateCloudDashboardAutoLoginLink).not.toHaveBeenCalled();
+		expect(windowOpen).not.toHaveBeenCalled();
 	});
 
 	it('reports the error when the Admin Panel link fails', async () => {
-		const usersStore = mockedStore(useUsersStore);
-		const cloudPlanStore = mockedStore(useCloudPlanStore);
-		const uiStore = mockedStore(useUIStore);
-
-		usersStore.isInstanceOwner = true;
-		cloudPlanStore.userIsTrialing = false;
-		uiStore.openModalWithData = vi.fn();
+		const { cloudPlanStore, uiStore } = mockPaidCloudOwner();
 		cloudPlanStore.generateCloudDashboardAutoLoginLink = vi
 			.fn()
 			.mockRejectedValue(new Error('no auto-login code'));
@@ -88,10 +107,11 @@ describe('useAiGatewayTopUp', () => {
 		const { openTopUp } = useAiGatewayTopUp();
 		openTopUp({ source: 'settings_page' });
 
+		expect(windowOpen).toHaveBeenCalledWith('', '_blank');
 		await vi.waitFor(() => {
 			expect(showErrorMock).toHaveBeenCalled();
 		});
-		expect(windowOpen).not.toHaveBeenCalled();
+		expect(reservedTab.close).toHaveBeenCalled();
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 	});
 
