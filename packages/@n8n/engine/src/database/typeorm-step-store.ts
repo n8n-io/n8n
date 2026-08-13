@@ -71,12 +71,12 @@ export class TypeOrmStepStore implements StepStore {
 		// miss a concurrently committing failure — the claim either waits it
 		// out and sees it, or committed strictly before it.
 		return await this.repo.manager.transaction(async (manager) => {
-			const [execution] = (await manager.query(
+			const [execution] = await manager.query<Array<{ id: string }>>(
 				`SELECT id FROM workflow_execution
 				 WHERE id = (SELECT execution_id FROM workflow_step_execution WHERE id = $1)
 				 FOR SHARE`,
 				[id],
-			)) as Array<{ id: string }>;
+			);
 			if (!execution) return null;
 
 			const result = await manager
