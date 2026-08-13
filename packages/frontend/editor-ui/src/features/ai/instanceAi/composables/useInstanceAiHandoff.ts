@@ -392,5 +392,30 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	return { startThread, openThreadWithContext, openAgentArtifactThread };
+	/**
+	 * Mint a thread for a draft the caller will stash and navigate to itself (canvas
+	 * "add to chat" on a standalone editor). Same as startThread's same-tab branch
+	 * minus sendMessage/navigation — the caller sends nothing until the user does.
+	 */
+	async function openThreadForDraft(): Promise<string | null> {
+		if (handoffInFlight) return null;
+		handoffInFlight = true;
+		try {
+			const projectId = await ensurePersonalProjectId();
+			if (!projectId) return null;
+			const threadId = uuidv4();
+			const launch: InstanceAiThreadLaunch = { source: 'canvas_action_button', origin: 'internal' };
+			try {
+				await instanceAiStore.syncThread(threadId, projectId, launch);
+			} catch {
+				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				return null;
+			}
+			return threadId;
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
+	return { startThread, openThreadWithContext, openAgentArtifactThread, openThreadForDraft };
 }

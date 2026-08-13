@@ -314,6 +314,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return staged;
 	}
 
+	// Bumped to ask the thread view to un-expand any preview and focus the composer (Context A).
+	const composerFocusRequest = ref(0);
+	function requestComposerFocus(): void {
+		composerFocusRequest.value++;
+	}
+
 	return {
 		// Instance-level state
 		threads,
@@ -348,6 +354,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		pendingComposerAttachments,
 		stageNodeSets,
 		consumePendingAttachments,
+		composerFocusRequest,
+		requestComposerFocus,
 	};
 });
 
