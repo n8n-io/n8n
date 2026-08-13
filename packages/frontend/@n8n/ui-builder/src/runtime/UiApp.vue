@@ -114,6 +114,23 @@ function navigate(to: string) {
 }
 
 /**
+ * A step's URL was captured absolute, against whatever host the author was
+ * on when they picked the target. Every target this app can call lives on
+ * the instance that serves the app itself, so stripping back to the path
+ * lets it call out relative to wherever it is actually running rather than
+ * wherever it was authored — the same page definition then works unchanged
+ * across local dev, staging, and production hosts.
+ */
+function relativeRequestUrl(url: string): string {
+	try {
+		const parsed = new URL(url, window.location.origin);
+		return parsed.pathname + parsed.search;
+	} catch {
+		return url;
+	}
+}
+
+/**
  * Call a workflow. What it answers comes back as `$response` for the steps
  * after it; `undefined` means the chain stops here.
  */
@@ -126,7 +143,7 @@ async function callWebhook(
 	loading.begin(key);
 
 	try {
-		const response = await fetch(step.url, {
+		const response = await fetch(relativeRequestUrl(step.url), {
 			method,
 			headers: {
 				'content-type': 'application/json',
