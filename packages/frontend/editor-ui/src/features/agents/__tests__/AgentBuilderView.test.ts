@@ -1027,6 +1027,42 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it('does not update the shared session store when validation resolves after unmount', async () => {
+		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
+		const detail = Promise.withResolvers<{
+			thread: SessionThread;
+			executions: [];
+		}>();
+		getSessionThreadDetailMock.mockReturnValueOnce(detail.promise);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactPreviewSessionId: 'thread-older-than-first-page',
+			},
+		});
+		await vi.waitFor(() =>
+			expect(getSessionThreadDetailMock).toHaveBeenCalledWith(
+				'p2',
+				'a2',
+				'thread-older-than-first-page',
+			),
+		);
+
+		wrapper.unmount();
+		detail.resolve({
+			thread: {
+				id: 'thread-older-than-first-page',
+				updatedAt: '2025-12-01T00:00:00Z',
+			},
+			executions: [],
+		});
+		await flushPromises();
+
+		expect(upsertSessionThreadMock).not.toHaveBeenCalled();
+	});
+
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		listAgentFilesMock.mockResolvedValue([

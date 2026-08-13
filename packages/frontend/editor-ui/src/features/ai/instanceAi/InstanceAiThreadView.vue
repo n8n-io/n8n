@@ -809,7 +809,11 @@ const workflowPreviewRef =
 	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
 
 // --- Message handlers ---
-function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+function handleSubmit(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	restoreDraft?: () => boolean,
+) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
@@ -866,6 +870,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
 			if (!sent) {
+				if (restoreDraft?.()) return;
 				const input = chatInputRef.value;
 				if (input && !input.isDirty()) input.setText(message);
 				return;

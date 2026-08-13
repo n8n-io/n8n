@@ -219,13 +219,20 @@ const InstanceAiInputStub = defineComponent({
 					{
 						'data-test-id': 'instance-ai-input-submit',
 						onClick: () => {
-							emit(
-								'submit',
-								props.isPlanEditMode
-									? planEditSubmitState.message
-									: inputDraft.value || 'Normal message',
-								undefined,
-							);
+							const message = props.isPlanEditMode
+								? planEditSubmitState.message
+								: inputDraft.value || 'Normal message';
+							const submittedHasAttachments = hasAttachments.value;
+							if (submittedHasAttachments) {
+								emit('submit', message, undefined, () => {
+									if (isDirty()) return false;
+									setText(message);
+									hasAttachments.value = submittedHasAttachments;
+									return true;
+								});
+							} else {
+								emit('submit', message, undefined);
+							}
 							inputDraft.value = '';
 							hasAttachments.value = false;
 						},
@@ -674,17 +681,19 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('restores an edited fix draft when sending fails', async () => {
+	it('restores an edited fix draft and its attachments when sending fails', async () => {
 		const { getByTestId, user } = await renderAgentArtifact();
 		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
 		vi.mocked(thread.sendMessage).mockResolvedValueOnce(false);
 
 		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
 		await user.click(getByTestId('instance-ai-input-edit-draft'));
+		await user.click(getByTestId('instance-ai-input-add-attachment'));
 		await user.click(getByTestId('instance-ai-input-submit'));
 
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Edited user draft');
+			expect(getByTestId('instance-ai-input-attachments')).toHaveTextContent('attached');
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
 				'SEO Auditor session',
 			);
@@ -698,12 +707,14 @@ describe('InstanceAiThreadView', () => {
 		vi.mocked(thread.sendMessage).mockReturnValueOnce(send.promise);
 
 		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+		await user.click(getByTestId('instance-ai-input-add-attachment'));
 		await user.click(getByTestId('instance-ai-input-submit'));
 		await user.click(getByTestId('instance-ai-input-edit-draft'));
 		send.resolve(false);
 
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Edited user draft');
+			expect(getByTestId('instance-ai-input-attachments')).toBeEmptyDOMElement();
 		});
 	});
 

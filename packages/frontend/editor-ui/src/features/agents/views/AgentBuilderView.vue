@@ -347,7 +347,7 @@ const projectName = computed<string | null>(() => {
 // or project, and applying the result would clobber the new selection's state.
 // Callers use this guard to drop such stale results.
 function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boolean {
-	return projectId.value !== targetProjectId || agentId.value !== targetAgentId;
+	return disposed || projectId.value !== targetProjectId || agentId.value !== targetAgentId;
 }
 
 // Drafts cases from the agent's own config. The generated dataset isn't
