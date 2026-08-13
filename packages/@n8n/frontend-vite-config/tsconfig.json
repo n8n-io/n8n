@@ -4,8 +4,8 @@
 		"types": ["node"],
 		"module": "ESNext",
 		"moduleResolution": "bundler",
-		// Node's ESM loader reads these files directly when vite loads a config, and wants extensions.
-		"allowImportingTsExtensions": true
+		// Consumed from source, so nothing should ever emit `.js` beside these files.
+		"noEmit": true
 	},
 	"include": ["**/*.ts"]
 }
