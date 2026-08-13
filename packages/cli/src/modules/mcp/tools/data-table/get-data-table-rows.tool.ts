@@ -44,6 +44,9 @@ const filterSchema = z
 const sortBySchema = z
 	.string()
 	.regex(/^[^:]+:(asc|desc)$/i, 'Expected format <columnName>:<asc|desc>')
+	.refine((value) => dataTableColumnNameSchema.safeParse(value.split(':')[0]).success, {
+		message: 'Invalid sort column name',
+	})
 	.optional()
 	.describe("Sort order as '<columnName>:<asc|desc>', e.g. 'createdAt:desc'");
 

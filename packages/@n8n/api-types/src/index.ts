@@ -216,8 +216,6 @@ export {
 	type DataTableFilter,
 	type DataTableFilterConditionType,
 	FilterConditionSchema,
-	dataTableFilterRecordSchema,
-	dataTableFilterSchema,
 	dataTableFilterTypeSchema,
 } from './schemas/data-table-filter.schema';
 

@@ -109,7 +109,6 @@ export const columnNameSchema = z
 		'Column name. Must start with a letter, contain only letters, numbers, and underscores (max 63 chars)',
 	);
 
-/** A data table row as an object mapping column names to values. */
 export const dataTableRowSchema = z.record(
 	z.string(),
 	z.union([z.string(), z.number(), z.boolean(), z.null()]),
