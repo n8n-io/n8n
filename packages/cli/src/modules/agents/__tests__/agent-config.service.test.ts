@@ -896,11 +896,12 @@ describe('AgentConfigService', () => {
 			expect(saved.schema?.tasks).toEqual([]);
 		});
 
-		it('drops a task ref whose id is already taken by another agent', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
+		it('assigns a fresh id when the imported task id is already taken by another agent', async () => {
+			const { service, agentRepository, agentTaskRepository, txManager } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
-			// The task id is the table's sole primary key; writing it would hijack
-			// the other agent's row.
+			// The task id is the table's sole primary key; reusing it would hijack
+			// the other agent's row. This happens on every same-instance import,
+			// since the source agent still owns the exported id.
 			agentTaskRepository.findOwningAgentIds.mockResolvedValue(
 				new Map([['weekly_review', 'agent-other']]),
 			);
@@ -913,9 +914,15 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			expect(agentRepository.manager.transaction).not.toHaveBeenCalled();
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
-			expect(saved.schema?.tasks).toEqual([]);
+			const savedRow = txManager.save.mock.calls
+				.map(([entity]) => entity as { id?: string; name?: string; agentId?: string })
+				.find((entity) => entity.name === 'Weekly review');
+			expect(savedRow?.agentId).toBe(agentId);
+			expect(savedRow?.id).toMatch(/^task_/);
+			expect(savedRow?.id).not.toBe('weekly_review');
+
+			const saved = txManager.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: savedRow?.id, enabled: true }]);
 		});
 
 		it('writes no task rows when the update fails after task recreation', async () => {

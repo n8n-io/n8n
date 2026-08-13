@@ -41,6 +41,7 @@ import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { generateAgentResourceId } from './utils/agent-resource-id';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
@@ -437,20 +438,22 @@ export class AgentConfigService {
 	 * Prepare task definitions that arrived inline on the config but have no row
 	 * for this agent yet (an imported agent JSON), for persistence alongside the
 	 * agent save. A task is skipped — and its ref later dropped as an orphan —
-	 * when the inline body is missing or incomplete, the cron expression is
-	 * invalid, or the id is already taken by another agent (the task id is the
-	 * table's sole primary key, so writing it would hijack that agent's row).
+	 * when the inline body is missing or incomplete or the cron expression is
+	 * invalid. The task id is the table's sole primary key, so an id already
+	 * taken by another agent (importing an export whose source lives on the same
+	 * instance) is replaced with a fresh one, on both the row and the config
+	 * ref, instead of hijacking that agent's row.
 	 */
 	private async prepareImportedTaskDefinitions(
 		agentId: string,
 		tasks: NonNullable<AgentJsonConfig['tasks']>,
 		existingTaskIds: ReadonlySet<string>,
 	): Promise<AgentTask[]> {
-		const inlineTasks = tasks.flatMap((task) => {
-			if (existingTaskIds.has(task.id)) return [];
-			const { id, name, objective, cronExpression } = task;
+		const inlineTasks = tasks.flatMap((ref) => {
+			if (existingTaskIds.has(ref.id)) return [];
+			const { id, name, objective, cronExpression } = ref;
 			if (name === undefined || objective === undefined || cronExpression === undefined) return [];
-			return [{ id, name, objective, cronExpression }];
+			return [{ ref, id, name, objective, cronExpression }];
 		});
 		if (inlineTasks.length === 0) return [];
 
@@ -458,12 +461,9 @@ export class AgentConfigService {
 			inlineTasks.map((task) => task.id),
 		);
 
+		const takenIds = new Set([...existingTaskIds, ...tasks.map((ref) => ref.id)]);
 		const prepared: AgentTask[] = [];
 		for (const task of inlineTasks) {
-			if (owningAgentIds.has(task.id)) {
-				this.logger.warn('Skipping imported agent task: id already taken', { taskId: task.id });
-				continue;
-			}
 			if (!isValidCronExpression(task.cronExpression)) {
 				this.logger.warn('Skipping imported agent task: invalid cron expression', {
 					taskId: task.id,
@@ -471,7 +471,28 @@ export class AgentConfigService {
 				continue;
 			}
 
-			prepared.push(this.agentTaskRepository.create({ ...task, agentId }));
+			let taskId = task.id;
+			if (owningAgentIds.get(taskId) !== undefined && owningAgentIds.get(taskId) !== agentId) {
+				taskId = generateAgentResourceId('task', takenIds);
+				// The ref is part of the config being persisted, so the rename
+				// carries through to the schema and the update response.
+				task.ref.id = taskId;
+				this.logger.warn('Imported agent task id already taken: assigned a new id', {
+					taskId: task.id,
+					newTaskId: taskId,
+				});
+			}
+			takenIds.add(taskId);
+
+			prepared.push(
+				this.agentTaskRepository.create({
+					id: taskId,
+					agentId,
+					name: task.name,
+					objective: task.objective,
+					cronExpression: task.cronExpression,
+				}),
+			);
 		}
 		return prepared;
 	}
