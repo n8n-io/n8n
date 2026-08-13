@@ -7,18 +7,19 @@ ARG N8N_VERSION=snapshot
 # Digest pins to node:24.18.1-alpine3.24 (Node 24.18.1, Alpine 3.24).
 FROM node:24.18.1-alpine3.24@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3 AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
+# Both native modules are rebuilt with a single direct node-gyp call, never via
+# `npm rebuild <pkg>`: each is reachable through several symlinks in the pnpm tree, and
+# npm runs one install script per link concurrently in the same store directory, where
+# they collide on build/node_gyp_bins and on each other's make output. Using npm's
+# bundled node-gyp rather than `npx node-gyp` also fixes the toolchain version to the
+# pinned image digest instead of fetching it from the registry at build time.
 RUN apk add --no-cache python3 make g++ && \
+    cd /usr/local/lib/node_modules/n8n/node_modules/sqlite3 && \
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release && \
+    # node-gyp-build's musl detection relies on /etc/alpine-release which DHI Alpine
+    # omits, so isolated-vm's bundled prebuilt loader picks the glibc binary and
+    # segfaults in musl pthread paths; drop the prebuilds so only the fresh build remains.
     cd /usr/local/lib/node_modules/n8n && \
-    npm rebuild sqlite3 && \
-    # Rebuild isolated-vm from source. node-gyp-build's musl detection relies
-    # on /etc/alpine-release which DHI Alpine omits, so the bundled prebuilt
-    # loader picks the glibc binary and segfaults in musl pthread paths.
-    # Removing prebuilds and invoking node-gyp directly avoids npm rebuild's
-    # double-build behavior (built-in node-gyp + install-script node-gyp)
-    # which races on dep-file state.
-    # Use npm's bundled node-gyp rather than `npx node-gyp` so the toolchain
-    # version is fixed by the pinned image digest instead of being fetched
-    # from the registry at build time.
     rm -rf node_modules/isolated-vm/prebuilds && \
     cd node_modules/isolated-vm && \
     node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release -j max
