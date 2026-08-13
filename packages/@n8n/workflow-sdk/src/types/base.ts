@@ -306,7 +306,7 @@ export interface NodeJSON {
 	typeVersion: number;
 	position: [number, number];
 	parameters?: IDataObject;
-	credentials?: Record<string, { id?: string; name: string }>;
+	credentials?: Record<string, { id?: string | null; name: string; __aiGatewayManaged?: boolean }>;
 	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;

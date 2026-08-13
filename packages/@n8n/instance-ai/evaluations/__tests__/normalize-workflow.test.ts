@@ -76,6 +76,40 @@ describe('normalizeWorkflow', () => {
 		expect(result.connections).toEqual(raw.connections);
 	});
 
+	it('preserves managed credential references with null IDs', () => {
+		const raw: WorkflowJSON = {
+			name: 'Managed credential workflow',
+			nodes: [
+				{
+					id: 'model-1',
+					name: 'Google Gemini Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						googlePalmApi: {
+							id: null,
+							name: 'n8n credits',
+							__aiGatewayManaged: true,
+						},
+					},
+				},
+			],
+			connections: {},
+		};
+
+		const result = normalizeWorkflow(raw);
+
+		expect(result.nodes[0].credentials).toEqual({
+			googlePalmApi: {
+				id: null,
+				name: 'n8n credits',
+				__aiGatewayManaged: true,
+			},
+		});
+	});
+
 	it('defaults missing parameters to an empty object so judges see stable shape', () => {
 		const raw: WorkflowJSON = {
 			name: 'No-param workflow',

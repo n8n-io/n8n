@@ -36,6 +36,37 @@ function isConnections(value: unknown): value is IConnections {
 	return isRecord(value);
 }
 
+interface ManagedCredentialReference {
+	id: null;
+	name: string;
+	__aiGatewayManaged: true;
+}
+
+function isManagedCredentialReference(value: unknown): value is ManagedCredentialReference {
+	return (
+		isRecord(value) &&
+		value.id === null &&
+		typeof value.name === 'string' &&
+		value.__aiGatewayManaged === true
+	);
+}
+
+function retainManagedCredentialReferences(credentials: unknown): INode['credentials'] | undefined {
+	if (!isRecord(credentials)) return undefined;
+
+	const managedCredentials: NonNullable<INode['credentials']> = {};
+	for (const [type, credential] of Object.entries(credentials)) {
+		if (!isManagedCredentialReference(credential)) continue;
+		managedCredentials[type] = {
+			id: null,
+			name: credential.name,
+			__aiGatewayManaged: true,
+		};
+	}
+
+	return Object.keys(managedCredentials).length > 0 ? managedCredentials : undefined;
+}
+
 /** Empty every `credential`/`credentialId` string and `credentials` map, at any
  *  depth — they address the instance the seed came from. Emptied rather than
  *  deleted: both are required fields, and empty is the unconfigured state the
@@ -256,9 +287,11 @@ export class EvalThreadRestoreService {
 
 	/**
 	 * Insert a workflow at its seeded id (the BeforeInsert hook only generates an
-	 * id when unset) and make the project its owner. Node credentials are stripped
-	 * (the eval credential pin owns the credential view). Data-table references are
-	 * rewritten to the recreated tables' ids. Returns true if newly created.
+	 * id when unset) and make the project its owner. Stored node credentials are
+	 * stripped so they cannot bypass the eval credential pin. AI Gateway-managed
+	 * references have no stored credential id, so their canonical marker is retained.
+	 * Data-table references are rewritten to the recreated tables' ids. Returns true
+	 * if newly created.
 	 */
 	private async createWorkflowPinnedToId(
 		workflow: InstanceAiEvalSeedWorkflow,
@@ -274,8 +307,12 @@ export class EvalThreadRestoreService {
 					`Seed workflow ${workflow.id} node at index ${index} is not a valid workflow node`,
 				);
 			}
+			const managedCredentials = retainManagedCredentialReferences(node.credentials);
 			const { credentials: _stripped, ...rest } = node;
-			const remapped = remapDataTableIds(rest);
+			const sanitizedNode = managedCredentials
+				? { ...rest, credentials: managedCredentials }
+				: rest;
+			const remapped = remapDataTableIds(sanitizedNode);
 			if (!isWorkflowNode(remapped)) {
 				throw new BadRequestError(
 					`Seed workflow ${workflow.id} node at index ${index} became invalid after data-table id remap`,
