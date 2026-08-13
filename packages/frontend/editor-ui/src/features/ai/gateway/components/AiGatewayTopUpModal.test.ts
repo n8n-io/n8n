@@ -8,7 +8,9 @@ import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
@@ -71,12 +73,16 @@ const INSTALLED_CREDENTIAL_TYPES: Record<string, Partial<ICredentialType>> = {
 	moonshotApi: { displayName: 'Moonshot API', iconUrl: 'icons/moonshot.svg' },
 	miniMaxApi: { displayName: 'MiniMax Account' },
 	openAiAssistantApi: { displayName: 'OpenAI', iconUrl: 'icons/openAi.svg' },
+	qwenApi: { displayName: 'Qwen Cloud', icon: 'file:qwen.svg' },
 };
 
 // Some packages keep the logo on the node rather than the credential.
 const INSTALLED_NODE_TYPES = [
+	{ name: 'noCredentials' },
 	{ name: 'miniMax', credentials: [{ name: 'miniMaxApi' }] },
 	{ name: 'openAi', credentials: [{ name: 'openAiApi' }] },
+	{ name: 'openAiChat', credentials: [{ name: 'openAiApi' }] },
+	{ name: 'cohere', displayName: 'Cohere API', credentials: [{ name: 'cohereApi' }] },
 ] as unknown as INodeTypeDescription[];
 
 function renderModal({
@@ -84,11 +90,13 @@ function renderModal({
 	userIsTrialing,
 	credentialTypes,
 	allUsers = [],
+	config,
 }: {
 	isInstanceOwner: boolean;
 	userIsTrialing: boolean;
 	credentialTypes?: string[];
 	allUsers?: IUser[];
+	config?: AiGatewayConfigDto | null;
 }) {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
@@ -97,20 +105,24 @@ function renderModal({
 	const aiGatewayStore = mockedStore(useAiGatewayStore);
 	const credentialsStore = mockedStore(useCredentialsStore);
 	const nodeTypesStore = mockedStore(useNodeTypesStore);
+	const uiStore = mockedStore(useUIStore);
 	nodeTypesStore.allLatestNodeTypes = INSTALLED_NODE_TYPES;
 	usersStore.isInstanceOwner = isInstanceOwner;
 	usersStore.allUsers = allUsers;
 	usersStore.fetchUsers = vi.fn().mockResolvedValue(undefined);
 	cloudPlanStore.userIsTrialing = userIsTrialing;
-	aiGatewayStore.config = {
-		credentialTypes: credentialTypes ?? ['openAiApi', 'anthropicApi'],
-	} as AiGatewayConfigDto;
+	aiGatewayStore.config =
+		config === undefined
+			? ({
+					credentialTypes: credentialTypes ?? ['openAiApi', 'anthropicApi'],
+				} as AiGatewayConfigDto)
+			: config;
 	credentialsStore.getCredentialTypeByName = (name: string) =>
 		INSTALLED_CREDENTIAL_TYPES[name]
 			? ({ name, ...INSTALLED_CREDENTIAL_TYPES[name] } as ICredentialType)
 			: undefined;
 	renderComponent({ pinia });
-	return { usersStore };
+	return { usersStore, uiStore };
 }
 
 describe('AiGatewayTopUpModal.vue', () => {
@@ -144,7 +156,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 	});
 
 	it('mails the Instance Owner when Contact admin is clicked', async () => {
-		renderModal({
+		const { uiStore } = renderModal({
 			isInstanceOwner: false,
 			userIsTrialing: false,
 			allUsers: [{ email: 'owner@example.com', role: ROLE.Owner } as IUser],
@@ -155,6 +167,28 @@ describe('AiGatewayTopUpModal.vue', () => {
 		expect(windowOpen).toHaveBeenCalledWith(
 			'mailto:owner@example.com?subject=n8n%20credits%20top-up',
 		);
+		expect(uiStore.closeModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
+	});
+
+	it('opens a blank mailto when no Instance Owner email is available', async () => {
+		renderModal({
+			isInstanceOwner: false,
+			userIsTrialing: false,
+			allUsers: [{ email: '', role: ROLE.Owner } as IUser],
+		});
+
+		await userEvent.click(screen.getByRole('button', { name: 'Contact admin' }));
+
+		expect(windowOpen).toHaveBeenCalledWith('mailto:?subject=n8n%20credits%20top-up');
+	});
+
+	it('closes the dialog when Cancel is clicked', async () => {
+		const { uiStore } = renderModal({ isInstanceOwner: false, userIsTrialing: false });
+
+		await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+		expect(uiStore.closeModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
 	});
 
 	it('shows Upgrade copy and covered services for owners during trial', async () => {
@@ -232,5 +266,33 @@ describe('AiGatewayTopUpModal.vue', () => {
 
 		expect(screen.getAllByText('OpenAI')).toHaveLength(1);
 		expect(screen.queryByText('mysteryApi')).not.toBeInTheDocument();
+	});
+
+	it('still lists featured partners when gateway config has not loaded', () => {
+		renderModal({ isInstanceOwner: true, userIsTrialing: true, config: null });
+
+		expect(screen.getByText('Firecrawl')).toBeInTheDocument();
+		expect(screen.getByText('OpenAI')).toBeInTheDocument();
+	});
+
+	it('uses a credential icon field when iconUrl is absent', () => {
+		renderModal({
+			isInstanceOwner: true,
+			userIsTrialing: true,
+			credentialTypes: ['openAiApi', 'qwenApi'],
+		});
+
+		expect(screen.getByTestId('credential-icon-qwenApi')).toBeInTheDocument();
+	});
+
+	it('names a covered service from its node when the credential type is unknown', () => {
+		renderModal({
+			isInstanceOwner: true,
+			userIsTrialing: true,
+			credentialTypes: ['openAiApi', 'cohereApi'],
+		});
+
+		expect(screen.getByText('Cohere')).toBeInTheDocument();
+		expect(screen.getByTestId('node-icon-cohere')).toBeInTheDocument();
 	});
 });
