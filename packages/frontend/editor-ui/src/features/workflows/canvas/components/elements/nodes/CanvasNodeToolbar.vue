@@ -9,6 +9,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useAddNodesToChat } from '@/features/ai/instanceAi/composables/useAddNodesToChat';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -22,6 +23,7 @@ const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
 	focus: [id: string];
 	'add:ai': [id: string];
+	'add-nodes-to-chat': [id: string];
 }>();
 
 const props = withDefaults(
@@ -50,6 +52,7 @@ const focusedNodesStore = useFocusedNodesStore();
 // Per-editor host overrides — e.g. the Instance AI artifact preview supersedes
 // the AI capabilities of its embedded editor, which must hide this entry point.
 const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
+const { isNodeContextEnabled } = useAddNodesToChat();
 
 const node = computed(() =>
 	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,
@@ -114,6 +117,12 @@ const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
 );
 
+// Instance AI "add this node to chat" — shown for real nodes (not stickies) when
+// the flag is on, independent of the legacy assistant/builder gating.
+const isAddToChatVisible = computed(
+	() => isNodeContextEnabled.value && render.value.type !== CanvasNodeRenderType.StickyNote,
+);
+
 function executeNode() {
 	emit('run');
 }
@@ -153,6 +162,12 @@ function onFocusNode() {
 function onAddToAi() {
 	if (node.value) {
 		emit('add:ai', node.value.id);
+	}
+}
+
+function onAddToChat() {
+	if (node.value) {
+		emit('add-nodes-to-chat', node.value.id);
 	}
 }
 </script>
@@ -232,6 +247,22 @@ function onAddToAi() {
 					@click.stop="onAddToAi"
 				/>
 			</N8nTooltip>
+			<N8nTooltip
+				v-if="isAddToChatVisible"
+				placement="top"
+				:content="i18n.baseText('node.addToChat')"
+			>
+				<N8nIconButton
+					:class="$style.addToChatButton"
+					data-test-id="canvas-node-add-to-chat"
+					variant="ghost"
+					size="small"
+					text
+					icon="sparkles"
+					:aria-label="i18n.baseText('node.addToChat')"
+					@click.stop="onAddToChat"
+				/>
+			</N8nTooltip>
 			<N8nTooltip placement="top" :content="i18n.baseText('node.moreActions')">
 				<N8nIconButton
 					variant="ghost"
@@ -285,6 +316,11 @@ function onAddToAi() {
 
 .forceVisible {
 	opacity: 1 !important;
+}
+
+// The add-to-chat entry point uses the n8n accent so it reads as the AI action.
+.addToChatButton {
+	--button--color: var(--color--primary);
 }
 
 .statusIcons {

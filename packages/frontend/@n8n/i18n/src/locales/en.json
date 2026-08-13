@@ -2023,6 +2023,7 @@
 	"node.enable": "Activate",
 	"node.delete": "Delete",
 	"node.addToAi": "Add to n8n AI",
+	"node.addToChat": "Add to chat",
 	"node.focusNode": "Focus node",
 	"node.moreActions": "More actions",
 	"node.add": "Add",

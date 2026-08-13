@@ -335,19 +335,22 @@ export function useContextMenuItems(
 					shortcut: { altKey: true, keys: ['I'] },
 					disabled: isReadOnly.value,
 				},
-			!onlyStickies &&
-				nodes.length >= 1 &&
-				posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG) && {
-					id: 'add_nodes_to_chat',
-					divided: true,
-					label: i18n.baseText('contextMenu.addNodesToChat', {
-						adjustToNumber: nodes.length,
-						interpolate: { count: nodes.length },
-					}),
-					shortcut: { metaKey: true, keys: ['Enter'] },
-					disabled: isReadOnly.value,
-				},
 		].filter(Boolean) as Item[];
+
+		// Pinned to the top of the menu, in the n8n accent, as the primary AI action.
+		const addToChatAction: Item | null =
+			!onlyStickies && nodes.length >= 1 && posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)
+				? {
+						id: 'add_nodes_to_chat',
+						icon: 'sparkles',
+						label: i18n.baseText('contextMenu.addNodesToChat', {
+							adjustToNumber: nodes.length,
+							interpolate: { count: nodes.length },
+						}),
+						shortcut: { metaKey: true, keys: ['Enter'] },
+						disabled: isReadOnly.value,
+					}
+				: null;
 
 		const layoutActions: Item[] = [
 			{
@@ -572,6 +575,11 @@ export function useContextMenuItems(
 				}
 				// Add actions only available for a single node
 				menuActions.unshift(...singleNodeActions);
+			}
+
+			// The AI "add to chat" action sits at the very top of the menu.
+			if (addToChatAction) {
+				menuActions.unshift(addToChatAction);
 			}
 
 			return menuActions;

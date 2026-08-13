@@ -249,11 +249,11 @@ const totalNodeCount = computed(() =>
 	gap: var(--spacing--4xs);
 	max-width: 220px;
 	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
+	border: var(--border-width, 1px) solid var(--border-color--success);
 	border-radius: var(--radius);
-	background: var(--color--foreground--tint-2);
+	background: var(--background--success);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--shade-1);
+	color: var(--text-color--success);
 }
 
 .resourceName {

@@ -94,7 +94,14 @@ function onOpenChange(open: boolean) {
 					<template v-for="item in actions" :key="item.id">
 						<ContextMenuSeparator v-if="item.divided" :class="$style.separator" />
 						<ContextMenuItem
-							:class="[$style.item, $style.itemContainer, { [$style.disabled]: !!item.disabled }]"
+							:class="[
+								$style.item,
+								$style.itemContainer,
+								{
+									[$style.disabled]: !!item.disabled,
+									[$style.accent]: item.id === 'add_nodes_to_chat',
+								},
+							]"
 							:disabled="item.disabled"
 							:data-test-id="`context-menu-item-${item.id}`"
 							@select="onActionSelect(item.id)"
@@ -208,6 +215,15 @@ function onOpenChange(open: boolean) {
 
 .disabled {
 	opacity: 0.5;
+}
+
+// The AI "add to chat" entry reads in the n8n accent to stand out at the top.
+.accent {
+	color: var(--color--primary);
+
+	.icon :global(svg) {
+		color: var(--color--primary);
+	}
 }
 
 .separator {
