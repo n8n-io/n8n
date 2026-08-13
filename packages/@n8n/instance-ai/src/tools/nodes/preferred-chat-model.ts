@@ -101,7 +101,12 @@ export function buildChatModelProviderMismatchWarnings(
 	for (const node of nodes) {
 		const entry = CHAT_MODEL_BY_CREDENTIAL_TYPE.find(([, nodeType]) => nodeType === node.type);
 		if (!entry) continue;
-		const resolved = node.name ? resolvedCredentialsByNode[node.name] : undefined;
+		// Own-key check: a node named "constructor" or "__proto__" must not
+		// resolve to an inherited Object.prototype member.
+		const resolved =
+			node.name && Object.hasOwn(resolvedCredentialsByNode, node.name)
+				? resolvedCredentialsByNode[node.name]
+				: undefined;
 		if (resolved?.some((cred) => cred.__aiGatewayManaged)) continue;
 		const [credentialType] = entry;
 		if (storedTypes.has(credentialType)) continue;
