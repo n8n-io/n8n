@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { FilesPage } from '../pages/FilesPage';
 import { InstanceAiPage } from '../pages/InstanceAiPage';
 import { SecretsProviderSettingsPage } from '../pages/SecretsProviderSettingsPage';
 
@@ -20,9 +21,12 @@ export class NavigationHelper {
 
 	private readonly secretsProviderSettings: SecretsProviderSettingsPage;
 
+	private readonly files: FilesPage;
+
 	constructor(private page: Page) {
 		this.instanceAi = new InstanceAiPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
+		this.files = new FilesPage(page);
 	}
 
 	/**
@@ -58,6 +62,16 @@ export class NavigationHelper {
 	async toDatatables(projectId?: string): Promise<void> {
 		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
 		await this.page.goto(url);
+	}
+
+	/**
+	 * Navigate to the Files page (file-storage module)
+	 * URLs:
+	 * - Overview files: /home/files
+	 * - Project files: /projects/{projectId}/files
+	 */
+	async toFiles(projectId?: string): Promise<void> {
+		await this.files.goto(projectId);
 	}
 
 	/**

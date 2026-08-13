@@ -27,6 +27,7 @@ import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 } from './data-table.types';
+import type { IProjectFilesService, ProjectFilesExpressionProxy } from './project-files.types';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
@@ -1152,6 +1153,19 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+export type ProjectFilesProxyProvider = {
+	getProjectFilesProxy(
+		workflow: Workflow,
+		node: INode,
+		projectId?: string,
+	): Promise<IProjectFilesService>;
+};
+
+export type ProjectFilesProxyFunctions = {
+	// Optional to account for situations where the file-storage module is disabled
+	getProjectFilesProxy?(): Promise<IProjectFilesService>;
+};
+
 export type CredentialCheckStatus = {
 	credentialId: string;
 	credentialName: string;
@@ -1275,6 +1289,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
 			DataTableProxyFunctions &
+			ProjectFilesProxyFunctions &
 			CredentialCheckProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
@@ -1371,7 +1386,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
+	helpers: RequestHelperFunctions &
+		SSHTunnelFunctions &
+		DataTableProxyFunctions &
+		ProjectFilesProxyFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
@@ -3110,6 +3128,13 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	};
 	$evaluation?: { runId: string };
 	$vars?: IDataObject;
+	/**
+	 * Project files ("Files" feature): `$files('name')` resolves metadata plus
+	 * a lazily signed download URL from a per-execution snapshot; `$files.all()`
+	 * returns every file of the workflow's home project. Absent when the
+	 * file-storage module is disabled or no home project could be resolved.
+	 */
+	$files?: ProjectFilesExpressionProxy;
 	$secrets?: IDataObject;
 	$pageCount?: number;
 	$tool?: { name: string; parameters: string };

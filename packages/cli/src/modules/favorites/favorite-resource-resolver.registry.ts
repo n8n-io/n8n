@@ -5,7 +5,10 @@ import type { Scope } from '@n8n/permissions';
 export type FavoriteResourceMeta = { name: string; projectId: string };
 
 /** Favorite types resolved via a registered resolver; all others are handled by the favorites module itself. */
-export type ResolvedFavoriteResourceType = Extract<FavoriteResourceType, 'dataTable' | 'agent'>;
+export type ResolvedFavoriteResourceType = Extract<
+	FavoriteResourceType,
+	'dataTable' | 'agent' | 'file'
+>;
 
 /**
  * Resolves favorited resources owned by another backend module. The owning

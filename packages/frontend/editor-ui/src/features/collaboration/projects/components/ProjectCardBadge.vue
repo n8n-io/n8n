@@ -10,9 +10,15 @@ import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import ProjectIcon from './ProjectIcon.vue';
 import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 import type { DataTableResource } from '@/features/core/dataTable/types';
+import type { FileResource } from '@/features/core/files/files.types';
 
 type Props = {
-	resource: WorkflowResource | CredentialsResource | FolderResource | DataTableResource;
+	resource:
+		| WorkflowResource
+		| CredentialsResource
+		| FolderResource
+		| DataTableResource
+		| FileResource;
 	resourceType: ResourceType;
 	resourceTypeLabel: string;
 	personalProject: Project | null;
@@ -35,7 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const homeProject = computed(() => {
-	if (props.resource.resourceType === 'dataTable') {
+	if (props.resource.resourceType === 'dataTable' || props.resource.resourceType === 'file') {
 		return props.resource.project;
 	}
 	return props.resource.homeProject;

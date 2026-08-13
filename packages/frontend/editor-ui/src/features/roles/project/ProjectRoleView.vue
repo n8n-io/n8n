@@ -101,7 +101,7 @@ function toggleScope(scope: string) {
 		form.value.scopes.push(scope);
 	}
 
-	if (scope.startsWith('dataTable:') && scope.endsWith(':read')) {
+	if ((scope.startsWith('dataTable:') || scope.startsWith('file:')) && scope.endsWith(':read')) {
 		toggleScope(scope.replace(':read', ':listProject'));
 		return;
 	}

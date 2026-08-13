@@ -251,6 +251,27 @@ export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-c
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
 export {
+	ListProjectFilesQueryDto,
+	PublicApiListProjectFilesQueryDto,
+	type ListProjectFilesQuerySortOptions,
+} from './project-files/list-project-files-query.dto';
+export {
+	UploadProjectFileQueryDto,
+	projectFileConflictModeSchema,
+	type ProjectFileConflictMode,
+} from './project-files/upload-project-file-query.dto';
+export { UpdateProjectFileDto } from './project-files/update-project-file.dto';
+export {
+	ProjectFilePublicDto,
+	ProjectFileListPublicDto,
+	ProjectFileDeletedPublicDto,
+	projectFilePublicSchema,
+} from './project-files/project-file-public.dto';
+export { BatchDeleteProjectFilesDto } from './project-files/batch-delete-project-files.dto';
+export { ProjectFileContentQueryDto } from './project-files/project-file-content-query.dto';
+export { ProjectFileSignedQueryDto } from './project-files/project-file-signed-query.dto';
+
+export {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';

@@ -32,6 +32,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { useFilesStore } from '@/features/core/files/files.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -126,6 +127,7 @@ export async function initializeAuthenticatedFeatures(
 	const bannersStore = useBannersStore();
 	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
+	const filesStore = useFilesStore();
 	const favoritesStore = useFavoritesStore();
 	const uiStore = useUIStore();
 
@@ -213,6 +215,16 @@ export async function initializeAuthenticatedFeatures(
 			.catch((error) => {
 				console.error('Failed to fetch data table limits:', error);
 			});
+	}
+
+	if (
+		settingsStore.isModuleActive('file-storage') &&
+		hasPermission(['rbac'], { rbac: { scope: 'file:list' } })
+	) {
+		// fetchLimits pushes/removes the file storage quota banners itself
+		void filesStore.fetchLimits().catch((error) => {
+			console.error('Failed to fetch file storage limits:', error);
+		});
 	}
 
 	// Don't check for new versions in preview mode or demo view (ex: executions iframe)

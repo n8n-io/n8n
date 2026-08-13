@@ -714,6 +714,33 @@ describe('AuthService', () => {
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 		});
 
+		it('should skip browserId check for the project file content route', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			// File previews/downloads load via embeds, which carry no browser-id.
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/projects/9xbqXk3hZVlVlPsN/files',
+				route: { path: '/:fileId/content' },
+			});
+
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should not skip browserId check for other project file routes', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/projects/9xbqXk3hZVlVlPsN/files',
+				route: { path: '/:fileId' },
+			});
+
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
+		});
+
 		it('should not skip browserId check for POST requests on skip endpoints', async () => {
 			userRepository.findOne.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({

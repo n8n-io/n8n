@@ -4,6 +4,7 @@ export interface DependencyTypeCounts {
 	dataTableId: number;
 	errorWorkflow: number;
 	errorWorkflowParent: number;
+	fileId: number;
 	workflowCall: number;
 	workflowParent: number;
 }

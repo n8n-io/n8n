@@ -8,6 +8,8 @@ export const staticBannerNameSchema = z.enum([
 	'EMAIL_CONFIRMATION',
 	'DATA_TABLE_STORAGE_LIMIT_WARNING',
 	'DATA_TABLE_STORAGE_LIMIT_ERROR',
+	'FILE_STORAGE_LIMIT_WARNING',
+	'FILE_STORAGE_LIMIT_ERROR',
 	'WORKFLOW_AUTO_DEACTIVATED',
 ]);
 export const dynamicBannerNameSchema = z.string().regex(/^dynamic-banner-\d+$/);

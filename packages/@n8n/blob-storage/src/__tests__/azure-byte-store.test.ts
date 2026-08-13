@@ -166,3 +166,13 @@ describe('delete', () => {
 		expect(Math.max(...concurrent)).toBeLessThanOrEqual(50);
 	});
 });
+
+describe('list', () => {
+	it('should delegate to the blob service', async () => {
+		const entries = [{ key: 'p/one.bin', lastModified: new Date('2026-08-10T00:00:00.000Z') }];
+		azureBlob.list.mockResolvedValueOnce(entries);
+
+		await expect(store.list('p/')).resolves.toEqual(entries);
+		expect(azureBlob.list).toHaveBeenCalledWith('p/');
+	});
+});

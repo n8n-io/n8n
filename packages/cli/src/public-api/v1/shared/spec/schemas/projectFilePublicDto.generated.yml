@@ -1,0 +1,26 @@
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  mimeType:
+    type: string
+  sizeBytes:
+    type: number
+  projectId:
+    type: string
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time
+required:
+  - id
+  - name
+  - mimeType
+  - sizeBytes
+  - projectId
+  - createdAt
+  - updatedAt

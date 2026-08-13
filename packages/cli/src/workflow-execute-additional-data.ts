@@ -62,6 +62,7 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
+import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
@@ -855,6 +856,35 @@ export async function getBase({
 		// @ts-expect-error Adding an index signature `[key: string]: unknown`
 		// to `IWorkflowExecuteAdditionalData` triggers complex type errors for derived types.
 		additionalData[moduleName] = moduleContext;
+	}
+
+	// `$files` snapshot — after the module-context merge, because the loaders
+	// arrive on `additionalData` through the file-storage module's context().
+	// Loaded unconditionally like `variables` above: this covers manual runs,
+	// NDV previews, and queue-mode workers for free (workers assemble their
+	// own additionalData and own DB access). Resilient by design: any failure
+	// leaves `$files` undefined rather than breaking the execution.
+	const fileStorageContext = additionalData['file-storage'];
+	if (fileStorageContext?.getProjectFilesSnapshot) {
+		try {
+			// Same home-project resolution as `getVariables`: an explicit
+			// projectId wins, else resolve it from the workflow.
+			let homeProjectId = projectId;
+			if (!homeProjectId && workflowId) {
+				const project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowId);
+				homeProjectId = project.id;
+			}
+			if (homeProjectId) {
+				additionalData.projectFilesSnapshot =
+					await fileStorageContext.getProjectFilesSnapshot(homeProjectId);
+				additionalData.signProjectFileToken = fileStorageContext.signProjectFileToken;
+			}
+		} catch (error) {
+			Container.get(Logger).warn('Failed to load the project files snapshot for $files', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	return additionalData;

@@ -1,7 +1,7 @@
+import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
 import { Logger } from '@n8n/backend-common';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
 import { ExecuteContext, StructuredToolkit, SupplyDataContext } from 'n8n-core';
 import type {
 	CloseFunction,
@@ -21,6 +21,7 @@ import {
 	AI_VENDOR_NODE_TYPES,
 	createEmptyRunExecutionData,
 	DATA_TABLE_TOOL_NODE_TYPE,
+	FILES_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -311,6 +312,10 @@ export class EphemeralNodeExecutor {
 		if (tool.nodeType === DATA_TABLE_TOOL_NODE_TYPE) {
 			// Data Table uses separate project authorization and an ephemeral workflow has no owner fallback.
 			additionalData.dataTableProjectId = tool.projectId;
+		}
+		if (tool.nodeType === FILES_TOOL_NODE_TYPE) {
+			// Same for the Files tool: no owner fallback on ephemeral workflows.
+			additionalData.projectFilesProjectId = tool.projectId;
 		}
 		tool.configureAdditionalData?.(additionalData);
 		const runExecutionData = createEmptyRunExecutionData();

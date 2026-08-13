@@ -116,6 +116,11 @@ export class AuthService {
 			new RegExp(
 				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/chat/attachments/:attachmentId$`,
 			),
+
+			// Project file previews and downloads render via <embed>/<img> tags
+			// and <a download> navigations, which can't send the browser-id
+			// header. Same resolved-:projectId prefix as the agents entry above.
+			new RegExp(`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/files/:fileId/content$`),
 		];
 	}
 

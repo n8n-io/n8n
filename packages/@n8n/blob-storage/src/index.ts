@@ -3,6 +3,7 @@ export type {
 	PreWriteBlobMetadata,
 	ByteStore,
 	ByteStoreKey,
+	ByteStoreListEntry,
 	StorageLocation,
 	JsonEntry,
 	Stored,

@@ -24,6 +24,7 @@ const countsFor = (ids: string[]): Record<string, DependencyTypeCounts> =>
 				dataTableId: 0,
 				errorWorkflow: 0,
 				errorWorkflowParent: 0,
+				fileId: 0,
 				workflowCall: 0,
 				workflowParent: 1,
 			},

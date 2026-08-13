@@ -8,6 +8,7 @@ import type {
 import { PLACEHOLDER_EMPTY_EXECUTION_ID, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 
 import { createExecutionCustomData } from './custom-data';
+import { getProjectFilesProxy } from './get-project-files-proxy';
 import { getSecretsProxy } from './get-secrets-proxy';
 
 function appendResumeToken(url: string, token: string): string {
@@ -47,6 +48,7 @@ export function getAdditionalKeys(
 			? { runId: additionalData.evaluationRunId }
 			: undefined,
 		$vars: additionalData.variables,
+		$files: getProjectFilesProxy(additionalData),
 		$secrets: options.isCredential ? getSecretsProxy(additionalData) : undefined,
 
 		// deprecated
@@ -65,6 +67,7 @@ export function getNonWorkflowAdditionalKeys(
 ): IWorkflowDataProxyAdditionalKeys {
 	return {
 		$vars: additionalData.variables,
+		$files: getProjectFilesProxy(additionalData),
 		$secrets: options.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
 	};
 }

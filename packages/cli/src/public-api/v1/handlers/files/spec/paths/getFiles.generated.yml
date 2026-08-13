@@ -1,0 +1,81 @@
+operationId: getFiles
+tags:
+  - Files
+summary: Retrieve files
+description: Retrieve files from the projects you have access to. Use `filter` (a JSON object, e.g. `{"projectId":"..."}`) to narrow down the results.
+x-required-scope: file:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/offset.yml
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+    required: false
+    name: filter
+    in: query
+  - schema:
+      type: string
+      enum:
+        - name:asc
+        - name:desc
+        - createdAt:asc
+        - createdAt:desc
+        - updatedAt:asc
+        - updatedAt:desc
+        - size:asc
+        - size:desc
+    required: false
+    name: sortBy
+    in: query
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  mimeType:
+                    type: string
+                  sizeBytes:
+                    type: number
+                  projectId:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - name
+                  - mimeType
+                  - sizeBytes
+                  - projectId
+                  - createdAt
+                  - updatedAt
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

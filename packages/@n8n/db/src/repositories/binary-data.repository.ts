@@ -1,7 +1,8 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
 
+import type { SourceType } from '../entities';
 import { BinaryDataFile } from '../entities';
 import { dbType } from '../entities/abstract-entity';
 
@@ -25,6 +26,20 @@ export class BinaryDataRepository extends Repository<BinaryDataFile> {
 		if (fileIds.length === 0) return;
 
 		await this.delete({ fileId: In(fileIds) });
+	}
+
+	/**
+	 * Rows of a source type created before `cutoff`, without their content bytes.
+	 * Used by orphan reconciliation to diff stored files against live domain rows.
+	 */
+	async findBySourceTypeOlderThan(
+		sourceType: SourceType,
+		cutoff: Date,
+	): Promise<Array<{ fileId: string; sourceId: string }>> {
+		return await this.find({
+			where: { sourceType, createdAt: LessThan(cutoff) },
+			select: ['fileId', 'sourceId'],
+		});
 	}
 
 	async copyStoredFile(

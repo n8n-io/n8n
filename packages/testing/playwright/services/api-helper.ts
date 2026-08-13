@@ -20,6 +20,7 @@ import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
+import { FileApiHelper } from './file-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { MetricsApiHelper } from './metrics-api-helper';
@@ -79,6 +80,7 @@ export class ApiHelpers {
 	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
 	externalSecrets: ExternalSecretsApiHelper;
+	files: FileApiHelper;
 	users: UserApiHelper;
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
@@ -100,6 +102,7 @@ export class ApiHelpers {
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
 		this.externalSecrets = new ExternalSecretsApiHelper(this);
+		this.files = new FileApiHelper(this);
 		this.users = new UserApiHelper(this);
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);

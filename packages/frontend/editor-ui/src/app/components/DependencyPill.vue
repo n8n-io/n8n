@@ -4,8 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import type { BaseTextKey } from '@n8n/i18n';
 import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
-import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system';
+import { N8nDropdownMenu, type DropdownMenuItemProps, type IconName } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -13,11 +12,12 @@ import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import { PROJECT_FILES_PREVIEW } from '@/features/core/files/constants';
 
 const MIN_ITEMS_FOR_SEARCH = 6;
 
-type DependencyPillSource = 'workflow_card' | 'credential_card' | 'data_table_card';
-type DependencyPillResourceType = 'workflow' | 'credential' | 'dataTable';
+type DependencyPillSource = 'workflow_card' | 'credential_card' | 'data_table_card' | 'file_card';
+type DependencyPillResourceType = 'workflow' | 'credential' | 'dataTable' | 'file';
 
 const props = defineProps<{
 	resourceType: DependencyPillResourceType;
@@ -64,6 +64,10 @@ const typeConfig: Record<DependencyType, { icon: IconName; labelKey: BaseTextKey
 		icon: 'table',
 		labelKey: 'workflows.dependencies.type.dataTables' as BaseTextKey,
 	},
+	fileId: {
+		icon: 'file',
+		labelKey: 'workflows.dependencies.type.files' as BaseTextKey,
+	},
 	agentUsage: {
 		icon: 'bot',
 		labelKey: 'workflows.dependencies.type.agents' as BaseTextKey,
@@ -89,6 +93,7 @@ const typeConfig: Record<DependencyType, { icon: IconName; labelKey: BaseTextKey
 const displayOrder: DependencyType[] = [
 	'credentialId',
 	'dataTableId',
+	'fileId',
 	'workflowCall',
 	'workflowParent',
 	'agentUsage',
@@ -106,6 +111,7 @@ const menuItems = computed(() => {
 	const groups: Record<DependencyType, ResolvedDependency[]> = {
 		credentialId: [],
 		dataTableId: [],
+		fileId: [],
 		agentUsage: [],
 		errorWorkflow: [],
 		errorWorkflowParent: [],
@@ -173,6 +179,15 @@ function onSelect(value: string) {
 			if (dep.projectId) {
 				const href = router.resolve({
 					name: DATA_TABLE_DETAILS,
+					params: { projectId: dep.projectId, id: dep.id },
+				}).href;
+				window.open(href, '_blank');
+			}
+			break;
+		case 'fileId':
+			if (dep.projectId) {
+				const href = router.resolve({
+					name: PROJECT_FILES_PREVIEW,
 					params: { projectId: dep.projectId, id: dep.id },
 				}).href;
 				window.open(href, '_blank');

@@ -26,6 +26,7 @@ export const SCOPE_TYPES: ProjectResource[] = [
 	'externalSecretsProvider',
 	'externalSecret',
 	'dataTable',
+	'file',
 	'projectVariable',
 	'sourceControl',
 ];

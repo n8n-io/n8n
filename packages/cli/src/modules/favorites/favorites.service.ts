@@ -231,6 +231,7 @@ export class FavoritesService {
 				break;
 			case 'dataTable':
 			case 'agent':
+			case 'file':
 				exists = (await this.resourceResolvers.get(resourceType)?.exists(resourceId)) ?? false;
 				break;
 		}

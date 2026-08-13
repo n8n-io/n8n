@@ -5,7 +5,13 @@ import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository 
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { DATA_TABLE_NODE_TYPES, INode, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import {
+	DATA_TABLE_NODE_TYPES,
+	INode,
+	IWorkflowBase,
+	IWorkflowSettings,
+	PROJECT_FILES_NODE_TYPES,
+} from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
@@ -219,6 +225,7 @@ export class WorkflowIndexService {
 					this.addNodeTypeDependencies(node, dependencyUpdates);
 					this.addCredentialDependencies(node, dependencyUpdates);
 					this.addDataTableDependencies(node, dependencyUpdates);
+					this.addProjectFileDependencies(node, dependencyUpdates);
 					this.addWorkflowCallDependencies(node, dependencyUpdates);
 					this.addWebhookPathDependencies(node, dependencyUpdates);
 				});
@@ -303,6 +310,31 @@ export class WorkflowIndexService {
 			dependencyType: 'dataTableId',
 			dependencyKey: dataTableId.value,
 			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion, mode: dataTableId.mode },
+		});
+	}
+
+	/**
+	 * Files-node references. Name-mode resource locators store the name, not the
+	 * id, so id-keyed used-by lookups can't see them — same accepted blindness
+	 * as expression-based references.
+	 */
+	private addProjectFileDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
+		if (!PROJECT_FILES_NODE_TYPES.includes(node.type)) {
+			return;
+		}
+		const fileId = node.parameters?.['fileId'] as { mode?: string; value?: string } | undefined;
+		if (!fileId?.value || typeof fileId.value !== 'string') {
+			return;
+		}
+		// Skip expression-based IDs that can't be statically resolved
+		if (fileId.value.includes('{')) {
+			return;
+		}
+
+		dependencyUpdates.add({
+			dependencyType: 'fileId',
+			dependencyKey: fileId.value,
+			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion, mode: fileId.mode },
 		});
 	}
 

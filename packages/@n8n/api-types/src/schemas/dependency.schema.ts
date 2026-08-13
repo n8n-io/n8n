@@ -4,16 +4,17 @@ export type DependencyType =
 	| 'dataTableId'
 	| 'errorWorkflow'
 	| 'errorWorkflowParent'
+	| 'fileId'
 	| 'workflowCall'
 	| 'workflowParent';
 
-export type DependencyResourceType = 'workflow' | 'credential' | 'dataTable';
+export type DependencyResourceType = 'workflow' | 'credential' | 'dataTable' | 'file';
 
 export interface ResolvedDependency {
 	type: DependencyType;
 	id: string;
 	name: string;
-	/** Project ID — included for agents and data tables so the frontend can build a direct link */
+	/** Project ID — included for agents, data tables, and files so the frontend can build a direct link */
 	projectId?: string;
 }
 

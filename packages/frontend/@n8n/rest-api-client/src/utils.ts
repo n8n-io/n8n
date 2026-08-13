@@ -1,6 +1,6 @@
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
 import { assert } from '@n8n/utils/assert';
-import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
+import type { AxiosProgressEvent, AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
 import { jsonParse } from 'n8n-workflow';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
@@ -106,6 +106,12 @@ const legacyParamSerializer = (params: Record<string, any>) =>
 		})
 		.join('&');
 
+/** Per-request options callers may pass through to axios (e.g. for upload progress and cancellation). */
+export type RequestOptions = {
+	onUploadProgress?: (event: AxiosProgressEvent) => void;
+	signal?: AbortSignal;
+};
+
 export async function request(config: {
 	method: Method;
 	baseURL: string;
@@ -113,14 +119,22 @@ export async function request(config: {
 	headers?: RawAxiosRequestHeaders;
 	data?: GenericValue | GenericValue[];
 	withCredentials?: boolean;
+	onUploadProgress?: (event: AxiosProgressEvent) => void;
+	signal?: AbortSignal;
 }) {
-	const { method, baseURL, endpoint, headers, data } = config;
+	const { method, baseURL, endpoint, headers, data, onUploadProgress, signal } = config;
 	const options: AxiosRequestConfig = {
 		method,
 		url: endpoint,
 		baseURL,
 		headers: headers ?? {},
 	};
+	if (onUploadProgress) {
+		options.onUploadProgress = onUploadProgress;
+	}
+	if (signal) {
+		options.signal = signal;
+	}
 	if (baseURL.startsWith('/')) {
 		options.headers!['browser-id'] = getBrowserId();
 	}
@@ -207,6 +221,7 @@ export async function makeRestApiRequest<T>(
 	method: Method,
 	endpoint: string,
 	data?: GenericValue | GenericValue[],
+	options?: RequestOptions,
 ) {
 	const response = await request({
 		method,
@@ -214,6 +229,8 @@ export async function makeRestApiRequest<T>(
 		endpoint,
 		headers: { 'push-ref': context.pushRef },
 		data,
+		onUploadProgress: options?.onUploadProgress,
+		signal: options?.signal,
 	});
 
 	// All cli rest api endpoints return data wrapped in `data` key

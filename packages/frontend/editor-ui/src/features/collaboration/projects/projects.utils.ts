@@ -70,4 +70,5 @@ export const enum ResourceType {
 	Credential = 'credential',
 	Workflow = 'workflow',
 	DataTable = 'dataTable',
+	File = 'file',
 }

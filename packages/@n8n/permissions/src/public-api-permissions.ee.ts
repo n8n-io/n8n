@@ -87,6 +87,10 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:read',
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
+	'file:read',
+	'file:update',
+	'file:delete',
+	'file:list',
 	'insights:read',
 	'role:manage',
 	'role:list',
@@ -146,6 +150,10 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:read',
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
+	'file:read',
+	'file:update',
+	'file:delete',
+	'file:list',
 ];
 
 export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
@@ -199,6 +207,10 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'dataTableColumn:read',
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
+	'file:read',
+	'file:update',
+	'file:delete',
+	'file:list',
 ];
 
 const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {

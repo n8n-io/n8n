@@ -47,6 +47,13 @@ export const EMPTY_STATE_CONFIG = {
 		ctaKey: 'dataTable.add.button.label',
 		disabledTooltipKey: 'dataTable.empty.button.disabled.tooltip',
 	},
+	files: {
+		icon: 'files',
+		headingKey: 'files.empty.heading',
+		descriptionKey: 'files.empty.description',
+		ctaKey: 'files.add.button.label',
+		disabledTooltipKey: 'files.empty.button.disabled.tooltip',
+	},
 	agents: {
 		icon: 'robot',
 		headingKey: 'agents.list.empty.heading',

@@ -8,6 +8,7 @@ import { useNodeCommands } from './useNodeCommands';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
 import { useDataTableNavigationCommands } from './useDataTableNavigationCommands';
+import { useFilesNavigationCommands } from './useFilesNavigationCommands';
 import { useCredentialNavigationCommands } from './useCredentialNavigationCommands';
 import { useExecutionNavigationCommands } from './useExecutionNavigationCommands';
 import { useProjectNavigationCommands } from './useProjectNavigationCommands';
@@ -19,6 +20,7 @@ import { useInstanceAiCommands } from './useInstanceAiCommands';
 import type { CommandGroup } from '../types';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
+import { PROJECT_FILES, PROJECT_FILES_PREVIEW, FILES_VIEW } from '@/features/core/files/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
@@ -68,6 +70,11 @@ export function useCommandBar() {
 		activeNodeId,
 		currentProjectName,
 	});
+	const filesNavigationGroup = useFilesNavigationCommands({
+		lastQuery,
+		activeNodeId,
+		currentProjectName,
+	});
 	const credentialNavigationGroup = useCredentialNavigationCommands({
 		lastQuery,
 		activeNodeId,
@@ -104,6 +111,7 @@ export function useCommandBar() {
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		filesNavigationGroup,
 		executionNavigationGroup,
 		genericCommandGroup,
 	];
@@ -115,6 +123,7 @@ export function useCommandBar() {
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		filesNavigationGroup,
 		executionNavigationGroup,
 		genericCommandGroup,
 	];
@@ -126,6 +135,7 @@ export function useCommandBar() {
 		projectNavigationGroup,
 		workflowNavigationGroup,
 		dataTableNavigationGroup,
+		filesNavigationGroup,
 		executionNavigationGroup,
 		genericCommandGroup,
 	];
@@ -137,6 +147,7 @@ export function useCommandBar() {
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		filesNavigationGroup,
 		genericCommandGroup,
 	];
 
@@ -144,9 +155,22 @@ export function useCommandBar() {
 		recentResourcesGroup,
 		instanceAiCommandGroup,
 		dataTableNavigationGroup,
+		filesNavigationGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
 		credentialNavigationGroup,
+		executionNavigationGroup,
+		genericCommandGroup,
+	];
+
+	const filesListViewGroups: CommandGroup[] = [
+		recentResourcesGroup,
+		instanceAiCommandGroup,
+		filesNavigationGroup,
+		projectNavigationGroup,
+		workflowNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
 		executionNavigationGroup,
 		genericCommandGroup,
 	];
@@ -158,6 +182,7 @@ export function useCommandBar() {
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		filesNavigationGroup,
 		executionNavigationGroup,
 		genericCommandGroup,
 	];
@@ -171,6 +196,7 @@ export function useCommandBar() {
 		workflowNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		filesNavigationGroup,
 		executionNavigationGroup,
 	];
 
@@ -181,6 +207,7 @@ export function useCommandBar() {
 		workflowNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		filesNavigationGroup,
 		executionNavigationGroup,
 		genericCommandGroup,
 	];
@@ -205,6 +232,10 @@ export function useCommandBar() {
 			case PROJECT_DATA_TABLES:
 			case DATA_TABLE_VIEW:
 				return dataStoresListViewGroups;
+			case PROJECT_FILES:
+			case PROJECT_FILES_PREVIEW:
+			case FILES_VIEW:
+				return filesListViewGroups;
 			case VIEWS.EVALUATION:
 			case VIEWS.EVALUATION_EDIT:
 			case VIEWS.EVALUATION_RUNS_DETAIL:

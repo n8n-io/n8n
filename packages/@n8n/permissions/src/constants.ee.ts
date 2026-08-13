@@ -69,6 +69,7 @@ export const RESOURCES = {
 		'writeColumn',
 		'listProject',
 	] as const,
+	file: [...DEFAULT_OPERATIONS, 'listProject'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,
@@ -109,6 +110,9 @@ export const API_KEY_RESOURCES = {
 	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
 	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
 	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
+	// No 'create': uploads via the Public API are deferred until multipart
+	// handling through the decorator registry is proven.
+	file: ['read', 'update', 'delete', 'list'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
 	role: ['manage', 'manageProject', 'list'] as const,

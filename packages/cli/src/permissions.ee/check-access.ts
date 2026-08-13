@@ -41,11 +41,13 @@ export async function userHasScopes(
 		workflowId,
 		projectId,
 		dataTableId,
+		fileId,
 	}: {
 		credentialId?: string;
 		workflowId?: string;
 		projectId?: string;
 		dataTableId?: string;
+		fileId?: string;
 	} /* only one */,
 	entityManager?: EntityManager,
 ): Promise<boolean> {
@@ -167,9 +169,31 @@ export async function userHasScopes(
 		return userProjectIds.includes(dataTable.project.id);
 	}
 
+	if (fileId) {
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (!moduleRegistry.isActive('file-storage')) {
+			throw new NotFoundError(`File with ID "${fileId}" not found.`);
+		}
+
+		const { ProjectFileRepository } = await import(
+			'@/modules/file-storage/project-file.repository.js'
+		);
+		const file = await Container.get(ProjectFileRepository).findOne({
+			where: { id: fileId },
+			select: ['id', 'projectId'],
+		});
+
+		if (!file) {
+			throw new NotFoundError(`File with ID "${fileId}" not found.`);
+		}
+
+		// Files don't have resource-level roles, only project-level access
+		return userProjectIds.includes(file.projectId);
+	}
+
 	if (projectId) return userProjectIds.includes(projectId);
 
 	throw new UnexpectedError(
-		"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, `dataTableId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
+		"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, `dataTableId`, `fileId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
 	);
 }

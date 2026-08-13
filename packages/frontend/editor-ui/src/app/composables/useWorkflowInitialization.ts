@@ -16,6 +16,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useFilesStore } from '@/features/core/files/files.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -52,6 +53,7 @@ export function useWorkflowInitialization() {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const environmentsStore = useEnvironmentsStore();
+	const filesStore = useFilesStore();
 	const settingsStore = useSettingsStore();
 	const projectsStore = useProjectsStore();
 	const historyStore = useHistoryStore();
@@ -287,6 +289,12 @@ export function useWorkflowInitialization() {
 			return;
 		}
 
+		// `$files` expression snapshot for previews and autocomplete — the same
+		// per-workflow moment $vars gets loaded, scoped to the home project.
+		if (settingsStore.isModuleActive('file-storage') && data.homeProject?.id) {
+			void filesStore.fetchExpressionSnapshot(data.homeProject.id);
+		}
+
 		void externalHooks.run('workflow.open', {
 			workflowId: data.id,
 			workflowName: data.name,
@@ -324,6 +332,11 @@ export function useWorkflowInitialization() {
 		documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
+
+		// `$files` expression snapshot for the project a new workflow will live in
+		if (settingsStore.isModuleActive('file-storage') && homeProject?.id) {
+			void filesStore.fetchExpressionSnapshot(homeProject.id);
+		}
 
 		await projectsStore.refreshCurrentProject();
 

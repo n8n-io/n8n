@@ -7,6 +7,8 @@ import type {
 	INode,
 	IWorkflowSettings,
 	OauthJweProxyProvider,
+	ProjectFilesProxyProvider,
+	ProjectFilesSnapshotEntry,
 } from 'n8n-workflow';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
@@ -49,12 +51,34 @@ declare module 'n8n-workflow' {
 		 */
 		evalLlmMockHandler?: EvalLlmMockHandler;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
+		'file-storage'?: {
+			projectFilesProxyProvider: ProjectFilesProxyProvider;
+			/** Loads the cached `$files` metadata snapshot for a project — one indexed query, no bytes. */
+			getProjectFilesSnapshot?: (projectId: string) => Promise<ProjectFilesSnapshotEntry[]>;
+			/** Synchronously mints a short-lived signed download token for one project file. */
+			signProjectFileToken?: (fileId: string) => string;
+		};
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };
+		/**
+		 * Per-execution metadata snapshot backing the `$files` expression, loaded
+		 * in `getBase()` for the workflow's home project. The expression sandbox
+		 * is synchronous, so `$files` resolves everything from this array. Absent
+		 * when the file-storage module is disabled or no project could be resolved.
+		 */
+		projectFilesSnapshot?: ProjectFilesSnapshotEntry[];
+		/**
+		 * Mints a short-lived signed download token for a project file — backs
+		 * the lazy `$files(...).url` getter. Sync because expression evaluation
+		 * is. Absent in editor contexts, where `.url` previews as a placeholder.
+		 */
+		signProjectFileToken?: (fileId: string) => string;
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.
 		dataTableProjectId?: string;
+		/** Same semantics as dataTableProjectId, for the Files node's resource locator. */
+		projectFilesProjectId?: string;
 		/**
 		 * Execution context for dynamic credential resolution (EE feature).
 		 * Contains encrypted credential context that can be decrypted by resolvers.

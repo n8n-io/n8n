@@ -4,7 +4,13 @@ import type { Readable } from 'node:stream';
 
 import type { ObjectStoreService } from './object-store/object-store.service.ee';
 import { assertChunkSize } from './stream-utils';
-import type { BlobMetadata, ByteStore, ByteStoreKey, PreWriteBlobMetadata } from './types';
+import type {
+	BlobMetadata,
+	ByteStore,
+	ByteStoreKey,
+	ByteStoreListEntry,
+	PreWriteBlobMetadata,
+} from './types';
 
 export class S3ByteStore implements ByteStore {
 	constructor(private readonly objectStore: ObjectStoreService) {}
@@ -51,6 +57,11 @@ export class S3ByteStore implements ByteStore {
 	async delete(keys: ByteStoreKey[]): Promise<void> {
 		if (keys.length === 0) return;
 		await this.objectStore.deleteByKeys(keys);
+	}
+
+	async list(prefix: string): Promise<ByteStoreListEntry[]> {
+		const items = await this.objectStore.list(prefix);
+		return items.map(({ key, lastModified }) => ({ key, lastModified: new Date(lastModified) }));
 	}
 
 	async getMetadata(key: ByteStoreKey): Promise<BlobMetadata | null> {

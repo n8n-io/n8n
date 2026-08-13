@@ -84,6 +84,17 @@ describe('GlobalConfig', () => {
 			fileMaxAgeMs: 2 * 60 * 1000,
 			uploadDir: path.join(tmpdir(), 'n8nDataTableUploads'),
 		},
+		fileStorage: {
+			mode: 'fs',
+			maxSize: 1024 * 1024 * 1024,
+			maxFileSize: 50 * 1024 * 1024,
+			sizeCheckCacheDuration: 5 * 1000,
+			cleanupIntervalMs: 60 * 1000,
+			fileMaxAgeMs: 2 * 60 * 1000,
+			orphanSweepIntervalMs: 7 * 24 * 60 * 60 * 1000,
+			signedUrlTtlMs: 15 * 60 * 1000,
+			uploadDir: path.join(tmpdir(), 'n8nFileUploads'),
+		},
 		database: {
 			logging: {
 				enabled: false,

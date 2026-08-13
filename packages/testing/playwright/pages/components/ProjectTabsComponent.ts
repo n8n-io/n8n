@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /**
  * ProjectTabs component - navigation tabs within a project view
@@ -6,6 +6,15 @@ import type { Page } from '@playwright/test';
  */
 export class ProjectTabsComponent {
 	constructor(private readonly page: Page) {}
+
+	getTabs(): Locator {
+		return this.page.getByTestId('project-tabs');
+	}
+
+	/** The "Files" tab (file-storage module) — hidden when the module is disabled. */
+	getFilesTab(): Locator {
+		return this.getTabs().getByRole('link', { name: /^files$/i });
+	}
 
 	async clickCredentialsTab() {
 		await this.page
