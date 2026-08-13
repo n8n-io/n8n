@@ -118,24 +118,65 @@ describe('start()', () => {
 			await sandbox.start();
 
 			expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
-			expect(mockCreateSandbox).toHaveBeenCalledWith(undefined);
+			expect(mockCreateSandbox.mock.calls[0]).toEqual([]);
 			expect(sandbox.id).toBe('sb-123');
+		});
+
+		it('times out stalled creation and removes a sandbox created after the timeout', async () => {
+			let resolveCreation!: (record: ReturnType<typeof makeSandboxRecord>) => void;
+			mockCreateSandbox.mockReturnValue(
+				new Promise((resolve) => {
+					resolveCreation = resolve;
+				}),
+			);
+			const sandbox = new N8nSandboxServiceSandbox({
+				...makeDefaultOptions(),
+				timeout: 10,
+			});
+
+			await expect(sandbox.start()).rejects.toThrow(/abort|timeout/i);
+			resolveCreation(makeSandboxRecord({ id: 'late-sandbox' }));
+
+			await vi.waitFor(() => expect(mockDeleteSandbox).toHaveBeenCalledWith('late-sandbox'));
 		});
 	});
 
 	describe('create-or-reconnect with a configured id', () => {
-		it('passes the configured id so the service creates or reconnects', async () => {
-			mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id: 'existing-sb' }));
+		it('creates or reconnects through the idempotent create endpoint', async () => {
+			const id = '11111111-1111-4111-8111-111111111111';
+			mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id }));
 
 			const sandbox = new N8nSandboxServiceSandbox({
 				...makeDefaultOptions(),
-				id: 'existing-sb',
+				id,
 			});
+
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
-			expect(mockCreateSandbox).toHaveBeenCalledWith({ id: 'existing-sb' });
-			expect(sandbox.id).toBe('existing-sb');
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ id });
+			expect(mockGetSandbox).not.toHaveBeenCalled();
+			expect(sandbox.id).toBe(id);
+		});
+
+		it('does not delete a deterministic sandbox when creation times out', async () => {
+			let resolveCreation!: (record: ReturnType<typeof makeSandboxRecord>) => void;
+			mockCreateSandbox.mockReturnValue(
+				new Promise((resolve) => {
+					resolveCreation = resolve;
+				}),
+			);
+			const id = '22222222-2222-4222-8222-222222222222';
+			const sandbox = new N8nSandboxServiceSandbox({
+				...makeDefaultOptions(),
+				id,
+				timeout: 10,
+			});
+
+			await expect(sandbox.start()).rejects.toThrow(/abort|timeout/i);
+			resolveCreation(makeSandboxRecord({ id }));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockDeleteSandbox).not.toHaveBeenCalled();
 		});
 
 		it('reuses the last known id when restarted after a stop', async () => {

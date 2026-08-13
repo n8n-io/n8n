@@ -13,6 +13,7 @@ import {
 } from './mcp-tool-name-validation';
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { getSystemPrompt } from './system-prompt';
+import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
@@ -66,7 +67,6 @@ export async function createInstanceAgent(
 	// (e.g. verify) already get it via OrchestrationContext.
 	const domainContext: InstanceAiContext = { ...context, tracing: orchestrationContext?.tracing };
 	const domainTools = createAllTools(domainContext);
-	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
 
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change). The manager
@@ -84,8 +84,18 @@ export async function createInstanceAgent(
 		server: f.server.name,
 		error: f.error,
 	}));
+	const browserCredentialSetup = context.browserCredentialSetup;
 	const rawLocalMcpTools = context.localMcpServer
-		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
+		? createToolsFromLocalMcpServer({
+				server: context.localMcpServer,
+				logger: context.logger,
+				onCredentialCreateResult: browserCredentialSetup
+					? (credentialType, outcome) => {
+							if (outcome.ok) browserCredentialSetup.markCreated(credentialType);
+							else browserCredentialSetup.markCreateFailed(credentialType, outcome.errorCode);
+						}
+					: undefined,
+			})
 		: createToolRegistry();
 
 	const browserToolNames = new Set(
@@ -139,6 +149,11 @@ export async function createInstanceAgent(
 		warn: warnSkippedMcpTool,
 	});
 
+	const orchestratorDomainTools = createOrchestratorDomainTools({
+		...domainContext,
+		connectedMcpServices: listConnectedMcpServices(mcpServers, safeMcpTools),
+	});
+
 	const allOrchestratorTools = mergeToolRegistries(
 		orchestratorDomainTools,
 		orchestrationTools,
@@ -163,7 +178,6 @@ export async function createInstanceAgent(
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
 		mcpToolSearchEnabled: hasDeferredExternalMcpTools,
-		mcpRegistrySearchEnabled: Boolean(context.mcpService),
 		licenseHints: context.licenseHints,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,

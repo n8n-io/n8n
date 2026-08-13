@@ -44,7 +44,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useUsersStore } from '@n8n/stores/users.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -153,7 +152,6 @@ const ndvStore = injectNDVStoreIfProvided();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const workflowsStore = useWorkflowsStore();
-const usersStore = useUsersStore();
 const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
 const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 
@@ -292,7 +290,21 @@ async function onConnectFromRow(credentialType: string): Promise<void> {
 	if (!credential) return;
 	const success = await authorize(credential);
 	if (success) {
-		credentialsStore.setConnectedByMe(credential.id, true);
+		credentialsStore.setConnectedByMe(credential.id, true, await fetchMyAccount(credential.id));
+	}
+}
+
+/**
+ * The provider account a fresh connection authenticates as, which only the
+ * server can tell us. Purely a label — a failed lookup must not undo a
+ * successful connection.
+ */
+async function fetchMyAccount(credentialId: string): Promise<string | undefined> {
+	try {
+		const credential = await credentialsStore.getCredentialData({ id: credentialId });
+		return credential?.connectedAccountIdentifier;
+	} catch {
+		return undefined;
 	}
 }
 
@@ -1432,7 +1444,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:credential-type-name="type.name"
 					:credential-name="getServiceName(type.name)"
 					:is-connected="isPrivateConnected(type.name)"
-					:connected-account-name="usersStore.currentUser?.email ?? undefined"
+					:connected-account-name="
+						getSelectedPrivateCredential(type.name)?.connectedAccountIdentifier
+					"
 					:can-connect="canConnectPrivateCredential(type.name)"
 					data-test-id="node-credential-private-row"
 					@connect="onConnectFromRow(type.name)"

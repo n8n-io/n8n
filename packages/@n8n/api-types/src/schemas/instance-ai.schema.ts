@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
+import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
+import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { Z } from '../zod-class';
-import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
-import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
 // Credits
@@ -15,6 +15,20 @@ import { TimeZoneSchema } from './timezone.schema';
  * proxy is disabled (credits are not metered). Consumers should treat this as "unlimited".
  */
 export const UNLIMITED_CREDITS = -1;
+
+/**
+ * The instance's AI Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
+ * `updateInstanceAiCredits` push and by the internal callers that pass it around.
+ *
+ * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
+ * disabled, or the amounts are deliberately withheld from a cohort that must not see a balance.
+ */
+export type InstanceAiCredits = {
+	creditsQuota: number;
+	creditsClaimed: number;
+	/** Whether the pool has been locked by the activation cap. */
+	quotaLocked?: boolean;
+};
 
 /**
  * Transient setup-state tag for an AI Gateway managed credential selection.
@@ -36,6 +50,27 @@ export const AI_GATEWAY_MANAGED_TAG = '__AI_GATEWAY_MANAGED__';
  */
 export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level grant key for updating a specific workflow without HITL.
+ *
+ * Written automatically when the agent creates a workflow in this thread, so follow-up
+ * edits to that same artifact (same run or later runs in the session) skip the update
+ * approval prompt. Foreign workflows still require approval unless the admin policy is
+ * `always_allow`.
+ */
+export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
+	return `workflows:update:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for a data-tables action
+ * (e.g. `create`, `insert-rows`). Must match the frontend key
+ * `${toolName}:${action}` so UI auto-approve and persisted grants stay aligned.
+ */
+export function buildDataTablesSessionGrantKey(action: string): string {
+	return `data-tables:${action}`;
 }
 
 // --- Domain-access grants ("always allow" for web access) ---
@@ -600,7 +635,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.array(workflowSetupNodeSchema)
 		.optional()
 		.describe('Per-node setup cards for workflow credential/parameter configuration'),
-	workflowId: z.string().optional().describe('Workflow ID for setup-workflow tool'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'Workflow ID for setup cards and per-workflow edit approvals (build-workflow / workflows update)',
+		),
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
@@ -1705,7 +1745,10 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'create-tasks') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
-	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
+	if (
+		['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'].includes(toolName)
+	)
+		return 'skill';
 	return 'default';
 }
 
@@ -1789,6 +1832,9 @@ export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections';
 
 export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
+
+/** Enables adding selected canvas nodes as chat context in the AI Assistant */
+export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

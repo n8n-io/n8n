@@ -15,9 +15,7 @@ import {
 	type McpServerConnectionItem,
 	type McpServerTool,
 	type McpToolSettings,
-	type PickableCredential,
 	type ServiceConnectionItem,
-	type ToolConnectionCredentialAdapter,
 	type ToolConnectionItem,
 	type ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
@@ -109,7 +107,7 @@ const detailMode = computed<'detail' | 'settings'>(() =>
 
 type McpToolMetadata = McpRegistryServerToolResponse | InstanceAiMcpConnectionToolResponse;
 
-const { connectServer, connectWithCredential } = useMcpServerConnect();
+const { connectServer, connectWithCredential, createCredentialAdapter } = useMcpServerConnect();
 
 /** Reveals the settings view of the server the user just connected */
 function showConnectedServer(connectionId: string | null): void {
@@ -291,30 +289,21 @@ watch(
 	{ immediate: true },
 );
 
-const credentialAdapter: ToolConnectionCredentialAdapter = {
-	getCredentialsByType: (authType: string): readonly PickableCredential[] => {
-		const creds = credentialsStore.getCredentialsByType(authType);
-		return creds.map((c) => ({ id: c.id, name: c.name, type: c.type }));
-	},
-	openNewCredential: (authType: string) => {
+provide(
+	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	createCredentialAdapter((authType, item) => {
 		void (async () => {
-			const item = detailItem.value;
-			const server = item?.kind === 'mcp-server' ? findServerForItem(item) : undefined;
+			const server = item.kind === 'mcp-server' ? findServerForItem(item) : undefined;
 			if (!server) {
-				// Detail view isn't open or the item isn't an MCP server — fall back
-				// to the bare modal so the user can still create a credential.
+				// Not an MCP server, or its registry entry is gone — fall back to the
+				// bare modal so the user can still create a credential.
 				uiStore.openNewCredential(authType);
 				return;
 			}
 			showConnectedServer(await connectServer(server));
 		})();
-	},
-	openExistingCredential: (credentialId: string) => {
-		uiStore.openExistingCredential(credentialId);
-	},
-};
-
-provide(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, credentialAdapter);
+	}),
+);
 
 function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResponse | undefined {
 	const connection = mcpStore.connections.find((c) => c.id === item.id);
