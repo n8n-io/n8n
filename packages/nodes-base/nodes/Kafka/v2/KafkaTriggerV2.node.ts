@@ -94,6 +94,7 @@ export class KafkaTriggerV2 implements INodeType {
 					partitionsConsumedConcurrently: settings.partitionsConsumedConcurrently,
 					errorRetryDelay: settings.errorRetryDelay,
 					startupFailure,
+					closeSignal: closeController.signal,
 				});
 				// Startup succeeded. No gap here: a fatal always arrives from a fresh
 				// macrotask, so it cannot land between the await and this re-point.

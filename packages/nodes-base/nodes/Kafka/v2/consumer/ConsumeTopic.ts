@@ -32,6 +32,12 @@ export interface ConsumeTopicOptions {
 	 * after a nominal start (ENT-340).
 	 */
 	startupFailure?: Promise<never>;
+	/**
+	 * The trigger's own close signal. Folded into the internal one so a cancel
+	 * during startup ends the join wait, instead of the caller waiting out the
+	 * grace period before teardown can begin.
+	 */
+	closeSignal?: AbortSignal;
 }
 
 export interface KafkaConsumerHandle {
@@ -113,7 +119,10 @@ export async function consumeTopic(
 	const settings = resolveSettings(options);
 
 	const closeController = new AbortController();
-	const { signal } = closeController;
+
+	const signal = options.closeSignal
+		? AbortSignal.any([closeController.signal, options.closeSignal])
+		: closeController.signal;
 
 	// Turns "we are closing" into something a wait can race against, since you can
 	// race a promise but not a signal. It only ever resolves: the loser of a race
@@ -152,14 +161,19 @@ export async function consumeTopic(
 			eachBatch: async (payload) => await processBatch(payload, context),
 		});
 
-		await waitForGroupJoin(consumer, options.startupFailure);
+		await waitForGroupJoin(consumer, signal, closed, options.startupFailure);
 	} catch (error) {
 		// Nothing else holds this consumer yet, so a failed start must not leave the
 		// broker connection open. `connect()` is inside the try for symmetry rather
 		// than because it leaks: the library marks a failed connect as disconnected
 		// before rejecting, so disconnect() is a no-op on that path today.
 		try {
-			await consumer.disconnect();
+			closeController.abort();
+			await withTimeout(
+				consumer.disconnect(),
+				CLOSE_TIMEOUT_MS,
+				'Kafka consumer did not disconnect in time',
+			);
 		} catch {
 			// The start failure is the useful one; a failing disconnect must not mask it.
 		}
@@ -188,21 +202,24 @@ export async function consumeTopic(
  *
  * Expiry is deliberately success: zero partitions can be legitimate (more
  * members than partitions, a slow rebalance), so only an observed fatal error
- * may fail startup, never the clock.
+ * may fail startup, never the clock. A close ends the wait the same way, so the
+ * caller reaches its teardown rather than paying out the grace period first.
  */
 async function waitForGroupJoin(
 	consumer: KafkaJS.Consumer,
+	signal: AbortSignal,
+	closed: Promise<void>,
 	startupFailure?: Promise<never>,
 ): Promise<void> {
 	const pollUntilJoined = async () => {
 		const deadline = Date.now() + JOIN_GRACE_PERIOD_MS;
-		while (Date.now() < deadline) {
+		while (Date.now() < deadline && !signal.aborted) {
 			try {
 				if (consumer.assignment().length > 0) return;
 			} catch {
 				// assignment() throws ERR__STATE while not connected; means "not joined".
 			}
-			await sleep(JOIN_POLL_INTERVAL_MS);
+			await Promise.race([sleep(JOIN_POLL_INTERVAL_MS), closed]);
 		}
 	};
 	// Race the whole poll, not each pause: a fatal that fired first must win

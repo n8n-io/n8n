@@ -41,6 +41,7 @@ describe('createLibraryLogger', () => {
 			'Local: Authentication failure',
 			'Broker: SASL Authentication failed',
 			'Broker: Inconsistent group protocol',
+			'Broker: Invalid session timeout',
 		])('reports %s as fatal', (message) => {
 			build().error(message);
 
