@@ -30,8 +30,16 @@ import {
 } from '@/app/composables/useWorkflowHelpers';
 import { highlighter } from '../plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '../plugins/codemirror/tooltips/InfoBoxTooltip';
-import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/app/types/expressions';
+import type {
+	ExpressionDiagnosis,
+	Html,
+	Plaintext,
+	RawSegment,
+	Resolvable,
+	Segment,
+} from '@/app/types/expressions';
 import { getExpressionErrorMessage, getResolvableState } from '@/app/utils/expressions';
+import { diagnosePath, parseExpressionChain, type Diagnosis } from '@/app/utils/expressionXRay';
 import { isCredentialsModalOpen } from '../plugins/codemirror/completions/utils';
 import { usesDeprecatedExpressionFunction } from '../plugins/codemirror/expressionDeprecations';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
@@ -144,7 +152,7 @@ export const useExpressionEditor = ({
 				const { from, to, text, token } = segment;
 
 				if (token === 'Resolvable') {
-					const { resolved, error, fullError } = await resolve(text, targetItem.value);
+					const { resolved, error, fullError, diagnosis } = await resolve(text, targetItem.value);
 					return {
 						kind: 'resolvable' as const,
 						from,
@@ -156,6 +164,7 @@ export const useExpressionEditor = ({
 						resolved: String(resolved),
 						state: getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
 						error: fullError,
+						diagnosis: diagnosis ?? undefined,
 					};
 				}
 				return { kind: 'plaintext' as const, from, to, plaintext: text };
@@ -377,53 +386,133 @@ export const useExpressionEditor = ({
 		return end !== undefined && expressionExtensionNames.value.has(end);
 	}
 
+	async function resolveResolvable(
+		resolvable: string,
+		target: TargetItem | null,
+		// the preview stringifies object results; the diagnoser needs the real object
+		stringifyObject = true,
+	): Promise<unknown> {
+		// Deprecated functions still resolve on the backend, but we surface them
+		// as an error in the editor preview to steer users off them.
+		if (usesDeprecatedExpressionFunction(resolvable)) {
+			throw new Error(i18n.baseText('expressionEditor.deprecated.getPairedItem'));
+		}
+
+		if (expressionLocalResolveContext.value) {
+			return await workflowHelpers.resolveExpression(
+				'=' + resolvable,
+				undefined,
+				{
+					...expressionLocalResolveContext.value,
+					additionalKeys: toValue(additionalData),
+				},
+				stringifyObject,
+			);
+		}
+
+		if (
+			isCredentialsModalOpen() ||
+			(!ndvStore.value.activeNode && toValue(targetNodeParameterContext) === undefined)
+		) {
+			// e.g. credential modal
+			return Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
+		}
+
+		let opts: ResolveParameterOptions = {
+			additionalKeys: toValue(additionalData),
+			contextNodeName: toValue(targetNodeParameterContext)?.nodeName,
+		};
+		if (
+			toValue(targetNodeParameterContext) === undefined &&
+			ndvStore.value.isInputParentOfActiveNode
+		) {
+			opts = {
+				targetItem: target ?? undefined,
+				inputNodeName: ndvStore.value.ndvInputNodeName,
+				inputRunIndex: ndvStore.value.ndvInputRunIndex,
+				inputBranchIndex: ndvStore.value.ndvInputBranchIndex,
+			};
+		}
+		return await workflowHelpers.resolveExpression(
+			'=' + resolvable,
+			undefined,
+			opts,
+			stringifyObject,
+		);
+	}
+
+	function toExpressionDiagnosis(diagnosis: Diagnosis): ExpressionDiagnosis {
+		const suggestion =
+			'suggestedExpression' in diagnosis ? diagnosis.suggestedExpression : undefined;
+		const suggestionLabel = 'suggestionLabel' in diagnosis ? diagnosis.suggestionLabel : undefined;
+
+		switch (diagnosis.kind) {
+			case 'unknownField': {
+				let message = i18n.baseText('expressionEditor.xray.unknownField', {
+					interpolate: { key: diagnosis.key, path: diagnosis.path },
+				});
+				if (!suggestion && diagnosis.candidates.length > 0) {
+					message +=
+						' ' +
+						i18n.baseText('expressionEditor.xray.availableFields', {
+							interpolate: { fields: diagnosis.candidates.slice(0, 5).join(', ') },
+						});
+				}
+				return { message, suggestion, suggestionLabel };
+			}
+			case 'arrayNotObject':
+				return {
+					message: i18n.baseText('expressionEditor.xray.arrayNotObject', {
+						interpolate: { key: diagnosis.key, path: diagnosis.path },
+					}),
+					suggestion,
+					suggestionLabel,
+				};
+			case 'notAnObject':
+				return {
+					message: i18n.baseText('expressionEditor.xray.notAnObject', {
+						interpolate: { key: diagnosis.key, path: diagnosis.path, type: diagnosis.valueType },
+					}),
+				};
+		}
+	}
+
+	/**
+	 * Expression X-Ray: when a property chain resolves to undefined (or throws
+	 * mid-chain), re-resolve its base ($json, $('Node').item.json, ...) and walk
+	 * the path against the actual data to explain the first broken link.
+	 */
+	async function diagnoseResolvable(
+		resolvable: string,
+		target: TargetItem | null,
+	): Promise<ExpressionDiagnosis | null> {
+		const chain = parseExpressionChain(resolvable);
+		if (!chain) return null;
+
+		try {
+			const root = await resolveResolvable(`{{ ${chain.base} }}`, target, false);
+			const diagnosis = diagnosePath(chain, root);
+			return diagnosis ? toExpressionDiagnosis(diagnosis) : null;
+		} catch (error) {
+			return null;
+		}
+	}
+
 	async function resolve(resolvable: string, target: TargetItem | null) {
-		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
+		const result: {
+			resolved: unknown;
+			error: boolean;
+			fullError: Error | null;
+			diagnosis: ExpressionDiagnosis | null;
+		} = {
 			resolved: undefined,
 			error: false,
 			fullError: null,
+			diagnosis: null,
 		};
 
 		try {
-			// Deprecated functions still resolve on the backend, but we surface them
-			// as an error in the editor preview to steer users off them.
-			if (usesDeprecatedExpressionFunction(resolvable)) {
-				throw new Error(i18n.baseText('expressionEditor.deprecated.getPairedItem'));
-			}
-
-			if (expressionLocalResolveContext.value) {
-				result.resolved = await workflowHelpers.resolveExpression('=' + resolvable, undefined, {
-					...expressionLocalResolveContext.value,
-					additionalKeys: toValue(additionalData),
-				});
-			} else if (
-				isCredentialsModalOpen() ||
-				(!ndvStore.value.activeNode && toValue(targetNodeParameterContext) === undefined)
-			) {
-				// e.g. credential modal
-				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
-			} else {
-				let opts: ResolveParameterOptions = {
-					additionalKeys: toValue(additionalData),
-					contextNodeName: toValue(targetNodeParameterContext)?.nodeName,
-				};
-				if (
-					toValue(targetNodeParameterContext) === undefined &&
-					ndvStore.value.isInputParentOfActiveNode
-				) {
-					opts = {
-						targetItem: target ?? undefined,
-						inputNodeName: ndvStore.value.ndvInputNodeName,
-						inputRunIndex: ndvStore.value.ndvInputRunIndex,
-						inputBranchIndex: ndvStore.value.ndvInputBranchIndex,
-					};
-				}
-				result.resolved = await workflowHelpers.resolveExpression(
-					'=' + resolvable,
-					undefined,
-					opts,
-				);
-			}
+			result.resolved = await resolveResolvable(resolvable, target);
 		} catch (error) {
 			const hasRunData =
 				!!workflowExecutionStateStore.value.activeExecutionRunData?.[
@@ -432,12 +521,16 @@ export const useExpressionEditor = ({
 			result.resolved = `[${getExpressionErrorMessage(error, workflowDocumentStore.value.getPinDataSnapshot(), hasRunData)}]`;
 			result.error = true;
 			result.fullError = error;
+			result.diagnosis = await diagnoseResolvable(resolvable, target);
 		}
 
 		if (result.resolved === undefined) {
-			result.resolved = isUncalledExpressionExtension(resolvable)
-				? i18n.baseText('expressionEditor.uncalledFunction')
-				: i18n.baseText('expressionModalInput.undefined');
+			if (isUncalledExpressionExtension(resolvable)) {
+				result.resolved = i18n.baseText('expressionEditor.uncalledFunction');
+			} else {
+				result.resolved = i18n.baseText('expressionModalInput.undefined');
+				result.diagnosis = await diagnoseResolvable(resolvable, target);
+			}
 
 			result.error = true;
 		}

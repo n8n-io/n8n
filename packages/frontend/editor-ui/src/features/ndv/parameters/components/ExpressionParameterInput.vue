@@ -11,7 +11,8 @@ import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
-import type { Segment } from '@/app/types/expressions';
+import { applyExpressionSuggestion } from '@/features/shared/editors/utils/applyExpressionSuggestion';
+import type { Resolvable, Segment } from '@/app/types/expressions';
 import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
@@ -163,6 +164,13 @@ async function onDrop(value: string, event: MouseEvent) {
 	}
 }
 
+function onApplySuggestion(segment: Resolvable) {
+	const editor = inlineInput.value?.editor;
+	if (!editor) return;
+
+	applyExpressionSuggestion(toRaw(editor), segment);
+}
+
 async function onDropOnFixedInput() {
 	await nextTick();
 
@@ -254,6 +262,7 @@ defineExpose({ focus, select });
 			:segments="segments"
 			:is-read-only="isReadOnly"
 			:virtual-ref="container"
+			@apply-suggestion="onApplySuggestion"
 		/>
 	</div>
 </template>

@@ -12,6 +12,15 @@ export type Html = Plaintext; // for n8n parser, functionally identical to plain
 
 export type ResolvableState = 'valid' | 'invalid' | 'pending';
 
+/** Expression X-Ray result: why a property path failed, and the likely fix */
+export interface ExpressionDiagnosis {
+	message: string;
+	/** full replacement expression, e.g. `{{ $json.user_email }}` */
+	suggestion?: string;
+	/** just the part that changes, for compact display (e.g. `user_email`) */
+	suggestionLabel?: string;
+}
+
 export type Resolvable = {
 	kind: 'resolvable';
 	resolvable: string;
@@ -19,6 +28,7 @@ export type Resolvable = {
 	state: ResolvableState;
 	error: Error | null;
 	fullError?: Error;
+	diagnosis?: ExpressionDiagnosis;
 } & Range;
 
 export type Resolved = Resolvable;
