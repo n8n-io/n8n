@@ -498,6 +498,67 @@ describe('AgentIntegrationPersistenceService', () => {
 			]);
 		});
 
+		it('re-reads when a publication lands between the read and the write', async () => {
+			// A publish writes only `activeVersionId`, so `versionId` is untouched and
+			// that guard alone cannot catch it.
+			const { service, agent, row, agentRepository } = setup({
+				versionId: 'v',
+				activeVersionId: null,
+			});
+			agentRepository.findIntegrationState.mockImplementationOnce(async () => {
+				const snapshot = { ...row, integrations: [...(row.integrations ?? [])] };
+				row.activeVersionId = 'version-1';
+				return snapshot;
+			});
+
+			const result = await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'slack', credentialId: 'slack-1' } },
+				byUser,
+			);
+
+			// The first attempt is refused, and the retry guards on what is now there.
+			expect(agentRepository.updateIntegrations).toHaveBeenCalledTimes(2);
+			expect(agentRepository.updateIntegrations.mock.calls[0][2]).toEqual({
+				versionId: 'v',
+				activeVersionId: null,
+			});
+			expect(agentRepository.updateIntegrations.mock.calls[1][2]).toEqual({
+				versionId: 'v',
+				activeVersionId: 'version-1',
+			});
+			// The point of guarding it: the caller must not gate runtime work on the
+			// publication state that was read before the publish landed.
+			expect(result.published).toBe(true);
+			expect(result.agent.activeVersionId).toBe('version-1');
+			expect(row.integrations).toEqual([{ type: 'slack', credentialId: 'slack-1' }]);
+		});
+
+		it('re-reads when an unpublish lands between the read and the write', async () => {
+			const { service, agent, row, agentRepository } = setup({
+				versionId: 'v',
+				activeVersionId: 'version-1',
+			});
+			agentRepository.findIntegrationState.mockImplementationOnce(async () => {
+				const snapshot = { ...row, integrations: [...(row.integrations ?? [])] };
+				row.activeVersionId = null;
+				return snapshot;
+			});
+
+			const result = await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'slack', credentialId: 'slack-1' } },
+				byUser,
+			);
+
+			expect(agentRepository.updateIntegrations).toHaveBeenCalledTimes(2);
+			// Reported unpublished, so the caller releases the runtime instead of
+			// leaving an unpublished agent receiving events.
+			expect(result.published).toBe(false);
+			expect(result.agent.activeVersionId).toBeNull();
+			expect(row.integrations).toEqual([{ type: 'slack', credentialId: 'slack-1' }]);
+		});
+
 		it('gives up rather than write blindly when the row keeps changing', async () => {
 			const { service, agent, agentRepository, eventService, telemetry } = setup();
 			agentRepository.updateIntegrations.mockResolvedValue(false);
