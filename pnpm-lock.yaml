@@ -97,8 +97,8 @@ catalogs:
       specifier: 3.23.1
       version: 3.23.1
     nanoid:
-      specifier: 3.3.17
-      version: 3.3.17
+      specifier: 3.3.18
+      version: 3.3.18
     picocolors:
       specifier: 1.0.1
       version: 1.0.1
@@ -252,7 +252,7 @@ overrides:
   '@hono/node-server@<=1.19.15': 1.19.15
   yaml@<=2.8.3: 2.8.3
   picomatch@<=4.0.4: 4.0.4
-  nanoid@<3.3.17: 3.3.17
+  nanoid@<3.3.18: 3.3.18
   zod: 3.25.67
   fast-xml-parser: 5.7.2
   fast-xml-builder: 1.2.1
@@ -609,7 +609,7 @@ importers:
         version: 8.6.0
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       zx:
         specifier: ^8.8.5
         version: 8.8.5
@@ -759,7 +759,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       p-lazy:
         specifier: 3.1.0
         version: 3.1.0
@@ -1528,7 +1528,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       ws:
         specifier: 8.21.1
         version: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -1783,7 +1783,7 @@ importers:
         version: link:../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       nodemailer:
         specifier: 7.0.11
         version: 7.0.11
@@ -2072,7 +2072,7 @@ importers:
         version: link:../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -3387,7 +3387,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.17
+        version: 3.3.18
       nyc:
         specifier: ^17.1.0
         version: 17.1.0
@@ -14380,8 +14380,8 @@ packages:
   nanoclone@0.2.1:
     resolution: {integrity: sha512-wynEP02LmIbLpcYw8uBKpcfF6dmg2vcpKqxeH5UcoKEYdExslsdUA4ugFauuaeYdTB76ez6gJW8XAZ6CgkXYxA==}
 
-  nanoid@3.3.17:
-    resolution: {integrity: sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g==}
+  nanoid@3.3.18:
+    resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -21121,7 +21121,7 @@ snapshots:
       json-stringify-safe: 5.0.1
       lil-http-terminator: 1.2.3
       lodash: 4.18.0(patch_hash=c9c1aefdc3c11c84b56f0e446f4100ee59911491de392196faae26946b910b39)
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       object-sizeof: 2.6.5
       p-debounce: 2.1.0
       p-map: 4.0.0
@@ -26420,16 +26420,6 @@ snapshots:
       - debug
       - supports-color
 
-  axios@1.18.0(debug@4.4.3):
-    dependencies:
-      follow-redirects: 1.16.0(debug@4.4.3)
-      form-data: 4.0.6
-      https-proxy-agent: 5.0.1
-      proxy-from-env: 2.1.0
-    transitivePeerDependencies:
-      - debug
-      - supports-color
-
   b4a@1.6.7: {}
 
   babel-jest@29.6.2(@babel/core@7.28.4):
@@ -29883,7 +29873,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.4.1)
       camelcase: 6.3.0
       debug: 4.4.3
       dotenv: 16.6.1
@@ -29893,7 +29883,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.18.0)
+      retry-axios: 2.6.0(axios@1.18.0(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -29914,7 +29904,7 @@ snapshots:
 
   ics@2.40.0(patch_hash=163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d):
     dependencies:
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       yup: 0.32.11
 
   ieee754@1.2.1: {}
@@ -31921,7 +31911,7 @@ snapshots:
   minifaker@1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33):
     dependencies:
       '@types/uuid': 8.3.4
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       uuid: 11.1.1
 
   minimalistic-assert@1.0.1: {}
@@ -32509,7 +32499,7 @@ snapshots:
 
   nanoclone@0.2.1: {}
 
-  nanoid@3.3.17: {}
+  nanoid@3.3.18: {}
 
   napi-build-utils@2.0.0: {}
 
@@ -33488,19 +33478,19 @@ snapshots:
 
   postcss@8.4.31:
     dependencies:
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
   postcss@8.4.49:
     dependencies:
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
   postcss@8.5.6:
     dependencies:
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -34247,7 +34237,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.18.0):
+  retry-axios@2.6.0(axios@1.18.0(debug@4.4.3)):
     dependencies:
       axios: 1.18.0(debug@4.4.1)
 
@@ -36849,7 +36839,7 @@ snapshots:
       https-proxy-agent: 4.0.0
       json5: 2.2.3
       loglevel: 1.9.2
-      nanoid: 3.3.17
+      nanoid: 3.3.18
     transitivePeerDependencies:
       - encoding
       - supports-color
