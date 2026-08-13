@@ -4,6 +4,7 @@ import {
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
 	TagIdsPublicDto,
+	WorkflowCreatedPublicDto,
 	WorkflowListPublicDto,
 	WorkflowPublicDto,
 	WorkflowTagsPublicDto,
@@ -12,6 +13,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import type {
 	AuthenticatedRequest,
+	Folder,
 	SharedWorkflow,
 	TagEntity,
 	WorkflowEntity,
@@ -67,6 +69,18 @@ function stripDerivedSettings(settings: Record<string, unknown> | undefined) {
 
 function parseTagNames(tags: string): string[] {
 	return tags.split(',').map((tag) => tag.trim());
+}
+
+function toPublicParentFolder(parentFolder: Folder | null | undefined) {
+	if (!parentFolder) return null;
+
+	return {
+		id: parentFolder.id,
+		name: parentFolder.name,
+		parentFolderId: parentFolder.parentFolderId,
+		createdAt: parentFolder.createdAt.toISOString(),
+		updatedAt: parentFolder.updatedAt.toISOString(),
+	};
 }
 
 function toPublicTag(tag: TagEntity) {
@@ -261,13 +275,13 @@ export class WorkflowsPublicController {
 	@ApiSummary('Create a workflow')
 	@ApiDescription('Create a workflow in your instance.')
 	@ApiTags(['Workflow'])
-	@ApiResponse(200, WorkflowPublicDto)
+	@ApiResponse(200, WorkflowCreatedPublicDto)
 	@ApiErrorResponse(404)
 	async createWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: CreateWorkflowPublicDto,
-	): Promise<WorkflowPublicDto> {
+	): Promise<WorkflowCreatedPublicDto> {
 		const { projectId, parentFolderId, ...rest } = body;
 
 		stripDerivedSettings(rest.settings);
@@ -285,7 +299,10 @@ export class WorkflowsPublicController {
 			source: 'api',
 		});
 
-		return this.toWorkflowPublicDto(createdWorkflow);
+		return {
+			...this.toWorkflowPublicDto(createdWorkflow),
+			parentFolder: toPublicParentFolder(createdWorkflow.parentFolder),
+		};
 	}
 
 	@Get('/:workflowId')

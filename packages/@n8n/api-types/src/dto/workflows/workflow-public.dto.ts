@@ -110,6 +110,25 @@ export const workflowPublicSchema = z.object({
 
 export class WorkflowPublicDto extends Z.class(workflowPublicSchema.shape) {}
 
+const workflowParentFolderPublicSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	parentFolderId: z.string().nullable(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
+});
+
+/**
+ * Create answers with the folder the workflow landed in; retrieval does not. That asymmetry is not
+ * a decision this endpoint makes -- the old handler returned whatever relations its service had
+ * loaded, and callers read `parentFolder` off the create response today.
+ */
+export const workflowCreatedPublicSchema = workflowPublicSchema.extend({
+	parentFolder: workflowParentFolderPublicSchema.nullable(),
+});
+
+export class WorkflowCreatedPublicDto extends Z.class(workflowCreatedPublicSchema.shape) {}
+
 // The list query selects fewer columns than a single-workflow fetch, so these are absent from every
 // item — adding them back makes the response fail its own validation.
 export const workflowListItemSharedPublicSchema = sharedWorkflowPublicSchema.omit({

@@ -137,8 +137,10 @@ export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
 	WorkflowPublicDto,
+	WorkflowCreatedPublicDto,
 	WorkflowListPublicDto,
 	workflowPublicSchema,
+	workflowCreatedPublicSchema,
 	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
