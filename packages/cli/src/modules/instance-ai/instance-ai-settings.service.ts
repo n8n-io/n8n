@@ -1232,6 +1232,16 @@ export class InstanceAiSettingsService {
 		return this.config.browserUseEnabled;
 	}
 
+	/** Whether this instance is in the activation-capped trial cohort. */
+	isActivationCapped(): boolean {
+		return this.config.activationCapped;
+	}
+
+	/** How many assistant messages must precede the activation lock. `0` means activation alone. */
+	getActivationLockMessageThreshold(): number {
+		return this.config.activationLockMessageThreshold;
+	}
+
 	/** Whether workflow building can use the required sandbox workspace. */
 	getSandboxStatus(): InstanceAiSandboxStatus {
 		const provider = this.sandboxSettingsService.getProvider();

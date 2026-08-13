@@ -10,7 +10,7 @@
 | createdById | uuid |  | true |  | [public.user](public.user.md) |  |
 | decision | varchar(50) | 'pending'::character varying | false |  |  | Latest review outcome while the request is open |
 | description | text |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.workflow_review_request_authors](public.workflow_review_request_authors.md) [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) |  |  |
+| id | varchar(36) |  | false | [public.workflow_review_activity](public.workflow_review_activity.md) [public.workflow_review_request_authors](public.workflow_review_request_authors.md) [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | state | varchar(16) | 'open'::character varying | false |  |  | Review lifecycle: open reviews accept actions; closed reviews are done |
 | title | varchar(255) |  | false |  |  |  |
@@ -50,6 +50,7 @@ erDiagram
 
 "public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;closedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.workflow_review_activity" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
 "public.workflow_review_request_authors" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
 "public.workflow_review_request_reviewers" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
 "public.workflow_review_request_workflow" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
@@ -87,6 +88,16 @@ erDiagram
   json settings
   timestamp_3__with_time_zone updatedAt
 }
+"public.workflow_review_activity" {
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  json data
+  integer id
+  varchar_64_ type
+  integer typeVersion
+  varchar_36_ workflowId FK
+  varchar_36_ workflowReviewRequestId FK
+}
 "public.workflow_review_request_authors" {
   uuid userId FK
   varchar_36_ workflowReviewRequestId FK
@@ -96,6 +107,7 @@ erDiagram
   varchar_36_ workflowReviewRequestId FK
 }
 "public.workflow_review_request_workflow" {
+  varchar_36_ baselineVersionId FK
   varchar_36_ id
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

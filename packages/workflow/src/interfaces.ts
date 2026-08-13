@@ -1390,6 +1390,9 @@ export interface IWorkflowLoader {
 	get(workflowId: string): Promise<IWorkflowBase>;
 }
 
+/** A poll node's opaque static-data-shaped state, durably stored between polls. */
+export type PollCursor = IDataObject;
+
 export interface IPollFunctions
 	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	__emit(
@@ -1403,6 +1406,14 @@ export interface IPollFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	/** Persists a cursor staged by a poll that emitted no items. Called by the tick engines, never by a node. */
+	__commitCursor?(): Promise<void>;
+	/**
+	 * Runs a poll and the hand-off that follows it in one staging scope, so a cursor
+	 * can only be committed by the poll that staged it. Called by the tick engines,
+	 * never by a node.
+	 */
+	__runPoll?<T>(poll: () => Promise<T>): Promise<T>;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &

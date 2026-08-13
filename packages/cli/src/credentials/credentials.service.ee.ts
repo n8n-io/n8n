@@ -1,3 +1,4 @@
+import type { CredentialConnectionStatus } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
@@ -157,7 +158,7 @@ export class EnterpriseCredentialsService {
 
 		const { data: _, ...rest } = credential;
 
-		const enriched: typeof rest & { connectedByMe?: boolean; connectedUserCount?: number } = rest;
+		const enriched: typeof rest & CredentialConnectionStatus = rest;
 		await this.credentialsService.populateConnectedByMe([enriched], user);
 
 		if (credential.isResolvable) {

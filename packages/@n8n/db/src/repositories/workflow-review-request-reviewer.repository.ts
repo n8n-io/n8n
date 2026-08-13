@@ -3,12 +3,12 @@ import { DataSource, In } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { WorkflowReviewRequestReviewer } from '../entities/workflow-review-request-reviewer.ee';
-import type { OperationContext } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 @Service()
 export class WorkflowReviewRequestReviewerRepository extends BaseRepository<WorkflowReviewRequestReviewer> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowReviewRequestReviewer, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowReviewRequestReviewer, dataSource.manager, transactionRunner);
 	}
 
 	/** Unlike `setReviewers`, this runs in the caller's transaction and only appends rows. */
@@ -57,6 +57,19 @@ export class WorkflowReviewRequestReviewerRepository extends BaseRepository<Work
 			);
 
 			return await tx.save(WorkflowReviewRequestReviewer, entities);
+		});
+	}
+
+	async isReviewer(
+		input: {
+			workflowReviewRequestId: string;
+			userId: string;
+		},
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(WorkflowReviewRequestReviewer, {
+			workflowReviewRequestId: input.workflowReviewRequestId,
+			userId: input.userId,
 		});
 	}
 

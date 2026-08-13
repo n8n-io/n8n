@@ -92,7 +92,7 @@ const label = computed((): string => {
 </script>
 
 <template>
-	<div :class="[$style.row, selected && $style.selected]" @click="emit('select')">
+	<div :class="[$style.row, selected && $style.selected]" role="gridcell" @click="emit('select')">
 		<N8nTooltip :content="label" placement="top">
 			<SessionTimelinePill :kind="pillKind" />
 		</N8nTooltip>
