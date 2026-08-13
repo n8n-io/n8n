@@ -122,6 +122,11 @@ export class McpRegistryService {
 		return listMcpRegistryServers(await this.getAll()).slice(0, limit);
 	}
 
+	async resolveBySlugs(slugs: string[]): Promise<McpRegistrySearchResult[]> {
+		const servers = await this.getBySlugs(slugs);
+		return listMcpRegistryServers(servers.filter((server) => server.status === 'active'));
+	}
+
 	private startPeriodicRefresh(): void {
 		if (this.isShuttingDown || this.refreshInterval) {
 			return;

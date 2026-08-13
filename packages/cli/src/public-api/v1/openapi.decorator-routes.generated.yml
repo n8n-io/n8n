@@ -3,6 +3,9 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /role-mapping-rules:
+    post:
+      $ref: ./handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
   /roles:
     get:
       $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml
@@ -17,3 +20,8 @@ paths:
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  /workflows/{workflowId}/tags:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflowTags.generated.yml
+    put:
+      $ref: ./handlers/workflows/spec/paths/updateWorkflowTags.generated.yml

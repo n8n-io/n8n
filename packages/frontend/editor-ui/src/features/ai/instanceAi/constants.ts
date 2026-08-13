@@ -23,6 +23,9 @@ export const SANDBOX_PROVIDER_LABELS = {
 export type InstanceAiConnectionKind = 'model' | 'sandbox' | 'search';
 export const INSTANCE_AI_NEW_VIEW = 'InstanceAiNew';
 export const INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
+export const INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY = 'instanceAiAgentPreviewView';
+/** Mirrors `AGENT_PREVIEW_SESSION_METADATA_KEY` in `@n8n/instance-ai`. */
+export const INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY = 'instanceAiAgentPreviewSession';
 /**
  * A new-agent artifact the user opened but has not configured yet, so no agent
  * row exists. Carries the id minted for it, which whichever path persists the
