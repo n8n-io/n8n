@@ -1,9 +1,10 @@
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
 	builderCreditsUpdated,
+	reconcileExecutionStateOnReconnect,
 	testWebhookDeleted,
 	testWebhookReceived,
 	reloadNodeType,
@@ -25,7 +26,10 @@ import {
 	workflowSettingsUpdated,
 } from '@/app/composables/usePushConnection/handlers';
 import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	injectWorkflowDocumentStore,
+	type WorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { createEventQueue } from '@n8n/utils/create-event-queue';
 import type { useRouter } from 'vue-router';
@@ -41,31 +45,68 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);
 
 	const removeEventListener = ref<(() => void) | null>(null);
+	let stopConnectionWatcher: (() => void) | null = null;
+	/**
+	 * Whether this composable instance has observed a live connection yet. The
+	 * first connect is the initial one (nothing to reconcile); only subsequent
+	 * connects are reconnects. A connection already established at setup time
+	 * counts as the first, so the next transition to connected is a reconnect.
+	 */
+	let hasConnected = false;
+
+	/**
+	 * Build the handler options for a push event. Resolves the current workflow
+	 * document by default so handlers always act on the workflow the user is
+	 * viewing, even as they navigate. The reconnect path pins the document
+	 * resolved at reconnect time so a navigation during the async reconcile
+	 * can't retarget it.
+	 */
+	function buildHandlerOptions(
+		documentId: WorkflowDocumentId = workflowDocumentStore.value.documentId,
+	): PushHandlerOptions {
+		return {
+			router,
+			documentId,
+			suppressExecutionSuccessToasts: !executionSuccessToasts.value,
+			suppressExecutionErrorToasts: !executionErrorToasts.value,
+		};
+	}
 
 	function initialize() {
 		removeEventListener.value = pushStore.addEventListener((message) => {
 			enqueue(message);
 		});
+
+		// Reconcile canvas execution state on reconnect: a run that finished
+		// server-side while the client was disconnected drops its
+		// `executionFinished` push and strands the spinner until reconciled.
+		hasConnected = pushStore.isConnected;
+		stopConnectionWatcher = watch(
+			() => pushStore.isConnected,
+			(isConnected) => {
+				if (!isConnected) return;
+				if (!hasConnected) {
+					hasConnected = true;
+					return;
+				}
+				void reconcileExecutionStateOnReconnect(buildHandlerOptions());
+			},
+		);
 	}
 
 	function terminate() {
 		if (typeof removeEventListener.value === 'function') {
 			removeEventListener.value();
 		}
+		stopConnectionWatcher?.();
+		stopConnectionWatcher = null;
 	}
 
 	/**
 	 * Process received push message event by calling the correct handler
 	 */
 	async function processEvent(event: PushMessage) {
-		// Resolve the current workflow document per event so handlers always act on
-		// the workflow the user is currently viewing, even as they navigate.
-		const options: PushHandlerOptions = {
-			router,
-			documentId: workflowDocumentStore.value.documentId,
-			suppressExecutionSuccessToasts: !executionSuccessToasts.value,
-			suppressExecutionErrorToasts: !executionErrorToasts.value,
-		};
+		const options = buildHandlerOptions();
 
 		switch (event.type) {
 			case 'testWebhookDeleted':

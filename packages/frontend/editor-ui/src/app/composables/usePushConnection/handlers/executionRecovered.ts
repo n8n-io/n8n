@@ -11,24 +11,24 @@ import {
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { PushHandlerOptions } from './types';
 
-export async function executionRecovered(
-	{ data }: ExecutionRecovered,
-	options: PushHandlerOptions,
-) {
+/**
+ * Re-fetches an execution from the server and reconciles this document's canvas
+ * state to that server truth: renders the final run data and clears the
+ * running/spinner state via `setRunExecutionData`.
+ *
+ * Shared by the `executionRecovered` push handler (server-side crash recovery
+ * on startup) and the push-reconnect reconciliation path (an execution that
+ * finished while the client was disconnected, so its `executionFinished` push
+ * was never delivered). Callers are responsible for confirming that
+ * `executionId` is the run this document should reconcile.
+ */
+export async function reconcileFinishedExecution(executionId: string, options: PushHandlerOptions) {
 	const { documentId, suppressExecutionSuccessToasts, suppressExecutionErrorToasts } = options;
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const uiStore = useUIStore();
-
-	// Only recover the execution this document is tracking. A mismatch (including
-	// the no-active-execution case, where activeExecutionId is undefined) means
-	// the event belongs to another execution and must be ignored.
-	if (workflowExecutionStateStore.activeExecutionId !== data.executionId) {
-		return;
-	}
 
 	uiStore.setProcessingExecutionResults(true);
 
-	const execution = await fetchExecutionData(data.executionId, documentId);
+	const execution = await fetchExecutionData(executionId, documentId);
 	if (!execution) {
 		uiStore.setProcessingExecutionResults(false);
 		return;
@@ -56,4 +56,20 @@ export async function executionRecovered(
 	}
 
 	setRunExecutionData(execution, runExecutionData, documentId);
+}
+
+export async function executionRecovered(
+	{ data }: ExecutionRecovered,
+	options: PushHandlerOptions,
+) {
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(options.documentId);
+
+	// Only recover the execution this document is tracking. A mismatch (including
+	// the no-active-execution case, where activeExecutionId is undefined) means
+	// the event belongs to another execution and must be ignored.
+	if (workflowExecutionStateStore.activeExecutionId !== data.executionId) {
+		return;
+	}
+
+	await reconcileFinishedExecution(data.executionId, options);
 }
