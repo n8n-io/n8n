@@ -198,7 +198,9 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		this.type = type;
 		this.version = version;
 		this.config = normalizeNodeConfig(config);
-		this.id = id ?? uuid();
+		// An explicit `id` argument (update/clone) wins over one declared in the source,
+		// so `update()` can never re-identify a node.
+		this.id = id ?? config?.id ?? uuid();
 		this.name = name ?? config?.name ?? generateNodeName(type);
 		this._connections = connections ?? [];
 	}
@@ -1107,8 +1109,9 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		content: string,
 		nodes: Array<NodeInstance<string, string, unknown>> = [],
 		stickyConfig: StickyNoteConfig = {},
+		id?: string,
 	) {
-		this.id = uuid();
+		this.id = id ?? stickyConfig.id ?? uuid();
 		// Use a unique default name to prevent multiple stickies from overwriting each other
 		// when added to a workflow (Map uses name as key)
 		this.name = stickyConfig.name ?? `Sticky Note ${this.id.slice(0, 8)}`;
@@ -1117,6 +1120,9 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		const boundingBox = nodes.length > 0 ? calculateNodesBoundingBox(nodes) : null;
 
 		this.config = {
+			// Only mirror an author-declared id, so `config.id` keeps meaning "declared
+			// in the source" for the id-precedence rules in regenerateNodeIds().
+			...(stickyConfig.id !== undefined && { id: stickyConfig.id }),
 			name: this.name,
 			position: stickyConfig.position ?? boundingBox?.position,
 			parameters: {
@@ -1135,6 +1141,7 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 	update(config: Partial<NodeConfig>): NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void> {
 		const newContent = (config.parameters?.content as string) ?? this.config.parameters?.content;
 		const newConfig: StickyNoteConfig = {
+			id: this.config.id,
 			position: config.position ?? this.config.position,
 			color: (config.parameters?.color as number) ?? (this.config.parameters?.color as number),
 			width: (config.parameters?.width as number) ?? (this.config.parameters?.width as number),
@@ -1142,7 +1149,7 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 			name: config.name ?? this.name,
 		};
 		// Pass empty nodes array since update doesn't recalculate bounding box
-		return new StickyNoteInstance(newContent, [], newConfig);
+		return new StickyNoteInstance(newContent, [], newConfig, this.id);
 	}
 
 	input(_index: number): InputTarget {

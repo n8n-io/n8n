@@ -105,7 +105,9 @@ class SubnodeInstanceImpl<
 		this.type = type;
 		this.version = version;
 		this.config = normalizeNodeConfig(config);
-		this.id = id ?? uuid();
+		// An explicit `id` argument (update/clone) wins over one declared in the source,
+		// so `update()` can never re-identify a node.
+		this.id = id ?? config?.id ?? uuid();
 		this.name = name ?? config.name ?? generateNodeName(type);
 		this._subnodeType = subnodeType;
 	}
