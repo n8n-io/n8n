@@ -8,7 +8,7 @@ import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from './constants/sanitiza
 */
 
 // `xss` is CJS with no `exports` map, so Node's lexer cannot see these as named
-// exports and `import { ... }` throws at link time under native ESM. 
+// exports and `import { ... }` throws at link time under native ESM.
 const { escapeAttrValue, escapeHtml } = xss as unknown as {
 	escapeAttrValue: (str: string) => string;
 	escapeHtml: (str: string) => string;
