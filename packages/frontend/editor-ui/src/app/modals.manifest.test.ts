@@ -10,13 +10,7 @@ import {
 	PROMPT_MFA_CODE_MODAL_KEY,
 } from '@/features/core/auth/auth.constants';
 
-/**
- * Phase 1 of modal registration: these run in `main.ts`, pre-mount, rather than
- * post-login. All four open from Personal Settings, which is where the router
- * lands a user whose navigation threw `MfaRequiredError` — a path that never
- * reaches `initializeAuthenticatedFeatures`, so post-login registration would
- * leave them undefined exactly there.
- */
+/** Phase 1 — see `app/modals.manifest.ts` for why these cannot wait for login. */
 const AUTH_MODAL_KEYS = [
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
@@ -68,9 +62,6 @@ describe('registerEagerModals', () => {
 	});
 
 	it('warns when an auth modal is opened before registration ran', () => {
-		// The regression this phase exists to prevent: routed post-login instead,
-		// these keys would be undefined on the MFA-enforced path and the modal would
-		// silently not open.
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const uiStore = useUIStore();
 

@@ -386,12 +386,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	/**
-	 * Since Seam A an unknown key resolves to a closed state instead of throwing,
-	 * so a modal whose registration was forgotten reads as "it just doesn't open".
-	 * This is what makes that visible, and it belongs on the open path: by the time
-	 * a key is missing its `<ModalRoot>` is gone too and `DynamicModalLoader` only
-	 * iterates registered keys, so nothing ever reads it — the click is the only
-	 * signal. Needs that click, so a modal nobody opens in dev stays silent.
+	 * An unknown key resolves to a closed state instead of throwing, so a forgotten
+	 * registration reads as "it just doesn't open". This makes that visible, and it
+	 * belongs on the open path: by then the key has no `<ModalRoot>` and
+	 * `DynamicModalLoader` only walks registered keys, so nothing reads it. Needs
+	 * the click, so a modal nobody opens in dev stays silent.
 	 */
 	const warnIfUnknownModalKey = (name: ModalKey): void => {
 		if (!import.meta.env.DEV) return;

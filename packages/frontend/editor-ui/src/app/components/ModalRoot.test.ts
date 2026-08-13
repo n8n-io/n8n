@@ -15,8 +15,7 @@ import {
 
 /**
  * The four auth modal keys reachable on unauthenticated routes. `<AppModals />`
- * is not auth-gated, so these mount before any registration has run — including
- * before `registerEagerModals()`, which is what now defines them.
+ * is not auth-gated, so these mount before any registration has run.
  */
 const AUTH_ROUTE_MODAL_KEYS = [
 	CHANGE_PASSWORD_MODAL_KEY,

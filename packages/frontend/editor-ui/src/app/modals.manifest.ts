@@ -10,16 +10,9 @@ import { AUTH_MODALS } from '@/features/core/auth/modals';
  * preview/demo mode, or a navigation that throws before it (the
  * `MfaRequiredError` redirect still renders Personal Settings). Everything else
  * is module-owned and registers post-login through its descriptor.
- *
- * Unlike `modules.manifest.ts` these are not descriptors — an always-on feature
- * has no module id, routes or settings pages to contribute, only modals.
  */
 const eagerModals: ModalDefinition[] = [...AUTH_MODALS];
 
-/**
- * Initialize always-on modals, done in main.ts beside `registerModuleRoutes` so
- * they are present on first paint.
- */
 export const registerEagerModals = () => {
 	eagerModals.forEach((modalDef) => {
 		modalRegistry.register(modalDef);

@@ -10,9 +10,7 @@ import { validate as validateUuid } from 'uuid';
 
 import { N8nButton, N8nFormInputs } from '@n8n/design-system';
 
-// Rendered by DynamicModalLoader, which passes the modal-state props every
-// registered modal receives. This one reads its state from its own key, so
-// they must not fall through onto the dialog root as DOM attributes.
+// DynamicModalLoader's modal-state props must not reach the dialog root.
 defineOptions({ inheritAttrs: false });
 const i18n = useI18n();
 

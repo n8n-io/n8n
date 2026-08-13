@@ -5,7 +5,10 @@ import {
 	DATA_TABLE_VIEW,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
-import { DATA_TABLE_MODALS } from '@/features/core/dataTable/modals';
+import {
+	DATA_TABLE_AD_HOC_MODAL_KEY_PREFIXES,
+	DATA_TABLE_MODALS,
+} from '@/features/core/dataTable/modals';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 
 const i18n = useI18n();
@@ -20,6 +23,7 @@ export const DataTableModule: FrontendModuleDescription = {
 	description: 'Manage and store data efficiently with the Data Table module.',
 	icon: 'database',
 	modals: DATA_TABLE_MODALS,
+	adHocModalKeyPrefixes: DATA_TABLE_AD_HOC_MODAL_KEY_PREFIXES,
 	routes: [
 		{
 			name: DATA_TABLE_VIEW,

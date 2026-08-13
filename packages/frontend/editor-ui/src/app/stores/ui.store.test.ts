@@ -366,9 +366,6 @@ describe('UI Store', () => {
 		});
 	});
 	describe('unknown-key warning', () => {
-		// An unregistered key resolves to a closed state instead of throwing, so a
-		// forgotten registration reads as "the modal doesn't open". This is what makes
-		// it visible in dev.
 		const MODAL_KEY = 'someFeatureModal';
 		let warn: ReturnType<typeof vi.spyOn>;
 

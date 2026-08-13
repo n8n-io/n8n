@@ -1,4 +1,4 @@
-import { modalRegistry, type ModalDefinition } from '@n8n/frontend-module-sdk';
+import type { ModalDefinition } from '@n8n/frontend-module-sdk';
 
 import {
 	ADD_DATA_TABLE_MODAL_KEY,
@@ -15,11 +15,12 @@ export const DATA_TABLE_MODALS: ModalDefinition[] = [
 ];
 
 /**
- * The download and import-CSV modals are rendered per row by DataTableActions,
- * which mints a key per data table (`<prefix>-<id>`). They are opened through
- * the store but never registered, so they are declared here instead — otherwise
- * every one of them looks like a modal whose registration was forgotten.
+ * Download and import-CSV are rendered per row by DataTableActions, which mints a
+ * key per data table (`<prefix>-<id>`). One definition cannot cover N rows, so
+ * they are declared rather than registered — otherwise each would look like a
+ * modal whose registration was forgotten.
  */
-[DOWNLOAD_DATA_TABLE_MODAL_KEY, IMPORT_CSV_MODAL_KEY].forEach((prefix) => {
-	modalRegistry.declareAdHocKeyPrefix(prefix);
-});
+export const DATA_TABLE_AD_HOC_MODAL_KEY_PREFIXES = [
+	DOWNLOAD_DATA_TABLE_MODAL_KEY,
+	IMPORT_CSV_MODAL_KEY,
+];

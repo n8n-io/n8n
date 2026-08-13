@@ -50,8 +50,7 @@ app.use(SentryPlugin);
 // We do this here so landing straight on a module page works
 registerModuleRoutes(router);
 
-// Register always-on modals here rather than post-login, so they exist on paths
-// that never reach `initializeAuthenticatedFeatures` — see modals.manifest.ts
+// Always-on modals, needed before login — see modals.manifest.ts
 registerEagerModals();
 
 app.use(TelemetryPlugin);

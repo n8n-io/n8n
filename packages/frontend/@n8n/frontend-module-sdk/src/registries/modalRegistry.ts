@@ -10,12 +10,7 @@ import type { ModalDefinition } from '../types/modal';
 const modals = shallowReactive(new Map<string, ModalDefinition>());
 const listeners = new Set<(modals: Map<string, ModalDefinition>) => void>();
 
-/**
- * Prefixes for keys minted at runtime rather than registered — dataTable builds
- * one key per row. Not reactive and not cleared by `clear()`: these are
- * declarations made once at import time by a feature's `modals.ts`, not
- * registrations, and a test that empties the registry must not lose them.
- */
+/** Declarations, not registrations — deliberately not emptied by `clear()`. */
 const adHocKeyPrefixes = new Set<string>();
 
 export function getAll(): Map<string, ModalDefinition> {

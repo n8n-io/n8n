@@ -7,12 +7,7 @@ import {
 	PROMPT_MFA_CODE_MODAL_KEY,
 } from './auth.constants';
 
-/**
- * Registered eagerly (`app/modals.manifest.ts`), not post-login: all four open
- * from Personal Settings, which is where the router lands a user whose
- * navigation threw `MfaRequiredError` — a path that never reaches the post-login
- * registration in `app/init/index.ts`.
- */
+/** Phase 1 — registered eagerly; see `app/modals.manifest.ts` for why. */
 export const AUTH_MODALS: ModalDefinition[] = [
 	{
 		key: CHANGE_PASSWORD_MODAL_KEY,
