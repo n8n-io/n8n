@@ -1,5 +1,6 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
+import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
 import { initSseStream, pumpChunks, type FlushableResponse } from '../agent-sse-stream';
@@ -133,11 +134,14 @@ describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () 
 	});
 
 	it('falls back to "Unknown error" when JSON.stringify throws (circular ref)', async () => {
+		const warn = vi.mocked(LoggerProxy.warn);
+		warn.mockClear();
 		const circular: Record<string, unknown> = {};
 		circular.self = circular;
 
 		const events = await collectEvents([{ type: 'error', error: circular }]);
 		expect(events).toEqual([{ type: 'error', message: 'Unknown error' }]);
+		expect(warn).toHaveBeenCalledExactlyOnceWith('Failed to stringify agent streaming error');
 	});
 
 	it('handles null via JSON.stringify (typeof null === "object")', async () => {

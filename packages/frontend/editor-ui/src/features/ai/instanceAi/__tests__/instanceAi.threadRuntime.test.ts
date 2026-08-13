@@ -11,6 +11,7 @@ import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type InstanceAiTargetApproval } fro
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
+	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	type ThreadRuntime,
 } from '../instanceAi.threadRuntime';
@@ -2290,6 +2291,28 @@ describe('getAgentPreviewViewFromThreadMetadata', () => {
 		expect(
 			getAgentPreviewViewFromThreadMetadata({
 				instanceAiAgentPreviewView: { agentId: 'agent-1' },
+			}),
+		).toBeUndefined();
+	});
+});
+
+describe('getAgentPreviewSessionFromThreadMetadata', () => {
+	test('returns the canonical agent preview session', () => {
+		expect(
+			getAgentPreviewSessionFromThreadMetadata({
+				instanceAiAgentPreviewSession: {
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+					executionId: 'execution-1',
+				},
+			}),
+		).toEqual({ agentId: 'agent-1', threadId: 'preview-thread-1' });
+	});
+
+	test('returns undefined for incomplete metadata', () => {
+		expect(
+			getAgentPreviewSessionFromThreadMetadata({
+				instanceAiAgentPreviewSession: { threadId: 'preview-thread-1' },
 			}),
 		).toBeUndefined();
 	});

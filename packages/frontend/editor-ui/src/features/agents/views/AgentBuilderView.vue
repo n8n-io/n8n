@@ -1561,7 +1561,19 @@ async function ensureArtifactPreviewSessionAvailable(sessionId: string) {
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
 	try {
-		await sessionsStore.getThreadDetail(targetProjectId, targetAgentId, sessionId);
+		const { thread } = await sessionsStore.getThreadDetail(
+			targetProjectId,
+			targetAgentId,
+			sessionId,
+		);
+		if (
+			requestId !== latestArtifactPreviewValidationId ||
+			isStaleAgentTarget(targetProjectId, targetAgentId) ||
+			effectiveSessionId.value !== sessionId
+		) {
+			return;
+		}
+		sessionsStore.upsertThread(thread);
 	} catch (error) {
 		if (
 			requestId !== latestArtifactPreviewValidationId ||

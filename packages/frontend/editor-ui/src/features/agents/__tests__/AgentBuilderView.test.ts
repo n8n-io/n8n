@@ -128,18 +128,24 @@ const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
 const getAgentConfigValidationMock = vi.fn().mockResolvedValue({ status: 'valid', issues: [] });
-const sessionThreads: Array<{
+interface SessionThread {
 	id: string;
 	updatedAt: string;
 	title?: string | null;
 	firstMessage?: string | null;
 	sessionNumber?: number;
-}> = [];
-const fetchedSessionThreads: typeof sessionThreads = [];
+}
+const sessionThreads = reactive<SessionThread[]>([]);
+const fetchedSessionThreads: SessionThread[] = [];
 const fetchSessionThreadsMock = vi.fn().mockImplementation(async () => {
 	sessionThreads.splice(0, sessionThreads.length, ...fetchedSessionThreads);
 });
 const getSessionThreadDetailMock = vi.fn().mockResolvedValue({ executions: [] });
+const upsertSessionThreadMock = vi.fn((thread: (typeof sessionThreads)[number]) => {
+	const index = sessionThreads.findIndex(({ id }) => id === thread.id);
+	if (index === -1) sessionThreads.push(thread);
+	else sessionThreads.splice(index, 1, thread);
+});
 const resetSessionStoreMock = vi.fn(() => {
 	sessionThreads.length = 0;
 });
@@ -289,6 +295,7 @@ vi.mock('../agentSessions.store', () => ({
 		loading: false,
 		fetchThreads: fetchSessionThreadsMock,
 		getThreadDetail: getSessionThreadDetailMock,
+		upsertThread: upsertSessionThreadMock,
 		startAutoRefresh: startSessionAutoRefreshMock,
 		stopAutoRefresh: stopSessionAutoRefreshMock,
 		reset: resetSessionStoreMock,
@@ -982,6 +989,13 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 	it('keeps a valid persisted artifact preview session outside the first page', async () => {
 		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
+		const olderThread = {
+			id: 'thread-older-than-first-page',
+			updatedAt: '2025-12-01T00:00:00Z',
+			title: 'Older debugging session',
+			sessionNumber: 42,
+		};
+		getSessionThreadDetailMock.mockResolvedValueOnce({ thread: olderThread, executions: [] });
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -991,14 +1005,26 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			},
 		});
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
-			'thread-older-than-first-page',
-		);
+		await vi.waitFor(() => expect(upsertSessionThreadMock).toHaveBeenCalledWith(olderThread));
+		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		expect(preview.props('effectiveSessionId')).toBe('thread-older-than-first-page');
+		expect(preview.props('sessionTitle')).toBe('Older debugging session');
+		expect(preview.props('hasSession')).toBe(true);
 		expect(getSessionThreadDetailMock).toHaveBeenCalledWith(
 			'p2',
 			'a2',
 			'thread-older-than-first-page',
 		);
+
+		preview.vm.$emit('send-to-assistant', fixEvent);
+		await nextTick();
+		expect(wrapper.emitted('assistant-handoff')).toEqual([
+			[
+				expect.objectContaining({
+					initialDraft: expect.stringContaining('"sessionNumber": 42'),
+				}),
+			],
+		]);
 	});
 
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {

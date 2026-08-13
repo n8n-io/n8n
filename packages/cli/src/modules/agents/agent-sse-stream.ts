@@ -297,8 +297,8 @@ function stringifyError(error: unknown): string {
 			return JSON.stringify(error, null, 2);
 		}
 		return `Error: ${String(error)}`;
-	} catch (e) {
-		LoggerProxy.warn('Failed to stringify agent streaming error', { error });
+	} catch {
+		LoggerProxy.warn('Failed to stringify agent streaming error');
 	}
 	return 'Unknown error';
 }

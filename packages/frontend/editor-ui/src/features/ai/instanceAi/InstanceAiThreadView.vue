@@ -37,6 +37,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
+	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
@@ -287,7 +288,10 @@ const activeAgentPreviewSessionId = computed(() => {
 		return context.threadId;
 	}
 
-	const persisted = getAgentPreviewViewFromThreadMetadata(store.getThreadMetadata(props.threadId));
+	const metadata = store.getThreadMetadata(props.threadId);
+	const persisted =
+		getAgentPreviewViewFromThreadMetadata(metadata) ??
+		getAgentPreviewSessionFromThreadMetadata(metadata);
 	return persisted?.agentId === preview.activeAgentId.value ? persisted.threadId : undefined;
 });
 
@@ -861,7 +865,11 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	void thread
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
-			if (!sent) return;
+			if (!sent) {
+				const input = chatInputRef.value;
+				if (input && !input.isDirty()) input.setText(message);
+				return;
+			}
 			const isCurrentHandoff = !handoffContext || pendingComposerContext.value === handoffContext;
 			const isCurrentDraft =
 				!submittedGeneratedDraft || generatedComposerDraft.value === submittedGeneratedDraft;
