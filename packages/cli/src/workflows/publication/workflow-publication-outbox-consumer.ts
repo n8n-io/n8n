@@ -40,9 +40,6 @@ const ABORT_AFTER_LEASE_FRACTION = 0.7;
 const ABANDON_GRACE_MS = 10 * Time.seconds.toMilliseconds;
 const ABANDON_GRACE_LEASE_FRACTION = 0.25;
 
-/** Node's maximum timer delay (2^31 - 1 ms). */
-const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
-
 /**
  * Consumes the workflow publication outbox on the leader instance. It owns the
  * queue mechanics only: the poll loop and claiming the next pending record. For
@@ -264,15 +261,12 @@ export class WorkflowPublicationOutboxConsumer {
 		promise: Promise<T>,
 		timeoutMs: number,
 	): Promise<T | typeof TIMED_OUT> {
-		// Node clamps larger delays to ~1ms, which would abort every record
-		// immediately when an operator configures a very long lease.
-		const delayMs = Math.min(timeoutMs, MAX_TIMER_DELAY_MS);
 		let timer: NodeJS.Timeout | undefined;
 		try {
 			return await Promise.race([
 				promise,
 				new Promise<typeof TIMED_OUT>((resolve) => {
-					timer = setTimeout(() => resolve(TIMED_OUT), delayMs);
+					timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs);
 				}),
 			]);
 		} finally {

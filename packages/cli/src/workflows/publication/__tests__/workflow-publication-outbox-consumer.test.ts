@@ -455,28 +455,6 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(lifecycleLock.isLocked('wf-1')).toBe(false);
 		});
 
-		test('clamps the deadline for very large lease values instead of overflowing the timer', async () => {
-			// A lease this large would push the deadline past Node's max timer delay.
-			consumer = createConsumer(true, true, 1, 10 ** 10);
-			const record = makeRecord({ id: 1 });
-			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
-			let observedSignal: AbortSignal | undefined;
-			applier.apply.mockImplementationOnce(async (_record, abort) => {
-				observedSignal = abort?.signal;
-				return await new Promise((resolve) =>
-					setTimeout(() => resolve({ type: 'completed', triggerStatuses: [] }), 50),
-				);
-			});
-			consumer.startPolling();
-
-			const drain = consumer.drainPending();
-			await vi.advanceTimersByTimeAsync(50);
-
-			await expect(drain).resolves.toBe(1);
-			// With an overflowing timer the deadline would fire at ~1ms and abort this.
-			expect(observedSignal?.aborted).toBe(false);
-		});
-
 		test('leaves an aborted record in progress for lease reclaim instead of applying it', async () => {
 			const record = makeRecord({ id: 7, workflowId: 'wf-7' });
 			const controller = new AbortController();

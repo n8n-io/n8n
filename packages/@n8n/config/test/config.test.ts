@@ -979,6 +979,21 @@ describe('GlobalConfig', () => {
 			const config = Container.get(GlobalConfig);
 			expect(config.workflows.workflowPublicationConcurrency).toBe(3);
 		});
+
+		it('should cap the outbox lease at one day', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS: `${100 * 24 * 60 * 60}` };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxLeaseSeconds).toBe(24 * 60 * 60);
+		});
+
+		it('should reject an outbox lease of 0 and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxLeaseSeconds).toBe(120);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS'),
+			);
+		});
 	});
 
 	it('should clamp password min length to valid range', () => {
