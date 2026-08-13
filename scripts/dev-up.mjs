@@ -92,5 +92,5 @@ if (name)
 	);
 else if (existsSync('/workspaces/.codespaces'))
 	console.log(
-		'(on a codespace but the box name did not resolve, so 5678 was not shared with the org — see .devcontainer/codespaces/README.md)',
+		`(on a codespace but the box name did not resolve, so ${port} was not shared with the org — see .devcontainer/codespaces/README.md)`,
 	);

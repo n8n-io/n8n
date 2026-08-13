@@ -6,31 +6,33 @@ import { readFileSync } from 'node:fs';
 
 const SHARED = '/workspaces/.codespaces/shared';
 
-function readShared(file) {
+function readShared(dir, file) {
 	try {
-		return readFileSync(`${SHARED}/${file}`, 'utf8');
+		return readFileSync(`${dir}/${file}`, 'utf8');
 	} catch {
 		return '';
 	}
 }
 
 /** Returns a codespace variable, or undefined if it is missing or empty. */
-export function codespaceEnv(name) {
+export function codespaceEnv(name, sharedDir = SHARED) {
 	if (process.env[name]) return process.env[name];
 
 	try {
-		const fromJson = JSON.parse(readShared('environment-variables.json') || '{}')[name];
+		const fromJson = JSON.parse(readShared(sharedDir, 'environment-variables.json') || '{}')[name];
 		if (fromJson) return fromJson;
-	} catch {}
+	} catch (error) {
+		console.warn(`Ignoring ${sharedDir}/environment-variables.json: ${error.message}`);
+	}
 
 	// The file has KEY=VALUE lines. Use the last line, as a shell does.
-	const line = readShared('.env')
+	const line = readShared(sharedDir, '.env')
 		.split('\n')
 		.findLast((l) => l.startsWith(`${name}=`));
 	return line?.slice(name.length + 1).trim() || undefined;
 }
 
-export const codespaceName = () => codespaceEnv('CODESPACE_NAME');
+export const codespaceName = (sharedDir) => codespaceEnv('CODESPACE_NAME', sharedDir);
 
-export const forwardingDomain = () =>
-	codespaceEnv('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN') ?? 'app.github.dev';
+export const forwardingDomain = (sharedDir) =>
+	codespaceEnv('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN', sharedDir) ?? 'app.github.dev';
