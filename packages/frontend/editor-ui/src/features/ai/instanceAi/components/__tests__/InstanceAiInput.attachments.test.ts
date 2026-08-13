@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../InstanceAiInput.vue';
+import AttachmentPreview from '../AttachmentPreview.vue';
 import { useInstanceAiStore } from '../../instanceAi.store';
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -49,5 +50,25 @@ describe('InstanceAiInput — staged node attachments', () => {
 		await waitFor(() => expect(store.pendingComposerAttachments).toHaveLength(0));
 
 		expect(textbox).toHaveValue('my question');
+	});
+});
+
+const renderAttachmentPreview = createComponentRenderer(AttachmentPreview);
+
+describe('AttachmentPreview — unhandled resource types', () => {
+	it('renders no chip for a nodes attachment (Phase 3 not implemented yet)', () => {
+		const { queryByTestId, container } = renderAttachmentPreview({
+			props: {
+				attachment: {
+					type: 'nodes',
+					workflowId: 'w1',
+					sets: [{ nodes: [{ id: 'n1', name: 'A' }] }],
+				},
+			},
+		});
+
+		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
+		expect(container.querySelector('[class*="chatFile"]')).not.toBeInTheDocument();
+		expect(container).toBeEmptyDOMElement();
 	});
 });

@@ -105,7 +105,7 @@ onBeforeUnmount(() => {
 		</button>
 	</div>
 	<ChatFile
-		v-else
+		v-else-if="props.file || fileAttachment"
 		:file="fallbackFile"
 		:is-removable="isRemovable ?? false"
 		@remove="emit('remove', $event)"
