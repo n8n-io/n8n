@@ -731,6 +731,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 		v-model:open="isOpen"
 		:items="items"
 		:categories="categories"
+		size="2xlarge"
 		:detail-item="null"
 		@update:search-query="searchQuery = $event"
 		@connect="handleRowActivate"
