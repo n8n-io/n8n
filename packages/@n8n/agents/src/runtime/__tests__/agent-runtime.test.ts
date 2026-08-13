@@ -8009,6 +8009,19 @@ describe('AgentRuntime — oversized tool results', () => {
 			await expect(filesystem.exists(getToolResultRunDirectory(runId))).resolves.toBe(false);
 		});
 
+		it('completes terminal runs when result cleanup hangs', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const runId = 'hung-cleanup-run';
+			await filesystem.writeFile(`${getToolResultRunDirectory(runId)}/result.json`, '{}', {
+				recursive: true,
+			});
+			vi.spyOn(filesystem, 'rmdir').mockReturnValue(new Promise(() => undefined));
+			const runtime = createRunScopedRuntime(filesystem, [], runId);
+			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+
+			await expect(runtime.generate('run')).resolves.toMatchObject({ finishReason: 'stop' });
+		});
+
 		it('retains offloaded results across suspension and re-suspension, then removes them', async () => {
 			const filesystem = new InMemoryFilesystem();
 			const checkpointStorage = makeClaimingCheckpointStore();

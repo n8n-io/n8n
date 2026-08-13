@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import type { FileEntry, WorkspaceFilesystem } from './types';
+import { raceWithAbort } from '../sdk/abort';
 
 export type ToolResultKind = 'result' | 'error' | 'message';
 
@@ -15,6 +16,7 @@ const TOOL_RESULT_RUNS_DIRECTORY = `${TOOL_RESULTS_DIRECTORY}/runs`;
 const HASHED_PATH_SEGMENT_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const TOOL_RESULT_FILE_PATTERN = /^([A-Za-z0-9_-]{43})\.(result|error|message)\.json$/;
 const MAX_RECONCILIATION_CANDIDATES = 100;
+const TOOL_RESULT_CLEANUP_TIMEOUT_MS = 1_000;
 
 function hashPathSegment(value: string): string {
 	return createHash('sha256').update(value).digest('base64url');
@@ -58,9 +60,12 @@ export async function removeToolResultRun(
 	filesystem: WorkspaceFilesystem,
 	runId: string,
 ): Promise<void> {
-	const runDirectory = getToolResultRunDirectory(runId);
-	if (!(await filesystem.exists(runDirectory))) return;
-	await filesystem.rmdir(runDirectory, { recursive: true, force: true });
+	const abortSignal = AbortSignal.timeout(TOOL_RESULT_CLEANUP_TIMEOUT_MS);
+	await raceWithAbort(async () => {
+		const runDirectory = getToolResultRunDirectory(runId);
+		if (!(await filesystem.exists(runDirectory, { abortSignal }))) return;
+		await filesystem.rmdir(runDirectory, { recursive: true, force: true, abortSignal });
+	}, abortSignal);
 }
 
 export async function reconcileToolResultRuns(
