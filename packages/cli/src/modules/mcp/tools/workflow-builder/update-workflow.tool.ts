@@ -32,7 +32,6 @@ import {
 	autoPopulateNodeCredentials,
 	trackAutoassignOutcomes,
 	type AutoAssignResult,
-	type CredentialAssignment,
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
@@ -82,9 +81,10 @@ const gatedGroupOperationTypes = [
 	'removeNodeGroup',
 	'updateNodeGroup',
 ] as const satisfies ReadonlyArray<PartialUpdateOperation['type']>;
-// Typed against the strict union rather than `string`, so renaming an operation
-// type in workflow-operations.ts fails to compile here instead of silently
-// leaving the gate unmatched.
+// The `satisfies` on both tuples above is what catches a renamed operation type
+// in workflow-operations.ts at compile time, instead of silently leaving the gate
+// unmatched or an implemented operation unreachable. The set element type is
+// narrowed to match so `.has()` only accepts a real operation type.
 const GATED_GROUP_OP_TYPES: ReadonlySet<PartialUpdateOperation['type']> = new Set(
 	gatedGroupOperationTypes,
 );
@@ -349,7 +349,7 @@ const outputSchema = {
 		.describe('Error message explaining why the update failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 /**
- * The success payload, derived from `outputSchema` so the builder cannot add a
+ * The success payload, derived from `outputSchema` so the handler cannot build a
  * field the published schema does not declare. That matters because the MCP SDK
  * validates `structuredContent` against the schema on every response, so an
  * undeclared field turns a successful update into an opaque `-32602`.
@@ -762,17 +762,10 @@ const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWork
  * applied. Throw order is part of the contract: gated group ops first, then
  * tag ops.
  */
-function assertOperationsSupported({
-	strictOperations,
-	hasTagOperations,
-	canvasGroupsEnabled,
-	tagsDisabled,
-}: {
-	strictOperations: PartialUpdateOperation[];
-	hasTagOperations: boolean;
-	canvasGroupsEnabled: boolean;
-	tagsDisabled: boolean;
-}): void {
+function assertOperationsSupported(
+	strictOperations: PartialUpdateOperation[],
+	{ canvasGroupsEnabled, tagsDisabled }: { canvasGroupsEnabled: boolean; tagsDisabled: boolean },
+): void {
 	// Defense in depth: with the flag off, the published schema already
 	// rejects these op types at the enum level; this guards against the
 	// loose and strict schemas drifting apart. Flag first so the scan only
@@ -783,28 +776,9 @@ function assertOperationsSupported({
 		);
 	}
 
-	if (tagsDisabled && hasTagOperations) {
+	if (tagsDisabled && strictOperations.some(isTagOperation)) {
 		throw new Error('Tag operations are not supported on this instance because tags are disabled.');
 	}
-}
-
-/**
- * Two passes, ordered by blame: an overlap between a new and an existing group
- * makes the validator flag both, so the batch's own groups go first and the
- * innocent existing one survives the re-check. `groupOperations` records which
- * groups this batch touched, not which one caused a given violation — two group
- * ops that collide take each other down.
- */
-function collectNodeGroupViolations(result: ApplyOperationsSuccess, nodeTypes: NodeTypes) {
-	const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
-
-	const ownGroups = dropInvalidNodeGroups(
-		result.workflow,
-		getNodeType,
-		(violation) => result.groupOperations[violation.groupId] !== undefined,
-	);
-
-	return [...ownGroups, ...dropInvalidNodeGroups(result.workflow, getNodeType)];
 }
 
 /**
@@ -818,14 +792,9 @@ function collectNodeGroupViolations(result: ApplyOperationsSuccess, nodeTypes: N
  * reference — cloning it makes the dropped groups silently come back.
  */
 function resolveNodeGroupViolations(
-	{
-		result,
-		canvasGroupsEnabled,
-	}: {
-		result: ApplyOperationsSuccess;
-		canvasGroupsEnabled: boolean;
-	},
-	{ nodeTypes }: { nodeTypes: NodeTypes },
+	result: ApplyOperationsSuccess,
+	canvasGroupsEnabled: boolean,
+	nodeTypes: NodeTypes,
 ): {
 	skippedOperations: SkippedOperation[];
 	removedGroups: Array<{ groupName: string; reason: string }>;
@@ -837,7 +806,22 @@ function resolveNodeGroupViolations(
 	// operation failed here, an existing group was destroyed as a side effect.
 	const removedGroups: Array<{ groupName: string; reason: string }> = [];
 
-	const violations = canvasGroupsEnabled ? collectNodeGroupViolations(result, nodeTypes) : [];
+	// Two passes, ordered by blame: an overlap between a new and an existing group
+	// makes the validator flag both, so the batch's own groups go first and the
+	// innocent existing one survives the re-check. `groupOperations` records which
+	// groups this batch touched, not which one caused a given violation — two group
+	// ops that collide take each other down.
+	const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
+	const violations = canvasGroupsEnabled
+		? [
+				...dropInvalidNodeGroups(
+					result.workflow,
+					getNodeType,
+					(violation) => result.groupOperations[violation.groupId] !== undefined,
+				),
+				...dropInvalidNodeGroups(result.workflow, getNodeType),
+			]
+		: [];
 
 	for (const violation of violations) {
 		const requestedBy = result.groupOperations[violation.groupId];
@@ -1011,14 +995,9 @@ async function autoAssignCredentialsForAddedNodes(
  * try/catch.
  */
 async function collectValidationWarnings(
-	{
-		updated,
-		existing,
-	}: {
-		updated: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>;
-		existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>;
-	},
-	{ nodeTypes }: { nodeTypes: NodeTypes },
+	updated: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
+	existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
+	nodeTypes: NodeTypes,
 ): Promise<Array<ValidationWarning & { preExisting?: boolean }>> {
 	const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
 
@@ -1069,8 +1048,9 @@ async function collectValidationWarnings(
  * every tag on the workflow.
  */
 async function resolveTagIds(
-	{ tagNames }: { tagNames: string[] | undefined },
-	{ user, tagService }: { user: User; tagService: TagService },
+	tagNames: string[] | undefined,
+	user: User,
+	tagService: TagService,
 ): Promise<string[] | undefined> {
 	if (tagNames === undefined) {
 		return undefined;
@@ -1095,54 +1075,6 @@ async function resolveTagIds(
 	}
 
 	return resolvedTags.map((t) => t.id);
-}
-
-/** Builds the tool's success payload. `structuredContent` reuses this object. */
-function buildUpdateOutput({
-	updatedWorkflow,
-	workflowUrl,
-	operationCount,
-	skippedOperations,
-	groupOperations,
-	removedGroups,
-	credentialAssignments,
-	validationWarnings,
-	skippedHttpNodes,
-	hasSettingsOperations,
-}: {
-	updatedWorkflow: Pick<WorkflowEntity, 'id' | 'name' | 'nodes' | 'settings'>;
-	workflowUrl: string;
-	operationCount: number;
-	skippedOperations: SkippedOperation[];
-	groupOperations: ApplyOperationsSuccess['groupOperations'];
-	removedGroups: Array<{ groupName: string; reason: string }>;
-	credentialAssignments: CredentialAssignment[];
-	validationWarnings: Array<ValidationWarning & { preExisting?: boolean }>;
-	skippedHttpNodes: string[];
-	hasSettingsOperations: boolean;
-}): UpdateWorkflowOutput {
-	const notAppliedCount = countOperationsWithNoEffect(skippedOperations, groupOperations);
-
-	return {
-		workflowId: updatedWorkflow.id,
-		name: updatedWorkflow.name,
-		nodeCount: updatedWorkflow.nodes.length,
-		url: workflowUrl,
-		appliedOperations: operationCount - notAppliedCount,
-		autoAssignedCredentials: credentialAssignments,
-		validationWarnings,
-		note: skippedHttpNodes.length
-			? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
-			: undefined,
-		skippedOperations: skippedOperations.length > 0 ? skippedOperations : undefined,
-		removedGroups: removedGroups.length > 0 ? removedGroups : undefined,
-		// `IWorkflowSettings` is a closed interface while the published schema is an
-		// open record — server-side cleanup decides which keys survive, so the tool
-		// reports whatever came back rather than a fixed set.
-		settings: hasSettingsOperations
-			? ((updatedWorkflow.settings ?? {}) as Record<string, unknown>)
-			: undefined,
-	};
 }
 
 /**
@@ -1237,9 +1169,7 @@ export const createUpdateWorkflowTool = (
 				const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
 				const hasSettingsOperations = strictOperations.some(isSettingsOperation);
 
-				assertOperationsSupported({
-					strictOperations,
-					hasTagOperations,
+				assertOperationsSupported(strictOperations, {
 					canvasGroupsEnabled,
 					tagsDisabled: globalConfig.tags.disabled,
 				});
@@ -1265,7 +1195,7 @@ export const createUpdateWorkflowTool = (
 				}
 
 				const { skippedOperations, removedGroups, nodeGroupsNeedPersisting } =
-					resolveNodeGroupViolations({ result, canvasGroupsEnabled }, { nodeTypes });
+					resolveNodeGroupViolations(result, canvasGroupsEnabled, nodeTypes);
 
 				const credentialCheck = await validateCredentialReferences(
 					strictOperations,
@@ -1347,11 +1277,12 @@ export const createUpdateWorkflowTool = (
 
 				// After auto-assign, so the nodes being validated carry their credentials.
 				const validationWarnings = await collectValidationWarnings(
-					{ updated: workflowUpdateData, existing: existingWorkflow },
-					{ nodeTypes },
+					workflowUpdateData,
+					existingWorkflow,
+					nodeTypes,
 				);
 
-				const tagIds = await resolveTagIds({ tagNames: result.tagNames }, { user, tagService });
+				const tagIds = await resolveTagIds(result.tagNames, user, tagService);
 
 				// Fallback is diff-based; it only ends up persisted when the update
 				// actually produces a new history version (node/connection/group changes).
@@ -1398,18 +1329,31 @@ export const createUpdateWorkflowTool = (
 
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-				const output = buildUpdateOutput({
-					updatedWorkflow,
-					workflowUrl,
-					operationCount: strictOperations.length,
+				const notAppliedCount = countOperationsWithNoEffect(
 					skippedOperations,
-					groupOperations: result.groupOperations,
-					removedGroups,
-					credentialAssignments,
+					result.groupOperations,
+				);
+
+				const output: UpdateWorkflowOutput = {
+					workflowId: updatedWorkflow.id,
+					name: updatedWorkflow.name,
+					nodeCount: updatedWorkflow.nodes.length,
+					url: workflowUrl,
+					appliedOperations: strictOperations.length - notAppliedCount,
+					autoAssignedCredentials: credentialAssignments,
 					validationWarnings,
-					skippedHttpNodes,
-					hasSettingsOperations,
-				});
+					note: skippedHttpNodes.length
+						? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
+						: undefined,
+					skippedOperations: skippedOperations.length > 0 ? skippedOperations : undefined,
+					removedGroups: removedGroups.length > 0 ? removedGroups : undefined,
+					// `IWorkflowSettings` is a closed interface while the published schema is an
+					// open record — server-side cleanup decides which keys survive, so the tool
+					// reports whatever came back rather than a fixed set.
+					settings: hasSettingsOperations
+						? ((updatedWorkflow.settings ?? {}) as Record<string, unknown>)
+						: undefined,
+				};
 
 				return {
 					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
