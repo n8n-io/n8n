@@ -187,7 +187,6 @@ These only run if specific files changed:
 | Event                      | Workflow                    | Condition                                            |
 |----------------------------|-----------------------------|------------------------------------------------------|
 | Review approved            | `release-chromatic.yml` | + design files changed                               |
-| Comment with `@claude`     | `util-claude.yml`           | mention in any comment                               |
 | Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
 
 **Why Instance AI evals fire once per PR state-change, not per push:** the
@@ -210,7 +209,7 @@ the lab bench.** The gate deliberately exposes only PR re-runs. Anything that
 isn't PR gating — baselines, model experiments, arbitrary branch runs — goes
 through `test-evals-instance-ai.yml`'s own dispatch form ("Instance AI
 Evals: Experiments"): full knob set (branch, filter, tier, suite,
-iterations, experiment-name, model), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
+iterations, experiment-name, model, model-url, model-key, reasoning-effort, supports-structured-outputs), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
 model-comparison arms), and SHA-keyed docker cache hits on master. Evals never
 run on fork PRs: the event trigger gates on `head.repo.fork`, and the `pr`
 re-run path refuses fork PRs in `resolve` (dispatched runs carry secrets).
@@ -248,25 +247,7 @@ parallelism). See the `--build-via-mcp` section in
 
 | Workflow                  | Purpose                                                 |
 |---------------------------|---------------------------------------------------------|
-| `util-claude-task.yml`    | Run Claude Code to complete a task and create a PR      |
 | `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
-
-#### Claude Task Runner (`util-claude-task.yml`)
-
-Runs Claude Code to complete a task, then creates a PR with the changes. Use for well-specced tasks or simple fixes. Can be triggered via GitHub UI or API.
-
-Claude reads templates from `.github/claude-templates/` for task-specific guidance. Add new templates as needed for recurring task types.
-
-**Inputs:**
-- `task` - Description of what Claude should do
-- `user_token` - GitHub PAT (PR will be authored by the token owner)
-
-**Token requirements** (fine-grained PAT):
-- Repository: `n8n-io/n8n`
-- Contents: `Read and write`
-- Pull requests: `Read and write`
-
-**Governance:** If you provide your personal PAT, you cannot approve the resulting PR. For automated/bot use cases (e.g., dependabot-style updates via n8n workflows), an app token can be used instead.
 
 ---
 
@@ -782,7 +763,7 @@ Adding a new channel requires inviting the bot first; the first run otherwise fa
 | Cloud/CDN           | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`             |
 | GitHub Automation   | `N8N_ASSISTANT_APP_ID`, `N8N_ASSISTANT_PRIVATE_KEY`         |
 | Benchmarking        | `BENCHMARK_ARM_*`, `N8N_BENCHMARK_LICENSE_CERT`             |
-| AI/Evals            | `ANTHROPIC_API_KEY`, `EVALS_LANGSMITH_*`                    |
+| AI/Evals            | `EVALS_ANTHROPIC_KEY`, `EVALS_OPENAI_KEY`, `EVALS_OPENROUTER_KEY`, `EVALS_XAI_KEY`, `EVALS_BASETEN_KEY`, `EVALS_FIREWORKS_KEY`, `EVALS_TOGETHER_KEY`, `EVALS_DATABRICKS_KEY`, `EVALS_MODAL_KEY`, `EVALS_LYCEUM_KEY`, `EVALS_AZURE_FOUNDRY_KEY`, `EVALS_VERTEX_KEY`, `EVALS_VERTEX_PROJECT_ID`, `EVALS_VERTEX_LOCATION`, `EVALS_LANGSMITH_*` |
 
 ### Scoping
 
