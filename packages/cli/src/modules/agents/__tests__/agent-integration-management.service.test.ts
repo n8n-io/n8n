@@ -144,23 +144,62 @@ describe('AgentIntegrationManagementService', () => {
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});
 
-		it('keeps an already-live channel running when the durable write fails', async () => {
-			// Re-saving a channel (e.g. a settings-only edit) restarts its runtime.
-			// The row never changed, so the restarted channel must stay up.
+		it('puts a restarted channel back on its persisted entry when the write fails', async () => {
+			// Re-saving a channel (e.g. a settings-only edit) restarts its runtime. The
+			// row never changed, so the channel must end up running what the row holds
+			// — not the settings this failed write was trying to persist.
 			const { service, persistenceService, chatService } = makeService();
+			const persistedEntry = { type: 'slack', credentialId: 'credential-1' } as const;
+			const agent = makeAgent({ integrations: [persistedEntry] });
 			chatService.getChatInstance.mockReturnValue({} as never);
 			persistenceService.applyIntegrationDelta.mockRejectedValue(new Error('write failed'));
 
-			await expect(
-				service.connect({
-					agent: makeAgent({ integrations: [integration] }),
-					user: user as never,
-					integration,
-				}),
-			).rejects.toThrow('write failed');
+			await expect(service.connect({ agent, user: user as never, integration })).rejects.toThrow(
+				'write failed',
+			);
 
-			expect(chatService.connect).toHaveBeenCalled();
-			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration, {
+				deleteSubscriptions: false,
+			});
+			expect(chatService.connect).toHaveBeenLastCalledWith(
+				agent.id,
+				persistedEntry,
+				agent.projectId,
+			);
+		});
+
+		it('restores the previous runtime when the restart itself fails', async () => {
+			// `connect` releases the live connection before building the new one, so a
+			// failed rebuild would otherwise strand a still-persisted channel.
+			const { service, persistenceService, chatService } = makeService();
+			const persistedEntry = { type: 'slack', credentialId: 'credential-1' } as const;
+			const agent = makeAgent({ integrations: [persistedEntry] });
+			chatService.getChatInstance.mockReturnValue({} as never);
+			chatService.connect.mockRejectedValueOnce(new Error('Slack connect failed'));
+
+			await expect(service.connect({ agent, user: user as never, integration })).rejects.toThrow(
+				'Slack connect failed',
+			);
+
+			expect(chatService.connect).toHaveBeenCalledTimes(2);
+			expect(chatService.connect).toHaveBeenLastCalledWith(
+				agent.id,
+				persistedEntry,
+				agent.projectId,
+			);
+			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+		});
+
+		it('does not strand a channel this call created when the restart fails', async () => {
+			const { service, chatService } = makeService();
+			chatService.connect.mockRejectedValue(new Error('Slack connect failed'));
+
+			await expect(
+				service.connect({ agent: makeAgent(), user: user as never, integration }),
+			).rejects.toThrow('Slack connect failed');
+
+			// Nothing was live and nothing is persisted, so there is nothing to restore.
+			expect(chatService.connect).toHaveBeenCalledTimes(1);
 		});
 
 		it('persists an unpublished agent without starting a runtime', async () => {
@@ -389,6 +428,48 @@ describe('AgentIntegrationManagementService', () => {
 				integration,
 				'disconnect',
 			);
+		});
+	});
+
+	describe('concurrent mutations on the same agent', () => {
+		it('does not let a removal tear down a connection a queued re-connect made', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ integrations: [integration] });
+			let releaseWrite!: () => void;
+			const writeGate = new Promise<void>((resolve) => {
+				releaseWrite = resolve;
+			});
+
+			persistenceService.applyIntegrationDelta.mockImplementationOnce(async () => {
+				await writeGate;
+				return { agent, changed: true, published: true, removed: integration };
+			});
+			persistenceService.applyIntegrationDelta.mockImplementation(async () => ({
+				agent,
+				changed: true,
+				published: true,
+			}));
+
+			const removal = service.disconnect({
+				agent,
+				user: user as never,
+				type: integration.type,
+				credentialId: integration.credentialId,
+			});
+			const reconnect = service.connect({ agent, user: user as never, integration });
+
+			// Give the re-connect every chance to run while the removal's write is
+			// still pending. Queued, it cannot have touched the runtime yet;
+			// interleaved, it would already have connected — and the removal's release
+			// would then tear that connection down and leave the row configured with
+			// nothing running.
+			for (let tick = 0; tick < 10; tick++) await new Promise((resolve) => setTimeout(resolve, 0));
+			expect(chatService.connect).not.toHaveBeenCalled();
+
+			releaseWrite();
+			await Promise.all([removal, reconnect]);
+
+			expect(order(chatService.disconnectChannel)).toBeLessThan(order(chatService.connect));
 		});
 	});
 

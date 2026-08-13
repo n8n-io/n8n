@@ -20,6 +20,9 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 
 @Service()
 export class AgentIntegrationManagementService {
+	/** One in-flight channel mutation per agent; see {@link serializePerAgent}. */
+	private readonly mutations = new Map<string, Promise<unknown>>();
+
 	constructor(
 		private readonly persistenceService: AgentIntegrationPersistenceService,
 		private readonly credentialsService: CredentialsService,
@@ -99,6 +102,40 @@ export class AgentIntegrationManagementService {
 		remove?: IntegrationRef;
 		modifiedBy: AgentActor;
 	}): Promise<IntegrationDeltaResult> {
+		return await this.serializePerAgent(
+			options.agent.id,
+			async () => await this.runChange(options),
+		);
+	}
+
+	/**
+	 * Run one channel mutation per agent at a time.
+	 *
+	 * Steps 1 and 3 straddle the write, so two mutations on the same channel can
+	 * interleave: a removal releasing after its write can tear down the
+	 * connection a concurrent re-connect established before its own write, leaving
+	 * the channel persisted with nothing running. Queueing them removes the
+	 * interleaving outright. This is per-process — durable state is still
+	 * protected by the compare-and-set, and runtime state is per-main anyway.
+	 */
+	private async serializePerAgent<T>(agentId: string, work: () => Promise<T>): Promise<T> {
+		const previous = this.mutations.get(agentId) ?? Promise.resolve();
+		const run = previous.catch(() => {}).then(work);
+		this.mutations.set(agentId, run);
+		try {
+			return await run;
+		} finally {
+			if (this.mutations.get(agentId) === run) this.mutations.delete(agentId);
+		}
+	}
+
+	private async runChange(options: {
+		agent: Agent;
+		user: User;
+		add?: AgentIntegrationConfig;
+		remove?: IntegrationRef;
+		modifiedBy: AgentActor;
+	}): Promise<IntegrationDeltaResult> {
 		const { agent, add } = options;
 		// "Replace this channel with itself" is just a connect. Left as a removal,
 		// step 3 would release the connection step 1 just brought up, because both
@@ -112,9 +149,21 @@ export class AgentIntegrationManagementService {
 		// save, or re-connecting the same credential — so a rollback has to know
 		// whether step 1 created this connection or merely replaced it.
 		const wasLive = !!add && this.chatService.getChatInstance(agent.id, add) !== undefined;
-		let connected = add
-			? await this.startRuntime(agent, add, agent.activeVersionId !== null)
-			: false;
+		// Captured before the delta rewrites `agent.integrations`: this is the entry
+		// the row holds for this key, and the only thing a rollback can restore to.
+		const persistedBefore = add
+			? (agent.integrations ?? []).find((entry) => matchesIntegrationRef(entry, add))
+			: undefined;
+
+		let connected: boolean;
+		try {
+			connected = add ? await this.startRuntime(agent, add, agent.activeVersionId !== null) : false;
+		} catch (error) {
+			// `connect` releases the live connection before it builds the new one, so
+			// a failed rebuild leaves a still-persisted channel with nothing running.
+			if (wasLive) await this.restorePersistedRuntime(agent, persistedBefore);
+			throw error;
+		}
 
 		let result: IntegrationDeltaResult;
 		try {
@@ -124,12 +173,13 @@ export class AgentIntegrationManagementService {
 				{ user: options.user, modifiedBy: options.modifiedBy },
 			);
 		} catch (error) {
-			// Undo step 1 only where it created something: an already-live channel is
-			// still persisted, so tearing it down would take a working channel offline
-			// over a failed write. Subscriptions always stay — deletion is not
-			// recoverable.
-			if (connected && add && !wasLive) {
+			// Undo step 1. A channel this call created has nothing left to belong to;
+			// one it restarted has to go back to the entry the row still holds, rather
+			// than keep running settings that were never persisted. Subscriptions
+			// always stay — deletion is not recoverable.
+			if (connected && add) {
 				await this.chatService.disconnectChannel(agent.id, add, { deleteSubscriptions: false });
+				if (wasLive) await this.restorePersistedRuntime(agent, persistedBefore);
 			}
 			throw error;
 		}
@@ -221,6 +271,29 @@ export class AgentIntegrationManagementService {
 		// an external call for no benefit.
 		await this.chatService.connect(agent.id, add, agent.projectId);
 		return true;
+	}
+
+	/**
+	 * Put the runtime back on the entry the row still holds.
+	 *
+	 * Used when a restart failed or its write did not land, so the channel is
+	 * still persisted under its previous configuration and has to keep running
+	 * under it. Best-effort: the original failure is what the caller reports.
+	 */
+	private async restorePersistedRuntime(
+		agent: Agent,
+		persisted: AgentIntegrationConfig | undefined,
+	): Promise<void> {
+		if (!persisted) return;
+
+		try {
+			await this.chatService.connect(agent.id, persisted, agent.projectId);
+		} catch (error) {
+			this.logger.warn(
+				'[AgentIntegrationManagementService] Could not restore the previous channel runtime',
+				{ agentId: agent.id, type: persisted.type, error },
+			);
+		}
 	}
 
 	/**
