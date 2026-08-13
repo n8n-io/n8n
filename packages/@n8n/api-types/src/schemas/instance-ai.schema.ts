@@ -555,6 +555,18 @@ export const channelConfigSchema = z.object({
 });
 export type InstanceAiChannelConfig = z.infer<typeof channelConfigSchema>;
 
+/** Rendered form-appearance confirmation card (Instance AI `forms` apply-theme). */
+export const formAppearanceConfirmationSchema = z.object({
+	workflowId: z.string(),
+	nodeName: z.string().optional(),
+	scope: z.enum(['node', 'workflow']),
+	/** Server-rendered form HTML shown read-only in a sandboxed iframe. */
+	previewHtml: z.string(),
+	preset: z.string().optional(),
+	themeLabel: z.string().optional(),
+});
+export type InstanceAiFormAppearance = z.infer<typeof formAppearanceConfirmationSchema>;
+
 export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
@@ -649,6 +661,11 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'When present, renders agent chat-channel setup UI for this integration type and agent',
 		),
+	formAppearance: formAppearanceConfirmationSchema
+		.optional()
+		.describe(
+			'When present, renders the form appearance confirmation card (rendered form preview + approve/deny)',
+		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -682,6 +699,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
 	if (payload.channelConfig) return true;
+	if (payload.formAppearance) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -1189,6 +1207,7 @@ export interface InstanceAiConfirmation {
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
 	channelConfig?: InstanceAiChannelConfig;
+	formAppearance?: InstanceAiFormAppearance;
 	expired?: boolean;
 }
 

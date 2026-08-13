@@ -46,6 +46,7 @@
   ],
   "devDependencies": {
     "@langchain/core": "catalog:",
+    "@types/sanitize-html": "^2.11.0",
     "@n8n/config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
@@ -72,6 +73,7 @@
     "@codemirror/autocomplete": "catalog:",
     "@n8n/errors": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "sanitize-html": "2.12.1",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/tournament": "workspace:*",
     "@sentry/core": "catalog:sentry",

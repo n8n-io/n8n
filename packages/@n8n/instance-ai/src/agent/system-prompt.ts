@@ -95,6 +95,17 @@ ${licenseHints.map((hint) => `- ${hint}`).join('\n')}
 `;
 }
 
+function getFormsSection(): string {
+	return `
+## Form Appearance
+
+When the user is working with a form-trigger workflow (Form Trigger / Form nodes), or asks how a form **looks** — branding, colors, fonts, spacing, theme, "make it match X", "make it prettier" — use the \`forms\` tool.
+
+- Be proactive: if the user just built or is editing a form workflow, briefly offer to preview it and to restyle or apply a theme. Keep the offer short and only when relevant.
+- To restyle from a vague description, first \`forms(list-appearance-options)\` to learn the themes and CSS variables, compose overrides, optionally \`preview\`, then \`apply-theme\` (which asks for confirmation).
+- Appearance only for now: if the user asks to change form **fields or logic**, say that isn't supported through this tool yet and point them to the form node in the editor.`;
+}
+
 function getReadOnlySection(branchReadOnly?: boolean): string {
 	if (!branchReadOnly) return '';
 	return `
@@ -174,6 +185,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
 ${getComputerUsePrompt({ browserAvailable, localGateway })}
+${getFormsSection()}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}`;
 }

@@ -123,6 +123,7 @@ const ARTIFACT_TOOLS = new Set([
 	'submit-workflow',
 	'apply-workflow-credentials',
 	'workflows',
+	'forms',
 	'credentials',
 	'data-tables',
 	'insert-data-table-rows',

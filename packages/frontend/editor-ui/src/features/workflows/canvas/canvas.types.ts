@@ -56,6 +56,7 @@ export const enum CanvasNodeRenderType {
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
+	FormStep = 'form-step',
 	Agent = 'n8n-nodes-base.messageAnAgent',
 }
 
@@ -91,6 +92,11 @@ export type CanvasNodeAddNodesRender = {
 
 export type CanvasNodeChoicePromptRender = {
 	type: CanvasNodeRenderType.ChoicePrompt;
+	options: Record<string, never>;
+};
+
+export type CanvasNodeFormStepRender = {
+	type: CanvasNodeRenderType.FormStep;
 	options: Record<string, never>;
 };
 
@@ -153,6 +159,7 @@ export interface CanvasNodeData {
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
 		| CanvasNodeChoicePromptRender
+		| CanvasNodeFormStepRender
 		| CanvasNodeAgentRender;
 }
 

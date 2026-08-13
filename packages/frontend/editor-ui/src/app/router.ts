@@ -110,6 +110,7 @@ const CompareCollectionView = async () =>
 	await import('@/features/ai/evaluation.ee/views/CompareCollectionView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
+const FormsWorkflowView = async () => await import('@/features/forms/views/FormsWorkflowView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
 const SettingsAiGatewayView = async () =>
 	await import('@/features/ai/gateway/views/SettingsAiGatewayView.vue');
@@ -413,6 +414,17 @@ export const routes: RouteRecordRaw[] = [
 				props: true,
 			},
 		],
+	},
+	{
+		path: '/workflow/:workflowId/forms',
+		name: VIEWS.WORKFLOW_FORMS,
+		component: FormsWorkflowView,
+		meta: {
+			layout: 'workflow',
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
+			formsOnlyView: true,
+		},
 	},
 	{
 		path: '/workflow/:workflowId/history/:versionId?',

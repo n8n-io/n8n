@@ -70,6 +70,21 @@ describe('ProjectTabs', () => {
 		expect(getByText('Variables')).toBeInTheDocument();
 	});
 
+	it('renders the Forms tab on overview', () => {
+		const { getByText } = renderComponent({ props: { pageType: 'overview' } });
+		expect(getByText('Forms')).toBeInTheDocument();
+	});
+
+	it('does not render the Forms tab on project pages', () => {
+		const { queryByText } = renderComponent({ props: { pageType: 'project' } });
+		expect(queryByText('Forms')).not.toBeInTheDocument();
+	});
+
+	it('does not render the Forms tab on shared pages', () => {
+		const { queryByText } = renderComponent({ props: { pageType: 'shared' } });
+		expect(queryByText('Forms')).not.toBeInTheDocument();
+	});
+
 	it('should render team project tabs with variables', () => {
 		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue({
 			id: '1',
@@ -126,6 +141,7 @@ describe('ProjectTabs', () => {
 			'CredentialsView',
 			'Executions',
 			'HomeVariables',
+			'forms',
 			'dataTables',
 		]);
 	});

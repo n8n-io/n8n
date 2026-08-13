@@ -3,6 +3,7 @@ import { ref, watch, computed } from 'vue';
 import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
+import { FORMS_VIEW } from '@/features/forms/constants';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { TabOptions } from '@n8n/design-system';
@@ -83,6 +84,7 @@ const getRouteConfigs = () => {
 		credentials: { name: VIEWS.CREDENTIALS },
 		executions: { name: VIEWS.EXECUTIONS },
 		variables: { name: VIEWS.HOME_VARIABLES },
+		forms: { name: FORMS_VIEW },
 	};
 };
 
@@ -115,6 +117,12 @@ const options = computed<Array<TabOptions<string>>>(() => {
 	// resolves would shift the tab strip on every overview → project navigation
 	if (props.pageType === 'overview' || (props.pageType === 'project' && !isPublicProject.value)) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
+	}
+
+	// Forms aggregates form-trigger workflows across all projects, so it only
+	// appears on the overview page.
+	if (props.pageType === 'overview') {
+		tabs.push(createTab('mainSidebar.forms', 'forms', routes));
 	}
 
 	if (props.additionalTabs?.length) {

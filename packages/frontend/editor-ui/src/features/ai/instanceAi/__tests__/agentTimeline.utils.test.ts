@@ -306,6 +306,83 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(4);
 	});
 
+	test('promotes a completed forms preview to its own standalone block', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'forms',
+					args: { action: 'preview' },
+					result: {
+						previews: [{ previewHtml: '<html></html>', nodeName: 'Attendee Details' }],
+					},
+				}),
+			],
+		);
+
+		// reasoning stays in a thinking block; the preview becomes its own block
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'form-preview']);
+		expect(blocks[1].type === 'form-preview' && blocks[1].toolCall.toolName).toBe('forms');
+	});
+
+	test('keeps a forms preview inside the thinking block while it is still loading', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'forms',
+					args: { action: 'preview' },
+					isLoading: true,
+					result: undefined,
+				}),
+			],
+		);
+
+		// No result yet → renders as a normal trace row, not promoted.
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type).toBe('thinking');
+	});
+
+	test('does not promote non-preview forms actions', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'forms',
+					args: { action: 'describe' },
+					result: { node: { nodeName: 'x' } },
+				}),
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type).toBe('thinking');
+	});
+
+	test('promotes a multi-step forms preview (one block, rendered per step downstream)', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'forms',
+					args: { action: 'preview' },
+					result: {
+						previews: [
+							{ previewHtml: '<html>1</html>', nodeName: 'Attendee Details' },
+							{ previewHtml: '<html>2</html>', nodeName: 'Trip Preferences' },
+						],
+					},
+				}),
+			],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['form-preview']);
+	});
+
 	test('text followed by same-response trace content joins the thinking block', () => {
 		const blocks = blocksOf(
 			[reasoning('r1'), text('Let me check the schema.', 'r1'), toolEntry('tc-1', 'r1')],

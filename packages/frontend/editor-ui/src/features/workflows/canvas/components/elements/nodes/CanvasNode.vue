@@ -325,6 +325,7 @@ provide(CanvasNodeKey, {
 
 const hasToolbar = computed(
 	() =>
+		!props.readOnly &&
 		![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.ChoicePrompt].includes(renderType.value),
 );
 

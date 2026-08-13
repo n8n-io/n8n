@@ -13,6 +13,7 @@ import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
+import InstanceAiFormAppearance from './InstanceAiFormAppearance.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
@@ -571,6 +572,14 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:integration-type="chunk.item.toolCall.confirmation.channelConfig.integrationType"
 					:agent-id="chunk.item.toolCall.confirmation.channelConfig.agentId"
 					:project-id="chunk.item.toolCall.confirmation.projectId ?? ''"
+				/>
+
+				<!-- Form appearance apply-theme (forms tool) — presence-based -->
+				<InstanceAiFormAppearance
+					v-else-if="chunk.item.toolCall.confirmation.formAppearance"
+					:key="'form-appearance-' + chunk.item.toolCall.confirmation.requestId"
+					:request-id="chunk.item.toolCall.confirmation.requestId"
+					:form-appearance="chunk.item.toolCall.confirmation.formAppearance"
 				/>
 			</template>
 

@@ -44,6 +44,7 @@ export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';
 export const WORKFLOW_HISTORY_DIFF_MODAL_KEY = 'workflowHistoryDiff';
 export const CREDENTIAL_RESOLVER_EDIT_MODAL_KEY = 'credentialResolverEdit';
 export const AI_BUILDER_DIFF_MODAL_KEY = 'aiBuilderDiff';
+export const FORM_STEP_EDIT_MODAL_KEY = 'formStepEdit';
 export const INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY = 'instanceAiCredentialSetup';
 export const INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY = 'instanceAiComputerUseSetup';
 export const INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY = 'instanceAiBrowserUseSetup';

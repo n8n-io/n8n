@@ -3,7 +3,13 @@ import TabBar from '@/app/components/MainHeader/TabBar.vue';
 import WorkflowDetails from '@/app/components/MainHeader/WorkflowDetails.vue';
 import { useI18n } from '@n8n/i18n';
 import { usePushConnection } from '@/app/composables/usePushConnection';
-import { MAIN_HEADER_TABS, STICKY_NODE_TYPE, VIEWS } from '@/app/constants';
+import {
+	MAIN_HEADER_TABS,
+	STICKY_NODE_TYPE,
+	VIEWS,
+	FORM_TRIGGER_NODE_TYPE,
+	FORM_NODE_TYPE,
+} from '@/app/constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -49,12 +55,28 @@ const executionRoutes: VIEWS[] = [
 	VIEWS.WORKFLOW_EXECUTIONS,
 	VIEWS.EXECUTION_PREVIEW,
 ];
+
+const formRoutes: VIEWS[] = [VIEWS.WORKFLOW_FORMS];
+
+const FORM_NODE_TYPES = new Set([FORM_TRIGGER_NODE_TYPE, FORM_NODE_TYPE]);
+
+const hasFormNodes = computed(
+	() =>
+		workflowDocumentStore?.value?.allNodes.some(
+			(n) => FORM_NODE_TYPES.has(n.type) && !n.disabled,
+		) ?? false,
+);
+
 const tabBarItems = computed(() => {
-	return [
+	const items = [
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
 		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
 		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
 	];
+	if (hasFormNodes.value) {
+		items.push({ value: MAIN_HEADER_TABS.FORMS, label: locale.baseText('generic.forms') });
+	}
+	return items;
 });
 
 const activeNode = computed(() => ndvStore.value?.activeNode ?? null);
@@ -99,7 +121,7 @@ onMounted(async () => {
 function isViewRoute(name: unknown): name is VIEWS {
 	return (
 		typeof name === 'string' &&
-		[evaluationRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
+		[evaluationRoutes, workflowRoutes, executionRoutes, formRoutes].flat().includes(name as VIEWS)
 	);
 }
 
@@ -108,6 +130,7 @@ function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 	const routeTabMapping = [
 		{ routes: evaluationRoutes, tab: MAIN_HEADER_TABS.EVALUATION },
 		{ routes: executionRoutes, tab: MAIN_HEADER_TABS.EXECUTIONS },
+		{ routes: formRoutes, tab: MAIN_HEADER_TABS.FORMS },
 		{ routes: workflowRoutes, tab: MAIN_HEADER_TABS.WORKFLOW },
 	];
 
@@ -147,6 +170,10 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 		case MAIN_HEADER_TABS.EVALUATION:
 			void navigateToEvaluationsView(openInNewTab);
+			break;
+
+		case MAIN_HEADER_TABS.FORMS:
+			void navigateToFormsView(openInNewTab);
 			break;
 
 		default:
@@ -225,6 +252,24 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 		dirtyState.value = uiStore.stateIsDirty;
 		workflowToReturnTo.value = workflowId.value;
 		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
+		await router.push(routeToNavigateTo);
+	}
+}
+
+async function navigateToFormsView(openInNewTab: boolean) {
+	const routeToNavigateTo: RouteLocationRaw = {
+		name: VIEWS.WORKFLOW_FORMS,
+		params: { workflowId: workflowId.value },
+		query: route.query,
+	};
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		dirtyState.value = uiStore.stateIsDirty;
+		workflowToReturnTo.value = workflowId.value;
+		activeHeaderTab.value = MAIN_HEADER_TABS.FORMS;
 		await router.push(routeToNavigateTo);
 	}
 }

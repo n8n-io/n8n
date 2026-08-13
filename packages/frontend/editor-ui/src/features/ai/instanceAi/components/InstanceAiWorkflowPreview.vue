@@ -1,10 +1,16 @@
 <script lang="ts" setup>
-import { computed, provide, useTemplateRef } from 'vue';
+import { computed, provide, ref, shallowRef, useTemplateRef } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
+import type { IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
+import FormsWorkflowView from '@/features/forms/views/FormsWorkflowView.vue';
+import { FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
 import {
 	EditorEnabledFeaturesKey,
+	WorkflowDocumentStoreKey,
+	WorkflowIdKey,
 	type EditorEnabledFeatures,
 } from '@/app/constants/injectionKeys';
 import {
@@ -53,7 +59,46 @@ function requestFitView() {
 	hostRef.value?.requestFitView();
 }
 
-defineExpose({ requestFitView });
+const i18n = useI18n();
+
+// === Workflow / forms preview toggle ===
+// The host loads and hydrates this keyed doc store; we read it here to gate the
+// toggle on Form Trigger presence, and provide it below so the embedded forms
+// view injects the SAME hydrated store instead of a separate one.
+const previewDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(props.workflowId)),
+);
+
+// Re-provide the host's doc store / id to this component's subtree so
+// FormsWorkflowView (a sibling of the host) resolves them via injection.
+const providedWorkflowId = computed(() => props.workflowId);
+provide(WorkflowIdKey, providedWorkflowId);
+provide(WorkflowDocumentStoreKey, shallowRef(previewDocumentStore.value));
+
+const hasFormTrigger = computed(() =>
+	previewDocumentStore.value.allNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE),
+);
+
+type PreviewViewMode = 'workflow' | 'forms';
+const viewMode = ref<PreviewViewMode>('workflow');
+
+function toggleViewMode() {
+	viewMode.value = viewMode.value === 'workflow' ? 'forms' : 'workflow';
+}
+
+// Label + icon flip with the mode. Exposed (with hasFormTrigger / toggleViewMode)
+// so the preview tab bar can render the switch in its toolbar — the only spot in
+// the dock that never overlaps the canvas execute button or the logs bar.
+const toggleLabel = computed(() =>
+	viewMode.value === 'workflow'
+		? i18n.baseText('instanceAi.preview.showFormsPreview')
+		: i18n.baseText('instanceAi.preview.showWorkflow'),
+);
+const toggleIcon = computed<IconName>(() =>
+	viewMode.value === 'workflow' ? 'layout-template' : 'git-branch',
+);
+
+defineExpose({ requestFitView, hasFormTrigger, viewMode, toggleViewMode, toggleLabel, toggleIcon });
 
 // On executionFinished with errors, surface a structured failures report so
 // InstanceAiThreadView can offer "Fix with AI". This used to come via
@@ -181,13 +226,24 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 
 <template>
 	<div :class="$style.content">
+		<!-- The workflow / forms switch lives in the preview tab bar (see
+		InstanceAiThreadView + InstanceAiPreviewTabBar), the only dock spot that never
+		overlaps the canvas execute button or the logs bar. Keep the host mounted
+		(v-show) so its doc store stays hydrated; the forms view injects the same store. -->
 		<WorkflowCanvasHost
+			v-show="viewMode === 'workflow'"
 			ref="host"
+			:class="$style.previewSurface"
 			:workflow-id="workflowId"
 			:refresh-key="refreshKey"
 			:initial-workflow="initialWorkflow"
 			:initial-execution="initialExecution"
 			@workflow-loaded="restoreExecutionResult"
+		/>
+		<FormsWorkflowView
+			v-if="viewMode === 'forms'"
+			:class="$style.previewSurface"
+			:workflow-id="workflowId"
 		/>
 	</div>
 </template>
@@ -197,6 +253,11 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 	flex: 1;
 	min-height: 0;
 	position: relative;
+	height: 100%;
+}
+
+.previewSurface {
+	width: 100%;
 	height: 100%;
 }
 </style>

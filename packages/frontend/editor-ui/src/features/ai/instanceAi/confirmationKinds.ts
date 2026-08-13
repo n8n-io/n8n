@@ -20,6 +20,7 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 	if (conf.credentialRequests?.length) return false;
 	if (conf.credentialFlow) return false;
 	if (conf.channelConfig) return false;
+	if (conf.formAppearance) return false;
 
 	switch (conf.inputType) {
 		case 'questions':

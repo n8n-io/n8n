@@ -29,6 +29,7 @@ const loadEvalConfigTool = lazyMod(
 const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
+const loadFormsTool = lazyMod(() => require('./forms.tool') as typeof import('./forms.tool'));
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
 const loadMcpServersTool = lazyMod(
 	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
@@ -109,6 +110,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		[DOMAIN_TOOL_IDS.FORMS, loadFormsTool().createFormsTool(context)],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
@@ -142,6 +144,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		[DOMAIN_TOOL_IDS.FORMS, loadFormsTool().createFormsTool(context)],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService

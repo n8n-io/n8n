@@ -16,6 +16,7 @@ export const DOMAIN_TOOL_IDS = {
 	PARSE_FILE: 'parse-file',
 	AGENTS: 'agents',
 	MCP_SERVERS: 'mcp-servers',
+	FORMS: 'forms',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -62,6 +63,8 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.PARSE_FILE,
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 	DOMAIN_TOOL_IDS.NODES,
+	// Core appearance/theming tool for form-trigger workflows — always loaded (no gating).
+	DOMAIN_TOOL_IDS.FORMS,
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	// Paired with RESEARCH on purpose: the research tool tells the agent to prefer

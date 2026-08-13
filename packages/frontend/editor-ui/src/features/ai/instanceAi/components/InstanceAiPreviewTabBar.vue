@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	ContextMenuContent,
@@ -23,17 +23,25 @@ const props = withDefaults(
 		isExpanded?: boolean;
 		isExpandDisabled?: boolean;
 		previewToggleLabel?: string;
+		/** Renders the workflow/forms view switch for form-trigger workflows. */
+		formsToggleVisible?: boolean;
+		formsToggleLabel?: string;
+		formsToggleIcon?: IconName;
 	}>(),
 	{
 		isExpanded: false,
 		isExpandDisabled: false,
 		previewToggleLabel: undefined,
+		formsToggleVisible: false,
+		formsToggleLabel: undefined,
+		formsToggleIcon: undefined,
 	},
 );
 
 const emit = defineEmits<{
 	togglePreview: [];
 	toggleExpanded: [];
+	toggleFormsView: [];
 }>();
 
 const i18n = useI18n();
@@ -163,6 +171,19 @@ async function handleCopyLink(tab: ArtifactTab) {
 				</ContextMenuPortal>
 			</ContextMenuRoot>
 		</TabsList>
+		<N8nButton
+			v-if="formsToggleVisible"
+			variant="subtle"
+			size="small"
+			:class="$style.formsToggle"
+			data-test-id="instance-ai-preview-view-toggle"
+			@click="emit('toggleFormsView')"
+		>
+			<template #icon>
+				<N8nIcon v-if="formsToggleIcon" :icon="formsToggleIcon" size="small" />
+			</template>
+			{{ formsToggleLabel }}
+		</N8nButton>
 		<N8nIconButton
 			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
 			variant="ghost"
@@ -201,6 +222,10 @@ async function handleCopyLink(tab: ArtifactTab) {
 	gap: var(--spacing--4xs);
 	padding: 0 var(--spacing--3xs) 0 var(--spacing--4xs);
 	border-bottom: var(--border);
+}
+
+.formsToggle {
+	flex-shrink: 0;
 }
 
 .tabList {

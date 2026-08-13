@@ -29,6 +29,8 @@ import {
 import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
+import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { FORM_STEP_WIDTH } from '@/features/forms/constants';
 import { MarkerType } from '@vue-flow/core';
 import type { Connection } from '@vue-flow/core';
 import * as workflowUtils from 'n8n-workflow/common';
@@ -52,6 +54,7 @@ export function useCanvasMapping({
 	allGroups = ref([]),
 	nodeGroupView,
 	isExperimentalNdvActive = ref(false),
+	nodeTypeRenderOverrides = {},
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
@@ -59,6 +62,7 @@ export function useCanvasMapping({
 	allGroups?: Ref<IWorkflowGroup[]>;
 	nodeGroupView?: CanvasNodeGroupView;
 	isExperimentalNdvActive?: Ref<boolean>;
+	nodeTypeRenderOverrides?: Partial<Record<string, CanvasNodeRenderType>>;
 }) {
 	const i18n = useI18n();
 
@@ -185,16 +189,25 @@ export function useCanvasMapping({
 					visible: !!runData,
 				},
 				render:
-					rd.renderTypeByNodeId.get(node.id)?.value ??
-					({ type: node.type, options: {} } as CanvasNodeData['render']),
+					nodeTypeRenderOverrides[node.type] === CanvasNodeRenderType.FormStep
+						? ({ type: CanvasNodeRenderType.FormStep, options: {} } as CanvasNodeData['render'])
+						: (rd.renderTypeByNodeId.get(node.id)?.value ??
+							({ type: node.type, options: {} } as CanvasNodeData['render'])),
 			};
 			const offset = nodeGroupView?.getVisualOffsetForNode(node.id) ?? { x: 0, y: 0 };
+			const isFormStep = data.render.type === CanvasNodeRenderType.FormStep;
+			const basePosition = applyOffset(node.position, offset);
+			// FormStep cards are FORM_STEP_WIDTH wide; centre them on the original
+			// node position by shifting left (card_width − default_width) / 2.
+			const position = isFormStep
+				? { x: basePosition.x - (FORM_STEP_WIDTH - DEFAULT_NODE_SIZE[0]) / 2, y: basePosition.y }
+				: basePosition;
 
 			return {
 				id: node.id,
 				label: node.name,
 				type: 'canvas-node',
-				position: applyOffset(node.position, offset),
+				position,
 				data,
 				...additionalProperties[node.id],
 				draggable: node.draggable,
