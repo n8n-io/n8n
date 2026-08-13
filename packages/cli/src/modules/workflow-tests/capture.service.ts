@@ -71,7 +71,7 @@ export class CaptureService {
 				expectations.push({
 					nodeName: name,
 					executionIndex: task.executionIndex ?? 0,
-					outputs: mainOutputs.map((branch) => (branch ?? []).map(sanitizeItem)),
+					outputs: sanitizeBranches(mainOutputs),
 				});
 			}
 		}
@@ -83,4 +83,11 @@ export class CaptureService {
 
 export function sanitizeItem(item: INodeExecutionData): { json: INodeExecutionData['json'] } {
 	return { json: item.json };
+}
+
+/** Sanitize every branch of a node's main output to `{ json }`-only items, `[]` for a null branch. */
+export function sanitizeBranches(
+	mainOutputs: Array<INodeExecutionData[] | null>,
+): Array<Array<{ json: INodeExecutionData['json'] }>> {
+	return mainOutputs.map((branch) => (branch ?? []).map(sanitizeItem));
 }
