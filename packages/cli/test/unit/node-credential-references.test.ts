@@ -9,9 +9,9 @@ import path from 'node:path';
  * the UI, `supportsProxyAuth` logs "Unknown credential name" on every boot, the
  * node gets no Custom API Call option, and it cannot authenticate.
  *
- * Two unremarkable PRs are enough to ship that state — one adds the node that
+ * Two unremarkable PRs are enough to ship that state: one adds the node that
  * references the credential, the other registers the credential in
- * `package.json` — because a release can be cut in between.
+ * `package.json`, and a release can be cut in between.
  *
  * Cross-package references are legitimate (nodes-base's Mistral AI node uses
  * `mistralCloudApi` from nodes-langchain), so the check is over the union of the

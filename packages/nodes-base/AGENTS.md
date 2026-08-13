@@ -45,7 +45,25 @@ Common parameter types:
 - `collection` - Key-value pairs
 - `fixedCollection` - Structured collections
 
-Use `displayOptions` to show/hide fields based on other parameters. Use `noDataExpression: true` for resource/operation selectors.
+Use `displayOptions` to show/hide fields based on other parameters. Use
+`noDataExpression: true` for resource/operation selectors only. On a value field
+it removes the expression toggle, which takes away a field users legitimately
+drive from upstream data.
+
+### Reading parameters per item
+
+`execute` runs once for the whole input, so every parameter read inside it needs
+the current item's index. A shared helper that reads parameters therefore takes
+a **required** `itemIndex`, placed before any defaulted parameters so call sites
+need no positional padding:
+
+```ts
+// Wrong: execute call sites that omit the argument resolve every item at item 0
+function resolveTarget(this: IExecuteFunctions, itemIndex = 0) { … }
+```
+
+In load-options and list-search context pass a literal `0`: there
+`getNodeParameter`'s second argument is the fallback value, not an item index.
 
 ## Versioning
 
@@ -69,7 +87,7 @@ Nodes and credentials are only loaded if they are listed in
 `packages/nodes-base/package.json` (`n8n.nodes` / `n8n.credentials`).
 
 A credential name in a node's `credentials` array must resolve to a registered
-credential **in the same release** — either in this package or in
+credential **in the same release**, either in this package or in
 `@n8n/n8n-nodes-langchain`, the two packages n8n loads. Otherwise the instance
 logs `Failed to load Custom API options for the node "...": Unknown credential
 name "..."` on every boot and the node cannot authenticate.
@@ -79,6 +97,14 @@ operations): a release can be cut between the PR that references the credential
 and the PR that adds it. Register the credential in, or before, the PR that
 first references it. `packages/cli/test/unit/node-credential-references.test.ts`
 gates this.
+
+### Scopes
+
+Narrowing or removing an OAuth scope is a **breaking change**, even though it
+looks like a one-line tightening. Existing credentials keep the token they were
+issued, so the node starts failing for them and restoring the scope later does
+not repair them: every affected user has to reconnect. Tighten scopes behind a
+new node version, or ship the change with an explicit migration note.
 
 ## Testing
 
@@ -93,6 +119,15 @@ gates this.
 - Mock external APIs with nock
 - Use `pnpm test` for running tests. Example: `cd packages/nodes-base/ && pnpm test TestFileName`
 
+### What mocked requests do and don't prove
+
+A nock assertion locks in the request you already built. It cannot tell you the
+API accepts it, and it passes just as happily when the URL is wrong, so a green
+suite is not evidence that a new request shape works. Verify a new query, path
+or filter against the live API first, then mock it to keep it from drifting.
+Where operations differ per credential type (delegated vs app-only), verify each
+one: the working path for one is often rejected for the other.
+
 ## Common Development Tasks
 
 ### Creating a New Node
@@ -106,6 +141,14 @@ gates this.
 
 ### Adding Dynamic Options
 Add `loadOptionsMethod` to parameter's `typeOptions` and implement method in `methods.loadOptions`.
+
+An option loader must let the API error reach the user: an empty list has to mean
+the account has nothing, not that the request failed. Watch for the two ways this
+breaks in practice, a retry loop whose exit condition skips its own `throw`, and
+a caught error rethrown without the API's message. Cover it with a test that a
+failing request surfaces as an error rather than an empty list. Do not reach for
+`retry()` from `@n8n/utils` here: it resolves to a boolean and swallows the
+error, which is exactly the failure mode to avoid.
 
 ### Adding Resource Locator
 Change parameter type to `'resourceLocator'`, define modes (list, id, url), add `searchListMethod` for list mode, add `extractValue` regex for URL mode.
