@@ -5,7 +5,6 @@ import {
 	Workspace,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import {
@@ -16,7 +15,6 @@ import {
 @Service()
 export class AgentWorkspaceService {
 	constructor(
-		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 	) {}
@@ -40,7 +38,7 @@ export class AgentWorkspaceService {
 		agentId: string,
 		threadId: string,
 	): Promise<void> {
-		if (!this.agentsConfig.sandboxEnabled) return;
+		if (!this.agentSandboxRuntimeService.isEnabled()) return;
 
 		try {
 			const runtime = await this.agentSandboxRuntimeService.acquireSandbox(projectId, agentId);
