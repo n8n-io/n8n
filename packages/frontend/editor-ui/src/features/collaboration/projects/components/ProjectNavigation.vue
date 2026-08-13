@@ -5,7 +5,7 @@ import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
-import type { IMenuItem } from '@n8n/design-system/types';
+import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useProjectsStore } from '../projects.store';

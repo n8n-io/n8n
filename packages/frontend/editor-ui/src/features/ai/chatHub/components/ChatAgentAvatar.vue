@@ -3,7 +3,7 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { type ChatModelDto, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import { computed } from 'vue';
 import {
 	isLlmProviderModel,

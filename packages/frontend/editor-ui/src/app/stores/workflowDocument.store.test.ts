@@ -435,6 +435,54 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.pinnedDataByNodeName).toEqual({});
 		});
 
+		it('derives homeProject from the shared owner relation when homeProject is absent', () => {
+			// `GET /workflows/:id` omits the assembled `homeProject` when the sharing
+			// license is inactive, returning the raw `shared` relation instead.
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-shared'));
+			const ownerProject = { id: 'p-owner' } as ProjectSharingData;
+
+			store.hydrate({
+				id: 'wf-shared',
+				name: 'FromShared',
+				active: false,
+				isArchived: false,
+				createdAt: -1,
+				updatedAt: -1,
+				nodes: [],
+				connections: {},
+				versionId: '',
+				activeVersionId: null,
+				shared: [
+					{ role: 'workflow:editor', project: { id: 'p-editor' } as ProjectSharingData },
+					{ role: 'workflow:owner', project: ownerProject },
+				],
+			});
+
+			expect(store.homeProject).toEqual(ownerProject);
+		});
+
+		it('prefers an assembled homeProject over the shared owner relation', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-both'));
+			const homeProject = { id: 'p-home' } as ProjectSharingData;
+
+			store.hydrate({
+				id: 'wf-both',
+				name: 'Both',
+				active: false,
+				isArchived: false,
+				createdAt: -1,
+				updatedAt: -1,
+				nodes: [],
+				connections: {},
+				versionId: '',
+				activeVersionId: null,
+				homeProject,
+				shared: [{ role: 'workflow:owner', project: { id: 'p-owner' } as ProjectSharingData }],
+			});
+
+			expect(store.homeProject).toEqual(homeProject);
+		});
+
 		it('normalizes ITag[] tags to string[]', () => {
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-tag'));
 			const itags: ITag[] = [

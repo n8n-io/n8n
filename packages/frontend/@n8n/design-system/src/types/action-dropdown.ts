@@ -1,5 +1,4 @@
-import type { KeyboardShortcut } from '@n8n/design-system/types/keyboardshortcut';
-
+import type { KeyboardShortcut } from './keyboardshortcut';
 import type { IconName } from '../components/N8nIcon/icons';
 
 export interface ActionDropdownItem<T extends string> {

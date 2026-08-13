@@ -11,6 +11,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationReason,
 	WorkflowPublishedVersionRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -31,6 +32,7 @@ import { WorkflowPublicationNotifier } from './publication/workflow-publication-
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.service';
 import { WorkflowValidationService } from './workflow-validation.service';
 
@@ -98,6 +100,7 @@ export class WorkflowService {
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowHookContextService: WorkflowHookContextService,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 	) {}
 
 	async getMany(
@@ -1176,6 +1179,12 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow must be archived before it can be deleted.');
 		}
 
+		// Ahead of every destructive step, including the trigger teardown below: the
+		// hook may throw to abort the delete, and deactivation is not rolled back, so
+		// running it later would strand the workflow as active in the DB but no longer
+		// running.
+		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId);
+
 		if (workflow.active) {
 			// deactivate before deleting
 			await this.activeWorkflowManager.remove(workflowId);
@@ -1187,6 +1196,10 @@ export class WorkflowService {
 		await this.executionPersistence.hardDeleteByWorkflowId(workflowId);
 
 		await this.workflowRepository.delete(workflowId);
+
+		// After the cascade, so it can see the rows the delete orphaned. Observes a
+		// committed delete, so it must not throw — the module swallows its own errors.
+		await this.workflowMutationHooks.afterWorkflowsDeleted([workflowId]);
 
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterDelete', [
@@ -1253,6 +1266,8 @@ export class WorkflowService {
 		});
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+
+		await this.workflowMutationHooks.afterWorkflowArchived(workflowId);
 
 		this.eventService.emit('workflow-archived', {
 			user,
@@ -1569,7 +1584,12 @@ export class WorkflowService {
 				trx,
 			);
 
-			await this.outboxRepository.enqueue(workflowId, versionIdToActivate, trx);
+			await this.outboxRepository.enqueue(
+				workflowId,
+				versionIdToActivate,
+				WorkflowPublicationReason.Publish,
+				trx,
+			);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without
@@ -1610,7 +1630,12 @@ export class WorkflowService {
 				trx,
 			);
 
-			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
+			await this.outboxRepository.enqueue(
+				workflowId,
+				deactivatedVersionId,
+				WorkflowPublicationReason.Publish,
+				trx,
+			);
 
 			// Durable jobs are DB state, so their removal commits here rather than
 			// waiting on the leader's outbox handler: a lost hand-off would otherwise

@@ -27,7 +27,6 @@ import { useCredentialsStore } from '../../credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@n8n/stores/users.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
@@ -78,6 +77,8 @@ type Props = {
 	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
+	/** Provider account of the caller's own connection, for end-user credentials. */
+	connectedAccountIdentifier?: string;
 	isNewCredential?: boolean;
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
@@ -96,6 +97,7 @@ const props = withDefaults(defineProps<Props>(), {
 	authError: '',
 	showValidationWarning: false,
 	credentialPermissions: () => ({}) as PermissionsRecord['credential'],
+	connectedAccountIdentifier: undefined,
 	instanceAiCredentialHelp: undefined,
 });
 const emit = defineEmits<{
@@ -114,7 +116,6 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
@@ -233,13 +234,14 @@ const isConnectedOAuth = computed(
 // expired). In this state we promote Switch account over the plain Retry button.
 const isStale = computed(() => isConnectedOAuth.value && !!props.authError);
 
-// The connected account label: for end-user creds it's the current user's own
-// connection; for fixed creds it's the identifier derived from the stored token
-// (may be absent for providers that don't return one — then fall back to a
-// generic "Account connected" message).
+// The connected account label — always the provider account the token belongs to,
+// never the n8n account. For end-user creds it comes from the caller's own per-user
+// connection, for fixed creds from the token stored on the credential. Many
+// providers return no identity at all (Gmail asks for no identity scope), so an
+// absent value is normal and falls back to a generic "Account connected" message.
 const connectedAccountName = computed<string | undefined>(() => {
 	if (props.isResolvable) {
-		return usersStore.currentUser?.email ?? undefined;
+		return props.connectedAccountIdentifier;
 	}
 	const identifier = props.credentialData?.accountIdentifier;
 	return typeof identifier === 'string' && identifier ? identifier : undefined;

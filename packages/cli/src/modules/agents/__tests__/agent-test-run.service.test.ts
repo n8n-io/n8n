@@ -1,4 +1,10 @@
-import type { CredentialProvider, StreamChunk } from '@n8n/agents';
+import {
+	zodToJsonSchema,
+	type CredentialProvider,
+	type SerializableAgentState,
+	type StreamChunk,
+} from '@n8n/agents';
+import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -7,16 +13,52 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
 const user = mock<User>({ id: 'user-1' });
 const credentialProvider = mock<CredentialProvider>();
+const approvalResumeSchema = (() => {
+	const schema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
+	if (schema === null) throw new Error('Failed to generate approval resume schema');
+	return schema;
+})();
+
+function suspendedApprovalCheckpoint(
+	resumeSchema: typeof approvalResumeSchema = approvalResumeSchema,
+	persistence: SerializableAgentState['persistence'] = {
+		threadId: 'session-1',
+		resourceId: 'draft-chat:user-1',
+	},
+): SerializableAgentState {
+	return {
+		status: 'suspended',
+		persistence,
+		messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+		pendingToolCalls: {
+			'tool-call-1': {
+				runId: 'run-1',
+				toolCallId: 'tool-call-1',
+				toolName: 'delete_record',
+				input: { id: 'record-1' },
+				suspended: true,
+				suspendPayload: {
+					type: 'approval',
+					toolName: 'delete_record',
+					args: { id: 'record-1' },
+				},
+				resumeSchema,
+			},
+		},
+	};
+}
 
 function makeService() {
 	const agentExecutionService = mock<AgentExecutionService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
+	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 
@@ -25,10 +67,12 @@ function makeService() {
 			agentExecutionService,
 			agentValidationService,
 			agentExecutionOrchestratorService,
+			n8nCheckpointStorage,
 		),
 		agentExecutionService,
 		agentValidationService,
 		agentExecutionOrchestratorService,
+		n8nCheckpointStorage,
 	};
 }
 
@@ -126,7 +170,8 @@ describe('AgentTestRunService', () => {
 	});
 
 	it('resumes the same draft session and returns the next suspended segment', async () => {
-		const { service, agentExecutionOrchestratorService } = makeService();
+		const { service, agentExecutionOrchestratorService, n8nCheckpointStorage } = makeService();
+		n8nCheckpointStorage.load.mockResolvedValue(suspendedApprovalCheckpoint());
 		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
 			config.onExecutionRecorded?.('execution-2');
 			yield { type: 'text-delta', id: 'text-1', delta: ' Next step.' };
@@ -143,16 +188,18 @@ describe('AgentTestRunService', () => {
 			};
 		});
 
-		const result = await service.resumeDraftRun({
+		const result = await service.resumeDraftApproval({
 			agentId,
 			projectId,
-			sessionId: 'session-1',
-			runId: 'run-1',
-			toolCallId: 'tool-call-1',
-			resumeData: { approved: true },
+			continuation: {
+				sessionId: 'session-1',
+				runId: 'run-1',
+				toolCallId: 'tool-call-1',
+				response: 'First step.',
+			},
+			approved: true,
 			user,
 			source: 'instance-ai',
-			response: 'First step.',
 		});
 
 		expect(result).toEqual({
@@ -186,6 +233,63 @@ describe('AgentTestRunService', () => {
 				},
 			}),
 		);
+	});
+
+	it.each([
+		['missing', undefined],
+		['noncanonical', suspendedApprovalCheckpoint({ type: 'object' })],
+		[
+			'wrong-memory',
+			suspendedApprovalCheckpoint(approvalResumeSchema, {
+				threadId: 'session-1',
+				resourceId: 'draft-chat:another-user',
+			}),
+		],
+	])('rejects a %s approval checkpoint before resuming', async (_label, checkpoint) => {
+		const { service, agentExecutionOrchestratorService, n8nCheckpointStorage } = makeService();
+		n8nCheckpointStorage.load.mockResolvedValue(checkpoint);
+
+		await expect(
+			service.resumeDraftApproval({
+				agentId,
+				projectId,
+				continuation: {
+					sessionId: 'session-1',
+					runId: 'run-1',
+					toolCallId: 'tool-call-1',
+					response: '',
+				},
+				approved: false,
+				user,
+			}),
+		).rejects.toThrow('This test run can no longer be resumed.');
+		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
+	});
+
+	it('deduplicates suspended run cancellation and reports partial failure', async () => {
+		const { service, agentExecutionOrchestratorService } = makeService();
+		agentExecutionOrchestratorService.cancelChatRun
+			.mockResolvedValueOnce(true)
+			.mockResolvedValueOnce(false);
+
+		await expect(
+			service.cancelSuspendedRuns({
+				agentId,
+				userId: user.id,
+				suspensions: [{ runId: 'run-1' }, { runId: 'run-1' }, { runId: 'run-2' }],
+			}),
+		).resolves.toBe(false);
+		expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenCalledTimes(2);
+		expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenNthCalledWith(1, {
+			agentId,
+			runId: 'run-1',
+			resourceId: 'draft-chat:user-1',
+		});
+		expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenNthCalledWith(2, {
+			agentId,
+			runId: 'run-2',
+			resourceId: 'draft-chat:user-1',
+		});
 	});
 
 	it('rejects a session owned by another agent without starting a run', async () => {

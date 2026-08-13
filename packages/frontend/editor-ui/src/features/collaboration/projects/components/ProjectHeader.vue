@@ -17,7 +17,7 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
-import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';

@@ -23,7 +23,7 @@ import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@n8n/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { ChatUI } from '@n8n/design-system';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';

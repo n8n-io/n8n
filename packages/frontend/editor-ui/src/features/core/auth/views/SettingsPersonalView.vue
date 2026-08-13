@@ -18,7 +18,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
-import { createFormEventBus } from '@n8n/design-system/utils';
+import { createFormEventBus } from '@n8n/design-system';
 import type { MfaModalEvents } from '../auth.eventBus';
 import { promptMfaCodeBus } from '../auth.eventBus';
 import type { BaseTextKey } from '@n8n/i18n';

@@ -62,9 +62,10 @@ describe('execute-workflow MCP tool', () => {
 			expect(tool.name).toBe('execute_workflow');
 			expect(tool.config).toBeDefined();
 			expect(typeof tool.config.description).toBe('string');
-			expect(tool.config.description).toBe(
-				'Execute a workflow by ID. Returns the execution ID immediately without waiting for completion. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
+			expect(tool.config.description).toContain(
+				'Execute a workflow by ID. Returns the execution ID immediately without waiting for completion.',
 			);
+			expect(tool.config.description).toContain("detailLevel 'execution'");
 			expect(tool.config.inputSchema).toBeDefined();
 			expect(tool.config.inputSchema?.executionMode.safeParse(undefined).success).toBe(false);
 			expect(tool.config.outputSchema).toBeDefined();

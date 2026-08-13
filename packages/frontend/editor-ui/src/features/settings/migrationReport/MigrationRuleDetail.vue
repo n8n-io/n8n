@@ -20,7 +20,7 @@ import {
 	N8nTag,
 	N8nText,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -372,7 +372,6 @@ const sortedWorkflows = computed(() => {
 				<N8nButton
 					v-else
 					size="small"
-					type="secondary"
 					:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
 					data-test-id="migrate-workflow-button"
 					@click.stop="openMigrateModal(item)"
