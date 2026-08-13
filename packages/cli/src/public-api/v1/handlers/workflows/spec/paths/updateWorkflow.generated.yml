@@ -142,17 +142,6 @@ requestBody:
           parentFolderId:
             type: string
             nullable: true
-          id: {}
-          active: {}
-          createdAt: {}
-          updatedAt: {}
-          isArchived: {}
-          versionId: {}
-          triggerCount: {}
-          meta: {}
-          tags: {}
-          shared: {}
-          activeVersion: {}
         required:
           - name
           - nodes
