@@ -122,13 +122,10 @@ export type SelectItemSlots = {
 	['item-trailing']?: SelectItemSlotProps;
 };
 
-export type SelectSlots<M extends boolean = false> = {
+export type SelectSlots<M extends boolean = false> = SelectItemSlots & {
 	default(props: { modelValue?: SelectModelValue<M>; open: boolean }): unknown;
 	item: (props: { item: SelectOptionBase }) => unknown;
 	label: (props: { item: SelectLabelItem }) => unknown;
-	['item-leading']: SelectItemSlotProps;
-	['item-label']: (props: { item: SelectOptionBase }) => unknown;
-	['item-trailing']: SelectItemSlotProps;
 	header?: () => unknown;
 	footer?: () => unknown;
 	empty?: () => unknown;
