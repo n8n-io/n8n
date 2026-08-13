@@ -10,6 +10,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,7 +21,6 @@ import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createProxyLanguageModel } from '@/utils/ai-proxy-language-model';
@@ -91,7 +91,7 @@ export class AgentsBuilderSettingsService {
 		private readonly logger: Logger,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly aiService: AiService,
-		private readonly instanceAiSettingsService: InstanceAiSettingsService,
+		private readonly globalConfig: GlobalConfig,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly outboundHttp: OutboundHttp,
@@ -164,7 +164,9 @@ export class AgentsBuilderSettingsService {
 
 		if (settings.mode === 'custom') {
 			const fromCredential = await this.tryResolveCustomCredential(settings);
-			if (fromCredential) return { config: fromCredential, isProxied: false };
+			if (fromCredential) {
+				return { config: fromCredential, isProxied: false };
+			}
 			this.logger.warn(
 				'Agent builder custom credential could not be resolved; falling back to default',
 				{ credentialId: settings.credentialId },
@@ -228,10 +230,9 @@ export class AgentsBuilderSettingsService {
 	private async resolveProxyModel(user: User): Promise<ResolvedBuilderModelConfig> {
 		const client = await this.aiService.getClient();
 		const proxyBaseUrl = client.getApiProxyBaseUrl().replace(/\/$/, '');
-		const configuredModelId = this.instanceAiSettingsService.getConfiguredModelId();
-		const modelId = isMoonshotaiKimiK3ModelId(configuredModelId)
-			? configuredModelId
-			: AGENT_BUILDER_DEFAULT_MODEL;
+		const configuredModelId = this.globalConfig.instanceAi.model.trim();
+		const isExactKimi = isMoonshotaiKimiK3ModelId(configuredModelId);
+		const modelId = isExactKimi ? configuredModelId : AGENT_BUILDER_DEFAULT_MODEL;
 
 		const tokenManager = new ProxyTokenManager(async () => {
 			return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });

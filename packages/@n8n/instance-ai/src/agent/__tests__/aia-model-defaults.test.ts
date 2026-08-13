@@ -3,12 +3,14 @@ import { resolveAIAPromptCaching, resolveAIAReasoning } from '../aia-model-defau
 describe('resolveAIAPromptCaching', () => {
 	it('returns a 5m Anthropic TTL for Anthropic models', () => {
 		expect(resolveAIAPromptCaching('anthropic/claude-sonnet-4-6')).toEqual({
+			enabled: true,
 			anthropic: { ttl: '5m' },
 		});
 	});
 
 	it('returns a 5m Anthropic TTL for Vertex Anthropic models', () => {
 		expect(resolveAIAPromptCaching('google-vertex-anthropic/claude-opus-4-8')).toEqual({
+			enabled: true,
 			anthropic: { ttl: '5m' },
 		});
 	});

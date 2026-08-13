@@ -363,7 +363,9 @@ describe('AgentsBuilderService session isolation', () => {
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
 		);
 
-		expect(agentsSdkMocks.promptCachingCalls).toEqual([{ anthropic: { ttl: '5m' } }]);
+		expect(agentsSdkMocks.promptCachingCalls).toEqual([
+			{ enabled: true, anthropic: { ttl: '5m' } },
+		]);
 	});
 
 	it('uses low reasoning and skips Anthropic prompt caching for proxied Kimi', async () => {

@@ -88,9 +88,8 @@ export class InstanceAiModelService {
 		tokenManager: ProxyTokenManager,
 	): Promise<ModelConfig> {
 		const configuredModelId = this.settingsService.getConfiguredModelId();
-		const modelId = isMoonshotaiKimiK3ModelId(configuredModelId)
-			? configuredModelId
-			: this.settingsService.resolveModelName(user);
+		const isExactKimi = isMoonshotaiKimiK3ModelId(configuredModelId);
+		const modelId = isExactKimi ? configuredModelId : this.settingsService.resolveModelName(user);
 		return await createProxyLanguageModel({
 			proxyBaseUrl,
 			modelId,
