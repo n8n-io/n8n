@@ -252,7 +252,7 @@ export class AgentSandboxRuntimeService {
 			labels: buildScopeLabels(projectId, agentId),
 			timeout: this.agentsConfig.sandboxTimeout,
 			createTimeoutSeconds: Math.ceil(this.agentsConfig.sandboxTimeout / 1000),
-			ephemeral: false,
+			ephemeral: this.agentsConfig.sandboxEphemeral,
 			autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
 		};
 
