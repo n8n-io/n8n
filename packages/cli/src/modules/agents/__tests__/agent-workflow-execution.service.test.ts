@@ -322,7 +322,7 @@ describe('AgentWorkflowExecutionService', () => {
 		);
 	});
 
-	it('retains an execution-scoped workspace while the run is suspended', async () => {
+	it('destroys an execution-scoped workspace when suspension is unsupported', async () => {
 		const { service, agentRepository, reconstructionService, agentSandboxRuntimeService } =
 			makeService(true);
 		const runtime = makeRuntime([
@@ -360,7 +360,11 @@ describe('AgentWorkflowExecutionService', () => {
 			'Agent execution suspended waiting for tool approval. Suspend/resume is not supported in workflow execution context.',
 		);
 
-		expect(agentSandboxRuntimeService.destroyWorkspaceSandbox).not.toHaveBeenCalled();
+		expect(agentSandboxRuntimeService.destroyWorkspaceSandbox).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			principalHash,
+		);
 	});
 
 	it('records workflow stream setup failures', async () => {

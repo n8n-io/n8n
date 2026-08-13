@@ -236,8 +236,6 @@ export class AgentWorkflowExecutionService {
 		};
 		recordingParams?: StartExecutionParams;
 		sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
-		onSuspension?: () => void;
-		onTerminal?: () => void;
 	}): Promise<WorkflowAgentRunOutcome> {
 		const {
 			agentInstance,
@@ -250,8 +248,6 @@ export class AgentWorkflowExecutionService {
 			tracing,
 			recordingParams,
 			sandboxScope,
-			onSuspension,
-			onTerminal,
 		} = params;
 
 		let agentExecutionId: string | undefined;
@@ -338,9 +334,7 @@ export class AgentWorkflowExecutionService {
 				for await (const value of streamAgentChunks(resultStream.stream)) {
 					recorder.record(value);
 
-					if (value.type === 'tool-call-suspended') {
-						onSuspension?.();
-					} else if (value.type === 'tool-call') {
+					if (value.type === 'tool-call') {
 						toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
 					} else if (value.type === 'tool-result') {
 						const pending = toolInputs.get(value.toolCallId);
@@ -353,16 +347,8 @@ export class AgentWorkflowExecutionService {
 					} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
 						structuredOutput = value.structuredOutput;
 					}
-					if (
-						value.type === 'error' ||
-						(value.type === 'finish' &&
-							!(recorder.suspended && value.finishReason === 'tool-calls'))
-					) {
-						onTerminal?.();
-					}
 				}
 			} catch (error) {
-				onTerminal?.();
 				const normalizedError = this.normalizeWorkflowStreamError(error, outputSchema);
 				recorder.record({ type: 'error', error: normalizedError });
 				recorder.record({ type: 'finish', finishReason: 'error' });
@@ -471,7 +457,6 @@ export class AgentWorkflowExecutionService {
 		workflowContext?: ExecuteAgentWorkflowContext,
 		sandboxScope?: WorkflowSandboxScope,
 	): Promise<ExecuteAgentData> {
-		let resumablySuspended = false;
 		try {
 			return await this.executeForWorkflowInternal(
 				agentId,
@@ -484,19 +469,9 @@ export class AgentWorkflowExecutionService {
 				outputSchema,
 				workflowContext,
 				sandboxScope,
-				() => {
-					resumablySuspended = true;
-				},
-				() => {
-					resumablySuspended = false;
-				},
 			);
 		} finally {
-			if (
-				sandboxScope?.executionScoped &&
-				!resumablySuspended &&
-				this.agentSandboxRuntimeService.isEnabled()
-			) {
+			if (sandboxScope?.executionScoped && this.agentSandboxRuntimeService.isEnabled()) {
 				try {
 					await this.agentSandboxRuntimeService.destroyWorkspaceSandbox(
 						projectId,
@@ -521,8 +496,6 @@ export class AgentWorkflowExecutionService {
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
 		sandboxScope?: WorkflowSandboxScope,
-		onSuspension?: () => void,
-		onTerminal?: () => void,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -588,8 +561,6 @@ export class AgentWorkflowExecutionService {
 						},
 					}
 				: {}),
-			onSuspension,
-			onTerminal,
 		});
 
 		if (run.agentExecutionId) {
