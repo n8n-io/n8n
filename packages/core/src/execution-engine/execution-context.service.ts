@@ -5,6 +5,7 @@ import {
 	IExecuteData,
 	IExecutionContext,
 	INodeExecutionData,
+	OAuthResourceGrant,
 	PlaintextExecutionContext,
 	toCredentialContext,
 	toExecutionContextEstablishmentHookParameter,
@@ -58,11 +59,20 @@ export class ExecutionContextService {
 		return await this.cipher.encryptV2(payload);
 	}
 
-	async buildTriggerIdentityCredentials(token: string, resource: string): Promise<string> {
+	/**
+	 * Seals the token a trigger authenticated its caller with, plus the grant it was
+	 * accepted under, so the run can re-verify itself for as long as it lasts. See
+	 * {@link OAuthResourceGrant}.
+	 */
+	async buildTriggerIdentityCredentials(
+		token: string,
+		resource: string,
+		grant?: OAuthResourceGrant,
+	): Promise<string> {
 		const payload: ICredentialContext = {
 			version: 1,
 			identity: token,
-			metadata: { source: 'n8n-oauth', resource },
+			metadata: { source: 'n8n-oauth', resource, ...(grant ? { grant } : {}) },
 		};
 		return await this.cipher.encryptV2(payload);
 	}

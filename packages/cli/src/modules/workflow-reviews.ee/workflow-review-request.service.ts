@@ -47,9 +47,13 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toEligibleReviewer } from './workflow-review.mapper';
-
 /** Omitted stays omitted (column untouched); an empty/whitespace string clears to null. */
 function normalizeVersionDescription(description: string | undefined): string | null | undefined {
+	if (description === undefined) return undefined;
+	return description.trim() || null;
+}
+
+function normalizeReviewDescription(description: string | undefined): string | null | undefined {
 	if (description === undefined) return undefined;
 	return description.trim() || null;
 }
@@ -85,8 +89,8 @@ export class WorkflowReviewRequestService {
 
 	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
 		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
-			this.roleService.rolesWithScope('project', ['workflow:publish']),
-			this.roleService.rolesWithScope('global', ['workflow:publish']),
+			this.roleService.rolesWithScope('project', ['workflow:read']),
+			this.roleService.rolesWithScope('global', ['workflow:read']),
 		]);
 
 		const users = await this.userRepository.findEligibleByProjectOrGlobalRoles({
@@ -113,20 +117,28 @@ export class WorkflowReviewRequestService {
 			throw new NotFoundError('Could not find workflow');
 		}
 
-		const [requests, count] = await this.workflowReviewRequestRepository.findRequestsForWorkflow(
-			query.workflowId,
-			{ state: query.state, skip: query.skip, take: query.take },
-		);
+		const [[requests, count], canPublish] = await Promise.all([
+			this.workflowReviewRequestRepository.findRequestsForWorkflow(query.workflowId, {
+				state: query.state,
+				skip: query.skip,
+				take: query.take,
+			}),
+			// the description is only for whoever can act on the review
+			this.workflowFinderService
+				.findWorkflowForUser(query.workflowId, user, ['workflow:publish'])
+				.then((found) => found !== null),
+		]);
 
 		return {
 			count,
-			data: await this.toWorkflowScopedItems(query.workflowId, requests),
+			data: await this.toWorkflowScopedItems(query.workflowId, requests, canPublish),
 		};
 	}
 
 	private async toWorkflowScopedItems(
 		workflowId: string,
 		requests: WorkflowReviewRequestForWorkflowRow[],
+		canPublish: boolean,
 	): Promise<WorkflowReviewRequestForWorkflow[]> {
 		const [decisionActors, publicationStates] = await Promise.all([
 			this.resolveDecisionActors(requests),
@@ -137,6 +149,7 @@ export class WorkflowReviewRequestService {
 			id: request.id,
 			state: request.state,
 			decision: request.decision,
+			description: canPublish ? request.description : null,
 			workflowVersionId: request.workflowVersionId,
 			createdAt: request.createdAt.toISOString(),
 			updatedAt: request.updatedAt.toISOString(),
@@ -346,22 +359,24 @@ export class WorkflowReviewRequestService {
 			throw new NotFoundError('Could not find workflow');
 		}
 
-		const reviewerUserIds = [...new Set(dto.reviewerUserIds ?? [])];
-		if (reviewerUserIds.length > 0) {
-			if (reviewerUserIds.includes(user.id)) {
-				throw new BadRequestError('You cannot assign yourself as a reviewer');
-			}
+		const reviewerUserIds = [...new Set(dto.reviewerUserIds)];
+		if (reviewerUserIds.length === 0) {
+			throw new BadRequestError('You must assign at least one reviewer');
+		}
 
-			const eligibleIds = new Set(
-				(await this.findEligibleReviewers(project.id, user.id)).map((reviewer) => reviewer.id),
+		if (reviewerUserIds.includes(user.id)) {
+			throw new BadRequestError('You cannot assign yourself as a reviewer');
+		}
+
+		const eligibleIds = new Set(
+			(await this.findEligibleReviewers(project.id, user.id)).map((reviewer) => reviewer.id),
+		);
+		// The requester can already enumerate the eligible set, so listing ids leaks nothing
+		const ineligibleIds = reviewerUserIds.filter((id) => !eligibleIds.has(id));
+		if (ineligibleIds.length > 0) {
+			throw new BadRequestError(
+				`These users are not eligible to review this workflow: ${ineligibleIds.join(', ')}`,
 			);
-			// The requester can already enumerate the eligible set, so listing ids leaks nothing
-			const ineligibleIds = reviewerUserIds.filter((id) => !eligibleIds.has(id));
-			if (ineligibleIds.length > 0) {
-				throw new BadRequestError(
-					`These users are not eligible to review this workflow: ${ineligibleIds.join(', ')}`,
-				);
-			}
 		}
 
 		const request = await this.dbLockService.withLockContext(
@@ -410,12 +425,10 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
-				if (reviewerUserIds.length > 0) {
-					await this.workflowReviewRequestReviewerRepository.addReviewers(
-						{ workflowReviewRequestId: created.id, userIds: reviewerUserIds },
-						ctx,
-					);
-				}
+				await this.workflowReviewRequestReviewerRepository.addReviewers(
+					{ workflowReviewRequestId: created.id, userIds: reviewerUserIds },
+					ctx,
+				);
 
 				return created;
 			},
@@ -481,12 +494,18 @@ export class WorkflowReviewRequestService {
 
 		const versionName = dto.workflowVersionName.trim();
 		const versionDescription = normalizeVersionDescription(dto.workflowVersionDescription);
+		const reviewDescription = normalizeReviewDescription(dto.description);
 		const metadataChanged = (current: { name: string | null; description: string | null }) =>
 			versionName !== current.name ||
 			(versionDescription !== undefined && versionDescription !== current.description);
+		const hasReviewDescriptionChanged = (current: WorkflowReviewRequest) =>
+			reviewDescription !== undefined && reviewDescription !== current.description;
 
-		// Nothing new to review: skip the lock, write nothing, broadcast nothing.
-		if (workflowRow.workflowVersionId === dto.workflowVersionId) {
+		// Nothing new to review: skip the lock unless the review request itself must change.
+		if (
+			workflowRow.workflowVersionId === dto.workflowVersionId &&
+			!hasReviewDescriptionChanged(request)
+		) {
 			// A rename or re-description is the one thing that can still be pending
 			// here, and a lone UPDATE is atomic, so apply it rather than silently
 			// dropping it.
@@ -542,7 +561,15 @@ export class WorkflowReviewRequestService {
 						);
 					}
 
-					return { request: current, changed: false };
+					if (reviewDescription === undefined || reviewDescription === current.description) {
+						return { request: current, changed: false };
+					}
+
+					current.description = reviewDescription;
+					current.updatedById = user.id;
+					const saved = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
+
+					return { request: saved, changed: true };
 				}
 
 				await this.workflowReviewRequestWorkflowRepository.updateWorkflowVersion(
@@ -563,6 +590,9 @@ export class WorkflowReviewRequestService {
 				);
 
 				current.decision = 'pending';
+				if (reviewDescription !== undefined) {
+					current.description = reviewDescription;
+				}
 				current.updatedById = user.id;
 				const saved = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
 
@@ -615,7 +645,7 @@ export class WorkflowReviewRequestService {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowRow.workflowId,
 			user,
-			['workflow:publish'],
+			['workflow:read'],
 		);
 		if (!workflow) {
 			throw new NotFoundError('Could not find workflow');
@@ -631,12 +661,24 @@ export class WorkflowReviewRequestService {
 			request.projectId,
 		);
 
-		// Fast path: reject a known author before queueing on the lock.
+		// Fast path: reject a known author / non-assignee before queueing on the lock.
 		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor(
 			{ workflowReviewRequestId, userId: user.id },
 			{},
 		);
-		this.assertDecisionAllowed(isAuthor, hasAdminOverride);
+		const isAssignedReviewer = await this.workflowReviewRequestReviewerRepository.isReviewer(
+			{ workflowReviewRequestId, userId: user.id },
+			{},
+		);
+		this.assertDecisionAllowed(isAuthor, isAssignedReviewer, hasAdminOverride);
+
+		// Resolved pre-lock (role/user lookups must not run inside the lock transaction).
+		// Drives both auto-publish and whether the close is attributed to the reviewer
+		// or left as a system close (`closedById = null`).
+		const requesterPublishability =
+			dto.decision === 'approved'
+				? await this.resolveRequesterPublishability(request.createdById, workflowRow.workflowId)
+				: null;
 
 		const { request: saved, pinnedVersionId } = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
@@ -654,12 +696,17 @@ export class WorkflowReviewRequestService {
 
 				// Re-check authorship here — a sync that won the lock first has
 				// added its syncer to the author set since the pre-lock check, and that
-				// syncer must not be able to decide.
+				// syncer must not be able to decide. Assignment can also change; keep
+				// the same gate under the lock.
 				const isAuthorNow = await this.workflowReviewRequestAuthorRepository.isAuthor(
 					{ workflowReviewRequestId, userId: user.id },
 					ctx,
 				);
-				this.assertDecisionAllowed(isAuthorNow, hasAdminOverride);
+				const isAssignedReviewerNow = await this.workflowReviewRequestReviewerRepository.isReviewer(
+					{ workflowReviewRequestId, userId: user.id },
+					ctx,
+				);
+				this.assertDecisionAllowed(isAuthorNow, isAssignedReviewerNow, hasAdminOverride);
 
 				// Re-read the pinned row too: a concurrent sync that won the lock may
 				// have re-pinned, and the summary must reflect the version being decided on.
@@ -676,7 +723,9 @@ export class WorkflowReviewRequestService {
 				current.updatedById = user.id;
 				if (dto.decision === 'approved') {
 					current.state = 'closed';
-					current.closedById = user.id;
+					// No closer when the requester can't publish — UI treats null as a
+					// system close ("Review got closed by system").
+					current.closedById = requesterPublishability?.canPublish === true ? user.id : null;
 					current.approvedAt = new Date();
 				}
 
@@ -689,18 +738,78 @@ export class WorkflowReviewRequestService {
 
 		const summary = this.toSummary(saved, pinnedVersionId);
 
-		if (dto.decision !== 'approved') {
+		if (dto.decision !== 'approved' || requesterPublishability === null) {
 			return summary;
+		}
+
+		if (!requesterPublishability.canPublish) {
+			this.logger.warn('Cannot publish approved review: requester cannot publish', {
+				workflowId: workflowRow.workflowId,
+				message: requesterPublishability.failureMessage,
+			});
+			return {
+				...summary,
+				autoPublish: {
+					status: 'failed',
+					message: requesterPublishability.failureMessage,
+				},
+			};
 		}
 
 		return {
 			...summary,
-			autoPublish: await this.publishApprovedVersion(user, workflowRow.workflowId, pinnedVersionId),
+			autoPublish: await this.publishApprovedVersion(
+				requesterPublishability.requester,
+				workflowRow.workflowId,
+				pinnedVersionId,
+			),
 		};
 	}
 
+	/**
+	 * Approval publishes as the review requester, not the deciding reviewer —
+	 * so assigned reviewers only need `workflow:read` to decide. Resolved before
+	 * the decision lock so a missing/unpublishable requester can close with
+	 * `closedById = null` instead of attributing the close to the reviewer.
+	 */
+	private async resolveRequesterPublishability(
+		createdById: string | null,
+		workflowId: string,
+	): Promise<
+		{ canPublish: true; requester: User } | { canPublish: false; failureMessage: string }
+	> {
+		if (!createdById) {
+			return {
+				canPublish: false,
+				failureMessage: 'The review requester is no longer available',
+			};
+		}
+
+		const [requester] = await this.userRepository.findManyByIds([createdById], {
+			includeRole: true,
+		});
+		if (!requester || requester.disabled) {
+			return {
+				canPublish: false,
+				failureMessage: 'The review requester is no longer available',
+			};
+		}
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, requester, [
+			'workflow:publish',
+		]);
+		if (!workflow) {
+			return {
+				canPublish: false,
+				failureMessage: 'The review requester no longer has permission to publish this workflow',
+			};
+		}
+
+		return { canPublish: true, requester };
+	}
+
 	private async publishApprovedVersion(
-		user: User,
+		requester: User,
 		workflowId: string,
 		pinnedVersionId: string | null,
 	): Promise<WorkflowReviewAutoPublishOutcome> {
@@ -714,7 +823,7 @@ export class WorkflowReviewRequestService {
 		}
 
 		try {
-			await this.workflowService.activateWorkflow(user, workflowId, {
+			await this.workflowService.activateWorkflow(requester, workflowId, {
 				versionId: pinnedVersionId,
 				source: 'review-approval',
 			});
@@ -730,7 +839,7 @@ export class WorkflowReviewRequestService {
 		// Same broadcast the manual activate endpoint sends, so open editor
 		// sessions pick up the newly published version.
 		this.collaborationService
-			.broadcastWorkflowUpdate(workflowId, user.id)
+			.broadcastWorkflowUpdate(workflowId, requester.id)
 			.catch((error) =>
 				this.logger.warn('Failed to broadcast workflow update', { workflowId, error }),
 			);
@@ -739,15 +848,29 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
-	 * Authors cannot decide their own review request, unless an admin override
-	 * applies. Called before and again inside the decision lock, since the author
-	 * set can change while the caller waits for the lock. The override is resolved
-	 * once, pre-lock: the lock guards the author set, not role membership — like
-	 * every other authorization check in `decide`, roles are evaluated up front.
+	 * Only assigned reviewers (or admins) may decide. Authors / version syncers
+	 * are always blocked unless an admin override applies — being assigned does
+	 * not lift that. Called before and again inside the decision lock, since the
+	 * author set can change while the caller waits for the lock. The override is
+	 * resolved once, pre-lock: the lock guards author/assignee rows, not role
+	 * membership — like every other authorization check in `decide`, roles are
+	 * evaluated up front.
 	 */
-	private assertDecisionAllowed(isAuthor: boolean, hasAdminOverride: boolean): void {
-		if (isAuthor && !hasAdminOverride) {
+	private assertDecisionAllowed(
+		isAuthor: boolean,
+		isAssignedReviewer: boolean,
+		hasAdminOverride: boolean,
+	): void {
+		if (hasAdminOverride) {
+			return;
+		}
+
+		if (isAuthor) {
 			throw new ForbiddenError('Authors cannot decide on their own review request');
+		}
+
+		if (!isAssignedReviewer) {
+			throw new NotFoundError('Could not find workflow');
 		}
 	}
 

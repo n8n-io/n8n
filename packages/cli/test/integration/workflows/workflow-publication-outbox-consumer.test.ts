@@ -121,7 +121,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			connections: {},
 		});
 
-		await outboxRepository.enqueue(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 		expect(record).not.toBeNull();
 
@@ -162,7 +162,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		expect(presentResponse).toBeDefined();
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(missing.id)).toBe(false);
 
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 
 		await consumer.processRecord(record!);
@@ -189,7 +189,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		const responseBefore = activeWorkflowTriggers.get(workflow.id)?.get(trigger.id);
 		expect(responseBefore).toBeDefined();
 
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 
 		await consumer.processRecord(record!);
@@ -223,7 +223,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			connections: {},
 		});
 
-		await outboxRepository.enqueue(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 
 		await consumer.processRecord(record!);
