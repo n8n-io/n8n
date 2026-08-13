@@ -177,9 +177,6 @@ export class WorkflowsPublicController {
 		let { offset, limit } = query;
 
 		if (query.cursor) {
-			// A cursor is untrusted input, so take only the fields it actually carries. Rejecting one
-			// without an `offset` would break callers: before the migration such a cursor was ignored
-			// and the first page returned.
 			try {
 				const decoded = decodeCursor(query.cursor);
 				if ('offset' in decoded) {
