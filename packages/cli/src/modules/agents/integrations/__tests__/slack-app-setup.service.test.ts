@@ -831,7 +831,7 @@ describe('Slack setup services', () => {
 			.mockResolvedValueOnce(
 				slackResponse({
 					ok: true,
-					id: 'U123',
+					user_id: 'U123',
 					access_token: 'xoxp-refreshed',
 					expires_in: 43200,
 					refresh_token: 'xoxe-refreshed',

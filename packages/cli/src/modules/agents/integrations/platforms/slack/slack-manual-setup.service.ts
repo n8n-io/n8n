@@ -75,7 +75,7 @@ export class SlackManualSetupService {
 			token: appConfigurationToken,
 			manifest: JSON.stringify(manifest),
 		});
-		if (response.ok !== true) {
+		if (!response.ok) {
 			throw this.methods.slackError('create the Slack app', response);
 		}
 
@@ -147,7 +147,7 @@ export class SlackManualSetupService {
 				)}`,
 			},
 		);
-		if (tokenResponse.ok !== true) {
+		if (!tokenResponse.ok) {
 			throw this.methods.slackError('finish Slack app installation', tokenResponse);
 		}
 
