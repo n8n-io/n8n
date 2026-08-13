@@ -16,8 +16,6 @@ import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflow
 import type { Agent } from '@/features/agents/agent.types';
 
 import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
-import { EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT } from '@/app/constants/experiments';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
