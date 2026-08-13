@@ -34,17 +34,29 @@ export class McpSettingsController {
 		if (this.instanceSettingsLoaderConfig.mcpManagedByEnv) {
 			throw new ForbiddenError('MCP settings are managed via environment variables');
 		}
-		const enabled = dto.mcpAccessEnabled;
-		await this.mcpSettingsService.setEnabled(enabled);
-		this.eventService.emit('mcp-access-updated', { user: req.user, enabled });
-		try {
-			await this.moduleRegistry.refreshModuleSettings('mcp');
-		} catch (error) {
-			this.logger.warn('Failed to sync MCP settings to module registry', {
-				cause: error instanceof Error ? error.message : String(error),
+
+		if (dto.mcpAccessEnabled !== undefined) {
+			await this.mcpSettingsService.setEnabled(dto.mcpAccessEnabled);
+			this.eventService.emit('mcp-access-updated', {
+				user: req.user,
+				enabled: dto.mcpAccessEnabled,
 			});
 		}
-		return { mcpAccessEnabled: enabled };
+
+		if (dto.autoExposeNewWorkflows !== undefined) {
+			await this.mcpSettingsService.setAutoExposeNewWorkflows(dto.autoExposeNewWorkflows);
+		}
+
+		await this.refreshMcpModuleSettings();
+
+		// Always return both values (read back from the source of truth) so the
+		// client can sync local state without a follow-up module-settings fetch.
+		const [mcpAccessEnabled, autoExposeNewWorkflows] = await Promise.all([
+			this.mcpSettingsService.getEnabled(),
+			this.mcpSettingsService.getAutoExposeNewWorkflows(),
+		]);
+
+		return { mcpAccessEnabled, autoExposeNewWorkflows };
 	}
 
 	@GlobalScope('mcpApiKey:create')
@@ -115,5 +127,15 @@ export class McpSettingsController {
 		void this.mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
 
 		return result;
+	}
+
+	private async refreshMcpModuleSettings() {
+		try {
+			await this.moduleRegistry.refreshModuleSettings('mcp');
+		} catch (error) {
+			this.logger.warn('Failed to sync MCP settings to module registry', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 }
