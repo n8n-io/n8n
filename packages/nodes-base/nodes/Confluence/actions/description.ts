@@ -3,6 +3,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { CONFLUENCE_CREDENTIAL_NAME } from '../transport';
+import * as page from './page';
 
 export const confluenceNodeDescription: INodeTypeDescription = {
 	displayName: 'Confluence',
@@ -10,12 +11,12 @@ export const confluenceNodeDescription: INodeTypeDescription = {
 	icon: 'file:confluence.svg',
 	group: ['transform'],
 	version: 1,
+	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 	description: 'Interact with the Confluence Cloud API',
 	defaults: {
 		name: 'Confluence',
 	},
-	// Hidden shell: operations land per-ticket; unhide + usableAsTool + docs at ENT-311
-	hidden: true,
+	// hidden: true,
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
@@ -24,5 +25,20 @@ export const confluenceNodeDescription: INodeTypeDescription = {
 			required: true,
 		},
 	],
-	properties: [],
+	properties: [
+		{
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{
+					name: 'Page',
+					value: 'page',
+				},
+			],
+			default: 'page',
+		},
+		...page.description,
+	],
 };

@@ -7,9 +7,9 @@ import { Confluence } from '../Confluence.node';
 describe('Confluence Node', () => {
 	const node = new Confluence();
 
-	it('should ship gated: hidden, no properties, not usable as a tool', () => {
-		expect(node.description.hidden).toBe(true);
-		expect(node.description.properties).toEqual([]);
+	it('should stay off the AI-tool surface while the spike is unhidden', () => {
+		expect(node.description.hidden).toBeUndefined();
+		expect(node.description.properties.length).toBeGreaterThan(0);
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
