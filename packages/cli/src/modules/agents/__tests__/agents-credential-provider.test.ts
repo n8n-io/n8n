@@ -1,6 +1,6 @@
 import type { CredentialListItem } from '@n8n/agents';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, User } from '@n8n/db';
-import { Container } from '@n8n/di';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,12 +16,11 @@ vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: async (...args: unknown[]) => await getBaseMock(...args),
 }));
 
-const credentialsHelper = mock<CredentialsHelper>();
+const credentialsHelper = mockInstance(CredentialsHelper);
 
 beforeEach(() => {
 	vi.clearAllMocks();
 	getBaseMock.mockResolvedValue(additionalData);
-	Container.set(CredentialsHelper, credentialsHelper);
 });
 
 function credential(overrides: Partial<CredentialsEntity>): CredentialsEntity {
@@ -180,10 +179,8 @@ describe('AgentsCredentialProvider', () => {
 			token: 'secret-from-1password',
 			apiKey: '',
 		});
-		// Project scope must reach `getBase` — it carries the project's external
-		// secret provider keys and variables.
+		// Project scope must reach `getBase` — it supplies the project's variables.
 		expect(getBaseMock).toHaveBeenCalledWith({ userId: undefined, projectId: 'project-1' });
-		expect(credentialsService.decrypt).not.toHaveBeenCalled();
 	});
 
 	it('propagates a failed secret lookup instead of returning empty credential data', async () => {

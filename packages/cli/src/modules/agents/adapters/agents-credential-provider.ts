@@ -73,17 +73,15 @@ export class AgentsCredentialProvider
 	}
 
 	/**
-	 * Decrypt through `CredentialsHelper.getDecrypted` — the same path node
-	 * execution takes — so credential fields holding expressions are evaluated
-	 * rather than handed to the caller as raw `={{ ... }}` strings. Without
-	 * this, a field backed by an external secret (`{{ $secrets.store.key }}`)
-	 * reaches the MCP client / model provider verbatim and auth fails.
+	 * Decrypt through `CredentialsHelper.getDecrypted` — the path node execution
+	 * takes — so expressions in credential fields are evaluated instead of
+	 * reaching the caller as raw `={{ ... }}` strings. An external-secret-backed
+	 * field would otherwise be sent verbatim and fail auth.
 	 *
-	 * The agents runtime has no workflow or execution, so `additionalData` is
-	 * built from `getBase()` and scoped to this provider's project — that is
-	 * what carries the external secrets proxy and project variables. `internal`
-	 * mode keeps dynamic (per-user resolvable) credentials out of scope; those
-	 * need an execution context that agents don't have.
+	 * Agents have no workflow or execution, so `additionalData` comes from
+	 * `getBase()`, which supplies the secrets proxy and the project's variables.
+	 * `internal` mode keeps dynamic (per-user resolvable) credentials out of
+	 * scope; they need an execution context agents don't have.
 	 */
 	private async decryptWithExpressions(
 		credential: CredentialsEntity,
@@ -155,7 +153,9 @@ export class AgentsCredentialProvider
 		const projectCredentials = await this.credentialsService.findAllCredentialIdsForProject(
 			this.projectId,
 		);
-		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds(true);
+		// No `includeData` — only id/name/type are read here, and `getDecrypted`
+		// re-reads the row it decrypts.
+		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds();
 		const allCredsSet = new Set();
 		const allCreds: CredentialsEntity[] = [];
 
