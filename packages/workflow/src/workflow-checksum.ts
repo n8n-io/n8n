@@ -40,6 +40,25 @@ export const WORKFLOW_CHECKSUM_FIELDS = [
 ] as const satisfies ReadonlyArray<keyof WorkflowSnapshot>;
 
 /**
+ * `meta` fields that are derived bookkeeping written server-side (not user
+ * edits) and therefore excluded from conflict detection. Hashing them would
+ * invalidate every open editor's expected checksum the moment they are
+ * (re)generated, tripping the "workflow was changed by someone else" modal.
+ */
+const CHECKSUM_EXEMPT_META_FIELDS: ReadonlySet<string> = new Set(['aiOverview']);
+
+/**
+ * Strip checksum-exempt fields from `meta`. A meta object left empty by the
+ * strip normalizes to `undefined` so it hashes identically to an absent meta.
+ */
+function normalizeMetaForChecksum(meta: unknown): unknown {
+	if (!isObject(meta)) return meta;
+	const entries = Object.entries(meta).filter(([key]) => !CHECKSUM_EXEMPT_META_FIELDS.has(key));
+	if (entries.length === 0) return undefined;
+	return Object.fromEntries(entries);
+}
+
+/**
  * Recursively sorts object keys alphabetically for consistent serialization.
  * Arrays keep their order; their elements are normalized recursively.
  */
@@ -75,7 +94,7 @@ export async function calculateWorkflowChecksum(workflow: WorkflowSnapshot): Pro
 	const checksumPayload: Record<string, unknown> = {};
 
 	for (const field of WORKFLOW_CHECKSUM_FIELDS) {
-		const value = workflow[field];
+		const value = field === 'meta' ? normalizeMetaForChecksum(workflow[field]) : workflow[field];
 		if (value !== undefined) {
 			checksumPayload[field] = value;
 		}

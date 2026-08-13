@@ -423,6 +423,7 @@ export type {
 	TaskItem,
 	TaskList,
 	WorkflowOverview,
+	InstanceAiWorkflowOverviewResponse,
 	InstanceAiWorkflowOverviewUpdateEvent,
 	InstanceAiRunStartEvent,
 	InstanceAiRunFinishEvent,

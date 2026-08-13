@@ -3791,11 +3791,24 @@ export interface IWorkflowSettings {
 	customTelemetryTags?: ICustomTelemetryTag[];
 }
 
+/** AI-generated three-pane workflow overview stored in workflow meta (PoC). */
+export interface WorkflowAiOverview {
+	/** What sets the workflow off, and when/how often. */
+	triggers: string;
+	/** One plain sentence saying what happens in between. */
+	steps: string;
+	/** What the user ends up with, described concretely. */
+	results: string;
+	/** ISO timestamp of the last on-demand generation. */
+	updatedAt: string;
+}
+
 export interface WorkflowFEMeta {
 	onboardingId?: string;
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	aiOverview?: WorkflowAiOverview;
 }
 
 export interface WorkflowTestData {

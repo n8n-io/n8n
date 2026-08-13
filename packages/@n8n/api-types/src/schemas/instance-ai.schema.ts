@@ -534,6 +534,15 @@ export const workflowOverviewSchema = z.object({
 
 export type WorkflowOverview = z.infer<typeof workflowOverviewSchema>;
 
+/** REST response for on-demand per-workflow overviews (stored in workflow meta). */
+export interface InstanceAiWorkflowOverviewResponse {
+	overview: WorkflowOverview | null;
+	/** ISO timestamp of the stored overview's last generation, when one exists. */
+	updatedAt: string | null;
+	/** PoC diagnostics: why generation yielded no overview (generate endpoint only). */
+	failureReason?: string;
+}
+
 export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
 
 // ── Gateway resource confirmation (instance permission mode) ─────────────────

@@ -103,7 +103,16 @@ export class WorkflowOverviewSidecar {
 			const bundleHash = JSON.stringify(bundle);
 			if (bundleHash !== state.lastBundleHash) {
 				state.lastBundleHash = bundleHash;
-				const overview = await generate(args.modelId, bundle);
+				const { threadId } = args;
+				const overview = await generate(args.modelId, bundle, {
+					onFailure: (reason, detail) => {
+						this.deps.logger.debug('Workflow overview generation yielded no result', {
+							threadId,
+							reason,
+							...(detail ? { detail } : {}),
+						});
+					},
+				});
 
 				const changed =
 					overview !== null &&

@@ -39,6 +39,7 @@ import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
+import { useOnDemandWorkflowOverview } from './useOnDemandWorkflowOverview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	clearPendingAgentAttachment,
@@ -262,6 +263,15 @@ const preview = useCanvasPreview({
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+});
+
+// On-demand stored overviews for existing workflows, layered under the
+// thread-live sidecar overview (see useOnDemandWorkflowOverview).
+const onDemandOverview = useOnDemandWorkflowOverview({
+	thread,
+	workflowTabIds: () =>
+		preview.allArtifactTabs.value.filter((tab) => tab.type === 'workflow').map((tab) => tab.id),
+	activeWorkflowId: () => preview.activeWorkflowId.value,
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
@@ -1260,13 +1270,12 @@ async function dismissComposerContextChip() {
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 							/>
 							<InstanceAiWorkflowOverviewPreview
-								v-if="
-									preview.isPreviewVisible.value &&
-									preview.isOverviewTabActive.value &&
-									thread.currentWorkflowOverview
-								"
+								v-if="preview.isPreviewVisible.value && preview.isOverviewTabActive.value"
 								:class="$style.previewSlot"
-								:overview="thread.currentWorkflowOverview"
+								:overview="onDemandOverview.displayedOverview.value"
+								:can-generate="onDemandOverview.canGenerate.value"
+								:is-generating="onDemandOverview.isGenerating.value"
+								@generate="onDemandOverview.generate"
 							/>
 						</div>
 					</TabsRoot>

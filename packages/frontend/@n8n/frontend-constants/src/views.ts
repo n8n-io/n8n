@@ -54,6 +54,7 @@ export enum VIEWS {
 	EVALUATION_EDIT = 'EvaluationEdit',
 	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
 	EVALUATION_COLLECTION_COMPARE = 'EvaluationCollectionCompare',
+	WORKFLOW_OVERVIEW = 'WorkflowOverview',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	OPENTELEMETRY_SETTINGS = 'SettingsOpenTelemetryView',

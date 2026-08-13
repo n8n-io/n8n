@@ -11,6 +11,7 @@ export const enum MAIN_HEADER_TABS {
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
 	EVALUATION = 'evaluation',
+	WORKFLOW_OVERVIEW = 'workflow-overview',
 }
 
 /** Query parameter value used to deep-link to the publish timeline tab in workflow history */

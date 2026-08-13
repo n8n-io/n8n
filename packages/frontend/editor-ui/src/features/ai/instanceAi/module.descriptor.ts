@@ -19,6 +19,7 @@ import { useInstanceAiAvailable } from './composables/useInstanceAiAvailability'
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
+const WorkflowOverviewView = async () => await import('./views/WorkflowOverviewView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
@@ -33,6 +34,18 @@ export const InstanceAiModule: FrontendModuleDescription = {
 	description: 'Chat with your n8n instance.',
 	icon: 'sparkles',
 	routes: [
+		{
+			path: '/workflow/:workflowId/overview',
+			name: VIEWS.WORKFLOW_OVERVIEW,
+			component: WorkflowOverviewView,
+			props: true,
+			beforeEnter: () => (useInstanceAiAvailable().value ? true : { name: VIEWS.HOMEPAGE }),
+			meta: {
+				layout: 'workflow',
+				keepWorkflowAlive: true,
+				middleware: ['authenticated'],
+			},
+		},
 		{
 			path: '/assistant',
 			component: InstanceAiView,

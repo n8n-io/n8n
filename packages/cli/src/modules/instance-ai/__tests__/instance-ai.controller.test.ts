@@ -90,6 +90,7 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
 import type { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
+import type { InstanceAiWorkflowOverviewService } from '../instance-ai-workflow-overview.service';
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';
@@ -155,6 +156,7 @@ describe('InstanceAiController', () => {
 		projectService,
 		instanceAiErrorReporter,
 		publisher,
+		mock<InstanceAiWorkflowOverviewService>(),
 		globalConfig,
 	);
 
@@ -1930,6 +1932,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		mock<ProjectService>(),
 		mock<InstanceAiErrorReporterService>(),
 		mock<Publisher>(),
+		mock<InstanceAiWorkflowOverviewService>(),
 		globalConfig,
 	);
 

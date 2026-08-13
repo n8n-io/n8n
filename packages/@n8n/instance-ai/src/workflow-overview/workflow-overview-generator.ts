@@ -12,6 +12,12 @@ import type { ModelConfig } from '../types';
 
 /** Everything the generator may ground the overview in, best evidence last. */
 export interface WorkflowOverviewBundle {
+	/**
+	 * What the overview describes: a workflow being planned in a conversation
+	 * ('plan', default — plan tense) or an existing saved workflow described
+	 * from its structure ('workflow' — present tense, conversation optional).
+	 */
+	subject?: 'plan' | 'workflow';
 	/** Recent conversation, oldest first. */
 	conversation: Array<{ role: 'user' | 'assistant'; text: string }>;
 	/** The user message that triggered this refresh (not yet in `conversation`). */
@@ -55,7 +61,14 @@ const generationSchema = z.object({
 		),
 });
 
-const INSTRUCTIONS = [
+const SHARED_RULES = [
+	'- steps: exactly one plain sentence; never mention n8n node names or technical jargon.',
+	'- results: concrete user-visible outcomes, never vague ("a notification" is too vague; "a Slack message in #support with the ticket summary" is right).',
+	"- Stability: given <previous-overview>, keep each pane's wording UNCHANGED unless newer evidence contradicts or fills it.",
+	'- Never answer the user or produce anything except the JSON object.',
+];
+
+const PLAN_INSTRUCTIONS = [
 	'You maintain a compact three-pane "Workflow overview" panel shown beside an AI workflow-builder chat.',
 	'The panel describes the SINGLE n8n workflow currently being planned or edited in the conversation.',
 	'It reads as a plan, not as a description of something that already exists.',
@@ -69,12 +82,21 @@ const INSTRUCTIONS = [
 	'Rules:',
 	'- One short sentence per pane, written in the language the user writes in.',
 	'- Plan tense ("Will post a summary to Slack", "Runs daily at 8:00").',
-	'- steps: exactly one plain sentence; never mention n8n node names or technical jargon.',
-	'- results: concrete user-visible outcomes, never vague ("a notification" is too vague; "a Slack message in #support with the ticket summary" is right).',
 	'- Use "" for a pane the conversation has not determined yet. Never invent details.',
-	"- Stability: given <previous-overview>, keep each pane's wording UNCHANGED unless newer evidence contradicts or fills it.",
+	...SHARED_RULES,
 	'- skip=true when the conversation is not about building/editing one workflow, when it coordinates multiple workflows, or when no pane would change. With skip=true set every pane to "".',
-	'- Never answer the user or produce anything except the JSON object.',
+].join('\n');
+
+const WORKFLOW_INSTRUCTIONS = [
+	'You produce a compact three-pane "Workflow overview" (Triggers / Steps / Results) for an EXISTING saved n8n workflow.',
+	"The <built-workflow> section contains the workflow's actual structure — it is the source of truth; any conversation context is secondary.",
+	'',
+	'Rules:',
+	"- One short sentence per pane, in the same language as the workflow's node names and text where evident, otherwise English.",
+	'- Present tense, describing what the workflow does ("Runs every Monday at 9:00", "Posts a summary to Slack").',
+	'- Use "" for a pane the workflow structure genuinely does not determine. Never invent details.',
+	...SHARED_RULES,
+	'- skip=true only when <built-workflow> is missing or too incomplete to describe. With skip=true set every pane to "".',
 ].join('\n');
 
 const MAX_CONVERSATION_MESSAGES = 12;
@@ -89,11 +111,13 @@ function clip(text: string, max: number): string {
 function renderBundle(bundle: WorkflowOverviewBundle): string {
 	const sections: string[] = [];
 
-	const conversation = bundle.conversation
-		.slice(-MAX_CONVERSATION_MESSAGES)
-		.map((m) => `${m.role}: ${clip(m.text, MAX_MESSAGE_CHARS)}`)
-		.join('\n');
-	sections.push(`<conversation>\n${clip(conversation, MAX_SECTION_CHARS)}\n</conversation>`);
+	if (bundle.conversation.length > 0) {
+		const conversation = bundle.conversation
+			.slice(-MAX_CONVERSATION_MESSAGES)
+			.map((m) => `${m.role}: ${clip(m.text, MAX_MESSAGE_CHARS)}`)
+			.join('\n');
+		sections.push(`<conversation>\n${clip(conversation, MAX_SECTION_CHARS)}\n</conversation>`);
+	}
 
 	if (bundle.latestUserMessage) {
 		sections.push(
@@ -130,13 +154,23 @@ function renderBundle(bundle: WorkflowOverviewBundle): string {
 	return sections.join('\n\n');
 }
 
+export interface GenerateWorkflowOverviewOptions {
+	/** Invoked when generation yields no overview — reason + optional detail for diagnostics. */
+	onFailure?: (
+		reason: 'generation_error' | 'invalid_output' | 'model_skipped' | 'empty_output',
+		detail?: string,
+	) => void;
+}
+
 /**
  * Generate the three-pane overview from the bundle. Returns null when the
- * model signals skip, produces an all-empty overview, or the call fails.
+ * model signals skip, produces an all-empty overview, or the call fails —
+ * the failure reason is reported through `options.onFailure`.
  */
 export async function generateWorkflowOverview(
 	modelId: ModelConfig,
 	bundle: WorkflowOverviewBundle,
+	options?: GenerateWorkflowOverviewOptions,
 ): Promise<WorkflowOverview | null> {
 	try {
 		const { generateObject } = await import('ai');
@@ -144,21 +178,35 @@ export async function generateWorkflowOverview(
 		const result = await generateObject({
 			model,
 			schema: generationSchema,
-			instructions: INSTRUCTIONS,
+			instructions: bundle.subject === 'workflow' ? WORKFLOW_INSTRUCTIONS : PLAN_INSTRUCTIONS,
 			messages: [{ role: 'user', content: renderBundle(bundle) }],
 		});
 
 		const parsed = generationSchema.safeParse(result.object);
-		if (!parsed.success || parsed.data.skip) return null;
+		if (!parsed.success) {
+			options?.onFailure?.('invalid_output', parsed.error.message);
+			return null;
+		}
+		if (parsed.data.skip) {
+			options?.onFailure?.('model_skipped');
+			return null;
+		}
 
 		const overview: WorkflowOverview = {
 			triggers: parsed.data.triggers.trim(),
 			steps: parsed.data.steps.trim(),
 			results: parsed.data.results.trim(),
 		};
-		if (!overview.triggers && !overview.steps && !overview.results) return null;
+		if (!overview.triggers && !overview.steps && !overview.results) {
+			options?.onFailure?.('empty_output');
+			return null;
+		}
 		return overview;
-	} catch {
+	} catch (error) {
+		options?.onFailure?.(
+			'generation_error',
+			error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+		);
 		return null;
 	}
 }

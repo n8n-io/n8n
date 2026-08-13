@@ -27,6 +27,7 @@ import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as ToolsMod from './tools';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
+import type * as SummarizeWorkflowMod from './tools/workflows/summarize-workflow';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
@@ -35,6 +36,7 @@ import type * as EvalAgentsMod from './utils/eval-agents';
 import type * as StreamHelpersMod from './utils/stream-helpers';
 import type * as WorkflowLoopMod from './workflow-loop';
 import type * as WorkflowLoopRuntimeMod from './workflow-loop/runtime';
+import type * as WorkflowOverviewGeneratorMod from './workflow-overview/workflow-overview-generator';
 import type * as WorkflowOverviewSidecarMod from './workflow-overview/workflow-overview-sidecar';
 import type * as BuilderTemplatesServiceMod from './workspace/builder-templates-service';
 import type * as CreateWorkspaceMod from './workspace/create-workspace';
@@ -116,6 +118,13 @@ const loadMcpClientManager = lazyModule(
 const loadWorkflowOverviewSidecar = lazyModule(
 	() =>
 		require('./workflow-overview/workflow-overview-sidecar') as typeof WorkflowOverviewSidecarMod,
+);
+const loadWorkflowOverviewGenerator = lazyModule(
+	() =>
+		require('./workflow-overview/workflow-overview-generator') as typeof WorkflowOverviewGeneratorMod,
+);
+const loadSummarizeWorkflow = lazyModule(
+	() => require('./tools/workflows/summarize-workflow') as typeof SummarizeWorkflowMod,
 );
 const loadStreamHelpers = lazyModule(
 	() => require('./utils/stream-helpers') as typeof StreamHelpersMod,
@@ -372,6 +381,10 @@ export const WorkflowOverviewSidecar: typeof WorkflowOverviewSidecarMod.Workflow
 	lazyClass(() => loadWorkflowOverviewSidecar().WorkflowOverviewSidecar);
 export type { WorkflowOverviewRefreshArgs } from './workflow-overview/workflow-overview-sidecar';
 export type { WorkflowOverviewBundle } from './workflow-overview/workflow-overview-generator';
+export const generateWorkflowOverview: typeof WorkflowOverviewGeneratorMod.generateWorkflowOverview =
+	lazyFunction(() => loadWorkflowOverviewGenerator().generateWorkflowOverview);
+export const summarizeWorkflowStructure: typeof SummarizeWorkflowMod.summarizeWorkflowStructure =
+	lazyFunction(() => loadSummarizeWorkflow().summarizeWorkflowStructure);
 export const mapAgentChunkToEvent: typeof MapChunkMod.mapAgentChunkToEvent = lazyFunction(
 	() => loadMapChunk().mapAgentChunkToEvent,
 );

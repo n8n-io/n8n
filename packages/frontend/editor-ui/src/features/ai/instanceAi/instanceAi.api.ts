@@ -12,6 +12,7 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
+	InstanceAiWorkflowOverviewResponse,
 } from '@n8n/api-types';
 
 export interface InstanceAiThreadLaunchInput {
@@ -123,6 +124,30 @@ export async function postConfirmation(
  * Returns -1 quota when the proxy is disabled, and also for the activation-capped trial cohort,
  * whose balance is never shown — for them `quotaLocked` is the only usage signal.
  */
+/** GET /instance-ai/workflow-overview/:workflowId -> stored overview (nulls when none). */
+export async function getWorkflowOverviewApi(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<InstanceAiWorkflowOverviewResponse> {
+	return await makeRestApiRequest<InstanceAiWorkflowOverviewResponse>(
+		context,
+		'GET',
+		`/instance-ai/workflow-overview/${workflowId}`,
+	);
+}
+
+/** POST /instance-ai/workflow-overview/:workflowId/generate -> generate + store + return. */
+export async function generateWorkflowOverviewApi(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<InstanceAiWorkflowOverviewResponse> {
+	return await makeRestApiRequest<InstanceAiWorkflowOverviewResponse>(
+		context,
+		'POST',
+		`/instance-ai/workflow-overview/${workflowId}/generate`,
+	);
+}
+
 export async function getInstanceAiCredits(context: IRestApiContext): Promise<InstanceAiCredits> {
 	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/instance-ai/credits');
 }

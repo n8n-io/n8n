@@ -69,6 +69,7 @@ import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
+import { InstanceAiWorkflowOverviewService } from './instance-ai-workflow-overview.service';
 import { InstanceAiService } from './instance-ai.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -145,6 +146,7 @@ export class InstanceAiController {
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
+		private readonly workflowOverviewService: InstanceAiWorkflowOverviewService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -673,6 +675,34 @@ export class InstanceAiController {
 	async getCredits(req: AuthenticatedRequest) {
 		this.requireInstanceAiEnabled();
 		return await this.instanceAiService.getCredits(req.user);
+	}
+
+	// ── On-demand workflow overviews (stored in workflow meta) ──────────────
+
+	/** Stored three-pane overview for a workflow, or nulls when none exists.
+	 *  Per-workflow access is enforced inside the service (workflow:read). */
+	@Get('/workflow-overview/:workflowId')
+	@GlobalScope('instanceAi:message')
+	async getWorkflowOverview(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		return await this.workflowOverviewService.getStoredOverview(req.user, workflowId);
+	}
+
+	/** Generate the overview from the workflow's current structure and store it.
+	 *  Per-workflow access is enforced inside the service (workflow:update). */
+	@Post('/workflow-overview/:workflowId/generate')
+	@GlobalScope('instanceAi:message')
+	async generateWorkflowOverview(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		return await this.workflowOverviewService.generateAndStoreOverview(req.user, workflowId);
 	}
 
 	// ── Admin settings (owner/admin only) ──────────────────────────────────

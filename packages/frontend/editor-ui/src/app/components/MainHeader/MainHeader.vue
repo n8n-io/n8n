@@ -14,6 +14,7 @@ import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 
@@ -49,11 +50,24 @@ const executionRoutes: VIEWS[] = [
 	VIEWS.WORKFLOW_EXECUTIONS,
 	VIEWS.EXECUTION_PREVIEW,
 ];
+
+const workflowOverviewRoutes: VIEWS[] = [VIEWS.WORKFLOW_OVERVIEW];
+
+const instanceAiAvailable = useInstanceAiAvailable();
 const tabBarItems = computed(() => {
 	return [
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
 		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
 		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
+		// AI-generated workflow overview — only when the Instance AI module is available.
+		...(instanceAiAvailable.value
+			? [
+					{
+						value: MAIN_HEADER_TABS.WORKFLOW_OVERVIEW,
+						label: locale.baseText('generic.overview'),
+					},
+				]
+			: []),
 	];
 });
 
@@ -99,7 +113,9 @@ onMounted(async () => {
 function isViewRoute(name: unknown): name is VIEWS {
 	return (
 		typeof name === 'string' &&
-		[evaluationRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
+		[evaluationRoutes, workflowRoutes, executionRoutes, workflowOverviewRoutes]
+			.flat()
+			.includes(name as VIEWS)
 	);
 }
 
@@ -109,6 +125,7 @@ function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 		{ routes: evaluationRoutes, tab: MAIN_HEADER_TABS.EVALUATION },
 		{ routes: executionRoutes, tab: MAIN_HEADER_TABS.EXECUTIONS },
 		{ routes: workflowRoutes, tab: MAIN_HEADER_TABS.WORKFLOW },
+		{ routes: workflowOverviewRoutes, tab: MAIN_HEADER_TABS.WORKFLOW_OVERVIEW },
 	];
 
 	// Update the active tab based on the current route
@@ -147,6 +164,10 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 		case MAIN_HEADER_TABS.EVALUATION:
 			void navigateToEvaluationsView(openInNewTab);
+			break;
+
+		case MAIN_HEADER_TABS.WORKFLOW_OVERVIEW:
+			void navigateToWorkflowOverviewView(openInNewTab);
 			break;
 
 		default:
@@ -225,6 +246,24 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 		dirtyState.value = uiStore.stateIsDirty;
 		workflowToReturnTo.value = workflowId.value;
 		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
+		await router.push(routeToNavigateTo);
+	}
+}
+
+async function navigateToWorkflowOverviewView(openInNewTab: boolean) {
+	const routeToNavigateTo: RouteLocationRaw = {
+		name: VIEWS.WORKFLOW_OVERVIEW,
+		params: { workflowId: workflowId.value },
+		query: route.query,
+	};
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		dirtyState.value = uiStore.stateIsDirty;
+		workflowToReturnTo.value = workflowId.value;
+		activeHeaderTab.value = MAIN_HEADER_TABS.WORKFLOW_OVERVIEW;
 		await router.push(routeToNavigateTo);
 	}
 }

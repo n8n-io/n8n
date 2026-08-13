@@ -11,6 +11,7 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import type { WorkflowFEMeta } from 'n8n-workflow';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -308,6 +309,24 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.update()
 			.set({
 				triggerCount,
+				updatedAt: () => '"updatedAt"',
+			})
+			.where('id = :id', { id })
+			.execute();
+	}
+
+	/**
+	 * Persist derived bookkeeping in workflow `meta` (e.g. the AI-generated
+	 * overview) without counting as a user edit: `updatedAt` is pinned to its
+	 * current value, so the editor's save-conflict check ("Workflow was changed
+	 * by someone else") does not trip on the user's next manual save.
+	 */
+	async updateWorkflowMetaSilently(id: string, meta: WorkflowFEMeta): Promise<UpdateResult> {
+		const qb = this.createQueryBuilder('workflow');
+		return await qb
+			.update()
+			.set({
+				meta,
 				updatedAt: () => '"updatedAt"',
 			})
 			.where('id = :id', { id })

@@ -65,9 +65,12 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			}
 		}
 
-		// Synthetic tab: the thread's three-pane workflow overview, next to the
-		// workflow tab so it stays reachable while the preview covers the sidebar.
-		if (thread.currentWorkflowOverview) {
+		// Synthetic tab: the three-pane workflow overview, next to the workflow
+		// tab so it stays reachable while the preview covers the sidebar. Shown
+		// when a thread-live overview exists, or when a workflow tab is present
+		// (stored overviews can be viewed/generated on demand for it).
+		const hasWorkflowTab = result.some((tab) => tab.type === 'workflow');
+		if (thread.currentWorkflowOverview || hasWorkflowTab) {
 			result.push({
 				id: WORKFLOW_OVERVIEW_TAB_ID,
 				type: 'overview',
