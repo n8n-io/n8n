@@ -135,8 +135,6 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.unarchive.yml'
   /workflows/{id}/transfer:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
-  /workflows/{id}/tags:
-    $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /workflows/{id}/test-runs:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
   /workflows/{id}/test-runs/{runId}:
