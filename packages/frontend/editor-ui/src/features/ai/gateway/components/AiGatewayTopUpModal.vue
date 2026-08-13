@@ -151,18 +151,12 @@ const title = computed(() =>
 );
 
 const description = computed(() => {
-	switch (variant.value) {
-		case 'ownerTrial':
-			return i18n.baseText('aiGateway.topUp.modal.description.trial');
-		case 'memberTrial':
-			return i18n.baseText('aiGateway.topUp.modal.description.member.trial');
-		case 'member':
-			return i18n.baseText('aiGateway.topUp.modal.description.member');
-		default: {
-			const _exhaustive: never = variant.value;
-			return _exhaustive;
-		}
-	}
+	const keys = {
+		ownerTrial: 'aiGateway.topUp.modal.description.trial',
+		memberTrial: 'aiGateway.topUp.modal.description.member.trial',
+		member: 'aiGateway.topUp.modal.description.member',
+	} as const satisfies Record<TopUpVariant, BaseTextKey>;
+	return i18n.baseText(keys[variant.value]);
 });
 
 const actionLabel = computed(() =>

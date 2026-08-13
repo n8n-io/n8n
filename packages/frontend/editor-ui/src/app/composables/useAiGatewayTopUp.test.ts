@@ -82,6 +82,44 @@ describe('useAiGatewayTopUp', () => {
 		expect(reservedTab.location.href).toBe(ADMIN_PANEL_LINK);
 	});
 
+	it('navigates the current tab when the popup is blocked', async () => {
+		const { cloudPlanStore, uiStore } = mockPaidCloudOwner();
+		windowOpen.mockReturnValue(null);
+		global.window = Object.create(window);
+		Object.defineProperty(window, 'location', {
+			value: { href: '' },
+			writable: true,
+		});
+		const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+		const { openTopUp } = useAiGatewayTopUp();
+		openTopUp({ source: 'settings_page' });
+
+		await vi.waitFor(() => {
+			expect(hrefSpy).toHaveBeenCalledWith(ADMIN_PANEL_LINK);
+		});
+		expect(uiStore.openModal).not.toHaveBeenCalled();
+		expect(cloudPlanStore.generateCloudDashboardAutoLoginLink).toHaveBeenCalled();
+		hrefSpy.mockRestore();
+	});
+
+	it('reports the error without closing a tab when the popup is blocked', async () => {
+		const { cloudPlanStore, uiStore } = mockPaidCloudOwner();
+		windowOpen.mockReturnValue(null);
+		cloudPlanStore.generateCloudDashboardAutoLoginLink = vi
+			.fn()
+			.mockRejectedValue(new Error('no auto-login code'));
+
+		const { openTopUp } = useAiGatewayTopUp();
+		openTopUp({ source: 'settings_page' });
+
+		await vi.waitFor(() => {
+			expect(showErrorMock).toHaveBeenCalled();
+		});
+		expect(reservedTab.close).not.toHaveBeenCalled();
+		expect(uiStore.openModal).not.toHaveBeenCalled();
+	});
+
 	it('opens the modal for paid owners on non-cloud instances', () => {
 		const { cloudPlanStore, settingsStore, uiStore } = mockPaidCloudOwner();
 		settingsStore.isCloudDeployment = false;

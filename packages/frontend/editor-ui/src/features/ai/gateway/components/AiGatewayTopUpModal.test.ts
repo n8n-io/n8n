@@ -41,6 +41,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 					<p>{{ description }}</p>
 					<slot />
 					<button type="button" @click="$emit('cancel'); $emit('update:open', false)">{{ cancelLabel }}</button>
+					<button type="button" data-test-id="ai-gateway-topup-keep-open" @click="$emit('update:open', true)">keep</button>
 					<button type="button" @click="$emit('action')">{{ actionLabel }}</button>
 				</div>
 			`,
@@ -186,6 +187,15 @@ describe('AiGatewayTopUpModal.vue', () => {
 
 		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 		expect(uiStore.closeModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
+	});
+
+	it('ignores update:open true so the dialog stays open', async () => {
+		const { uiStore } = renderModal({ isInstanceOwner: false, userIsTrialing: false });
+
+		await userEvent.click(screen.getByTestId('ai-gateway-topup-keep-open'));
+
+		expect(screen.getByRole('dialog')).toBeInTheDocument();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
 	});
 
 	it('shows Upgrade copy and covered services for owners during trial', async () => {
