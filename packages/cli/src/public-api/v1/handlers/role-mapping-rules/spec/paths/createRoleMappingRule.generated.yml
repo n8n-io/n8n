@@ -1,0 +1,86 @@
+operationId: createRoleMappingRule
+tags:
+  - RoleMappingRule
+summary: Create a role-mapping rule
+description: Creates a rule that maps an identity-provider claim expression to a role. Set `type` to `instance` for a rule granting a global role, or `project` for a rule granting a project role on the projects named in `projectIds`. Omitting `order` appends the rule to the end of the evaluation order for its type.
+x-required-scope: roleMappingRule:create
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          expression:
+            type: string
+            minLength: 1
+          role:
+            type: string
+            minLength: 1
+            maxLength: 128
+          type:
+            type: string
+            enum:
+              - instance
+              - project
+          order:
+            type: integer
+            minimum: 0
+          projectIds:
+            type: array
+            items:
+              type: string
+        required:
+          - expression
+          - role
+          - type
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+            expression:
+              type: string
+            role:
+              type: string
+            type:
+              type: string
+              enum:
+                - instance
+                - project
+            order:
+              type: integer
+            projectIds:
+              type: array
+              items:
+                type: string
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+          required:
+            - id
+            - expression
+            - role
+            - type
+            - order
+            - projectIds
+            - createdAt
+            - updatedAt
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

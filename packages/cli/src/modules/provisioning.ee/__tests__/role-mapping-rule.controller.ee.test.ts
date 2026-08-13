@@ -109,7 +109,7 @@ describe('RoleMappingRuleController', () => {
 			const result = await controller.create(req, res, body);
 
 			expect(result).toEqual(created);
-			expect(roleMappingRuleService.create).toHaveBeenCalledWith(body);
+			expect(roleMappingRuleService.create).toHaveBeenCalledWith(body, req.user);
 		});
 	});
 

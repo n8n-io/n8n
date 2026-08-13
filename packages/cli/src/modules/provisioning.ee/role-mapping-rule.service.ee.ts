@@ -17,6 +17,8 @@ import type { z } from 'zod';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import type { UserLike } from '@/events/maps/relay.event-map';
 
 import {
 	assertAndNormalizeProjectIdsForRuleType,
@@ -47,6 +49,7 @@ export class RoleMappingRuleService {
 		private readonly roleMappingRuleRepository: RoleMappingRuleRepository,
 		private readonly roleRepository: RoleRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly eventService: EventService,
 	) {}
 
 	async list(query: ListRoleMappingRuleQueryInput): Promise<RoleMappingRuleListResponse> {
@@ -80,7 +83,7 @@ export class RoleMappingRuleService {
 		};
 	}
 
-	async create(dto: CreateRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
+	async create(dto: CreateRoleMappingRuleInput, user: UserLike): Promise<RoleMappingRuleResponse> {
 		const uniqueProjectIds = assertAndNormalizeProjectIdsForRuleType(dto.type, dto.projectIds, []);
 
 		const role = await this.roleRepository.findOne({ where: { slug: dto.role } });
@@ -106,7 +109,17 @@ export class RoleMappingRuleService {
 			relations: ['projects', 'role'],
 		});
 
-		return this.toResponse(loaded);
+		const result = this.toResponse(loaded);
+
+		this.eventService.emit('role-mapping-rule-created', {
+			user: { id: user.id, email: user.email },
+			ruleId: result.id,
+			ruleType: result.type,
+			expression: result.expression,
+			role: result.role,
+		});
+
+		return result;
 	}
 
 	private async saveWithOrderRetry(

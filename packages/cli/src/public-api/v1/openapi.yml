@@ -49,6 +49,8 @@ tags:
     description: Operations about projects
   - name: Role
     description: Operations about roles
+  - name: RoleMappingRule
+    description: Operations about identity-provider role-mapping rules
   - name: SecurityPolicy
     description: Operations about the instance security policy settings
   - name: SettingsLdap
