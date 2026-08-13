@@ -1,5 +1,12 @@
-import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
 import { z } from 'zod';
+
+/**
+ * What the hand-written `workflowNodeGroup.yml` published, which is what callers were allowed to
+ * send. Deliberately not `GROUP_DESCRIPTION_MAX_LENGTH` (145): the engine truncates to that rather
+ * than rejecting, so borrowing it here would start rejecting requests the old API accepted.
+ */
+const GROUP_DESCRIPTION_PUBLIC_MAX_LENGTH = 155;
 
 /**
  * Fields the public GET/POST/PUT response includes but that are server-managed. The previous
@@ -28,9 +35,20 @@ const connectionsWritePublicSchema = z.custom<IConnections>(
 	{ message: 'Connections must be an object' },
 );
 
-const nodeGroupsWritePublicSchema = z.custom<IWorkflowGroup[]>((value) => Array.isArray(value), {
-	message: 'Node groups must be an array',
-});
+// Mirrors the hand-written `workflowNodeGroup.yml`: a small, fully specified structure, so it is
+// described rather than waved through. Declared here rather than reusing the internal
+// `workflowNodeGroupsSchema` so a change to the internal request DTO cannot silently move the
+// public contract.
+const nodeGroupsWritePublicSchema = z.array(
+	z
+		.object({
+			id: z.string(),
+			name: z.string(),
+			nodeIds: z.array(z.string()),
+			description: z.string().max(GROUP_DESCRIPTION_PUBLIC_MAX_LENGTH).optional(),
+		})
+		.strict(),
+);
 
 /**
  * Mirrors the hand-written `workflowSettings.yml`, which set `additionalProperties: false` and

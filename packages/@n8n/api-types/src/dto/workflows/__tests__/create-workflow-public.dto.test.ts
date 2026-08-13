@@ -69,6 +69,56 @@ describe('CreateWorkflowPublicDto', () => {
 		});
 	});
 
+	describe('nodeGroups', () => {
+		const group = { id: 'g1', name: 'Data processing', nodeIds: ['n1'] };
+
+		test('accepts a fully specified group', () => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				nodeGroups: [{ ...group, description: 'Cleans incoming records' }],
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		test.each(['id', 'name', 'nodeIds'])('rejects a group missing %s', (field) => {
+			const { [field]: _omitted, ...rest } = group as Record<string, unknown>;
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				nodeGroups: [rest],
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects a group carrying an unknown field', () => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				nodeGroups: [{ ...group, bogus: 1 }],
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects a description over the length limit', () => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				nodeGroups: [{ ...group, description: 'x'.repeat(156) }],
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		test('rejects groups that are not objects', () => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...minimalWorkflow,
+				nodeGroups: [1, 2, 3],
+			});
+
+			expect(result.success).toBe(false);
+		});
+	});
+
 	describe('settings', () => {
 		test('accepts every documented setting', () => {
 			const result = CreateWorkflowPublicDto.safeParse({
