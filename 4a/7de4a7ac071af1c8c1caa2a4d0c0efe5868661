@@ -1,0 +1,19 @@
+packages/cli/src/modules/slack-comms/README.md
+  s_60dfaf9586b4e7::t_df68c0a4b76698 1-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4a7de4a7ac071af1c8c1caa2a4d0c0efe5868661",
+  "prompts": {},
+  "sessions": {
+    "s_60dfaf9586b4e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc0705c0-a9e7-42d1-901f-f21c693be3e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}
