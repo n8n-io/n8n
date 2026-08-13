@@ -618,12 +618,17 @@ function buildBuilderWorkflow(): BuilderWorkflow {
 // Toolbar path: no arg — read Canvas.vue's own group-expanded selection.
 // Context-menu path (Task 4.4): pass the menu's nodeIds directly.
 async function onAddNodesToChat(ids: string[] = selectedNodeIdsWithGroupMembers.value) {
+	const doc = workflowDocumentStore.value;
 	await addSelectedNodesToChat({
-		workflowId: workflowDocumentStore.value.workflowId,
+		workflowId: doc.workflowId,
 		selectedNodeIds: ids,
 		workflow: buildBuilderWorkflow(),
 		isInsideThread: !instanceAiCapability.openWorkflow,
 		onStaged: () => instanceAiStore.requestComposerFocus(),
+		// Context B: seed the thread's canvas preview with the current workflow so it
+		// opens alongside the chat.
+		workflowName: doc.name,
+		workflowSnapshot: doc.getSnapshot(),
 	});
 }
 
@@ -1902,6 +1907,7 @@ defineExpose({
 					@focus="onFocusNode"
 					@replace:node="onReplaceNode"
 					@add:ai="onAddToAi"
+					@add-nodes-to-chat="onAddNodesToChat([$event])"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
 						<slot name="nodeToolbar" v-bind="toolbarProps" />

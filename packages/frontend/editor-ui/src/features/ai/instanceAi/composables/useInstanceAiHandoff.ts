@@ -9,11 +9,13 @@ import {
 	type InstanceAiThreadOrigin,
 	type InstanceAiThreadSource,
 	type InstanceAiResourceAttachment,
+	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { jsonParse } from 'n8n-workflow';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
+import type { IWorkflowDb } from '@/Interface';
 import { useToast } from '@n8n/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -397,7 +399,18 @@ export function useInstanceAiHandoff() {
 	 * "add to chat" on a standalone editor). Same as startThread's same-tab branch
 	 * minus sendMessage/navigation — the caller sends nothing until the user does.
 	 */
-	async function openThreadForDraft(): Promise<string | null> {
+	/**
+	 * Mint an empty thread the caller stages a draft into. When `workflow` is given,
+	 * also open the workflow in the thread's preview pane (same machinery as the
+	 * editor's "open in assistant" button): an empty greeting message carries the
+	 * workflow attachment so the thread view auto-opens the canvas, and the snapshot
+	 * seeds the preview without a refetch. The node chips stay in the composer, unsent.
+	 */
+	async function openThreadForDraft(workflow?: {
+		id: string;
+		name?: string;
+		snapshot?: IWorkflowDb;
+	}): Promise<string | null> {
 		if (handoffInFlight) return null;
 		handoffInFlight = true;
 		try {
@@ -410,6 +423,21 @@ export function useInstanceAiHandoff() {
 			} catch {
 				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
 				return null;
+			}
+			if (workflow) {
+				const attachment: InstanceAiWorkflowAttachment = {
+					type: 'workflow',
+					id: workflow.id,
+					name: workflow.name || undefined,
+				};
+				// Empty message → the editor-context block just greets; the attachment
+				// opens the canvas preview via the thread view's firstAttachedArtifactId.
+				stashPendingFirstMessage(threadId, { message: '', attachments: [attachment] });
+				if (workflow.snapshot) {
+					instanceAiStore
+						.getOrCreateRuntime(threadId, projectId)
+						.setPendingHandoff({ workflowId: workflow.id, workflow: workflow.snapshot });
+				}
 			}
 			return threadId;
 		} finally {

@@ -8,6 +8,7 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiHandoff, stashPendingDraftAttachment } from './useInstanceAiHandoff';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { buildNodesAttachment, type BuilderWorkflow } from '../utils/buildNodesAttachment';
+import type { IWorkflowDb } from '@/Interface';
 
 /**
  * Shared entry point for both canvas triggers (toolbar button, context menu) that add
@@ -32,6 +33,10 @@ export function useAddNodesToChat() {
 		isInsideThread: boolean;
 		threadId?: string;
 		onStaged?: () => void; // Context A: view supplies focus/un-expand
+		// Context B: workflow display name + snapshot so the thread view can open the
+		// canvas preview alongside the chat (keeps workflow context on hand-off).
+		workflowName?: string;
+		workflowSnapshot?: IWorkflowDb;
 	}): Promise<void> {
 		const built = buildNodesAttachment(params.workflowId, params.selectedNodeIds, params.workflow);
 		if (!built) return;
@@ -49,8 +54,13 @@ export function useAddNodesToChat() {
 			return;
 		}
 
-		// Context B: open a thread with the draft pre-staged, unsent.
-		const threadId = await handoff.openThreadForDraft();
+		// Context B: open a thread with the workflow canvas alongside the chat and the
+		// node chips pre-staged in the composer, unsent.
+		const threadId = await handoff.openThreadForDraft({
+			id: params.workflowId,
+			name: params.workflowName,
+			snapshot: params.workflowSnapshot,
+		});
 		if (!threadId) return;
 		stashPendingDraftAttachment(threadId, built.attachment.sets, params.workflowId);
 		await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
