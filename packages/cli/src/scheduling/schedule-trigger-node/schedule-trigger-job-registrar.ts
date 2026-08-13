@@ -302,13 +302,15 @@ export class ScheduleTriggerJobRegistrar {
 		});
 
 		const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
+		// `skip` matches the legacy engine, which never runs a missed occurrence
+		// late. Running late will become a per-node opt-in.
 		const summary = await this.jobProvisioner.provision(
 			workflowId,
 			nodeId,
 			SCHEDULE_TRIGGER_TASK_TYPE,
 			{ ...payload },
 			desired,
-			ScheduledJobMisfirePolicy.CoalesceOwner,
+			ScheduledJobMisfirePolicy.Skip,
 		);
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {

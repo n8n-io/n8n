@@ -2,6 +2,11 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const jobTable = 'scheduled_job';
 const policyColumn = 'misfirePolicy';
+const taskTypeColumn = 'taskType';
+
+// Pinned like the policy values below: this migration must keep targeting the
+// same rows even if the constant in `packages/cli` moves or changes.
+const SCHEDULE_TRIGGER_TASK_TYPE = 'workflow:schedule-trigger';
 
 // Pinned rather than read from `ScheduledJobMisfirePolicy`: a migration has to keep
 // meaning what it meant when it ran, so a later addition to the enum needs its own
@@ -15,20 +20,24 @@ const POLICY_COMMENT =
 	"What to do with occurrences that came due while nothing ran them: ''coalesce'' records a single catch-up run per job, ''coalesce_owner'' a single one across every job the same owner scheduled, ''skip'' records none.";
 
 /**
- * Widens the `misfirePolicy` CHECK to accept `coalesce_owner`. Existing schedule
- * trigger jobs stay on `coalesce`; the scheduling module moves a job onto
- * `coalesce_owner` itself the next time it provisions it, not via a schema-time
- * backfill, since binaries predating this release don't recognise the value and
- * would treat those rows as unschedulable during a rolling upgrade or a
- * downgrade that skips `db:revert`.
+ * Two changes to `misfirePolicy`:
+ * - widens its CHECK to accept the new `coalesce_owner` value
+ * - moves existing Schedule Trigger jobs from `coalesce` to `skip`
  *
- * `down()` folds any `coalesce_owner` rows back to `coalesce` instead of
- * deleting them, so a rollback leaves every live trigger scheduled.
+ * `skip` matches what n8n did before the durable scheduler: a missed run is
+ * dropped, never run late. It is also an old, widely understood value, so
+ * binaries from earlier releases handle the moved rows fine during a rolling
+ * upgrade.
+ *
+ * `down()` moves those rows back to `coalesce`, and folds any `coalesce_owner`
+ * rows to `coalesce` too (instead of deleting them), so a rollback leaves
+ * every live trigger scheduled.
  */
 export class AddCoalesceOwnerMisfirePolicy1785844235369 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.refreshTableMetadata(context);
 		await this.setPolicyCheck(context, POLICY_VALUES);
+		await this.moveScheduleTriggerPolicy(context, { from: 'coalesce', to: 'skip' });
 		if (context.isPostgres) {
 			await this.commentPolicyColumn(context, POLICY_COMMENT);
 		}
@@ -37,6 +46,7 @@ export class AddCoalesceOwnerMisfirePolicy1785844235369 implements ReversibleMig
 	async down(context: MigrationContext) {
 		await this.refreshTableMetadata(context);
 		await this.foldOwnerPolicyBack(context);
+		await this.moveScheduleTriggerPolicy(context, { from: 'skip', to: 'coalesce' });
 		await this.setPolicyCheck(context, POLICY_VALUES_BEFORE);
 		if (context.isPostgres) {
 			await this.commentPolicyColumn(context, POLICY_COMMENT_BEFORE);
@@ -66,6 +76,19 @@ export class AddCoalesceOwnerMisfirePolicy1785844235369 implements ReversibleMig
 		await runQuery(
 			`UPDATE ${escape.tableName(jobTable)} SET ${policy} = 'coalesce' ` +
 				`WHERE ${policy} = 'coalesce_owner'`,
+		);
+	}
+
+	/** Only Schedule Trigger jobs: other task types pick their own policy. */
+	private async moveScheduleTriggerPolicy(
+		{ escape, runQuery }: MigrationContext,
+		{ from, to }: { from: string; to: string },
+	) {
+		const policy = escape.columnName(policyColumn);
+		const taskType = escape.columnName(taskTypeColumn);
+		await runQuery(
+			`UPDATE ${escape.tableName(jobTable)} SET ${policy} = '${to}' ` +
+				`WHERE ${policy} = '${from}' AND ${taskType} = '${SCHEDULE_TRIGGER_TASK_TYPE}'`,
 		);
 	}
 

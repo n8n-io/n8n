@@ -210,8 +210,11 @@ pass (ties break on the lowest job id).
 
 Grouping only sees jobs claimed together in one pass, so it is best-effort, not a
 guarantee of one fire per owner: a sibling not yet due, or one whose backlog exceeds
-`maxPerJob`, still catches up on its own on a later pass. Poll triggers use `skip`,
-since a missed poll is superseded by the next one regardless.
+`maxPerJob`, still catches up on its own on a later pass.
+
+Schedule and poll triggers both use `skip`: it matches what n8n did before the
+durable scheduler, where a missed run was never replayed. Catching up is opt-in
+per job, which is where `coalesce` and `coalesce_owner` come in.
 
 ## Durable and distributed
 

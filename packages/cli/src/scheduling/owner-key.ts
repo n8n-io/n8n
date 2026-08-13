@@ -10,7 +10,9 @@ type OwnedJob<T extends JobOwner> = T & { ownerKey: string | null };
  * would make every group a singleton.
  */
 export function ownerKeyFor(job: JobOwner): string | null {
-	if (job.workflowId === null || job.nodeId === null) return null;
+	if (job.workflowId === null || job.nodeId === null) {
+		return null;
+	}
 	return `${job.workflowId}\0${job.nodeId}`;
 }
 
