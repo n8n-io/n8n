@@ -421,26 +421,16 @@ describe('router', () => {
 		});
 	});
 
-	// CAT-4040: an unrelated error thrown during authenticated-features init (e.g.
-	// a malformed cloud-plan response while a trial instance is reactivating) must
-	// not leave the navigation guard permanently unresolved, or the app never
-	// mounts any route component and the user is stuck on a blank screen that
-	// reloading can't fix.
 	describe('error thrown during authenticated-features init', () => {
 		afterEach(async () => {
 			await router.replace('/workflow/router-test-reset');
 		});
 
 		test('still settles the navigation and runs the normal gating logic, instead of leaving it unresolved', async () => {
-			// This test's mock replaces initializeAuthenticatedFeatures entirely, so
-			// the real usersStore.initialize() never runs and the user is left
-			// unauthenticated — the correct outcome is a redirect to sign-in, not a
-			// silent grant of access to the requested route.
+			// The mock skips real authentication, so the guard redirects to sign-in.
 			initializeAuthenticatedFeaturesSpy.mockRejectedValue(new Error('CAT-4040: boom'));
 
 			await expect(router.push('/workflows')).resolves.toBeUndefined();
-			// Confirms the auth middleware still ran on the requested route, rather
-			// than the guard short-circuiting straight to it on error.
 			expect(router.currentRoute.value.name).toBe(VIEWS.SIGNIN);
 		}, 20000);
 	});

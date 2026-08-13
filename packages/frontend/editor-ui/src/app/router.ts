@@ -1193,9 +1193,8 @@ setUnauthorizedHandler((baseURL) => {
 	void handleSessionExpired(router, baseURL);
 });
 
-// Errors here (other than a required MFA) are logged and swallowed rather than
-// propagated: the guard must still run its own gating logic below on whatever
-// state did get initialized, instead of skipping straight to `next()` (CAT-4040).
+// Non-MFA errors are swallowed so the caller's route-gating logic still runs
+// on whatever state did initialize.
 async function initializeForNavigation(to: RouteLocationNormalized) {
 	try {
 		await initializeCore();
@@ -1263,8 +1262,7 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 			return;
 		}
 
-		// Last resort: an error from the gating logic itself must still resolve the
-		// guard rather than leave it hanging (CAT-4040).
+		// An error from the gating logic must still resolve the guard, not leave it hanging.
 		console.error(failure);
 		return next();
 	}
