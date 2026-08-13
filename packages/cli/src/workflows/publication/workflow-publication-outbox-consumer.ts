@@ -30,7 +30,7 @@ const TIMED_OUT = Symbol('timed-out');
  * Below 1 so that an abandoned record is not reclaimable the moment its worker
  * moves on — the same drain could otherwise claim it straight back.
  */
-const ABORT_AFTER_LEASE_FRACTION = 0.5;
+const ABORT_AFTER_LEASE_FRACTION = 0.7;
 
 /**
  * How long an aborted record may take to unwind before it is abandoned, capped
@@ -293,7 +293,7 @@ export class WorkflowPublicationOutboxConsumer {
 	 * between claiming the record and entering the critical section, the record is returned
 	 * to the queue (so the new leader reprocesses it) and nothing is applied here.
 	 */
-	async processRecord(record: WorkflowPublicationOutbox, signal?: AbortSignal): Promise<void> {
+	async processRecord(record: WorkflowPublicationOutbox, signal: AbortSignal): Promise<void> {
 		await this.tracing.startSpan(
 			{
 				name: 'Publication outbox record',
@@ -323,7 +323,7 @@ export class WorkflowPublicationOutboxConsumer {
 					// left `in_progress` for lease reclaim rather than returned to pending:
 					// the wait may have outlived the lease, and flipping the row here would
 					// release the claim of whichever worker has since reclaimed it.
-					if (signal?.aborted) {
+					if (signal.aborted) {
 						this.logger.debug('Skipped applying publication outbox record: aborted', {
 							outboxId: record.id,
 							workflowId: record.workflowId,
@@ -344,9 +344,10 @@ export class WorkflowPublicationOutboxConsumer {
 					// every orphan so the lock outlives whatever may still mutate this
 					// workflow's registrations.
 					const detachedWork: Array<Promise<unknown>> = [];
-					const abort: TriggerOperationAbort | undefined = signal
-						? { signal, onDetached: (work) => detachedWork.push(work) }
-						: undefined;
+					const abort: TriggerOperationAbort = {
+						signal,
+						onDetached: (work) => detachedWork.push(work),
+					};
 
 					try {
 						result = await this.applier.apply(record, abort);
@@ -355,7 +356,7 @@ export class WorkflowPublicationOutboxConsumer {
 						result = {
 							type: 'failed',
 							// An abort is our own doing, not an unexpected applier failure.
-							error: signal?.aborted
+							error: signal.aborted
 								? cause
 								: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
 						};

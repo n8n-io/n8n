@@ -84,7 +84,7 @@ export class WorkflowPublicationApplier {
 	 */
 	async apply(
 		record: WorkflowPublicationOutbox,
-		abort?: TriggerOperationAbort,
+		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
 		const { workflow, oldVersion, newVersion } = await this.resolveVersions(record);
 
@@ -115,7 +115,7 @@ export class WorkflowPublicationApplier {
 		oldVersion: WorkflowHistory | null,
 		newVersion: WorkflowHistory,
 		record: WorkflowPublicationOutbox,
-		abort?: TriggerOperationAbort,
+		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
 		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
@@ -163,7 +163,7 @@ export class WorkflowPublicationApplier {
 		// Abort only before the trigger (de)activation phases — those run node
 		// code and can be slow; every state they leave behind on a mid-apply stop
 		// is one a crashed leader could also leave, which retries already handle.
-		abort?.signal.throwIfAborted();
+		abort.signal.throwIfAborted();
 
 		// Must happen BEFORE advancing the version, using the currently published
 		// version so the right webhooks are deregistered. A teardown failure here
@@ -175,7 +175,7 @@ export class WorkflowPublicationApplier {
 		await this.advancePublishedVersion(record);
 
 		try {
-			abort?.signal.throwIfAborted();
+			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
 				const activationMode =
 					ACTIVATION_MODE_BY_REASON[record.reason ?? WorkflowPublicationReason.Publish];
@@ -224,7 +224,7 @@ export class WorkflowPublicationApplier {
 		workflow: WorkflowEntity,
 		oldVersion: WorkflowHistory | null,
 		record: WorkflowPublicationOutbox,
-		abort?: TriggerOperationAbort,
+		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
 		// If there is no oldVersion we may be retrying an unpublish that was
 		// interrupted after removing the mapping: nothing to tear down, but we
@@ -234,7 +234,7 @@ export class WorkflowPublicationApplier {
 		);
 
 		if (oldVersion && toRemove.size > 0) {
-			abort?.signal.throwIfAborted();
+			abort.signal.throwIfAborted();
 			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort);
 		}
 

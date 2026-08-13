@@ -21,13 +21,14 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const reporter = mock<PublicationStatusReporter>();
 	const tracing = mock<Tracing>();
 	const eventService = mock<EventService>();
+	const abortSignal = new AbortController().signal;
 
 	let consumer: WorkflowPublicationOutboxConsumer;
 
 	const POLL_INTERVAL_MS = 15_000;
 	const LEASE_SECONDS = 120;
-	// Abort fires at half the lease; abandonment follows after the grace period.
-	const ABORT_AFTER_MS = (LEASE_SECONDS / 2) * 1000;
+	// Abort fires at 70% of the lease; abandonment follows after the grace period.
+	const ABORT_AFTER_MS = LEASE_SECONDS * 0.7 * 1000;
 	const ABANDON_GRACE_MS = 10_000;
 
 	let lifecycleLock: WorkflowPublicationLifecycleLock;
@@ -304,16 +305,19 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			const result: PublicationResult = { type: 'completed', triggerStatuses: [] };
 			applier.apply.mockResolvedValue(result);
 
-			await consumer.processRecord(record);
+			await consumer.processRecord(record, abortSignal);
 
-			expect(applier.apply).toHaveBeenCalledWith(record, undefined);
+			expect(applier.apply).toHaveBeenCalledWith(
+				record,
+				expect.objectContaining({ signal: abortSignal }),
+			);
 			expect(reporter.report).toHaveBeenCalledWith(record, result);
 		});
 
 		test('reports a failed result when the applier throws unexpectedly', async () => {
 			applier.apply.mockRejectedValue(new Error('teardown failed'));
 
-			await consumer.processRecord(makeRecord());
+			await consumer.processRecord(makeRecord(), abortSignal);
 
 			expect(reporter.report).toHaveBeenCalledWith(
 				expect.anything(),
@@ -328,7 +332,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			const reportError = new Error('db write failed');
 			reporter.report.mockRejectedValue(reportError);
 
-			await expect(consumer.processRecord(makeRecord())).resolves.toBeUndefined();
+			await expect(consumer.processRecord(makeRecord(), abortSignal)).resolves.toBeUndefined();
 
 			expect(errorReporter.error).toHaveBeenCalledWith(reportError, { shouldBeLogged: true });
 		});
@@ -337,7 +341,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			consumer = createConsumer(true, false);
 			const record = makeRecord({ id: 7, workflowId: 'wf-7' });
 
-			await consumer.processRecord(record);
+			await consumer.processRecord(record, abortSignal);
 
 			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7);
 			expect(applier.apply).not.toHaveBeenCalled();
@@ -488,9 +492,9 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		});
 
 		test('scales the abandon grace down for short leases so abandonment stays within the lease', async () => {
-			// Lease 16s: abort fires at 8s, grace is capped at 4s (a quarter of the
-			// lease) instead of the fixed 10s, so abandonment lands at 12s — still
-			// inside the lease.
+			// Lease 16s: abort fires at 11.2s, grace is capped at 4s (a quarter of
+			// the lease) instead of the fixed 10s, so abandonment lands at 15.2s —
+			// still inside the lease.
 			consumer = createConsumer(true, true, 1, 16);
 			const stuck = makeRecord({ id: 1 });
 			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(stuck).mockResolvedValue(null);
@@ -498,7 +502,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			consumer.startPolling();
 
 			const drain = consumer.drainPending();
-			await vi.advanceTimersByTimeAsync(12_000);
+			await vi.advanceTimersByTimeAsync(15_200);
 
 			await expect(drain).resolves.toBe(0);
 			expect(errorReporter.error).toHaveBeenCalledWith(
@@ -532,7 +536,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			async (result, expectedResult, expectedReason) => {
 				applier.apply.mockResolvedValue(result);
 
-				await consumer.processRecord(makeRecord());
+				await consumer.processRecord(makeRecord(), abortSignal);
 
 				expect(lastOutcome()).toEqual(
 					expect.objectContaining({ result: expectedResult, reason: expectedReason }),
@@ -544,7 +548,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			applier.apply.mockResolvedValue({ type: 'completed', triggerStatuses: [] });
 			reporter.report.mockRejectedValue(new Error('db write failed'));
 
-			await consumer.processRecord(makeRecord());
+			await consumer.processRecord(makeRecord(), abortSignal);
 
 			expect(lastOutcome()).toEqual(expect.objectContaining({ result: 'failed', reason: 'none' }));
 		});
@@ -552,7 +556,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		test('does not emit when the record is returned to the queue (no longer leader)', async () => {
 			consumer = createConsumer(true, false);
 
-			await consumer.processRecord(makeRecord());
+			await consumer.processRecord(makeRecord(), abortSignal);
 
 			expect(eventService.emit).not.toHaveBeenCalledWith(
 				'workflow-publication-outbox-record-processed',
