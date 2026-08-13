@@ -648,7 +648,12 @@ describe('InstanceAiMcpRegistryService', () => {
 
 			const result = await service.listConnectionTools(user, 'conn-1');
 
-			expect(result).toEqual({ id: 'conn-1', status: 'disconnected', tools: [] });
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'unknown',
+			});
 			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 			expect(mcpClientConstructorMock).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -671,7 +676,12 @@ describe('InstanceAiMcpRegistryService', () => {
 
 			const result = await service.listConnectionTools(user, 'conn-1');
 
-			expect(result).toEqual({ id: 'conn-1', status: 'disconnected', tools: [] });
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'authentication',
+			});
 			expect(mcpClientConstructorMock).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping MCP registry connection with inaccessible credential',
@@ -693,7 +703,12 @@ describe('InstanceAiMcpRegistryService', () => {
 
 			const result = await deps.service.listConnectionTools(user, 'conn-1');
 
-			expect(result).toEqual({ id: 'conn-1', status: 'disconnected', tools: [] });
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'unknown',
+			});
 		});
 
 		it('returns statuses for all connections when one check throws', async () => {
@@ -714,7 +729,12 @@ describe('InstanceAiMcpRegistryService', () => {
 
 			expect(result).toEqual([
 				{ id: 'conn-1', status: 'connected', tools: [] },
-				{ id: 'conn-2', status: 'disconnected', tools: [] },
+				{
+					id: 'conn-2',
+					status: 'disconnected',
+					tools: [],
+					failureReason: 'unknown',
+				},
 			]);
 			expect(logger.warn).toHaveBeenCalledWith('Failed to check MCP connection', {
 				connectionId: 'conn-2',

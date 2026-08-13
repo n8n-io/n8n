@@ -173,7 +173,12 @@ describe('InstanceAiMcpConnectionController', () => {
 			const { controller, service } = createController();
 			const tools = [
 				{ id: 'conn-1', status: 'connected' as const, tools: [{ name: 'search' }] },
-				{ id: 'conn-2', status: 'disconnected' as const, tools: [] },
+				{
+					id: 'conn-2',
+					status: 'disconnected' as const,
+					tools: [],
+					failureReason: 'unknown' as const,
+				},
 			];
 			service.listAllConnectionTools.mockResolvedValue(tools);
 

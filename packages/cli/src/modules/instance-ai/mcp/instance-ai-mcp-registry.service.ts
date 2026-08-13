@@ -1,5 +1,6 @@
 import { type BuiltTool, McpClient } from '@n8n/agents';
 import type {
+	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolResponse,
 	InstanceAiMcpConnectionToolsResponse,
 	InstanceAiMcpUpdateConnectionRequestDto,
@@ -138,8 +139,11 @@ function toToolResponse(tool: BuiltTool, serverName: string): InstanceAiMcpConne
 	return response;
 }
 
-function disconnectedToolsResponse(id: string): InstanceAiMcpConnectionToolsResponse {
-	return { id, status: 'disconnected', tools: [] };
+function disconnectedToolsResponse(
+	id: string,
+	failureReason: InstanceAiMcpConnectionFailureReason = 'unknown',
+): InstanceAiMcpConnectionToolsResponse {
+	return { id, status: 'disconnected', tools: [], failureReason };
 }
 
 @Service()
@@ -312,7 +316,23 @@ export class InstanceAiMcpRegistryService {
 			connection.id,
 			aiMcpFetch,
 		);
-		if (!requestFetch) return disconnectedToolsResponse(connection.id);
+		if (!requestFetch) return disconnectedToolsResponse(connection.id, 'authentication');
+
+		let failureReason: InstanceAiMcpConnectionFailureReason = 'unknown';
+		const classifiedFetch: CustomFetch = async (input, init) => {
+			try {
+				const response = await requestFetch(input, init);
+				if (response.status === 401 || response.status === 403) {
+					failureReason = 'authentication';
+				} else if (response.status >= 500) {
+					failureReason = 'server_unavailable';
+				}
+				return response;
+			} catch (error) {
+				failureReason = 'server_unavailable';
+				throw error;
+			}
+		};
 
 		const serverName = buildServerName(resolvedServer.serverSlug, 1);
 		const client = new McpClient([
@@ -320,7 +340,7 @@ export class InstanceAiMcpRegistryService {
 				name: serverName,
 				url: resolvedServer.endpointUrl,
 				transport: resolvedServer.transport,
-				fetch: requestFetch,
+				fetch: classifiedFetch,
 				connectionTimeoutMs: 10_000,
 			},
 		]);
@@ -328,7 +348,7 @@ export class InstanceAiMcpRegistryService {
 		try {
 			const tools = (await client.listTools()).map((tool) => toToolResponse(tool, serverName));
 			if (client.getConnectionFailures().length > 0) {
-				return disconnectedToolsResponse(connection.id);
+				return disconnectedToolsResponse(connection.id, failureReason);
 			}
 			return { id: connection.id, status: 'connected', tools };
 		} finally {

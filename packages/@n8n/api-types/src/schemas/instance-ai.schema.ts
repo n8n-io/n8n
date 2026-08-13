@@ -1739,11 +1739,23 @@ export interface InstanceAiMcpConnectionToolResponse {
 	description?: string;
 }
 
-export interface InstanceAiMcpConnectionToolsResponse {
-	id: string;
-	status: 'connected' | 'disconnected';
-	tools: InstanceAiMcpConnectionToolResponse[];
-}
+export type InstanceAiMcpConnectionFailureReason =
+	| 'server_unavailable'
+	| 'authentication'
+	| 'unknown';
+
+export type InstanceAiMcpConnectionToolsResponse =
+	| {
+			id: string;
+			status: 'connected';
+			tools: InstanceAiMcpConnectionToolResponse[];
+	  }
+	| {
+			id: string;
+			status: 'disconnected';
+			tools: InstanceAiMcpConnectionToolResponse[];
+			failureReason: InstanceAiMcpConnectionFailureReason;
+	  };
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';

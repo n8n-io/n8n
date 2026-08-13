@@ -143,7 +143,7 @@ describe('useInstanceAiMcpStore', () => {
 			]);
 			mockFetchAllMcpConnectionTools.mockResolvedValue([
 				{ id: 'conn-1', status: 'connected', tools: [{ name: 'search' }] },
-				{ id: 'conn-2', status: 'disconnected', tools: [] },
+				{ id: 'conn-2', status: 'disconnected', tools: [], failureReason: 'unknown' },
 			] satisfies InstanceAiMcpConnectionToolsResponse[]);
 
 			await store.fetchConnections();
@@ -199,7 +199,7 @@ describe('useInstanceAiMcpStore', () => {
 		it('retries a disconnected connection and caches its tools', async () => {
 			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
 			mockFetchAllMcpConnectionTools.mockResolvedValue([
-				{ id: 'conn-1', status: 'disconnected', tools: [] },
+				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'unknown' },
 			]);
 			await store.fetchConnections();
 			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
@@ -223,7 +223,7 @@ describe('useInstanceAiMcpStore', () => {
 		it('refreshes tools after credential changes and ignores the stale response', async () => {
 			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
 			mockFetchAllMcpConnectionTools.mockResolvedValue([
-				{ id: 'conn-1', status: 'disconnected', tools: [] },
+				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'unknown' },
 			]);
 			await store.fetchConnections();
 			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));

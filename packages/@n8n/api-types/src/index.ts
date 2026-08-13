@@ -473,6 +473,7 @@ export type {
 	InstanceAiSandboxProvider,
 	InstanceAiConnectionUpdate,
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolFilterResponse,
 	InstanceAiMcpConnectionToolResponse,
 	InstanceAiMcpConnectionToolsResponse,

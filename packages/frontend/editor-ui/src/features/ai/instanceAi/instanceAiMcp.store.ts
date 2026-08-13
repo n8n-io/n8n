@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolResponse,
 	InstanceAiMcpConnectionToolsResponse,
 	McpRegistryServerResponse,
@@ -102,6 +103,25 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		}
 	}
 
+	function connectionErrorMessage(reason?: InstanceAiMcpConnectionFailureReason): string {
+		switch (reason) {
+			case 'server_unavailable':
+				return i18n.baseText('instanceAi.mcp.error.connection.serverUnavailable');
+			case 'authentication':
+				return i18n.baseText('instanceAi.mcp.error.connection.authentication');
+			default:
+				return i18n.baseText('instanceAi.mcp.error.connection.unknown');
+		}
+	}
+
+	function showConnectionError(reason?: InstanceAiMcpConnectionFailureReason): void {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('instanceAi.mcp.error.connection.title'),
+			message: connectionErrorMessage(reason),
+		});
+	}
+
 	async function fetchAllConnectionTools(): Promise<void> {
 		if (connections.value.length === 0) return;
 		try {
@@ -117,7 +137,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 				...connection,
 				status: connection.status === 'connecting' ? 'disconnected' : connection.status,
 			}));
-			toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchTools'));
+			toast.showError(error, i18n.baseText('instanceAi.mcp.error.checkConnections'));
 		}
 	}
 
@@ -136,12 +156,15 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 			const result = await promise;
 			if (isCurrent()) {
 				applyToolsResult(result);
+				if (result.status === 'disconnected') {
+					showConnectionError(result.failureReason);
+				}
 			}
-		} catch (error) {
+		} catch {
 			if (isCurrent()) {
 				setConnectionStatus(id, 'disconnected');
 				connectionToolsById.delete(id);
-				toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchTools'));
+				showConnectionError('unknown');
 			}
 		} finally {
 			if (isCurrent()) {
