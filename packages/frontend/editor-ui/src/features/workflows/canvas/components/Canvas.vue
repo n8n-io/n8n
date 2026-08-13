@@ -1564,6 +1564,10 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			void chatPanelStore.open({ mode: 'builder' });
 			return;
 		}
+		case 'add_nodes_to_chat': {
+			void onAddNodesToChat(nodeIds);
+			return;
+		}
 	}
 }
 

@@ -2446,6 +2446,7 @@
 	"contextMenu.tidyUpSelection": "Tidy up selection",
 	"contextMenu.extract": "Convert node to sub-workflow | Convert {subject} to sub-workflow",
 	"contextMenu.group": "Group node | Group nodes",
+	"contextMenu.addNodesToChat": "Add node to chat | Add {count} nodes to chat",
 	"contextMenu.renameGroup": "Rename group",
 	"contextMenu.ungroupNodes": "Ungroup nodes",
 	"contextMenu.expandAllGroups": "Expand all groups",
