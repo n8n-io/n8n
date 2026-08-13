@@ -8,7 +8,7 @@ import type { ApiHelpers } from '../../../services/api-helper';
 
 /**
  * E2E for how the rendered form handles the submit-time credential gate's
- * rejection (IAM-1184): the submitter stays on the page with their answers, and a
+ * rejection: the submitter stays on the page with their answers, and a
  * banner above Submit tells them what to do next.
  *
  * Unlike the other specs in this directory this one carries **no
