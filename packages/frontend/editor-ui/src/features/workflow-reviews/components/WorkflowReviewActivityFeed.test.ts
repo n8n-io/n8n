@@ -377,19 +377,10 @@ describe('WorkflowReviewActivityFeed', () => {
 			}
 		});
 
-		// The two entries whose payload the sentence cannot do without: the close reason, and
-		// the note a change request is asked for in the first place.
-		it.each<[string, WorkflowReviewActivityEntry]>([
-			[
-				'a closed review that no longer says why',
-				{ ...systemEntry, type: 'review.closed', data: null },
-			],
-			[
-				'a change request whose note can no longer be read',
-				{ ...systemEntry, type: 'review.changes_requested', data: null },
-			],
-		])('shows a placeholder for %s', async (_label, entry) => {
-			store.entries = [entry];
+		// The only entry whose payload the sentence cannot do without: the close reason *is* the
+		// sentence, so there is nothing left to render.
+		it('shows a placeholder for a closed review that no longer says why', async () => {
+			store.entries = [{ ...systemEntry, type: 'review.closed', data: null }];
 
 			const { getByTestId, queryByTestId } = renderComponent();
 			await nextTick();
@@ -398,7 +389,20 @@ describe('WorkflowReviewActivityFeed', () => {
 				"This activity entry can't be displayed.",
 			);
 			expect(queryByTestId('workflow-review-activity-closed')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-review-activity-changes-requested')).not.toBeInTheDocument();
+		});
+
+		// Losing the note must not cost the actor and the verb too, which are known from the type.
+		it('keeps a change request whose note can no longer be read', async () => {
+			store.entries = [{ ...systemEntry, type: 'review.changes_requested', data: null }];
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-changes-requested')).toHaveTextContent(
+				'Requested changes',
+			);
+			expect(queryByTestId('workflow-review-activity-note')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-review-activity-unknown')).not.toBeInTheDocument();
 		});
 
 		// No component is registered for this type yet, which is why the registry stays partial.

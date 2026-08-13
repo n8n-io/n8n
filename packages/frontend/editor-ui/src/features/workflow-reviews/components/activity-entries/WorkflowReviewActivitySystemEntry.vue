@@ -32,10 +32,9 @@ const closedReasonKeys: Record<WorkflowReviewClosedReason, BaseTextKey> = {
 };
 
 /**
- * Everything that varies by type, so a new type is one case rather than several. `null` for the
- * two types whose payload the sentence cannot do without: `review.closed`, whose sentence *is*
- * the stored reason, and `review.changes_requested`, where a note is required on the way in, so
- * a missing one means the payload did not parse. The rest say what happened from the type alone.
+ * Everything that varies by type, so a new type is one case rather than several. `null` only for
+ * `review.closed`, whose sentence *is* the stored reason and so has nothing to fall back to. The
+ * rest say what happened from the type alone, and an unreadable payload costs them only the note.
  *
  * `namesActor` follows the type, not a missing `createdBy`: that is also null for a decision
  * whose author was deleted, which must still read as that person's decision.
@@ -56,10 +55,9 @@ const content = computed<{
 				namesActor: true,
 			};
 		case 'review.changes_requested':
-			if (!entry.data) return null;
 			return {
 				text: i18n.baseText('workflowReviews.detail.activity.changesRequested'),
-				note: entry.data.note,
+				note: entry.data?.note ?? null,
 				testId: 'workflow-review-activity-changes-requested',
 				namesActor: true,
 			};
