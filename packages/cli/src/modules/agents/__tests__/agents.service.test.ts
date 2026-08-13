@@ -320,7 +320,7 @@ describe('AgentsService', () => {
 		);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
-		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 	});
 
@@ -354,7 +354,7 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
-		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
 	it('returns false when deleting a missing agent', async () => {

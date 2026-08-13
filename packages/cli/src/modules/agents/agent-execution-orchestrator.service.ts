@@ -24,6 +24,13 @@ import {
 } from './agent-execution.service';
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import {
+	decodeAgentSandboxHostMetadata,
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+	type AgentSandboxPrincipalHash,
+} from './agent-sandbox-principal';
+import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
@@ -69,11 +76,11 @@ export interface ExecuteForChatPublishedConfig {
 	memory: AgentMemoryScope;
 	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
+	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
-	// session — there is no n8n `User` to attach. This path keeps the
-	// project-scoped trust boundary that existed before per-user tool
-	// gating; the admin who published the agent is the one who approved its
+	// session — there is no n8n `User` to attach. The admin who published the
+	// agent is the one who approved its
 	// tools, and Layer A's node denylist (`EphemeralNodeExecutor`) still
 	// applies regardless.
 }
@@ -157,6 +164,7 @@ export interface StreamChatResponseConfig {
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
+	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -235,6 +243,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 		private readonly agentRunTracingService: AgentRunTracingService,
 		private readonly externalHooks: ExternalHooks,
+		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 	) {}
 
 	/**
@@ -341,6 +350,14 @@ export class AgentExecutionOrchestratorService {
 		) {
 			throw new UserError(`Checkpoint ${runId} does not belong to this chat`);
 		}
+		const sandboxScope = decodeAgentSandboxHostMetadata(memoryScope.hostMetadata);
+		const sandboxPrincipalHash = sandboxScope?.principalHash;
+		if (
+			this.agentSandboxRuntimeService.isEnabled() &&
+			(!sandboxScope || sandboxScope.projectId !== projectId || !sandboxPrincipalHash)
+		) {
+			throw new UserError(`Checkpoint ${runId} is unavailable and cannot be resumed`);
+		}
 
 		const threadId = memoryScope.threadId;
 
@@ -357,6 +374,7 @@ export class AgentExecutionOrchestratorService {
 			// `AgentChatController.chatResume`), and only then does the caller's
 			// `user` actually reach the cache/reconstruction layer.
 			user: usePublishedVersion ? undefined : user,
+			...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
@@ -471,11 +489,16 @@ export class AgentExecutionOrchestratorService {
 
 		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
 		// runtime scoped to this specific user's tool access.
+		const sandboxPrincipalHash = hashAgentSandboxPrincipal({
+			type: 'n8n-user',
+			userId: user.id,
+		});
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 			user,
+			sandboxPrincipalHash,
 		});
 
 		await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
@@ -502,6 +525,7 @@ export class AgentExecutionOrchestratorService {
 			},
 			onExecutionRecorded,
 			abortSignal,
+			sandboxPrincipalHash,
 		});
 	}
 
@@ -513,18 +537,25 @@ export class AgentExecutionOrchestratorService {
 	async *executeForChatPublished(
 		config: ExecuteForChatPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, memory, integrationType, attachments } = config;
+		const {
+			agentId,
+			projectId,
+			message,
+			memory,
+			integrationType,
+			attachments,
+			sandboxPrincipalHash,
+		} = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
-		// No `user` (see ExecuteForChatPublishedConfig): this is the shared,
-		// project-scoped runtime — every caller of this published agent through
-		// this integration reuses the same cache entry regardless of who
-		// triggered the platform event.
+		// Published integration runtimes have no n8n user but are isolated by
+		// their external caller's hashed workspace principal.
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
 			integrationType,
 			usePublishedVersion: true,
+			sandboxPrincipalHash,
 		});
 
 		yield* this.streamChatResponse({
@@ -540,6 +571,7 @@ export class AgentExecutionOrchestratorService {
 				runType: 'production',
 				configuration: runtime.telemetryConfiguration,
 			},
+			sandboxPrincipalHash,
 		});
 	}
 
@@ -553,13 +585,14 @@ export class AgentExecutionOrchestratorService {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
-		// No `user` (see ExecuteForTaskPublishedConfig): cron-fired, no human to
-		// attach — same shared, project-scoped runtime for every tick.
+		// Cron-fired runs have no n8n user and reuse the scheduled task's scope.
+		const sandboxPrincipalHash = hashAgentSandboxPrincipal({ type: 'scheduled-task', taskId });
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
 			integrationType: 'task',
 			usePublishedVersion: true,
+			sandboxPrincipalHash,
 		});
 
 		yield* this.streamChatResponse({
@@ -576,6 +609,7 @@ export class AgentExecutionOrchestratorService {
 				runType: 'production',
 				configuration: runtime.telemetryConfiguration,
 			},
+			sandboxPrincipalHash,
 		});
 	}
 
@@ -589,10 +623,15 @@ export class AgentExecutionOrchestratorService {
 		// `user` is always set (see ExecuteForTaskNowConfig) — manual "Run now"
 		// runs get a runtime scoped to the requesting user's tool access, same
 		// as the in-app test chat.
+		const sandboxPrincipalHash = hashAgentSandboxPrincipal({
+			type: 'n8n-user',
+			userId: user.id,
+		});
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
 			user,
+			sandboxPrincipalHash,
 		});
 
 		yield* this.streamChatResponse({
@@ -609,6 +648,7 @@ export class AgentExecutionOrchestratorService {
 				runType: 'test',
 				configuration: runtime.telemetryConfiguration,
 			},
+			sandboxPrincipalHash,
 		});
 	}
 
@@ -631,6 +671,7 @@ export class AgentExecutionOrchestratorService {
 			telemetry,
 			onExecutionRecorded,
 			abortSignal,
+			sandboxPrincipalHash,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -653,8 +694,12 @@ export class AgentExecutionOrchestratorService {
 			});
 
 			const input = attachments?.length ? buildInboundUserMessage(message, attachments) : message;
+			const hostMetadata = encodeAgentSandboxHostMetadata({
+				projectId,
+				principalHash: sandboxPrincipalHash,
+			});
 			const resultStream = await agentInstance.stream(input, {
-				persistence: { threadId, resourceId },
+				persistence: { threadId, resourceId, hostMetadata },
 				executionCounter: createAgentExecutionCounter(this.telemetry, {
 					agentId,
 					userId,

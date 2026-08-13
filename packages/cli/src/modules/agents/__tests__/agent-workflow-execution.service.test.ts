@@ -14,6 +14,11 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../agent-sandbox-principal';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
 import type { Agent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
@@ -104,7 +109,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 	};
 }
 
-function makeService() {
+function makeService(sandboxEnabled = false) {
 	const agentRepository = mock<AgentRepository>();
 	const executionService = mock<AgentExecutionService>();
 	const telemetry = mock<Telemetry>();
@@ -113,6 +118,9 @@ function makeService() {
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const executionLevelTracer = mock<ExecutionLevelTracer>();
 	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
+	const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+		isEnabled: () => sandboxEnabled,
+	});
 
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
@@ -133,6 +141,7 @@ function makeService() {
 		agentRunTracingService,
 		executionLevelTracer,
 		nodeToolAiGatewayService,
+		agentSandboxRuntimeService,
 	);
 
 	return {
@@ -144,6 +153,7 @@ function makeService() {
 		agentRunTracingService,
 		executionLevelTracer,
 		nodeToolAiGatewayService,
+		agentSandboxRuntimeService,
 	};
 }
 
@@ -242,16 +252,153 @@ describe('AgentWorkflowExecutionService', () => {
 		);
 	});
 
-	it('records workflow stream setup failures', async () => {
-		const { service, agentRepository, reconstructionService, executionService } = makeService();
+	it('does not destroy a caller-session workspace', async () => {
+		const { service, agentRepository, reconstructionService, agentSandboxRuntimeService } =
+			makeService(true);
 		const runtime = makeRuntime();
+		const principalHash = hashAgentSandboxPrincipal({
+			type: 'workflow-session',
+			workflowId: 'workflow-1',
+			sessionId: 'customer-session',
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'wf:workflow-1:customer-session',
+			projectId,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			{ principalHash, executionScoped: false },
+		);
+
+		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0][7]).toBe(principalHash);
+		expect(agentSandboxRuntimeService.destroyWorkspaceSandbox).not.toHaveBeenCalled();
+	});
+
+	it('destroys an execution-scoped workspace after the workflow stream finishes', async () => {
+		const { service, agentRepository, reconstructionService, agentSandboxRuntimeService } =
+			makeService(true);
+		const runtime = makeRuntime();
+		const principalHash = hashAgentSandboxPrincipal({
+			type: 'workflow-execution',
+			workflowId: 'workflow-1',
+			executionId: 'execution-1',
+			itemId: 'execution-1-0',
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'wf:workflow-1:execution-1-0',
+			projectId,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			{ principalHash, executionScoped: true },
+		);
+
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'hello',
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+				}),
+			}),
+		);
+		expect(agentSandboxRuntimeService.destroyWorkspaceSandbox).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			principalHash,
+		);
+	});
+
+	it('retains an execution-scoped workspace while the run is suspended', async () => {
+		const { service, agentRepository, reconstructionService, agentSandboxRuntimeService } =
+			makeService(true);
+		const runtime = makeRuntime([
+			{
+				type: 'tool-call-suspended',
+				toolCallId: 'tool-call-1',
+				toolName: 'request_approval',
+				runId: 'run-1',
+			},
+			{ type: 'finish', finishReason: 'tool-calls' },
+		]);
+		const principalHash = hashAgentSandboxPrincipal({
+			type: 'workflow-execution',
+			workflowId: 'workflow-1',
+			executionId: 'execution-1',
+			itemId: 'execution-1-0',
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await expect(
+			service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'wf:workflow-1:execution-1-0',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ principalHash, executionScoped: true },
+			),
+		).rejects.toThrow(
+			'Agent execution suspended waiting for tool approval. Suspend/resume is not supported in workflow execution context.',
+		);
+
+		expect(agentSandboxRuntimeService.destroyWorkspaceSandbox).not.toHaveBeenCalled();
+	});
+
+	it('records workflow stream setup failures', async () => {
+		const {
+			service,
+			agentRepository,
+			reconstructionService,
+			executionService,
+			agentSandboxRuntimeService,
+		} = makeService(true);
+		const runtime = makeRuntime();
+		const principalHash = hashAgentSandboxPrincipal({
+			type: 'workflow-execution',
+			workflowId: 'workflow-1',
+			executionId: 'execution-1',
+			itemId: 'execution-1-0',
+		});
 		runtime.agent.stream.mockRejectedValue(new Error('stream setup failed'));
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 		executionService.startExecutionRecording.mockResolvedValue('fallback-execution-1');
+		agentSandboxRuntimeService.destroyWorkspaceSandbox.mockRejectedValue(
+			new Error('cleanup failed'),
+		);
 
 		await expect(
-			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+			service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ principalHash, executionScoped: true },
+			),
 		).rejects.toThrow('stream setup failed');
 
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
@@ -259,6 +406,11 @@ describe('AgentWorkflowExecutionService', () => {
 			expect.objectContaining({
 				record: expect.objectContaining({ error: 'stream setup failed', finishReason: 'error' }),
 			}),
+		);
+		expect(agentSandboxRuntimeService.destroyWorkspaceSandbox).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			principalHash,
 		);
 	});
 

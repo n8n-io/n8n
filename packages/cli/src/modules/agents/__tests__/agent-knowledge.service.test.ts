@@ -407,15 +407,18 @@ describe('AgentKnowledgeService', () => {
 		]);
 	});
 
-	it('delegates warmup to the sandbox service for an unpublished agent', async () => {
+	it('warms the knowledge sandbox for an unpublished agent', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: agentId,
 			projectId,
 			activeVersionId: null,
 		} as never);
 
-		await expect(service.warmSandbox(agentId, projectId)).resolves.toBeUndefined();
-		expect(agentSandboxRuntimeService.warmSandbox).toHaveBeenCalledWith(projectId, agentId);
+		await expect(service.warmKnowledgeSandbox(agentId, projectId)).resolves.toBeUndefined();
+		expect(agentSandboxRuntimeService.warmKnowledgeSandbox).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+		);
 	});
 
 	it('pre-warms the mirror after a successful upload', async () => {

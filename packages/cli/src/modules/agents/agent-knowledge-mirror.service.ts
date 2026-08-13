@@ -138,6 +138,8 @@ export class AgentKnowledgeMirrorService {
 		const limit = validatedRequest.head_limit ?? DEFAULT_SEARCH_TEXT_LIMIT;
 
 		if (references.files.length === 0) {
+			const runtime = await this.acquireKnowledgeRuntime(projectId, agentId);
+			await this.ensureMirrorSynced(runtime, references.files);
 			return emptySearchKnowledgeResult(outputMode, limit);
 		}
 
@@ -525,7 +527,10 @@ export class AgentKnowledgeMirrorService {
 		projectId: string,
 		agentId: string,
 	): Promise<AgentKnowledgeMirrorRuntime> {
-		const runtime = await this.agentSandboxRuntimeService.acquireSandbox(projectId, agentId);
+		const runtime = await this.agentSandboxRuntimeService.acquireKnowledgeSandbox(
+			projectId,
+			agentId,
+		);
 		return { ...runtime, paths: getAgentKnowledgePaths(runtime.provider) };
 	}
 }

@@ -422,7 +422,7 @@ export {
 	CORE_WORKSPACE_TOOL_NAMES,
 	createScopedWorkspace,
 	createWorkspaceTools,
-	getToolResultThreadDirectory,
+	reconcileToolResultRuns,
 } from './workspace';
 export { SandboxProcessManager, ProcessHandle } from './workspace';
 

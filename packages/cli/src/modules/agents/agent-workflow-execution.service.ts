@@ -28,6 +28,11 @@ import { AgentExecutionService, type StartExecutionParams } from './agent-execut
 import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import {
+	encodeAgentSandboxHostMetadata,
+	type AgentSandboxPrincipalHash,
+} from './agent-sandbox-principal';
+import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
+import {
 	buildAgentConfigurationTelemetry,
 	buildAgentConfigurationTelemetryFromConfig,
 } from './agent-telemetry';
@@ -43,6 +48,11 @@ import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { describeStructuredOutputError } from './utils/structured-output-error';
+
+interface WorkflowSandboxScope {
+	principalHash: AgentSandboxPrincipalHash;
+	executionScoped: boolean;
+}
 
 /**
  * Executes agents invoked from inside a workflow execution (the AI Agent node
@@ -62,6 +72,7 @@ export class AgentWorkflowExecutionService {
 		private readonly agentRunTracingService: AgentRunTracingService,
 		private readonly executionLevelTracer: ExecutionLevelTracer,
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
+		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -120,6 +131,7 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
+		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -138,6 +150,11 @@ export class AgentWorkflowExecutionService {
 					agentEntity,
 					credentialProvider,
 					runType,
+					undefined,
+					undefined,
+					undefined,
+					'manual',
+					sandboxPrincipalHash,
 				);
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {
@@ -218,6 +235,9 @@ export class AgentWorkflowExecutionService {
 			nodeName?: string;
 		};
 		recordingParams?: StartExecutionParams;
+		sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
+		onSuspension?: () => void;
+		onTerminal?: () => void;
 	}): Promise<WorkflowAgentRunOutcome> {
 		const {
 			agentInstance,
@@ -229,6 +249,9 @@ export class AgentWorkflowExecutionService {
 			outputSchema,
 			tracing,
 			recordingParams,
+			sandboxScope,
+			onSuspension,
+			onTerminal,
 		} = params;
 
 		let agentExecutionId: string | undefined;
@@ -284,7 +307,11 @@ export class AgentWorkflowExecutionService {
 					// caller-supplied session id actually continue the conversation.
 					// The previous key — the execution id — changed every run and hid
 					// all prior messages of the thread from the model.
-					persistence: { resourceId: threadId, threadId },
+					persistence: {
+						resourceId: threadId,
+						threadId,
+						...(sandboxScope ? { hostMetadata: encodeAgentSandboxHostMetadata(sandboxScope) } : {}),
+					},
 					executionCounter: createAgentExecutionCounter(this.telemetry, {
 						agentId: telemetryAgentId,
 						userId: telemetryUserId,
@@ -311,7 +338,9 @@ export class AgentWorkflowExecutionService {
 				for await (const value of streamAgentChunks(resultStream.stream)) {
 					recorder.record(value);
 
-					if (value.type === 'tool-call') {
+					if (value.type === 'tool-call-suspended') {
+						onSuspension?.();
+					} else if (value.type === 'tool-call') {
 						toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
 					} else if (value.type === 'tool-result') {
 						const pending = toolInputs.get(value.toolCallId);
@@ -324,8 +353,16 @@ export class AgentWorkflowExecutionService {
 					} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
 						structuredOutput = value.structuredOutput;
 					}
+					if (
+						value.type === 'error' ||
+						(value.type === 'finish' &&
+							!(recorder.suspended && value.finishReason === 'tool-calls'))
+					) {
+						onTerminal?.();
+					}
 				}
 			} catch (error) {
+				onTerminal?.();
 				const normalizedError = this.normalizeWorkflowStreamError(error, outputSchema);
 				recorder.record({ type: 'error', error: normalizedError });
 				recorder.record({ type: 'finish', finishReason: 'error' });
@@ -432,6 +469,60 @@ export class AgentWorkflowExecutionService {
 		useDraftVersion?: boolean,
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
+		sandboxScope?: WorkflowSandboxScope,
+	): Promise<ExecuteAgentData> {
+		let resumablySuspended = false;
+		try {
+			return await this.executeForWorkflowInternal(
+				agentId,
+				message,
+				executionId,
+				threadId,
+				projectId,
+				telemetryUserId,
+				useDraftVersion,
+				outputSchema,
+				workflowContext,
+				sandboxScope,
+				() => {
+					resumablySuspended = true;
+				},
+				() => {
+					resumablySuspended = false;
+				},
+			);
+		} finally {
+			if (
+				sandboxScope?.executionScoped &&
+				!resumablySuspended &&
+				this.agentSandboxRuntimeService.isEnabled()
+			) {
+				try {
+					await this.agentSandboxRuntimeService.destroyWorkspaceSandbox(
+						projectId,
+						agentId,
+						sandboxScope.principalHash,
+					);
+				} catch {
+					// Workspace cleanup is best-effort and must not replace the workflow outcome.
+				}
+			}
+		}
+	}
+
+	private async executeForWorkflowInternal(
+		agentId: string,
+		message: string,
+		executionId: string,
+		threadId: string,
+		projectId: string,
+		telemetryUserId?: string,
+		useDraftVersion?: boolean,
+		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
+		sandboxScope?: WorkflowSandboxScope,
+		onSuspension?: () => void,
+		onTerminal?: () => void,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -455,6 +546,7 @@ export class AgentWorkflowExecutionService {
 			runType,
 			outputSchema,
 			extraTools?.length ? extraTools : undefined,
+			sandboxScope?.principalHash,
 		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
@@ -488,6 +580,16 @@ export class AgentWorkflowExecutionService {
 					configuration: telemetryConfiguration,
 				},
 			},
+			...(sandboxScope
+				? {
+						sandboxScope: {
+							projectId,
+							principalHash: sandboxScope.principalHash,
+						},
+					}
+				: {}),
+			onSuspension,
+			onTerminal,
 		});
 
 		if (run.agentExecutionId) {

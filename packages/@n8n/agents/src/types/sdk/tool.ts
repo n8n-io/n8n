@@ -26,6 +26,7 @@ export interface ToolExecutionContext {
 	persistence?: {
 		threadId: string;
 		resourceId: string;
+		hostMetadata?: JSONObject;
 	};
 	/** Internal runtime event bridge for platform-managed tools. */
 	emitEvent?: (event: AgentEventData) => void;
