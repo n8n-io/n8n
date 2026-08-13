@@ -89,4 +89,21 @@ describe('NodesAttachmentChips', () => {
 		await fireEvent.click(getByTestId('nodes-chip-expand'));
 		expect(queryByTestId('nodes-chip-panel')).toBeNull();
 	});
+
+	it('collapsing many sets shows a total-count summary chip, not a bare toggle', async () => {
+		// 7 lone sets (> COLLAPSE_CHIP_THRESHOLD) → collapse toggle appears.
+		const sets = nodeRefs('A', 'B', 'C', 'D', 'E', 'F', 'G').map((n) => ({ nodes: [n] }));
+		const { getByTestId, queryByTestId, getAllByTestId } = renderComponent(NodesAttachmentChips, {
+			props: { attachment: att(sets), isRemovable: true },
+		});
+		expect(getAllByTestId('nodes-chip-node')).toHaveLength(7);
+		expect(queryByTestId('nodes-chips-collapsed-summary')).toBeNull();
+
+		await fireEvent.click(getByTestId('nodes-chips-collapse'));
+
+		// Collapsed: individual chips gone, one summary chip with the total count.
+		expect(queryByTestId('nodes-chip-node')).toBeNull();
+		const summary = getByTestId('nodes-chips-collapsed-summary');
+		expect(summary.textContent).toContain('7 nodes');
+	});
 });

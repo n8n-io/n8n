@@ -92,12 +92,29 @@ const visibleChipCount = computed(() =>
 	explodeSingleSet.value ? props.attachment.sets[0].nodes.length : setCount.value,
 );
 const showCollapseToggle = computed(() => visibleChipCount.value > COLLAPSE_CHIP_THRESHOLD);
+const totalNodeCount = computed(() =>
+	props.attachment.sets.reduce((sum, set) => sum + set.nodes.length, 0),
+);
 
 // inputNode/outputNode are send-time context only — intentionally never rendered.
 </script>
 
 <template>
 	<div :class="$style.container">
+		<span
+			v-if="isCollapsed"
+			:class="$style.resourceChip"
+			data-testid="nodes-chips-collapsed-summary"
+		>
+			<N8nIcon icon="layers" size="xsmall" />
+			<span :class="$style.resourceName">
+				{{
+					i18n.baseText('instanceAi.nodeContext.nodesBundle', {
+						interpolate: { count: totalNodeCount },
+					})
+				}}
+			</span>
+		</span>
 		<template v-if="!isCollapsed">
 			<template v-if="explodeSingleSet">
 				<span

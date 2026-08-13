@@ -320,6 +320,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		composerFocusRequest.value++;
 	}
 
+	// Bumped after a message with node attachments is sent, so the canvas clears its selection.
+	const clearCanvasSelectionRequest = ref(0);
+	function requestClearCanvasSelection(): void {
+		clearCanvasSelectionRequest.value++;
+	}
+
 	return {
 		// Instance-level state
 		threads,
@@ -356,6 +362,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		consumePendingAttachments,
 		composerFocusRequest,
 		requestComposerFocus,
+		clearCanvasSelectionRequest,
+		requestClearCanvasSelection,
 	};
 });
 

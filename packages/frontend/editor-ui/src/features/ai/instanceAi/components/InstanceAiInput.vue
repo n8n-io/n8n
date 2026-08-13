@@ -281,6 +281,10 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	}
 
 	trackSelectedSuggestionSubmitted(message);
+	// Clear the canvas selection once node context is actually sent (Context A).
+	if (attachments?.some((a) => a.type === 'nodes')) {
+		instanceAiStore.requestClearCanvasSelection();
+	}
 	emitSubmittedMessage(message, attachments);
 	resetDraftComposer();
 }

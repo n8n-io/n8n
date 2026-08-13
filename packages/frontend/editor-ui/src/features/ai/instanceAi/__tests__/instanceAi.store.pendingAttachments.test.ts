@@ -36,4 +36,11 @@ describe('instanceAi store — pending composer attachments', () => {
 		const again = store.consumePendingAttachments();
 		expect(again[0].type === 'nodes' && again[0].sets).toEqual(setsB);
 	});
+
+	it('requestClearCanvasSelection bumps the counter the canvas watches', () => {
+		const store = useInstanceAiStore();
+		const before = store.clearCanvasSelectionRequest;
+		store.requestClearCanvasSelection();
+		expect(store.clearCanvasSelectionRequest).toBe(before + 1);
+	});
 });

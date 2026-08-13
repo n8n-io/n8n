@@ -706,7 +706,11 @@ function reconnectThreadAfterHydration(): void {
 		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
 	}
 	const draftAttachment = consumePendingDraftAttachment(props.threadId);
-	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
+	if (draftAttachment) {
+		store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
+		// Show the workflow alongside the chat so the user keeps canvas context (AC #2).
+		preview.openWorkflowPreview(draftAttachment.workflowId);
+	}
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();

@@ -1105,6 +1105,13 @@ function clearSelectedNodes() {
 	removeSelectedNodes(selectedNodesAndGroups.value);
 }
 
+// Clear the selection once the composer sends a message carrying these nodes as
+// context, so a stale highlight doesn't linger after "add to chat".
+watch(
+	() => instanceAiStore.clearCanvasSelectionRequest,
+	() => clearSelectedNodes(),
+);
+
 function onSelectAllNodes() {
 	addSelectedNodes(selectableNodesAndGroups.value);
 }
