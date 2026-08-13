@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -110,6 +110,15 @@ const label = computed((): string => {
 			<template v-else>
 				<span>{{ infoText }}</span>
 			</template>
+			<N8nBadge
+				v-if="item.toolOutcome === 'declined'"
+				:class="$style.statusBadge"
+				theme="default"
+				size="xsmall"
+				data-test-id="timeline-declined-badge"
+			>
+				{{ i18n.baseText('agentSessions.timeline.declined') }}
+			</N8nBadge>
 			<N8nTooltip v-if="attachmentChip" :content="attachmentChip.tooltip" placement="top">
 				<span :class="$style.attachmentChip" data-testid="timeline-attachment-chip">
 					<N8nIcon icon="paperclip" size="xsmall" />
@@ -153,11 +162,15 @@ const label = computed((): string => {
 
 	/* Apply ellipsis to text spans, not the flex container — the container's
 	   overflow:hidden combined with a tight line-box was clipping descenders. */
-	> span {
+	> span:not(.statusBadge) {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		line-height: var(--line-height--sm);
 	}
+}
+
+.statusBadge {
+	flex-shrink: 0;
 }
 
 .workflowLink {

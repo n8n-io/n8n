@@ -1485,6 +1485,8 @@
 	"agentSessions.timeline.userFeedback": "User feedback received",
 	"agentSessions.timeline.success": "Success",
 	"agentSessions.timeline.error": "Error",
+	"agentSessions.timeline.declined": "Declined",
+	"agentSessions.timeline.declinedDescription": "Tool call declined. The tool wasn't run.",
 	"agentSessions.timeline.id": "ID",
 	"agentSessions.timeline.created": "Created",
 	"agentSessions.timeline.duration": "Duration",

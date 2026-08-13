@@ -1,5 +1,6 @@
 import type { BaseTextKey } from '@n8n/i18n';
-import type { EventKind, IdleRange, TimelineItem } from './session-timeline.types';
+import { isRecord } from '@n8n/utils/is-record';
+import type { EventKind, IdleRange, TimelineItem, ToolCallOutcome } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from './utils/toolDisplayName';
@@ -66,6 +67,9 @@ export function timelineItemSearchText(
 	}
 	if (item.kind === 'tool' && item.isUserFeedback) {
 		parts.push(labelForKey('user-feedback'));
+	}
+	if (item.toolOutcome === 'declined') {
+		parts.push(labelForKey('declined'));
 	}
 
 	parts.push(
@@ -217,8 +221,47 @@ function timelineEvents(exec: AgentExecution): RawEvent[] {
 	return (exec.timeline ?? []) as unknown as RawEvent[];
 }
 
+function isDeclinedToolOutput(output: unknown): boolean {
+	return isRecord(output) && output.declined === true;
+}
+
+function collectDeclinedToolCallIds(executions: AgentExecution[]): Set<string> {
+	const suspendedToolCallIds = new Set<string>();
+	const declinedResultIds = new Set<string>();
+
+	for (const exec of executions) {
+		for (const event of timelineEvents(exec)) {
+			if (event.type === 'suspension' && event.toolCallId) {
+				suspendedToolCallIds.add(event.toolCallId);
+			} else if (
+				event.type === 'tool-call' &&
+				event.toolCallId &&
+				isDeclinedToolOutput(event.output)
+			) {
+				declinedResultIds.add(event.toolCallId);
+			}
+		}
+	}
+
+	const declinedToolCallIds = new Set<string>();
+	for (const toolCallId of declinedResultIds) {
+		if (suspendedToolCallIds.has(toolCallId)) declinedToolCallIds.add(toolCallId);
+	}
+	return declinedToolCallIds;
+}
+
+function toolCallOutcome(
+	event: RawToolCallEvent,
+	declinedToolCallIds: Set<string>,
+): ToolCallOutcome | undefined {
+	if (declinedToolCallIds.has(event.toolCallId)) return 'declined';
+	if (event.endTime === 0) return undefined;
+	return event.success ? 'success' : 'error';
+}
+
 export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
 	const items: TimelineItem[] = [];
+	const declinedToolCallIds = collectDeclinedToolCallIds(executions);
 	// Tool calls recorded AFTER a suspension of the same toolCallId are the
 	// resumed segment's record of the user's answer, not a fresh tool call.
 	const suspendedToolCallIds = new Set<string>();
@@ -267,6 +310,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					toolCallId: event.toolCallId,
 					toolInput: event.input,
 					toolOutput: event.output,
+					toolOutcome: toolCallOutcome(event, declinedToolCallIds),
 					toolSuccess: event.endTime === 0 ? undefined : event.success,
 					timestamp: event.startTime,
 					endTimestamp: event.endTime || event.startTime,

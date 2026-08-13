@@ -271,6 +271,101 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(toolItems[1].isUserFeedback).toBe(true);
 	});
 
+	it.each(['tool', 'node', 'workflow'] as const)(
+		'marks both records of a declined %s call as declined',
+		(kind) => {
+			const items = flattenExecutionsToTimelineItems([
+				withTimeline(
+					[
+						{
+							type: 'tool-call',
+							kind,
+							name: 'protected_action',
+							toolCallId: 'tc-declined',
+							input: { recordId: '1' },
+							startTime: 100,
+							endTime: 0,
+							success: false,
+						},
+						{
+							type: 'suspension',
+							toolName: 'protected_action',
+							toolCallId: 'tc-declined',
+							timestamp: 110,
+						},
+					],
+					{ id: 'e-suspended', hitlStatus: 'suspended' },
+				),
+				withTimeline(
+					[
+						{
+							type: 'tool-call',
+							kind,
+							name: 'protected_action',
+							toolCallId: 'tc-declined',
+							output: {
+								declined: true,
+								message: 'Tool "protected_action" was not approved',
+							},
+							startTime: 200,
+							endTime: 200,
+							success: true,
+						},
+					],
+					{ id: 'e-resumed', hitlStatus: 'resumed' },
+				),
+			]);
+
+			const toolItems = items.filter((item) => item.kind === kind);
+			expect(toolItems).toHaveLength(2);
+			expect(toolItems.map((item) => item.toolOutcome)).toEqual(['declined', 'declined']);
+			expect(toolItems[0].toolOutput).toBeUndefined();
+		},
+	);
+
+	it('keeps an approved HITL tool call as a normal successful call', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'protected_action',
+						toolCallId: 'tc-approved',
+						startTime: 100,
+						endTime: 0,
+						success: false,
+					},
+					{
+						type: 'suspension',
+						toolName: 'protected_action',
+						toolCallId: 'tc-approved',
+						timestamp: 110,
+					},
+				],
+				{ id: 'e-suspended', hitlStatus: 'suspended' },
+			),
+			withTimeline(
+				[
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'protected_action',
+						toolCallId: 'tc-approved',
+						output: { approved: true },
+						startTime: 200,
+						endTime: 200,
+						success: true,
+					},
+				],
+				{ id: 'e-resumed', hitlStatus: 'resumed' },
+			),
+		]);
+
+		const toolItems = items.filter((item) => item.kind === 'tool');
+		expect(toolItems.map((item) => item.toolOutcome)).toEqual([undefined, 'success']);
+	});
+
 	it('emits a user item from userMessage using execution startedAt', () => {
 		const items = flattenExecutionsToTimelineItems([exec({ userMessage: 'hello' })]);
 		expect(items[0]).toMatchObject({
@@ -315,6 +410,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 			workflowTriggerType: 'manual',
 			timestamp: 1000,
 			endTimestamp: 1500,
+			toolOutcome: 'success',
 			toolSuccess: true,
 		});
 	});
@@ -342,6 +438,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 			endTimestamp: 1000,
 			toolInput: { method: 'GET' },
 			toolOutput: undefined,
+			toolOutcome: undefined,
 			toolSuccess: undefined,
 		});
 		expect(tool?.workflowId).toBeUndefined();

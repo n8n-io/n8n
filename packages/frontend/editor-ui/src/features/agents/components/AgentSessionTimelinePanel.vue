@@ -102,6 +102,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.waitingForUser');
 		case 'user-feedback':
 			return i18n.baseText('agentSessions.timeline.userFeedback');
+		case 'declined':
+			return i18n.baseText('agentSessions.timeline.declined');
 		default:
 			return key;
 	}

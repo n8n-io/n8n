@@ -1,5 +1,7 @@
 export type EventKind = 'user' | 'agent' | 'tool' | 'node' | 'workflow' | 'suspension';
 
+export type ToolCallOutcome = 'success' | 'error' | 'declined';
+
 export interface TimelineItem {
 	kind: EventKind;
 	executionId: string;
@@ -12,6 +14,9 @@ export interface TimelineItem {
 	toolCallId?: string;
 	toolInput?: unknown;
 	toolOutput?: unknown;
+	/** Terminal outcome of a tool-like event. Declined calls are intentional user decisions, not errors. */
+	toolOutcome?: ToolCallOutcome;
+	/** @deprecated Use `toolOutcome`. Kept for compatibility with existing timeline consumers. */
 	toolSuccess?: boolean;
 	workflowId?: string;
 	workflowName?: string;

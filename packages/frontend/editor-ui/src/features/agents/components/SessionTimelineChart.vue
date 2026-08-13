@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { truncate } from '@n8n/utils/string/truncate';
 import { useI18n } from '@n8n/i18n';
-import { N8nHoverCard, N8nIconButton } from '@n8n/design-system';
+import { N8nBadge, N8nHoverCard, N8nIconButton } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
@@ -153,6 +153,16 @@ function idleDuration(range: IdleRange): string {
 function popoverTime(item: TimelineItem): string {
 	if (!item.timestamp) return '';
 	return convertToDisplayDate(new Date(item.timestamp).toISOString()).time;
+}
+
+function blockAriaLabel(item: TimelineItem): string {
+	return [
+		popoverLabel(item),
+		popoverName(item),
+		item.toolOutcome === 'declined' ? i18n.baseText('agentSessions.timeline.declined') : undefined,
+	]
+		.filter((part): part is string => Boolean(part))
+		.join(', ');
 }
 
 function onClick(index: number, item: TimelineItem): void {
@@ -316,6 +326,14 @@ onBeforeUnmount(() => {
 							show-label
 						/>
 						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
+						<N8nBadge
+							v-if="activePopover.segment.item.toolOutcome === 'declined'"
+							theme="default"
+							size="xsmall"
+							data-test-id="timeline-popover-declined-badge"
+						>
+							{{ i18n.baseText('agentSessions.timeline.declined') }}
+						</N8nBadge>
 						<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
 							{{ popoverDuration(activePopover.segment.item) }}
 						</span>
@@ -344,6 +362,7 @@ onBeforeUnmount(() => {
 					type="button"
 					data-test-id="timeline-block"
 					:data-timeline-index="seg.index"
+					:aria-label="blockAriaLabel(seg.item)"
 					:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
 					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
 					:style="eventStyle(seg.item)"

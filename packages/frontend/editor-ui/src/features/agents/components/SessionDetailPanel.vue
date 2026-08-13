@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import VueMarkdown from 'vue-markdown-render';
 import {
 	N8nButton,
+	N8nBadge,
 	N8nCallout,
 	N8nIconButton,
 	N8nText,
@@ -206,7 +207,14 @@ const headerIcon = computed((): IconName => {
 
 const nodeErrorMessage = computed((): string => {
 	const item = props.item;
-	if (!item || item.kind !== 'node' || item.toolSuccess !== false) return '';
+	if (
+		!item ||
+		item.kind !== 'node' ||
+		(item.toolOutcome !== 'error' &&
+			!(item.toolOutcome === undefined && item.toolSuccess === false))
+	) {
+		return '';
+	}
 	const prefix = i18n.baseText('agentSessions.timeline.nodeError');
 	const output = item.toolOutput;
 	if (output && typeof output === 'object' && 'error' in output) {
@@ -215,6 +223,8 @@ const nodeErrorMessage = computed((): string => {
 	}
 	return prefix;
 });
+
+const isToolCallDeclined = computed((): boolean => props.item?.toolOutcome === 'declined');
 
 const workflowFormOutput = computed((): { formUrl: string; message: string } | null => {
 	const o = props.item?.toolOutput;
@@ -235,6 +245,14 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 				<div :class="$style.headerTitle">
 					<N8nIcon :icon="headerIcon" :size="16" />
 					<N8nText bold>{{ headerTitle }}</N8nText>
+					<N8nBadge
+						v-if="isToolCallDeclined"
+						theme="default"
+						size="xsmall"
+						data-test-id="detail-declined-badge"
+					>
+						{{ i18n.baseText('agentSessions.timeline.declined') }}
+					</N8nBadge>
 				</div>
 				<N8nIconButton
 					icon="x"
@@ -261,15 +279,25 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 				</N8nCard>
 
 				<div :class="$style.output">
+					<N8nCallout
+						v-if="isToolCallDeclined"
+						theme="info"
+						iconless
+						data-test-id="tool-call-declined-callout"
+					>
+						{{ i18n.baseText('agentSessions.timeline.declinedDescription') }}
+					</N8nCallout>
 					<template v-if="item.kind === 'workflow'">
 						<WorkflowExecutionLogViewer
-							v-if="item.workflowExecutionId && item.workflowId"
+							v-if="!isToolCallDeclined && item.workflowExecutionId && item.workflowId"
 							:key="`${item.workflowId}:${item.workflowExecutionId}`"
 							:workflow-id="item.workflowId"
 							:workflow-execution-id="item.workflowExecutionId"
 						/>
 						<div
-							v-else-if="item.workflowTriggerType === 'form' && workflowFormOutput"
+							v-else-if="
+								!isToolCallDeclined && item.workflowTriggerType === 'form' && workflowFormOutput
+							"
 							data-test-id="wf-form-card"
 							:class="$style.formCard"
 						>
@@ -282,7 +310,11 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 								>{{ i18n.baseText('agentSessions.timeline.openForm') }}</a
 							>
 						</div>
-						<div v-else data-test-id="wf-error-fallback" :class="$style.errorFallback">
+						<div
+							v-else-if="!isToolCallDeclined"
+							data-test-id="wf-error-fallback"
+							:class="$style.errorFallback"
+						>
 							<div :class="$style.errorBanner">
 								{{ i18n.baseText('agentSessions.timeline.workflowError') }}
 							</div>
@@ -387,16 +419,18 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'node'">
-						<N8nCallout v-if="nodeErrorMessage" theme="danger" data-test-id="node-error-callout">
-							{{ nodeErrorMessage }}
-						</N8nCallout>
-						<ToolIoView
-							:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
-							:input="item.toolInput"
-							:output="item.toolOutput"
-							:node-parameters="item.nodeParameters"
-							:success="item.toolSuccess"
-						/>
+						<template v-if="!isToolCallDeclined">
+							<N8nCallout v-if="nodeErrorMessage" theme="danger" data-test-id="node-error-callout">
+								{{ nodeErrorMessage }}
+							</N8nCallout>
+							<ToolIoView
+								:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
+								:input="item.toolInput"
+								:output="item.toolOutput"
+								:node-parameters="item.nodeParameters"
+								:success="item.toolOutcome ? item.toolOutcome !== 'error' : item.toolSuccess"
+							/>
+						</template>
 					</template>
 
 					<template v-else-if="item.kind === 'agent' && agentStructuredContent !== undefined">

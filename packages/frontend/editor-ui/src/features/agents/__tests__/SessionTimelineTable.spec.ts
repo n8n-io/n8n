@@ -107,6 +107,33 @@ describe('SessionTimelineTable', () => {
 		expect(w.text()).toContain('Card sender');
 	});
 
+	it('renders the declined badge only for declined tool calls', () => {
+		const w = mountTable({
+			items: [
+				{
+					kind: 'tool',
+					executionId: 'e1',
+					timestamp: 1000,
+					toolName: 'protected_action',
+					toolOutcome: 'declined',
+				},
+				{
+					kind: 'tool',
+					executionId: 'e1',
+					timestamp: 2000,
+					toolName: 'approved_action',
+					toolOutcome: 'success',
+				},
+			],
+			selectedIndex: null,
+			visibleKinds: new Set<string>(),
+		});
+
+		const badges = w.findAll('[data-test-id="timeline-declined-badge"]');
+		expect(badges).toHaveLength(1);
+		expect(badges[0].text()).toBe('Declined');
+	});
+
 	it('hides items whose filterKey is not in visibleKinds', () => {
 		const w = mountTable({
 			items: makeItems(),

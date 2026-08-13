@@ -142,4 +142,33 @@ describe('SessionTimelineChart', () => {
 			vi.useRealTimers();
 		}
 	});
+
+	it('exposes declined status in the block label and hover card', async () => {
+		vi.useFakeTimers();
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'tool',
+					toolName: 'protected_action',
+					toolOutcome: 'declined',
+					timestamp: 1000,
+					endTimestamp: 1000,
+				}),
+			],
+		});
+
+		try {
+			const block = w.get('[data-test-id="timeline-block"]');
+			expect(block.attributes('aria-label')).toContain('Declined');
+
+			await block.trigger('focus');
+			await vi.runAllTimersAsync();
+
+			const badge = w.get('[data-test-id="timeline-popover-declined-badge"]');
+			expect(badge.text()).toBe('Declined');
+		} finally {
+			w.unmount();
+			vi.useRealTimers();
+		}
+	});
 });

@@ -195,6 +195,39 @@ describe('SessionDetailPanel — workflow branches', () => {
 	});
 });
 
+describe('SessionDetailPanel — declined tool calls', () => {
+	it.each(['tool', 'node', 'workflow'] as const)(
+		'renders a declined state instead of an error for %s calls',
+		(kind) => {
+			const w = mountIt({
+				kind,
+				executionId: 'e1',
+				timestamp: 0,
+				toolName: 'protected_action',
+				toolInput: { recordId: '1' },
+				toolOutput: {
+					declined: true,
+					message: 'Tool "protected_action" was not approved',
+				},
+				toolOutcome: 'declined',
+				workflowId: 'wf-1',
+				workflowExecutionId: 'exec-1',
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeDisplayName: 'HTTP Request',
+			});
+
+			expect(w.get('[data-test-id="detail-declined-badge"]').text()).toBe('Declined');
+			expect(w.get('[data-test-id="tool-call-declined-callout"]').text()).toContain(
+				"Tool call declined. The tool wasn't run.",
+			);
+			expect(w.find('[data-test-id="wf-error-fallback"]').exists()).toBe(false);
+			expect(w.find('[data-test-id="node-error-callout"]').exists()).toBe(false);
+			expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(false);
+		},
+	);
+});
+
 describe('SessionDetailPanel — other kinds', () => {
 	it('renders Input/Output JSON sections for generic tool calls', () => {
 		const w = mountIt({
