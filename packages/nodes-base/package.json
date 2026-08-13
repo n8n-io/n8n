@@ -754,6 +754,7 @@
       "dist/nodes/PostHog/PostHog.node.js",
       "dist/nodes/Postmark/PostmarkTrigger.node.js",
       "dist/nodes/ProfitWell/ProfitWell.node.js",
+      "dist/nodes/ProjectFile/ProjectFile.node.js",
       "dist/nodes/Pushbullet/Pushbullet.node.js",
       "dist/nodes/Pushcut/Pushcut.node.js",
       "dist/nodes/Pushcut/PushcutTrigger.node.js",

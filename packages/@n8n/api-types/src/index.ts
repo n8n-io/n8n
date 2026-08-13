@@ -5,6 +5,7 @@ export type * from './push';
 export type * from './scaling';
 export * from './frontend-settings';
 export type * from './user';
+export type * from './project-file';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
@@ -121,7 +122,11 @@ export type { FavoriteResourceType } from './schemas/favorites.schema';
 export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';
-export { ViewableMimeTypes } from './schemas/binary-data.schema';
+export {
+	ViewableMimeTypes,
+	ProjectFilePreviewableMimeTypes,
+	isProjectFilePreviewable,
+} from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
 export {

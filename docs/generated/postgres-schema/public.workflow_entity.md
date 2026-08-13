@@ -9,7 +9,7 @@
 | connections | json |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | description | text |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) [public.chat_hub_messages](public.chat_hub_messages.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.evaluation_collection](public.evaluation_collection.md) [public.evaluation_config](public.evaluation_config.md) [public.execution_entity](public.execution_entity.md) [public.insights_metadata](public.insights_metadata.md) [public.poller_state](public.poller_state.md) [public.processed_data](public.processed_data.md) [public.shared_workflow](public.shared_workflow.md) [public.test_run](public.test_run.md) [public.webhook_entity](public.webhook_entity.md) [public.workflow_builder_session](public.workflow_builder_session.md) [public.workflow_dependency](public.workflow_dependency.md) [public.workflow_history](public.workflow_history.md) [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_version](public.workflow_published_version.md) [public.workflow_review_activity](public.workflow_review_activity.md) [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) [public.workflows_tags](public.workflows_tags.md) |  |  |
+| id | varchar(36) |  | false | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) [public.chat_hub_messages](public.chat_hub_messages.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.evaluation_collection](public.evaluation_collection.md) [public.evaluation_config](public.evaluation_config.md) [public.execution_entity](public.execution_entity.md) [public.insights_metadata](public.insights_metadata.md) [public.poller_state](public.poller_state.md) [public.processed_data](public.processed_data.md) [public.project_file](public.project_file.md) [public.shared_workflow](public.shared_workflow.md) [public.test_run](public.test_run.md) [public.webhook_entity](public.webhook_entity.md) [public.workflow_builder_session](public.workflow_builder_session.md) [public.workflow_dependency](public.workflow_dependency.md) [public.workflow_history](public.workflow_history.md) [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_version](public.workflow_published_version.md) [public.workflow_review_activity](public.workflow_review_activity.md) [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) [public.workflows_tags](public.workflows_tags.md) |  |  |
 | isArchived | boolean | false | false |  |  |  |
 | meta | json |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
@@ -75,6 +75,8 @@ erDiagram
 "public.insights_metadata" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE SET NULL"
 "public.poller_state" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.processed_data" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.project_file" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;updatedByWorkflowId#quot;) REFERENCES workflow_entity(id) ON DELETE SET NULL"
+"public.project_file" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;createdByWorkflowId#quot;) REFERENCES workflow_entity(id) ON DELETE SET NULL"
 "public.shared_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.test_run" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.webhook_entity" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -232,6 +234,20 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   text value
   varchar_36_ workflowId FK
+}
+"public.project_file" {
+  text binaryDataId
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ createdByWorkflowId FK
+  integer fileSizeBytes
+  varchar_36_ id
+  varchar_255_ mimeType
+  varchar_255_ name
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+  uuid updatedById FK
+  varchar_36_ updatedByWorkflowId FK
 }
 "public.shared_workflow" {
   timestamp_3__with_time_zone createdAt

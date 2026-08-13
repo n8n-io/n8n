@@ -72,6 +72,14 @@ export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 export { ListProjectsQueryDto } from './project/list-projects-query.dto';
 
+export { ListProjectFilesQueryDto } from './project-file/list-project-files-query.dto';
+export { DownloadProjectFileQueryDto } from './project-file/download-project-file-query.dto';
+export { UploadProjectFileQueryDto } from './project-file/upload-project-file-query.dto';
+export {
+	RenameProjectFileDto,
+	projectFileNameSchema,
+} from './project-file/rename-project-file.dto';
+
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
 export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';

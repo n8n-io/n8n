@@ -31,6 +31,7 @@ import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { OAuthConsentPage } from './OAuthConsentPage';
+import { ProjectFilesView } from './ProjectFilesView';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
 import { SecuritySettingsPage } from './SecuritySettingsPage';
@@ -108,6 +109,7 @@ export class n8nPage {
 	readonly sideBar: SidebarPage;
 	readonly dataTable: DataTableView;
 	readonly dataTableDetails: DataTableDetails;
+	readonly projectFiles: ProjectFilesView;
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
@@ -193,6 +195,7 @@ export class n8nPage {
 		this.signIn = new SignInPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
 		this.dataTable = new DataTableView(page);
+		this.projectFiles = new ProjectFilesView(page);
 		this.dataTableDetails = new DataTableDetails(page);
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);

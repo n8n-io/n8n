@@ -69,6 +69,9 @@ export const RESOURCES = {
 		'writeColumn',
 		'listProject',
 	] as const,
+	// `list` covers a future cross-project overview; project-scoped routes use
+	// `listProject`, mirroring dataTable.
+	projectFile: [...DEFAULT_OPERATIONS, 'listProject'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,

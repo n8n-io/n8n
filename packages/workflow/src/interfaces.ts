@@ -29,6 +29,7 @@ import type {
 } from './data-table.types';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
+import type { IProjectFileService } from './project-file.types';
 import type { NodeApiError } from './errors/node-api.error';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
@@ -1152,6 +1153,15 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+export type ProjectFileProxyProvider = {
+	getProjectFileProxy(workflow: Workflow, node: INode): Promise<IProjectFileService>;
+};
+
+export type ProjectFileProxyFunctions = {
+	// Optional to account for situations where the project-files module is disabled
+	getProjectFileProxy?(): Promise<IProjectFileService>;
+};
+
 export type CredentialCheckStatus = {
 	credentialId: string;
 	credentialName: string;
@@ -1275,6 +1285,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
 			DataTableProxyFunctions &
+			ProjectFileProxyFunctions &
 			CredentialCheckProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
@@ -1371,7 +1382,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
+	helpers: RequestHelperFunctions &
+		SSHTunnelFunctions &
+		DataTableProxyFunctions &
+		ProjectFileProxyFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };

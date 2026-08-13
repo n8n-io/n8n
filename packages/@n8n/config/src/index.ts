@@ -37,6 +37,7 @@ import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PollerConfig } from './configs/poller.config';
+import { ProjectFilesConfig } from './configs/project-files.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
 import { TaskRunnersConfig } from './configs/runners.config';
@@ -82,6 +83,7 @@ export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { HttpRequestConfig } from './configs/http-request.config';
 export { PersonalizationConfig } from './configs/personalization.config';
+export { ProjectFilesConfig } from './configs/project-files.config';
 export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
@@ -280,6 +282,9 @@ export class GlobalConfig {
 
 	@Nested
 	dataTable: DataTableConfig;
+
+	@Nested
+	projectFiles: ProjectFilesConfig;
 
 	@Nested
 	workflowHistoryCompaction: WorkflowHistoryCompactionConfig;
