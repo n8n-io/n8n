@@ -245,13 +245,25 @@ export class WorkflowsPublicController {
 
 		try {
 			// Credential tamper protection is enforced centrally in WorkflowService.update
-			const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
+			await this.workflowService.update(req.user, updateData, workflowId, {
 				parentFolderId: resolvedParentFolderId,
 				forceSave: true, // Skip version conflict check for public API
 				publicApi: true,
 				publishIfActive: query.publishIfActive,
 				source: 'api',
 			});
+
+			// `update` returns the workflow without its `shared` relation, which the response needs.
+			const updatedWorkflow = await this.workflowFinderService.findWorkflowForUser(
+				workflowId,
+				req.user,
+				['workflow:read'],
+				{ includeTags: !this.globalConfig.tags.disabled, includeActiveVersion: true },
+			);
+
+			if (!updatedWorkflow) {
+				throw new NotFoundError('Not Found');
+			}
 
 			return this.toWorkflowPublicDto(updatedWorkflow);
 		} catch (error) {
