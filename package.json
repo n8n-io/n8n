@@ -22,6 +22,7 @@
     "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && turbo run test:container:standard --filter=n8n-playwright",
     "typecheck": "turbo typecheck",
     "dev": "node scripts/dev-command-removed-notice.mjs",
+    "dev:up": "node scripts/dev-up.mjs",
     "dev:be": "turbo run dev --env-mode=loose --log-prefix=none --filter=n8n",
     "dev:ai": "turbo run dev --concurrency=150 --env-mode=loose --filter=@n8n/n8n-nodes-langchain --filter=n8n --filter=n8n-core",
     "dev:fe": "run-p start dev:fe:editor",
@@ -146,7 +147,7 @@
       "nodemailer": "8.0.10",
       "validator": "13.15.26",
       "zod": "3.25.76",
-      "js-yaml": "4.3.0",
+      "js-yaml": "4.3.1",
       "body-parser": "2.3.0",
       "glob@10": "10.5.0",
       "glob@7": "7.2.3",
@@ -212,7 +213,8 @@
       "node-gyp>undici": "catalog:undici-v7",
       "@babel/traverse": "^7.23.2",
       "@vitest/browser@<4.1.10": "4.1.10",
-      "immutable": "5.1.8"
+      "immutable": "5.1.8",
+      "nanoid@<3.3.17": "catalog:"
     },
     "patchedDependencies": {
       "axios": "patches/axios.patch",
