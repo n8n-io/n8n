@@ -16,7 +16,7 @@ import type {
 	UpdateLdapConfigurationDto,
 	LdapSyncDto,
 } from '@n8n/api-types';
-import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
+import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { AuthlessRequest } from '@/requests';
