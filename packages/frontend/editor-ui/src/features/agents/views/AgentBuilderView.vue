@@ -147,12 +147,9 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 // singleton agent session/credential stores, so only one builder shell should
 // be mounted at a time.
 const isArtifactMode = computed(() => props.artifactMode);
-const isArtifactPreviewDockOpen = ref(false);
 const persistedPreviewOpen = useStorage('N8N_AGENT_PREVIEW_OPEN', false);
-const isPreviewDockOpen = computed(() =>
-	isArtifactMode.value
-		? isArtifactPreviewDockOpen.value
-		: route.name === AGENT_PREVIEW_VIEW || persistedPreviewOpen.value,
+const isPreviewDockOpen = computed(
+	() => route.name === AGENT_PREVIEW_VIEW || persistedPreviewOpen.value,
 );
 const projectId = computed(
 	() =>
@@ -571,7 +568,7 @@ function openArtifactPreview(preferredSessionId?: string) {
 	} else {
 		bindPreviewSession();
 	}
-	isArtifactPreviewDockOpen.value = true;
+	persistedPreviewOpen.value = true;
 }
 
 function openSessionTarget(target: RouteLocationRaw) {
@@ -631,13 +628,8 @@ function closePreviewRoute() {
 }
 
 function closePreviewDock() {
-	if (isArtifactMode.value) {
-		isArtifactPreviewDockOpen.value = false;
-		return;
-	}
-
 	persistedPreviewOpen.value = false;
-	closePreviewRoute();
+	if (!isArtifactMode.value) closePreviewRoute();
 }
 
 function onPublished(updated: AgentResource) {
@@ -1508,7 +1500,7 @@ watch(
 			return;
 		}
 
-		isArtifactPreviewDockOpen.value = false;
+		persistedPreviewOpen.value = false;
 		activeChatSessionId.value = null;
 	},
 );
@@ -1553,7 +1545,7 @@ watch(
 watch(
 	[isPreviewDockOpen, initialized],
 	([open, isInitialized]) => {
-		if (!isArtifactMode.value && open) persistedPreviewOpen.value = true;
+		if (open) persistedPreviewOpen.value = true;
 		if (open && isInitialized && !sessionsStore.loading) bindPreviewSession();
 	},
 	{ immediate: true },
