@@ -73,7 +73,10 @@ describe('createTabTools', () => {
 			// setup starts with.
 			it('forwards waitUntil to adapter.newPage', async () => {
 				await getTool().execute(
-					{ url: 'https://console.apify.com/settings/integrations/', waitUntil: 'domcontentloaded' },
+					{
+						url: 'https://console.apify.com/settings/integrations/',
+						waitUntil: 'domcontentloaded',
+					},
 					TOOL_CONTEXT,
 				);
 
