@@ -441,6 +441,7 @@ export type {
 	InstanceAiEvent,
 	InstanceAiAgentAttachment,
 	InstanceAiAttachment,
+	InstanceAiNodesAttachment,
 	InstanceAiSendMessageResponse,
 	InstanceAiToolCallState,
 	InstanceAiAgentNode,
