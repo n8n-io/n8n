@@ -1,9 +1,11 @@
 import type { CredentialProvider, ResolvedCredential, CredentialListItem } from '@n8n/agents';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AiGatewayModelCredentialResolver } from '../json-config/model-config';
@@ -53,7 +55,7 @@ export class AgentsCredentialProvider
 	}
 
 	/**
-	 * Resolve a credential by ID, then decrypt and return the raw data.
+	 * Resolve a credential by ID, then decrypt and return the usable data.
 	 *
 	 * Only credentials visible to this provider's scope are considered — the
 	 * same user-scoped intersection as `list()` when a request user is set, so
@@ -66,8 +68,41 @@ export class AgentsCredentialProvider
 			throw new Error(`Credential "${credentialId}" not found or not accessible`);
 		}
 
-		const data = await this.credentialsService.decrypt(credential, true);
+		const data = await this.decryptWithExpressions(credential);
 		return toResolvedCredential(data);
+	}
+
+	/**
+	 * Decrypt through `CredentialsHelper.getDecrypted` — the same path node
+	 * execution takes — so credential fields holding expressions are evaluated
+	 * rather than handed to the caller as raw `={{ ... }}` strings. Without
+	 * this, a field backed by an external secret (`{{ $secrets.store.key }}`)
+	 * reaches the MCP client / model provider verbatim and auth fails.
+	 *
+	 * The agents runtime has no workflow or execution, so `additionalData` is
+	 * built from `getBase()` and scoped to this provider's project — that is
+	 * what carries the external secrets proxy and project variables. `internal`
+	 * mode keeps dynamic (per-user resolvable) credentials out of scope; those
+	 * need an execution context that agents don't have.
+	 */
+	private async decryptWithExpressions(
+		credential: CredentialsEntity,
+	): Promise<ICredentialDataDecryptedObject> {
+		// Imported lazily: `workflow-execute-additional-data` reaches back into
+		// this module to run agents from workflows.
+		// eslint-disable-next-line import-x/no-cycle
+		const { getBase } = await import('@/workflow-execute-additional-data.js');
+		const additionalData = await getBase({
+			userId: this.user?.id,
+			projectId: this.projectId,
+		});
+
+		return await Container.get(CredentialsHelper).getDecrypted(
+			additionalData,
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			'internal',
+		);
 	}
 
 	/**

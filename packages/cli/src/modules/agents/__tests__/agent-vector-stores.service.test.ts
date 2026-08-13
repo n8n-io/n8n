@@ -1,10 +1,12 @@
 import type { BuiltVectorStoreBackend } from '@n8n/agents';
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { Container } from '@n8n/di';
+import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 
 import { AgentVectorStoresService } from '../agent-vector-stores.service';
 import { resolveEmbeddingProviderOptionsFromCredential } from '../json-config/embedding-credential';
@@ -17,6 +19,16 @@ vi.mock('../json-config/vector-store-factory', () => ({
 vi.mock('../json-config/embedding-credential', () => ({
 	resolveEmbeddingProviderOptionsFromCredential: vi.fn().mockResolvedValue({}),
 }));
+
+// `AgentsCredentialProvider.resolve()` decrypts through `CredentialsHelper`, so
+// the credential's expressions (e.g. `$secrets`) are evaluated like they are for
+// nodes. Both collaborators are stubbed here — this suite is about the service.
+vi.mock('@/workflow-execute-additional-data', () => ({
+	getBase: vi.fn().mockResolvedValue(mock<IWorkflowExecuteAdditionalData>()),
+}));
+
+const credentialsHelper = mock<CredentialsHelper>();
+Container.set(CredentialsHelper, credentialsHelper);
 
 vi.mock('@n8n/agents', () => ({
 	createEmbeddingModel: vi.fn().mockReturnValue({ modelId: 'text-embedding-3-small' }),
@@ -66,7 +78,7 @@ function makeService(
 			sharedWithProjects: [],
 		},
 	]);
-	credentialsService.decrypt.mockResolvedValue(rawCredential);
+	credentialsHelper.getDecrypted.mockResolvedValue(rawCredential);
 	return { service: new AgentVectorStoresService(credentialsService), credentialsService };
 }
 
@@ -94,12 +106,12 @@ describe('AgentVectorStoresService.testConnection', () => {
 		const backend = makeBackend();
 		backend.query.mockResolvedValue([]);
 		vi.mocked(buildVectorStoreBackend).mockResolvedValue(backend);
-		const { service, credentialsService } = makeService(postgresConfig.credential);
+		const { service } = makeService(postgresConfig.credential);
 
 		const result = await service.testConnection(projectId, user, postgresConfig);
 
 		expect(result).toEqual({ success: true });
-		expect(credentialsService.decrypt).toHaveBeenCalledTimes(1);
+		expect(credentialsHelper.getDecrypted).toHaveBeenCalledTimes(1);
 		expect(buildVectorStoreBackend).toHaveBeenCalledWith(postgresConfig, expect.anything(), {
 			apiKey: 'store-key',
 		});

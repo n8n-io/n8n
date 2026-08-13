@@ -1,10 +1,28 @@
 import type { CredentialListItem } from '@n8n/agents';
 import type { CredentialsEntity, User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+
+const additionalData = mock<IWorkflowExecuteAdditionalData>();
+const getBaseMock = vi.fn<(...args: unknown[]) => Promise<IWorkflowExecuteAdditionalData>>();
+
+vi.mock('@/workflow-execute-additional-data', () => ({
+	getBase: async (...args: unknown[]) => await getBaseMock(...args),
+}));
+
+const credentialsHelper = mock<CredentialsHelper>();
+
+beforeEach(() => {
+	vi.clearAllMocks();
+	getBaseMock.mockResolvedValue(additionalData);
+	Container.set(CredentialsHelper, credentialsHelper);
+});
 
 function credential(overrides: Partial<CredentialsEntity>): CredentialsEntity {
 	return {
@@ -112,12 +130,17 @@ describe('AgentsCredentialProvider', () => {
 		const projectCred = credential({ id: 'project-cred', name: 'Project Slack' });
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([projectCred]);
 		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
-		credentialsService.decrypt.mockResolvedValue({ apiKey: 'project-secret' });
+		credentialsHelper.getDecrypted.mockResolvedValue({ apiKey: 'project-secret' });
 
 		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
 
 		await expect(provider.resolve('project-cred')).resolves.toEqual({ apiKey: 'project-secret' });
-		expect(credentialsService.decrypt).toHaveBeenCalledWith(projectCred, true);
+		expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+			additionalData,
+			{ id: 'project-cred', name: 'Project Slack' },
+			'slackApi',
+			'internal',
+		);
 	});
 
 	it('resolves a global credential when no request user is provided', async () => {
@@ -125,12 +148,58 @@ describe('AgentsCredentialProvider', () => {
 		const globalCred = credential({ id: 'global-cred', name: 'Global OpenAI', type: 'openAiApi' });
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([globalCred]);
-		credentialsService.decrypt.mockResolvedValue({ apiKey: 'global-secret' });
+		credentialsHelper.getDecrypted.mockResolvedValue({ apiKey: 'global-secret' });
 
 		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
 
 		await expect(provider.resolve('global-cred')).resolves.toEqual({ apiKey: 'global-secret' });
-		expect(credentialsService.decrypt).toHaveBeenCalledWith(globalCred, true);
+		expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+			additionalData,
+			{ id: 'global-cred', name: 'Global OpenAI' },
+			'openAiApi',
+			'internal',
+		);
+	});
+
+	it('returns the resolved secret for an External Secrets backed credential', async () => {
+		const credentialsService = mock<CredentialsService>();
+		const bearerCred = credential({
+			id: 'bearer-cred',
+			name: 'MCP bearer',
+			type: 'httpBearerAuth',
+		});
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([bearerCred]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+		// `getDecrypted` is the path that evaluates `={{ $secrets... }}`; the raw
+		// stored value would be the unevaluated expression.
+		credentialsHelper.getDecrypted.mockResolvedValue({ token: 'secret-from-1password' });
+
+		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
+
+		await expect(provider.resolve('bearer-cred')).resolves.toEqual({
+			token: 'secret-from-1password',
+			apiKey: '',
+		});
+		// Project scope must reach `getBase` — it carries the project's external
+		// secret provider keys and variables.
+		expect(getBaseMock).toHaveBeenCalledWith({ userId: undefined, projectId: 'project-1' });
+		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+	});
+
+	it('propagates a failed secret lookup instead of returning empty credential data', async () => {
+		const credentialsService = mock<CredentialsService>();
+		const bearerCred = credential({
+			id: 'bearer-cred',
+			name: 'MCP bearer',
+			type: 'httpBearerAuth',
+		});
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([bearerCred]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+		credentialsHelper.getDecrypted.mockRejectedValue(new Error('Could not load secrets'));
+
+		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
+
+		await expect(provider.resolve('bearer-cred')).rejects.toThrow('Could not load secrets');
 	});
 
 	it('rejects resolve for a credential not in project or global scope when no request user is provided', async () => {
@@ -169,12 +238,18 @@ describe('AgentsCredentialProvider', () => {
 		]);
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([projectCred]);
 		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
-		credentialsService.decrypt.mockResolvedValue({ apiKey: 'secret' });
+		credentialsHelper.getDecrypted.mockResolvedValue({ apiKey: 'secret' });
 
 		const provider = new AgentsCredentialProvider(credentialsService, 'project-1', user);
 
 		await expect(provider.resolve('allowed')).resolves.toEqual({ apiKey: 'secret' });
-		expect(credentialsService.decrypt).toHaveBeenCalledWith(projectCred, true);
+		expect(getBaseMock).toHaveBeenCalledWith({ userId: 'user-1', projectId: 'project-1' });
+		expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+			additionalData,
+			{ id: 'allowed', name: 'Slack' },
+			'slackApi',
+			'internal',
+		);
 	});
 
 	it('rejects resolve for a credential accessible to the project but not to the request user', async () => {
@@ -193,6 +268,6 @@ describe('AgentsCredentialProvider', () => {
 		await expect(provider.resolve('forbidden-cred')).rejects.toThrow(
 			'Credential "forbidden-cred" not found or not accessible',
 		);
-		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
 	});
 });
