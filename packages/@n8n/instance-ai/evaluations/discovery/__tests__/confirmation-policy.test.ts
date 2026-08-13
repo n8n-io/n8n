@@ -127,6 +127,27 @@ describe('resolveConfirmation', () => {
 		]);
 	});
 
+	it('keeps a deny denied even when resumeWith claims approval', () => {
+		const policy = buildConfirmationPolicy(
+			scenario({
+				confirmations: { 'mcp-servers': { decision: 'deny', resumeWith: { approved: true } } },
+			}),
+		);
+		const { responders } = mcpResponders();
+		expect(
+			resolveConfirmation(suspension('mcp-servers', connectPayload), policy, responders),
+		).toEqual({ approved: false });
+	});
+
+	it('keeps an approve approved even when resumeWith claims refusal', () => {
+		const policy = buildConfirmationPolicy(
+			scenario({
+				confirmations: { 'ask-user': { decision: 'approve', resumeWith: { approved: false } } },
+			}),
+		);
+		expect(resolveConfirmation(suspension('ask-user'), policy)).toEqual({ approved: true });
+	});
+
 	it('carries resumeWith when no responder recognises the payload', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
@@ -192,6 +213,10 @@ describe('discoveryTestCaseSchema', () => {
 			{ confirmations: { 'mcp-servers': { decision: 'approve', resumeWith: {} } } },
 		],
 		['a misspelled key', { confirmation: { 'mcp-servers': 'deny' } }],
+		[
+			'a resumeWith setting the reserved `approved` field',
+			{ confirmations: { 'mcp-servers': { decision: 'deny', resumeWith: { approved: true } } } },
+		],
 	])('rejects %s', (_label, invalid) => {
 		expect(discoveryTestCaseSchema.safeParse({ ...base, ...invalid }).success).toBe(false);
 	});

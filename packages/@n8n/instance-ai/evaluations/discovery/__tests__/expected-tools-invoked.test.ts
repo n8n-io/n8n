@@ -2,11 +2,22 @@ import type { AgentActivity, CapturedToolCall, EventOutcome } from '../../types'
 import { runExpectedToolsInvokedCheck } from '../expected-tools-invoked';
 import type { DiscoveryTestCase } from '../types';
 
+type ToolCallInput = Pick<CapturedToolCall, 'toolName'> &
+	Partial<Pick<CapturedToolCall, 'args' | 'result'>>;
+
+function makeToolCall(tc: ToolCallInput, i: number): CapturedToolCall {
+	return {
+		toolCallId: `call-${i}`,
+		toolName: tc.toolName,
+		args: tc.args ?? {},
+		...(tc.result === undefined ? {} : { result: tc.result }),
+		durationMs: 0,
+	};
+}
+
 function makeOutcome(opts: {
-	toolCalls?: Array<
-		Pick<CapturedToolCall, 'toolName'> & Partial<Pick<CapturedToolCall, 'args' | 'result'>>
-	>;
-	agents?: Array<Pick<AgentActivity, 'role' | 'tools'>>;
+	toolCalls?: ToolCallInput[];
+	agents?: Array<Pick<AgentActivity, 'role' | 'tools'> & { toolCalls?: ToolCallInput[] }>;
 }): EventOutcome {
 	return {
 		workflowIds: [],
@@ -14,18 +25,12 @@ function makeOutcome(opts: {
 		dataTableIds: [],
 		artifactRefs: [],
 		finalText: '',
-		toolCalls: (opts.toolCalls ?? []).map((tc, i) => ({
-			toolCallId: `call-${i}`,
-			toolName: tc.toolName,
-			args: tc.args ?? {},
-			...(tc.result === undefined ? {} : { result: tc.result }),
-			durationMs: 0,
-		})),
+		toolCalls: (opts.toolCalls ?? []).map(makeToolCall),
 		agentActivities: (opts.agents ?? []).map((a, i) => ({
 			agentId: `agent-${i}`,
 			role: a.role,
 			tools: a.tools,
-			toolCalls: [],
+			toolCalls: (a.toolCalls ?? []).map(makeToolCall),
 			textContent: '',
 			reasoning: '',
 			status: 'completed',
@@ -512,6 +517,50 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 			expect(result.pass).toBe(false);
 			expect(result.comment).toContain('a declined result');
+		});
+
+		it('does not count a sub-agent call the user refused as invoked', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: { noneOf: ['mcp_notion_notion-search'] },
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+					agents: [
+						{
+							role: 'researcher',
+							tools: [],
+							toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+			expect(result.invokedTools).not.toContain('mcp_notion_notion-search');
+		});
+
+		it('counts a sub-agent call that ran as invoked', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: { anyOf: ['mcp_notion_notion-search'] },
+				},
+				makeOutcome({
+					agents: [
+						{
+							role: 'researcher',
+							tools: [],
+							toolCalls: [{ toolName: 'mcp_notion_notion-search', result: { ok: true } }],
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
 		});
 
 		it('forbids a refusal when noneOfToolCalls asks for one', () => {

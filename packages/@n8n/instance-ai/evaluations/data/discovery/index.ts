@@ -56,6 +56,9 @@ const confirmationsSchema: z.ZodType<DiscoveryConfirmations> = z
 						.refine((fields) => Object.keys(fields).length > 0, {
 							message: 'resumeWith must not be empty',
 						})
+						.refine((fields) => !('approved' in fields), {
+							message: 'resumeWith must not set `approved` — use `decision` instead',
+						})
 						.optional(),
 				})
 				.strict(),

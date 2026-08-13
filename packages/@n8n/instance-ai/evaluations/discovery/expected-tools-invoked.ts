@@ -36,7 +36,7 @@ function collectInvokedTools(outcome: EventOutcome): string[] {
 	for (const agent of outcome.agentActivities) {
 		for (const t of agent.tools) tools.add(t);
 		for (const tc of agent.toolCalls) {
-			if (tc.toolName) tools.add(tc.toolName);
+			if (tc.toolName && !wasDeclined(tc)) tools.add(tc.toolName);
 		}
 	}
 	return [...tools];

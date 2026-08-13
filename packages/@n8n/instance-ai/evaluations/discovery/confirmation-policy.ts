@@ -41,14 +41,14 @@ export function resolveConfirmation(
 	responders: ApprovalResponder[] = [],
 ): Record<string, unknown> {
 	const answer = policy.get(suspendedToolName(suspension));
-	if (answer?.decision === 'deny') return { approved: false, ...answer.resumeWith };
+	if (answer?.decision === 'deny') return { ...answer.resumeWith, approved: false };
 
 	const payload = suspension?.suspendPayload ?? {};
 	for (const responder of responders) {
 		const responderAnswer = responder(payload);
-		if (responderAnswer) return { approved: true, ...responderAnswer, ...answer?.resumeWith };
+		if (responderAnswer) return { ...responderAnswer, ...answer?.resumeWith, approved: true };
 	}
-	return { approved: true, ...answer?.resumeWith };
+	return { ...answer?.resumeWith, approved: true };
 }
 
 function suspendedToolName(suspension: SuspensionInfo | undefined): string {
