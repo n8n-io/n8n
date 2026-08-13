@@ -23,12 +23,20 @@ export class PollCursorService {
 	}
 
 	/**
-	 * A node with a stored row is migrated for good and always preferred; an
-	 * unmigrated node checks the flag, so disabling it blocks new migrations
-	 * without affecting nodes that already migrated.
+	 * Decides whether this node should use the new cursor storage.
 	 *
-	 * Seeds the row from the node's static data on first migration, so it
-	 * resumes where it left off.
+	 * A node that already has a stored cursor keeps using it, no matter what the setting says.
+	 *
+	 * Otherwise:
+	 * - if the setting is on, a cursor is created from `nodeStaticData` and used from now on.
+	 * - if the setting is off, nothing changes.
+	 *
+	 * @param workflowId - Workflow the poll node belongs to.
+	 * @param nodeId - Poll trigger node to resolve the cursor for.
+	 * @param nodeStaticData - Node's current cursor value, used to seed the new
+	 *   storage the first time this node migrates.
+	 * @returns The cursor to use if this node is on the new storage, otherwise
+	 *   `{ migrated: false }` to keep using the node's own static data.
 	 */
 	async resolveCursor(
 		workflowId: string,
@@ -37,7 +45,9 @@ export class PollCursorService {
 	): Promise<{ migrated: true; cursor: PollCursor } | { migrated: false }> {
 		if (!this.enabled) {
 			const existing = await this.pollerStateRepository.findCursor(workflowId, nodeId);
-			if (existing === null) return { migrated: false };
+			if (existing === null) {
+				return { migrated: false };
+			}
 			return { migrated: true, cursor: toPollCursor(existing) };
 		}
 
@@ -50,10 +60,22 @@ export class PollCursorService {
 	}
 
 	/**
-	 * Commits the cursor advance and the execution row together, so a poll never
-	 * advances past items no execution carried. Atomic when the flag is on;
-	 * written as two sequential steps when it's off, reopening the race between
-	 * them as the cost of keeping the flag as a kill switch.
+	 * Advances the cursor and inserts the execution row for the poll, together.
+	 *
+	 * When the setting is on, both happen in one transaction: a poll never
+	 * 	advances its cursor past an item whose execution wasn't saved.
+	 *
+	 * When the setting is off, they happen as two separate steps instead, so a crash
+	 * 	between them can leave the cursor moved with no matching execution. This
+	 * 	gap only exists to let the setting double as a kill switch.
+	 *
+	 * @param args.workflowId - Workflow the poll node belongs to.
+	 * @param args.nodeId - Poll trigger node whose cursor is advancing.
+	 * @param args.cursor - New cursor value to store.
+	 * @param args.payload - Execution row to insert for the poll's result.
+	 * @param args.fence - Lease to check before writing; see `advanceCursor`.
+	 * @returns The new execution's id, or `null` if the cursor didn't advance.
+	 * @remarks A `null` result doesn't mean someone else already did this work, only that someone else now owns it.
 	 */
 	async commitWithExecution(args: {
 		workflowId: string;
@@ -73,9 +95,11 @@ export class PollCursorService {
 					ctx,
 					fence,
 				);
-				if (!advanced) return null;
-				const executionId = await this.executionPersistence.create(payload, ctx);
-				return { executionId };
+				if (advanced) {
+					const executionId = await this.executionPersistence.create(payload, ctx);
+					return { executionId };
+				}
+				return null;
 			});
 		}
 
@@ -86,9 +110,11 @@ export class PollCursorService {
 			{},
 			fence,
 		);
-		if (!advanced) return null;
-		const executionId = await this.executionPersistence.create(payload, {});
-		return { executionId };
+		if (advanced) {
+			const executionId = await this.executionPersistence.create(payload, {});
+			return { executionId };
+		}
+		return null;
 	}
 
 	/**

@@ -68,11 +68,20 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	}
 
 	/**
-	 * Call inside the transaction that also inserts the execution the poll produced, so
-	 * neither commits without the other. Without a `fence`, throws if no row matched: the
-	 * row was read before `poll()` ran, so a miss means the workflow or node was removed
-	 * mid-poll. With a `fence`, a miss returns `false` instead. The write is unconditional
-	 * otherwise, so when two polls of one node overlap, the last transaction to commit wins.
+	 * Advances the stored cursor.
+	 *
+	 * @param workflowId - Workflow the poll node belongs to.
+	 * @param nodeId - Poll trigger node whose cursor is advancing.
+	 * @param cursor - New cursor value to store.
+	 * @param ctx - Transaction to run the update in.
+	 * @param fence - Lease to check before writing. If given, returns `false` instead of
+	 *   throwing when someone else now owns this poll.
+	 * @returns `true` if the cursor was advanced, `false` if `fence` no longer matches.
+	 * @throws {UnexpectedError} when no `fence` is given and the row is missing, since
+	 *   the only explanation left is that the workflow or node was deleted mid-poll.
+	 * @remarks Run this in the same transaction as the execution insert for the poll's result,
+	 * 	so the two commit or roll back together. If two polls of the same node overlap,
+	 * 	the last one to commit wins.
 	 */
 	async advanceCursor(
 		workflowId: string,
@@ -96,12 +105,13 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		}
 
 		const result = await qb.execute();
+		if (result.affected === 1) {
+			return true;
+		}
 
-		// `affected` is typed optional, though both supported drivers populate it; only
-		// an exact single-row match counts as success.
-		if (result.affected === 1) return true;
-
-		if (fence) return false;
+		if (fence) {
+			return false;
+		}
 
 		throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
 			extra: { workflowId, nodeId },
