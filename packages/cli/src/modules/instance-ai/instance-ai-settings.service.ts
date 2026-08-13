@@ -1330,7 +1330,6 @@ export class InstanceAiSettingsService {
 		return modelConfigured && sandboxConfigured && searchDecided;
 	}
 
-	/** Configured `provider/model` id from `N8N_INSTANCE_AI_MODEL` (instance stamp). */
 	getConfiguredModelId(): string {
 		return this.config.model.trim();
 	}

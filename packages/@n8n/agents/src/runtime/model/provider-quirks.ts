@@ -168,7 +168,6 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId | 'moonshotai', Provider
 	},
 	// custom/*: only forward an explicit effort — no provider-level default.
 	custom: reasoningEffortQuirk('custom'),
-	// Proxied Modal Kimi K3 (`createOpenAICompatible({ name: 'moonshotai' })`).
 	moonshotai: reasoningEffortQuirk('moonshotai'),
 };
 

@@ -145,7 +145,6 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
 	},
-	// Proxied Modal Kimi K3 (`moonshotai/kimi-k3` via createOpenAICompatible).
 	moonshotai: {
 		thinking: 'reasoningEffort',
 		promptCaching: false,

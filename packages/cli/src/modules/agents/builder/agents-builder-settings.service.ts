@@ -219,11 +219,9 @@ export class AgentsBuilderSettingsService {
 	}
 
 	/**
-	 * Build a LanguageModel pointed at the proxy. Exact `moonshotai/kimi-k3`
-	 * (from `N8N_INSTANCE_AI_MODEL`) uses the OpenAI-compatible Kimi route;
-	 * every other cohort keeps Anthropic + `AGENT_BUILDER_DEFAULT_MODEL`.
-	 * Auth headers are injected via a `fetch` wrapper backed by `ProxyTokenManager`
-	 * so each request gets a fresh-or-cached token.
+	 * Build a LanguageModel pointed at the proxy. Auth headers are injected via
+	 * a `fetch` wrapper backed by `ProxyTokenManager` so each request gets a
+	 * fresh-or-cached token.
 	 */
 	private async resolveProxyModel(user: User): Promise<ResolvedBuilderModelConfig> {
 		const client = await this.aiService.getClient();

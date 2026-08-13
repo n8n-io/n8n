@@ -17,10 +17,6 @@ const KIMI_PROXY_PATH = '/kimi/v1';
 
 export interface CreateProxyLanguageModelOptions {
 	proxyBaseUrl: string;
-	/**
-	 * Full `provider/model` id, or a bare Anthropic model name. The Kimi arm
-	 * triggers only on the exact `moonshotai/kimi-k3` id.
-	 */
 	modelId: string;
 	tokenManager: ProxyTokenManager;
 	feature: N8nProxyFeature;
@@ -28,13 +24,6 @@ export interface CreateProxyLanguageModelOptions {
 	outboundHttp: OutboundHttp;
 }
 
-/**
- * Build a LanguageModel pointed at the AI-assistant-service api-proxy.
- *
- * Exact `moonshotai/kimi-k3` uses the OpenAI-compatible Kimi route so claims
- * stamp `moonshotai/kimi-k3` (not `openai/...`). Every other id keeps the
- * existing Anthropic `/anthropic/v1` transport.
- */
 export async function createProxyLanguageModel(
 	options: CreateProxyLanguageModelOptions,
 ): Promise<LanguageModel> {
@@ -80,7 +69,6 @@ export async function createProxyLanguageModel(
 	})(modelName);
 }
 
-/** Whether a resolved ModelConfig is the proxied Kimi K3 LanguageModel / id. */
 export function isMoonshotaiKimiK3ProxyModel(model: ModelConfig): boolean {
 	if (typeof model === 'string') {
 		return isMoonshotaiKimiK3ModelId(model);

@@ -24,9 +24,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
  *
  * Model resolution follows a layered chain so chat and eval paths share the
  * same working model:
- *   1. AI service proxy (when enabled) — wraps with proxy auth. Anthropic
- *      models use the native Anthropic transport; exact `moonshotai/kimi-k3`
- *      uses the OpenAI-compatible Kimi route.
+ *   1. AI service proxy (when enabled) — wraps with proxy auth.
  *   2. HTTP_PROXY (when set, e.g. e2e tests) — wraps the model with a
  *      proxy-aware fetch.
  *   3. Env vars / user credential — raw settings resolution.
@@ -79,11 +77,6 @@ export class InstanceAiModelService {
 	/**
 	 * Build model config. When the AI service proxy is enabled, returns a
 	 * LanguageModel pointed at the proxy.
-	 *
-	 * Exact `moonshotai/kimi-k3` (the instance env stamp) uses the OpenAI-
-	 * compatible Kimi route. Every other model keeps the native Anthropic
-	 * transport — the proxy may forward to Vertex AI, which only supports the
-	 * Anthropic Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
 	 *
 	 * Auth headers are injected via a custom `fetch` wrapper so that each
 	 * request gets a fresh-or-cached token from the ProxyTokenManager,
