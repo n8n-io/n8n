@@ -187,6 +187,23 @@ export type InstanceAiRunStatus = z.infer<typeof instanceAiRunStatusSchema>;
 export const instanceAiConfirmationSeveritySchema = z.enum(['destructive', 'warning', 'info']);
 export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmationSeveritySchema>;
 
+/**
+ * Shared resume envelope for plain-approval HITL tools.
+ *
+ * Matches the payload fields on the `approval` arm of `InstanceAiConfirmRequestDto`
+ * (minus `kind`) that `resumeSuspendedRun` forwards. Tools that only need
+ * `approved` still declare these optional keys so checkpointed JSON Schema
+ * (`additionalProperties: false`) accepts approve-with-comment / allow-always.
+ */
+export const instanceAiApprovalResumeSchema = z.object({
+	approved: z.boolean(),
+	userInput: z.string().optional(),
+	/** `'session'` grants the same tool/action without re-asking for the rest of the
+	 *  thread ("always allow"). Absent/`'once'` approves this single request only. */
+	scope: z.enum(['once', 'session']).optional(),
+});
+export type InstanceAiApprovalResumeData = z.infer<typeof instanceAiApprovalResumeSchema>;
+
 // ---------------------------------------------------------------------------
 // Agent status (frontend rendering state)
 // ---------------------------------------------------------------------------

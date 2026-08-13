@@ -4952,6 +4952,7 @@ export class InstanceAiService {
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 			...(data.scope ? { scope: data.scope } : {}),
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
+			...(data.denied ? { denied: true } : {}),
 			...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
 		};
 

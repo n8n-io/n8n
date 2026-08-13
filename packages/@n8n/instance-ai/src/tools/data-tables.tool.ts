@@ -4,6 +4,7 @@
  */
 import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalResumeSchema,
 	buildDataTablesSessionGrantKey,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
@@ -50,11 +51,7 @@ const confirmationSuspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-	/** `'session'` — user chose "always allow"; persist a thread-level grant. */
-	scope: z.enum(['once', 'session']).optional(),
-});
+const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
 

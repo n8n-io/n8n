@@ -2,7 +2,10 @@
  * Consolidated workspace tool — projects, tags, folders, execution cleanup.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	instanceAiApprovalResumeSchema,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -99,9 +102,7 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const resumeSchema = z.object({
-	approved: z.boolean(),
-});
+const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Input union ─────────────────────────────────────────────────────────────
 
