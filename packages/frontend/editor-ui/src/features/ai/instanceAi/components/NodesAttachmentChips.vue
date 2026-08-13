@@ -12,7 +12,10 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { SINGLE_SET_NODE_EXPANSION_THRESHOLD } from './nodesAttachmentChips.constants';
+
+// Per ADO-5770 (N = 4). NOT the legacy CHIP_BUNDLE_THRESHOLD — different semantics:
+// this only governs the single-lone-set explode/bundle decision.
+const SINGLE_SET_NODE_EXPANSION_THRESHOLD = 4;
 
 type NodesAttachment = InstanceAiNodesAttachment;
 
