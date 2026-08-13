@@ -143,6 +143,7 @@ export {
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 } from './workflows/workflow-public.dto';
+export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
