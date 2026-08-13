@@ -194,8 +194,27 @@ const totalNodeCount = computed(() =>
 							:class="$style.panel"
 							data-testid="nodes-chip-panel"
 						>
-							<div v-for="node in set.nodes" :key="node.id" :class="$style.panelRow">
-								{{ node.name }}
+							<div
+								v-for="(node, nodeIndex) in set.nodes"
+								:key="node.id"
+								:class="$style.panelRow"
+								data-testid="nodes-chip-panel-row"
+							>
+								<NodeIcon
+									v-if="nodeTypeForName(node.name)"
+									:node-type="nodeTypeForName(node.name)"
+									:size="12"
+								/>
+								<N8nIcon v-else icon="crosshair" size="xsmall" />
+								<span :class="$style.panelRowName">{{ node.name }}</span>
+								<button
+									v-if="isRemovable"
+									:class="$style.removeBtn"
+									data-testid="nodes-chip-panel-remove"
+									@click.stop="removeNode(setIndex, nodeIndex)"
+								>
+									<N8nIcon icon="x" size="xsmall" />
+								</button>
 							</div>
 						</div>
 					</span>
@@ -292,12 +311,20 @@ const totalNodeCount = computed(() =>
 }
 
 .panelRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	padding: var(--spacing--4xs) 0;
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
-	white-space: nowrap;
+}
+
+.panelRowName {
+	flex: 1;
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .collapseToggle {

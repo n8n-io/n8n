@@ -106,4 +106,18 @@ describe('NodesAttachmentChips', () => {
 		const summary = getByTestId('nodes-chips-collapsed-summary');
 		expect(summary.textContent).toContain('7 nodes');
 	});
+
+	it('removing a node from the bundle expand panel emits update:attachment without it', async () => {
+		const { getByTestId, getAllByTestId, emitted } = renderComponent(NodesAttachmentChips, {
+			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },
+		});
+		await fireEvent.click(getByTestId('nodes-chip-expand'));
+		const rows = getAllByTestId('nodes-chip-panel-remove');
+		expect(rows).toHaveLength(4);
+		await fireEvent.click(rows[1]); // remove 'B'
+		const events = emitted<[InstanceAiNodesAttachment]>()['update:attachment'];
+		expect(events).toBeTruthy();
+		const updated = events[0][0];
+		expect(updated.sets[0].nodes.map((n) => n.name)).toEqual(['A', 'C', 'D']);
+	});
 });
