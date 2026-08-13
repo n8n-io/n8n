@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor, within } from '@testing-library/vue';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 import type { ComboboxItem, ComboboxSizes } from './Combobox.types';
 import Combobox from './Combobox.vue';
@@ -155,6 +155,63 @@ describe('v2/components/Combobox', () => {
 			expect(anchor).not.toHaveAttribute('aria-errormessage');
 			expect(anchor).not.toHaveAttribute('aria-invalid');
 		});
+
+		test.each([false, true])(
+			'should update forwarded ARIA and fallthrough attributes after the first render (multiple: %s)',
+			async (multiple) => {
+				const ariaInvalid = ref<string | undefined>();
+				const ariaDescribedby = ref<string | undefined>();
+				const dataTrack = ref('initial');
+
+				const wrapper = render({
+					components: { Combobox },
+					setup() {
+						return {
+							ariaInvalid,
+							ariaDescribedby,
+							dataTrack,
+							items: options('Option 1'),
+							multiple,
+						};
+					},
+					template: `
+						<Combobox
+							:items="items"
+							:multiple="multiple"
+							:aria-invalid="ariaInvalid"
+							:aria-describedby="ariaDescribedby"
+							:data-track="dataTrack"
+						/>
+					`,
+				});
+
+				const input = getComboboxInput(wrapper);
+				const anchor = wrapper.getByTestId('combobox');
+
+				expect(input).not.toHaveAttribute('aria-invalid');
+				expect(input).not.toHaveAttribute('aria-describedby');
+				expect(anchor).toHaveAttribute('data-track', 'initial');
+				expect(anchor).not.toHaveAttribute('aria-invalid');
+
+				ariaInvalid.value = 'true';
+				ariaDescribedby.value = 'status-help';
+				dataTrack.value = 'updated';
+				await nextTick();
+
+				expect(input).toHaveAttribute('aria-invalid', 'true');
+				expect(input).toHaveAttribute('aria-describedby', 'status-help');
+				expect(anchor).toHaveAttribute('data-track', 'updated');
+				expect(anchor).not.toHaveAttribute('aria-invalid');
+				expect(anchor).not.toHaveAttribute('aria-describedby');
+
+				ariaInvalid.value = undefined;
+				ariaDescribedby.value = undefined;
+				await nextTick();
+
+				expect(input).not.toHaveAttribute('aria-invalid');
+				expect(input).not.toHaveAttribute('aria-describedby');
+			},
+		);
 	});
 
 	describe('sizes', () => {

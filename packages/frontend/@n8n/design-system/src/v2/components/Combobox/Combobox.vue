@@ -72,7 +72,7 @@ const INPUT_ARIA_ATTRS = [
 	'aria-invalid',
 ] as const;
 
-const inputNameAttrs = computed(() => {
+function inputNameAttrs() {
 	const result: Record<string, unknown> = {};
 	for (const key of INPUT_ARIA_ATTRS) {
 		if (key in attrs) {
@@ -80,15 +80,15 @@ const inputNameAttrs = computed(() => {
 		}
 	}
 	return result;
-});
+}
 
-const anchorAttrs = computed(() => {
+function anchorAttrs() {
 	const result = { ...attrs };
 	for (const key of INPUT_ARIA_ATTRS) {
 		delete result[key];
 	}
 	return result;
-});
+}
 
 const rootProps = useForwardPropsEmits(
 	reactivePick(
@@ -335,7 +335,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 		<ComboboxAnchor
 			ref="anchor"
 			data-test-id="combobox"
-			v-bind="anchorAttrs"
+			v-bind="anchorAttrs()"
 			:class="[$style.comboboxAnchor, sizeClass, props.multiple && $style.multiple]"
 			:data-disabled="props.disabled || undefined"
 			:data-multiple="props.multiple || undefined"
@@ -372,7 +372,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						:id="inputId"
 						as-child
 						:display-value="getDisplayValue"
-						v-bind="inputNameAttrs"
+						v-bind="inputNameAttrs()"
 					>
 						<TagsInputInput
 							:id="inputProps.id"
@@ -395,7 +395,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				:placeholder="placeholder"
 				:auto-focus="props.autoFocus"
 				:display-value="getDisplayValue"
-				v-bind="inputNameAttrs"
+				v-bind="inputNameAttrs()"
 			/>
 
 			<button
