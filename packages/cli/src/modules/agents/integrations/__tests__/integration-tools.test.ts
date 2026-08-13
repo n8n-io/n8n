@@ -1248,6 +1248,18 @@ describe('integration tools', () => {
 		});
 	});
 
+	it('action tool description forbids claiming an action succeeded before the tool call returns', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+
+		expect(tool.description).toContain(
+			'Never state that an action has been performed before its tool call returns',
+		);
+	});
+
 	it('action tool preserves the current subject when updating message context', async () => {
 		const messageContextStore = mock<IntegrationMessageContextStore>();
 		messageContextStore.getLatest.mockResolvedValue({
