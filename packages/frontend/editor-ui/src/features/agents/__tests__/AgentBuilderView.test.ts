@@ -1358,10 +1358,24 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		const toggleAgentMcpAccess = vi
 			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
 			.mockReturnValueOnce(mcpSave.promise);
-		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('toggle-mcp-access', true);
 
-		await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
-		await vi.waitFor(() => expect(toggleAgentMcpAccess).toHaveBeenCalledTimes(1));
+		// Match the sibling MCP-flush test: wait for the emit handler to schedule
+		// the debounced autosave before switching agents, otherwise initialize's
+		// flushAutosave can race the schedule and find nothing pending.
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('toggle-mcp-access', true);
+			await nextTick();
+
+			await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
+			await flushPromises();
+			expect(toggleAgentMcpAccess).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+
 		await wrapper.setProps({ artifactAgentPending: false });
 		mcpSave.resolve({ updatedCount: 1, updatedIds: ['a2'], unchangedIds: [] });
 		await flushPromises();

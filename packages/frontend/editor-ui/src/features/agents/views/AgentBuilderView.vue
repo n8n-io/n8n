@@ -154,7 +154,11 @@ const agentId = computed(
 );
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
-const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
+const {
+	canUpdate: canEditAgent,
+	canDelete: canDeleteAgent,
+	canExecute: canExecuteAgent,
+} = useAgentPermissions(projectId);
 // Combines permission with the artifact-mode build lock: while the AI is
 // actively building/mutating this agent, editing is disabled even for a user
 // who otherwise has permission — mirrors the workflow artifact's read-only
@@ -1686,6 +1690,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
 					:can-edit-agent="effectiveCanEditAgent"
+					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
 					:main-tab-options="visibleMainTabOptions"

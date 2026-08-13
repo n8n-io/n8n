@@ -52,6 +52,27 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
 }
 
+/**
+ * Builds the thread-level grant key for updating a specific workflow without HITL.
+ *
+ * Written automatically when the agent creates a workflow in this thread, so follow-up
+ * edits to that same artifact (same run or later runs in the session) skip the update
+ * approval prompt. Foreign workflows still require approval unless the admin policy is
+ * `always_allow`.
+ */
+export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
+	return `workflows:update:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for a data-tables action
+ * (e.g. `create`, `insert-rows`). Must match the frontend key
+ * `${toolName}:${action}` so UI auto-approve and persisted grants stay aligned.
+ */
+export function buildDataTablesSessionGrantKey(action: string): string {
+	return `data-tables:${action}`;
+}
+
 // --- Domain-access grants ("always allow" for web access) ---
 // These keys mirror the research tool's action names (`fetch-url`, `web-search`) the same
 // way `executions:run:<id>` mirrors the executions `run` action, so a persisted grant row
@@ -534,6 +555,25 @@ export const channelConfigSchema = z.object({
 });
 export type InstanceAiChannelConfig = z.infer<typeof channelConfigSchema>;
 
+export const mcpConnectServerSchema = z.object({
+	serverSlug: z.string(),
+	title: z.string(),
+	tagline: z.string().optional(),
+	credentialType: z.string(),
+});
+export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
+
+export const mcpConnectRequestSchema = z.object({
+	servers: z.array(mcpConnectServerSchema).min(1),
+});
+export type InstanceAiMcpConnectRequest = z.infer<typeof mcpConnectRequestSchema>;
+
+export const mcpConnectResumeSchema = z.object({
+	approved: z.boolean(),
+	connectedSlugs: z.array(z.string()).optional(),
+});
+export type InstanceAiMcpConnectResume = z.infer<typeof mcpConnectResumeSchema>;
+
 export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
@@ -614,7 +654,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.array(workflowSetupNodeSchema)
 		.optional()
 		.describe('Per-node setup cards for workflow credential/parameter configuration'),
-	workflowId: z.string().optional().describe('Workflow ID for setup-workflow tool'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'Workflow ID for setup cards and per-workflow edit approvals (build-workflow / workflows update)',
+		),
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
@@ -623,6 +668,9 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'When present, renders agent chat-channel setup UI for this integration type and agent',
 		),
+	mcpConnectRequest: mcpConnectRequestSchema
+		.optional()
+		.describe('When present, renders the inline "Available tools" MCP connect card'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -656,6 +704,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
 	if (payload.channelConfig) return true;
+	if (payload.mcpConnectRequest) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -1163,6 +1212,7 @@ export interface InstanceAiConfirmation {
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
 	channelConfig?: InstanceAiChannelConfig;
+	mcpConnectRequest?: InstanceAiMcpConnectRequest;
 	expired?: boolean;
 }
 
@@ -1719,7 +1769,10 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'create-tasks') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
-	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
+	if (
+		['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'].includes(toolName)
+	)
+		return 'skill';
 	return 'default';
 }
 
