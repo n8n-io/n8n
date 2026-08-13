@@ -185,6 +185,15 @@ export class InstanceAiPage extends BasePage {
 		return this.getUserMessages().nth(messageIndex).getByTestId('chat-file');
 	}
 
+	/**
+	 * Files staged in the composer but not yet sent. Counted via each preview's
+	 * remove control, which is the one marker every staged-file variant renders —
+	 * image thumbnails and the non-image chip alike.
+	 */
+	getComposerAttachments(): Locator {
+		return this.getContainer().getByTestId('attachment-preview-remove');
+	}
+
 	// ── Confirmations ─────────────────────────────────────────────────
 
 	getConfirmApproveButton(): Locator {

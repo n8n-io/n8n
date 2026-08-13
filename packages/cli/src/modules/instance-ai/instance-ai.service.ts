@@ -1024,6 +1024,34 @@ export class InstanceAiService {
 	 * re-check failure keeps the original error, so genuinely unexplained
 	 * stream deaths stay visible.
 	 */
+	/**
+	 * Whether this run died because the provider refused an attachment.
+	 *
+	 * The terminal error is frequently the ai-sdk's masked wrapper
+	 * (`AI_NoOutputGeneratedError`), which carries none of the provider's text — the
+	 * refusal reaches us as a stream `error` event instead. Checking the run's own
+	 * events is what makes the recovery fire on the path that actually occurs;
+	 * classifying the terminal error alone silently misses it.
+	 */
+	private wasAttachmentRejectedDuringRun(
+		threadId: string,
+		runId: string,
+		terminalError: unknown,
+	): boolean {
+		if (isAttachmentRejectedByProviderError(terminalError)) return true;
+
+		try {
+			return this.eventBus
+				.getEventsForRun(threadId, runId)
+				.some(
+					(event) =>
+						event.type === 'error' && isAttachmentRejectedByProviderError(event.payload.content),
+				);
+		} catch {
+			return false;
+		}
+	}
+
 	private async reclassifyMaskedStreamFailure(
 		error: unknown,
 		user: User,
@@ -4076,8 +4104,22 @@ export class InstanceAiService {
 					},
 				);
 			}
+			// A refused attachment usually lands here rather than in the catch below:
+			// the stream reports the failure instead of throwing. Recovering only on
+			// thrown errors would leave the attachment in history on the common path.
+			const attachmentRemoved =
+				result.status === 'errored' &&
+				this.wasAttachmentRejectedDuringRun(threadId, runId, terminalError)
+					? (await dropRejectedAttachmentsFromHistory(
+							this.agentMemory,
+							{ threadId, resourceId: user.id },
+							this.logger,
+						)) > 0
+					: undefined;
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(terminalError) : undefined;
+				result.status === 'errored'
+					? getUserFacingErrorMessage(terminalError, undefined, { attachmentRemoved })
+					: undefined;
 			const userFacingErrorCode =
 				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
@@ -4214,7 +4256,7 @@ export class InstanceAiService {
 			// have succeeded, so a refused file would fail every later turn as well.
 			// Drop it here to keep the thread usable, and tell the user what really
 			// happened — a failed cleanup leaves the thread poisoned.
-			const attachmentRemoved = isAttachmentRejectedByProviderError(terminalError)
+			const attachmentRemoved = this.wasAttachmentRejectedDuringRun(threadId, runId, terminalError)
 				? (await dropRejectedAttachmentsFromHistory(
 						this.agentMemory,
 						{ threadId, resourceId: user.id },
@@ -5408,8 +5450,20 @@ export class InstanceAiService {
 					},
 				);
 			}
+			// Same non-throwing errored path as the initial run.
+			const attachmentRemoved =
+				result.status === 'errored' &&
+				this.wasAttachmentRejectedDuringRun(opts.threadId, opts.runId, terminalError)
+					? (await dropRejectedAttachmentsFromHistory(
+							this.agentMemory,
+							{ threadId: opts.threadId, resourceId: opts.user.id },
+							this.logger,
+						)) > 0
+					: undefined;
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(terminalError) : undefined;
+				result.status === 'errored'
+					? getUserFacingErrorMessage(terminalError, undefined, { attachmentRemoved })
+					: undefined;
 			const userFacingErrorCode =
 				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
@@ -5553,7 +5607,11 @@ export class InstanceAiService {
 			});
 			// Same recovery as the initial-run path: a refused attachment stays in
 			// history and would fail every later turn until it is removed.
-			const attachmentRemoved = isAttachmentRejectedByProviderError(terminalError)
+			const attachmentRemoved = this.wasAttachmentRejectedDuringRun(
+				opts.threadId,
+				opts.runId,
+				terminalError,
+			)
 				? (await dropRejectedAttachmentsFromHistory(
 						this.agentMemory,
 						{ threadId: opts.threadId, resourceId: opts.user.id },
