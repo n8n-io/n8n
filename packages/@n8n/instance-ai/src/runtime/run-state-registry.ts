@@ -81,7 +81,8 @@ export interface ConfirmationData {
 	/** `'session'` means the user chose "always allow": the resuming tool should
 	 *  persist a thread-level grant so the same action isn't re-asked. */
 	scope?: 'once' | 'session';
-	autoSetup?: { credentialType: string };
+	autoSetup?: { credentialType: string; attemptId?: string };
+	connectedSlugs?: string[];
 }
 
 export interface PendingConfirmation {

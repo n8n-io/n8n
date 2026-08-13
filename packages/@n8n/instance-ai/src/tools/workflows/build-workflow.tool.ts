@@ -1,5 +1,8 @@
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	instanceAiApprovalResumeSchema,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { SDK_IMPORTABLE_FUNCTIONS } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -20,8 +23,11 @@ import {
 	combineWarnings,
 	formatWarning,
 	getBuildFailureTrackingKey,
+	grantSessionWorkflowUpdate,
 	isApprovedBuildContext,
+	canSkipWorkflowUpdateHitl,
 	markSourceBuildFailed,
+	recordSessionOwnedWorkflow,
 	resolveBuildIdentifiers,
 	resolveWorkflowName,
 	sourceResponseBase,
@@ -77,11 +83,11 @@ const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
 	severity: instanceAiConfirmationSeveritySchema,
+	/** Resolved target workflow — used by the UI for per-workflow always-allow keys. */
+	workflowId: z.string(),
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-});
+const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 interface BuildCtx {
 	toolCallId?: string;
@@ -137,7 +143,9 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Existing workflow ID to bind this file to on the first update. Once bound, omit this on retries.',
+				'Real n8n workflow id from a prior build-workflow or workflows() tool result, used to bind this file on the first update. ' +
+					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
+					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
 		projectId: z
 			.string()
@@ -391,7 +399,29 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			if (input.workflowId && !binding.workflowId) {
-				binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
+				try {
+					binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					// File is not bound yet, so not-found maps to workflow_id_not_found (not bound_*).
+					const remediation = createSaveFailureRemediation(error, false);
+
+					trackWorkflowSourceBuild(context, {
+						result: 'blocked',
+						stage: 'save',
+						binding,
+						targetWorkflowId: input.workflowId,
+						remediation,
+						errorCount: 1,
+					});
+
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						errors: [`Failed to bind source file to workflow ${input.workflowId}: ${message}`],
+						remediation,
+					};
+				}
 			}
 
 			const targetWorkflowId = binding.workflowId;
@@ -421,13 +451,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			const isOwnInFlightWorkflow =
-				targetWorkflowId !== undefined &&
-				(context.aiCreatedWorkflowIds?.has(targetWorkflowId) ?? false);
+			const canSkipUpdateHitl =
+				targetWorkflowId !== undefined && canSkipWorkflowUpdateHitl(context, targetWorkflowId);
 
 			if (
 				targetWorkflowId &&
-				!isOwnInFlightWorkflow &&
+				!canSkipUpdateHitl &&
 				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
@@ -494,7 +523,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						requestId: nanoid(),
 						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
 						severity: 'warning',
+						workflowId: targetWorkflowId,
 					});
+				}
+				// "Always allow" — persist so later edits of this workflow skip HITL.
+				if (ctx.resumeData.approved && ctx.resumeData.scope === 'session') {
+					await grantSessionWorkflowUpdate(context, targetWorkflowId);
 				}
 			}
 
@@ -968,7 +1002,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					...(projectId ? { projectId } : {}),
 					markAsAiTemporary: true,
 				});
-				(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
+				await recordSessionOwnedWorkflow(context, created.id);
 				return await createSuccessResponse(created, 'create');
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Unknown error';

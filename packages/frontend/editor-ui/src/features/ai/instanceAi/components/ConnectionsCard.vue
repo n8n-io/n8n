@@ -15,9 +15,8 @@ import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComp
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
-import ConnectionRow, { ConnectionRowIcon } from './ConnectionRow.vue';
+import ConnectionRow from './ConnectionRow.vue';
 import { iconForTool } from '../toolIcons';
-import type { McpRegistryServerIconResponse } from '@n8n/api-types';
 import {
 	BROWSER_USE_CONNECTION_TYPE,
 	COMPUTER_USE_CONNECTION_TYPE,
@@ -101,12 +100,6 @@ function getSingletonRowActions(
 }
 
 const MCP_ROW_ACTIONS: RowAction[] = ['settings', 'remove'];
-
-function getIconForConnection(icons: McpRegistryServerIconResponse[]) {
-	const icon = iconForTool(icons, uiStore.appliedTheme);
-	if (icon.type === 'icon') return icon.name as ConnectionRowIcon;
-	return icon;
-}
 
 async function openSingletonModal(type: SingletonConnectionType) {
 	if (
@@ -198,7 +191,7 @@ function openMcpSettings(connectionId: string) {
 				:key="conn.id"
 				:name="conn.serverTitle"
 				:subtitle="conn.credentialName"
-				:icon="getIconForConnection(conn.serverIcons)"
+				:icon="iconForTool(conn.serverIcons, uiStore.appliedTheme)"
 				status="connected"
 				:actions="MCP_ROW_ACTIONS"
 				:dropdown-portal-target="props.dropdownPortalTarget"
