@@ -1,0 +1,400 @@
+{
+	"acuitySchedulingOAuth2Api": ["api-v1"],
+	"airtableOAuth2Api": ["data.records:read", "data.records:write", "schema.bases:read"],
+	"azureEntraCognitiveServicesOAuth2Api": ["offline_access", "openid"],
+	"azureStorageOAuth2Api": ["https://storage.azure.com/.default"],
+	"calendlyOAuth2Api": ["scheduled_events:read", "users:read", "webhooks:read", "webhooks:write"],
+	"ciscoWebexOAuth2Api": [
+		"meeting:preferences_read",
+		"meeting:recordings_read",
+		"meeting:recordings_write",
+		"meeting:schedules_read",
+		"meeting:schedules_write",
+		"spark:kms",
+		"spark:memberships_read",
+		"spark:memberships_write",
+		"spark:messages_read",
+		"spark:messages_write",
+		"spark:rooms_read"
+	],
+	"confluenceCloudOAuth2Api": [
+		"delete:attachment:confluence",
+		"delete:comment:confluence",
+		"delete:page:confluence",
+		"offline_access",
+		"read:attachment:confluence",
+		"read:comment:confluence",
+		"read:content-details:confluence",
+		"read:hierarchical-content:confluence",
+		"read:label:confluence",
+		"read:page:confluence",
+		"read:space:confluence",
+		"write:attachment:confluence",
+		"write:comment:confluence",
+		"write:label:confluence",
+		"write:page:confluence"
+	],
+	"databricksOAuth2Api": ["all-apis"],
+	"discordOAuth2Api": ["bot", "guilds", "guilds.join", "identify"],
+	"dropboxOAuth2Api": [
+		"account_info.read",
+		"files.content.read",
+		"files.content.write",
+		"sharing.read"
+	],
+	"facebookGraphApiOAuth2Api": [
+		"business_management",
+		"email",
+		"pages_manage_metadata",
+		"pages_manage_posts",
+		"pages_read_engagement",
+		"pages_read_user_content",
+		"pages_show_list",
+		"public_profile"
+	],
+	"facebookGraphAppOAuth2Api": [
+		"business_management",
+		"email",
+		"pages_manage_metadata",
+		"pages_manage_posts",
+		"pages_read_engagement",
+		"pages_read_user_content",
+		"pages_show_list",
+		"public_profile"
+	],
+	"facebookLeadAdsOAuth2Api": [
+		"business_management",
+		"leads_retrieval",
+		"pages_manage_ads",
+		"pages_manage_metadata",
+		"pages_read_engagement",
+		"pages_show_list"
+	],
+	"figmaOAuth2Api": ["webhooks:read", "webhooks:write"],
+	"gSuiteAdminOAuth2Api": [
+		"https://www.googleapis.com/auth/admin.directory.device.chromeos",
+		"https://www.googleapis.com/auth/admin.directory.domain.readonly",
+		"https://www.googleapis.com/auth/admin.directory.group",
+		"https://www.googleapis.com/auth/admin.directory.orgunit.readonly",
+		"https://www.googleapis.com/auth/admin.directory.user",
+		"https://www.googleapis.com/auth/admin.directory.userschema.readonly"
+	],
+	"githubOAuth2Api": [
+		"admin:org",
+		"admin:org_hook",
+		"admin:repo_hook",
+		"delete:packages",
+		"gist",
+		"notifications",
+		"read:packages",
+		"repo",
+		"user",
+		"workflow",
+		"write:packages"
+	],
+	"gitlabOAuth2Api": ["api"],
+	"gmailOAuth2": [
+		"https://mail.google.com/",
+		"https://www.googleapis.com/auth/gmail.addons.current.action.compose",
+		"https://www.googleapis.com/auth/gmail.addons.current.message.action",
+		"https://www.googleapis.com/auth/gmail.compose",
+		"https://www.googleapis.com/auth/gmail.labels",
+		"https://www.googleapis.com/auth/gmail.modify"
+	],
+	"gongOAuth2Api": [
+		"api:calls:create",
+		"api:calls:read:basic",
+		"api:calls:read:extensive",
+		"api:calls:read:media-url",
+		"api:calls:read:transcript",
+		"api:crm-calls:manual-association:read",
+		"api:crm:get-objects",
+		"api:crm:integration:delete",
+		"api:crm:integration:register",
+		"api:crm:integrations:read",
+		"api:crm:schema",
+		"api:crm:upload",
+		"api:data-privacy:delete",
+		"api:data-privacy:read",
+		"api:digital-interactions:write",
+		"api:engagement-data:write",
+		"api:flows:read",
+		"api:flows:write",
+		"api:integration-settings:write",
+		"api:library:read",
+		"api:logs:read",
+		"api:meetings:integration:status",
+		"api:meetings:user:create",
+		"api:meetings:user:delete",
+		"api:meetings:user:update",
+		"api:permission-profile:read",
+		"api:permission-profile:write",
+		"api:provisioning:read",
+		"api:provisioning:read-write",
+		"api:settings:scorecards:read",
+		"api:settings:trackers:read",
+		"api:stats:interaction",
+		"api:stats:scorecards",
+		"api:stats:user-actions",
+		"api:stats:user-actions:detailed",
+		"api:users:read",
+		"api:workspaces:read"
+	],
+	"googleAdsOAuth2Api": ["https://www.googleapis.com/auth/adwords"],
+	"googleAnalyticsOAuth2": [
+		"https://www.googleapis.com/auth/analytics",
+		"https://www.googleapis.com/auth/analytics.readonly"
+	],
+	"googleBigQueryOAuth2Api": [
+		"https://www.googleapis.com/auth/bigquery",
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/drive"
+	],
+	"googleBooksOAuth2Api": ["https://www.googleapis.com/auth/books"],
+	"googleBusinessProfileOAuth2Api": ["https://www.googleapis.com/auth/business.manage"],
+	"googleCalendarOAuth2Api": [
+		"https://www.googleapis.com/auth/calendar",
+		"https://www.googleapis.com/auth/calendar.events"
+	],
+	"googleChatOAuth2Api": [
+		"https://www.googleapis.com/auth/chat.memberships",
+		"https://www.googleapis.com/auth/chat.messages",
+		"https://www.googleapis.com/auth/chat.spaces"
+	],
+	"googleCloudNaturalLanguageOAuth2Api": [
+		"https://www.googleapis.com/auth/cloud-language",
+		"https://www.googleapis.com/auth/cloud-platform"
+	],
+	"googleCloudStorageOAuth2Api": [
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/cloud-platform.read-only",
+		"https://www.googleapis.com/auth/devstorage.full_control",
+		"https://www.googleapis.com/auth/devstorage.read_only",
+		"https://www.googleapis.com/auth/devstorage.read_write"
+	],
+	"googleContactsOAuth2Api": ["https://www.googleapis.com/auth/contacts"],
+	"googleDocsOAuth2Api": [
+		"https://www.googleapis.com/auth/documents",
+		"https://www.googleapis.com/auth/drive",
+		"https://www.googleapis.com/auth/drive.file"
+	],
+	"googleDriveOAuth2Api": [
+		"https://www.googleapis.com/auth/drive",
+		"https://www.googleapis.com/auth/drive.appdata",
+		"https://www.googleapis.com/auth/drive.photos.readonly"
+	],
+	"googleFirebaseCloudFirestoreOAuth2Api": [
+		"https://www.googleapis.com/auth/datastore",
+		"https://www.googleapis.com/auth/firebase"
+	],
+	"googleFirebaseRealtimeDatabaseOAuth2Api": [
+		"https://www.googleapis.com/auth/firebase",
+		"https://www.googleapis.com/auth/firebase.database",
+		"https://www.googleapis.com/auth/userinfo.email"
+	],
+	"googlePerspectiveOAuth2Api": ["https://www.googleapis.com/auth/userinfo.email"],
+	"googleSheetsOAuth2Api": [
+		"https://www.googleapis.com/auth/drive.file",
+		"https://www.googleapis.com/auth/drive.metadata",
+		"https://www.googleapis.com/auth/spreadsheets"
+	],
+	"googleSheetsTriggerOAuth2Api": [
+		"https://www.googleapis.com/auth/drive",
+		"https://www.googleapis.com/auth/drive.file",
+		"https://www.googleapis.com/auth/drive.metadata",
+		"https://www.googleapis.com/auth/spreadsheets"
+	],
+	"googleSlidesOAuth2Api": [
+		"https://www.googleapis.com/auth/drive.file",
+		"https://www.googleapis.com/auth/presentations"
+	],
+	"googleTasksOAuth2Api": ["https://www.googleapis.com/auth/tasks"],
+	"googleTranslateOAuth2Api": ["https://www.googleapis.com/auth/cloud-translation"],
+	"gumroadOAuth2Api": ["view_sales"],
+	"haloPSAApi": ["admin", "edit:customers", "edit:tickets"],
+	"harvestOAuth2Api": ["all"],
+	"hubspotDeveloperApi": [
+		"conversations.read",
+		"crm.objects.companies.read",
+		"crm.objects.contacts.read",
+		"crm.objects.deals.read",
+		"crm.schemas.companies.read",
+		"crm.schemas.contacts.read",
+		"crm.schemas.deals.read",
+		"tickets"
+	],
+	"hubspotOAuth2Api": [
+		"crm.lists.write",
+		"crm.objects.companies.read",
+		"crm.objects.companies.write",
+		"crm.objects.contacts.read",
+		"crm.objects.contacts.write",
+		"crm.objects.deals.read",
+		"crm.objects.deals.write",
+		"crm.objects.owners.read",
+		"crm.schemas.companies.read",
+		"crm.schemas.contacts.read",
+		"crm.schemas.deals.read",
+		"forms",
+		"tickets"
+	],
+	"jiraSoftwareCloudOAuth2Api": [
+		"manage:jira-webhook",
+		"offline_access",
+		"read:jira-user",
+		"read:jira-work",
+		"write:jira-work"
+	],
+	"keapOAuth2Api": ["full"],
+	"lineNotifyOAuth2Api": ["notify"],
+	"linearOAuth2Api": [
+		"={{\"read write issues:create comments:create\" + ($self[\"includeAdminScope\"] ? \" admin\" : \"\") + ($self[\"actor\"] === \"app\" ? \" app:mentionable\" : \"\")}}"
+	],
+	"linkedInCommunityManagementOAuth2Api": [
+		"r_basicprofile",
+		"w_member_social",
+		"w_organization_social"
+	],
+	"linkedInOAuth2Api": [],
+	"mediumOAuth2Api": ["basicProfile", "listPublications", "publishPost"],
+	"microsoftAzureMonitorOAuth2Api": [
+		"={{(($self[\"customScopes\"] && $self[\"enabledScopes\"] && $self[\"enabledScopes\"] !== \"{resource}/.default\") ? $self[\"enabledScopes\"] : ($self[\"grantType\"] === \"clientCredentials\" ? \"{resource}/.default\" : \"\")).replace(/\\{resource\\}/g, $self[\"resource\"])}}"
+	],
+	"microsoftDynamicsOAuth2Api": [
+		"={{(($self[\"customScopes\"] && $self[\"enabledScopes\"]) ? $self[\"enabledScopes\"] : \"openid offline_access https://{subdomain}.{region}/.default\").replace(/\\{subdomain\\}/g, $self[\"subdomain\"]).replace(/\\{region\\}/g, $self[\"region\"])}}"
+	],
+	"microsoftEntraOAuth2Api": [
+		"AccessReview.ReadWrite.All",
+		"DelegatedAdminRelationship.ReadWrite.All",
+		"Directory.AccessAsUser.All",
+		"Directory.ReadWrite.All",
+		"EntitlementManagement.ReadWrite.All",
+		"GroupMember.ReadWrite.All",
+		"NetworkAccessPolicy.ReadWrite.All",
+		"Sites.FullControl.All",
+		"User.ReadWrite.All",
+		"offline_access",
+		"openid"
+	],
+	"microsoftExcelOAuth2Api": ["Files.ReadWrite", "offline_access", "openid"],
+	"microsoftGraphSecurityOAuth2Api": ["SecurityEvents.ReadWrite.All", "offline_access"],
+	"microsoftOneDriveOAuth2Api": ["Files.ReadWrite.All", "offline_access", "openid"],
+	"microsoftOutlookOAuth2Api": [
+		"Calendars.Read",
+		"Calendars.Read.Shared",
+		"Calendars.ReadWrite",
+		"Contacts.Read",
+		"Contacts.ReadWrite",
+		"Mail.ReadWrite",
+		"Mail.ReadWrite.Shared",
+		"Mail.Send",
+		"Mail.Send.Shared",
+		"MailboxSettings.Read",
+		"offline_access",
+		"openid"
+	],
+	"microsoftSharePointOAuth2Api": [
+		"={{($self[\"customScopes\"] ? $self[\"enabledScopes\"] : \"openid offline_access https://{subdomain}.sharepoint.com/.default\").replace(/\\{subdomain\\}/g, $self[\"subdomain\"])}}"
+	],
+	"microsoftTeamsOAuth2Api": [
+		"ChannelMessage.Read.All",
+		"Chat.ReadWrite",
+		"Group.ReadWrite.All",
+		"User.Read.All",
+		"offline_access",
+		"openid"
+	],
+	"microsoftToDoOAuth2Api": ["Tasks.ReadWrite", "offline_access", "openid"],
+	"miroOAuth2Api": ["boards:read", "boards:write"],
+	"mondayComOAuth2Api": ["boards:read", "boards:write"],
+	"pagerDutyOAuth2Api": ["write"],
+	"quickBooksOAuth2Api": ["com.intuit.quickbooks.accounting"],
+	"redditOAuth2Api": ["edit", "history", "identity", "mysubreddits", "read", "save", "submit"],
+	"salesforceOAuth2Api": ["full", "refresh_token"],
+	"sentryIoOAuth2Api": [
+		"event:admin",
+		"event:read",
+		"event:write",
+		"org:admin",
+		"org:read",
+		"project:admin",
+		"project:read",
+		"project:releases",
+		"project:write",
+		"team:admin",
+		"team:read",
+		"team:write"
+	],
+	"serviceNowOAuth2Api": ["useraccount"],
+	"shopifyOAuth2Api": ["read_orders", "read_products", "write_orders", "write_products"],
+	"snowflakeOAuth2Api": ["refresh_token", "session:role:SYSADMIN"],
+	"spotifyOAuth2Api": [
+		"playlist-modify-private",
+		"playlist-modify-public",
+		"playlist-read-collaborative",
+		"playlist-read-private",
+		"user-follow-read",
+		"user-library-read",
+		"user-modify-playback-state",
+		"user-read-currently-playing",
+		"user-read-playback-state",
+		"user-read-recently-played"
+	],
+	"stravaOAuth2Api": ["activity:read_all", "activity:write"],
+	"surveyMonkeyOAuth2Api": [
+		"collectors_read",
+		"responses_read",
+		"responses_read_detail",
+		"surveys_read",
+		"webhooks_read",
+		"webhooks_write"
+	],
+	"todoistOAuth2Api": ["data:delete", "data:read_write"],
+	"twistOAuth2Api": [
+		"attachments:write",
+		"channels:remove",
+		"comments:remove",
+		"messages:remove",
+		"threads:remove",
+		"workspaces:read"
+	],
+	"twitterOAuth2Api": [
+		"dm.read",
+		"dm.write",
+		"follows.read",
+		"follows.write",
+		"like.read",
+		"like.write",
+		"list.read",
+		"list.write",
+		"offline.access",
+		"tweet.moderate.write",
+		"tweet.read",
+		"tweet.write",
+		"users.read",
+		"users.read"
+	],
+	"typeformOAuth2Api": ["forms:read", "webhooks:read", "webhooks:write"],
+	"venafiTlsProtectDatacenterApi": ["certificate:manage"],
+	"webflowOAuth2Api": ["cms:read", "cms:write", "forms:read", "sites:read"],
+	"wordpressOAuth2Api": ["global"],
+	"xeroOAuth2Api": [
+		"accounting.attachments",
+		"accounting.banktransactions",
+		"accounting.contacts",
+		"accounting.invoices",
+		"accounting.manualjournals",
+		"accounting.payments",
+		"accounting.settings",
+		"offline_access"
+	],
+	"youTubeOAuth2Api": [
+		"https://www.googleapis.com/auth/youtube",
+		"https://www.googleapis.com/auth/youtube.force-ssl",
+		"https://www.googleapis.com/auth/youtube.upload",
+		"https://www.googleapis.com/auth/youtubepartner",
+		"https://www.googleapis.com/auth/youtubepartner-channel-audit"
+	],
+	"zendeskOAuth2Api": ["read", "write"],
+	"zohoOAuth2Api": ["ZohoCRM.modules.ALL", "ZohoCRM.settings.all", "ZohoCRM.users.all"]
+}

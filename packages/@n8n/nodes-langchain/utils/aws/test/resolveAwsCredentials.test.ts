@@ -69,7 +69,7 @@ describe('resolveAwsCredentials — IAM path', () => {
 				temporaryCredentials: false,
 			},
 		});
-		const result = await resolveAwsCredentials(context);
+		const result = await resolveAwsCredentials(context, 0);
 		expect(result.region).toBe('us-east-1');
 		expect(result.credentials).toEqual({
 			accessKeyId: 'AKIATEST',
@@ -88,7 +88,7 @@ describe('resolveAwsCredentials — IAM path', () => {
 				sessionToken: 'SESSION',
 			},
 		});
-		const result = await resolveAwsCredentials(context);
+		const result = await resolveAwsCredentials(context, 0);
 		expect(result.credentials).toEqual({
 			accessKeyId: 'AKIATEST',
 			secretAccessKey: 'SECRET',
@@ -106,7 +106,7 @@ describe('resolveAwsCredentials — IAM path', () => {
 				temporaryCredentials: false,
 			},
 		});
-		const result = await resolveAwsCredentials(context);
+		const result = await resolveAwsCredentials(context, 0);
 		expect(result.region).toBe('eu-central-1');
 		expect(result.credentials).toEqual({
 			accessKeyId: 'AKIA2',
@@ -138,8 +138,8 @@ describe('resolveAwsCredentials — IAM path', () => {
 				temporaryCredentials: false,
 			},
 		});
-		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
-		await expect(resolveAwsCredentials(context)).rejects.toThrow('Unsupported AWS region');
+		await expect(resolveAwsCredentials(context, 0)).rejects.toThrow(UserError);
+		await expect(resolveAwsCredentials(context, 0)).rejects.toThrow('Unsupported AWS region');
 	});
 
 	it('accepts the China partition region', async () => {
@@ -152,7 +152,7 @@ describe('resolveAwsCredentials — IAM path', () => {
 				temporaryCredentials: false,
 			},
 		});
-		const result = await resolveAwsCredentials(context);
+		const result = await resolveAwsCredentials(context, 0);
 		expect(result.region).toBe('cn-north-1');
 	});
 
@@ -166,7 +166,7 @@ describe('resolveAwsCredentials — IAM path', () => {
 				temporaryCredentials: false,
 			},
 		});
-		const result = await resolveAwsCredentials(context);
+		const result = await resolveAwsCredentials(context, 0);
 		expect(result.region).toBe('us-gov-west-1');
 	});
 });
@@ -189,7 +189,7 @@ describe('resolveAwsCredentials — AssumeRole path', () => {
 				useSystemCredentialsForRole: false,
 			},
 		});
-		const result = await resolveAwsCredentials(context);
+		const result = await resolveAwsCredentials(context, 0);
 		expect(result.region).toBe('us-east-1');
 		expect(typeof result.credentials).toBe('function');
 		expect(fromTemporaryCredentials).toHaveBeenCalledTimes(1);
@@ -225,8 +225,8 @@ describe('resolveAwsCredentials — AssumeRole validation', () => {
 			authentication: 'assumeRole',
 			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, roleArn: '' },
 		});
-		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
-		await expect(resolveAwsCredentials(context)).rejects.toThrow(
+		await expect(resolveAwsCredentials(context, 0)).rejects.toThrow(UserError);
+		await expect(resolveAwsCredentials(context, 0)).rejects.toThrow(
 			'Role ARN is required when assuming a role.',
 		);
 	});
@@ -236,8 +236,8 @@ describe('resolveAwsCredentials — AssumeRole validation', () => {
 			authentication: 'assumeRole',
 			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, externalId: '' },
 		});
-		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
-		await expect(resolveAwsCredentials(context)).rejects.toThrow(
+		await expect(resolveAwsCredentials(context, 0)).rejects.toThrow(UserError);
+		await expect(resolveAwsCredentials(context, 0)).rejects.toThrow(
 			'External ID is required when assuming a role.',
 		);
 	});
@@ -247,8 +247,8 @@ describe('resolveAwsCredentials — AssumeRole validation', () => {
 			authentication: 'assumeRole',
 			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, roleSessionName: '' },
 		});
-		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
-		await expect(resolveAwsCredentials(context)).rejects.toThrow(
+		await expect(resolveAwsCredentials(context, 0)).rejects.toThrow(UserError);
+		await expect(resolveAwsCredentials(context, 0)).rejects.toThrow(
 			'Role Session Name is required when assuming a role.',
 		);
 	});
@@ -258,8 +258,8 @@ describe('resolveAwsCredentials — AssumeRole validation', () => {
 			authentication: 'assumeRole',
 			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, region: 'not-a-region' },
 		});
-		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
-		await expect(resolveAwsCredentials(context)).rejects.toThrow('Unsupported AWS region');
+		await expect(resolveAwsCredentials(context, 0)).rejects.toThrow(UserError);
+		await expect(resolveAwsCredentials(context, 0)).rejects.toThrow('Unsupported AWS region');
 	});
 });
 
@@ -286,7 +286,7 @@ describe('resolveAwsCredentials — useSystemCredentialsForRole', () => {
 				useSystemCredentialsForRole: true,
 			},
 		});
-		await resolveAwsCredentials(context);
+		await resolveAwsCredentials(context, 0);
 
 		const callArg = mockedFromTemporaryCredentials.mock.calls[0][0] as {
 			masterCredentials: unknown;
@@ -321,7 +321,7 @@ describe('resolveAwsCredentials — proxy target URL', () => {
 				useSystemCredentialsForRole: false,
 			},
 		});
-		await resolveAwsCredentials(context);
+		await resolveAwsCredentials(context, 0);
 		expect(getNodeProxyAgent).toHaveBeenCalledWith('https://sts.eu-west-2.amazonaws.com');
 	});
 
@@ -339,7 +339,7 @@ describe('resolveAwsCredentials — proxy target URL', () => {
 				useSystemCredentialsForRole: false,
 			},
 		});
-		await resolveAwsCredentials(context);
+		await resolveAwsCredentials(context, 0);
 		expect(getNodeProxyAgent).toHaveBeenCalledWith('https://sts.cn-north-1.amazonaws.com.cn');
 	});
 
@@ -357,7 +357,7 @@ describe('resolveAwsCredentials — proxy target URL', () => {
 				useSystemCredentialsForRole: false,
 			},
 		});
-		await resolveAwsCredentials(context);
+		await resolveAwsCredentials(context, 0);
 		const callArg = mockedFromTemporaryCredentials.mock.calls[0][0] as {
 			clientConfig: { requestHandler?: unknown };
 		};

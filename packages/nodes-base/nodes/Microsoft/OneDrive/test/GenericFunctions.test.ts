@@ -954,7 +954,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					name === 'authentication' ? 'microsoftOneDriveOAuth2Api' : fallback,
 			} as unknown as IExecuteFunctions;
 
-			expect(resolveDriveScopeRoot.call(ctx, false)).toBeUndefined();
+			expect(resolveDriveScopeRoot.call(ctx, false, 0)).toBeUndefined();
 		});
 
 		it('extracts the RLC id in EXECUTE context and returns the scoped root', () => {
@@ -969,7 +969,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				},
 			} as unknown as IExecuteFunctions;
 
-			expect(resolveDriveScopeRoot.call(ctx, false)).toBe('/users/jane%40contoso.com');
+			expect(resolveDriveScopeRoot.call(ctx, false, 0)).toBe('/users/jane%40contoso.com');
 		});
 
 		it('extracts the RLC id in POLL context and returns the scoped root', () => {
@@ -984,7 +984,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				},
 			} as unknown as IPollFunctions;
 
-			expect(resolveDriveScopeRoot.call(ctx, true)).toBe('/drives/b!abc');
+			expect(resolveDriveScopeRoot.call(ctx, true, 0)).toBe('/drives/b!abc');
 		});
 	});
 });
