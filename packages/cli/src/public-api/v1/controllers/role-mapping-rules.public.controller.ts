@@ -15,7 +15,6 @@ import {
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 
 @PublicApiController('/role-mapping-rules')
@@ -23,7 +22,6 @@ export class RoleMappingRulesPublicController {
 	constructor(
 		private readonly roleMappingRuleService: RoleMappingRuleService,
 		private readonly licenseState: LicenseState,
-		private readonly eventService: EventService,
 	) {}
 
 	@Post('/')
@@ -44,15 +42,7 @@ export class RoleMappingRulesPublicController {
 			throw new ForbiddenError('Provisioning is not licensed');
 		}
 
-		const rule = await this.roleMappingRuleService.create(body);
-
-		this.eventService.emit('role-mapping-rule-created', {
-			user: { id: req.user.id, email: req.user.email },
-			ruleId: rule.id,
-			ruleType: rule.type,
-			expression: rule.expression,
-			role: rule.role,
-		});
+		const rule = await this.roleMappingRuleService.create(body, req.user);
 
 		return {
 			id: rule.id,
