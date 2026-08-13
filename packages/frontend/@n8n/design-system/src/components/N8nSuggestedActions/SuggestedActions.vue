@@ -38,6 +38,7 @@ defineOptions({ name: 'N8nSuggestedActions' });
 
 const props = withDefaults(defineProps<SuggestedActionsProps>(), {
 	popoverAlignment: undefined,
+	popoverSideOffset: undefined,
 	notice: undefined,
 });
 
