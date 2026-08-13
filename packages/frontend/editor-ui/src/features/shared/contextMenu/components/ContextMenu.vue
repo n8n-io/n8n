@@ -99,7 +99,6 @@ function onOpenChange(open: boolean) {
 								$style.itemContainer,
 								{
 									[$style.disabled]: !!item.disabled,
-									[$style.accent]: item.id === 'add_nodes_to_chat',
 								},
 							]"
 							:disabled="item.disabled"
@@ -215,15 +214,6 @@ function onOpenChange(open: boolean) {
 
 .disabled {
 	opacity: 0.5;
-}
-
-// The AI "add to chat" entry reads in the n8n accent to stand out at the top.
-.accent {
-	color: var(--color--primary);
-
-	.icon :global(svg) {
-		color: var(--color--primary);
-	}
 }
 
 .separator {

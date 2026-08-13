@@ -253,7 +253,6 @@ function onAddToChat() {
 				:content="i18n.baseText('node.addToChat')"
 			>
 				<N8nIconButton
-					:class="$style.addToChatButton"
 					data-test-id="canvas-node-add-to-chat"
 					variant="ghost"
 					size="small"
@@ -316,11 +315,6 @@ function onAddToChat() {
 
 .forceVisible {
 	opacity: 1 !important;
-}
-
-// The add-to-chat entry point uses the n8n accent so it reads as the AI action.
-.addToChatButton {
-	--button--color: var(--color--primary);
 }
 
 .statusIcons {

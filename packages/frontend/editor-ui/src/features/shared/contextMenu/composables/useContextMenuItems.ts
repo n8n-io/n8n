@@ -337,7 +337,7 @@ export function useContextMenuItems(
 				},
 		].filter(Boolean) as Item[];
 
-		// Pinned to the top of the menu, in the n8n accent, as the primary AI action.
+		// Pinned to the top of the menu as the primary AI action.
 		const addToChatAction: Item | null =
 			!onlyStickies && nodes.length >= 1 && posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)
 				? {
