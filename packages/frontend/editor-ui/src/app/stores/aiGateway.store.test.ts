@@ -162,6 +162,28 @@ describe('aiGateway.store', () => {
 			expect(store.fetchError).toBeNull();
 			expect(store.balance).toBe(3);
 		});
+
+		it('shares an in-flight wallet fetch', async () => {
+			let resolveWallet!: (value: {
+				balance: number;
+				budget: number;
+				hasEverToppedUp: boolean;
+			}) => void;
+			mockGetGatewayWallet.mockReturnValue(
+				new Promise((resolve) => {
+					resolveWallet = resolve;
+				}),
+			);
+			const store = useAiGatewayStore();
+
+			const first = store.fetchWallet();
+			const second = store.fetchWallet();
+			resolveWallet({ balance: 1, budget: 2, hasEverToppedUp: false });
+			await Promise.all([first, second]);
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+			expect(store.balance).toBe(1);
+		});
 	});
 
 	describe('usesFreeCreditsLabel()', () => {
@@ -178,18 +200,18 @@ describe('aiGateway.store', () => {
 			},
 		);
 
-		it('drives showFreeCreditsLabel from the fetched wallet', async () => {
+		it('drives creditsLabelKey from the fetched wallet', async () => {
 			mockGetGatewayWallet.mockResolvedValue({
 				balance: 5,
 				budget: 10,
 				hasEverToppedUp: true,
 			});
 			const store = useAiGatewayStore();
-			expect(store.showFreeCreditsLabel).toBe(true);
+			expect(store.creditsLabelKey).toBe('generic.freeCredits');
 
 			await store.fetchWallet();
 
-			expect(store.showFreeCreditsLabel).toBe(false);
+			expect(store.creditsLabelKey).toBe('generic.n8nCredits');
 		});
 	});
 

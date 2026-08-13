@@ -46,9 +46,7 @@ const aiGatewayState = vi.hoisted(() => ({
 	balance: { value: undefined as number | undefined },
 	fetchWallet: vi.fn(),
 	fetchConfig: vi.fn(),
-}));
-const aiGatewayStoreState = vi.hoisted(() => ({
-	showFreeCreditsLabel: true,
+	creditsLabelKey: { value: 'generic.freeCredits' as 'generic.freeCredits' | 'generic.n8nCredits' },
 }));
 const baseText = vi.hoisted(() =>
 	vi.fn((key: string, options?: { interpolate?: Record<string, string | number> }) => {
@@ -143,13 +141,10 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		isCredentialTypeSupported: (type: string) => aiGatewayState.supportedTypes.has(type),
 		canServeCredentialType: (type: string) => aiGatewayState.supportedTypes.has(type),
 		balance: aiGatewayState.balance,
+		creditsLabelKey: aiGatewayState.creditsLabelKey,
 		fetchWallet: aiGatewayState.fetchWallet,
 		fetchConfig: aiGatewayState.fetchConfig,
 	}),
-}));
-
-vi.mock('@/app/stores/aiGateway.store', () => ({
-	useAiGatewayStore: () => aiGatewayStoreState,
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
@@ -240,7 +235,7 @@ describe('AgentModelSelector', () => {
 		aiGatewayState.isEnabled.value = false;
 		aiGatewayState.supportedTypes = new Set<string>();
 		aiGatewayState.balance.value = undefined;
-		aiGatewayStoreState.showFreeCreditsLabel = true;
+		aiGatewayState.creditsLabelKey.value = 'generic.freeCredits';
 		aiGatewayState.fetchWallet.mockReset();
 		aiGatewayState.fetchConfig.mockReset();
 	});
@@ -281,7 +276,7 @@ describe('AgentModelSelector', () => {
 	it('shows the n8n credits pill on covered providers after a top-up', async () => {
 		aiGatewayState.isEnabled.value = true;
 		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
-		aiGatewayStoreState.showFreeCreditsLabel = false;
+		aiGatewayState.creditsLabelKey.value = 'generic.n8nCredits';
 
 		const wrapper = await mountSelector({ anthropic: null });
 

@@ -358,7 +358,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}) {
 		resetNodesPanelSession();
 
-		// Warm up gateway config (search boost) and wallet (Free credits vs n8n credits pill).
+		// Config for Connect search boost; wallet for the credits pill.
 		if (useSettingsStore().isAiGatewayEnabled) {
 			const aiGatewayStore = useAiGatewayStore();
 			void aiGatewayStore.fetchConfig();

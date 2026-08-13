@@ -475,9 +475,7 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 		};
 	} else if (isAiGatewayEligibleNode(element.properties.name)) {
 		element.properties.tag = {
-			text: i18n.baseText(
-				useAiGatewayStore().showFreeCreditsLabel ? 'generic.freeCredits' : 'generic.n8nCredits',
-			),
+			text: i18n.baseText(useAiGatewayStore().creditsLabelKey),
 			pill: true,
 		};
 	}

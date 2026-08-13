@@ -68,7 +68,7 @@ vi.mock('@/app/stores/aiGateway.store', async (importOriginal) => ({
 	useAiGatewayStore: vi.fn(() => ({
 		isNodeSupported: vi.fn(() => false),
 		isNodeTypeVersionSupported: vi.fn(() => true),
-		showFreeCreditsLabel: true,
+		creditsLabelKey: 'generic.freeCredits',
 	})),
 }));
 
@@ -791,7 +791,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
-				showFreeCreditsLabel: true,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 			vi.mocked(useNodeTypesStore).mockReturnValue({
 				getNodeVersions: vi.fn(() => [1, 1.1]),
@@ -807,7 +807,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
-				showFreeCreditsLabel: false,
+				creditsLabelKey: 'generic.n8nCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
@@ -841,6 +841,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -856,6 +857,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -873,6 +875,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -884,6 +887,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name === 'llamaParsePlatform'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([
@@ -898,6 +902,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name === '@vendor/n8n-nodes-connect.connect'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([
@@ -1024,7 +1029,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name.startsWith('supported')),
 				isNodeTypeVersionSupported: vi.fn(() => true),
-				showFreeCreditsLabel: true,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 			vi.mocked(useNodeTypesStore).mockReturnValue({
 				getNodeVersions: vi.fn(() => [1]),
@@ -1050,18 +1055,6 @@ describe('NodeCreator - utils', () => {
 			const result = extractAiGatewaySection([makeNode('supportedNode')]);
 			const [child] = result?.section.children as NodeCreateElement[];
 			expect(child.properties.tag).toEqual({ text: 'Free credits', pill: true });
-		});
-
-		it('should tag section children with the n8n credits pill after a top-up', () => {
-			vi.mocked(useAiGatewayStore).mockReturnValue({
-				isNodeSupported: vi.fn((name: string) => name.startsWith('supported')),
-				isNodeTypeVersionSupported: vi.fn(() => true),
-				showFreeCreditsLabel: false,
-			} as unknown as ReturnType<typeof useAiGatewayStore>);
-
-			const result = extractAiGatewaySection([makeNode('supportedNode')]);
-			const [child] = result?.section.children as NodeCreateElement[];
-			expect(child.properties.tag).toEqual({ text: 'n8n credits', pill: true });
 		});
 
 		it('should return null when no node is gateway-supported', () => {
