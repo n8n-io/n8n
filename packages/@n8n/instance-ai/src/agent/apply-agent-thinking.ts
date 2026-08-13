@@ -21,12 +21,22 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
-	if (provider === 'custom' || provider === 'moonshotai') {
+	if (provider === 'custom') {
 		// No blanket default: env override → known-model map → omit.
 		const resolvedModelId = resolveModelIdString(modelId) ?? '';
 		const { reasoningEffort } = resolveCustomModelExperimentDefaultsFromEnv(resolvedModelId);
 		if (reasoningEffort !== undefined) {
-			agent.thinking(provider === 'custom' ? 'custom' : 'moonshotai', { reasoningEffort });
+			agent.thinking('custom', { reasoningEffort });
+		}
+		return;
+	}
+
+	if (provider === 'moonshotai') {
+		const resolvedModelId = resolveModelIdString(modelId) ?? '';
+		const { reasoningEffort } = resolveCustomModelExperimentDefaultsFromEnv(resolvedModelId);
+
+		if (reasoningEffort !== undefined) {
+			agent.thinking('moonshotai', { reasoningEffort });
 		}
 		return;
 	}
