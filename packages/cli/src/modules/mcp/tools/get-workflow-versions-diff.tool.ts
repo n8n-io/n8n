@@ -113,10 +113,9 @@ type GetWorkflowVersionsDiffOutput = GetWorkflowVersionsDiffResult & {
 	error?: string;
 };
 
-// Everything but `position` is diffed. An allowlist silently hides whatever it
-// omits, and node settings that change behaviour (`disabled`, `onError`,
-// `retryOnFail`, `executeOnce`, ...) belong in the delta. Moving a node on the
-// canvas does not.
+// The delta diffs everything but `position`, mirroring `compareNodes` (which
+// compares all persisted node fields except position), so `changes` explains
+// why a node is listed as modified.
 const IGNORED_NODE_PROPS = ['position'] as const;
 
 // json-diff types its return as `any`; pin the delta shape at the boundary
@@ -287,14 +286,7 @@ export async function getWorkflowVersionsDiff(
 
 	const fromNodes = fromVersion.nodes ?? [];
 	const toNodes = toVersion.nodes ?? [];
-	// Classify with our own comparator rather than the default `compareNodes`,
-	// which only looks at six properties. Widening that shared list is not an
-	// option: it also drives workflow-history pruning via `groupWorkflows`.
-	// A node is Modified if and only if its delta is non-empty, so `changes`
-	// always explains why the node is listed.
-	const nodeDiff = compareWorkflowsNodes(fromNodes, toNodes, (base, target) =>
-		base && target ? !diffNodeContents(base, target) : base === target,
-	);
+	const nodeDiff = compareWorkflowsNodes(fromNodes, toNodes);
 	// The diff stores the pre-change node for modified entries; report the
 	// post-change node so a renamed node is listed by a name that still exists.
 	const toNodesById = new Map(toNodes.map((node) => [node.id, node]));
