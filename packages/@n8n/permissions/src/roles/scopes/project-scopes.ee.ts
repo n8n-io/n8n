@@ -45,6 +45,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'project:update',
 	'project:delete',
 	'project:export',
+	'project:manageUsers',
 	'folder:create',
 	'folder:read',
 	'folder:update',

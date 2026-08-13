@@ -234,7 +234,7 @@ describe('ProjectSettings', () => {
 					role: 'project:admin',
 				},
 			],
-			scopes: ['project:read', 'project:update'],
+			scopes: ['project:read', 'project:update', 'project:manageUsers'],
 			rolesManaged: false,
 		};
 
@@ -364,6 +364,56 @@ describe('ProjectSettings', () => {
 			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'true');
 			// remove action is available -> non-empty actions array
 			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '1');
+		});
+
+		it('blocks member management when the project role lacks project:manageUsers', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:update'],
+				rolesManaged: false,
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('project-members-select')).toHaveAttribute('data-disabled', 'true');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'false');
+			// removing a member needs the same scope -> no actions offered
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '0');
+		});
+
+		it('still shows member management when the role has project:manageUsers but not project:update', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:manageUsers'],
+				rolesManaged: false,
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('project-members-select')).toHaveAttribute('data-disabled', 'false');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'true');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '1');
+		});
+
+		it('exposes only member management to a project:manageUsers role, not project editing', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:manageUsers'],
+				rolesManaged: false,
+			};
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('project-members-table')).toBeInTheDocument();
+			// Editing project details and deleting the project both need project:update
+			expect(queryByTestId('project-settings-name-input')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-description-input')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-save-button')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-cancel-button')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-delete-button')).not.toBeInTheDocument();
 		});
 	});
 

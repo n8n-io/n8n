@@ -1,0 +1,159 @@
+import {
+	createTestMigrationContext,
+	initDbUpToMigration,
+	runSingleMigration,
+	type TestMigrationContext,
+} from '@n8n/backend-test-utils';
+import { DbConnection } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
+import { jsonParse } from 'n8n-workflow';
+
+const MIGRATION_NAME = 'AddProjectManageUsersScopeToApiKeys1786526297065';
+
+const MANAGE_USERS_SCOPE = 'project:manageUsers';
+const UPDATE_SCOPE = 'project:update';
+
+describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
+	let dataSource: DataSource;
+
+	beforeEach(async () => {
+		const dbConnection = Container.get(DbConnection);
+		await dbConnection.init();
+
+		dataSource = Container.get(DataSource);
+		const context = createTestMigrationContext(dataSource);
+		await context.queryRunner.clearDatabase();
+		await initDbUpToMigration(MIGRATION_NAME);
+	});
+
+	afterEach(async () => {
+		const dbConnection = Container.get(DbConnection);
+		await dbConnection.close();
+	});
+
+	async function insertUser(context: TestMigrationContext, id: string): Promise<void> {
+		const table = context.escape.tableName('user');
+		const idColumn = context.escape.columnName('id');
+		const emailColumn = context.escape.columnName('email');
+		const roleSlugColumn = context.escape.columnName('roleSlug');
+
+		await context.runQuery(
+			`INSERT INTO ${table} (${idColumn}, ${emailColumn}, ${roleSlugColumn}) VALUES (:id, :email, :roleSlug)`,
+			{ id, email: `${id}@example.com`, roleSlug: 'global:owner' },
+		);
+	}
+
+	async function insertApiKey(
+		context: TestMigrationContext,
+		{ id, userId, scopes }: { id: string; userId: string; scopes: string[] },
+	): Promise<void> {
+		const table = context.escape.tableName('user_api_keys');
+		const idColumn = context.escape.columnName('id');
+		const userIdColumn = context.escape.columnName('userId');
+		const labelColumn = context.escape.columnName('label');
+		const apiKeyColumn = context.escape.columnName('apiKey');
+		const scopesColumn = context.escape.columnName('scopes');
+
+		await context.runQuery(
+			`INSERT INTO ${table} (${idColumn}, ${userIdColumn}, ${labelColumn}, ${apiKeyColumn}, ${scopesColumn}) VALUES (:id, :userId, :label, :apiKey, :scopes)`,
+			{
+				id,
+				userId,
+				label: `label-${id}`,
+				apiKey: `key-${id}`,
+				scopes: JSON.stringify(scopes),
+			},
+		);
+	}
+
+	async function scopesOfApiKey(context: TestMigrationContext, id: string): Promise<string[]> {
+		const table = context.escape.tableName('user_api_keys');
+		const idColumn = context.escape.columnName('id');
+		const scopesColumn = context.escape.columnName('scopes');
+
+		const rows = await context.runQuery<Array<{ scopes: string | string[] }>>(
+			`SELECT ${scopesColumn} AS "scopes" FROM ${table} WHERE ${idColumn} = :id`,
+			{ id },
+		);
+
+		// Postgres returns the json column already parsed; SQLite returns text.
+		const { scopes } = rows[0];
+		return (typeof scopes === 'string' ? jsonParse<string[]>(scopes) : scopes).sort();
+	}
+
+	it('grants project:manageUsers to keys that carry project:update', async () => {
+		const context = createTestMigrationContext(dataSource);
+		await insertUser(context, 'user-1');
+		await insertApiKey(context, {
+			id: 'key-with-update',
+			userId: 'user-1',
+			scopes: ['workflow:read', UPDATE_SCOPE],
+		});
+		await context.queryRunner.release();
+
+		await runSingleMigration(MIGRATION_NAME);
+		dataSource = Container.get(DataSource);
+
+		const postContext = createTestMigrationContext(dataSource);
+		expect(await scopesOfApiKey(postContext, 'key-with-update')).toEqual([
+			MANAGE_USERS_SCOPE,
+			UPDATE_SCOPE,
+			'workflow:read',
+		]);
+		await postContext.queryRunner.release();
+	});
+
+	it('leaves keys without project:update untouched', async () => {
+		const context = createTestMigrationContext(dataSource);
+		await insertUser(context, 'user-1');
+		await insertApiKey(context, {
+			id: 'key-without-update',
+			userId: 'user-1',
+			scopes: ['workflow:read'],
+		});
+		await context.queryRunner.release();
+
+		await runSingleMigration(MIGRATION_NAME);
+		dataSource = Container.get(DataSource);
+
+		const postContext = createTestMigrationContext(dataSource);
+		expect(await scopesOfApiKey(postContext, 'key-without-update')).toEqual(['workflow:read']);
+		await postContext.queryRunner.release();
+	});
+
+	it('does not duplicate project:manageUsers when the key already has it', async () => {
+		const context = createTestMigrationContext(dataSource);
+		await insertUser(context, 'user-1');
+		await insertApiKey(context, {
+			id: 'key-already-granted',
+			userId: 'user-1',
+			scopes: [UPDATE_SCOPE, MANAGE_USERS_SCOPE],
+		});
+		await context.queryRunner.release();
+
+		await runSingleMigration(MIGRATION_NAME);
+		dataSource = Container.get(DataSource);
+
+		const postContext = createTestMigrationContext(dataSource);
+		expect(await scopesOfApiKey(postContext, 'key-already-granted')).toEqual([
+			MANAGE_USERS_SCOPE,
+			UPDATE_SCOPE,
+		]);
+		await postContext.queryRunner.release();
+	});
+
+	it('skips a key with an empty scope list without failing', async () => {
+		const context = createTestMigrationContext(dataSource);
+		await insertUser(context, 'user-1');
+		await insertApiKey(context, { id: 'key-empty', userId: 'user-1', scopes: [] });
+		await context.queryRunner.release();
+
+		await runSingleMigration(MIGRATION_NAME);
+		dataSource = Container.get(DataSource);
+
+		const postContext = createTestMigrationContext(dataSource);
+		expect(await scopesOfApiKey(postContext, 'key-empty')).toEqual([]);
+		await postContext.queryRunner.release();
+	});
+});
