@@ -177,14 +177,14 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 	async function followUp(instruction: string): Promise<void> {
 		const context = currentContext();
 		if (!context) return;
-		const history = histories.get(context.key);
-		const currentSpec = history?.current();
-		if (!history || currentSpec === undefined) return;
+		const history = histories.get(context.key) ?? new SpecHistory();
+		const currentSpec = history.current();
 		if (!apiKey.value) {
 			error.value = 'missing-key';
 			return;
 		}
 
+		histories.set(context.key, history);
 		abortActiveRequest();
 		const request = new AbortController();
 		activeRequest = request;
@@ -201,11 +201,17 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 				signal: request.signal,
 			});
 			if (activeRequest !== request) return;
-			history.push(spec);
+			if (currentSpec === undefined) history.reset(spec);
+			else history.push(spec);
 			activeSpec.value = spec;
 		} catch (generationError) {
 			if (activeRequest !== request || isAbortError(generationError)) return;
 			setGenerationError(generationError);
+			if (currentSpec === undefined) {
+				const spec = fallbackSpec(context.payload);
+				history.reset(spec);
+				activeSpec.value = spec;
+			}
 		} finally {
 			if (activeRequest === request) {
 				activeRequest = undefined;
