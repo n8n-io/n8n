@@ -210,6 +210,29 @@ describe('v2/components/Select', () => {
 		});
 	});
 
+	describe('typeahead', () => {
+		it('should highlight the option whose textValue prefix matches', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: [
+						{ value: 'us', label: 'United States', keywords: ['USA'] },
+						{ value: 'de', label: 'Germany', textValue: 'Deutschland' },
+					],
+					defaultOpen: true,
+				},
+			});
+
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+			await userEvent.keyboard('d');
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Germany' })).toHaveAttribute(
+					'data-highlighted',
+				);
+			});
+		});
+	});
+
 	describe('v-model', () => {
 		it('should update modelValue on selection', async () => {
 			const items = [
@@ -385,6 +408,32 @@ describe('v2/components/Select', () => {
 			await waitFor(() => {
 				expect(onSelect).toHaveBeenCalled();
 			});
+		});
+
+		it('should not update modelValue when onSelect calls preventDefault', async () => {
+			const onSelect = vi.fn((event: Event) => {
+				event.preventDefault();
+			});
+			const items: SelectItem[] = [
+				{ value: '1', label: 'Option 1' },
+				{ value: '__add_custom_role__', label: 'Add custom role', onSelect },
+			];
+
+			const wrapper = render(Select, {
+				props: {
+					items,
+					defaultOpen: true,
+					modelValue: '1',
+				},
+			});
+
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+			await userEvent.click(within(popover).getByRole('option', { name: 'Add custom role' }));
+
+			await waitFor(() => {
+				expect(onSelect).toHaveBeenCalled();
+			});
+			expect(wrapper.emitted('update:modelValue')).toBeFalsy();
 		});
 	});
 

@@ -4,6 +4,9 @@ import { action } from 'storybook/actions';
 import { defineComponent, ref, computed } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton';
+import N8nDialog from '@n8n/design-system/components/N8nDialog/Dialog.vue';
+import N8nDialogClose from '@n8n/design-system/components/N8nDialog/DialogClose.vue';
+import N8nDialogFooter from '@n8n/design-system/components/N8nDialog/DialogFooter.vue';
 import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
 import N8nInputLabel from '@n8n/design-system/components/N8nInputLabel';
@@ -746,11 +749,14 @@ const customRoles = [
 	{ value: 'support-lead', label: 'Support Lead', keywords: ['helpdesk'] },
 ];
 
+const ADD_CUSTOM_ROLE_VALUE = '__add_custom_role__';
+
 const SelectSearchAndFooterDemo = defineComponent({
 	name: 'SelectSearchAndFooterDemo',
 	setup() {
 		const value = ref<string | undefined>('member');
 		const open = ref(false);
+		const createOpen = ref(false);
 
 		const items = computed<SelectItem[]>(() => {
 			const result: SelectItem[] = [];
@@ -761,6 +767,19 @@ const SelectSearchAndFooterDemo = defineComponent({
 			result.push({ type: 'label', label: 'Custom roles' });
 			result.push(...customRoles);
 
+			result.push({ type: 'separator' });
+			result.push({
+				value: ADD_CUSTOM_ROLE_VALUE,
+				label: 'Add custom role',
+				icon: 'plus',
+				onSelect: (event: Event) => {
+					event.preventDefault();
+					open.value = false;
+					createOpen.value = true;
+					action('add-custom-role')();
+				},
+			});
+
 			return result;
 		});
 
@@ -770,27 +789,25 @@ const SelectSearchAndFooterDemo = defineComponent({
 				'Select a role',
 		);
 
-		function onAddCustomRole() {
-			open.value = false;
-			action('add-custom-role')();
-		}
-
 		return {
 			value,
 			open,
+			createOpen,
 			items,
 			selectedLabel,
-			onAddCustomRole,
 			onUpdate: action('update:modelValue'),
 			Select,
-			N8nIcon,
+			N8nDialog,
+			N8nDialogFooter,
+			N8nDialogClose,
+			N8nButton,
 			N8nText,
 		};
 	},
 	template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--sm);">
 			<component :is="N8nText" size="small" color="text-light" tag="p" style="margin: 0;">
-				Search matches labels and keywords — try "owner" or "finance".
+				Search matches labels and keywords — try "owner" or "finance". "Add custom role" uses onSelect + preventDefault so it never becomes the value.
 			</component>
 			<component
 				:is="Select"
@@ -804,17 +821,22 @@ const SelectSearchAndFooterDemo = defineComponent({
 				<template #default>
 					{{ selectedLabel }}
 				</template>
-
-				<template #footer>
-					<button
-						type="button"
-						style="display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--height--xl); padding: 0 12px; border: none; background: transparent; cursor: pointer; color: var(--color--primary);"
-						@click.stop="onAddCustomRole"
-					>
-						<component :is="N8nIcon" icon="plus" size="small" />
-						<span style="font-size: 13px;">Add custom role</span>
-					</button>
-				</template>
+			</component>
+			<component
+				:is="N8nDialog"
+				v-model:open="createOpen"
+				header="Add custom role"
+				description="This action item uses onSelect with preventDefault so it never becomes the Select value."
+				size="small"
+			>
+				<component :is="N8nDialogFooter">
+					<component :is="N8nDialogClose" as-child>
+						<component :is="N8nButton" label="Cancel" variant="outline" />
+					</component>
+					<component :is="N8nDialogClose" as-child>
+						<component :is="N8nButton" label="Add role" variant="solid" />
+					</component>
+				</component>
 			</component>
 		</div>
 	`,
@@ -825,7 +847,7 @@ export const WithSearchAndFooter: Story = {
 		docs: {
 			description: {
 				story:
-					'Search filters by label/`textValue` and `keywords`. Try "owner", "finance", or "helpdesk". Closing the menu clears the query.',
+					'Search filters by label/`textValue` and `keywords`. Footer actions stay inside the listbox as options — use `onSelect` with `event.preventDefault()` so they do not update `modelValue`. Closing the menu clears the query.',
 			},
 		},
 	},

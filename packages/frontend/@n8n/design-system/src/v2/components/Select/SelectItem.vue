@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { SelectItem, SelectItemIndicator, SelectItemText } from 'reka-ui';
+import { SelectItem as RekaSelectItem, SelectItemIndicator, SelectItemText } from 'reka-ui';
 import { computed, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import type { SelectOptionBase } from './Select.types';
+import type { SelectItemSlots, SelectOptionBase } from './Select.types';
 
 defineOptions({ inheritAttrs: false });
 
@@ -14,6 +14,7 @@ type SelectItemComponentProps = SelectOptionBase & {
 };
 
 const props = defineProps<SelectItemComponentProps>();
+defineSlots<SelectItemSlots>();
 const $style = useCssModule();
 
 const leadingProps = computed(() => ({
@@ -26,18 +27,11 @@ const trailingProps = computed(() => ({
 	strokeWidth: props.strokeWidth,
 }));
 
-const typeaheadText = computed(() => {
-	const base = props.textValue ?? props.label;
-	if (!props.keywords?.length) {
-		return base;
-	}
-
-	return [base, ...props.keywords].join(' ');
-});
+const typeaheadText = computed(() => props.textValue ?? props.label);
 </script>
 
 <template>
-	<SelectItem
+	<RekaSelectItem
 		data-test-id="select-item"
 		:disabled="props.disabled"
 		:value="props.value"
@@ -59,7 +53,7 @@ const typeaheadText = computed(() => {
 		<SelectItemIndicator as-child>
 			<Icon icon="check" color="text-light" :class="$style.itemIndicator" />
 		</SelectItemIndicator>
-	</SelectItem>
+	</RekaSelectItem>
 </template>
 
 <style module>

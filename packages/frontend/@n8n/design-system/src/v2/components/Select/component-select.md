@@ -1,7 +1,7 @@
 # Component specification
 
 Allows users to choose one or more options from a predefined list. It supports both single and multiple selection modes via the `multiple` prop.
-Built-in search (`searchable`) filters the dropdown by `textValue` (falling back to `label`) and `keywords` (case-insensitive substring). Closing the menu clears the query. Group labels and separators without a matching item are dropped from the filtered list. When search is off, the same fields feed Reka typeahead. For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
+Built-in search (`searchable`) filters the dropdown by `textValue` (falling back to `label`) and `keywords` (case-insensitive substring). Closing the menu clears the query. Group labels and separators without a matching item are dropped from the filtered list. When search is off, Reka typeahead matches the prefix of `textValue` (falling back to `label`); `keywords` are not used. For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
 
 - **Component Name:** N8nSelect2
 - **Related export:** N8nSelect2Item (default menu row; use when replacing the `item` slot)
@@ -27,7 +27,7 @@ type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	icon?: IconName;
 	disabled?: boolean;
 	textValue?: string; // search / typeahead text; defaults to label (use for slot-rendered labels)
-	keywords?: string[]; // extra search terms (synonyms); checked in addition to textValue
+	keywords?: string[]; // extra searchable terms (synonyms); not used by typeahead
 	onSelect?: (event: Event) => void; // preventDefault() keeps the value from updating
 };
 
@@ -186,4 +186,38 @@ const value = ref<string>()
 <template>
   <N8nSelect2 v-model="value" :items="items" searchable clearable />
 </template>
+```
+
+**Header and footer actions**
+
+Do not put buttons in `#footer` / `#header` for actions that need a reliable click — they sit inside Reka's `role="listbox"` and pointer events are often swallowed. Model the action as an option: pin it with `type: 'separator'`, and call `event.preventDefault()` in `onSelect` so it does not become the field value.
+
+```vue
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { N8nSelect2 } from '@n8n/design-system'
+
+const options = [
+  { label: 'Admin', value: 'admin' },
+  { label: 'Member', value: 'member' },
+]
+const value = ref<string | undefined>('member')
+const open = ref(false)
+const createOpen = ref(false)
+
+const items = computed(() => [
+  ...options,
+  { type: 'separator' as const },
+  {
+    label: 'Add custom role',
+    value: '__add_custom_role__',
+    icon: 'plus' as const,
+    onSelect: (event: Event) => {
+      event.preventDefault()
+      open.value = false
+      createOpen.value = true
+    },
+  },
+])
+</script>
 ```

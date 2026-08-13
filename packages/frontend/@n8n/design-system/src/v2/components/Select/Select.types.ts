@@ -11,15 +11,15 @@ export type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	icon?: IconName;
 	disabled?: boolean;
 	/**
-	 * String used for search filtering. Defaults to `label`.
+	 * String used for search filtering and typeahead. Defaults to `label`.
 	 * Set this when the filter text should differ from the displayed label
 	 * (e.g. a slot-rendered label).
 	 */
 	textValue?: string;
 	/**
-	 * Extra strings matched during search filtering (e.g. synonyms).
-	 * Does not replace `textValue` — both the base filter text and these
-	 * keywords are checked.
+	 * Extra strings matched during `searchable` filtering (e.g. synonyms).
+	 * Does not replace `textValue`. Not used by typeahead, which matches the
+	 * prefix of `textValue` / `label`.
 	 */
 	keywords?: string[];
 	/**
@@ -111,15 +111,24 @@ export type SelectEmits<M extends boolean = false> = Omit<SelectRootEmits, 'upda
 
 export type SelectItemUi = { class: string; strokeWidth?: number };
 
-type SlotProps = (props: { item: SelectOptionBase; ui: SelectItemUi }) => unknown;
+export type SelectItemSlotProps = (props: {
+	item: SelectOptionBase;
+	ui: SelectItemUi;
+}) => unknown;
+
+export type SelectItemSlots = {
+	['item-leading']?: SelectItemSlotProps;
+	['item-label']?: (props: { item: SelectOptionBase }) => unknown;
+	['item-trailing']?: SelectItemSlotProps;
+};
 
 export type SelectSlots<M extends boolean = false> = {
 	default(props: { modelValue?: SelectModelValue<M>; open: boolean }): unknown;
 	item: (props: { item: SelectOptionBase }) => unknown;
 	label: (props: { item: SelectLabelItem }) => unknown;
-	['item-leading']: SlotProps;
+	['item-leading']: SelectItemSlotProps;
 	['item-label']: (props: { item: SelectOptionBase }) => unknown;
-	['item-trailing']: SlotProps;
+	['item-trailing']: SelectItemSlotProps;
 	header?: () => unknown;
 	footer?: () => unknown;
 	empty?: () => unknown;
