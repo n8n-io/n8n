@@ -1645,6 +1645,72 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 	});
 });
 
+describe('createThreadRuntime - inline MCP connect confirmation', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-mcp-connect';
+	});
+
+	function seedConfirmation(confirmation: Record<string, unknown>) {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-1',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'mcp-servers',
+							args: { action: 'connect' },
+							isLoading: true,
+							confirmation,
+						},
+					],
+					children: [],
+					timeline: [],
+				},
+			},
+		] as unknown as typeof runtime.messages;
+		return runtime;
+	}
+
+	it('is excluded from pendingConfirmations because the timeline renders it', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-mcp',
+			severity: 'info',
+			message: 'To search the web',
+			mcpConnectRequest: { servers: [{ serverSlug: 'brave', title: 'Brave' }] },
+		});
+
+		expect(runtime.pendingConfirmations).toHaveLength(0);
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+	});
+
+	it('leaves other confirmations on the same tool in the panel', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-plain',
+			severity: 'info',
+			message: 'Search the registry?',
+		});
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+	});
+});
+
 describe('createThreadRuntime - session always-allow', () => {
 	let registry: RuntimeRegistry;
 
