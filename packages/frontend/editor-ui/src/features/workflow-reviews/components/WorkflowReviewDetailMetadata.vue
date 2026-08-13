@@ -18,6 +18,11 @@ const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
 );
 
+// Authors include the requester, who already has their own section above.
+const otherAuthors = computed(() =>
+	props.review.authors.filter((author) => author.id !== props.review.requester?.id),
+);
+
 const statusSummary = computed(() => {
 	const { state, decision } = props.review;
 	return i18n.baseText('workflowReviews.detail.metadata.state.combinedLabel', {
@@ -43,14 +48,51 @@ const statusSummary = computed(() => {
 			</div>
 		</N8nCard>
 
-		<N8nCard :class="$style.card" data-test-id="workflow-review-detail-reviewers-card">
-			<template #header>
+		<N8nCard
+			:class="[$style.card, $style.peopleCard]"
+			data-test-id="workflow-review-detail-people-card"
+		>
+			<div :class="$style.section">
+				<N8nText bold color="text-light" size="small">
+					{{ i18n.baseText('workflowReviews.detail.metadata.requestedBy') }}
+				</N8nText>
+				<div v-if="review.requester" :class="$style.person">
+					<N8nAvatar
+						:first-name="review.requester.firstName"
+						:last-name="review.requester.lastName"
+						size="xsmall"
+					/>
+					<N8nText size="small">{{ formatUserDisplayName(review.requester) }}</N8nText>
+				</div>
+				<N8nText
+					v-else
+					color="text-light"
+					size="small"
+					data-test-id="workflow-review-detail-requester-deleted"
+				>
+					{{ i18n.baseText('workflowReviews.detail.metadata.requesterDeleted') }}
+				</N8nText>
+			</div>
+
+			<div
+				v-if="otherAuthors.length > 0"
+				:class="$style.section"
+				data-test-id="workflow-review-detail-other-authors"
+			>
+				<N8nText bold color="text-light" size="small">
+					{{ i18n.baseText('workflowReviews.detail.metadata.otherAuthors') }}
+				</N8nText>
+				<div v-for="author in otherAuthors" :key="author.id" :class="$style.person">
+					<N8nAvatar :first-name="author.firstName" :last-name="author.lastName" size="xsmall" />
+					<N8nText size="small">{{ formatUserDisplayName(author) }}</N8nText>
+				</div>
+			</div>
+
+			<div :class="$style.section">
 				<N8nText bold color="text-light" size="small">
 					{{ i18n.baseText('workflowReviews.detail.metadata.reviewers') }}
 				</N8nText>
-			</template>
-			<div v-if="review.reviewers.length > 0" :class="$style.people">
-				<div v-for="reviewer in review.reviewers" :key="reviewer.id" :class="$style.reviewer">
+				<div v-for="reviewer in review.reviewers" :key="reviewer.id" :class="$style.person">
 					<N8nAvatar
 						:first-name="reviewer.firstName"
 						:last-name="reviewer.lastName"
@@ -58,15 +100,15 @@ const statusSummary = computed(() => {
 					/>
 					<N8nText size="small">{{ formatUserDisplayName(reviewer) }}</N8nText>
 				</div>
+				<N8nText
+					v-if="review.reviewers.length === 0"
+					color="text-light"
+					size="small"
+					data-test-id="workflow-review-detail-no-reviewers"
+				>
+					{{ i18n.baseText('workflowReviews.detail.metadata.noReviewers') }}
+				</N8nText>
 			</div>
-			<N8nText
-				v-else
-				color="text-light"
-				size="small"
-				data-test-id="workflow-review-detail-no-reviewers"
-			>
-				{{ i18n.baseText('workflowReviews.detail.metadata.noReviewers') }}
-			</N8nText>
 		</N8nCard>
 
 		<N8nCard
@@ -125,7 +167,7 @@ const statusSummary = computed(() => {
 	gap: var(--spacing--2xs);
 }
 
-.people,
+.section,
 .workflows {
 	display: flex;
 	flex-direction: column;
@@ -133,7 +175,11 @@ const statusSummary = computed(() => {
 	min-width: 0;
 }
 
-.reviewer {
+.peopleCard {
+	--n8n--card-body--gap: var(--spacing--sm);
+}
+
+.person {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
@@ -144,30 +190,28 @@ const statusSummary = computed(() => {
 	display: flex;
 	width: 100%;
 	min-width: 0;
-	overflow: hidden;
-	white-space: nowrap;
 
 	> span,
 	> span > span {
 		display: flex;
 		flex: 1;
-		align-items: center;
+		align-items: flex-start;
 		min-width: 0;
-		overflow: hidden;
 	}
 }
 
 .workflowName {
 	flex: 1;
 	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	/* A name with no spaces still has to break somewhere. */
+	overflow-wrap: anywhere;
 }
 
 .workflowIcon {
 	flex-shrink: 0;
 	margin-right: var(--spacing--4xs);
+	/* Optically centre the icon on the first line of text. */
+	margin-top: calc((1lh - 1em) / 2);
 }
 
 @media (max-width: 75rem) {

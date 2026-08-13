@@ -40,7 +40,6 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
-
 const user = mock<User>({ id: 'user-1' });
 
 /** Build a real `User` with `isPending` computed, as TypeORM does after load. */
@@ -56,6 +55,7 @@ const dto: CreateWorkflowReviewRequestDto = {
 	workflows: [
 		{ workflowId: 'wf-1', workflowVersionId: 'ver-1', workflowVersionName: 'Release candidate' },
 	],
+	reviewerUserIds: ['user-2'],
 };
 
 describe('WorkflowReviewRequestService', () => {
@@ -115,6 +115,14 @@ describe('WorkflowReviewRequestService', () => {
 	});
 
 	describe('create', () => {
+		// A reviewer is mandatory, so every create path resolves the eligible set.
+		beforeEach(() => {
+			roleService.rolesWithScope.mockResolvedValue(['some-role']);
+			userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
+				loadedUser({ id: 'user-2', email: 'user-2@n8n.io' }),
+			]);
+		});
+
 		const mockSuccessfulCreatePath = () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				mock<WorkflowEntity>({ isArchived: false }),
@@ -355,20 +363,21 @@ describe('WorkflowReviewRequestService', () => {
 				);
 			});
 
+			// The DTO rejects an empty list, but the service must not silently create a
+			// reviewerless review if it is ever called past that boundary.
 			it.each<[string, string[] | undefined]>([
 				['omitted', undefined],
 				['empty', []],
-			])(
-				'skips the eligibility lookup and the reviewer write when reviewers are %s',
-				async (_name, reviewerUserIds) => {
-					mockSuccessfulCreatePath();
+			])('rejects a create with %s reviewers', async (_name, reviewerUserIds) => {
+				mockSuccessfulCreatePath();
 
-					await service.create(user, { ...dto, reviewerUserIds });
+				await expect(
+					service.create(user, { ...dto, reviewerUserIds } as CreateWorkflowReviewRequestDto),
+				).rejects.toThrow(BadRequestError);
 
-					expect(userRepository.findEligibleByProjectOrGlobalRoles).not.toHaveBeenCalled();
-					expect(reviewerRepository.addReviewers).not.toHaveBeenCalled();
-				},
-			);
+				expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+				expect(reviewerRepository.addReviewers).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('pinned version naming', () => {
@@ -560,6 +569,7 @@ describe('WorkflowReviewRequestService', () => {
 			id: 'req-1',
 			state: 'open',
 			decision: 'pending',
+			description: null,
 			updatedById: 'user-2',
 			workflowVersionId: 'ver-1',
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
@@ -615,6 +625,7 @@ describe('WorkflowReviewRequestService', () => {
 					id: 'req-1',
 					state: 'open',
 					decision: 'changes_requested',
+					description: null,
 					workflowVersionId: 'ver-1',
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
@@ -690,7 +701,6 @@ describe('WorkflowReviewRequestService', () => {
 			});
 		});
 
-		// R1 (P3): enriching row by row made this list an N+1 — see LIGO-607_review.md
 		it('enriches many rows with one lookup per derived field', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 			requestRepository.findRequestsForWorkflow.mockResolvedValue([

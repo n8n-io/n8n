@@ -418,7 +418,12 @@ export type {
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';
-export { createWorkspaceTools } from './workspace';
+export {
+	CORE_WORKSPACE_TOOL_NAMES,
+	createScopedWorkspace,
+	createWorkspaceTools,
+	getToolResultThreadDirectory,
+} from './workspace';
 export { SandboxProcessManager, ProcessHandle } from './workspace';
 
 export type {

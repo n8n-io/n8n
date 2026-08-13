@@ -53,6 +53,18 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 }
 
 /**
+ * Builds the thread-level grant key for updating a specific workflow without HITL.
+ *
+ * Written automatically when the agent creates a workflow in this thread, so follow-up
+ * edits to that same artifact (same run or later runs in the session) skip the update
+ * approval prompt. Foreign workflows still require approval unless the admin policy is
+ * `always_allow`.
+ */
+export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
+	return `workflows:update:${workflowId}`;
+}
+
+/**
  * Builds the thread-level "always allow" grant key for a data-tables action
  * (e.g. `create`, `insert-rows`). Must match the frontend key
  * `${toolName}:${action}` so UI auto-approve and persisted grants stay aligned.
@@ -623,7 +635,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.array(workflowSetupNodeSchema)
 		.optional()
 		.describe('Per-node setup cards for workflow credential/parameter configuration'),
-	workflowId: z.string().optional().describe('Workflow ID for setup-workflow tool'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'Workflow ID for setup cards and per-workflow edit approvals (build-workflow / workflows update)',
+		),
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),

@@ -1134,14 +1134,12 @@ export interface InstanceAiContext {
 	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
 	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
-	 * IDs of workflows the agent created during the **currently active plan
-	 * cycle**. Populated by build-workflow on every successful create, and
-	 * hydrated at run start from the persisted plan graph when — and only when —
-	 * the plan is still `active` or
-	 * `awaiting_replan`, so replan follow-up runs keep the bypass active but
-	 * the window closes as soon as the plan settles. Consumed by the delete
-	 * handler to skip the confirmation gate when the agent cleans up its own
-	 * in-flight artifacts. Lazily initialized on first create.
+	 * IDs of workflows the agent created during the **current run**. Populated by
+	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
+	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
+	 * the same thread uses the persisted `workflows:update:<id>` session grant
+	 * written at create time — this in-memory set alone does not survive a new run.
+	 * Lazily initialized on first create.
 	 */
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
