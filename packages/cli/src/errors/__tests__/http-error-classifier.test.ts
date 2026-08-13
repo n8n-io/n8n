@@ -53,7 +53,7 @@ describe('classifyHttpError', () => {
 	});
 
 	describe('Unauthorized', () => {
-		it('includes error message from express-openpapi-validator in response when no token header or session cookie sent', () => {
+		it('keeps the express-openapi-validator message when no session cookie was sent', () => {
 			const err = new Unauthorized({ path: '/x', message: "'X-N8N-API-KEY' header required" });
 			const d = classifyHttpError(err);
 			expect(d).toEqual({
@@ -63,7 +63,7 @@ describe('classifyHttpError', () => {
 			});
 		});
 
-		it('does not tell user who tried to authorize to public API with session cookie that token is required for auth', () => {
+		it('replaces the api key hint with a generic message when a session cookie was sent', () => {
 			const err = new Unauthorized({ path: '/x', message: "'X-N8N-API-KEY' header required" });
 			const d = classifyHttpError(err, { hasSessionCookie: true });
 			expect(d).toEqual({
