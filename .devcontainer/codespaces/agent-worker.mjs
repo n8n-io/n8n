@@ -51,6 +51,10 @@ for (const [k, v] of Object.entries({
 	}
 }
 
+// Not fatal, but box pinning needs it: without a box id every turn routes by
+// owner, so a thread cannot follow the box holding its session.
+if (!BOX_ID) console.error('CODESPACE_NAME is not set — box pinning disabled; turns route by githubUser only.');
+
 function runClaude({ message, sessionId, cwd }) {
 	const safeCwd = resolvePath(typeof cwd === 'string' && cwd ? cwd : `${ROOT}/n8n`);
 	if (safeCwd !== ROOT && !safeCwd.startsWith(ROOT + sep))
