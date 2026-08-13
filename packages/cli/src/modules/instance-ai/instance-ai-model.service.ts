@@ -1,5 +1,6 @@
 import { UNLIMITED_CREDITS, buildProxyHeaders, type InstanceAiCredits } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
@@ -12,6 +13,15 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+
+/**
+ * Bare model name used for workflow-overview generation when no
+ * `N8N_INSTANCE_AI_OVERVIEW_MODEL` override is set and the main model is
+ * Anthropic. Overviews are three schema-bound sentences — a smaller model is
+ * indistinguishable in quality and much cheaper, and the sidecar runs on
+ * every user turn.
+ */
+const DEFAULT_ANTHROPIC_OVERVIEW_MODEL = 'claude-sonnet-4-6';
 
 /**
  * Resolves the language model the Instance AI agent runs against and reports
@@ -35,6 +45,7 @@ export class InstanceAiModelService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
@@ -71,6 +82,59 @@ export class InstanceAiModelService {
 	}
 
 	/**
+	 * Model for lightweight workflow-overview generation (three schema-bound
+	 * sentences): `N8N_INSTANCE_AI_OVERVIEW_MODEL` when set (bare model name,
+	 * inherits the main model's provider + credentials), otherwise a smaller
+	 * Anthropic default when the main model is Anthropic, otherwise the main
+	 * agent model. Follows the same proxy resolution chain as
+	 * {@link resolveAgentModelConfig}.
+	 */
+	async resolveOverviewModelConfig(user: User): Promise<ModelConfig> {
+		const override = this.globalConfig.instanceAi.overviewModel.trim();
+		const hasOverride = override !== '';
+		const overrideOrDefault = hasOverride ? override : DEFAULT_ANTHROPIC_OVERVIEW_MODEL;
+
+		if (this.aiService.isProxyEnabled()) {
+			const client = await this.aiService.getClient();
+			const proxyBaseUrl = client.getApiProxyBaseUrl();
+			const tokenManager = new ProxyTokenManager(async () => {
+				return await client.getInstanceAiApiProxyToken(
+					{ id: user.id },
+					{ userMessageId: nanoid() },
+				);
+			});
+			// The proxy transport is Anthropic-native, so the smaller default is safe here.
+			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager, {
+				modelNameOverride: overrideOrDefault,
+			});
+		}
+
+		// The HTTP-proxy path only ever builds Anthropic models (see the provider gate).
+		const httpProxyModel = await this.resolveHttpProxyModel(user, {
+			modelNameOverride: overrideOrDefault,
+		});
+		if (httpProxyModel) return httpProxyModel;
+
+		if (hasOverride) {
+			return await this.settingsService.resolveModelConfigForVerification(user, override);
+		}
+		if (await this.isMainModelAnthropic(user)) {
+			return await this.settingsService.resolveModelConfigForVerification(
+				user,
+				DEFAULT_ANTHROPIC_OVERVIEW_MODEL,
+			);
+		}
+		return await this.settingsService.resolveModelConfig(user);
+	}
+
+	/** Whether the resolved main model belongs to the Anthropic provider. */
+	private async isMainModelAnthropic(user: User): Promise<boolean> {
+		const config = await this.settingsService.resolveModelConfig(user);
+		const modelId = typeof config === 'string' ? config : 'id' in config ? config.id : null;
+		return typeof modelId === 'string' && modelId.startsWith('anthropic/');
+	}
+
+	/**
 	 * Build model config. When the AI service proxy is enabled, returns a native
 	 * Anthropic LanguageModelV2 instance pointing at the proxy.
 	 *
@@ -87,8 +151,9 @@ export class InstanceAiModelService {
 		user: User,
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
+		options?: { modelNameOverride?: string },
 	): Promise<ModelConfig> {
-		const modelName = this.settingsService.resolveModelName(user);
+		const modelName = options?.modelNameOverride ?? this.settingsService.resolveModelName(user);
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
 		// Route through the proxy-aware transport so this path honours
 		// HTTP(S)_PROXY and the long AI timeout, same as the HTTP-proxy path.
@@ -118,7 +183,10 @@ export class InstanceAiModelService {
 	 * with a proxy-aware fetch so the AI SDK routes through the proxy.
 	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
 	 */
-	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
+	private async resolveHttpProxyModel(
+		user: User,
+		options?: { modelNameOverride?: string },
+	): Promise<ModelConfig | undefined> {
 		// Only take over model construction when a proxy is configured; otherwise
 		// the regular model resolution path applies. Node's global `fetch` does
 		// not honour HTTP(S)_PROXY, hence the proxy-aware transport below.
@@ -130,7 +198,7 @@ export class InstanceAiModelService {
 		if (!modelId) return undefined;
 
 		const [provider, ...rest] = modelId.split('/');
-		const modelName = rest.join('/');
+		const modelName = options?.modelNameOverride ?? rest.join('/');
 		const apiKey = typeof config === 'object' && 'apiKey' in config ? config.apiKey : undefined;
 		const baseURL = typeof config === 'object' && 'url' in config ? config.url : undefined;
 		if (provider !== 'anthropic') return undefined;

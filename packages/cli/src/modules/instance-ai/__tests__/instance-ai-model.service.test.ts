@@ -1,5 +1,6 @@
 import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -34,13 +35,14 @@ describe('InstanceAiModelService', () => {
 	const settingsService = mock<InstanceAiSettingsService>();
 	const aiService = mock<AiService>();
 	const outboundHttp = mock<OutboundHttp>();
+	const globalConfig = mock<GlobalConfig>({ instanceAi: { overviewModel: '' } });
 
 	let service: InstanceAiModelService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedTokenGetters.length = 0;
-		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
+		service = new InstanceAiModelService(settingsService, aiService, outboundHttp, globalConfig);
 	});
 
 	afterEach(() => {

@@ -16,6 +16,15 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
 	modelApiKey: string = '';
 
+	/**
+	 * Bare model name (no provider prefix) for lightweight workflow-overview
+	 * generation, e.g. "claude-haiku-4-5". Inherits the main model's provider
+	 * and credentials. Empty = a smaller Anthropic default when the main model
+	 * is Anthropic, otherwise the main model.
+	 */
+	@Env('N8N_INSTANCE_AI_OVERVIEW_MODEL')
+	overviewModel: string = '';
+
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';

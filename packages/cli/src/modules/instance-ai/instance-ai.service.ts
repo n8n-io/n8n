@@ -6502,7 +6502,7 @@ export class InstanceAiService {
 		} = {},
 	): Promise<void> {
 		try {
-			const modelId = await this.modelService.resolveAgentModelConfig(user);
+			const modelId = await this.modelService.resolveOverviewModelConfig(user);
 
 			// Last N stored messages, oldest first — service-injected blocks stripped
 			// from user turns so they don't leak into the overview prompt.

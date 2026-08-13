@@ -53,7 +53,7 @@ export class InstanceAiWorkflowOverviewService {
 		]);
 		if (!workflow) throw new NotFoundError(`Workflow ${workflowId} not found`);
 
-		const modelId = await this.modelService.resolveAgentModelConfig(user);
+		const modelId = await this.modelService.resolveOverviewModelConfig(user);
 		const structure = await summarizeWorkflowStructure(
 			workflow.name,
 			workflow.nodes,
