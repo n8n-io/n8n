@@ -5,7 +5,14 @@ import type { StepSlots, StepStatus } from './execution.types';
 export interface NewStepRecord {
 	executionId: string;
 	nodeId: string;
-	status: StepStatus;
+	/**
+	 * Creation statuses only. The rest are reachable solely through their
+	 * transitions — `running` via `claimStep`, `failed` via `failStep`,
+	 * `cancelled` via `cancelQueuedSteps` — so a row can't enter a state
+	 * without passing that transition's guarantees (the failure fence above
+	 * all: a `failed` row created here would bypass its exclusive lock).
+	 */
+	status: Extract<StepStatus, 'queued' | 'completed' | 'skipped'>;
 	/** Only for a step recorded already-completed, such as the trigger. */
 	outputs?: StepSlots;
 }
