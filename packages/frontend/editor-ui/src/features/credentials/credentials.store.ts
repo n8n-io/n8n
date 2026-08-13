@@ -162,6 +162,31 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		};
 	});
 
+	const isCredentialTypeTestable = computed(() => {
+		return (credentialTypeName: string): boolean => {
+			const credentialType = getCredentialTypeByName.value(credentialTypeName);
+			if (!credentialType) return false;
+			if (credentialType.test) return true;
+
+			const nodeTypesStore = useNodeTypesStore();
+
+			// Every registered version has to be checked, not just the newest: `testedBy` is
+			// often declared only on an older version, and the backend resolves the test
+			// across all versions too. Reading one version hides tests that do exist.
+			return (credentialType.supportedNodes ?? []).some((nodeType) =>
+				nodeTypesStore
+					.getNodeVersions(nodeType)
+					.some((version) =>
+						nodeTypesStore
+							.getNodeType(nodeType, version)
+							?.credentials?.some(
+								(credential) => credential.name === credentialTypeName && credential.testedBy,
+							),
+					),
+			);
+		};
+	});
+
 	const getScopesByCredentialType = computed(() => {
 		return (credentialTypeName: string) => {
 			const credentialType = getCredentialTypeByName.value(credentialTypeName);
@@ -546,6 +571,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		getCredentialTypeByName,
 		getCredentialByIdAndType,
 		getNodesWithAccess,
+		isCredentialTypeTestable,
 		getUsableCredentialByType,
 		credentialTypesById,
 		httpOnlyCredentialTypes,
