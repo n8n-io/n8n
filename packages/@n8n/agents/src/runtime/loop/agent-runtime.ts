@@ -55,6 +55,7 @@ import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
+import type { WorkspaceFilesystem } from '../../workspace';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
@@ -94,6 +95,7 @@ export interface AgentRuntimeConfig {
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
+	workspaceFilesystem?: WorkspaceFilesystem;
 	toolSearch?: {
 		topK?: number;
 	};
@@ -236,6 +238,7 @@ export class AgentRuntime {
 			concurrency: config.toolCallConcurrency ?? 1,
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
+			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {

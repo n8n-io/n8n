@@ -41,20 +41,22 @@ import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
-import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSkillsService } from '../agent-skills.service';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
 import { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentValidationService } from '../agent-validation.service';
+import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -130,16 +132,18 @@ function makeRuntimeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
-		{ modules } as unknown as AgentsConfig,
+		mock<AgentSandboxRuntimeService>(),
 		mock<AiService>(),
 		outboundHttp,
-		mock<AgentKnowledgeSandboxService>(),
+		mock<AgentWorkspaceService>(),
+		mock<AgentKnowledgeMirrorService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<GoalGraphStateService>(),
+		{ modules } as unknown as AgentsConfig,
 	);
 }
 
@@ -314,7 +318,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
 		);
-		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
+		agentTestChatService = new AgentTestChatService(
+			n8nMemory,
+			mock<AgentChatAttachmentService>(),
+			mock<AgentWorkspaceService>(),
+		);
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,
