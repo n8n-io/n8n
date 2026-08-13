@@ -1193,28 +1193,25 @@ setUnauthorizedHandler((baseURL) => {
 	void handleSessionExpired(router, baseURL);
 });
 
+// Errors here (other than a required MFA) are logged and swallowed rather than
+// propagated: the guard must still run its own gating logic below on whatever
+// state did get initialized, instead of skipping straight to `next()` (CAT-4040).
+async function initializeForNavigation(to: RouteLocationNormalized) {
+	try {
+		await initializeCore();
+		// Pass undefined for first param to use default
+		await initializeAuthenticatedFeatures(undefined, to.name as string);
+	} catch (error) {
+		if (error instanceof MfaRequiredError) {
+			throw error;
+		}
+		console.error(error);
+	}
+}
+
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 	try {
-		try {
-			/**
-			 * Initialize application core
-			 * This step executes before first route is loaded and is required for permission checks
-			 */
-
-			await initializeCore();
-			// Pass undefined for first param to use default
-			await initializeAuthenticatedFeatures(undefined, to.name as string);
-		} catch (initError) {
-			if (initError instanceof MfaRequiredError) {
-				throw initError;
-			}
-
-			// An init failure (e.g. a transient error fetching cloud-plan data) must not
-			// leave the navigation guard unresolved (CAT-4040): log it and fall through
-			// to the gating logic below with whatever state did get initialized, so
-			// auth/RBAC middleware still runs instead of silently proceeding to `to`.
-			console.error(initError);
-		}
+		await initializeForNavigation(to);
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once
@@ -1266,10 +1263,8 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 			return;
 		}
 
-		// Last resort: an unexpected error from the gating logic itself (not from
-		// init, which is handled above) must still not leave the guard unresolved
-		// (CAT-4040), or Vue Router never mounts any route component and the user
-		// is stuck on a blank screen that reloading can't fix.
+		// Last resort: an error from the gating logic itself must still resolve the
+		// guard rather than leave it hanging (CAT-4040).
 		console.error(failure);
 		return next();
 	}
