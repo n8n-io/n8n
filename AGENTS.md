@@ -337,12 +337,6 @@ names (e.g. `Acme Corp`) in tests and examples.
 These notes cover non-obvious gotchas for the Cursor Cloud VM. Standard
 commands live in **Essential Commands** above; don't duplicate them here.
 
-- **Node is pinned to `v22.22.2` by the install script** — normally no action
-  needed. (It symlinks the `nvm` binaries into `/usr/local/cargo/bin`, ahead of
-  the VM's built-in `/exec-daemon/node` `v22.14.0`, which is below this repo's
-  `node >=22.22` engine requirement.) Only if `node -v` ever shows `v22.14.0` did
-  that step not run — re-run the install script, or:
-  `ln -sf "$HOME/.nvm/versions/node/v22.22.2/bin/node" /usr/local/cargo/bin/node`.
 - **Dependencies:** the startup install script runs
   `pnpm install --frozen-lockfile`. You do **not** need to reinstall unless the
   lockfile changed.
