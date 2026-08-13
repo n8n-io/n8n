@@ -1337,7 +1337,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(routeQuery).toEqual({});
 	});
 
-	it('opens an artifact Preview trace in a new tab without changing the dock', async () => {
+	it('navigates to an artifact Preview trace without changing the dock session', async () => {
 		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
 		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const wrapper = await renderView({
@@ -1355,11 +1355,15 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		dock.vm.$emit('view-trace');
 		await nextTick();
 
-		expect(routerPush).not.toHaveBeenCalled();
-		expect(windowOpen).toHaveBeenCalledExactlyOnceWith(
-			'/AgentSessionDetailView/p2/a2/thread-1',
-			'_blank',
-		);
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentSessionDetailView',
+			params: {
+				projectId: 'p2',
+				agentId: 'a2',
+				threadId: 'thread-1',
+			},
+		});
+		expect(windowOpen).not.toHaveBeenCalled();
 		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
 			'thread-1',
 		);

@@ -25,7 +25,7 @@ import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import type { AgentResource } from '@/features/agents/types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
-import type { DropdownMenuItemProps, PathItem } from '@n8n/design-system';
+import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
@@ -65,7 +65,7 @@ const {
 	onNewChat,
 } = useAgentBuilderSession({ routeBacked: computed(() => false) });
 
-const triggerSource = computed((): string => {
+const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
 	const first = executions.value[0];
 
@@ -75,7 +75,7 @@ const triggerSource = computed((): string => {
 	return first.source ?? 'chat';
 });
 
-const triggerIcon = computed((): string => {
+const triggerIcon = computed((): IconName => {
 	const source = triggerSource.value;
 	if (!source) return 'bolt-filled';
 

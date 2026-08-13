@@ -12,11 +12,13 @@ import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
+import { useRouter } from 'vue-router';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
+import { AGENT_PREVIEW_VIEW } from '../constants';
 import type {
 	AgentContinueLoadedEvent,
 	AgentFixWithAssistantEvent,
@@ -40,9 +42,10 @@ interface SessionOptionData {
 
 enum PreviewLayout {
 	Docked = 'docked',
-	Floating = 'floating',
 	Fullpage = 'fullpage',
 }
+
+const OPEN_IN_NEW_TAB = 'open-in-new-tab';
 
 const props = defineProps<{
 	sessionTitle: string;
@@ -72,6 +75,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -80,7 +84,10 @@ const {
 } = useAgentSessionLangSmithExport();
 const previewChatPage =
 	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
-const layout = useStorage('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
+const storedLayout = useStorage<string>('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
+const layout = computed<PreviewLayout>(() =>
+	storedLayout.value === PreviewLayout.Fullpage ? PreviewLayout.Fullpage : PreviewLayout.Docked,
+);
 
 const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, SessionOptionData>>>(
 	() =>
@@ -94,12 +101,6 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 
 const layoutOptions = computed<Array<DropdownMenuItemProps<string>>>(() => [
 	{
-		id: PreviewLayout.Floating,
-		label: i18n.baseText('agents.builder.preview.layout.floating'),
-		checked: layout.value === PreviewLayout.Floating,
-		icon: { type: 'icon', value: 'picture-in-picture-2' },
-	},
-	{
 		id: PreviewLayout.Docked,
 		label: i18n.baseText('agents.builder.preview.layout.docked'),
 		checked: layout.value === PreviewLayout.Docked,
@@ -111,18 +112,19 @@ const layoutOptions = computed<Array<DropdownMenuItemProps<string>>>(() => [
 		checked: layout.value === PreviewLayout.Fullpage,
 		icon: { type: 'icon', value: 'maximize-2' },
 	},
+	{
+		id: OPEN_IN_NEW_TAB,
+		label: i18n.baseText('agents.builder.preview.layout.openInNewTab' as BaseTextKey),
+		icon: { type: 'icon', value: 'external-link' },
+		divided: true,
+	},
 ]);
 
 function getLayoutIcon() {
-	if (layout.value === PreviewLayout.Floating) return 'picture-in-picture-2';
-	if (layout.value === PreviewLayout.Fullpage) return 'maximize-2';
-	return 'panel-right';
+	return layout.value === PreviewLayout.Fullpage ? 'maximize-2' : 'panel-right';
 }
 
 function getLayoutAriaLabel() {
-	if (layout.value === PreviewLayout.Floating) {
-		return i18n.baseText('agents.builder.preview.layout.floating.ariaLabel');
-	}
 	if (layout.value === PreviewLayout.Fullpage) {
 		return i18n.baseText('agents.builder.preview.layout.fullpage.ariaLabel' as BaseTextKey);
 	}
@@ -152,12 +154,14 @@ function close() {
 }
 
 function setLayout(nextLayout: string) {
-	if (nextLayout === PreviewLayout.Floating) {
-		layout.value = PreviewLayout.Floating;
-	} else if (nextLayout === PreviewLayout.Docked) {
-		layout.value = PreviewLayout.Docked;
-	} else if (nextLayout === PreviewLayout.Fullpage) {
-		layout.value = PreviewLayout.Fullpage;
+	if (nextLayout === OPEN_IN_NEW_TAB) {
+		const route = router.resolve({
+			name: AGENT_PREVIEW_VIEW,
+			params: { projectId: props.projectId, agentId: props.agentId },
+		});
+		window.open(route.href, '_blank', 'noopener');
+	} else if (nextLayout === PreviewLayout.Docked || nextLayout === PreviewLayout.Fullpage) {
+		storedLayout.value = nextLayout;
 	}
 }
 
@@ -196,15 +200,7 @@ useKeybindings({
 		:data-preview-layout="layout"
 		data-testid="agent-preview-dock"
 	>
-		<div
-			:class="[
-				$style.dockInner,
-				{
-					[$style.floating]: layout === PreviewLayout.Floating,
-					[$style.fullpage]: layout === PreviewLayout.Fullpage,
-				},
-			]"
-		>
+		<div :class="[$style.dockInner, { [$style.fullpage]: layout === PreviewLayout.Fullpage }]">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
 				<N8nDropdownMenu
 					:items="sessionDropdownOptions"
@@ -312,23 +308,6 @@ useKeybindings({
 							</template>
 						</N8nDropdownMenu>
 					</N8nTooltip>
-
-					<KeyboardShortcutTooltip
-						v-if="layout === PreviewLayout.Floating"
-						placement="bottom"
-						:label="i18n.baseText('generic.close')"
-						:shortcut="{ keys: ['Esc'] }"
-					>
-						<N8nIconButton
-							variant="ghost"
-							icon="x"
-							size="small"
-							icon-size="large"
-							:aria-label="i18n.baseText('agents.builder.preview.close.ariaLabel')"
-							data-testid="agent-preview-close-btn"
-							@click="close"
-						/>
-					</KeyboardShortcutTooltip>
 				</div>
 			</header>
 
@@ -366,15 +345,6 @@ useKeybindings({
 	z-index: 1;
 	pointer-events: none;
 
-	&:has(.floating) {
-		top: auto;
-		right: var(--spacing--md);
-		bottom: var(--spacing--md);
-		display: flex;
-		flex-direction: column;
-		justify-content: flex-end;
-	}
-
 	&:has(.fullpage) {
 		width: 100%;
 	}
@@ -406,16 +376,6 @@ useKeybindings({
 .fullpage {
 	width: 100%;
 	border-left: 0;
-}
-
-.floating {
-	width: 100%;
-	height: 36rem;
-	/** Using chat--border-radius as --radius- tokens need fixing by removing legacy variants. DS-557 **/
-	border-radius: calc(var(--chat--border-radius) * 4);
-	border: var(--border);
-	align-self: flex-end;
-	box-shadow: var(--shadow--md);
 }
 
 .header {

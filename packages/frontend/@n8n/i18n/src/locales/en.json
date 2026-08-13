@@ -7836,6 +7836,7 @@
 	"agents.builder.preview.layout.docked.ariaLabel": "Use docked preview",
 	"agents.builder.preview.layout.fullpage": "Full page",
 	"agents.builder.preview.layout.fullpage.ariaLabel": "Use full-page preview",
+	"agents.builder.preview.layout.openInNewTab": "Open in new tab",
 	"agents.builder.validation.issue.missingRequired": "A required field is missing",
 	"agents.builder.validation.issue.invalidValue": "A field has an invalid value",
 	"agents.builder.validation.issue.missingCredential": "Credential is missing",
