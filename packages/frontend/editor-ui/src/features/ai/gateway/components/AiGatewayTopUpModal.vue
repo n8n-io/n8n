@@ -1,18 +1,17 @@
 <script lang="ts" setup>
-import { computed, onMounted, type Component } from 'vue';
+import { computed, onMounted, ref, type Component } from 'vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { ROLE } from '@n8n/api-types';
+import { N8nAlertDialog, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { AI_GATEWAY_TOP_UP_MODAL_KEY, CLOUD_N8N_CONNECT_TOP_UP_PATH } from '@/app/constants';
-import Modal from '@/app/components/Modal.vue';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import BraveSearchLogo from '../assets/service-icons/brave-search.svg?component';
@@ -22,16 +21,24 @@ import LlamaIndexLogo from '../assets/service-icons/llamaindex.svg?component';
 import PdfcoLogo from '../assets/service-icons/pdfco.svg?component';
 
 const i18n = useI18n();
+const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const cloudPlanStore = useCloudPlanStore();
-const settingsStore = useSettingsStore();
 const aiGatewayStore = useAiGatewayStore();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const { goToUpgrade } = usePageRedirectionHelper();
-const toast = useToast();
 
-type TopUpVariant = 'member' | 'memberTrial' | 'owner' | 'ownerTrial';
+const isOpen = ref(true);
+
+type TopUpVariant = 'member' | 'memberTrial' | 'ownerTrial';
+
+const variant = computed<TopUpVariant>(() => {
+	if (usersStore.isInstanceOwner) return 'ownerTrial';
+	return cloudPlanStore.userIsTrialing ? 'memberTrial' : 'member';
+});
+
+const isOwnerTrial = computed(() => variant.value === 'ownerTrial');
 
 /**
  * Named up front, and named even when the instance can't resolve them: the model providers
@@ -144,42 +151,28 @@ const services = computed(() => {
 });
 
 onMounted(async () => {
-	await Promise.allSettled([
-		aiGatewayStore.fetchConfig(),
-		credentialsStore.fetchCredentialTypes(false),
-		nodeTypesStore.loadNodeTypesIfNotLoaded(),
-	]);
+	if (isOwnerTrial.value) {
+		await Promise.allSettled([
+			aiGatewayStore.fetchConfig(),
+			credentialsStore.fetchCredentialTypes(false),
+			nodeTypesStore.loadNodeTypesIfNotLoaded(),
+		]);
+		return;
+	}
+
+	await usersStore.fetchUsers({ filter: { isOwner: true } });
 });
 
-const variant = computed<TopUpVariant>(() => {
-	if (usersStore.isInstanceOwner) {
-		return cloudPlanStore.userIsTrialing ? 'ownerTrial' : 'owner';
-	}
-	return cloudPlanStore.userIsTrialing ? 'memberTrial' : 'member';
-});
-
-const title = computed(() => {
-	switch (variant.value) {
-		case 'owner':
-			return i18n.baseText('aiGateway.topUp.modal.title.owner');
-		case 'member':
-			return i18n.baseText('aiGateway.topUp.modal.title.member');
-		case 'ownerTrial':
-		case 'memberTrial':
-			return i18n.baseText('aiGateway.topUp.modal.title.trial');
-		default: {
-			const _exhaustive: never = variant.value;
-			return _exhaustive;
-		}
-	}
-});
+const title = computed(() =>
+	isOwnerTrial.value
+		? i18n.baseText('aiGateway.topUp.modal.title.trial')
+		: i18n.baseText('aiGateway.topUp.modal.title.member'),
+);
 
 const description = computed(() => {
 	switch (variant.value) {
-		case 'owner':
-			return i18n.baseText('aiGateway.topUp.modal.description.owner');
 		case 'ownerTrial':
-			return i18n.baseText('aiGateway.topUp.modal.description.owner.trial');
+			return i18n.baseText('aiGateway.topUp.modal.description.trial');
 		case 'memberTrial':
 			return i18n.baseText('aiGateway.topUp.modal.description.member.trial');
 		case 'member':
@@ -191,167 +184,119 @@ const description = computed(() => {
 	}
 });
 
-const showUpgradeCta = computed(() => variant.value === 'ownerTrial');
-const showAdminPanelCta = computed(
-	() => variant.value === 'owner' && settingsStore.isCloudDeployment,
+const actionLabel = computed(() =>
+	isOwnerTrial.value
+		? i18n.baseText('generic.upgrade')
+		: i18n.baseText('aiGateway.topUp.modal.cta.contactAdmin'),
 );
 
-async function onUpgrade(close: () => void): Promise<void> {
-	close();
-	await goToUpgrade('ai-gateway-top-up', 'upgrade-ai-gateway-top-up');
+function close(): void {
+	isOpen.value = false;
+	uiStore.closeModal(AI_GATEWAY_TOP_UP_MODAL_KEY);
 }
 
-async function onOpenAdminPanel(close: () => void): Promise<void> {
-	try {
-		const link = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
-			redirectionPath: CLOUD_N8N_CONNECT_TOP_UP_PATH,
-		});
-		close();
-		window.open(link, '_blank', 'noopener');
-	} catch (error) {
-		// Keep the modal open so the auto-login link can be retried.
-		toast.showError(error, i18n.baseText('aiGateway.topUp.modal.cta.openAdminPanelError'));
+function onOpenChange(open: boolean): void {
+	isOpen.value = open;
+	if (!open) {
+		uiStore.closeModal(AI_GATEWAY_TOP_UP_MODAL_KEY);
 	}
+}
+
+function ownerMailtoHref(): string {
+	const emails = usersStore.allUsers
+		.filter((user) => user.role === ROLE.Owner)
+		.map((user) => user.email)
+		.filter((email): email is string => Boolean(email));
+	const subject = encodeURIComponent(
+		i18n.baseText('aiGateway.topUp.modal.cta.contactAdmin.subject'),
+	);
+	return emails.length > 0
+		? `mailto:${emails.join(',')}?subject=${subject}`
+		: `mailto:?subject=${subject}`;
+}
+
+async function onAction(): Promise<void> {
+	if (isOwnerTrial.value) {
+		close();
+		await goToUpgrade('ai-gateway-top-up', 'upgrade-ai-gateway-top-up');
+		return;
+	}
+
+	window.open(ownerMailtoHref());
+	close();
 }
 </script>
 
 <template>
-	<Modal
-		:name="AI_GATEWAY_TOP_UP_MODAL_KEY"
-		width="520px"
-		max-height="80vh"
-		custom-class="ai-gateway-topup-dialog"
+	<N8nAlertDialog
+		:open="isOpen"
+		:title="title"
+		:description="description"
+		:action-label="actionLabel"
+		:cancel-label="i18n.baseText('generic.cancel')"
+		size="medium"
 		data-test-id="ai-gateway-topup-modal"
+		@update:open="onOpenChange"
+		@action="onAction"
 	>
-		<template #content>
-			<div :class="$style.body">
-				<N8nIcon
-					:icon="showUpgradeCta ? 'circle-dollar-sign' : 'hand-coins'"
-					:size="40"
-					:stroke-width="1.5"
-					color="foreground-xdark"
-				/>
-				<div :class="$style.intro">
-					<N8nHeading tag="h2" size="large" bold align="center">{{ title }}</N8nHeading>
-					<N8nText size="small" color="text-base" tag="p">{{ description }}</N8nText>
-				</div>
-
-				<div :class="$style.services" data-test-id="ai-gateway-topup-services">
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('aiGateway.topUp.modal.servicesHint') }}
+		<div v-if="isOwnerTrial" :class="$style.services" data-test-id="ai-gateway-topup-services">
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('aiGateway.topUp.modal.servicesHint') }}
+			</N8nText>
+			<div :class="$style.serviceGrid" role="list">
+				<div
+					v-for="service in services"
+					:key="service.credentialType"
+					:class="$style.serviceTag"
+					role="listitem"
+				>
+					<span :class="$style.logo">
+						<component
+							:is="service.logo"
+							v-if="service.logo"
+							:class="$style.logoSvg"
+							:data-test-id="`service-logo-${service.credentialType}`"
+						/>
+						<CredentialIcon
+							v-else-if="service.hasCredentialIcon"
+							:credential-type-name="service.credentialType"
+							:size="18"
+						/>
+						<NodeIcon v-else-if="service.nodeType" :node-type="service.nodeType" :size="18" />
+					</span>
+					<N8nText size="small" color="text-dark" :class="$style.serviceName">
+						{{ service.label }}
 					</N8nText>
-					<div :class="$style.serviceGrid" role="list">
-						<N8nCard
-							v-for="service in services"
-							:key="service.credentialType"
-							:class="$style.serviceCard"
-							role="listitem"
-						>
-							<div :class="$style.service">
-								<span :class="$style.logo">
-									<component
-										:is="service.logo"
-										v-if="service.logo"
-										:class="$style.logoSvg"
-										:data-test-id="`service-logo-${service.credentialType}`"
-									/>
-									<CredentialIcon
-										v-else-if="service.hasCredentialIcon"
-										:credential-type-name="service.credentialType"
-										:size="18"
-									/>
-									<NodeIcon v-else-if="service.nodeType" :node-type="service.nodeType" :size="18" />
-								</span>
-								<N8nText size="small" color="text-dark" :class="$style.serviceName">
-									{{ service.label }}
-								</N8nText>
-							</div>
-						</N8nCard>
-					</div>
 				</div>
 			</div>
-		</template>
-		<template #footer="{ close }">
-			<div :class="$style.footer">
-				<N8nButton
-					variant="subtle"
-					data-test-id="ai-gateway-topup-close"
-					:label="i18n.baseText('generic.close')"
-					@click="close"
-				/>
-				<N8nButton
-					v-if="showUpgradeCta"
-					variant="solid"
-					icon="external-link"
-					data-test-id="ai-gateway-topup-upgrade"
-					:label="i18n.baseText('generic.upgrade')"
-					@click="onUpgrade(close)"
-				/>
-				<N8nButton
-					v-else-if="showAdminPanelCta"
-					variant="solid"
-					icon="external-link"
-					data-test-id="ai-gateway-topup-admin-panel"
-					:label="i18n.baseText('aiGateway.topUp.modal.cta.openAdminPanel')"
-					@click="onOpenAdminPanel(close)"
-				/>
-			</div>
-		</template>
-	</Modal>
+		</div>
+	</N8nAlertDialog>
 </template>
 
 <style lang="scss" module>
-.body {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	text-align: center;
-	gap: var(--spacing--md);
-	padding: var(--spacing--sm) 0 var(--spacing--md);
-	min-height: 240px;
-	justify-content: center;
-}
-
-.intro {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-
-	p {
-		margin: 0;
-	}
-}
-
 .services {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
 	gap: var(--spacing--xs);
-	width: 100%;
-	padding-top: var(--spacing--md);
-	border-top: var(--border-width) solid var(--color--foreground);
+	margin-top: var(--spacing--md);
 }
 
 .serviceGrid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--spacing--2xs);
-	width: 100%;
 }
 
-.serviceCard {
-	--card--padding: var(--spacing--2xs) var(--spacing--xs);
-}
-
-.service {
+.serviceTag {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;
-	text-align: left;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border-width) solid var(--border-color);
+	border-radius: var(--radius--xs);
 }
 
-/* Reserved so names line up whether or not the service has a logo to show. */
 .logo {
 	display: inline-flex;
 	align-items: center;
@@ -370,17 +315,5 @@ async function onOpenAdminPanel(close: () => void): Promise<void> {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
-}
-</style>
-
-<style lang="scss">
-.ai-gateway-topup-dialog.el-dialog {
-	background-color: var(--color--background);
 }
 </style>
