@@ -431,10 +431,17 @@ describe('router', () => {
 			await router.replace('/workflow/router-test-reset');
 		});
 
-		test('still settles the navigation instead of leaving it unresolved', async () => {
+		test('still settles the navigation and runs the normal gating logic, instead of leaving it unresolved', async () => {
+			// This test's mock replaces initializeAuthenticatedFeatures entirely, so
+			// the real usersStore.initialize() never runs and the user is left
+			// unauthenticated — the correct outcome is a redirect to sign-in, not a
+			// silent grant of access to the requested route.
 			initializeAuthenticatedFeaturesSpy.mockRejectedValue(new Error('CAT-4040: boom'));
 
 			await expect(router.push('/workflows')).resolves.toBeUndefined();
-		}, 15000);
+			// Confirms the auth middleware still ran on the requested route, rather
+			// than the guard short-circuiting straight to it on error.
+			expect(router.currentRoute.value.name).toBe(VIEWS.SIGNIN);
+		}, 20000);
 	});
 });

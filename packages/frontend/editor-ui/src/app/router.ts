@@ -1195,14 +1195,26 @@ setUnauthorizedHandler((baseURL) => {
 
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 	try {
-		/**
-		 * Initialize application core
-		 * This step executes before first route is loaded and is required for permission checks
-		 */
+		try {
+			/**
+			 * Initialize application core
+			 * This step executes before first route is loaded and is required for permission checks
+			 */
 
-		await initializeCore();
-		// Pass undefined for first param to use default
-		await initializeAuthenticatedFeatures(undefined, to.name as string);
+			await initializeCore();
+			// Pass undefined for first param to use default
+			await initializeAuthenticatedFeatures(undefined, to.name as string);
+		} catch (initError) {
+			if (initError instanceof MfaRequiredError) {
+				throw initError;
+			}
+
+			// An init failure (e.g. a transient error fetching cloud-plan data) must not
+			// leave the navigation guard unresolved (CAT-4040): log it and fall through
+			// to the gating logic below with whatever state did get initialized, so
+			// auth/RBAC middleware still runs instead of silently proceeding to `to`.
+			console.error(initError);
+		}
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once
@@ -1254,11 +1266,10 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 			return;
 		}
 
-		// An unexpected error here (e.g. a transient failure fetching cloud-plan
-		// data) must not leave the navigation guard unresolved: without a `next()`
-		// call, Vue Router never mounts any route component and the user is stuck
-		// on a blank screen that reloading can't fix (CAT-4040). Proceed to the
-		// requested route so the app still renders something the user can act on.
+		// Last resort: an unexpected error from the gating logic itself (not from
+		// init, which is handled above) must still not leave the guard unresolved
+		// (CAT-4040), or Vue Router never mounts any route component and the user
+		// is stuck on a blank screen that reloading can't fix.
 		console.error(failure);
 		return next();
 	}
