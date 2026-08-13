@@ -136,6 +136,8 @@ export const N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT = createExperiment(
 export const TRIAL_INTRO_MODAL_EXPERIMENT = createExperiment('101_trial_intro_modal');
 export const INLINE_AGENTS_EXPERIMENT = createExperiment('103_inline_agents');
 
+export const GLOBAL_NODE_SEARCH_EXPERIMENT = createExperiment('104_global_node_search');
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -173,4 +175,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
+	GLOBAL_NODE_SEARCH_EXPERIMENT.name,
 ];

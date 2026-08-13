@@ -1725,6 +1725,22 @@ function updateNodeRoute(nodeId: string) {
 	}
 }
 
+/**
+ * Select and pan to a node on the canvas without opening its NDV. Used to land on
+ * nodes that have no detail view — sticky notes — when arriving from a search result.
+ */
+function selectNodeFromRoute(nodeId: string) {
+	const nodeUi = workflowDocumentStore?.value?.findNodeByPartialId(nodeId);
+	if (!nodeUi) return;
+
+	canvasEventBus.emit('nodes:select', { ids: [nodeUi.id], panIntoView: true });
+	void router.replace({
+		name: route.name,
+		params: { workflowId: workflowId.value },
+		query: { ...route.query, selectNode: undefined },
+	});
+}
+
 watch([() => route.name, () => route.params.workflowId], () => {
 	// Handle route-specific actions (query actions, debug mode event binding, node issues)
 	initializeRoute();
@@ -1951,6 +1967,8 @@ onMounted(async () => {
 		setTimeout(() => {
 			if (routeNodeId.value) {
 				updateNodeRoute(routeNodeId.value);
+			} else if (typeof route.query.selectNode === 'string' && route.query.selectNode) {
+				selectNodeFromRoute(route.query.selectNode);
 			}
 		}, 500);
 	}

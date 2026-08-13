@@ -179,6 +179,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery: ref(''),
 			activeNodeId: ref(null),
 			currentProjectName: ref('My Project'),
+			scopedProjectId: ref(null),
 		});
 
 		const ids = api.commands.value.map((c) => c.id);
@@ -189,6 +190,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery: ref(''),
 			activeNodeId: ref(null),
 			currentProjectName: ref('My Project'),
+			scopedProjectId: ref(null),
 		});
 		const idsReadOnly = apiReadOnly.commands.value.map((c) => c.id);
 		expect(idsReadOnly).not.toContain('create-workflow');
@@ -204,6 +206,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery: ref(''),
 			activeNodeId: ref(null),
 			currentProjectName: ref('My Project'),
+			scopedProjectId: ref(null),
 		});
 		const idsReadOnly = apiReadOnly.commands.value.map((c) => c.id);
 		expect(idsReadOnly).not.toContain('create-workflow');
@@ -223,6 +226,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery: ref(''),
 			activeNodeId: ref(null),
 			currentProjectName: ref('My Project'),
+			scopedProjectId: ref(null),
 		});
 		expect(commands.value.length).toBe(0);
 	});
@@ -232,6 +236,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery: ref(''),
 			activeNodeId: ref(null),
 			currentProjectName: ref('My Project'),
+			scopedProjectId: ref(null),
 		});
 		await api.initialize?.();
 		expect(mockTagsStore.fetchAll).toHaveBeenCalled();
@@ -242,6 +247,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery: ref(''),
 			activeNodeId: ref(null),
 			currentProjectName: ref('My Project'),
+			scopedProjectId: ref(null),
 		});
 
 		api.handlers?.onCommandBarNavigateTo?.('open-workflow');
@@ -274,6 +280,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery: ref(''),
 			activeNodeId: ref(null),
 			currentProjectName: ref('My Project'),
+			scopedProjectId: ref(null),
 		});
 
 		api.handlers?.onCommandBarNavigateTo?.('open-workflow');
@@ -298,6 +305,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery: ref(''),
 			activeNodeId: ref(null),
 			currentProjectName: ref('My Project'),
+			scopedProjectId: ref(null),
 		});
 
 		const createCmd = api.commands.value.find((c) => c.id === 'create-workflow');
@@ -314,6 +322,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery,
 			activeNodeId,
 			currentProjectName: ref('X'),
+			scopedProjectId: ref(null),
 		});
 
 		// Trigger fetch with query matching node display name
@@ -338,6 +347,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery: ref('Alpha'),
 			activeNodeId: ref(null),
 			currentProjectName: ref('My Project'),
+			scopedProjectId: ref(null),
 		});
 		(api.handlers?.onCommandBarChange as (q: string) => void)('Alpha');
 		await waitFor(() => {
@@ -355,6 +365,7 @@ describe('useWorkflowNavigationCommands', () => {
 			lastQuery: ref(''),
 			activeNodeId: ref(null),
 			currentProjectName: ref('My Project'),
+			scopedProjectId: ref(null),
 		});
 		api.handlers?.onCommandBarNavigateTo?.('open-workflow');
 		await waitFor(() => {

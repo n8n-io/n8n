@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -23,9 +23,11 @@ export function useCredentialNavigationCommands(options: {
 	lastQuery: Ref<string>;
 	activeNodeId: Ref<string | null>;
 	currentProjectName: Ref<string>;
+	/** When set, only search credentials in this project. */
+	scopedProjectId: Ref<string | null>;
 }) {
 	const i18n = useI18n();
-	const { lastQuery, activeNodeId, currentProjectName } = options;
+	const { lastQuery, activeNodeId, currentProjectName, scopedProjectId } = options;
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const uiStore = useUIStore();
@@ -59,9 +61,12 @@ export function useCredentialNavigationCommands(options: {
 			await credentialsStore.fetchAllCredentials();
 
 			const trimmedLower = trimmed.toLowerCase();
-			const filtered = credentialsStore.allCredentials.filter((credential) =>
-				credential.name.toLowerCase().includes(trimmedLower),
-			);
+			const projectId = scopedProjectId.value;
+			const filtered = credentialsStore.allCredentials.filter((credential) => {
+				if (!credential.name.toLowerCase().includes(trimmedLower)) return false;
+				if (projectId) return credential.homeProject?.id === projectId;
+				return true;
+			});
 
 			credentialResults.value = orderResultByCurrentProjectFirst(filtered);
 		} catch {
@@ -211,6 +216,16 @@ export function useCredentialNavigationCommands(options: {
 			credentialResults.value = [];
 		}
 	}
+
+	watch(scopedProjectId, () => {
+		const trimmed = lastQuery.value.trim();
+		const isInCredentialParent = activeNodeId.value === ITEM_ID.OPEN_CREDENTIAL;
+		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
+		if (!isInCredentialParent && !isRootWithQuery) return;
+
+		isLoading.value = true;
+		void fetchCredentialsDebounced(isInCredentialParent ? '' : trimmed);
+	});
 
 	async function initialize() {
 		await credentialsStore.fetchCredentialTypes(false);

@@ -1,4 +1,4 @@
-import { computed, type Component } from 'vue';
+import { computed, type Component, type Ref } from 'vue';
 import type { RouteLocationNormalized } from 'vue-router';
 import type { CommandBarItem } from '../types';
 import { useI18n } from '@n8n/i18n';
@@ -29,13 +29,14 @@ interface RecentNode {
 
 type RecentNodesMap = Record<string, RecentNode[]>;
 
-export function useRecentResources() {
+export function useRecentResources(options: { scopedProjectId?: Ref<string | null> } = {}) {
 	const i18n = useI18n();
 	const router = useRouter();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const { setNodeActive } = useCanvasOperations();
+	const { scopedProjectId } = options;
 
 	const recentWorkflows = useLocalStorage<RecentWorkflow[]>(RECENT_WORKFLOWS_STORAGE_KEY, []);
 	const recentNodes = useLocalStorage<RecentNodesMap>(RECENT_NODES_STORAGE_KEY, {});
@@ -141,6 +142,14 @@ export function useRecentResources() {
 				// Get workflow from store (will be loaded by initialize())
 				const workflow = workflowsListStore.getWorkflowById(recentWorkflow.id);
 				if (!workflow) {
+					continue;
+				}
+
+				if (
+					scopedProjectId?.value &&
+					workflow.homeProject?.id &&
+					workflow.homeProject.id !== scopedProjectId.value
+				) {
 					continue;
 				}
 

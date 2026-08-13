@@ -111,6 +111,73 @@ describe('components', () => {
 			expect(recent.compareDocumentPosition(actionsHeader)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 		});
 
+		it('renders section icons next to section titles', async () => {
+			render(N8nCommandBar, {
+				props: {
+					items: [
+						{
+							id: 'create',
+							title: 'Create new workflow',
+							section: 'Actions',
+							sectionIcon: { html: '⚡' },
+						},
+					],
+				},
+			});
+			await openCommandBar();
+
+			const header = screen.getByText('Actions').closest('div');
+			expect(header).toBeTruthy();
+			expect(header?.textContent).toContain('⚡');
+			expect(header?.textContent).toContain('Actions');
+		});
+
+		it('emits clearContext when the context dismiss control is clicked without closing', async () => {
+			const wrapper = render(N8nCommandBar, {
+				props: {
+					items: createSampleItems(),
+					context: 'Workflow ⋅ Billing sync',
+					contextClearLabel: 'Clear context',
+				},
+			});
+			await openCommandBar();
+
+			await fireEvent.click(screen.getByTestId('command-bar-clear-context'));
+
+			expect(wrapper.emitted('clearContext')).toHaveLength(1);
+			expect(screen.getByPlaceholderText('Type a command...')).toBeInTheDocument();
+		});
+
+		it('renders project subsections under a parent section', async () => {
+			render(N8nCommandBar, {
+				props: {
+					items: [
+						{
+							id: 'node-1',
+							title: 'Open Slack',
+							section: 'Nodes',
+							subsection: 'Acme Corp',
+							subsectionIcon: { html: '🏢' },
+						},
+						{
+							id: 'node-2',
+							title: 'Open Gmail',
+							section: 'Nodes',
+							subsection: 'Personal',
+							subsectionIcon: { html: '👤' },
+						},
+					],
+				},
+			});
+			await openCommandBar();
+
+			expect(screen.getByText('Nodes')).toBeInTheDocument();
+			expect(screen.getByText('Acme Corp')).toBeInTheDocument();
+			expect(screen.getByText('Personal')).toBeInTheDocument();
+			expect(screen.getByText('Open Slack')).toBeInTheDocument();
+			expect(screen.getByText('Open Gmail')).toBeInTheDocument();
+		});
+
 		it('navigates into children on click and back with ArrowLeft', async () => {
 			render(N8nCommandBar, { props: { items: createSampleItems() } });
 			await openCommandBar();

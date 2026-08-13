@@ -16,6 +16,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 import type { INodeUi, SimplifiedNodeType } from '@/Interface';
+import { collectNodeParameterValues } from 'n8n-workflow';
 
 const ITEM_ID = {
 	ADD_NODE: 'add-node',
@@ -97,7 +98,7 @@ export function useNodeCommands(options: {
 	});
 
 	const rootAddNodeCommandItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2 || !hasPermission('update')) {
+		if (lastQuery.value.trim().length <= 2 || !hasPermission('update')) {
 			return [];
 		}
 
@@ -118,7 +119,13 @@ export function useNodeCommands(options: {
 			id,
 			title,
 			section,
-			keywords: [name, type],
+			// Parameter *values* (not keys) are searchable, so the current workflow
+			// supports the same content search as the cross-workflow section — and
+			// unlike that section, it also sees unsaved edits.
+			//
+			// `matchAnySearchTerm` stays off deliberately: OR-ing words across a whole
+			// node's parameter text matches almost every node in a large workflow.
+			keywords: [name, type, ...collectNodeParameterValues(node.parameters), node.notes ?? ''],
 			icon: {
 				component: NodeIcon,
 				props: {
@@ -138,7 +145,7 @@ export function useNodeCommands(options: {
 	});
 
 	const rootOpenNodeCommandItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2) {
+		if (lastQuery.value.trim().length <= 2) {
 			return [];
 		}
 

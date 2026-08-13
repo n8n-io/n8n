@@ -12,7 +12,7 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import { DEFAULT_NEW_WORKFLOW_NAME, DEFAULT_SETTINGS } from '@/app/constants';
 import { isEmpty } from '@/app/utils/typesUtils';
-import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
+import type { ExecutionRedactionQueryDto, SearchWorkflowNodesResponse } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,
@@ -22,6 +22,22 @@ import type {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
+
+export async function searchWorkflowNodes(
+	context: IRestApiContext,
+	query: string,
+	options: { projectId?: string } = {},
+) {
+	return await makeRestApiRequest<SearchWorkflowNodesResponse>(
+		context,
+		'GET',
+		'/workflows/search-nodes',
+		{
+			query,
+			...(options.projectId ? { projectId: options.projectId } : {}),
+		},
+	);
+}
 
 export async function getNewWorkflow(context: IRestApiContext, data?: IDataObject) {
 	const response = await makeRestApiRequest<NewWorkflowResponse>(

@@ -3,15 +3,20 @@ import { FocusScope } from 'reka-ui';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import N8nCommandBarItem from './CommandBarItem.vue';
-import type { CommandBarItem } from './types';
-import N8nBadge from '../N8nBadge';
+import type { CommandBarIcon, CommandBarItem } from './types';
+import N8nIcon from '../N8nIcon';
 import N8nLoading from '../N8nLoading/Loading.vue';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nSpinner from '../N8nSpinner';
+import N8nText from '../N8nText';
 
 interface CommandBarProps {
 	placeholder?: string;
 	context?: string;
+	/** Optional icon shown inside the context chip (e.g. project icon). */
+	contextIcon?: CommandBarIcon;
+	/** Accessible label for the context dismiss control. */
+	contextClearLabel?: string;
 	items: CommandBarItem[];
 	isLoading?: boolean;
 	zIndex?: number;
@@ -21,6 +26,8 @@ defineOptions({ name: 'N8nCommandBar' });
 const props = withDefaults(defineProps<CommandBarProps>(), {
 	placeholder: 'Type a command...',
 	context: '',
+	contextIcon: undefined,
+	contextClearLabel: 'Clear context',
 	isLoading: false,
 	zIndex: 1900,
 });
@@ -28,6 +35,7 @@ const props = withDefaults(defineProps<CommandBarProps>(), {
 const emit = defineEmits<{
 	inputChange: [value: string];
 	navigateTo: [parentId: string | null];
+	clearContext: [];
 }>();
 
 const NUM_LOADING_ITEMS_FULL = 8;
@@ -100,10 +108,25 @@ const groupedItems = computed(() => {
 
 	return {
 		ungrouped,
-		sections: Object.entries(sections).map(([title, items]) => ({
-			title,
-			items,
-		})),
+		sections: Object.entries(sections).map(([title, sectionItems]) => {
+			const subsections = new Map<string | null, CommandBarItem[]>();
+			for (const item of sectionItems) {
+				const key = item.subsection ?? null;
+				const bucket = subsections.get(key) ?? [];
+				bucket.push(item);
+				subsections.set(key, bucket);
+			}
+
+			return {
+				title,
+				icon: sectionItems.find((item) => item.sectionIcon)?.sectionIcon,
+				subsections: [...subsections.entries()].map(([subsectionTitle, items]) => ({
+					title: subsectionTitle,
+					icon: items.find((item) => item.subsectionIcon)?.subsectionIcon,
+					items,
+				})),
+			};
+		}),
 	};
 });
 
@@ -113,7 +136,9 @@ const flattenedItems = computed(() => {
 	result.push(...groupedItems.value.ungrouped);
 
 	groupedItems.value.sections.forEach((section) => {
-		result.push(...section.items);
+		section.subsections.forEach((subsection) => {
+			result.push(...subsection.items);
+		});
 	});
 
 	return result;
@@ -257,6 +282,15 @@ const handleClickOutside = (event: MouseEvent) => {
 	}
 };
 
+const clearContext = () => {
+	emit('clearContext');
+	// Keep focus in the input so removing the badge doesn't dismiss the bar
+	// (click-outside treats a detached button target as outside).
+	void nextTick(() => {
+		inputRef.value?.focus();
+	});
+};
+
 watch(inputValue, (newValue) => {
 	emit('inputChange', newValue);
 	selectedIndex.value = 0;
@@ -285,7 +319,30 @@ onUnmounted(() => {
 					data-test-id="command-bar"
 				>
 					<div v-if="context" :class="$style.contextContainer">
-						<N8nBadge size="small">{{ context }}</N8nBadge>
+						<span :class="$style.contextChip">
+							<span
+								v-if="contextIcon && 'html' in contextIcon"
+								v-n8n-html="contextIcon.html"
+								:class="$style.contextIcon"
+							></span>
+							<component
+								:is="contextIcon.component"
+								v-else-if="contextIcon && 'component' in contextIcon"
+								v-bind="contextIcon.props"
+								:class="$style.contextIcon"
+							/>
+							<N8nText size="small" :compact="true">{{ context }}</N8nText>
+							<button
+								type="button"
+								:class="$style.contextClear"
+								:aria-label="contextClearLabel"
+								data-test-id="command-bar-clear-context"
+								@mousedown.stop.prevent
+								@click.stop="clearContext"
+							>
+								<N8nIcon icon="x" size="xsmall" />
+							</button>
+						</span>
 					</div>
 					<div :class="$style.inputWrapper">
 						<input
@@ -323,13 +380,46 @@ onUnmounted(() => {
 							</div>
 
 							<template v-for="section in groupedItems.sections" :key="section.title">
-								<div :class="$style.sectionHeader">{{ section.title }}</div>
-								<div v-for="item in section.items" :key="item.id">
-									<N8nCommandBarItem
-										:item="item"
-										:is-selected="getGlobalIndex(item) === selectedIndex"
-										@select="selectItem"
+								<div :class="$style.sectionHeader">
+									<span
+										v-if="section.icon && 'html' in section.icon"
+										v-n8n-html="section.icon.html"
+										:class="$style.sectionIcon"
+									></span>
+									<component
+										:is="section.icon.component"
+										v-else-if="section.icon && 'component' in section.icon"
+										v-bind="section.icon.props"
+										:class="$style.sectionIcon"
 									/>
+									{{ section.title }}
+								</div>
+								<div
+									v-for="(subsection, subsectionIndex) in section.subsections"
+									:key="subsection.title ?? `section-${subsectionIndex}`"
+									:class="[$style.subsection, { [$style.nested]: !!subsection.title }]"
+								>
+									<div v-if="subsection.title" :class="$style.subsectionHeader">
+										<span
+											v-if="subsection.icon && 'html' in subsection.icon"
+											v-n8n-html="subsection.icon.html"
+											:class="$style.sectionIcon"
+										></span>
+										<component
+											:is="subsection.icon.component"
+											v-else-if="subsection.icon && 'component' in subsection.icon"
+											v-bind="subsection.icon.props"
+											:class="$style.sectionIcon"
+										/>
+										{{ subsection.title }}
+									</div>
+									<div v-for="item in subsection.items" :key="item.id">
+										<N8nCommandBarItem
+											:item="item"
+											:is-selected="getGlobalIndex(item) === selectedIndex"
+											@select="selectItem"
+										/>
+									</div>
 								</div>
 							</template>
 
@@ -417,10 +507,45 @@ onUnmounted(() => {
 }
 
 .sectionHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	padding: var(--spacing--xs) var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--regular);
 	color: var(--color--text--tint-1);
+}
+
+.subsection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+
+	&.nested {
+		margin-left: var(--spacing--xs);
+		padding-left: var(--spacing--xs);
+		border-left: var(--border-width) var(--border-style) var(--color--foreground);
+	}
+
+	& + &.nested {
+		margin-top: var(--spacing--3xs);
+	}
+}
+
+.subsectionHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--5xs);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--medium);
+	color: var(--color--text--tint-1);
+}
+
+.sectionIcon {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
 }
 
 .noResults {
@@ -431,7 +556,46 @@ onUnmounted(() => {
 }
 
 .contextContainer {
+	display: flex;
+	align-items: center;
 	padding: var(--spacing--xs) var(--spacing--xs) 0;
+}
+
+.contextChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--5xs) var(--spacing--4xs) var(--spacing--5xs) var(--spacing--3xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	border-color: var(--color--text--tint-1);
+	color: var(--color--text--tint-1);
+	white-space: nowrap;
+}
+
+.contextIcon {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+.contextClear {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin: calc(-1 * var(--spacing--5xs)) calc(-1 * var(--spacing--5xs))
+		calc(-1 * var(--spacing--5xs)) 0;
+	padding: var(--spacing--5xs);
+	border: none;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	border-radius: var(--radius);
+
+	&:hover {
+		color: var(--color--text);
+		background-color: var(--command-bar-item--color--background--hover);
+	}
 }
 
 .loadingSection {

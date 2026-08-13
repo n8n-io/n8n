@@ -11,6 +11,8 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import { DateUtils } from '@n8n/typeorm/util/DateUtils';
+import type { INode } from 'n8n-workflow';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -30,6 +32,7 @@ import type {
 	ListQueryDb,
 	FolderWithWorkflowAndSubFolderCount,
 	ListQuery,
+	SlimProject,
 } from '../entities/types-db';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
@@ -53,6 +56,17 @@ export type WorkflowFolderUnionFull = (
 	| FolderWithWorkflowAndSubFolderCount
 ) & {
 	resource: ResourceType;
+};
+
+/** A workflow that passed the coarse node-content pre-filter, with display context. */
+export type NodeSearchCandidate = {
+	id: string;
+	name: string;
+	/** Keyset cursor position for the next batch. */
+	updatedAt: Date;
+	nodes: INode[];
+	homeProject: SlimProject | null;
+	parentFolder: { id: string; name: string } | null;
 };
 
 type WorkflowListResult = {
@@ -853,9 +867,155 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
-	 * Get workflows with sharing permissions using a subquery instead of pre-fetched IDs.
-	 * This combines the workflow and sharing queries into a single database query.
+	 * Workflow-level pre-filter for node content search.
+	 *
+	 * Returns non-archived workflows the user can read whose serialized `nodes`
+	 * contain `query` as a substring, most recently updated first. The match is
+	 * intentionally coarse — JSON structure and node keys are part of the haystack
+	 * here, so callers must re-match each node in memory to discard false
+	 * positives (see `findNodeSearchMatch` in `n8n-workflow`).
+	 *
+	 * Only draft `nodes` are searched: that is what the user edits and what they
+	 * navigate back to. Published versions are deliberately out of scope.
+	 *
+	 * `cursor` continues a keyset scan: only workflows strictly older than
+	 * `(cursor.updatedAt, cursor.id)` are returned, so the caller can batch
+	 * through candidates without revisiting rows.
 	 */
+	async findNodeSearchCandidates(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+		},
+		query: string,
+		limit: number,
+		projectId?: string,
+		cursor?: { updatedAt: Date; id: string },
+	): Promise<NodeSearchCandidate[]> {
+		const qb = this.createQueryBuilder('workflow').select([
+			'workflow.id',
+			'workflow.name',
+			'workflow.nodes',
+			'workflow.updatedAt',
+		]);
+
+		// EXISTS, not `workflow.id IN (subquery)`: the IN form makes SQLite drive
+		// from `shared_workflow` and sort every LIKE match in a temp B-tree, which
+		// discards the `updatedAt` index this query relies on to stop at the limit.
+		const sharedWorkflowSubquery = this.buildSharedWorkflowIdsSubquery(
+			user,
+			sharingOptions,
+		).andWhere('sw.workflowId = workflow.id');
+		qb.where(`EXISTS (${sharedWorkflowSubquery.getQuery()})`);
+		qb.setParameters(sharedWorkflowSubquery.getParameters());
+
+		qb.andWhere('workflow.isArchived = :isArchived', { isArchived: false });
+
+		if (cursor) {
+			// Row-value comparison, NOT the equivalent `a < x OR (a = x AND b < y)`:
+			// the OR form makes SQLite pick a MULTI-INDEX OR plan that materialises
+			// and sorts every row older than the cursor on every batch, while the
+			// row value keeps the `updatedAt<?` index seek and short-circuits at
+			// the limit (measured ~175ms vs ~3ms per batch on a 20k corpus).
+			qb.andWhere('(workflow.updatedAt, workflow.id) < (:cursorUpdatedAt, :cursorId)', {
+				// Stringified for the raw comparison; same pattern as execution.repository.
+				// String() narrows DateUtils' `any` return — always a string for a Date input.
+				cursorUpdatedAt: String(DateUtils.mixedDateToUtcDatetimeString(cursor.updatedAt)),
+				cursorId: cursor.id,
+			});
+		}
+
+		// Postgres stores `nodes` as json and needs an explicit text cast for LIKE;
+		// sqlite already stores it as text. Mirrors `applyTriggerNodeTypesFilter`.
+		const nodesAsText =
+			this.globalConfig.database.type === 'postgresdb'
+				? '"workflow"."nodes"::text'
+				: 'workflow.nodes';
+
+		// Also match the query with spaces removed so display-name style searches
+		// like "http request" still hit camelCase type ids (`httpRequest`) in JSON.
+		const queryLower = query.toLowerCase();
+		const compactQuery = queryLower.replace(/\s+/g, '');
+		const likeParams: Record<string, string> = {
+			nodeSearchQuery: `%${this.escapeLike(queryLower)}%`,
+		};
+		if (compactQuery !== queryLower && compactQuery.length >= 3) {
+			likeParams.nodeSearchQueryCompact = `%${this.escapeLike(compactQuery)}%`;
+			qb.andWhere(
+				`(LOWER(${nodesAsText}) LIKE :nodeSearchQuery ESCAPE '\\' OR LOWER(${nodesAsText}) LIKE :nodeSearchQueryCompact ESCAPE '\\')`,
+				likeParams,
+			);
+		} else {
+			qb.andWhere(`LOWER(${nodesAsText}) LIKE :nodeSearchQuery ESCAPE '\\'`, likeParams);
+		}
+
+		// Relation joins (not ad-hoc ones) so TypeORM hydrates `shared[0].project`.
+		qb.leftJoin('workflow.shared', 'ownerShared', "ownerShared.role = 'workflow:owner'")
+			.addSelect(['ownerShared.role', 'ownerShared.workflowId', 'ownerShared.projectId'])
+			.leftJoin('ownerShared.project', 'ownerProject')
+			.addSelect([
+				'ownerProject.id',
+				'ownerProject.name',
+				'ownerProject.type',
+				'ownerProject.icon',
+			]);
+
+		if (projectId) {
+			qb.andWhere('ownerShared.projectId = :nodeSearchProjectId', {
+				nodeSearchProjectId: projectId,
+			});
+		}
+
+		qb.leftJoin('workflow.parentFolder', 'parentFolder').addSelect([
+			'parentFolder.id',
+			'parentFolder.name',
+		]);
+
+		// `id DESC` tiebreak: `updatedAt` is not unique, so without it rows sharing
+		// a timestamp could be skipped or duplicated at batch boundaries.
+		qb.orderBy('workflow.updatedAt', 'DESC').addOrderBy('workflow.id', 'DESC').limit(limit);
+
+		// Postgres cannot estimate the selectivity of `LIKE '%…%'`, so it assumes
+		// almost nothing matches and picks a sequential scan with a top-N sort over
+		// the whole table rather than walking the `updatedAt` index and stopping at
+		// the limit. The planner still falls back to a sequential scan when no index
+		// can serve the query, so this only removes a bad choice. SET LOCAL keeps it
+		// scoped to this transaction so pooled connections are unaffected.
+		const workflows =
+			this.globalConfig.database.type !== 'postgresdb'
+				? await qb.getMany()
+				: await this.manager.transaction(async (tx) => {
+						const { queryRunner } = tx;
+						if (!queryRunner) return await qb.getMany();
+						await tx.query('SET LOCAL enable_seqscan = off');
+						return await qb.setQueryRunner(queryRunner).getMany();
+					});
+
+		return workflows.map((workflow) => {
+			const ownerProject = workflow.shared?.[0]?.project ?? null;
+
+			return {
+				id: workflow.id,
+				name: workflow.name,
+				updatedAt: workflow.updatedAt,
+				nodes: workflow.nodes ?? [],
+				homeProject: ownerProject
+					? {
+							id: ownerProject.id,
+							name: ownerProject.name,
+							type: ownerProject.type,
+							icon: ownerProject.icon,
+						}
+					: null,
+				parentFolder: workflow.parentFolder
+					? { id: workflow.parentFolder.id, name: workflow.parentFolder.name }
+					: null,
+			};
+		});
+	}
+
 	async getManyAndCountWithSharingSubquery(
 		user: User,
 		sharingOptions: {

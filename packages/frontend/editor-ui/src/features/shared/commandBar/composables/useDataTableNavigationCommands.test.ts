@@ -134,6 +134,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			const createCommand = commands.value.find((cmd) => cmd.id === 'create-data-table');
@@ -147,6 +148,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			const createCommand = commands.value.find((cmd) => cmd.id === 'create-data-table');
@@ -164,6 +166,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 			const createCommand = commands.value.find((cmd) => cmd.id === 'create-data-table');
 			expect(createCommand).toBeUndefined();
@@ -183,6 +186,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 			expect(commands.value.length).toBe(0);
 		});
@@ -200,6 +204,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-data-table');
@@ -211,6 +216,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-data-table');
@@ -227,6 +233,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-data-table');
@@ -261,6 +268,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery,
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-data-table');
@@ -286,6 +294,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-data-table');
@@ -320,6 +329,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref('cu'),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			const rootDataTables = commands.value.filter((cmd) => cmd.id === 'dt-1');
@@ -332,6 +342,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery,
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarChange('cus');
@@ -365,6 +376,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-data-table');
@@ -397,6 +409,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-data-table');
@@ -427,6 +440,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-data-table');
@@ -455,6 +469,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-data-table');
@@ -485,6 +500,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			expect(isLoading.value).toBe(false);
@@ -504,6 +520,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-data-table');
@@ -536,6 +553,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarChange('customer');
@@ -550,6 +568,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery,
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarChange('cu');
@@ -564,6 +583,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery,
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarChange('cus');
@@ -586,6 +606,7 @@ describe('useDataTableNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-data-table');

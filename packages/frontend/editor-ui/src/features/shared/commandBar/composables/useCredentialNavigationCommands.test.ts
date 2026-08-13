@@ -130,6 +130,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			await initialize?.();
@@ -144,6 +145,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			const createCommand = commands.value.find((cmd) => cmd.id === 'create-credential');
@@ -158,6 +160,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			const createCommand = commands.value.find((cmd) => cmd.id === 'create-credential');
@@ -174,6 +177,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 			const createCommand = commands.value.find((cmd) => cmd.id === 'create-credential');
 			expect(createCommand).toBeUndefined();
@@ -186,6 +190,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-credential');
@@ -199,6 +204,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-credential');
@@ -215,6 +221,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
@@ -257,6 +264,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery,
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
@@ -283,6 +291,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery,
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
@@ -302,6 +311,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
@@ -333,6 +343,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref('gm'),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			const rootCredentials = commands.value.filter((cmd) => cmd.id === 'cred-1');
@@ -345,6 +356,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery,
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarChange('gma');
@@ -375,6 +387,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
@@ -409,6 +422,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
@@ -443,6 +457,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
@@ -470,6 +485,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
@@ -494,6 +510,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			expect(isLoading.value).toBe(false);
@@ -508,6 +525,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
@@ -527,6 +545,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
@@ -556,6 +575,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarChange('gmail');
@@ -570,6 +590,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery,
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarChange('gm');
@@ -584,6 +605,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery,
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarChange('gma');
@@ -603,6 +625,7 @@ describe('useCredentialNavigationCommands', () => {
 				lastQuery: ref(''),
 				activeNodeId,
 				currentProjectName: ref('Team Project'),
+				scopedProjectId: ref(null),
 			});
 
 			handlers.onCommandBarNavigateTo('open-credential');
