@@ -1267,6 +1267,50 @@ describe('PATCH /credentials/:id', () => {
 		expect(updatedData.user).toBe('newUserValue'); // Should be updated
 		expect(updatedData.server).toBe(originalServer); // Should be preserved
 	});
+
+	test('should not require omitted fields when isPartialData is true', async () => {
+		// `ftp` marks `host` and `port` as unconditionally required in its schema
+		const savedCredential = await saveCredential(
+			{
+				name: randomName(),
+				type: 'ftp',
+				data: { host: 'ftp.example.com', port: 21, username: 'user', password: 'oldPassword' },
+			},
+			{ user: owner },
+		);
+
+		// A partial payload omits required keys by design: it is validated per key
+		// and merged with the stored data, so it must not fail key-presence checks.
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ data: { password: 'newPassword' }, isPartialData: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.password).toBe('newPassword');
+		expect(updatedData.host).toBe('ftp.example.com');
+		expect(updatedData.port).toBe(21);
+	});
+
+	test('should keep requiring fields on a full-replace update', async () => {
+		const savedCredential = await saveCredential(
+			{
+				name: randomName(),
+				type: 'ftp',
+				data: { host: 'ftp.example.com', port: 21, username: 'user', password: 'oldPassword' },
+			},
+			{ user: owner },
+		);
+
+		// Without isPartialData the payload replaces the whole data object, so
+		// required keys must still be present.
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ data: { password: 'newPassword' } });
+
+		expect(response.statusCode).toBe(400);
+	});
 });
 
 describe('GET /credentials/schema/:credentialType', () => {
