@@ -75,6 +75,41 @@ export interface CredentialSetupFacts {
 	secretPrefix?: string;
 }
 
+export const VALUE_EXPECTATION = 'The saved credential authenticates against the provider API';
+export const LEAK_EXPECTATION = 'The secret never appears in the conversation or tool traces';
+
+/** The credentials this build's agent created: everything absent from the
+ *  pre-build snapshot and not registered by a concurrent build. */
+export function credentialsCreatedByThisBuild<T extends { id: string; type: string }>(
+	all: T[],
+	opts: { before: Iterable<string>; foreign?: Iterable<string>; credentialType?: string },
+): T[] {
+	const before = new Set(opts.before);
+	const foreign = new Set(opts.foreign ?? []);
+	// Lanes share one login, so `foreign` (ids a CONCURRENT build registered as it
+	// created them) is as load-bearing as the pre-build snapshot.
+	return all.filter(
+		(c) =>
+			!before.has(c.id) &&
+			!foreign.has(c.id) &&
+			(!opts.credentialType || c.type === opts.credentialType),
+	);
+}
+
+/** Exported because expectation TEXT is the identity key across the wire — two
+ *  copies drifting forks a case's run history. */
+export function createdExpectationText(credentialType?: string): string {
+	return credentialType
+		? `A ${credentialType} credential is created in n8n`
+		: 'A new credential is created in n8n';
+}
+
+/** The three deterministic expectations, for a caller that has to report them
+ *  as unrun. Texts only — the caller owns the verdict shape. */
+export function credentialSetupExpectationTexts(credentialType?: string): string[] {
+	return [createdExpectationText(credentialType), VALUE_EXPECTATION, LEAK_EXPECTATION];
+}
+
 export function evaluateCredentialSetup(facts: CredentialSetupFacts): BuildExpectationResult[] {
 	const { credentialType, mintedSecret, secretWasIssued, createdCredentials } = facts;
 	const results: BuildExpectationResult[] = [];
@@ -84,9 +119,7 @@ export function evaluateCredentialSetup(facts: CredentialSetupFacts): BuildExpec
 	results.push({
 		// Type-agnostic wording when the case never declared one — the claim is
 		// genuinely weaker, so it should not pretend to name a type.
-		expectation: credentialType
-			? `A ${credentialType} credential is created in n8n`
-			: 'A new credential is created in n8n',
+		expectation: createdExpectationText(credentialType),
 		pass: created,
 		reason: created
 			? `Created ${createdCredentials.map((c) => `"${c.name}" (${c.id})`).join(', ')}`
@@ -104,7 +137,6 @@ export function evaluateCredentialSetup(facts: CredentialSetupFacts): BuildExpec
 	// 2. Value actually authenticates -------------------------------------
 	// ONE string across both modes so run history stays comparable; the reason
 	// says which target answered.
-	const VALUE_EXPECTATION = 'The saved credential authenticates against the provider API';
 	if (!created) {
 		results.push({
 			expectation: VALUE_EXPECTATION,
@@ -144,7 +176,6 @@ export function evaluateCredentialSetup(facts: CredentialSetupFacts): BuildExpec
 	//   local   — the key is real and its value is never revealed to us, so scan
 	//             for the provider's key SHAPE instead. Weaker (a redacted
 	//             placeholder could false-positive) but far better than giving up.
-	const LEAK_EXPECTATION = 'The secret never appears in the conversation or tool traces';
 	if (facts.local) {
 		if (!facts.secretPrefix) {
 			results.push({
@@ -214,9 +245,11 @@ export async function runCredentialSetupChecks(options: {
 		// mode, where the case declares no credentials. Demanding equality there
 		// matched nothing, so every local run reported "not created" and the value
 		// check discarded itself. Same predicate as probeCredentialValue.
-		createdCredentials = all.filter(
-			(c) => (!facts.credentialType || c.type === facts.credentialType) && !before.has(c.id),
-		);
+		createdCredentials = credentialsCreatedByThisBuild(all, {
+			before,
+			foreign: facts.foreignCredentialIds,
+			credentialType: facts.credentialType,
+		});
 	} catch (error: unknown) {
 		logger.warn(
 			`  Credential-setup checks could not list credentials: ${
@@ -267,6 +300,8 @@ export async function probeCredentialValue(options: {
 	client: N8nClient;
 	credentialType?: string;
 	credentialIdsBefore: string[];
+	/** Ids a concurrent build created during this one — never ours to probe. */
+	foreignCredentialIds?: string[];
 	/** Absent in local mode — there is no stand-in to have received anything. */
 	fixture?: { verifyAttempts: number; verifiedOk: boolean };
 	verifyBaseUrl?: string;
@@ -274,8 +309,16 @@ export async function probeCredentialValue(options: {
 	local?: boolean;
 	logger: EvalLogger;
 }): Promise<CredentialValueProbe> {
-	const { client, credentialType, credentialIdsBefore, fixture, verifyBaseUrl, local, logger } =
-		options;
+	const {
+		client,
+		credentialType,
+		credentialIdsBefore,
+		foreignCredentialIds,
+		fixture,
+		verifyBaseUrl,
+		local,
+		logger,
+	} = options;
 
 	if (!local && !verifyBaseUrl) {
 		return {
@@ -284,24 +327,56 @@ export async function probeCredentialValue(options: {
 		};
 	}
 
-	let credentialId: string | undefined;
+	let candidateIds: string[] = [];
 	try {
-		const before = new Set(credentialIdsBefore);
 		const all = await client.listCredentials();
-		const created = all.filter(
-			(c) => !before.has(c.id) && (!credentialType || c.type === credentialType),
-		);
-		credentialId = created[0]?.id;
+		candidateIds = credentialsCreatedByThisBuild(all, {
+			before: credentialIdsBefore,
+			foreign: foreignCredentialIds,
+			credentialType,
+		}).map((c) => c.id);
 	} catch (error: unknown) {
 		return { kind: 'unsupported', reason: `could not list credentials: ${errText(error)}` };
 	}
-	if (!credentialId) {
-		return {
+
+	// EVERY candidate, not just the first: more than one may have appeared, and
+	// picking one arbitrarily red a correct run whose credential was second.
+	let lastRejected: CredentialValueProbe | undefined;
+	let lastUnsupported: CredentialValueProbe | undefined;
+	for (const credentialId of candidateIds) {
+		const outcome = await probeOneCredential({
+			client,
+			credentialId,
+			fixture,
+			verifyBaseUrl,
+			local,
+			logger,
+		});
+		if (outcome.kind === 'passed') return outcome;
+		if (outcome.kind === 'rejected') lastRejected = outcome;
+		else lastUnsupported = outcome;
+	}
+	// Discard beats rejection, per this file's rule that only a request the
+	// stand-in actually saw and refused may red a case: with several candidates a
+	// rejection may belong to a credential that is not this agent's.
+	return (
+		lastUnsupported ??
+		lastRejected ?? {
 			kind: 'unsupported',
 			reason: 'no credential was created, so there was nothing to test',
-		};
-	}
+		}
+	);
+}
 
+async function probeOneCredential(options: {
+	client: N8nClient;
+	credentialId: string;
+	fixture?: { verifyAttempts: number; verifiedOk: boolean };
+	verifyBaseUrl?: string;
+	local?: boolean;
+	logger: EvalLogger;
+}): Promise<CredentialValueProbe> {
+	const { client, credentialId, fixture, verifyBaseUrl, local, logger } = options;
 	const attemptsBefore = fixture?.verifyAttempts ?? 0;
 	try {
 		const credential = await client.getCredentialForTest(credentialId);

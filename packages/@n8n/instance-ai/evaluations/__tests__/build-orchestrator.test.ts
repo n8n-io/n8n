@@ -733,6 +733,36 @@ describe('local-mode secret scrubbing', () => {
 		expect(leakHaystackFor(build.credentialSetup!)).toContain(KEY);
 	});
 
+	it('scrubs a field nobody enumerated — the probe detail from the real provider', () => {
+		// The scrub is a denylist over the whole build now. `valueProbe.detail` is
+		// n8n's credential-test message, fired at the REAL provider in local mode,
+		// and was never on any of the hand-listed surfaces.
+		const build = localBuild();
+		build.credentialSetup = {
+			...build.credentialSetup!,
+			valueProbe: { kind: 'rejected', detail: `provider rejected ${KEY}`, target: 'real' },
+		};
+
+		scrubLocalSecretsFromBuild(build);
+
+		expect(JSON.stringify(build)).not.toContain(KEY);
+	});
+
+	it('scrubs a provider the fixtures do not cover — local cases declare no type', () => {
+		// `scrubPrefixes` only knows providers with a fixture on disk, so a key from
+		// any other provider reached eval-results.json with the leak check merely
+		// reporting itself incomplete.
+		const OTHER = 'sk-proj-AAAAAAAAAAAAAAAAAAAAAAAA';
+		const build = localBuild();
+		build.transcript = [
+			{ userMessage: 'x', steps: [{ kind: 'agent-text', text: `saved ${OTHER}` }] },
+		] as unknown as BuildResult['transcript'];
+
+		scrubLocalSecretsFromBuild(build);
+
+		expect(JSON.stringify(build)).not.toContain(OTHER);
+	});
+
 	it('refuses to hand back an unscrubbed local build when no key shape is known', () => {
 		// The empty list is the dangerous state: downstream it is indistinguishable
 		// from "nothing to scrub", so returning the build silently persisted a real

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import {
+	credentialSetupExpectationTexts,
 	evaluateCredentialSetup,
 	redactTranscriptSecrets,
 	runCredentialSetupChecks,
@@ -194,6 +195,28 @@ describe('runCredentialSetupChecks (the wrapper that assembles the facts)', () =
 			listCredentials: async () => await Promise.resolve(credentials),
 		}) as unknown as Parameters<typeof runCredentialSetupChecks>[0]['client'];
 
+	it('does not count a credential a CONCURRENT build created', async () => {
+		// Builds on a lane share one login. The shipped case sits in the `full`
+		// dataset alongside others, so a seed landing mid-run would otherwise make
+		// "a credential was created" pass for an agent that saved nothing.
+		const results = await runCredentialSetupChecks({
+			client: clientListing([
+				{ id: 'other-build', name: 'Anthropic account', type: 'anthropicApi' },
+			]),
+			facts: {
+				credentialType: 'anthropicApi',
+				secretWasIssued: false,
+				credentialIdsBefore: [],
+				foreignCredentialIds: ['other-build'],
+			},
+			searchableRunText: 'Saved it for you.',
+			logger,
+		});
+
+		const created = results.find((r) => r.expectation.includes('credential is created'));
+		expect(created?.pass).toBe(false);
+	});
+
 	it('counts a created credential when the case declares no type (local mode "any type")', async () => {
 		const results = await runCredentialSetupChecks({
 			client: clientListing([{ id: 'new1', name: 'Anthropic account', type: 'anthropicApi' }]),
@@ -282,5 +305,24 @@ describe('redactTranscriptSecrets', () => {
 
 	it('passes undefined through — a failed build has no transcript', () => {
 		expect(redactTranscriptSecrets(undefined, PREFIX)).toBeUndefined();
+	});
+});
+
+// The failure path reports these three as `incomplete`, and expectation text is
+// the identity key across the wire — a fourth check added to the evaluator
+// without adding its text here would fork the case's history on that path.
+describe('credentialSetupExpectationTexts stays in lockstep with the evaluator', () => {
+	it('lists exactly the expectations evaluateCredentialSetup emits', () => {
+		const emitted = evaluateCredentialSetup(facts()).map((r) => r.expectation);
+
+		expect(new Set(credentialSetupExpectationTexts('anthropicApi'))).toEqual(new Set(emitted));
+	});
+
+	it('matches the type-agnostic wording when no type is declared', () => {
+		const emitted = evaluateCredentialSetup(facts({ credentialType: undefined })).map(
+			(r) => r.expectation,
+		);
+
+		expect(new Set(credentialSetupExpectationTexts(undefined))).toEqual(new Set(emitted));
 	});
 });

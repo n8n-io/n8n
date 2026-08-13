@@ -67,8 +67,8 @@ export function findChromiumForEval(): string {
 			],
 			{ cwd: root, absolute: true, onlyFiles: true, deep: 6 },
 		);
-		// Sort so the highest revision wins (lexical is fine — revisions are numeric).
-		const best = matches.sort().at(-1);
+		// Numeric compare: lexically `chromium-999` sorts above `chromium-1223`.
+		const best = matches.sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).at(-1);
 		if (best) return best;
 	}
 

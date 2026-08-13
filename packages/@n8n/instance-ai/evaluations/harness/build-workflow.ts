@@ -29,8 +29,8 @@ import {
 	type ConversationSeed,
 } from './conversation-seed';
 import {
+	credentialsCreatedByThisBuild,
 	probeCredentialValue,
-	redactKeyShapedSecrets,
 	redactTranscriptSecrets,
 	type CredentialValueProbe,
 } from './credential-setup-checks';
@@ -43,6 +43,7 @@ import {
 import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
+import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
 	buildSeededTablesNote,
@@ -249,6 +250,10 @@ export interface BuildResult {
 	 *  gone, reconstruction drift, restore failed) — a harness/framework problem,
 	 *  not an agent build failure. Routed to `framework_issue`. */
 	seedingFailed?: boolean;
+	/** True when the credential-setup lane never came up (no extension build, no
+	 *  extension-capable Chromium, no openssl, relay disabled). The agent never
+	 *  got a browser, so the red belongs to the runner, not to the model. */
+	laneBootFailed?: boolean;
 	/** Transport-level failure (network error, or the lane unreachable right
 	 *  after failing — e.g. timed out against a dead lane). Routed to `framework_issue`. */
 	transportFailure?: boolean;
@@ -273,6 +278,7 @@ export function buildFailedOnInfra(build: BuildResult): boolean {
 	if (build.success) return false;
 	return (
 		build.seedingFailed === true ||
+		build.laneBootFailed === true ||
 		build.transportFailure === true ||
 		build.providerOutage !== undefined
 	);
@@ -304,31 +310,40 @@ export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
 	const facts = build.credentialSetup;
 	if (!facts?.local || leakHaystacks.has(facts)) return build;
 	const prefixes = localScrubPrefixes(facts);
-	// Everything the artifacts can carry, including the built workflow: an agent
-	// that hardcodes the key into a node instead of a credential is the failure
-	// this eval exists to catch, and that lands in eval-results.json.
-	leakHaystacks.set(
-		facts,
-		JSON.stringify({
-			transcript: build.transcript ?? [],
-			events: build.events ?? [],
-			buildTrace: build.buildTrace ?? null,
-			workflowJsons: build.workflowJsons ?? [],
-			workflowChecks: build.workflowChecks ?? [],
-			error: build.error ?? null,
-		}),
-	);
+	leakHaystacks.set(facts, searchableBuildText(build));
+
+	// Everything the build carries out, minus the facts — a DENYLIST, because
+	// `traceable` serialises the whole object and an allowlist made each new
+	// field opt-in-secure. Five were added one at a time before this.
+	const { credentialSetup, ...rest } = build;
+	let redacted: Omit<BuildResult, 'credentialSetup'> = rest;
 	for (const prefix of prefixes) {
-		build.transcript = redactTranscriptSecrets(build.transcript, prefix);
-		build.events = redactTranscriptSecrets(build.events, prefix);
-		build.buildTrace = redactTranscriptSecrets(build.buildTrace, prefix);
-		build.workflowJsons = redactTranscriptSecrets(build.workflowJsons, prefix);
-		// Computed inside buildWorkflow from the RAW workflow and transcript, so
-		// these arrive already carrying whatever the checks quoted.
-		build.workflowChecks = redactTranscriptSecrets(build.workflowChecks, prefix);
-		if (build.error) build.error = redactKeyShapedSecrets(build.error, prefix);
+		redacted = redactTranscriptSecrets(redacted, prefix);
+	}
+	// Fixture-independent floor. `prefixes` only knows the providers with a
+	// fixture on disk, and a local case usually declares no credential type at
+	// all, so a key from any other provider would otherwise pass through.
+	redacted = redactSecretsInTextDeep(redacted) as Omit<BuildResult, 'credentialSetup'>;
+	Object.assign(build, redacted);
+
+	// The facts ride separately only because `leakHaystacks` is keyed on their
+	// identity. `valueProbe.detail` is n8n's message from a credential test fired
+	// at the REAL provider, so it can quote the key back.
+	if (facts.valueProbe) {
+		let probe = facts.valueProbe;
+		for (const prefix of prefixes) probe = redactTranscriptSecrets(probe, prefix);
+		facts.valueProbe = redactSecretsInTextDeep(probe) as CredentialValueProbe;
 	}
 	return build;
+}
+
+/** Every surface of a build the artifacts can carry, as one string. The leak
+ *  scan's haystack in local mode and its hermetic-mode equivalent are the same
+ *  question, so they read the same function rather than two field lists kept in
+ *  step by a comment. */
+export function searchableBuildText(build: BuildResult): string {
+	const { credentialSetup: _facts, ...rest } = build;
+	return JSON.stringify(rest);
 }
 
 /** Key shapes to strip from a local run, or THROW. Shared so the two scrub entry
@@ -383,6 +398,10 @@ export interface CredentialSetupRunFacts {
 	/** Credential ids that existed BEFORE the build — the diff base, so a
 	 *  credential an earlier run left behind can't satisfy the "created" check. */
 	credentialIdsBefore: string[];
+	/** Ids a CONCURRENT build created during this one. Excluded from the diff:
+	 *  lanes share a login, so another build's seed would otherwise read as this
+	 *  agent's work. */
+	foreignCredentialIds?: string[];
 	/** Provider-API stand-in for the credential test, when the fixture ships one
 	 *  AND n8n can reach it. Undefined => the value check is DISCARDED (reported
 	 *  unverifiable) rather than failed. */
@@ -493,6 +512,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	// undefined unless the session resolved a fixture for this case.
 	let credentialSetupLane: CredentialSetupLane | undefined;
 	let credentialIdsBefore: string[] = [];
+	/** Lane-registry ids present when this build started. Anything added AFTER
+	 *  is another build's seeder or user-proxy creating a credential during our
+	 *  window — the browser agent's own credential never lands here, because it
+	 *  is made through the console, not through either of those. */
+	let laneCredentialIdsAtStart: Set<string> = new Set();
+	let laneBootFailed = false;
 	/** Snapshot the lane's ledger for the BuildResult. Called on every return
 	 *  path, and always BEFORE teardown, so `secretWasIssued` is still readable
 	 *  and the provider stand-in is still listening. */
@@ -505,13 +530,24 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// every credential-setup run leaves one behind in the eval account.
 		// (The provider-side key of a `local` run is a separate matter, and
 		// deliberately not ours to revoke — see docs/browser-eval-lane.md.)
+		// Ids other builds registered while ours ran. Excluded from the "created"
+		// diff below: builds on a lane share one login, so a concurrent seed would
+		// otherwise satisfy this case's created-check and could be probed in place
+		// of the agent's own credential.
+		const foreignCredentialIds = [...(config.createdCredentialIds ?? [])].filter(
+			(id) => !laneCredentialIdsAtStart.has(id),
+		);
 		if (config.createdCredentialIds) {
+			// No `foreign` filter here on purpose: those ids are already in this set
+			// (that is where the list comes from), so excluding them would be a no-op
+			// that reads as though cleanup skips them.
 			const before = new Set(credentialIdsBefore);
 			for (const id of await client.listCredentialIds().catch(() => [] as string[])) {
 				if (!before.has(id)) config.createdCredentialIds.add(id);
 			}
 		}
 		return {
+			foreignCredentialIds,
 			credentialType: lane.credentialType,
 			// Local runs mint nothing: the key is real and we never learn its value.
 			mintedSecret: lane.fixture?.mintedSecret,
@@ -519,7 +555,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			local: lane.local,
 			// Local runs have no fixture, but the registry still knows this
 			// provider's key shape — enough for a shape-based leak scan.
-			secretPrefix: await resolveSecretPrefix(client, lane, credentialIdsBefore),
+			secretPrefix: await resolveSecretPrefix(
+				client,
+				lane,
+				credentialIdsBefore,
+				foreignCredentialIds,
+			),
 			scrubPrefixes: await resolveScrubPrefixes(lane),
 			credentialIdsBefore,
 			verifyBaseUrl: lane.verifyBaseUrl,
@@ -527,6 +568,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				client,
 				credentialType: lane.credentialType,
 				credentialIdsBefore,
+				foreignCredentialIds,
 				fixture: lane.fixture,
 				verifyBaseUrl: lane.verifyBaseUrl,
 				local: lane.local,
@@ -631,13 +673,33 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// Credential-setup lane, after the pin so the "created" diff base is the
 		// same credential set the build starts from.
 		if (config.credentialSetupSelection && config.credentialSetupSelection.kind !== 'none') {
+			// Opened before the listing too: a failure there is the same class of
+			// infrastructure problem, and an unmarked throw reads downstream as an
+			// agent regression.
+			laneBootFailed = true;
 			credentialIdsBefore = await client.listCredentialIds();
+			laneCredentialIdsAtStart = new Set(config.createdCredentialIds ?? []);
+			// Coverage is asserted HERE, not on the return path: by then the browser
+			// has already driven the real console and the key exists. Only checkable
+			// when the case declares a type — local cases usually do not, which is
+			// why the scrub also carries a fixture-independent floor.
+			if (
+				config.credentialSetupSelection.kind === 'local' &&
+				config.credentialSetupType &&
+				!(await resolveFixtureForCredentialType(config.credentialSetupType))
+			) {
+				throw new Error(
+					`Local run targets \`${config.credentialSetupType}\`, which no provider fixture covers, so its key shape is unknown. ` +
+						'Add a fixture for it (evaluations/fixtures/providers/) before running this case locally.',
+				);
+			}
 			credentialSetupLane = await startCredentialSetupLane({
 				client,
 				selection: config.credentialSetupSelection,
 				logger,
 				localCredentialType: config.credentialSetupType,
 			});
+			laneBootFailed = false;
 		}
 
 		// Restore the seed before the first live message. No degraded mode: a
@@ -990,6 +1052,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			threadId,
 			credentialViewPinned,
 			seedingFailed,
+			laneBootFailed,
 			credentialSetup: await credentialSetupFacts(),
 		};
 	} finally {
@@ -1122,10 +1185,24 @@ async function resolveScrubPrefixes(lane: CredentialSetupLane): Promise<string[]
 	if (!lane.local) return [];
 	// Deliberately NOT caught — an empty list is indistinguishable from "nothing
 	// to scrub", so a broken fixtures dir would silently ship a real key.
-	const prefixes = [...new Set((await loadProviderFixtures()).map((f) => f.manifest.secretPrefix))];
+	const fixtures = await loadProviderFixtures();
+	const prefixes = [...new Set(fixtures.map((f) => f.manifest.secretPrefix))];
 	if (prefixes.length === 0) {
 		throw new Error(
 			'No provider fixtures found, so a local run has no key shapes to scrub. Refusing to run rather than persist a real key.',
+		);
+	}
+	// A non-empty list is not the same as the RIGHT list. The prefixes come from
+	// the fixtures on disk, so a `local` case targeting a provider none of them
+	// covers scrubs with shapes that cannot match — the real key persists into
+	// eval-results.json while the leak check merely reports itself unverifiable.
+	if (
+		lane.credentialType &&
+		!fixtures.some((f) => f.manifest.credentialType === lane.credentialType)
+	) {
+		throw new Error(
+			`Local run targets \`${lane.credentialType}\`, which no provider fixture covers, so its key shape is unknown and cannot be scrubbed. ` +
+				'Add a fixture for it (evaluations/fixtures/providers/) before running this case locally.',
 		);
 	}
 	return prefixes;
@@ -1135,10 +1212,13 @@ async function resolveSecretPrefix(
 	client: N8nClient,
 	lane: CredentialSetupLane,
 	credentialIdsBefore: string[],
+	foreignCredentialIds: string[],
 ): Promise<string | undefined> {
 	if (lane.fixture) return lane.fixture.manifestSecretPrefix;
 	try {
-		const type = lane.credentialType ?? (await inferCreatedType(client, credentialIdsBefore));
+		const type =
+			lane.credentialType ??
+			(await inferCreatedType(client, credentialIdsBefore, foreignCredentialIds));
 		if (!type) return undefined;
 		return (await resolveFixtureForCredentialType(type))?.manifest.secretPrefix;
 	} catch {
@@ -1149,8 +1229,14 @@ async function resolveSecretPrefix(
 async function inferCreatedType(
 	client: N8nClient,
 	credentialIdsBefore: string[],
+	foreignCredentialIds: string[],
 ): Promise<string | undefined> {
-	const before = new Set(credentialIdsBefore);
+	// Shares the predicate with the checks and the probe: this one picks the leak
+	// scan's key prefix, so a concurrent build's credential here would set local
+	// mode's scrub shape to the wrong provider.
 	const all = await client.listCredentials();
-	return all.find((c) => !before.has(c.id))?.type;
+	return credentialsCreatedByThisBuild(all, {
+		before: credentialIdsBefore,
+		foreign: foreignCredentialIds,
+	})[0]?.type;
 }

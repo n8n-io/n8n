@@ -35,12 +35,16 @@ import {
 	buildFailedOnInfra,
 	leakHaystackFor,
 	redactLocalRunSecrets,
+	searchableBuildText,
 	scrubLocalSecretsFromBuild,
 	type BuildResult,
 } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
-import { runCredentialSetupChecks } from '../harness/credential-setup-checks';
+import {
+	credentialSetupExpectationTexts,
+	runCredentialSetupChecks,
+} from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
 import {
 	fetchPrebuiltBuild,
@@ -407,19 +411,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// `scrubLocalSecrets` (in stashTranscript, which always runs first) has
 		// already redacted a local run's transcript and kept the pre-scrub text
 		// off-build for exactly this check.
-		// The fallback (hermetic mode, nothing scrubbed) must cover the same
-		// surfaces as the local-mode haystack, or a minted key typed into a tool
-		// call passes the leak check in the mode CI actually runs.
+		// Hermetic mode scrubs nothing, so there is no snapshot — but the surfaces
+		// scanned must be the same ones, hence the shared builder.
 		const searchableRunText =
 			(build.credentialSetup && leakHaystackFor(build.credentialSetup)) ??
-			JSON.stringify({
-				transcript: build.transcript ?? [],
-				events: build.events ?? [],
-				buildTrace: build.buildTrace ?? null,
-				workflowJsons: build.workflowJsons ?? [],
-				workflowChecks: build.workflowChecks ?? [],
-				error: build.error ?? null,
-			});
+			searchableBuildText(build);
 		const testCase = testCaseByFileSlug.get(fileSlug);
 		if (!testCase) return;
 		// Deterministic credential-setup verdicts, started EAGERLY: per-build
@@ -432,10 +428,14 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					searchableRunText,
 					logger,
 				}).catch((error: unknown) => {
-					logger.warn(
-						`  Credential-setup checks failed: ${error instanceof Error ? error.message : String(error)}`,
+					const reason = error instanceof Error ? error.message : String(error);
+					logger.warn(`  Credential-setup checks failed: ${reason}`);
+					// Incomplete, not dropped: an empty array let the case pass on
+					// authored expectations with nothing deterministic behind it.
+					return allFailVerdicts(
+						credentialSetupExpectationTexts(build.credentialSetup?.credentialType),
+						`Credential-setup checks could not run: ${reason}`,
 					);
-					return [] as BuildExpectationResult[];
 				})
 			: undefined;
 		const { expectations, transcript, unjudged } = selectAuthorExpectations({
