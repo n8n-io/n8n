@@ -1,5 +1,6 @@
-import { folderNameSchema } from '@n8n/api-types';
+import { folderIdSchema, folderNameSchema } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
 import type { FolderService } from '@/services/folder.service';
@@ -18,11 +19,10 @@ const inputSchema = {
 			'The ID of the project to create the folder in. Use search_projects to resolve a project name to an ID.',
 		),
 	name: folderNameSchema.describe('The name of the folder to create'),
-	parentFolderId: z
-		.string()
+	parentFolderId: folderIdSchema
 		.optional()
 		.describe(
-			'Optional parent folder ID to nest the new folder under. Must belong to the same project — use search_folders to find it. Omit to create the folder at the project root.',
+			`Optional parent folder ID to nest the new folder under. Must belong to the same project — use search_folders to find it. Omit it or pass "${PROJECT_ROOT}" to create the folder at the project root.`,
 		),
 } satisfies z.ZodRawShape;
 
@@ -55,10 +55,12 @@ export const createCreateFolderTool = (
 		name: string;
 		parentFolderId?: string;
 	}) => {
+		const parent = parentFolderId === PROJECT_ROOT ? undefined : parentFolderId;
+
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'create_folder',
-			parameters: { projectId, hasParentFolderId: !!parentFolderId },
+			parameters: { projectId, hasParentFolderId: !!parent },
 		};
 		const fail = createFailHandler(telemetry, telemetryPayload);
 
@@ -68,7 +70,7 @@ export const createCreateFolderTool = (
 				return fail('Project not found or access denied');
 			}
 
-			const folder = await folderService.createFolder({ name, parentFolderId }, projectId);
+			const folder = await folderService.createFolder({ name, parentFolderId: parent }, projectId);
 
 			telemetryPayload.results = { success: true, data: { folderId: folder.id } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

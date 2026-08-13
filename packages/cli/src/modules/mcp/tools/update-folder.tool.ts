@@ -1,4 +1,4 @@
-import { folderNameSchema } from '@n8n/api-types';
+import { folderIdSchema, folderNameSchema } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
@@ -18,12 +18,11 @@ const inputSchema = {
 		.describe(
 			'The ID of the project the folder belongs to. Use search_projects to resolve a project name to an ID.',
 		),
-	folderId: z
-		.string()
-		.describe('The ID of the folder to update. Use search_folders to find it by name.'),
+	folderId: folderIdSchema.describe(
+		'The ID of the folder to update. Use search_folders to find it by name.',
+	),
 	name: folderNameSchema.optional().describe('New name for the folder (rename)'),
-	parentFolderId: z
-		.string()
+	parentFolderId: folderIdSchema
 		.optional()
 		.describe(
 			`New parent folder ID to move the folder under. Must belong to the same project and must not be a descendant of the folder being moved. Pass "${PROJECT_ROOT}" to move the folder to the project root. Omit to leave the folder where it is.`,

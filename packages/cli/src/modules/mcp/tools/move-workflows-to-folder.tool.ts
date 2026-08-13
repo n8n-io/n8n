@@ -1,8 +1,10 @@
-import type { Folder, FolderRepository, User } from '@n8n/db';
+import { folderIdSchema } from '@n8n/api-types';
+import type { Folder, User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import type { FolderFinderService } from '@/services/folder-finder.service';
 import type { Telemetry } from '@/telemetry';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -13,7 +15,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 import { createFailHandler, describeFolderError } from './folder-error.utils';
 import { validateMcpWorkflow } from './workflow-validation.utils';
 
-const MAX_WORKFLOWS = 50;
+const MAX_WORKFLOWS = 20;
 
 const inputSchema = {
 	workflowIds: z
@@ -21,11 +23,9 @@ const inputSchema = {
 		.min(1)
 		.max(MAX_WORKFLOWS)
 		.describe(`The IDs of the workflows to move (up to ${MAX_WORKFLOWS} at a time)`),
-	folderId: z
-		.string()
-		.describe(
-			`The ID of the destination folder. It must belong to the project that owns the workflows — use search_folders to find it by name. Pass "${PROJECT_ROOT}" to move the workflows to the project root.`,
-		),
+	folderId: folderIdSchema.describe(
+		`The ID of the destination folder. It must belong to the project that owns the workflows — use search_folders to find it by name. Pass "${PROJECT_ROOT}" to move the workflows to the project root.`,
+	),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -35,9 +35,7 @@ const outputSchema = {
 			name: z.string().describe('The name of the destination folder'),
 		})
 		.optional()
-		.describe(
-			'The destination folder. Omitted when moving to the project root or when no workflow was moved.',
-		),
+		.describe('The destination folder. Omitted when moving to the project root.'),
 	moved: z
 		.array(
 			z.object({
@@ -66,7 +64,7 @@ export const createMoveWorkflowsToFolderTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
-	folderRepository: FolderRepository,
+	folderFinderService: FolderFinderService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'move_workflows_to_folder',
@@ -92,9 +90,11 @@ export const createMoveWorkflowsToFolderTool = (
 		const fail = createFailHandler(telemetry, telemetryPayload);
 
 		try {
-			let folder: Folder | null = null;
+			let folder: Folder | undefined;
 			if (folderId !== PROJECT_ROOT) {
-				folder = await folderRepository.findOneBy({ id: folderId });
+				[folder] = await folderFinderService.findFoldersByIdsForUser([folderId], user, [
+					'folder:read',
+				]);
 				if (!folder) {
 					return fail(describeFolderError(new FolderNotFoundError(folderId)));
 				}
@@ -133,10 +133,8 @@ export const createMoveWorkflowsToFolderTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			// The folder name is only exposed once a move succeeded, i.e. the user
-			// provably has access to the folder's project.
 			const output = {
-				...(folder && anyMoved ? { folder: { id: folder.id, name: folder.name } } : {}),
+				...(folder ? { folder: { id: folder.id, name: folder.name } } : {}),
 				...(anyMoved ? { moved } : { error: 'None of the workflows could be moved' }),
 				...(failed.length > 0 ? { failed } : {}),
 			};

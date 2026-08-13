@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { FolderService } from '@/services/folder.service';
@@ -82,6 +83,23 @@ describe('create-folder MCP tool', () => {
 			name: 'Marketing',
 			parentFolderId: null,
 		});
+	});
+
+	test('treats the "0" root sentinel as no parent', async () => {
+		const mocks = createMocks();
+		const tool = createTool(mocks);
+
+		const result = await callHandler(tool, {
+			projectId: 'proj-1',
+			name: 'Marketing',
+			parentFolderId: PROJECT_ROOT,
+		});
+
+		expect(mocks.folderService.createFolder).toHaveBeenCalledWith(
+			{ name: 'Marketing', parentFolderId: undefined },
+			'proj-1',
+		);
+		expect(result.isError).toBeUndefined();
 	});
 
 	test('creates a nested folder', async () => {

@@ -7,13 +7,7 @@ import {
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import {
-	ExecutionRepository,
-	FolderRepository,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	User,
-} from '@n8n/db';
+import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
 	mcpAppToolMeta,
@@ -38,6 +32,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -206,7 +201,7 @@ export class McpService {
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly projectRepository: ProjectRepository,
-		private readonly folderRepository: FolderRepository,
+		private readonly folderFinderService: FolderFinderService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
@@ -745,7 +740,7 @@ export class McpService {
 				user,
 				this.workflowFinderService,
 				this.workflowService,
-				this.folderRepository,
+				this.folderFinderService,
 				this.telemetry,
 			);
 			registerIfAllowed(moveWorkflowsToFolderTool);
