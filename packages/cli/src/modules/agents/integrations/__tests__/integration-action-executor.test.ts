@@ -56,7 +56,7 @@ import {
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';

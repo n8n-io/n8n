@@ -20,6 +20,10 @@ const props = defineProps<{
 	pending?: boolean;
 }>();
 
+const emit = defineEmits<{
+	'preview-open-change': [open: boolean];
+}>();
+
 // === Editing lock ===
 // Lock the artifact's editing (not its visibility) while the AI is actively
 // building/mutating THIS agent, so the user can't edit into a mid-stream
@@ -75,6 +79,7 @@ async function onAgentPersisted(agent: AgentResource) {
 			:artifact-agent-pending="props.pending"
 			:artifact-editing-locked="isAgentBuilding"
 			@persisted="onAgentPersisted"
+			@preview-open-change="emit('preview-open-change', $event)"
 			@name-saved="syncAgentTarget"
 		/>
 	</div>

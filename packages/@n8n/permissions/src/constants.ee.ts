@@ -72,7 +72,7 @@ export const RESOURCES = {
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,
-	role: ['manage', 'read', 'manageProject'] as const,
+	role: ['manage', 'read', 'manageProject', 'list'] as const,
 	mcp: ['manage', 'oauth'] as const,
 	mcpApiKey: ['create', 'rotate'] as const,
 	chatHub: ['manage', 'message'] as const,
@@ -111,7 +111,7 @@ export const API_KEY_RESOURCES = {
 	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
-	role: ['manage', 'manageProject'] as const,
+	role: ['manage', 'manageProject', 'list'] as const,
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';

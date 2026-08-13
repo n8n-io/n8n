@@ -1390,6 +1390,9 @@ export interface IWorkflowLoader {
 	get(workflowId: string): Promise<IWorkflowBase>;
 }
 
+/** A poll node's opaque static-data-shaped state, durably stored between polls. */
+export type PollCursor = IDataObject;
+
 export interface IPollFunctions
 	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	__emit(
@@ -1403,6 +1406,14 @@ export interface IPollFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	/** Persists a cursor staged by a poll that emitted no items. Called by the tick engines, never by a node. */
+	__commitCursor?(): Promise<void>;
+	/**
+	 * Runs a poll and the hand-off that follows it in one staging scope, so a cursor
+	 * can only be committed by the poll that staged it. Called by the tick engines,
+	 * never by a node.
+	 */
+	__runPoll?<T>(poll: () => Promise<T>): Promise<T>;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
@@ -1517,11 +1528,12 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 */
 	establishTriggerIdentity(token: string, resource: string): Promise<void>;
 	/**
-	 * Checks the status of the triggering identity's resolvable (private) credentials
+	 * Checks the status of the triggering identity's resolvable (end-user) credentials
 	 * for this workflow, using the execution context established by
 	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
 	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
-	 * established). Used by the MCP trigger to gate a tool call before execution.
+	 * established). Used by the MCP trigger to gate a tool call, and by the Form trigger
+	 * to gate a submission, before an execution is enqueued.
 	 */
 	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(

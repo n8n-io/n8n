@@ -1,5 +1,6 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
@@ -34,7 +35,7 @@ describe('step execution (integration)', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer('postgres:18-alpine').start();
+		container = await new PostgreSqlContainer(postgresVersions.primary).start();
 		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
@@ -197,6 +198,45 @@ describe('step execution (integration)', () => {
 		expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-b']);
 		expect(requests[0].inputs).toEqual([{ body: { name: 'ada' } }]);
 		expect(requests[1].inputs).toEqual([[{ json: { ran: 'node-a' } }]]);
+
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
+	});
+
+	it('runs a fan-in once, with each input slot fed by its branch', async () => {
+		const diamondGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+				{ id: 'node-m', name: 'M', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-m', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-b', to: 'node-m', outputIndex: 0, inputIndex: 1 },
+			],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution } = await runWorkflow(
+			executor,
+			{ body: { name: 'ada' } },
+			{ workflowId: 'wf-diamond', graph: diamondGraph },
+		);
+
+		// the merge ran exactly once, after both branches, one slot per branch
+		const merge = requests.filter(({ node }) => node.id === 'node-m');
+		expect(merge).toHaveLength(1);
+		expect(merge[0].inputs).toEqual([[{ json: { ran: 'node-a' } }], [{ json: { ran: 'node-b' } }]]);
 
 		expect(execution.status).toBe('completed');
 		expect(execution.finishedAt).toBeInstanceOf(Date);

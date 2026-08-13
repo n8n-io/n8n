@@ -2,10 +2,12 @@ import { CreateWorkflowReviewRequestDto } from '../create-workflow-review-reques
 
 describe('CreateWorkflowReviewRequestDto', () => {
 	const workflow = { workflowId: 'workflow-1', workflowVersionId: 'version-1' };
+	const base = { title: 'Please review', reviewerUserIds: ['reviewer-1'] };
+	const pinnedWorkflow = [{ ...workflow, workflowVersionName: 'Release candidate' }];
 
 	test('should accept a version name on the pinned workflow', () => {
 		const result = CreateWorkflowReviewRequestDto.safeParse({
-			title: 'Please review',
+			...base,
 			workflows: [{ ...workflow, workflowVersionName: 'Release candidate' }],
 		});
 
@@ -15,7 +17,7 @@ describe('CreateWorkflowReviewRequestDto', () => {
 
 	test('should reject a version name longer than 128 characters', () => {
 		const result = CreateWorkflowReviewRequestDto.safeParse({
-			title: 'Please review',
+			...base,
 			workflows: [{ ...workflow, workflowVersionName: 'a'.repeat(129) }],
 		});
 
@@ -25,7 +27,7 @@ describe('CreateWorkflowReviewRequestDto', () => {
 
 	test('should trim the version name', () => {
 		const result = CreateWorkflowReviewRequestDto.safeParse({
-			title: 'Please review',
+			...base,
 			workflows: [{ ...workflow, workflowVersionName: '  Release candidate  ' }],
 		});
 
@@ -39,7 +41,7 @@ describe('CreateWorkflowReviewRequestDto', () => {
 		{ name: 'a whitespace-only version name', workflowVersionName: '   ' },
 	])('should reject $name', ({ workflowVersionName }) => {
 		const result = CreateWorkflowReviewRequestDto.safeParse({
-			title: 'Please review',
+			...base,
 			workflows: [{ ...workflow, workflowVersionName }],
 		});
 
@@ -53,7 +55,7 @@ describe('CreateWorkflowReviewRequestDto', () => {
 		{ name: 'an omitted version description', workflowVersionDescription: undefined },
 	])('should accept $name on the pinned workflow', ({ workflowVersionDescription }) => {
 		const result = CreateWorkflowReviewRequestDto.safeParse({
-			title: 'Please review',
+			...base,
 			workflows: [
 				{ ...workflow, workflowVersionName: 'Release candidate', workflowVersionDescription },
 			],
@@ -65,7 +67,7 @@ describe('CreateWorkflowReviewRequestDto', () => {
 
 	test('should reject a version description longer than 2048 characters', () => {
 		const result = CreateWorkflowReviewRequestDto.safeParse({
-			title: 'Please review',
+			...base,
 			workflows: [
 				{
 					...workflow,
@@ -77,5 +79,43 @@ describe('CreateWorkflowReviewRequestDto', () => {
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path).toEqual(['workflows', 0, 'workflowVersionDescription']);
+	});
+
+	describe('reviewerUserIds', () => {
+		test.each([
+			{ name: 'a single reviewer', reviewerUserIds: ['reviewer-1'] },
+			{
+				name: 'ten reviewers',
+				reviewerUserIds: Array.from({ length: 10 }, (_, i) => `reviewer-${i}`),
+			},
+		])('should accept $name', ({ reviewerUserIds }) => {
+			const result = CreateWorkflowReviewRequestDto.safeParse({
+				title: 'Please review',
+				reviewerUserIds,
+				workflows: pinnedWorkflow,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data?.reviewerUserIds).toEqual(reviewerUserIds);
+		});
+
+		test.each([
+			{ name: 'an omitted reviewer list', reviewerUserIds: undefined },
+			{ name: 'an empty reviewer list', reviewerUserIds: [] },
+			{
+				name: 'more than ten reviewers',
+				reviewerUserIds: Array.from({ length: 11 }, (_, i) => `reviewer-${i}`),
+			},
+			{ name: 'a non-array reviewer value', reviewerUserIds: 'reviewer-1' },
+		])('should reject $name', ({ reviewerUserIds }) => {
+			const result = CreateWorkflowReviewRequestDto.safeParse({
+				title: 'Please review',
+				reviewerUserIds,
+				workflows: pinnedWorkflow,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.error?.issues[0].path).toEqual(['reviewerUserIds']);
+		});
 	});
 });

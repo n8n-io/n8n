@@ -281,7 +281,7 @@ export function useTestCasePersistence() {
 			await evaluationStore.fetchTestRuns(workflowId);
 			return true;
 		} catch (error) {
-			toast.showError(error, locale.baseText('evaluations.wizardSidepanel.step2.dispatchError'));
+			toast.showError(error, locale.baseText('evaluations.tests.dispatchError'));
 			return false;
 		}
 	}
@@ -371,7 +371,7 @@ export function useTestCasePersistence() {
 			if (!config) {
 				toast.showError(
 					new Error('No evaluation config found. Run a single test case first.'),
-					locale.baseText('evaluations.wizardSidepanel.step2.persistError'),
+					locale.baseText('evaluations.tests.persistError'),
 				);
 				return false;
 			}
@@ -396,7 +396,7 @@ export function useTestCasePersistence() {
 			await evaluationStore.fetchTestRuns(workflowId);
 			return true;
 		} catch (error) {
-			toast.showError(error, locale.baseText('evaluations.wizardSidepanel.step2.dispatchError'));
+			toast.showError(error, locale.baseText('evaluations.tests.dispatchError'));
 			return false;
 		}
 	}
