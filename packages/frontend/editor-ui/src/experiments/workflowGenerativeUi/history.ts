@@ -1,0 +1,24 @@
+export class SpecHistory {
+	private specs: unknown[] = [];
+
+	push(spec: unknown): void {
+		this.specs = [...this.specs, spec].slice(-10);
+	}
+
+	current(): unknown | undefined {
+		return this.specs.at(-1);
+	}
+
+	undo(): unknown | undefined {
+		if (this.specs.length > 1) this.specs.pop();
+		return this.current();
+	}
+
+	reset(spec: unknown): void {
+		this.specs = [spec];
+	}
+}
+
+export function historyKey(hash: string, view: 'story' | 'play'): string {
+	return `n8n.workflowGenerativeUi.history.${hash}.${view}`;
+}
