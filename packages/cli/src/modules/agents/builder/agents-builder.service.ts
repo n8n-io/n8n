@@ -14,12 +14,15 @@ import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
+import {
+	resolveAIAPromptCaching,
+	resolveAIAReasoning,
+	tokenUsageToBuilderUsageItems,
+} from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
-import { isMoonshotaiKimiK3ProxyModel } from '@/utils/ai-proxy-language-model';
 
 import { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
 import { AgentsService } from '../agents.service';
@@ -269,7 +272,6 @@ export class AgentsBuilderService {
 				reflect: createObservationLogReflectFn(modelConfig, { onUsage: onMemoryUsage }),
 			});
 
-		const isKimi = isMoonshotaiKimiK3ProxyModel(modelConfig);
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(finalInstructions)
@@ -277,8 +279,9 @@ export class AgentsBuilderService {
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
 			.configuration({ maxIterations: 30 });
-		if (!isKimi) {
-			builder.promptCaching({ anthropic: { ttl: '5m' } });
+		const promptCaching = resolveAIAPromptCaching(modelConfig);
+		if (promptCaching) {
+			builder.promptCaching(promptCaching);
 		}
 
 		if (session.telemetry) builder.telemetry(session.telemetry);
@@ -295,7 +298,7 @@ export class AgentsBuilderService {
 			}),
 		);
 
-		builder.reasoning(isKimi ? 'low' : 'medium');
+		builder.reasoning(resolveAIAReasoning(modelConfig));
 
 		return builder;
 	}
