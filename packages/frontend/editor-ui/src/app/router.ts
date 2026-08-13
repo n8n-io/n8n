@@ -1193,8 +1193,6 @@ setUnauthorizedHandler((baseURL) => {
 	void handleSessionExpired(router, baseURL);
 });
 
-// Non-MFA errors are swallowed so the caller's route-gating logic still runs
-// on whatever state did initialize.
 async function initializeForNavigation(to: RouteLocationNormalized) {
 	try {
 		await initializeCore();
@@ -1202,8 +1200,9 @@ async function initializeForNavigation(to: RouteLocationNormalized) {
 		await initializeAuthenticatedFeatures(undefined, to.name as string);
 	} catch (error) {
 		if (error instanceof MfaRequiredError) {
-			throw error;
+			throw error; // let the caller's MFA redirect handle it
 		}
+		// Swallowed so the caller's permission checks still run on whatever state did initialize.
 		console.error(error);
 	}
 }
@@ -1262,7 +1261,7 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 			return;
 		}
 
-		// An error from the gating logic must still resolve the guard, not leave it hanging.
+		// An error from the checks above must still resolve the guard, not leave it hanging.
 		console.error(failure);
 		return next();
 	}

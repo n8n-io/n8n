@@ -426,7 +426,7 @@ describe('router', () => {
 			await router.replace('/workflow/router-test-reset');
 		});
 
-		test('still settles the navigation and runs the normal gating logic, instead of leaving it unresolved', async () => {
+		test('still settles the navigation and runs the normal permission checks, instead of leaving it unresolved', async () => {
 			// The mock skips real authentication, so the guard redirects to sign-in.
 			initializeAuthenticatedFeaturesSpy.mockRejectedValue(new Error('CAT-4040: boom'));
 
