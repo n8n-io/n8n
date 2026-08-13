@@ -337,18 +337,13 @@ names (e.g. `Acme Corp`) in tests and examples.
 These notes cover non-obvious gotchas for the Cursor Cloud VM. Standard
 commands live in **Essential Commands** above; don't duplicate them here.
 
-- **Node version is pinned by the environment — no action needed.** The VM's
-  built-in `node` (`/exec-daemon/node`, `v22.14.0`) is below this repo's
-  `engines` requirement (`node >=22.22`) and is injected ahead of `nvm` on
-  `PATH`. The Cloud environment's install script fixes this at the environment
-  level by symlinking the `nvm`-provided `v22.22.2` binaries (`node`, `npm`,
-  `npx`, `corepack`) into `/usr/local/cargo/bin` — the first entry on `PATH`,
-  which is inherited by every process — so all shells, scripts, and the app
-  resolve `node v22.22.2` with no `PATH` juggling. Sanity check: `node -v` should
-  print `v22.22.2`. If you ever see `v22.14.0`, the symlink step didn't run;
-  re-run the install script, or as a one-off:
+- **Node is pinned to `v22.22.2` by the install script** — normally no action
+  needed. (It symlinks the `nvm` binaries into `/usr/local/cargo/bin`, ahead of
+  the VM's built-in `/exec-daemon/node` `v22.14.0`, which is below this repo's
+  `node >=22.22` engine requirement.) Only if `node -v` ever shows `v22.14.0` did
+  that step not run — re-run the install script, or:
   `ln -sf "$HOME/.nvm/versions/node/v22.22.2/bin/node" /usr/local/cargo/bin/node`.
-- **Dependencies:** the startup install script pins node (above) and runs
+- **Dependencies:** the startup install script runs
   `pnpm install --frozen-lockfile`. You do **not** need to reinstall unless the
   lockfile changed.
 - **Build once before dev:** dev commands rely on each package's compiled
