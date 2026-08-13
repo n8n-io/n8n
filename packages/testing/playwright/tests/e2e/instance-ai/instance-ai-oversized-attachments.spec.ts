@@ -119,25 +119,13 @@ test.describe(
 			},
 		);
 
-		/**
-		 * KNOWN FAILING — documents the unfixed half of INS-994 rather than asserting it
-		 * works. This test reproduces the original report on the current branch: turn 1
-		 * is refused for its attachment, and a plain-text turn 2 in the same thread fails
-		 * with the identical provider error, because the refused attachment is still
-		 * replayed from history.
-		 *
-		 * The size guards (covered above) stop the reported trigger, so the thread-recovery
-		 * path only matters for refusals we cannot pre-empt — pixel dimensions,
-		 * per-provider ceilings, format quirks. `dropRejectedAttachmentsFromHistory` and
-		 * its classifier are unit-tested and correct in isolation; something between the
-		 * terminal-error hook and the persisted message shape does not line up, and this
-		 * test is the reproduction to debug against. Flip to `test(` once it passes.
-		 */
-		test.fixme(
+		test(
 			'drops a provider-refused attachment so the next turn still works',
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
 			async ({ n8n, n8nContainer }) => {
 				test.skip(!n8nContainer, 'Requires the proxy service to simulate a provider refusal');
+				// Two full runs in one test: the refused turn plus the recovery turn.
+				test.setTimeout(240_000);
 				// Two full runs in one test: the refused turn plus the recovery turn.
 				test.setTimeout(240_000);
 
@@ -161,7 +149,10 @@ test.describe(
 					httpRequest: {
 						method: 'POST',
 						path: '/v1/messages',
-						body: { type: 'REGEX', regex: '[\\s\\S]*("media_type"|"base64")[\\s\\S]*' },
+						// Match our own image's bytes: base64 of the PNG signature. Matching a
+						// generic marker like "base64" also hits tool schemas, so every request
+						// would be refused and the recovery turn could never pass.
+						body: { type: 'REGEX', regex: '[\\s\\S]*iVBORw0KGgo[\\s\\S]*' },
 					},
 					httpResponse: {
 						statusCode: 400,

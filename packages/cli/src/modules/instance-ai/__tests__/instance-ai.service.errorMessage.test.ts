@@ -74,7 +74,7 @@ describe('getUserFacingErrorMessage', () => {
 			'Could not process image. The image is too large.',
 		])('points the user at the attachment for: %s', (providerMessage) => {
 			const message = getUserFacingErrorMessage(new Error(providerMessage));
-			expect(message.toLowerCase()).toContain('too large');
+			expect(message.toLowerCase()).toContain('attached file');
 			expect(message).not.toContain('Something went wrong');
 		});
 
@@ -92,7 +92,18 @@ describe('getUserFacingErrorMessage', () => {
 		it('describes the attachment generically rather than assuming an image', () => {
 			const message = getUserFacingErrorMessage(new Error(oversizedImage));
 			expect(message).toContain('file');
-			expect(message).not.toMatch(/^One of the attached images/);
+			expect(message).not.toMatch(/attached images/);
+		});
+
+		// The provider's text is usually unreachable at this point, so a removal driven
+		// only by "this turn had attachments and produced nothing" must not invent a cause.
+		it('omits the size hint when the error does not say the file was too large', () => {
+			const message = getUserFacingErrorMessage(new Error('No output generated.'), undefined, {
+				attachmentRemoved: true,
+			});
+			expect(message.toLowerCase()).toContain('left it out');
+			expect(message).not.toContain('7.5 MB');
+			expect(message).not.toContain('8000x8000');
 		});
 
 		it('leaves unrelated provider errors on the generic message', () => {
@@ -111,6 +122,7 @@ describe('getUserFacingErrorMessage', () => {
 				attachmentRemoved: true,
 			});
 			expect(recovered.toLowerCase()).toContain('left it out');
+			expect(recovered).toContain('7.5 MB');
 		});
 
 		it('tells the user to start a new chat when the attachment could not be removed', () => {
