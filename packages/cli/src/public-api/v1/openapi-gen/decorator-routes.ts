@@ -5,8 +5,10 @@ import './zod-extend';
 // resolvePublicApiRoutes()
 import '../controllers';
 
+import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
 import type { ResponseDtoClass } from '@n8n/decorators';
+import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -16,6 +18,9 @@ import {
 	scopeRequirementToString,
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
+
+// Throwaway component name; only used to pull the generated schema back out of the registry
+const REQUEST_BODY_COMPONENT = 'RequestBody';
 
 // Query fields backed by shared hand-written parameter files instead of being generated
 const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
@@ -135,6 +140,24 @@ function buildRequestBody(
 			},
 		},
 	};
+}
+
+/**
+ * The JSON Schema form of a route's `@Body` DTO. Same conversion the committed fragments go
+ * through, run in memory for callers that need the schema without reading a generated file.
+ */
+export function buildRequestBodyJsonSchema(
+	route: ResolvedPublicApiRoute,
+): Record<string, unknown> | undefined {
+	if (!route.requestBodyDto) return undefined;
+
+	const registry = new OpenAPIRegistry();
+	registry.register(REQUEST_BODY_COMPONENT, route.requestBodyDto.schema);
+
+	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
+	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
+
+	return isRecord(schema) ? schema : undefined;
 }
 
 /**

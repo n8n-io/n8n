@@ -48,6 +48,18 @@ beforeEach(() => {
 	_resetCache();
 });
 
+/** Dotted paths of every unresolved `$ref` left in a schema, so a failure names the offender. */
+function findRefPaths(value: unknown, path = 'requestSchema'): string[] {
+	if (Array.isArray(value)) {
+		return value.flatMap((item, i) => findRefPaths(item, `${path}[${i}]`));
+	}
+	if (!isRecord(value)) return [];
+
+	return Object.entries(value).flatMap(([key, child]) =>
+		key === '$ref' ? [path] : findRefPaths(child, `${path}.${key}`),
+	);
+}
+
 describe('buildDiscoverResponse', () => {
 	it('should return resources grouped by tag', async () => {
 		const scopes: ApiKeyScope[] = ['tag:list', 'tag:create', 'workflow:read', 'workflow:list'];
@@ -194,6 +206,19 @@ describe('buildDiscoverResponse', () => {
 		expect(createEndpoint?.requestSchema).toHaveProperty('type');
 	});
 
+	it('should include requestSchema for a decorator route when includeSchemas is true', async () => {
+		const result = await buildDiscoverResponse(['role:manage'] as ApiKeyScope[], {
+			includeSchemas: true,
+		});
+
+		const createEndpoint = result.resources.role?.endpoints.find(
+			(e) => e.operationId === 'createRole',
+		);
+		expect(createEndpoint).toBeDefined();
+		expect(createEndpoint?.requestSchema).toBeDefined();
+		expect(createEndpoint?.requestSchema).toHaveProperty('properties');
+	});
+
 	it('should not include requestSchema on GET endpoints even with includeSchemas', async () => {
 		const result = await buildDiscoverResponse(['tag:list'] as ApiKeyScope[], {
 			includeSchemas: true,
@@ -205,27 +230,19 @@ describe('buildDiscoverResponse', () => {
 	});
 
 	it('should resolve nested $ref in schemas recursively', async () => {
-		const result = await buildDiscoverResponse(['workflow:create'] as ApiKeyScope[], {
+		const result = await buildDiscoverResponse(['eventBusDestination:create'] as ApiKeyScope[], {
 			includeSchemas: true,
 		});
 
-		const createEndpoint = result.resources.workflow?.endpoints.find(
-			(e) => e.operationId === 'createWorkflow',
-		);
-		expect(createEndpoint).toBeDefined();
-		expect(createEndpoint?.requestSchema).toBeDefined();
+		// `destination.yml` is a oneOf over three sibling files, each of which $refs further
+		// files -- so a resolved schema proves refs are followed at every depth, not just the top.
+		const schema = result.resources.logstreaming?.endpoints.find(
+			(e) => e.operationId === 'createDestination',
+		)?.requestSchema;
+		expect(schema).toBeDefined();
 
-		// The workflow schema references nodes via $ref - verify it's resolved inline
-		const properties = createEndpoint?.requestSchema?.properties;
-		expect(properties).toBeDefined();
-		if (isRecord(properties)) {
-			const nodes = properties.nodes;
-			// nodes should be resolved (array of node objects), not a dangling $ref
-			expect(nodes).toBeDefined();
-			if (isRecord(nodes)) {
-				expect(nodes.$ref).toBeUndefined();
-			}
-		}
+		expect(Array.isArray(schema?.oneOf)).toBe(true);
+		expect(findRefPaths(schema)).toEqual([]);
 	});
 });
 
