@@ -33,6 +33,7 @@ import {
 	N8nText,
 	type ResizeData,
 } from '@n8n/design-system';
+import { useStyles } from '@n8n/composables/useStyles';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
@@ -62,6 +63,7 @@ const emit = defineEmits<{
 const ndvStore = injectNDVStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const { APP_Z_INDEXES } = useStyles();
 
 const lastSuccessfulExecution = computed(
 	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
@@ -168,6 +170,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 		:class="$style.modal"
 		:model-value="dialogVisible"
 		:before-close="closeDialog"
+		:z-index="APP_Z_INDEXES.MODALS"
 	>
 		<button :class="$style.close" @click="closeDialog">
 			<Close height="18" width="18" />
