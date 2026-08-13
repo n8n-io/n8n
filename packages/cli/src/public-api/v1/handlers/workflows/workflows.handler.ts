@@ -10,7 +10,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
-import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -60,8 +59,6 @@ type WorkflowHandlers = {
 	unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	deactivateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
-	getWorkflowTags: PublicAPIEndpoint<WorkflowRequest.GetTags>;
-	updateWorkflowTags: PublicAPIEndpoint<WorkflowRequest.UpdateTags>;
 	archiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	unarchiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 };
@@ -299,52 +296,6 @@ const workflowHandlers: WorkflowHandlers = {
 	deactivateWorkflow: [
 		deprecated({ since: new Date('2026-07-23T00:00:00Z') }),
 		...unpublishWorkflow,
-	],
-	getWorkflowTags: [
-		publicApiScope('workflowTags:list'),
-		projectScope('workflow:read', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-
-			if (!areWorkflowTagsEnabled()) {
-				throw new BadRequestError('Workflow Tags Disabled');
-			}
-
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:read'],
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow he does not own
-				// or workflow does not exist
-				throw new NotFoundError('Not Found');
-			}
-
-			const tags = await Container.get(TagService).getAllByWorkflowId(id);
-
-			return res.json(tags);
-		},
-	],
-	updateWorkflowTags: [
-		publicApiScope('workflowTags:update'),
-		projectScope('workflow:update', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const newTags = req.body.map((newTag) => newTag.id);
-
-			if (!areWorkflowTagsEnabled()) {
-				throw new BadRequestError('Workflow Tags Disabled');
-			}
-
-			try {
-				const tags = await Container.get(WorkflowService).updateWorkflowTags(req.user, id, newTags);
-				return res.json(tags);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
 	],
 	archiveWorkflow: [
 		publicApiScope('workflow:delete'),
