@@ -134,9 +134,12 @@ export { GetResourceDependencyCountsDto } from './workflows/get-resource-depende
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
+export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
 	WorkflowPublicDto,
+	WorkflowListPublicDto,
 	workflowPublicSchema,
+	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 } from './workflows/workflow-public.dto';

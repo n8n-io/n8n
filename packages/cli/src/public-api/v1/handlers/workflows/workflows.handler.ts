@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
@@ -7,7 +6,6 @@ import { ResponseError } from '@/errors/response-errors/abstract/response.error'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -17,10 +15,8 @@ import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	projectScope,
-	validCursor,
 	deprecated,
 } from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 const handleError = (error: unknown) => {
 	if (error instanceof FolderNotFoundError) {
@@ -35,18 +31,9 @@ const handleError = (error: unknown) => {
 	throw error;
 };
 
-function parseTagNames(tags: string): string[] {
-	return tags.split(',').map((tag) => tag.trim());
-}
-
-function areWorkflowTagsEnabled(): boolean {
-	return !Container.get(GlobalConfig).tags.disabled;
-}
-
 type WorkflowHandlers = {
 	transferWorkflow: PublicAPIEndpoint<WorkflowRequest.Transfer>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
-	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
 	publishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
@@ -138,53 +125,6 @@ const workflowHandlers: WorkflowHandlers = {
 			} catch {
 				throw new NotFoundError('Version not found');
 			}
-		},
-	],
-	getWorkflows: [
-		publicApiScope('workflow:list'),
-		validCursor,
-		async (req, res) => {
-			const {
-				offset = 0,
-				limit = 100,
-				excludePinnedData = false,
-				active,
-				tags,
-				name,
-				projectId,
-			} = req.query;
-
-			const { workflows, count } = await Container.get(WorkflowFinderService).findWorkflowsForUser(
-				req.user,
-				['workflow:read'],
-				{
-					filters: {
-						name,
-						active,
-						tagNames: tags ? parseTagNames(tags) : undefined,
-						projectId,
-					},
-					offset,
-					limit,
-					includePinnedData: !excludePinnedData,
-					includeTags: areWorkflowTagsEnabled(),
-					includeActiveVersion: true,
-				},
-			);
-
-			Container.get(EventService).emit('user-retrieved-all-workflows', {
-				userId: req.user.id,
-				publicApi: true,
-			});
-
-			return res.json({
-				data: workflows,
-				nextCursor: encodeNextCursor({
-					offset,
-					limit,
-					numberOfTotalRecords: count,
-				}),
-			});
 		},
 	],
 	publishWorkflow,

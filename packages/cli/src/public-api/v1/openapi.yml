@@ -115,8 +115,6 @@ paths:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
-  /workflows:
-    $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
   /workflows/{id}/activate:
