@@ -44,7 +44,7 @@ vi.mock('@/utils/ai-proxy-fetch', () => ({
 	createAiProxyFetch: vi.fn(() => modelFetch),
 }));
 
-import { createProxyLanguageModel, isMoonshotaiKimiK3ProxyModel } from '../ai-proxy-language-model';
+import { createProxyLanguageModel } from '../ai-proxy-language-model';
 
 describe('createProxyLanguageModel', () => {
 	const outboundHttp = mock<OutboundHttp>();
@@ -144,34 +144,5 @@ describe('createProxyLanguageModel', () => {
 		expect(headers.get('Authorization')).toBe('Bearer tok');
 		expect(headers.get(X_N8N_FEATURE_HEADER)).toBe('instance-ai');
 		expect(headers.get('x-n8n-version')).toBe('1.2.3');
-	});
-});
-
-describe('isMoonshotaiKimiK3ProxyModel', () => {
-	it('matches the exact string id and LanguageModel shape', () => {
-		expect(isMoonshotaiKimiK3ProxyModel(MOONSHOTAI_KIMI_K3_MODEL_ID)).toBe(true);
-		expect(
-			isMoonshotaiKimiK3ProxyModel({
-				provider: 'moonshotai',
-				modelId: 'kimi-k3',
-			} as never),
-		).toBe(true);
-		expect(
-			isMoonshotaiKimiK3ProxyModel({
-				provider: 'moonshotai.chat',
-				modelId: 'kimi-k3',
-			} as never),
-		).toBe(true);
-	});
-
-	it('rejects near-misses', () => {
-		expect(isMoonshotaiKimiK3ProxyModel('moonshotai/kimi-k2')).toBe(false);
-		expect(isMoonshotaiKimiK3ProxyModel('anthropic/claude-opus-5')).toBe(false);
-		expect(
-			isMoonshotaiKimiK3ProxyModel({
-				provider: 'anthropic.messages',
-				modelId: 'claude-sonnet-4-6',
-			} as never),
-		).toBe(false);
 	});
 });

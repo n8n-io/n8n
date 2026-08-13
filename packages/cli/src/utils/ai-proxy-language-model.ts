@@ -1,4 +1,3 @@
-import type { ModelConfig } from '@n8n/agents';
 import {
 	MOONSHOTAI_KIMI_K3_MODEL_NAME,
 	MOONSHOTAI_KIMI_K3_PROVIDER,
@@ -67,24 +66,4 @@ export async function createProxyLanguageModel(
 		apiKey: 'proxy-managed',
 		fetch,
 	})(modelName);
-}
-
-export function isMoonshotaiKimiK3ProxyModel(model: ModelConfig): boolean {
-	if (typeof model === 'string') {
-		return isMoonshotaiKimiK3ModelId(model);
-	}
-	if (typeof model !== 'object' || model === null) {
-		return false;
-	}
-	if ('id' in model && typeof model.id === 'string') {
-		return isMoonshotaiKimiK3ModelId(model.id);
-	}
-	if ('modelId' in model && typeof model.modelId === 'string') {
-		const rawProvider = 'provider' in model ? String(model.provider) : '';
-		const provider = rawProvider.split('.')[0];
-		return (
-			provider === MOONSHOTAI_KIMI_K3_PROVIDER && model.modelId === MOONSHOTAI_KIMI_K3_MODEL_NAME
-		);
-	}
-	return false;
 }

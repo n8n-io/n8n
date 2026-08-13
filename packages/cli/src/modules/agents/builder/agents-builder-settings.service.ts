@@ -20,6 +20,7 @@ import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import type { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createProxyLanguageModel } from '@/utils/ai-proxy-language-model';
@@ -90,6 +91,7 @@ export class AgentsBuilderSettingsService {
 		private readonly logger: Logger,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly aiService: AiService,
+		private readonly instanceAiSettingsService: InstanceAiSettingsService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly outboundHttp: OutboundHttp,
@@ -226,8 +228,10 @@ export class AgentsBuilderSettingsService {
 	private async resolveProxyModel(user: User): Promise<ResolvedBuilderModelConfig> {
 		const client = await this.aiService.getClient();
 		const proxyBaseUrl = client.getApiProxyBaseUrl().replace(/\/$/, '');
-		const envModel = process.env.N8N_INSTANCE_AI_MODEL?.trim() ?? '';
-		const modelId = isMoonshotaiKimiK3ModelId(envModel) ? envModel : AGENT_BUILDER_DEFAULT_MODEL;
+		const configuredModelId = this.instanceAiSettingsService.getConfiguredModelId();
+		const modelId = isMoonshotaiKimiK3ModelId(configuredModelId)
+			? configuredModelId
+			: AGENT_BUILDER_DEFAULT_MODEL;
 
 		const tokenManager = new ProxyTokenManager(async () => {
 			return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });

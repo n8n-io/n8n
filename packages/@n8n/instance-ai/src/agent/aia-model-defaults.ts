@@ -20,6 +20,7 @@ export function resolveAIAPromptCaching(model: ModelConfig): PromptCachingConfig
 
 export function resolveAIAReasoning(model: ModelConfig): ReasoningLevel {
 	const modelId = resolveModelIdString(model) ?? '';
+	// Substring map (e.g. custom/Kimi-K3) — not the exact-match proxy gate in api-types.
 	const { reasoningEffort } = resolveCustomModelExperimentDefaults(modelId);
 	if (reasoningEffort === 'low' || reasoningEffort === 'medium' || reasoningEffort === 'high') {
 		return reasoningEffort;
