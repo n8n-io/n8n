@@ -1,0 +1,96 @@
+packages/frontend/editor-ui/src/app/components/common/SelectedItemsInfo.vue
+  s_cc66a8938518ff::t_8a35c0b2e2d1c7 59-61
+  s_cc66a8938518ff::t_432205d683ccfa 57,62-66
+packages/frontend/editor-ui/src/features/workflows/bulkActions/bulkActions.types.ts
+  s_cc66a8938518ff::t_ae07bc231ebba7 2-6,22-24
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.test.ts
+  s_cc66a8938518ff::t_ff632aeb1b37c3 147,149-160
+  s_cc66a8938518ff::t_0f60ad2eae2cd1 148
+packages/frontend/editor-ui/src/app/composables/useResourcesListSelection.ts
+  s_cc66a8938518ff::t_432205d683ccfa 10-13,22-24,40-42,45,51,54,62,65-75,79-80,90-95,98-100,116,118
+  s_cc66a8938518ff::t_8a35c0b2e2d1c7 46-48
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.test.ts
+  s_cc66a8938518ff::t_75b57fa451628e 182-183,185,200-201,203,226-227,229
+  s_cc66a8938518ff::t_483c0d805dbf18 160-181,184,186-199,202,204-207,221-225,228,230-237
+  s_cc66a8938518ff::t_3fed11ac752c45 208-220
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_cc66a8938518ff::t_432205d683ccfa 128,700
+packages/frontend/editor-ui/src/features/credentials/bulkActions/useBulkCredentialActions.ts
+  s_cc66a8938518ff::t_8a35c0b2e2d1c7 60-65,72-74,90
+  s_cc66a8938518ff::t_3c790e210e6ec4 78,89,91
+  s_cc66a8938518ff::t_1196856bf85ff3 8,79-88,92
+  s_cc66a8938518ff::t_c2c64894ed34cb 32-38
+  s_cc66a8938518ff::t_109183e505f475 1-7,9-31,39-59,66-71,75-77,93-163
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_cc66a8938518ff::t_504fa40bb63c86 29,43,51-53,58-60,243-264,361-374
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_cc66a8938518ff::t_497d465ab097cd 1185-1206,1211-1212
+  s_cc66a8938518ff::t_88cc5d64a7c4b3 1207-1210
+packages/frontend/editor-ui/src/app/composables/useResourcesListSelection.test.ts
+  s_cc66a8938518ff::t_ff632aeb1b37c3 1-63
+packages/frontend/editor-ui/src/features/credentials/bulkActions/useBulkCredentialActions.test.ts
+  s_cc66a8938518ff::t_05007030f5fcdf 1-6,8-73,75-138,146-167,211-212
+  s_cc66a8938518ff::t_1196856bf85ff3 7,168-173,182-184,187-210
+  s_cc66a8938518ff::t_0f60ad2eae2cd1 174-181,185-186
+  s_cc66a8938518ff::t_8a35c0b2e2d1c7 74,139-145
+packages/frontend/editor-ui/src/features/workflows/bulkActions/BulkActionReviewDialog.vue
+  s_cc66a8938518ff::t_8a35c0b2e2d1c7 156-165,170-182,184-188,190-192
+  s_cc66a8938518ff::t_9f28f9a73ddcfb 4,6,81-94,134,136-146,148,150-155,166,168-169,195
+packages/frontend/editor-ui/src/features/credentials/bulkActions/bulkCredentialActions.api.ts
+  s_cc66a8938518ff::t_ae07bc231ebba7 32,37
+  s_cc66a8938518ff::t_109183e505f475 1-31,33-36,38-39
+packages/frontend/editor-ui/src/features/credentials/bulkActions/BulkCredentialActionReviewDialog.vue
+  s_cc66a8938518ff::t_504fa40bb63c86 1-8,11-67,70-137
+  s_cc66a8938518ff::t_8a35c0b2e2d1c7 9
+  s_cc66a8938518ff::t_1196856bf85ff3 10,68-69
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.vue
+  s_cc66a8938518ff::t_9e9b7c5e6e20ef 274,339,376
+  s_cc66a8938518ff::t_81129ceb857137 184-186,193,196-197,199-234,237-256
+  s_cc66a8938518ff::t_1460b7aafadbc6 3-4,8,14,38-44,69,72-74
+  s_cc66a8938518ff::t_da2b2da78ad861 112,428,440-457,465-467,470,554-585,594-597
+  s_cc66a8938518ff::t_0fd6371a8b5e47 82,132-140,142-154
+  s_cc66a8938518ff::t_88cc5d64a7c4b3 235-236
+  s_cc66a8938518ff::t_9b8ff2f5969ec7 45,194-195,198
+  s_cc66a8938518ff::t_94c34fd9333205 373
+  s_cc66a8938518ff::t_e321e3b2c2c251 141
+packages/frontend/editor-ui/src/features/credentials/bulkActions/bulkCredentialActions.types.ts
+  s_cc66a8938518ff::t_109183e505f475 1,6-10,20-35
+  s_cc66a8938518ff::t_ae07bc231ebba7 2-5,11-19
+packages/frontend/editor-ui/src/features/credentials/bulkActions/bulkCredentialActions.api.test.ts
+  s_cc66a8938518ff::t_05007030f5fcdf 1-63,78,80-82
+  s_cc66a8938518ff::t_c89f96d7973129 64-77,79
+packages/frontend/editor-ui/src/features/credentials/bulkActions/BulkCredentialActionReviewDialog.test.ts
+  s_cc66a8938518ff::t_8a35c0b2e2d1c7 38,92
+  s_cc66a8938518ff::t_75b57fa451628e 3-17
+  s_cc66a8938518ff::t_23b087e140d8b8 1-2,18-37,39-91,93-99,139
+  s_cc66a8938518ff::t_3fed11ac752c45 100-136,138
+  s_cc66a8938518ff::t_c53ea9c4804a0f 137
+packages/frontend/editor-ui/src/app/components/common/SelectedItemsInfo.test.ts
+  s_cc66a8938518ff::t_ff632aeb1b37c3 61-79
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.test.ts
+  s_cc66a8938518ff::t_30861dc92b68e5 177-209
+packages/frontend/editor-ui/src/app/components/common/BulkActionReviewDialogShell.vue
+  s_cc66a8938518ff::t_9f28f9a73ddcfb 3,52,131
+  s_cc66a8938518ff::t_b4843a708781ca 1-2,4-51,53-130,132-176
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_cc66a8938518ff::t_fd796e20d3f9f7 97
+packages/frontend/editor-ui/src/app/types/bulkActions.types.ts
+  s_cc66a8938518ff::t_c53ea9c4804a0f 1
+  s_cc66a8938518ff::t_ae07bc231ebba7 2-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cf118209283826193bc514910910b62e81e45700",
+  "prompts": {},
+  "sessions": {
+    "s_cc66a8938518ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff58c-acf9-7cb3-825e-48bc18963b17",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

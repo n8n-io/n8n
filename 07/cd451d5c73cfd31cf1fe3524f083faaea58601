@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsNlFilter.vue
+  s_03d816ea3ae9c9::t_c8ab77f62a5a13 113-116
+  s_03d816ea3ae9c9::t_537380f09e4e07 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "07cd451d5c73cfd31cf1fe3524f083faaea58601",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
