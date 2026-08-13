@@ -2755,6 +2755,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
+      playwright-core:
+        specifier: 'catalog:'
+        version: 1.60.0
       tsx:
         specifier: 'catalog:'
         version: 4.19.3

@@ -300,6 +300,44 @@ describe('McpConnection - tool call settled callback', () => {
 
 		expect(onToolCallSettled).toHaveBeenCalledWith({ toolName: 'echo', success: false });
 	});
+
+	it('passes resetTimeoutOnProgress: true to the SDK client so stalled calls die at the idle deadline', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+		});
+		await conn.connect();
+		clientCallTool.mockResolvedValueOnce({ content: [] });
+
+		await conn.callTool('echo', { message: 'ok' });
+
+		expect(clientCallTool).toHaveBeenCalledTimes(1);
+		const callArgs = clientCallTool.mock.calls[0];
+		// callTool(request, resultSchema, options)
+		const options = callArgs[2] as { resetTimeoutOnProgress?: boolean };
+		expect(options.resetTimeoutOnProgress).toBe(true);
+	});
+
+	it('forwards abortSignal alongside resetTimeoutOnProgress when provided', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+		});
+		await conn.connect();
+		clientCallTool.mockResolvedValueOnce({ content: [] });
+
+		const controller = new AbortController();
+		await conn.callTool('echo', { message: 'ok' }, { abortSignal: controller.signal });
+
+		const options = clientCallTool.mock.calls[0][2] as {
+			signal?: AbortSignal;
+			resetTimeoutOnProgress?: boolean;
+		};
+		expect(options.signal).toBe(controller.signal);
+		expect(options.resetTimeoutOnProgress).toBe(true);
+	});
 });
 
 describe('McpConnection — tool filtering', () => {
