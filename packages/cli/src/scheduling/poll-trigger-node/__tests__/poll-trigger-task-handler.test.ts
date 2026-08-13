@@ -143,6 +143,7 @@ describe('PollTriggerTaskHandler', () => {
 			expect(triggerExecutionContextFactory.createPollExecutionContext).toHaveBeenCalledWith(
 				buildWorkflowData(),
 				triggerNode,
+				{ taskId: 'task-1', leaseEpoch: 1 },
 			);
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
 				workflow,
