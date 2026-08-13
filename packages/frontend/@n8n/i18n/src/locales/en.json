@@ -4373,6 +4373,7 @@
 	"canvas.nodeGroup.titlePlaceholder": "Group name",
 	"canvas.nodeGroup.expand": "Expand",
 	"canvas.nodeGroup.collapse": "Collapse",
+	"canvas.nodeGroup.addToChat": "Add group to chat",
 	"canvas.nodeGroup.prompt.renameGroup": "Rename group",
 	"canvas.nodeGroup.duplicateName": "A group with this name already exists",
 	"canvas.nodeGroup.renameBlocked.title": "Group not renamed",

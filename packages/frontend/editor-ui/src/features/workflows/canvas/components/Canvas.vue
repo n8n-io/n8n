@@ -950,6 +950,12 @@ function onCanvasGroupExtract(groupId: string) {
 	emit('extract-workflow', [...group.nodeIds]);
 }
 
+function onCanvasGroupAddNodesToChat(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	void onAddNodesToChat([...group.nodeIds]);
+}
+
 // Expand or collapse groups through the same path as the single toggle so
 // selection sync, push layout and telemetry stay consistent. Groups already
 // in the target state are left alone.
@@ -1864,6 +1870,7 @@ defineExpose({
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
 				@extract="onCanvasGroupExtract"
+				@add-nodes-to-chat="onCanvasGroupAddNodesToChat"
 				@open:contextmenu="onOpenGroupContextMenu"
 			/>
 		</template>
