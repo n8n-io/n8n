@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, reactive, ref, type PropType } from 'vue';
+import { defineComponent, h, inject, reactive, ref, type PropType, type Ref } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -17,13 +18,16 @@ import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPre
 import type {
 	FrontendModuleSettings,
 	InstanceAiAgentNode,
+	InstanceAiHandoffContext,
 	InstanceAiMessage,
 } from '@n8n/api-types';
 import {
 	getPendingAgentAttachment,
 	stashPendingAgentAttachment,
+	stashPendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
+import { handoffContextKey } from '../instanceAi.handoffContext';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
@@ -39,8 +43,15 @@ const planEditSubmitState = vi.hoisted(() => ({
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 const routerPushSpy = vi.hoisted(() => vi.fn());
+const showMessageSpy = vi.hoisted(() => vi.fn());
+const showErrorSpy = vi.hoisted(() => vi.fn());
+const FIX_WITH_ASSISTANT_DRAFT = 'Investigate the tool errors in this agent run and fix the agent';
 const localStorageState = vi.hoisted(() => ({
 	store: new Map<string, string>(),
+}));
+const inputState = vi.hoisted(() => ({
+	initialDraft: '',
+	hasAttachments: false,
 }));
 
 Object.defineProperty(globalThis, 'localStorage', {
@@ -64,7 +75,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
+	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
 }));
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
@@ -131,6 +142,7 @@ vi.mock('@vueuse/core', async (importOriginal) => ({
 }));
 
 const inputFocusSpy = vi.fn();
+const inputSetTextSpy = vi.fn();
 const mockSidebarCollapsed = ref(false);
 
 const InstanceAiInputStub = defineComponent({
@@ -144,7 +156,17 @@ const InstanceAiInputStub = defineComponent({
 	},
 	emits: ['submit', 'cancel-plan-edit', 'dismiss-context-chip'],
 	setup(props, { emit, expose }) {
-		expose({ focus: inputFocusSpy });
+		const inputDraft = ref(inputState.initialDraft);
+		const hasAttachments = ref(inputState.hasAttachments);
+		const setText = (text: string) => {
+			inputDraft.value = text;
+			inputSetTextSpy(text);
+		};
+		const clearTextIfMatches = (text: string) => {
+			if (inputDraft.value === text) setText('');
+		};
+		const isDirty = () => inputDraft.value.trim().length > 0 || hasAttachments.value;
+		expose({ focus: inputFocusSpy, setText, clearTextIfMatches, isDirty });
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
@@ -168,16 +190,52 @@ const InstanceAiInputStub = defineComponent({
 					{ 'data-test-id': 'instance-ai-input-context-chip-icon' },
 					props.contextChip?.icon ?? '',
 				),
+				h('span', { 'data-test-id': 'instance-ai-input-draft' }, inputDraft.value),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-attachments' },
+					hasAttachments.value ? 'attached' : '',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-edit-draft',
+						onClick: () => setText('Edited user draft'),
+					},
+					'Edit draft',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-add-attachment',
+						onClick: () => {
+							hasAttachments.value = true;
+						},
+					},
+					'Add attachment',
+				),
 				h(
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-submit',
-						onClick: () =>
-							emit(
-								'submit',
-								props.isPlanEditMode ? planEditSubmitState.message : 'Normal message',
-								undefined,
-							),
+						onClick: () => {
+							const message = props.isPlanEditMode
+								? planEditSubmitState.message
+								: inputDraft.value || 'Normal message';
+							const submittedHasAttachments = hasAttachments.value;
+							if (submittedHasAttachments) {
+								emit('submit', message, undefined, () => {
+									if (isDirty()) return false;
+									setText(message);
+									hasAttachments.value = submittedHasAttachments;
+									return true;
+								});
+							} else {
+								emit('submit', message, undefined);
+							}
+							inputDraft.value = '';
+							hasAttachments.value = false;
+						},
 					},
 					'Submit',
 				),
@@ -224,8 +282,9 @@ const InstanceAiAgentPreviewStub = defineComponent({
 	props: {
 		agentId: { type: String, required: true },
 		projectId: { type: String, required: true },
+		previewSessionId: { type: String, required: false },
 	},
-	emits: ['preview-open-change'],
+	emits: ['preview-open-change', 'assistant-handoff'],
 	setup(props, { emit }) {
 		return () =>
 			h(
@@ -234,6 +293,7 @@ const InstanceAiAgentPreviewStub = defineComponent({
 					'data-test-id': 'instance-ai-agent-preview-stub',
 					'data-agent-id': props.agentId,
 					'data-project-id': props.projectId,
+					'data-preview-session-id': props.previewSessionId,
 				},
 				[
 					h(
@@ -251,6 +311,21 @@ const InstanceAiAgentPreviewStub = defineComponent({
 							onClick: () => emit('preview-open-change', false),
 						},
 						'Close preview dock',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-preview-fix-with-assistant',
+							onClick: () =>
+								emit('assistant-handoff', {
+									projectId: props.projectId,
+									agentId: props.agentId,
+									threadId: 'preview-session-1',
+									executionId: 'execution-1',
+									initialDraft: 'Fix the failed tool calls',
+								}),
+						},
+						'Fix with Assistant',
 					),
 				],
 			);
@@ -285,6 +360,33 @@ const AgentSectionStub = defineComponent({
 	},
 });
 
+const InstanceAiArtifactsPanelStub = defineComponent({
+	name: 'InstanceAiArtifactsPanelStub',
+	setup() {
+		const pendingComposerContext = inject<
+			Readonly<Ref<InstanceAiHandoffContext | null>> | undefined
+		>('pendingComposerContext', undefined);
+		const dismissPendingComposerContext = inject<((key: string) => boolean) | undefined>(
+			'dismissPendingComposerContext',
+			undefined,
+		);
+
+		return () =>
+			h(
+				'button',
+				{
+					'data-test-id': 'instance-ai-artifacts-dismiss-pending-context',
+					disabled: !pendingComposerContext?.value,
+					onClick: () => {
+						const context = pendingComposerContext?.value;
+						if (context) dismissPendingComposerContext?.(handoffContextKey(context));
+					},
+				},
+				'Dismiss pending context',
+			);
+	},
+});
+
 const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
 		provide: {
@@ -297,7 +399,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 			AgentSection: AgentSectionStub,
 			InstanceAiDataTablePreview: { template: '<div data-test-id="data-table-preview-stub" />' },
-			InstanceAiArtifactsPanel: { template: '<div data-test-id="artifacts-panel-stub" />' },
+			InstanceAiArtifactsPanel: InstanceAiArtifactsPanelStub,
 		},
 	},
 });
@@ -444,11 +546,16 @@ describe('InstanceAiThreadView', () => {
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
 		inputFocusSpy.mockClear();
+		inputSetTextSpy.mockClear();
+		showMessageSpy.mockClear();
+		showErrorSpy.mockClear();
 		telemetryTrackSpy.mockClear();
 		routerPushSpy.mockClear();
 		planEditSubmitState.message = 'Make the plan simpler';
 		mockRouteState.params = { threadId: 'thread-1' };
 		localStorageState.store.clear();
+		inputState.initialDraft = '';
+		inputState.hasAttachments = false;
 		mockSidebarCollapsed.value = false;
 		testAgentOfferState.evalsFlagEnabled = false;
 		testAgentOfferState.capabilitySummary = null;
@@ -502,6 +609,196 @@ describe('InstanceAiThreadView', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
 	});
+
+	it('restores the canonical agent preview session when view metadata is unavailable', async () => {
+		store.threads = [
+			{
+				...store.threads[0],
+				metadata: {
+					instanceAiAgentBuilderTarget: {
+						agentId: 'agent-1',
+						projectId: 'proj-1',
+						name: 'SEO Auditor',
+					},
+					instanceAiAgentPreviewSession: {
+						agentId: 'agent-1',
+						threadId: 'canonical-preview-session',
+						executionId: 'execution-1',
+					},
+				},
+			},
+		] as typeof store.threads;
+
+		const { getByTestId } = await renderAgentArtifact();
+
+		expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+			'data-preview-session-id',
+			'canonical-preview-session',
+		);
+	});
+
+	it('stages an agent preview handoff in the current Assistant thread', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockImplementationOnce(async (threadId, metadata) => {
+			const summary = store.threads.find(({ id }) => id === threadId);
+			if (summary) summary.metadata = { ...summary.metadata, ...metadata };
+		});
+		vi.mocked(thread.sendMessage).mockClear();
+		routerPushSpy.mockClear();
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('SEO Auditor session');
+		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool calls');
+		expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(true);
+		expect(localStorageState.store.get('n8n-instance-ai-composer-draft:thread-1')).toBe(
+			'Fix the failed tool calls',
+		);
+		expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+			'data-preview-session-id',
+			'preview-session-1',
+		);
+		expect(routerPushSpy).not.toHaveBeenCalled();
+
+		await user.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Fix the failed tool calls',
+			undefined,
+			expect.any(String),
+			{
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'preview-session-1',
+				executionId: 'execution-1',
+			},
+		);
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+				'data-preview-session-id',
+				'preview-session-1',
+			);
+		});
+	});
+
+	it('restores an edited fix draft and its attachments when sending fails', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+		vi.mocked(thread.sendMessage).mockResolvedValueOnce(false);
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+		await user.click(getByTestId('instance-ai-input-edit-draft'));
+		await user.click(getByTestId('instance-ai-input-add-attachment'));
+		await user.click(getByTestId('instance-ai-input-submit'));
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Edited user draft');
+			expect(getByTestId('instance-ai-input-attachments')).toHaveTextContent('attached');
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
+				'SEO Auditor session',
+			);
+		});
+	});
+
+	it('does not overwrite a new draft when an earlier send fails', async () => {
+		const send = Promise.withResolvers<boolean>();
+		const { getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+		vi.mocked(thread.sendMessage).mockReturnValueOnce(send.promise);
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+		await user.click(getByTestId('instance-ai-input-add-attachment'));
+		await user.click(getByTestId('instance-ai-input-submit'));
+		await user.click(getByTestId('instance-ai-input-edit-draft'));
+		send.resolve(false);
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Edited user draft');
+			expect(getByTestId('instance-ai-input-attachments')).toBeEmptyDOMElement();
+		});
+	});
+
+	it('clears the generated draft when pending context is dismissed from the artifacts panel', async () => {
+		const { findByTestId, getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
+				'SEO Auditor session',
+			);
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool calls');
+		});
+
+		await user.click(getByTestId('instance-ai-artifacts-preview-toggle'));
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+		await user.click(await findByTestId('instance-ai-artifacts-dismiss-pending-context'));
+
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('');
+		expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
+		expect(localStorageState.store.has('n8n-instance-ai-composer-draft:thread-1')).toBe(false);
+	});
+
+	it('preserves edited text and attachments when artifacts-panel context is dismissed', async () => {
+		const { findByTestId, getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool calls');
+		});
+		await user.click(getByTestId('instance-ai-input-edit-draft'));
+		await user.click(getByTestId('instance-ai-input-add-attachment'));
+		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Edited user draft');
+		expect(getByTestId('instance-ai-input-attachments')).toHaveTextContent('attached');
+
+		await user.click(getByTestId('instance-ai-artifacts-preview-toggle'));
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+		await user.click(await findByTestId('instance-ai-artifacts-dismiss-pending-context'));
+
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Edited user draft');
+		expect(getByTestId('instance-ai-input-attachments')).toHaveTextContent('attached');
+		expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
+		expect(localStorageState.store.has('n8n-instance-ai-composer-draft:thread-1')).toBe(false);
+	});
+
+	it('keeps the in-place handoff when preview view metadata cannot be saved', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		const error = new Error('Save failed');
+		store.updateThreadMetadata.mockRejectedValueOnce(error);
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('SEO Auditor session');
+		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool calls');
+		await vi.waitFor(() => {
+			expect(showErrorSpy).toHaveBeenCalledWith(error, 'Something went wrong');
+		});
+	});
+
+	it.each([
+		{ label: 'typed text', initialDraft: 'Keep my existing draft', hasAttachments: false },
+		{ label: 'attachments', initialDraft: '', hasAttachments: true },
+	])(
+		'keeps existing composer $label instead of replacing it',
+		async ({ initialDraft, hasAttachments }) => {
+			inputState.initialDraft = initialDraft;
+			inputState.hasAttachments = hasAttachments;
+			const { getByTestId, user } = await renderAgentArtifact();
+
+			await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+
+			expect(showMessageSpy).toHaveBeenCalledWith({
+				title: 'Finish your current message',
+				message: 'Send or clear it before sending this session to the Assistant',
+				type: 'warning',
+			});
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent(initialDraft);
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+		},
+	);
 
 	describe('browser tab title', () => {
 		it('names the tab after the thread it opens', () => {
@@ -579,17 +876,41 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('shows a pending preview-context chip and attaches it on the first submit', async () => {
+	it('prefills a fix draft and attaches its pending preview context on the first submit', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+		store.threads = [
+			{
+				...store.threads[0],
+				metadata: {
+					instanceAiAgentBuilderTarget: {
+						agentId: 'agent-1',
+						projectId: 'proj-1',
+						name: 'SEO Auditor',
+					},
+					instanceAiAgentPreviewView: {
+						agentId: 'agent-1',
+						threadId: 'preview-thread-1',
+					},
+				},
+			},
+		] as typeof store.threads;
 		localStorageState.store.set(
 			'n8n-instance-ai-handoff-context:thread-1',
 			JSON.stringify({
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
+				executionId: 'exec-1',
 			}),
 		);
+		stashPendingComposerDraft('thread-1', FIX_WITH_ASSISTANT_DRAFT);
+		stashPendingAgentAttachment('thread-1', {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'proj-1',
+			name: 'SEO Auditor',
+		});
 		thread.producedArtifacts = new Map([
 			[
 				'agent-1',
@@ -602,29 +923,86 @@ describe('InstanceAiThreadView', () => {
 			],
 		]) as typeof thread.producedArtifacts;
 
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
 				'SEO Auditor session',
 			);
 		});
+		expect(await findByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+			'data-preview-session-id',
+			'preview-thread-1',
+		);
+		expect(inputSetTextSpy).toHaveBeenCalledWith(FIX_WITH_ASSISTANT_DRAFT);
+		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent(FIX_WITH_ASSISTANT_DRAFT);
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
 		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
+			FIX_WITH_ASSISTANT_DRAFT,
+			[
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'SEO Auditor',
+				},
+			],
 			expect.any(String),
 			{
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
+				executionId: 'exec-1',
 			},
 		);
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+				'data-preview-session-id',
+				'preview-thread-1',
+			);
 		});
+	});
+
+	it('prefills pending composer state before the thread list finishes loading', async () => {
+		store.threads = [];
+		let resolveThreadList!: (loaded: boolean) => void;
+		store.loadThreads.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveThreadList = resolve;
+				}),
+		);
+		localStorageState.store.set(
+			'n8n-instance-ai-handoff-context:thread-1',
+			JSON.stringify({
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'preview-thread-1',
+			}),
+		);
+		stashPendingComposerDraft('thread-1', 'Fix the failed tool');
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(store.loadThreads).toHaveBeenCalledWith();
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Preview session');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool');
+		});
+
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Test thread',
+				createdAt: '2026-04-01T00:00:00.000Z',
+				updatedAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof store.threads;
+		resolveThreadList(true);
+		await flushPromises();
 	});
 
 	it('applies pending preview context before message hydration finishes', async () => {
@@ -664,7 +1042,7 @@ describe('InstanceAiThreadView', () => {
 			);
 		});
 		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
-		expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
+		expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(true);
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
@@ -678,6 +1056,9 @@ describe('InstanceAiThreadView', () => {
 				threadId: 'preview-thread-1',
 			},
 		);
+		await vi.waitFor(() => {
+			expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
+		});
 
 		resolveHydration('skipped');
 		await vi.waitFor(() => {
@@ -733,6 +1114,8 @@ describe('InstanceAiThreadView', () => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
 				'SEO Auditor session',
 			);
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Normal message');
+			expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(true);
 		});
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
@@ -750,6 +1133,7 @@ describe('InstanceAiThreadView', () => {
 		);
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
 		});
 	});
 
@@ -945,16 +1329,19 @@ describe('InstanceAiThreadView', () => {
 				threadId: 'preview-thread-1',
 			}),
 		);
+		stashPendingComposerDraft('thread-1', 'Fix the failed tool');
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Preview session');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool');
 		});
 
 		await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('');
 		});
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
