@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { isBrowserUseSupportedForBrowser } from '@/experiments/instanceAiBrowserUse';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
 
@@ -22,6 +23,7 @@ const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
 
+const isBrowserSupported = isBrowserUseSupportedForBrowser();
 const isConnected = computed(() => store.browserConnected);
 const connectUrl = ref<string | null>(null);
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
@@ -47,7 +49,8 @@ async function refreshConnectUrl(): Promise<void> {
 }
 
 onMounted(() => {
-	telemetry.trackModalOpened();
+	telemetry.trackModalOpened(isBrowserSupported);
+	if (!isBrowserSupported) return;
 	void store.fetchBrowserStatus();
 	if (!store.browserConnected) {
 		void refreshConnectUrl();
@@ -68,7 +71,15 @@ onBeforeUnmount(() => {
 			</N8nHeading>
 		</div>
 
-		<template v-if="isConnected">
+		<N8nCallout
+			v-if="!isBrowserSupported"
+			theme="warning"
+			data-test-id="browser-use-unsupported-browser"
+		>
+			{{ i18n.baseText('instanceAi.browserUse.unsupportedBrowser') }}
+		</N8nCallout>
+
+		<template v-else-if="isConnected">
 			<div :class="$style.statusRow">
 				<span :class="[$style.statusDot, $style.statusDotConnected]" />
 				<N8nText size="small" :bold="true">
