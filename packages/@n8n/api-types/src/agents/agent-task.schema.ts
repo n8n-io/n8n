@@ -4,6 +4,22 @@ export const AGENT_TASK_NAME_MAX_LENGTH = 128;
 export const AGENT_TASK_ID_MAX_LENGTH = 32;
 export const AGENT_TASK_OBJECTIVE_MAX_LENGTH = 10_000;
 export const AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH = 128;
+/** Longest IANA zone name is well under this ("America/Argentina/ComodRivadavia"). */
+export const AGENT_TASK_TIMEZONE_MAX_LENGTH = 64;
+
+/**
+ * Whether the runtime can resolve the name as a timezone. Uses `Intl` so the
+ * same rule applies in the browser and on the server without pulling a
+ * timezone database into this package.
+ */
+export function isValidTimezone(timezone: string): boolean {
+	try {
+		new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+		return true;
+	} catch {
+		return false;
+	}
+}
 
 /**
  * Persisted, user-editable body of a task. Membership + enabled state live in
@@ -18,6 +34,15 @@ export const agentTaskSchema = z.object({
 		.min(1)
 		.max(AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH)
 		.describe('Standard five-field cron expression, for example "0 9 * * *"'),
+	timezone: z
+		.string()
+		.min(1)
+		.max(AGENT_TASK_TIMEZONE_MAX_LENGTH)
+		.refine(isValidTimezone, { message: 'Unknown timezone' })
+		.describe(
+			'IANA timezone the cron is evaluated in, for example "Europe/London". Omit to use the instance timezone.',
+		)
+		.nullish(),
 });
 
 export type AgentTaskConfig = z.infer<typeof agentTaskSchema>;
