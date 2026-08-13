@@ -128,7 +128,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 			<N8nIconButton
 				icon="panel-right"
 				variant="ghost"
-				size="medium"
+				size="small"
+				icon-size="large"
 				:aria-label="previewToggleLabel"
 				:aria-pressed="true"
 				data-test-id="instance-ai-artifacts-preview-toggle"
@@ -139,7 +140,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 			<N8nIconButton
 				:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
 				variant="ghost"
-				size="medium"
+				size="small"
+				icon-size="large"
 				:disabled="isExpandDisabled"
 				:aria-label="sizeToggleLabel"
 				data-test-id="instance-ai-preview-expand-toggle"
@@ -201,11 +203,11 @@ async function handleCopyLink(tab: ArtifactTab) {
 
 .header {
 	flex-shrink: 0;
-	height: 44px;
+	height: var(--height--2xl);
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--3xs) 0 var(--spacing--4xs);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
 	border-bottom: var(--border);
 }
 
@@ -217,6 +219,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	overflow-x: auto;
 	scrollbar-width: none;
 	position: relative;
+	height: var(--height--2xl);
 
 	// Scroll-driven right edge fade only where supported.
 	@supports (animation-timeline: scroll()) {

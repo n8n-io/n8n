@@ -13,14 +13,18 @@ import {
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import {
-	N8nHeading,
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nScrollArea,
 	N8nText,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
+	useDropdownSearch,
 } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -31,6 +35,7 @@ import type {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { getRelativeDate } from '@/features/ai/chatHub/chat.utils';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
@@ -47,7 +52,7 @@ import {
 	getPendingAgentAttachment,
 } from './composables/useInstanceAiHandoff';
 import { useTransitionGate } from './useTransitionGate';
-import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import {
 	agentPreviewContextIcon,
 	formatAgentPreviewContextLabel,
@@ -246,6 +251,53 @@ const currentThreadTitle = computed<string | undefined>(() => {
 	return undefined;
 });
 
+const threadDateGroupLabels: Record<string, string> = {
+	Today: i18n.baseText('userActivity.today'),
+	Yesterday: i18n.baseText('userActivity.yesterday'),
+	'This week': i18n.baseText('instanceAi.sidebar.group.thisWeek'),
+	Older: i18n.baseText('instanceAi.sidebar.group.older'),
+};
+const threadDateGroupOrder = ['Today', 'Yesterday', 'This week', 'Older'] as const;
+
+const threadDropdownItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	const now = new Date();
+	const groups = new Map<string, typeof store.threads>();
+
+	for (const threadSummary of store.threads) {
+		const group = getRelativeDate(now, threadSummary.updatedAt ?? threadSummary.createdAt);
+		const groupedThreads = groups.get(group) ?? [];
+		groupedThreads.push(threadSummary);
+		groups.set(group, groupedThreads);
+	}
+
+	return threadDateGroupOrder.flatMap((group) => {
+		const groupedThreads = groups.get(group) ?? [];
+		if (groupedThreads.length === 0) return [];
+
+		return [
+			{
+				id: `date-group-${group}`,
+				label: threadDateGroupLabels[group] ?? group,
+				header: true,
+			},
+			...groupedThreads.map((threadSummary) => ({
+				id: threadSummary.id,
+				label: threadSummary.title,
+				checked: threadSummary.id === props.threadId,
+			})),
+		];
+	});
+});
+const { filteredItems: filteredThreadDropdownItems, handleSearch: handleThreadDropdownSearch } =
+	useDropdownSearch(threadDropdownItems, {
+		isSearchable: (item) => !item.header,
+	});
+
+function selectThread(threadId: string) {
+	if (threadId === props.threadId) return;
+	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+}
+
 // The tab names the conversation, not the workflow previewed inside it — the
 // parent view claims the title so the embedded canvas can't overwrite this.
 const documentTitle = useDocumentTitle();
@@ -417,7 +469,7 @@ watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	}
 });
 
-const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value / 2));
+const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value * 0.7));
 // Keep the artifact at its current width and split the remaining space evenly
 // between the Instance AI chat and the agent preview chat.
 const agentPreviewChatColumnWidth = computed(() =>
@@ -936,17 +988,32 @@ async function dismissComposerContextChip() {
 			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
 				<InstanceAiViewHeader>
 					<template #title>
-						<N8nHeading
+						<N8nDropdownMenu
 							v-if="currentThreadTitle"
-							tag="h2"
-							size="small"
-							:class="[
-								$style.headerTitle,
-								{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
-							]"
+							:items="filteredThreadDropdownItems"
+							:search-placeholder="i18n.baseText('generic.search')"
+							:empty-text="i18n.baseText('instanceAi.sidebar.noThreads')"
+							placement="bottom-start"
+							searchable
+							width="24rem"
+							data-test-id="instance-ai-thread-dropdown"
+							@search="handleThreadDropdownSearch"
+							@select="selectThread"
 						>
-							{{ currentThreadTitle }}
-						</N8nHeading>
+							<template #trigger>
+								<N8nButton
+									variant="ghost"
+									size="medium"
+									:class="[
+										$style.headerTitle,
+										{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
+									]"
+								>
+									<span :class="$style.headerTitleText">{{ currentThreadTitle }}</span>
+									<N8nIcon icon="chevron-down" size="small" />
+								</N8nButton>
+							</template>
+						</N8nDropdownMenu>
 						<N8nText
 							v-if="thread.sseState === 'reconnecting'"
 							size="small"
@@ -957,6 +1024,24 @@ async function dismissComposerContextChip() {
 						</N8nText>
 					</template>
 					<template #actions>
+						<N8nTooltip
+							:content="i18n.baseText('instanceAi.thread.new')"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<RouterLink v-slot="{ href, navigate }" :to="{ name: INSTANCE_AI_VIEW }" custom>
+								<N8nIconButton
+									:href="href"
+									icon="message-circle-plus"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									:aria-label="i18n.baseText('instanceAi.thread.new')"
+									data-test-id="instance-ai-header-new-thread-button"
+									@click="navigate"
+								/>
+							</RouterLink>
+						</N8nTooltip>
 						<N8nIconButton
 							v-if="isDebugEnabled"
 							icon="bug"
@@ -1284,7 +1369,6 @@ async function dismissComposerContextChip() {
 	display: flex;
 	min-width: 0;
 	overflow: hidden;
-	padding-top: var(--spacing--sm);
 }
 
 .agentPreviewLayoutTransition {
@@ -1296,6 +1380,7 @@ async function dismissComposerContextChip() {
 
 .builderChatHeader {
 	flex-shrink: 0;
+	margin-top: var(--spacing--2xs);
 }
 
 .chatArea {
@@ -1314,10 +1399,11 @@ async function dismissComposerContextChip() {
 	border: var(--border);
 	border-right-color: transparent;
 	background-color: var(--background--surface);
-	margin-bottom: var(--spacing--sm);
+	margin-block: var(--spacing--2xs);
 	border-top-left-radius: var(--radius--lg);
 	border-bottom-left-radius: var(--radius--lg);
 	box-shadow: var(--shadow--xs);
+	overflow: hidden;
 
 	// Widen the resize handle hit area for easier grabbing
 	:global([data-test-id='resize-handle']) {
@@ -1351,14 +1437,22 @@ async function dismissComposerContextChip() {
 	z-index: 4;
 	border-left: none;
 	background-color: var(--color--background--light-2);
+	margin-block: 0;
+	border-top-color: transparent;
+	border-bottom-color: transparent;
 }
 
 .headerTitle {
+	min-width: 0;
+	max-width: 24rem;
+	padding-inline: var(--spacing--2xs);
+}
+
+.headerTitleText {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	min-width: 0;
-	color: var(--color--text);
+	line-height: 1.2;
 }
 
 .headerTitleWithSidebar {

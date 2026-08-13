@@ -32,26 +32,9 @@ const threadCreditsUsed = computed(() =>
 
 <template>
 	<div :class="$style.header">
-		<Transition name="sidebar-toggle-fade">
-			<span v-if="sidebar.collapsed.value" :class="$style.sidebarToggle">
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
-					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<N8nIconButton
-						icon="menu"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						data-test-id="instance-ai-sidebar-toggle"
-						:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
-						@click="sidebar.toggle"
-					/>
-				</N8nTooltip>
-			</span>
-		</Transition>
-		<slot name="title" />
+		<div :class="$style.headerTitle">
+			<slot name="title" />
+		</div>
 		<div :class="$style.headerActions">
 			<CreditsSettingsDropdown
 				v-if="store.creditsRemaining !== undefined"
@@ -79,16 +62,21 @@ const threadCreditsUsed = computed(() =>
 
 <style lang="scss" module>
 .header {
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	padding: var(--spacing--2xs);
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	background-color: var(--color--background--light-2);
+	height: var(--height--2xl);
 }
 
 .sidebarToggle {
 	display: inline-flex;
+}
+
+.headerTitle {
+	min-width: 0;
 }
 
 .headerActions {
