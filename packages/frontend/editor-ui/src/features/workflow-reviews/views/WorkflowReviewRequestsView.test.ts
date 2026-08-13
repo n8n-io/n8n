@@ -675,7 +675,7 @@ describe('WorkflowReviewRequestsView', () => {
 		it('falls back to the generic permission hint for any other reason', async () => {
 			store.detail = createDetail({
 				viewerCanDecide: false,
-				viewerDecisionIneligibilityReason: 'missing_publish_permission',
+				viewerDecisionIneligibilityReason: 'missing_reviewer_permission',
 			});
 
 			const { getByTestId } = renderComponent();

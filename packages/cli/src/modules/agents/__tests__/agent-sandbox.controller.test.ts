@@ -1,18 +1,20 @@
 import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentSandboxController } from '../agent-sandbox.controller';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 
 describe('AgentSandboxController', () => {
 	it('accepts knowledge sandbox warmup before files exist', async () => {
 		const agentKnowledgeService = mock<AgentKnowledgeService>();
-		const controller = new AgentSandboxController(agentKnowledgeService, mock<Logger>(), {
-			sandboxEnabled: true,
-		} as AgentsConfig);
+		const controller = new AgentSandboxController(
+			agentKnowledgeService,
+			mock<Logger>(),
+			mock<AgentSandboxRuntimeService>({ isEnabled: () => true }),
+		);
 		const req = { user: { id: 'user-1' } } as AuthenticatedRequest<{ projectId: string }>;
 		const res = mock<Response>();
 
@@ -29,9 +31,11 @@ describe('AgentSandboxController', () => {
 
 	it('rejects warmup when the knowledge base is disabled', async () => {
 		const agentKnowledgeService = mock<AgentKnowledgeService>();
-		const controller = new AgentSandboxController(agentKnowledgeService, mock<Logger>(), {
-			sandboxEnabled: false,
-		} as AgentsConfig);
+		const controller = new AgentSandboxController(
+			agentKnowledgeService,
+			mock<Logger>(),
+			mock<AgentSandboxRuntimeService>({ isEnabled: () => false }),
+		);
 
 		await expect(
 			controller.warmKnowledgeSandbox(

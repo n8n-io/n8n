@@ -36,7 +36,7 @@ export type FindManyForInboxOptions = {
  */
 export type WorkflowReviewRequestForWorkflowRow = Pick<
 	WorkflowReviewRequest,
-	'id' | 'state' | 'decision' | 'updatedById' | 'createdAt' | 'updatedAt'
+	'id' | 'state' | 'decision' | 'description' | 'updatedById' | 'createdAt' | 'updatedAt'
 > & {
 	workflowVersionId: string | null;
 };
@@ -187,6 +187,7 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			id: entity.id,
 			state: entity.state,
 			decision: entity.decision,
+			description: entity.description,
 			updatedById: entity.updatedById,
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,

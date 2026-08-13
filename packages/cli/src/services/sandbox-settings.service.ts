@@ -2,7 +2,7 @@ import type { InstanceAiSandboxProvider } from '@n8n/api-types';
 import { normalizeSandboxProvider as normalizeRuntimeSandboxProvider } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { DeploymentConfig, InstanceAiConfig } from '@n8n/config';
+import type { AgentsConfig, DeploymentConfig, InstanceAiConfig } from '@n8n/config';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -83,6 +83,8 @@ export const INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY: InstanceCredentialUse = 
 export class SandboxSettingsService {
 	private readonly config: InstanceAiConfig;
 
+	private readonly agentsConfig: AgentsConfig;
+
 	private readonly deploymentConfig: DeploymentConfig;
 
 	private credentialUsesRegistered = false;
@@ -93,8 +95,13 @@ export class SandboxSettingsService {
 		private readonly logger: Logger,
 	) {
 		this.config = globalConfig.instanceAi;
+		this.agentsConfig = globalConfig.agents;
 		this.deploymentConfig = globalConfig.deployment;
 		this.config.sandboxProvider = this.getProvider();
+	}
+
+	isAgentSandboxEnabled(): boolean {
+		return this.agentsConfig.sandboxEnabled || this.config.sandboxEnabled;
 	}
 
 	getProvider(): InstanceAiSandboxProvider {
