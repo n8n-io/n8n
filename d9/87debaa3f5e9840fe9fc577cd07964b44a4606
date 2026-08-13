@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/agent-knowledge-sandbox.service.ts
+  s_99b1921501ccf0::t_112e8d9ae13848 934
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d987debaa3f5e9840fe9fc577cd07964b44a4606",
+  "prompts": {},
+  "sessions": {
+    "s_99b1921501ccf0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ef34c674-7064-43c5-a841-768b313f4717",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
