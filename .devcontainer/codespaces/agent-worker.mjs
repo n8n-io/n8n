@@ -10,7 +10,8 @@
 // Env:
 //   N8N_DEQUEUE_URL     n8n webhook that hands back one pending turn (required)
 //   AGENT_WORKER_TOKEN  shared bearer sent on every dequeue (required)
-//   GITHUB_USER         box owner's login; turns are addressed to it (codespaces set this)
+//   GITHUB_USER         box owner's login; the bootstrap route for a new thread (codespaces set this)
+//   CODESPACE_NAME      stable box id; routes a thread back to the box holding its session (codespaces set this)
 //   TURN_TIMEOUT_MS     per-turn limit; keep below the n8n Wait limit (default 25 min)
 import { execFile } from 'node:child_process';
 import { resolve as resolvePath, sep } from 'node:path';
@@ -19,6 +20,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 const DEQUEUE_URL = process.env.N8N_DEQUEUE_URL;
 const TOKEN = process.env.AGENT_WORKER_TOKEN;
 const GITHUB_USER = process.env.GITHUB_USER;
+const BOX_ID = process.env.CODESPACE_NAME;
 const ROOT = '/workspaces';
 
 const POLL_INTERVAL_MS = 3000;
@@ -88,7 +90,7 @@ async function post(url, body) {
 }
 
 async function dequeue() {
-	const res = await post(DEQUEUE_URL, { githubUser: GITHUB_USER, token: TOKEN });
+	const res = await post(DEQUEUE_URL, { githubUser: GITHUB_USER, boxId: BOX_ID, token: TOKEN });
 	if (!res.ok) throw new Error(`dequeue HTTP ${res.status}`);
 	const text = await res.text();
 	if (!text.trim()) return null; // no pending turn
@@ -105,6 +107,7 @@ async function handle(turn) {
 			status: 'done',
 			output: r.result ?? '',
 			sessionId: r.session_id ?? turn.sessionId ?? '',
+			boxId: BOX_ID,
 		};
 	} catch (error) {
 		result = {
@@ -112,6 +115,7 @@ async function handle(turn) {
 			status: 'error',
 			output: error.message,
 			sessionId: turn.sessionId ?? '',
+			boxId: BOX_ID,
 		};
 	}
 	// Send the result to the turn's resume URL. This continues the waiting n8n
@@ -137,7 +141,9 @@ for (;;) {
 	try {
 		const turn = await dequeue();
 		if (turn) {
-			console.log(`turn ${turn.turnId}: ${turn.sessionId ? 'resume' : 'new'}`);
+			console.log(
+				`${new Date().toISOString()} turn ${turn.turnId} by ${turn.author ?? 'unknown'}: ${turn.sessionId ? 'resume' : 'new'}`,
+			);
 			await handle(turn);
 			continue; // get the next turn now, with no delay
 		}
