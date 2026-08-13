@@ -1,0 +1,19 @@
+PROJECT_FILE_NODE_OPERATIONS_PLAN.md
+  s_b239e5ec600a48::t_27429cec18f723 1-308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7934d1ec9cad7d4e401ccdc728daef5ad804fd83",
+  "prompts": {},
+  "sessions": {
+    "s_b239e5ec600a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb525e80-f251-4a62-9109-617b677b1d8f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
