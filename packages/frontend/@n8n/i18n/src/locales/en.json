@@ -6741,6 +6741,7 @@
 	"instanceAi.browserUse.step.connect.title": "2. Connect the extension",
 	"instanceAi.browserUse.step.connect.description": "Open the extension's connect page, choose which tabs to share, and click Connect.",
 	"instanceAi.browserUse.step.connect.cta": "Open Browser Use extension",
+	"instanceAi.browserUse.unsupportedBrowser": "Browser Use requires Google Chrome or another Chromium-based browser like Microsoft Edge or Brave. Open n8n in a supported browser to continue.",
 	"instanceAi.browserUse.connected": "Browser Use is connected",
 	"instanceAi.browserUse.connected.description": "The agent can now use your browser. You can disconnect anytime from the extension or from the Connections list.",
 	"instanceAi.browserUse.connectLinkError.title": "Browser Use setup failed",
