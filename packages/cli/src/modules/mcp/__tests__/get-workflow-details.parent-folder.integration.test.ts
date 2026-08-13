@@ -1,4 +1,9 @@
-import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INodeTypes } from 'n8n-workflow';
@@ -10,11 +15,12 @@ import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
-import { createOwner } from '@test-integration/db/users';
+import { createMember, createOwner } from '@test-integration/db/users';
 
 import { getWorkflowDetails } from '../tools/get-workflow-details.tool';
 
 let owner: User;
+let member: User;
 let project: Project;
 let workflowFinderService: WorkflowFinderService;
 let roleService: RoleService;
@@ -33,15 +39,18 @@ beforeAll(async () => {
 
 	owner = await createOwner();
 	project = await createTeamProject('Test project', owner);
+
+	member = await createMember();
+	await linkUserToProject(member, project, 'project:editor');
 });
 
 afterAll(async () => {
 	await testDb.terminate();
 });
 
-const detailsFor = async (workflowId: string) =>
+const detailsFor = async (workflowId: string, user: User = owner) =>
 	await getWorkflowDetails(
-		owner,
+		user,
 		'https://example.test',
 		workflowFinderService,
 		credentialsService,
@@ -71,6 +80,21 @@ describe('get_workflow_details against a real database', () => {
 
 		expect(payload.workflow.parentFolderId).toBe(folder.id);
 		expect(payload.workflow.tags).toEqual([{ id: tag.id, name: tag.name }]);
+	});
+
+	// An instance owner short-circuits the read filter to `{}`, so only a project
+	// member exercises the query shape most MCP callers actually hit, where the
+	// folder join sits alongside the shared/project/projectRelations joins.
+	test('returns the folder id for a project member', async () => {
+		const folder = await createFolder(project, { name: 'Member folder' });
+		const workflow = await createWorkflow(
+			{ settings: { availableInMCP: true }, parentFolder: folder },
+			project,
+		);
+
+		const payload = await detailsFor(workflow.id, member);
+
+		expect(payload.workflow.parentFolderId).toBe(folder.id);
 	});
 
 	test('returns null for a workflow in the project root', async () => {
