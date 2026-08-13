@@ -1330,6 +1330,11 @@ export class InstanceAiSettingsService {
 		return modelConfigured && sandboxConfigured && searchDecided;
 	}
 
+	/** Configured `provider/model` id from `N8N_INSTANCE_AI_MODEL` (instance stamp). */
+	getConfiguredModelId(): string {
+		return this.config.model.trim();
+	}
+
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);

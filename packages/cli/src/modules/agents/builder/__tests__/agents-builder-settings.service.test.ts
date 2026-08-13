@@ -8,7 +8,15 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { AiService } from '@/services/ai.service';
 
-import { BUILDER_NOT_CONFIGURED_CODE } from '@n8n/api-types';
+import { BUILDER_NOT_CONFIGURED_CODE, MOONSHOTAI_KIMI_K3_MODEL_ID } from '@n8n/api-types';
+
+vi.mock('@ai-sdk/openai-compatible', () => ({
+	createOpenAICompatible: (opts: { name: string }) => (model: string) => ({
+		provider: opts.name,
+		modelId: model,
+		specificationVersion: 'v3',
+	}),
+}));
 
 import { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
 import { BuilderNotConfiguredError } from '../errors';
@@ -114,6 +122,47 @@ describe('AgentsBuilderSettingsService', () => {
 				{ id: 'user-1' },
 				{ userMessageId: expect.any(String) },
 			);
+		});
+
+		it('mode=default + proxy enabled + Kimi env → Kimi proxy LanguageModel', async () => {
+			mockPersistedSettings({ mode: 'default' });
+			process.env.N8N_INSTANCE_AI_MODEL = MOONSHOTAI_KIMI_K3_MODEL_ID;
+			const proxyToken = makeJwt(Math.floor(Date.now() / 1000) + 600);
+			const getBuilderApiProxyToken = vi
+				.fn()
+				.mockResolvedValue({ accessToken: proxyToken, tokenType: 'Bearer' });
+			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.getClient.mockResolvedValue({
+				getApiProxyBaseUrl: () => 'https://proxy.example/api',
+				getBuilderApiProxyToken,
+			} as never);
+
+			const result = await service.resolveModelConfig(user);
+
+			expect(result.isProxied).toBe(true);
+			expect(result.config).toMatchObject({
+				provider: 'moonshotai',
+				modelId: 'kimi-k3',
+			});
+			expect(result.tracingProxyConfig?.apiUrl).toBe('https://proxy.example/api/langsmith');
+		});
+
+		it('mode=default + proxy enabled + near-miss Kimi env → Anthropic default model', async () => {
+			mockPersistedSettings({ mode: 'default' });
+			process.env.N8N_INSTANCE_AI_MODEL = 'moonshotai/kimi-k2';
+			const proxyToken = makeJwt(Math.floor(Date.now() / 1000) + 600);
+			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.getClient.mockResolvedValue({
+				getApiProxyBaseUrl: () => 'https://proxy.example/api',
+				getBuilderApiProxyToken: vi
+					.fn()
+					.mockResolvedValue({ accessToken: proxyToken, tokenType: 'Bearer' }),
+			} as never);
+
+			const result = await service.resolveModelConfig(user);
+
+			expect(result.isProxied).toBe(true);
+			expect(result.config).toMatchObject({ modelId: 'claude-sonnet-4-6' });
 		});
 
 		it('mode=default + proxy disabled + Instance AI env set → returns Instance AI model config', async () => {

@@ -19,6 +19,7 @@ import { jsonParse } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
+import { isMoonshotaiKimiK3ProxyModel } from '@/utils/ai-proxy-language-model';
 
 import { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
 import { AgentsService } from '../agents.service';
@@ -268,14 +269,17 @@ export class AgentsBuilderService {
 				reflect: createObservationLogReflectFn(modelConfig, { onUsage: onMemoryUsage }),
 			});
 
+		const isKimi = isMoonshotaiKimiK3ProxyModel(modelConfig);
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
-			.promptCaching({ anthropic: { ttl: '5m' } })
 			.instructions(finalInstructions)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
 			.configuration({ maxIterations: 30 });
+		if (!isKimi) {
+			builder.promptCaching({ anthropic: { ttl: '5m' } });
+		}
 
 		if (session.telemetry) builder.telemetry(session.telemetry);
 		if (session.memoryTaskObserver) builder.memoryTaskObserver(session.memoryTaskObserver);
@@ -291,7 +295,7 @@ export class AgentsBuilderService {
 			}),
 		);
 
-		builder.reasoning('medium');
+		builder.reasoning(isKimi ? 'low' : 'medium');
 
 		return builder;
 	}

@@ -366,6 +366,20 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.promptCachingCalls).toEqual([{ anthropic: { ttl: '5m' } }]);
 	});
 
+	it('uses low reasoning and skips Anthropic prompt caching for proxied Kimi', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				modelConfig: { provider: 'moonshotai', modelId: 'kimi-k3' } as never,
+			}),
+		);
+
+		expect(agentsSdkMocks.promptCachingCalls).toEqual([]);
+		expect(agentsSdkMocks.reasoningCalls).toEqual(['low']);
+	});
+
 	it.each([
 		['Anthropic', 'anthropic/claude-sonnet-host-resolved'],
 		['OpenAI', 'openai/gpt-5.6-sol'],

@@ -1,4 +1,8 @@
-import { UNLIMITED_CREDITS, buildProxyHeaders, type InstanceAiCredits } from '@n8n/api-types';
+import {
+	UNLIMITED_CREDITS,
+	isMoonshotaiKimiK3ModelId,
+	type InstanceAiCredits,
+} from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -9,6 +13,7 @@ import { N8N_VERSION } from '@/constants';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { createProxyLanguageModel } from '@/utils/ai-proxy-language-model';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -19,8 +24,9 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
  *
  * Model resolution follows a layered chain so chat and eval paths share the
  * same working model:
- *   1. AI service proxy (when enabled) — wraps with proxy auth, returns a
- *      native Anthropic transport pointed at the proxy.
+ *   1. AI service proxy (when enabled) — wraps with proxy auth. Anthropic
+ *      models use the native Anthropic transport; exact `moonshotai/kimi-k3`
+ *      uses the OpenAI-compatible Kimi route.
  *   2. HTTP_PROXY (when set, e.g. e2e tests) — wraps the model with a
  *      proxy-aware fetch.
  *   3. Env vars / user credential — raw settings resolution.
@@ -71,13 +77,13 @@ export class InstanceAiModelService {
 	}
 
 	/**
-	 * Build model config. When the AI service proxy is enabled, returns a native
-	 * Anthropic LanguageModelV2 instance pointing at the proxy.
+	 * Build model config. When the AI service proxy is enabled, returns a
+	 * LanguageModel pointed at the proxy.
 	 *
-	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
-	 * object because this proxy route needs the native Anthropic transport.
-	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
-	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
+	 * Exact `moonshotai/kimi-k3` (the instance env stamp) uses the OpenAI-
+	 * compatible Kimi route. Every other model keeps the native Anthropic
+	 * transport — the proxy may forward to Vertex AI, which only supports the
+	 * Anthropic Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
 	 *
 	 * Auth headers are injected via a custom `fetch` wrapper so that each
 	 * request gets a fresh-or-cached token from the ProxyTokenManager,
@@ -88,29 +94,18 @@ export class InstanceAiModelService {
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
 	): Promise<ModelConfig> {
-		const modelName = this.settingsService.resolveModelName(user);
-		const { createAnthropic } = await import('@ai-sdk/anthropic');
-		// Route through the proxy-aware transport so this path honours
-		// HTTP(S)_PROXY and the long AI timeout, same as the HTTP-proxy path.
-		const modelFetch = createAiProxyFetch(this.outboundHttp);
-		const provider = createAnthropic({
-			baseURL: proxyBaseUrl + '/anthropic/v1',
-			apiKey: 'proxy-managed',
-			fetch: async (input, init) => {
-				const headers = new Headers(init?.headers);
-				const auth = await tokenManager.getAuthHeaders();
-				for (const [k, v] of Object.entries(auth)) {
-					headers.set(k, v);
-				}
-				for (const [k, v] of Object.entries(
-					buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION }),
-				)) {
-					headers.set(k, v);
-				}
-				return await modelFetch(input, { ...init, headers });
-			},
+		const configuredModelId = this.settingsService.getConfiguredModelId();
+		const modelId = isMoonshotaiKimiK3ModelId(configuredModelId)
+			? configuredModelId
+			: this.settingsService.resolveModelName(user);
+		return await createProxyLanguageModel({
+			proxyBaseUrl,
+			modelId,
+			tokenManager,
+			feature: 'instance-ai',
+			n8nVersion: N8N_VERSION,
+			outboundHttp: this.outboundHttp,
 		});
-		return provider(modelName);
 	}
 
 	/**

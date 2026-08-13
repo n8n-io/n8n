@@ -64,12 +64,12 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
-	if (provider === 'custom') {
-		// No blanket custom default: env override → known-model map → omit.
+	if (provider === 'custom' || provider === 'moonshotai') {
+		// No blanket default: env override → known-model map → omit.
 		const resolvedModelId = resolveModelIdString(modelId) ?? '';
 		const { reasoningEffort } = resolveCustomModelExperimentDefaultsFromEnv(resolvedModelId);
 		if (reasoningEffort !== undefined) {
-			agent.thinking('custom', { reasoningEffort });
+			agent.thinking(provider === 'custom' ? 'custom' : 'moonshotai', { reasoningEffort });
 		}
 		return;
 	}

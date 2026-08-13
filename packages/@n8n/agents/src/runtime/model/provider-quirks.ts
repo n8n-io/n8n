@@ -73,7 +73,7 @@ function anthropicUsesAdaptiveThinking(modelId: string): boolean {
 
 /** Map effort to top-level `reasoningEffort` (OpenAI-compatible chat). */
 function reasoningEffortQuirk(
-	provider: ProviderId,
+	provider: string,
 	defaultEffort?: OpenAIReasoningEffort,
 ): ProviderQuirks {
 	return {
@@ -91,7 +91,7 @@ function reasoningEffortQuirk(
  * normalize away. Each entry documents why the quirk exists and its upstream
  * status, so it reads as a removable shim rather than a mystery branch.
  */
-export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
+export const PROVIDER_QUIRKS: Partial<Record<ProviderId | 'moonshotai', ProviderQuirks>> = {
 	anthropic: {
 		// QUIRK(anthropic): Anthropic replays thinking blocks via a `signature`
 		// (or `redactedData` when the block was redacted), but the AI SDK only
@@ -168,10 +168,14 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 	},
 	// custom/*: only forward an explicit effort — no provider-level default.
 	custom: reasoningEffortQuirk('custom'),
+	// Proxied Modal Kimi K3 (`createOpenAICompatible({ name: 'moonshotai' })`).
+	moonshotai: reasoningEffortQuirk('moonshotai'),
 };
 
+type QuirksProviderId = ProviderId | 'moonshotai';
+
 export function getProviderQuirks(providerId: string): ProviderQuirks {
-	return PROVIDER_QUIRKS[providerId as ProviderId] ?? {};
+	return PROVIDER_QUIRKS[providerId as QuirksProviderId] ?? {};
 }
 
 export function providerIdFromModelId(modelId: string): string {
