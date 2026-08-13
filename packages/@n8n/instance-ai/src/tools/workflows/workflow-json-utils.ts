@@ -165,6 +165,82 @@ export async function ensureWebhookIds(
 }
 
 /**
+ * Guarantee every node carries a distinct ID before the workflow is saved.
+ *
+ * `(workflowId, nodeId)` is the primary key behind poll cursors, dedupe records and
+ * publication status, so two nodes sharing an ID contend over the same durable state.
+ * The SDK build rejects declared duplicates up front, but a WorkflowJSON source file
+ * skips SDK validation entirely — this is the backstop for that path.
+ *
+ * The first node to claim an ID keeps it. Group membership is remapped positionally
+ * rather than through a shared old-ID map, so nodes that arrived with the same ID do
+ * not all end up pointing at one replacement.
+ */
+export function ensureUniqueNodeIds(json: WorkflowJSON): void {
+	if (!json.nodes?.length) return;
+
+	const claimedIds = new Set<string>();
+	const replacementsByIndex = new Map<number, { previousId: string; nextId: string }>();
+
+	json.nodes.forEach((node, index) => {
+		if (node.id && !claimedIds.has(node.id)) {
+			claimedIds.add(node.id);
+			return;
+		}
+
+		const previousId = node.id;
+		let nextId = randomUUID();
+		while (claimedIds.has(nextId)) nextId = randomUUID();
+
+		claimedIds.add(nextId);
+		node.id = nextId;
+		if (previousId) replacementsByIndex.set(index, { previousId, nextId });
+	});
+
+	if (replacementsByIndex.size === 0) return;
+
+	for (const group of json.nodeGroups ?? []) {
+		// Walk each replacement in node order and rewrite one matching membership entry
+		// per reassigned node, so duplicates are distributed rather than collapsed.
+		for (const { previousId, nextId } of replacementsByIndex.values()) {
+			const membershipIndex = group.nodeIds.lastIndexOf(previousId);
+			if (membershipIndex !== -1) group.nodeIds[membershipIndex] = nextId;
+		}
+	}
+}
+
+/**
+ * True when an update kept none of the saved workflow's node IDs.
+ *
+ * Node identity is carried through the `id` values in the generated source, so a rewrite
+ * that drops them re-identifies the whole graph: execution-log pairing, poll cursors and
+ * dedupe state reset, and the version diff shows every node as deleted and re-added. That
+ * is worth reporting, but it is also legitimate when a workflow really was replaced
+ * wholesale — hence informational only, never a blocked save.
+ *
+ * Never throws: a signal must not be able to fail a build.
+ */
+export async function hasLostAllSavedNodeIds(
+	json: WorkflowJSON,
+	workflowId: string | undefined,
+	ctx: InstanceAiContext,
+): Promise<boolean> {
+	if (!workflowId || !json.nodes?.length) return false;
+
+	let savedIds: Set<string>;
+	try {
+		const existing = await ctx.workflowService.getAsWorkflowJSON(workflowId);
+		savedIds = new Set((existing.nodes ?? []).map((node) => node.id).filter(Boolean));
+	} catch {
+		return false;
+	}
+
+	if (savedIds.size === 0) return false;
+
+	return json.nodes.every((node) => !node.id || !savedIds.has(node.id));
+}
+
+/**
  * For updates, preserve existing node-group IDs by group name. The sandbox SDK
  * build has no view of the saved workflow, so toJSON() mints a fresh deterministic
  * ID for every group — overwriting the stable ID of a group the user created in
