@@ -1023,6 +1023,9 @@ export class AgentsBuilderToolsService {
 								cronExpression: agentTaskSchema.shape.cronExpression.describe(
 									'A 5-field cron expression for when the task runs, e.g. "0 9 * * 1-5" = weekdays at 09:00.',
 								),
+								timezone: agentTaskSchema.shape.timezone.describe(
+									'IANA timezone the cron runs in, e.g. "Europe/London". Set it when the user names a timezone or a location; omit it to use the instance timezone.',
+								),
 							}),
 						)
 						.min(1)
@@ -1034,7 +1037,12 @@ export class AgentsBuilderToolsService {
 				async ({
 					tasks,
 				}: {
-					tasks: Array<{ name: string; objective: string; cronExpression: string }>;
+					tasks: Array<{
+						name: string;
+						objective: string;
+						cronExpression: string;
+						timezone?: string | null;
+					}>;
 				}) => {
 					// Each task is already validated against `.input()` (agentTaskSchema
 					// shapes) by the tool runtime before the handler runs.

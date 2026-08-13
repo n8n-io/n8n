@@ -609,6 +609,7 @@ export class AgentPublishService {
 					name: body.name,
 					objective: body.objective,
 					cronExpression: body.cronExpression,
+					timezone: body.timezone,
 				};
 			}),
 			trx,
@@ -637,7 +638,8 @@ export class AgentPublishService {
 
 	/**
 	 * Bring the draft task definition rows back in line with a published snapshot
-	 * on revert. Returns whether task bodies changed (name/objective/cron only).
+	 * on revert. Returns whether task bodies changed (name/objective/cron/timezone
+	 * only).
 	 */
 	private async restoreTasksFromSnapshot(
 		trx: EntityManager,
@@ -651,7 +653,12 @@ export class AgentPublishService {
 		const existingBodies = Object.fromEntries(
 			existing.map((row) => [
 				row.id,
-				{ name: row.name, objective: row.objective, cronExpression: row.cronExpression },
+				{
+					name: row.name,
+					objective: row.objective,
+					cronExpression: row.cronExpression,
+					timezone: row.timezone,
+				},
 			]),
 		);
 		const snapshotBodies = Object.fromEntries(
@@ -661,6 +668,7 @@ export class AgentPublishService {
 					name: snapshot.name,
 					objective: snapshot.objective,
 					cronExpression: snapshot.cronExpression,
+					timezone: snapshot.timezone,
 				},
 			]),
 		);
@@ -678,6 +686,7 @@ export class AgentPublishService {
 					name: snapshot.name,
 					objective: snapshot.objective,
 					cronExpression: snapshot.cronExpression,
+					timezone: snapshot.timezone,
 				});
 			} else {
 				await repo.insert({
@@ -686,6 +695,7 @@ export class AgentPublishService {
 					name: snapshot.name,
 					objective: snapshot.objective,
 					cronExpression: snapshot.cronExpression,
+					timezone: snapshot.timezone,
 				});
 			}
 		}

@@ -1,4 +1,5 @@
 import type { AgentTaskDto, CreateAgentTaskDto, UpdateAgentTaskDto } from '@n8n/api-types';
+import { isValidTimezone } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -6,7 +7,7 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@
 import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
-import { DateTime } from 'luxon';
+import { DateTime, IANAZone } from 'luxon';
 import { InstanceSettings, ScheduledTaskManager, type ScheduledTaskGroup } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -45,8 +46,9 @@ const agentTaskScheduleGroup = (agentId: string): ScheduledTaskGroup => ({
 });
 
 /**
- * Owns an agent's scheduled tasks. Draft task bodies (name/objective/cron) live
- * in the `agent_task_definition` table; membership and the `enabled` flag live
+ * Owns an agent's scheduled tasks. Draft task bodies (name/objective/cron and
+ * the timezone that cron is evaluated in — null meaning the instance timezone)
+ * live in the `agent_task_definition` table; membership and the `enabled` flag live
  * in the agent config as `{ type: 'task', id, enabled }` refs (mirroring
  * skills). Scheduling is driven entirely by the PUBLISHED snapshot rows tied to
  * `activeVersionId`. `ScheduledTaskManager` registers a cron per enabled
@@ -127,6 +129,7 @@ export class AgentTaskService {
 
 		for (const dto of dtos) {
 			this.assertValidCron(dto.cronExpression);
+			this.assertValidTimezone(dto.timezone);
 		}
 
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -149,6 +152,7 @@ export class AgentTaskService {
 				name: dto.name,
 				objective: dto.objective,
 				cronExpression: dto.cronExpression,
+				timezone: dto.timezone ?? null,
 			});
 		});
 
@@ -184,7 +188,7 @@ export class AgentTaskService {
 	}
 
 	/**
-	 * Update a task body (name/objective/cron) in the draft. Marks the agent draft
+	 * Update a task body (name/objective/cron/timezone) in the draft. Marks the agent draft
 	 * dirty but does NOT touch live scheduling: scheduled runs read the published
 	 * task snapshot rows, so any body edit only takes effect on the next
 	 * (re)publish — the "republish to apply" contract. Manual "Run now" uses the
@@ -204,6 +208,16 @@ export class AgentTaskService {
 			this.assertValidCron(dto.cronExpression);
 			if (dto.cronExpression !== task.cronExpression) {
 				task.cronExpression = dto.cronExpression;
+				changed = true;
+			}
+		}
+		// `null` resets to the instance timezone; omitting the field keeps the
+		// current one, so an older client can still update name/objective/cron.
+		if (dto.timezone !== undefined) {
+			this.assertValidTimezone(dto.timezone);
+			const timezone = dto.timezone ?? null;
+			if (timezone !== task.timezone) {
+				task.timezone = timezone;
 				changed = true;
 			}
 		}
@@ -416,14 +430,19 @@ export class AgentTaskService {
 
 		if (enabledIds.size === 0) return;
 
-		// Bodies come from PUBLISHED snapshot rows, so cron/name/objective are all
-		// frozen at publish time; draft edits only apply on the next publish.
+		// Bodies come from PUBLISHED snapshot rows, so cron/name/objective/timezone
+		// are all frozen at publish time; draft edits only apply on the next publish.
 		for (const snapshot of snapshots) {
-			this.registerOrRefresh(snapshot.taskId, agent.id, snapshot.cronExpression);
+			this.registerOrRefresh(snapshot.taskId, agent.id, snapshot.cronExpression, snapshot.timezone);
 		}
 	}
 
-	private registerOrRefresh(taskId: string, agentId: string, cronExpression: string): void {
+	private registerOrRefresh(
+		taskId: string,
+		agentId: string,
+		cronExpression: string,
+		taskTimezone: string | null,
+	): void {
 		if (!isValidCronExpression(cronExpression)) {
 			this.logger.warn('[AgentTaskService] Skipping task with invalid cron', { taskId });
 			this.deregister(agentId, taskId);
@@ -432,7 +451,7 @@ export class AgentTaskService {
 
 		this.deregister(agentId, taskId);
 
-		const timezone = this.globalConfig.generic.timezone;
+		const timezone = this.resolveTaskTimezone(taskTimezone, taskId);
 		const registered = this.scheduledTaskManager.register(
 			{
 				group: agentTaskScheduleGroup(agentId),
@@ -562,13 +581,18 @@ export class AgentTaskService {
 				return;
 			}
 
-			const { message, threadId } = this.buildTaskRunMessage(taskId, snapshot.objective);
+			const { message, threadId } = this.buildTaskRunMessage(
+				taskId,
+				snapshot.objective,
+				snapshot.timezone,
+			);
 
 			this.logger.info('[AgentTaskService] Task fired', {
 				taskId,
 				agentId,
 				projectId,
 				cronExpression: snapshot.cronExpression,
+				timezone: snapshot.timezone,
 			});
 
 			await this.consumeTaskRun(
@@ -601,8 +625,11 @@ export class AgentTaskService {
 	private buildTaskRunMessage(
 		taskId: string,
 		objective: string,
+		taskTimezone: string | null,
 	): { message: string; threadId: string } {
-		const timezone = this.globalConfig.generic.timezone;
+		// The agent reasons about "today"/"this morning" in the zone the task was
+		// scheduled in, not the instance's.
+		const timezone = this.resolveTaskTimezone(taskTimezone, taskId);
 		const timestamp = DateTime.now().setZone(timezone).toISO() ?? new Date().toISOString();
 		const message = `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})`;
 		const threadId = `task-${taskId}-${randomUUID()}`;
@@ -655,7 +682,7 @@ export class AgentTaskService {
 	}
 
 	private async executeNow(task: AgentTask, projectId: string, user: User): Promise<void> {
-		const { message, threadId } = this.buildTaskRunMessage(task.id, task.objective);
+		const { message, threadId } = this.buildTaskRunMessage(task.id, task.objective, task.timezone);
 
 		this.logger.info('[AgentTaskService] Manual task run started', {
 			taskId: task.id,
@@ -693,12 +720,38 @@ export class AgentTaskService {
 		}
 	}
 
+	private assertValidTimezone(timezone: string | null | undefined): void {
+		if (timezone === null || timezone === undefined) return;
+		if (!isValidTimezone(timezone)) {
+			throw new BadRequestError('Invalid timezone');
+		}
+	}
+
+	/**
+	 * Timezone a task's cron is evaluated in. Null means "instance timezone" —
+	 * the only option before tasks carried their own zone. An unresolvable zone
+	 * falls back to the instance timezone rather than dropping the task, since
+	 * `CronTime` would throw and take the agent's whole reconcile with it.
+	 */
+	private resolveTaskTimezone(taskTimezone: string | null | undefined, taskId: string): string {
+		if (!taskTimezone) return this.globalConfig.generic.timezone;
+		if (!IANAZone.isValidZone(taskTimezone)) {
+			this.logger.warn('[AgentTaskService] Task has unknown timezone, using instance timezone', {
+				taskId,
+				timezone: taskTimezone,
+			});
+			return this.globalConfig.generic.timezone;
+		}
+		return taskTimezone;
+	}
+
 	private toDto(task: AgentTask): AgentTaskDto {
 		return {
 			id: task.id,
 			name: task.name,
 			objective: task.objective,
 			cronExpression: task.cronExpression,
+			timezone: task.timezone,
 			createdAt: task.createdAt.toISOString(),
 			updatedAt: task.updatedAt.toISOString(),
 		};

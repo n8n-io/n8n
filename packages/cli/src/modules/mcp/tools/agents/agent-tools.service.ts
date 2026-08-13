@@ -1120,6 +1120,7 @@ export class McpAgentToolsService {
 				name: task.name,
 				objective: task.objective,
 				cronExpression: task.cronExpression,
+				timezone: task.timezone,
 				enabled: task.enabled,
 			})),
 			customTools: Object.entries(version.tools ?? {}).map(([id, tool]) => ({
