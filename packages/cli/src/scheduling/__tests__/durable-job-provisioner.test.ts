@@ -505,7 +505,7 @@ describe('DurableJobProvisioner', () => {
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
-		it('warns that it raised the grace, reporting the truncated request, the value written and the owning node', async () => {
+		it('warns that it raised the grace, reporting the raw request, the value written and the owning node', async () => {
 			await provisionWithGrace(30.7);
 
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -513,7 +513,7 @@ describe('DurableJobProvisioner', () => {
 				{
 					workflowId: 'wf',
 					nodeId: 'node',
-					requestedMisfireGraceSeconds: 30,
+					requestedMisfireGraceSeconds: 30.7,
 					misfireGraceSeconds: 60,
 				},
 			);
@@ -531,6 +531,23 @@ describe('DurableJobProvisioner', () => {
 					workflowId: 'wf',
 					nodeId: 'node',
 					requestedMisfireGraceSeconds: THIRTY_DAYS_IN_SECONDS + 500,
+					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
+				},
+			);
+		});
+
+		it('warns about a fractional grace just above the thirty-day cap, whose truncation alone lands it on the cap', async () => {
+			await provisionWithGrace(THIRTY_DAYS_IN_SECONDS + 0.5);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
+			]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				"Lowered a node's misfire grace to the scheduler's maximum",
+				{
+					workflowId: 'wf',
+					nodeId: 'node',
+					requestedMisfireGraceSeconds: THIRTY_DAYS_IN_SECONDS + 0.5,
 					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
 				},
 			);

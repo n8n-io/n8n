@@ -159,9 +159,6 @@ export class DurableJobProvisioner {
 		misfirePolicy,
 		misfireGraceSeconds: requestedMisfireGraceSeconds,
 	}: ProvisionScope): RunInProvisionTransaction {
-		// Resolved before `findExisting`, because it is what a stored row's grace is
-		// compared against; resolving later would make every provision see a changed
-		// grace and rewrite queued deadlines.
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
 			requestedMisfireGraceSeconds,
 			workflowId,
@@ -172,9 +169,6 @@ export class DurableJobProvisioner {
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
-				// `missedAfter` is computed from the grace, so only a grace change makes a
-				// queued task stale. Recomputing on a policy change would move an
-				// already-overdue deadline into the future.
 				const outdatedPolicyJobIds: number[] = [];
 				const outdatedGraceJobIds: number[] = [];
 				const result = await work({
@@ -182,7 +176,9 @@ export class DurableJobProvisioner {
 						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
 						for (const row of rows) {
 							const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
-							if (graceChanged) outdatedGraceJobIds.push(row.id);
+							if (graceChanged) {
+								outdatedGraceJobIds.push(row.id);
+							}
 							if (graceChanged || row.misfirePolicy !== misfirePolicy) {
 								outdatedPolicyJobIds.push(row.id);
 							}
@@ -247,18 +243,6 @@ export class DurableJobProvisioner {
 			});
 	}
 
-	/**
-	 * Resolve the grace stamped on a node's job rows. A non-positive or non-finite
-	 * request resolves to the instance value: `0` is the sentinel a node property uses
-	 * to inherit it, and a parameter equal to its schema default is stripped on save,
-	 * so an absent value and `0` must mean the same thing. The instance value itself
-	 * passes through unclamped, as an out-of-range one is warned about at startup.
-	 *
-	 * A node value out of range is clamped rather than rejected: the bounds are
-	 * scheduling internals invisible in the editor, so activation must never fail on a
-	 * grace, and lowering the executor interval must not break workflows that ran fine
-	 * before.
-	 */
 	private resolveMisfireGraceSeconds(
 		requested: unknown,
 		workflowId: string,
@@ -268,26 +252,26 @@ export class DurableJobProvisioner {
 			this.globalConfig.scheduler;
 
 		const numeric = Number(requested);
-		if (!Number.isFinite(numeric)) return misfireGraceSeconds;
+		if (!Number.isFinite(numeric)) {
+			return misfireGraceSeconds;
+		}
 
 		const truncated = Math.trunc(numeric);
-		if (truncated < 1) return misfireGraceSeconds;
+		if (truncated < 1) {
+			return misfireGraceSeconds;
+		}
 
-		// A second above the executor interval, so a late run still has a tick left to be
-		// claimed in, and at or above the materialization window, so runs missed during a
-		// short outage are caught up rather than dropped. Neither input is bounded above,
-		// so the floor takes the ceiling too.
 		const floor = Math.min(
 			Math.max(executorIntervalSeconds + 1, materializationWindowSeconds),
 			MAX_MISFIRE_GRACE_SECONDS,
 		);
-		// A missing interval or window leaves no floor to clamp against.
-		if (!Number.isFinite(floor)) return misfireGraceSeconds;
+
+		if (!Number.isFinite(floor)) {
+			return misfireGraceSeconds;
+		}
 
 		const effective = Math.min(Math.max(truncated, floor), MAX_MISFIRE_GRACE_SECONDS);
 
-		// `numeric` is checked too because a fractional request just above the max
-		// truncates down to exactly the max, which would otherwise hide the clamp.
 		if (effective !== truncated || numeric > MAX_MISFIRE_GRACE_SECONDS) {
 			this.logger.warn(
 				effective > truncated
@@ -296,7 +280,7 @@ export class DurableJobProvisioner {
 				{
 					workflowId,
 					nodeId,
-					requestedMisfireGraceSeconds: truncated,
+					requestedMisfireGraceSeconds: numeric,
 					misfireGraceSeconds: effective,
 				},
 			);
