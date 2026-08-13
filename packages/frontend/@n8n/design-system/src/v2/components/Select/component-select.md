@@ -50,7 +50,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 **Props**
 
 - `id?: string`
-- `placeholder?: string`
+- `placeholder?: string` Visual empty-state text in the trigger. Not used as the accessible name — pass `aria-label` / `aria-labelledby`, or associate a `<label>` via `id`.
 - `items?: SelectItem[]` Array of options / labels / separators to render
 - `defaultValue?: SelectValue | SelectValue[]` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
 - `modelValue?: SelectValue | SelectValue[]` The controlled value of the Select. Bind as `v-model`. Typed as `SelectValue[]` when `multiple` is `true`.

@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor, within } from '@testing-library/vue';
+import { h, ref, type Component } from 'vue';
 
 import type { SelectItem, SelectSizes, SelectVariants } from './Select.types';
 import Select from './Select.vue';
@@ -79,6 +80,104 @@ describe('v2/components/Select', () => {
 			});
 			const trigger = wrapper.getByTestId('select-trigger');
 			expect(trigger).toHaveAttribute('data-disabled');
+		});
+
+		it('should not use placeholder as aria-label', () => {
+			const wrapper = render(Select, {
+				props: {
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+					],
+					placeholder: 'Choose an option',
+					modelValue: 'Option 1',
+				},
+			});
+
+			const trigger = wrapper.getByTestId('select-trigger');
+			expect(trigger).not.toHaveAttribute('aria-label');
+			expect(trigger).toHaveTextContent('Option 1');
+		});
+
+		it('should forward an explicit aria-label', () => {
+			const wrapper = render(Select, {
+				props: {
+					items: [{ value: 'Option 1', label: 'Option 1' }],
+					placeholder: 'Choose an option',
+				},
+				attrs: {
+					'aria-label': 'Status',
+				},
+			});
+
+			expect(wrapper.getByTestId('select-trigger')).toHaveAttribute('aria-label', 'Status');
+		});
+
+		it('should keep trigger attrs in sync after the first render', async () => {
+			const describedBy = ref<string | undefined>();
+			const invalid = ref<boolean | undefined>();
+			const extraClass = ref<string | undefined>();
+
+			const wrapper = render({
+				setup() {
+					return () =>
+						h('div', [
+							h(Select as Component, {
+								items: [{ value: '1', label: 'Option 1' }],
+								class: extraClass.value,
+								'aria-describedby': describedBy.value,
+								'aria-invalid': invalid.value,
+							}),
+							h(
+								'button',
+								{
+									type: 'button',
+									'data-test-id': 'start-validation',
+									onClick: () => {
+										describedBy.value = 'select-error';
+										invalid.value = true;
+										extraClass.value = 'is-invalid';
+									},
+								},
+								'Invalidate',
+							),
+							h(
+								'button',
+								{
+									type: 'button',
+									'data-test-id': 'clear-validation',
+									onClick: () => {
+										describedBy.value = undefined;
+										invalid.value = undefined;
+										extraClass.value = undefined;
+									},
+								},
+								'Validate',
+							),
+						]);
+				},
+			});
+			const trigger = wrapper.getByTestId('select-trigger');
+
+			expect(trigger).not.toHaveAttribute('aria-describedby');
+			expect(trigger).not.toHaveAttribute('aria-invalid');
+			expect(trigger).not.toHaveClass('is-invalid');
+
+			await userEvent.click(wrapper.getByTestId('start-validation'));
+
+			await waitFor(() => {
+				expect(trigger).toHaveAttribute('aria-describedby', 'select-error');
+				expect(trigger).toHaveAttribute('aria-invalid', 'true');
+				expect(trigger).toHaveClass('is-invalid');
+			});
+
+			await userEvent.click(wrapper.getByTestId('clear-validation'));
+
+			await waitFor(() => {
+				expect(trigger).not.toHaveAttribute('aria-describedby');
+				expect(trigger).not.toHaveAttribute('aria-invalid');
+				expect(trigger).not.toHaveClass('is-invalid');
+			});
 		});
 	});
 
@@ -786,31 +885,28 @@ describe('v2/components/Select', () => {
 	});
 
 	describe('clearable', () => {
-		it('should show clear button when clearable and has value', () => {
+		test.each([
+			[{ modelValue: 'Option 1', clearable: true }, true],
+			[{ clearable: true }, false],
+			[{ modelValue: 'Option 1', clearable: true, disabled: true }, false],
+		] as const)('clear button visibility %#', (props, visible) => {
 			const wrapper = render(Select, {
 				props: {
 					items: [
 						{ value: 'Option 1', label: 'Option 1' },
 						{ value: 'Option 2', label: 'Option 2' },
 					],
-					modelValue: 'Option 1',
-					clearable: true,
+					...props,
 				},
 			});
-			expect(wrapper.getByTestId('select-clear')).toBeInTheDocument();
-		});
 
-		it('should not show clear button when empty', () => {
-			const wrapper = render(Select, {
-				props: {
-					items: [
-						{ value: 'Option 1', label: 'Option 1' },
-						{ value: 'Option 2', label: 'Option 2' },
-					],
-					clearable: true,
-				},
-			});
-			expect(wrapper.queryByTestId('select-clear')).not.toBeInTheDocument();
+			const clearButton = wrapper.queryByRole('button', { name: 'Clear selection' });
+			if (visible) {
+				expect(clearButton).toBeVisible();
+				expect(clearButton).toHaveAttribute('type', 'button');
+			} else {
+				expect(clearButton).not.toBeInTheDocument();
+			}
 		});
 
 		it('should clear value on clear button click', async () => {
@@ -825,7 +921,7 @@ describe('v2/components/Select', () => {
 				},
 			});
 
-			await userEvent.click(wrapper.getByTestId('select-clear'));
+			await userEvent.click(wrapper.getByRole('button', { name: 'Clear selection' }));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([undefined]);
@@ -846,7 +942,7 @@ describe('v2/components/Select', () => {
 				},
 			});
 
-			await userEvent.click(wrapper.getByTestId('select-clear'));
+			await userEvent.click(wrapper.getByRole('button', { name: 'Clear selection' }));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[]]);

@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="M extends boolean = false">
-import { reactiveOmit, reactivePick } from '@vueuse/core';
+import { reactivePick } from '@vueuse/core';
 import {
 	SelectValue as RSelectValue,
 	SelectContent,
@@ -39,8 +39,16 @@ import N8nSelectItem from './SelectItem.vue';
 defineOptions({ inheritAttrs: false });
 
 const attrs = useAttrs();
-const triggerClass = computed(() => attrs.class);
-const triggerAttrs = computed(() => reactiveOmit(attrs, ['class']));
+
+function triggerClass() {
+	return attrs.class;
+}
+
+function triggerAttrs() {
+	const rest = { ...attrs };
+	delete rest.class;
+	return rest;
+}
 
 const $style = useCssModule();
 const { t } = useI18n();
@@ -203,6 +211,18 @@ function isSelectValue(value: unknown): value is SelectValue {
 
 function isOptionItem(item: SelectItem): item is SelectOptionBase {
 	return item.type !== 'label' && item.type !== 'separator';
+}
+
+function itemKey(item: SelectItem, index: number) {
+	if (isOptionItem(item)) {
+		return item.value;
+	}
+
+	if (item.type === 'label') {
+		return `label-${item.label}-${index}`;
+	}
+
+	return `separator-${index}`;
 }
 
 function stringifyPrimitive(value: unknown): string | undefined {
@@ -371,10 +391,7 @@ function isModelValue(value: unknown): value is SelectModelValue<M> {
 	return isSelectValue(value);
 }
 
-function onClear(event: Event) {
-	event.preventDefault();
-	event.stopPropagation();
-
+function onClear() {
 	if (props.multiple) {
 		const empty: unknown = [];
 		if (isModelValue(empty)) {
@@ -445,10 +462,11 @@ function resolveDisplayValue(value: unknown): string | undefined {
 		<SelectTrigger
 			:id="id"
 			ref="trigger"
+			as="div"
 			data-test-id="select-trigger"
-			v-bind="triggerAttrs"
-			:class="[$style.selectTrigger, variantClasses[variant], size, triggerClass]"
-			:aria-label="attrs['aria-label'] ?? resolvedPlaceholder()"
+			v-bind="triggerAttrs()"
+			:tabindex="disabled ? -1 : 0"
+			:class="[$style.selectTrigger, variantClasses[variant], size, triggerClass()]"
 		>
 			<Icon
 				v-if="icon"
@@ -462,18 +480,18 @@ function resolveDisplayValue(value: unknown): string | undefined {
 					{{ resolveDisplayValue(selectedValue) ?? resolvedPlaceholder() }}
 				</slot>
 			</RSelectValue>
-			<span
+			<button
 				v-if="showClearButton"
-				role="button"
-				tabindex="-1"
+				type="button"
 				data-test-id="select-clear"
 				:class="$style.clearButton"
 				:aria-label="t('nds.select.clear')"
-				@click="onClear"
+				@mousedown.prevent
 				@pointerdown.stop.prevent
+				@click.stop="onClear"
 			>
-				<Icon icon="x" color="text-light" aria-hidden="true" />
-			</span>
+				<Icon icon="x" size="small" />
+			</button>
 			<Icon
 				icon="chevron-down"
 				:class="$style.trailingIcon"
@@ -523,7 +541,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 							</slot>
 						</div>
 						<SelectGroup v-else>
-							<template v-for="(item, index) in visibleItems" :key="`group-${index}`">
+							<template v-for="(item, index) in visibleItems" :key="itemKey(item, index)">
 								<RSelectLabel v-if="item.type === 'label'" :class="$style.selectLabel">
 									<slot name="label" :item="item">
 										{{ item.label }}
@@ -601,7 +619,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 
 	@include focus.focus-visible-ring;
 
-	&:hover:not([data-disabled]):not(:focus-visible) {
+	&:hover:not([data-disabled]):not(:focus-visible):not(:has(.clearButton:hover)) {
 		border-color: var(--input--border-color--hover);
 		box-shadow: var(--input--shadow--hover);
 		cursor: pointer;
@@ -682,25 +700,28 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .clearButton {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
-	margin-left: auto;
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	padding: 0;
 	border: none;
+	border-radius: var(--radius--full);
 	background: transparent;
+	color: var(--text-color--subtle);
 	cursor: pointer;
-	border-radius: var(--radius--sm);
-	color: var(--text-color--subtler);
 
 	&:hover {
 		color: var(--text-color);
 	}
-}
 
-.clearButton + .trailingIcon {
-	margin-left: 0;
+	&:focus {
+		outline: none;
+		background-color: var(--background--hover);
+		color: var(--text-color);
+	}
 }
 
 .trailingIcon {
@@ -780,6 +801,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .selectValue {
+	flex: 1;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
