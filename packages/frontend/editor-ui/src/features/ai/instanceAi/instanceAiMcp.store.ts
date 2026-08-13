@@ -29,7 +29,9 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	const credentialsStore = useCredentialsStore();
 
 	const connections = ref<InstanceAiMcpConnectionResponse[]>([]);
+	let connectionsLoad: Promise<void> | null = null;
 	const catalog = ref<McpRegistryServerResponse[] | null>(null);
+	let catalogLoad: Promise<void> | null = null;
 	const connectionToolsById = reactive(new Map<string, InstanceAiMcpConnectionToolResponse[]>());
 	const isLoadingConnections = ref(false);
 	const isLoadingCatalog = ref(false);
@@ -49,22 +51,33 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	});
 
 	async function fetchConnections(): Promise<void> {
+		connectionsLoad ??= loadConnections();
+		await connectionsLoad;
+	}
+
+	async function loadConnections(): Promise<void> {
 		isLoadingConnections.value = true;
 		try {
 			connections.value = await fetchMcpConnections(rootStore.restApiContext);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchConnections'));
 		} finally {
+			connectionsLoad = null;
 			isLoadingConnections.value = false;
 		}
 	}
 
 	async function fetchCatalogLazy(): Promise<void> {
-		if (catalog.value !== null) return;
+		catalogLoad ??= loadCatalog();
+		await catalogLoad;
+	}
+
+	async function loadCatalog(): Promise<void> {
 		isLoadingCatalog.value = true;
 		try {
 			catalog.value = await fetchMcpRegistryServers(rootStore.restApiContext);
 		} catch (error) {
+			catalogLoad = null;
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchCatalog'));
 		} finally {
 			isLoadingCatalog.value = false;
@@ -162,7 +175,9 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 
 	function reset(): void {
 		connections.value = [];
+		connectionsLoad = null;
 		catalog.value = null;
+		catalogLoad = null;
 		connectionToolsById.clear();
 		inFlightConnectionToolsById.clear();
 	}

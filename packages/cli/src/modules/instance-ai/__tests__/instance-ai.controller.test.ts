@@ -1122,7 +1122,7 @@ describe('InstanceAiController', () => {
 			expect(gatewayService.disconnectAllGateways).not.toHaveBeenCalled();
 		});
 
-		it('should publish settings reloads to other mains', async () => {
+		it('should publish settings reloads and refresh affected module settings', async () => {
 			settingsService.updateAdminSettings.mockResolvedValue({ enabled: true } as never);
 
 			await controller.updateAdminSettings(req, res, { enabled: true });
@@ -1130,6 +1130,8 @@ describe('InstanceAiController', () => {
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'reload-instance-ai-settings',
 			});
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('agents');
 		});
 
 		it('should publish and attempt every local side effect when one fails', async () => {

@@ -7,6 +7,8 @@ type ProviderOpts = {
 	baseURL?: string;
 	fetch?: typeof globalThis.fetch;
 	headers?: Record<string, string>;
+	includeUsage?: boolean;
+	supportsStructuredOutputs?: boolean;
 };
 
 // All providers are mocked via vi.mock so require() inside the registry entries
@@ -162,6 +164,8 @@ vi.mock('@ai-sdk/openai-compatible', () => ({
 		baseURL: opts.baseURL,
 		headers: opts.headers,
 		fetch: opts.fetch,
+		includeUsage: opts.includeUsage,
+		supportsStructuredOutputs: opts.supportsStructuredOutputs,
 		specificationVersion: 'v3',
 	}),
 }));
@@ -180,6 +184,25 @@ vi.mock('@ai-sdk/amazon-bedrock', () => ({
 			region: opts?.region,
 			accessKeyId: opts?.accessKeyId,
 			secretAccessKey: opts?.secretAccessKey,
+			specificationVersion: 'v3',
+		}),
+}));
+
+vi.mock('@ai-sdk/google-vertex/anthropic', () => ({
+	createVertexAnthropic:
+		(opts?: {
+			project?: string;
+			location?: string;
+			googleAuthOptions?: { credentials?: Record<string, unknown> };
+			fetch?: typeof globalThis.fetch;
+		}) =>
+		(model: string) => ({
+			provider: 'google-vertex-anthropic',
+			modelId: model,
+			project: opts?.project,
+			location: opts?.location,
+			googleAuthOptions: opts?.googleAuthOptions,
+			fetch: opts?.fetch,
 			specificationVersion: 'v3',
 		}),
 }));
@@ -204,9 +227,9 @@ describe('createModel', () => {
 	});
 
 	it('should accept a string config', () => {
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		const model = createModel('anthropic/claude-opus-5') as unknown as Record<string, unknown>;
 		expect(model.provider).toBe('anthropic');
-		expect(model.modelId).toBe('claude-sonnet-4-5');
+		expect(model.modelId).toBe('claude-opus-5');
 	});
 
 	it('should accept an object config with baseURL', () => {
@@ -360,7 +383,7 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('or-test');
 		});
 
-		it('should create model for nvidia', () => {
+		it('should create model for nvidia with SDK defaults for usage and structured outputs', () => {
 			const model = createModel({
 				id: 'nvidia/nvidia/llama-3.3-nemotron-super-49b-v1',
 				apiKey: 'nv-test',
@@ -370,6 +393,28 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
 			expect(model.apiKey).toBe('nv-test');
 			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
+			expect(model.includeUsage).toBeUndefined();
+			expect(model.supportsStructuredOutputs).toBeUndefined();
+		});
+
+		it('should have undefined supportsStructuredOutputs for custom when unset', () => {
+			const model = createModel({
+				id: 'custom/Kimi-K3',
+				apiKey: 'key',
+				baseURL: 'https://example.com/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('custom');
+			expect(model.supportsStructuredOutputs).toBe(undefined);
+		});
+
+		it('should forward supportsStructuredOutputs for custom when set', () => {
+			const model = createModel({
+				id: 'custom/Kimi-K3',
+				apiKey: 'key',
+				baseURL: 'https://example.com/v1',
+				supportsStructuredOutputs: true,
+			}) as unknown as Record<string, unknown>;
+			expect(model.supportsStructuredOutputs).toBe(true);
 		});
 	});
 
@@ -464,6 +509,58 @@ describe('createModel', () => {
 					secretAccessKey: 'secret',
 				}),
 			).toThrow(/Invalid credentials for provider "aws-bedrock"/);
+		});
+	});
+
+	describe('google-vertex-anthropic', () => {
+		it('should create model with project, location, and service-account JSON', () => {
+			const model = createModel({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'my-project',
+				location: 'global',
+				googleCredentials: JSON.stringify({
+					client_email: 'svc@my-project.iam.gserviceaccount.com',
+					private_key: '-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----\\n',
+				}),
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('google-vertex-anthropic');
+			expect(model.modelId).toBe('claude-opus-4-8');
+			expect(model.project).toBe('my-project');
+			expect(model.location).toBe('global');
+			expect(model.googleAuthOptions).toEqual({
+				credentials: {
+					client_email: 'svc@my-project.iam.gserviceaccount.com',
+					private_key: '-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----\n',
+				},
+			});
+		});
+
+		it('should default location to global when omitted', () => {
+			const model = createModel({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'my-project',
+			}) as unknown as Record<string, unknown>;
+			expect(model.location).toBe('global');
+			expect(model.googleAuthOptions).toBeUndefined();
+		});
+
+		it('should throw if project is missing', () => {
+			expect(() =>
+				createModel({
+					id: 'google-vertex-anthropic/claude-opus-4-8',
+					location: 'global',
+				}),
+			).toThrow(/Invalid credentials for provider "google-vertex-anthropic"/);
+		});
+
+		it('should throw if googleCredentials is not valid JSON', () => {
+			expect(() =>
+				createModel({
+					id: 'google-vertex-anthropic/claude-opus-4-8',
+					project: 'my-project',
+					googleCredentials: 'not-json',
+				}),
+			).toThrow(/googleCredentials must be valid JSON/);
 		});
 	});
 
