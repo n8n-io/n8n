@@ -20,7 +20,27 @@ requestBody:
             nullable: true
           nodes: {}
           connections: {}
-          nodeGroups: {}
+          nodeGroups:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                nodeIds:
+                  type: array
+                  items:
+                    type: string
+                description:
+                  type: string
+                  maxLength: 155
+              required:
+                - id
+                - name
+                - nodeIds
+              additionalProperties: false
           settings:
             type: object
             properties:
