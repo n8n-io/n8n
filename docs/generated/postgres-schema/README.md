@@ -95,6 +95,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
+| [public.project_git_connection](public.project_git_connection.md) | 14 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
 | [public.role](public.role.md) | 7 |  | BASE TABLE |
@@ -1208,6 +1209,22 @@ erDiagram
   varchar_36_ id
   varchar_255_ name
   varchar_36_ type
+  timestamp_3__with_time_zone updatedAt
+}
+"public.project_git_connection" {
+  varchar_64_ baseCommit
+  varchar_255_ branchName
+  boolean connected
+  varchar_16_ connectionType
+  timestamp_3__with_time_zone createdAt
+  text encryptedPassword
+  text encryptedPrivateKey
+  text encryptedUsername
+  varchar_36_ id
+  varchar_16_ keyGeneratorType
+  varchar_128_ name
+  text publicKey
+  text repositoryUrl
   timestamp_3__with_time_zone updatedAt
 }
 "public.project_relation" {
