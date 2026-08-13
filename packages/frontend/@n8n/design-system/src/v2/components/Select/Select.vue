@@ -230,7 +230,7 @@ function isOptionItem(item: SelectItem): item is SelectOptionBase {
 
 function itemKey(item: SelectItem, index: number) {
 	if (isOptionItem(item)) {
-		return item.value;
+		return `item-${String(item.value)}`;
 	}
 
 	if (item.type === 'label') {
