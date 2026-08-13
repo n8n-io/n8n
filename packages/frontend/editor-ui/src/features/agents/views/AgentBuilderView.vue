@@ -1879,9 +1879,14 @@ function onSwitchAgent(nextAgentId: string) {
 		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
 	}
 
-	&:has([data-preview-layout='floating']) {
+	&:has([data-preview-layout='floating']),
+	&:has([data-preview-layout='fullpage']) {
 		padding-right: 0;
 		transition: none;
+	}
+
+	&:has([data-preview-layout='fullpage']) .editorColumn {
+		display: none;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

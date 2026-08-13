@@ -49,7 +49,7 @@ defineExpose({ focusInput });
 		:class="[$style.previewPage, { [$style.dockLayout]: layout === 'dock' }]"
 		data-testid="agent-preview-chat-page"
 	>
-		<div :class="[$style.chatFrame, { [$style.dockChatFrame]: layout === 'dock' }]">
+		<div :class="$style.chatFrame">
 			<AgentChatPanel
 				v-if="initialized && effectiveSessionId"
 				:key="`preview-${effectiveSessionId}`"
@@ -84,16 +84,11 @@ defineExpose({ focusInput });
 
 .chatFrame {
 	width: 100%;
-	max-width: 45rem;
 	min-height: 0;
 	display: flex;
 }
 
 .dockLayout {
 	background-color: transparent;
-}
-
-.dockChatFrame {
-	max-width: none;
 }
 </style>

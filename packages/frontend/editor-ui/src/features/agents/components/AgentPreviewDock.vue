@@ -9,7 +9,7 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 
@@ -41,6 +41,7 @@ interface SessionOptionData {
 enum PreviewLayout {
 	Docked = 'docked',
 	Floating = 'floating',
+	Fullpage = 'fullpage',
 }
 
 const props = defineProps<{
@@ -104,7 +105,29 @@ const layoutOptions = computed<Array<DropdownMenuItemProps<string>>>(() => [
 		checked: layout.value === PreviewLayout.Docked,
 		icon: { type: 'icon', value: 'panel-right' },
 	},
+	{
+		id: PreviewLayout.Fullpage,
+		label: i18n.baseText('agents.builder.preview.layout.fullpage' as BaseTextKey),
+		checked: layout.value === PreviewLayout.Fullpage,
+		icon: { type: 'icon', value: 'maximize-2' },
+	},
 ]);
+
+function getLayoutIcon() {
+	if (layout.value === PreviewLayout.Floating) return 'picture-in-picture-2';
+	if (layout.value === PreviewLayout.Fullpage) return 'maximize-2';
+	return 'panel-right';
+}
+
+function getLayoutAriaLabel() {
+	if (layout.value === PreviewLayout.Floating) {
+		return i18n.baseText('agents.builder.preview.layout.floating.ariaLabel');
+	}
+	if (layout.value === PreviewLayout.Fullpage) {
+		return i18n.baseText('agents.builder.preview.layout.fullpage.ariaLabel' as BaseTextKey);
+	}
+	return i18n.baseText('agents.builder.preview.layout.docked.ariaLabel');
+}
 
 function viewTrace() {
 	if (!props.hasSession || !props.effectiveSessionId) return;
@@ -133,6 +156,8 @@ function setLayout(nextLayout: string) {
 		layout.value = PreviewLayout.Floating;
 	} else if (nextLayout === PreviewLayout.Docked) {
 		layout.value = PreviewLayout.Docked;
+	} else if (nextLayout === PreviewLayout.Fullpage) {
+		layout.value = PreviewLayout.Fullpage;
 	}
 }
 
@@ -171,7 +196,15 @@ useKeybindings({
 		:data-preview-layout="layout"
 		data-testid="agent-preview-dock"
 	>
-		<div :class="[$style.dockInner, { [$style.floating]: layout === PreviewLayout.Floating }]">
+		<div
+			:class="[
+				$style.dockInner,
+				{
+					[$style.floating]: layout === PreviewLayout.Floating,
+					[$style.fullpage]: layout === PreviewLayout.Fullpage,
+				},
+			]"
+		>
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
 				<N8nDropdownMenu
 					:items="sessionDropdownOptions"
@@ -269,15 +302,11 @@ useKeybindings({
 						<N8nDropdownMenu :items="layoutOptions" placement="bottom-end" @select="setLayout">
 							<template #trigger>
 								<N8nIconButton
-									:icon="layout === PreviewLayout.Floating ? 'picture-in-picture-2' : 'panel-right'"
+									:icon="getLayoutIcon()"
 									variant="ghost"
 									size="small"
 									icon-size="large"
-									:aria-label="
-										layout === PreviewLayout.Floating
-											? i18n.baseText('agents.builder.preview.layout.floating.ariaLabel')
-											: i18n.baseText('agents.builder.preview.layout.docked.ariaLabel')
-									"
+									:aria-label="getLayoutAriaLabel()"
 									data-testid="agent-preview-layout-btn"
 								/>
 							</template>
@@ -330,7 +359,7 @@ useKeybindings({
 	top: 0;
 	right: 0;
 	bottom: 0;
-	width: var(--agent-preview-chat-column-width, 25rem);
+	width: var(--agent-preview-chat-column-width, 30rem);
 	max-width: 100%;
 	min-width: 0;
 	min-height: 0;
@@ -345,12 +374,16 @@ useKeybindings({
 		flex-direction: column;
 		justify-content: flex-end;
 	}
+
+	&:has(.fullpage) {
+		width: 100%;
+	}
 }
 
 .dockInner {
 	display: flex;
 	flex-direction: column;
-	width: var(--agent-preview-chat-column-width, 25rem);
+	width: var(--agent-preview-chat-column-width, 30rem);
 	height: 100%;
 	overflow: hidden;
 	background-color: var(--background--surface);
@@ -370,6 +403,11 @@ useKeybindings({
 		will-change: auto;
 	}
 }
+.fullpage {
+	width: 100%;
+	border-left: 0;
+}
+
 .floating {
 	width: 100%;
 	height: 36rem;
