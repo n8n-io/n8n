@@ -60,7 +60,7 @@ const fixtures: Array<{ id: FixtureId; label: string; workflow: WorkflowFixture 
 const store = useWorkflowGenerativeUiStore();
 const selectedFixtureId = ref<FixtureId>('leads');
 const highlightedNodeId = ref<string | null>(null);
-const apiKeyDraft = ref(store.apiKey);
+const apiKeyDraft = ref(store.apiKey ?? '');
 const activeFixture = computed(
 	() => fixtures.find((fixture) => fixture.id === selectedFixtureId.value) ?? fixtures[0],
 );
@@ -146,17 +146,15 @@ const handlers = {
 watch(
 	() => store.apiKey,
 	(apiKey) => {
-		apiKeyDraft.value = apiKey;
+		apiKeyDraft.value = apiKey ?? '';
 	},
 );
 
 watch(selectedFixtureId, () => {
 	highlightedNodeId.value = null;
 	store.invalidateHistories();
-	void store.setView(store.view === 'canvas' ? 'story' : store.view);
+	if (store.view !== 'canvas') void store.setView(store.view);
 });
-
-void store.setView(store.view === 'canvas' ? 'story' : store.view);
 
 onBeforeUnmount(() => {
 	store.invalidateHistories();
@@ -188,7 +186,8 @@ onBeforeUnmount(() => {
 					/>
 				</N8nSelect>
 				<N8nSelect
-					:model-value="store.view"
+					:model-value="store.view === 'canvas' ? '' : store.view"
+					placeholder="Pick a view"
 					aria-label="Workflow view"
 					data-testid="generative-ui-playground-view"
 					@update:model-value="selectView"
@@ -200,7 +199,7 @@ onBeforeUnmount(() => {
 				<N8nButton
 					variant="subtle"
 					:loading="store.isGenerating"
-					:disabled="store.isGenerating"
+					:disabled="store.isGenerating || store.view === 'canvas'"
 					@click="store.regenerate"
 				>
 					Regenerate
@@ -254,6 +253,9 @@ onBeforeUnmount(() => {
 				<JSONUIProvider v-else-if="renderSpec" :registry="registry" :handlers="handlers">
 					<Renderer :spec="renderSpec" :registry="registry" :loading="store.isGenerating" />
 				</JSONUIProvider>
+				<div v-else :class="$style.status">
+					<N8nText>Pick a view to generate one.</N8nText>
+				</div>
 				<FollowUpBar />
 			</div>
 		</section>

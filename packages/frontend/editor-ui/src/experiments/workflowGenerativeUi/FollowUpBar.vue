@@ -9,8 +9,8 @@ const instruction = ref('');
 async function submit() {
 	const value = instruction.value.trim();
 	if (!value || store.isGenerating) return;
-	instruction.value = '';
 	await store.followUp(value);
+	if (!store.error) instruction.value = '';
 }
 </script>
 

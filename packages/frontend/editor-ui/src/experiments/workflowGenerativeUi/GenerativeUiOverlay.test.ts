@@ -8,6 +8,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import GenerativeUiOverlay from './GenerativeUiOverlay.vue';
 import { useWorkflowGenerativeUiStore } from './workflowGenerativeUi.store';
@@ -108,5 +109,31 @@ describe('GenerativeUiOverlay', () => {
 
 		await fireEvent.click(screen.getByRole('button'));
 		expect(ndvStore.activeNodeName).toBeNull();
+	});
+
+	it('opens the node details view for the pressed node', async () => {
+		const documentStore = setupWorkflow();
+		const store = useWorkflowGenerativeUiStore();
+		store.activeSpec = stepSpec(node.id);
+		const ndvStore = useNDVStore(documentStore.documentId);
+		const setActiveNodeName = vi.spyOn(ndvStore, 'setActiveNodeName');
+		renderComponent(GenerativeUiOverlay);
+
+		await fireEvent.click(screen.getByRole('button'));
+
+		expect(setActiveNodeName).toHaveBeenCalledWith(node.name, 'generative_ui');
+	});
+
+	it('does not throw when the workflow document store is not provided', async () => {
+		setupWorkflow();
+		const store = useWorkflowGenerativeUiStore();
+		store.activeSpec = stepSpec(node.id);
+		renderComponent(GenerativeUiOverlay, {
+			global: { provide: { [WorkflowDocumentStoreKey as symbol]: undefined } },
+		});
+
+		await fireEvent.click(screen.getByRole('button'));
+
+		expect(screen.getByText('Known node')).toBeInTheDocument();
 	});
 });

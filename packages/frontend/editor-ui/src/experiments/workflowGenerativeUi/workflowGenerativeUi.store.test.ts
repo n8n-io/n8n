@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { GenerateSpecError, generateSpec } from './generate';
 import { useWorkflowGenerativeUiStore } from './workflowGenerativeUi.store';
 
-vi.mock('@/app/composables/useStorage', () => ({
+vi.mock('@n8n/composables/useStorage', () => ({
 	useStorage: () => ref('test-api-key'),
 }));
 

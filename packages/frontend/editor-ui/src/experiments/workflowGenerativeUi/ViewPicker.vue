@@ -7,12 +7,12 @@ import {
 } from './workflowGenerativeUi.store';
 
 const store = useWorkflowGenerativeUiStore();
-const apiKeyDraft = ref(store.apiKey);
+const apiKeyDraft = ref(store.apiKey ?? '');
 
 watch(
 	() => store.apiKey,
 	(apiKey) => {
-		apiKeyDraft.value = apiKey;
+		apiKeyDraft.value = apiKey ?? '';
 	},
 );
 

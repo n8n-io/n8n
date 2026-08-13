@@ -1,4 +1,5 @@
 import { screen, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import WorkflowCanvas from './WorkflowCanvas.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -87,6 +88,24 @@ describe('WorkflowCanvas', () => {
 
 		await waitFor(() => expect(getByTestId('canvas')).not.toBeVisible());
 		expect(getByTestId('canvas')).toBeInTheDocument();
+	});
+
+	it('mounts no experiment chrome on a read-only canvas', async () => {
+		const { container, getByTestId } = renderComponent({ props: { readOnly: true } });
+
+		await flushPromises();
+
+		expect(getByTestId('canvas')).toBeVisible();
+		expect(container.querySelector('[data-testid="generative-ui-picker"]')).not.toBeInTheDocument();
+	});
+
+	it('mounts no experiment chrome when interaction is suppressed', async () => {
+		const { container, getByTestId } = renderComponent({ props: { suppressInteraction: true } });
+
+		await flushPromises();
+
+		expect(getByTestId('canvas')).toBeVisible();
+		expect(container.querySelector('[data-testid="generative-ui-picker"]')).not.toBeInTheDocument();
 	});
 
 	it('removes the previous spec when the workflow hash changes', async () => {

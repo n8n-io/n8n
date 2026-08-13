@@ -48,11 +48,13 @@ describe('ViewPicker', () => {
 		await waitFor(() => expect(store.error).toBe('missing-key'));
 		expect(screen.getByLabelText('Anthropic API key')).toBeInTheDocument();
 		expect(fetch).not.toHaveBeenCalled();
+		expect(localStorage.getItem('n8n.workflowGenerativeUi.apiKey')).toBeNull();
 
 		await user.type(screen.getByLabelText('Anthropic API key'), 'test-key');
 		await user.click(screen.getByRole('button', { name: 'Save' }));
 
 		await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
 		expect(store.apiKey).toBe('test-key');
+		expect(localStorage.getItem('n8n.workflowGenerativeUi.apiKey')).toBe('test-key');
 	});
 });

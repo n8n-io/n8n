@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import type { Spec } from '@json-render/core';
+import { useStorage } from '@n8n/composables/useStorage';
 import { computed, ref, shallowReactive, shallowRef } from 'vue';
-import { useStorage } from '@/app/composables/useStorage';
 import { generateSpec, GenerateSpecError } from './generate';
 import { SpecHistory, historyKey } from './history';
 import {
@@ -62,7 +62,7 @@ function isAbortError(error: unknown): boolean {
 export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', () => {
 	const view = ref<WorkflowGenerativeUiView>('canvas');
 	const lookOnly = ref(false);
-	const apiKey = useStorage('n8n.workflowGenerativeUi.apiKey', '');
+	const apiKey = useStorage('n8n.workflowGenerativeUi.apiKey');
 	const isGenerating = ref(false);
 	const error = ref<WorkflowGenerativeUiError | null>(null);
 	const histories = shallowReactive(new Map<string, SpecHistory>());
@@ -109,7 +109,8 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 		abortActiveRequest();
 		const context = currentContext();
 		if (!context) return;
-		if (!apiKey.value) {
+		const key = apiKey.value;
+		if (!key) {
 			error.value = 'missing-key';
 			return;
 		}
@@ -123,7 +124,7 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 
 		try {
 			const spec = await generateSpec({
-				apiKey: apiKey.value,
+				apiKey: key,
 				view: context.view,
 				payload: context.payload,
 				signal: request.signal,
@@ -183,7 +184,8 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 		if (!context) return;
 		const history = histories.get(context.key) ?? new SpecHistory();
 		const currentSpec = history.current();
-		if (!apiKey.value) {
+		const key = apiKey.value;
+		if (!key) {
 			error.value = 'missing-key';
 			return;
 		}
@@ -197,7 +199,7 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 
 		try {
 			const spec = await generateSpec({
-				apiKey: apiKey.value,
+				apiKey: key,
 				view: context.view,
 				payload: context.payload,
 				currentSpec,
@@ -245,6 +247,7 @@ export const useWorkflowGenerativeUiStore = defineStore('workflowGenerativeUi', 
 		isGenerating,
 		error,
 		histories,
+		activeHistoryKey,
 		activeSpec,
 		canUndo,
 		setWorkflowGetter,

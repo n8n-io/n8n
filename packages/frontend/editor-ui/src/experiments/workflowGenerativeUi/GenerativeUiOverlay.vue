@@ -4,7 +4,7 @@ import { N8nText } from '@n8n/design-system';
 import { JSONUIProvider, Renderer, type Spec } from '@json-render/vue';
 import { computed, toRef, watch } from 'vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { provideGenerativeUiLookOnly, provideGenerativeUiNodes } from './nodeLookup';
 import { registry } from './registry';
 import { buildWorkflowUiPayload } from './workflowPayload';
@@ -16,7 +16,7 @@ import {
 
 const store = useWorkflowGenerativeUiStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const ndvStore = injectNDVStore();
+const ndvStore = injectNDVStoreIfProvided();
 const { showToast } = useToast();
 const nodes = computed(() => workflowDocumentStore.value.allNodes);
 
@@ -78,7 +78,7 @@ const handlers = {
 		const nodeId = typeof params.nodeId === 'string' ? params.nodeId : null;
 		const node = nodes.value.find((candidate) => candidate.id === nodeId);
 		if (!store.lookOnly && node) {
-			ndvStore.value.setActiveNodeName(node.name, 'generative_ui');
+			ndvStore.value?.setActiveNodeName(node.name, 'generative_ui');
 		}
 		return Promise.resolve();
 	},

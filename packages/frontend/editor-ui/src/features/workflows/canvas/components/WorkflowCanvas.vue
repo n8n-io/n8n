@@ -305,7 +305,7 @@ defineExpose({
 <template>
 	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
 		<WorkflowGenerativeUiDev
-			v-if="WorkflowGenerativeUiDev"
+			v-if="WorkflowGenerativeUiDev && !readOnly && !suppressInteraction"
 			@update:canvas-visible="canvasVisible = $event"
 		/>
 		<div v-show="canvasVisible" id="canvas" :class="$style.canvas">
