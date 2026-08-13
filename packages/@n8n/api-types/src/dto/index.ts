@@ -144,6 +144,12 @@ export {
 	activeWorkflowVersionPublicSchema,
 } from './workflows/workflow-public.dto';
 export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
+export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto';
+export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
+export {
+	WorkflowPublishBlockedErrorPublicDto,
+	workflowPublishBlockedErrorPublicSchema,
+} from './workflows/workflow-publish-blocked-error-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
