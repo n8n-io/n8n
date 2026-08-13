@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/experiments/readyToRunWorkflowsV2/workflows/ai-workflow-v3.ts
+  s_83dd5dc5f1eb4f::t_047f07edb9638e 35
+  s_83dd5dc5f1eb4f::t_5296acde6cda96 37,41
+packages/frontend/editor-ui/src/experiments/readyToRunWorkflowsV2/workflows/ai-workflow-v4.ts
+  s_83dd5dc5f1eb4f::t_accc7fba48bc6c 35
+  s_83dd5dc5f1eb4f::t_5ab25f9ad1ea43 37,41
+packages/frontend/editor-ui/src/features/workflows/readyToRun/workflows/aiWorkflow.ts
+  s_83dd5dc5f1eb4f::t_bb2880f442058b 56
+  s_83dd5dc5f1eb4f::t_0d9d606e527a7c 37,41
+  s_83dd5dc5f1eb4f::t_1cc60265454cde 35
+packages/frontend/editor-ui/src/experiments/readyToRunWorkflowsV2/workflows/ai-workflow-v5.ts
+  s_83dd5dc5f1eb4f::t_dbf1f67b20a278 26
+  s_83dd5dc5f1eb4f::t_7b76260e537833 28
+packages/frontend/editor-ui/src/experiments/readyToRunWorkflowsV2/workflows/ai-workflow-v6.ts
+  s_83dd5dc5f1eb4f::t_9a06d0e1f8e795 26
+  s_83dd5dc5f1eb4f::t_de74d58713932b 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d28d01268e977e061f1f1bc7b20db3f9657bcdae",
+  "prompts": {},
+  "sessions": {
+    "s_83dd5dc5f1eb4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f710edb1-5b21-488e-943a-01aea8254365",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
