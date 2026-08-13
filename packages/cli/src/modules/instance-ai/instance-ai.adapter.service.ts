@@ -130,6 +130,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EventService } from '@/events/event.service';
@@ -1899,6 +1900,18 @@ export class InstanceAiAdapterService {
 			async listAiGatewayCredentialTypes(): Promise<string[]> {
 				const config = await getGatewayConfig();
 				return config?.credentialTypes ?? [];
+			},
+
+			async isManagedOAuthCredentialType(credType: string): Promise<boolean> {
+				// Lets resolve-credentials prefer one-click managed OAuth over API-key
+				// auth types when materializing built workflows. Best-effort: never throws.
+				try {
+					return await Promise.resolve(
+						Container.get(CredentialsOverwrites).isManagedOAuthType(credType),
+					);
+				} catch {
+					return false;
+				}
 			},
 		};
 

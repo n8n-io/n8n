@@ -167,6 +167,35 @@ export async function resolveCredentials(
 			hasStoredCredential,
 		);
 
+	// Managed OAuth (instance-provided OAuth client) is instance-global config;
+	// memoize per type for this call.
+	const managedOAuthCache = new Map<string, boolean>();
+	const isManagedOAuthType = async (credType: string): Promise<boolean> => {
+		if (!ctx.credentialService.isManagedOAuthCredentialType) return false;
+		const cached = managedOAuthCache.get(credType);
+		if (cached !== undefined) return cached;
+		const supported = await ctx.credentialService
+			.isManagedOAuthCredentialType(credType)
+			.catch(() => false);
+		managedOAuthCache.set(credType, supported);
+		return supported;
+	};
+
+	// Fallback for a slot the user would otherwise fill by hand: a sibling
+	// credential type whose OAuth client the instance provides, so setup offers
+	// one-click connect instead of an API-key form (INS-973).
+	const resolveManagedOAuthSiblingType = async (
+		node: NodeJSON,
+		currentType: string,
+	): Promise<string | undefined> =>
+		await resolveSupportedSiblingCredentialType(
+			ctx,
+			node,
+			currentType,
+			isManagedOAuthType,
+			hasStoredCredential,
+		);
+
 	// Switch the node's parameters so the attached credential type is the active
 	// slot (e.g. set `authentication` to match). No-op when the slot is already
 	// active (never rewrite a valid value) or no switch can reach it (version-gated).
@@ -273,10 +302,10 @@ export async function resolveCredentials(
 				return true;
 			};
 
-			const mockCredential = () => {
+			const mockCredential = (credentialType = key) => {
 				const nodeName = node.name ?? '';
 				delete creds[key];
-				mockedCredentialTypesSet.add(key);
+				mockedCredentialTypesSet.add(credentialType);
 				nodeMocked = true;
 
 				if (nodeName) {
@@ -284,7 +313,7 @@ export async function resolveCredentials(
 					// simulation plan forces these nodes to `simulate`, so verification
 					// pins them with generated fixtures instead of executing them.
 					mockedCredentialsByNode[nodeName] ??= [];
-					mockedCredentialsByNode[nodeName].push(key);
+					mockedCredentialsByNode[nodeName].push(credentialType);
 				}
 			};
 
@@ -317,6 +346,9 @@ export async function resolveCredentials(
 			// With no stored credential for the type, prefer n8n credits over mocking:
 			// attach directly if the written type is gateway-supported, else attach to
 			// a supported sibling (switching auth to it) and drop the unusable slot.
+			// With no gateway option either, still prefer a managed-OAuth sibling —
+			// switch auth to it and mock under that type, so setup asks for one-click
+			// OAuth instead of an API key.
 			const mockOrAttachGateway = async () => {
 				if (!hasStoredCredential(key)) {
 					if (await isGatewayCredentialType(key)) {
@@ -327,6 +359,12 @@ export async function resolveCredentials(
 					if (siblingType) {
 						delete creds[key];
 						await attachGatewayCredential(siblingType);
+						return;
+					}
+					const managedOAuthSibling = await resolveManagedOAuthSiblingType(node, key);
+					if (managedOAuthSibling) {
+						await applyManagedAuth(node, managedOAuthSibling);
+						mockCredential(managedOAuthSibling);
 						return;
 					}
 				}
@@ -417,7 +455,14 @@ export async function resolveCredentials(
 			let managedType = credType;
 			if (!(await isGatewayCredentialType(credType))) {
 				const siblingType = await resolveSupportedSiblingType(node, credType);
-				if (!siblingType) continue;
+				if (!siblingType) {
+					// No n8n-credits option — still prefer a managed-OAuth sibling so
+					// setup offers one-click OAuth instead of an API-key form. Nothing
+					// is attached; the slot stays open for setup like today.
+					const managedOAuthSibling = await resolveManagedOAuthSiblingType(node, credType);
+					if (managedOAuthSibling) await applyManagedAuth(node, managedOAuthSibling);
+					continue;
+				}
 				managedType = siblingType;
 			}
 
