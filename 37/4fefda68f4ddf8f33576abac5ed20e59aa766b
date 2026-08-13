@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_61c7e8ec28e761::t_7bb8a3e81c804b 1014-1051
+  s_61c7e8ec28e761::t_f7fdce9a1ff6b5 1052-1053
+  s_61c7e8ec28e761::t_ad70a93feb9cd1 42-44
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_61c7e8ec28e761::t_9e6c60ff96ff87 21
+  s_61c7e8ec28e761::t_23ff3425df81dd 210
+  s_61c7e8ec28e761::t_a49013de0fa3b7 545-548
+  s_61c7e8ec28e761::t_d82e93d1902ef9 538-541
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "374fefda68f4ddf8f33576abac5ed20e59aa766b",
+  "prompts": {},
+  "sessions": {
+    "s_61c7e8ec28e761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9196b517-d3e0-445a-8812-883791fc9f16",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

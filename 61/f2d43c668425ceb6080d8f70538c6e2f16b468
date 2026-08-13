@@ -1,0 +1,23 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_146adb3c2d55d8::t_9b93b118ac845f 237-243
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_146adb3c2d55d8::t_8f09821533b60a 7
+packages/cli/src/executions/execution-persistence.ts
+  s_146adb3c2d55d8::t_4fd2453adcc62b 542,544-549,551-554
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "61f2d43c668425ceb6080d8f70538c6e2f16b468",
+  "prompts": {},
+  "sessions": {
+    "s_146adb3c2d55d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "278cf0e3-4253-4f60-adf3-92e5057b3a72",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

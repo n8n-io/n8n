@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Docker/Docker.node.ts
+  s_385d4dd73c1589::t_dce2175e49a054 323-326
+packages/nodes-base/nodes/Docker/GenericFunctions.ts
+  s_385d4dd73c1589::t_4a23035acec3ee 252-258,266-267,271-272,274-281
+  s_385d4dd73c1589::t_3e1806b02160ae 319
+  s_385d4dd73c1589::t_61aaaf20dd7332 174-193
+  s_385d4dd73c1589::t_394fd9d7102d61 373
+  s_385d4dd73c1589::t_86753f4a42526e 445
+  s_385d4dd73c1589::t_76cab97418769a 470
+  s_385d4dd73c1589::t_2dcd31503268c5 530
+  s_385d4dd73c1589::t_e09046baf31e05 263-265,268-270,273,282-284
+  s_385d4dd73c1589::t_c632a22b2a862c 259-262
+  s_385d4dd73c1589::t_3fd4bf5efd5449 354
+  s_385d4dd73c1589::t_efedbd474209a1 3,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ef8f21b4fd1340874bf016cda22b7ca4ea90e874",
+  "prompts": {},
+  "sessions": {
+    "s_385d4dd73c1589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5f982d2-f3ab-498c-bacc-95859f6ca4fb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

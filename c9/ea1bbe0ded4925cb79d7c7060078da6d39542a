@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/MainHeader.vue
+  s_61c7e8ec28e761::t_867d7b7aadb6ce 262-275
+packages/frontend/editor-ui/src/app/components/MainHeader/MainHeader.test.ts
+  h_c63dce324dfc7b 139-140
+  s_61c7e8ec28e761::t_4cce4bc2044bbf 8
+  s_61c7e8ec28e761::t_5db18917ec67d2 141-148
+  s_61c7e8ec28e761::t_332c3b9060c60c 99,105-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c9ea1bbe0ded4925cb79d7c7060078da6d39542a",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_61c7e8ec28e761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9196b517-d3e0-445a-8812-883791fc9f16",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

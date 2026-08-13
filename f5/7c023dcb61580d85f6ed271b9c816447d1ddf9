@@ -1,0 +1,104 @@
+packages/cli/src/modules/instance-ai/oauth-token-data.ts
+  s_be3053d6eb937a::t_7424255b8e6652 1-14
+packages/@n8n/instance-ai/src/index.ts
+  s_be3053d6eb937a::t_9875a6106089b4 636-637
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_be3053d6eb937a::t_b65648c98f1dac 2395-2398
+  s_be3053d6eb937a::t_663a09e290673e 184-188
+  s_be3053d6eb937a::t_cb722099d24443 2464-2480
+  s_be3053d6eb937a::t_cdd9596f5b12e6 2588
+  s_be3053d6eb937a::t_9aa0e40d5632be 2406
+  s_be3053d6eb937a::t_2c298370a6a2d6 2268
+  s_be3053d6eb937a::t_2c908ae9ad4f18 756
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_be3053d6eb937a::t_7c5631c80ef89e 951
+  s_be3053d6eb937a::t_19d60051b3cd9d 1000
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_be3053d6eb937a::t_fe2639ab9d6d8d 42
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_be3053d6eb937a::t_6f954e90aa83d4 1822-1829
+packages/@n8n/instance-ai/src/workspace/__tests__/scoped-workspace.test.ts
+  s_be3053d6eb937a::t_771491f5436e4e 124-138
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_be3053d6eb937a::t_fd6f5e53fc88ee 35
+packages/cli/src/modules/instance-ai/sandbox/one-off-task-credential-env.service.ts
+  s_be3053d6eb937a::t_e1896e2958423c 127
+  s_be3053d6eb937a::t_b1f62896993177 1-126,128-160
+packages/cli/src/modules/instance-ai/sandbox/__tests__/one-off-task-credential-env.service.test.ts
+  s_be3053d6eb937a::t_b54e852a2bb704 1-205
+packages/@n8n/config/src/configs/feature-flags.config.ts
+  s_be3053d6eb937a::t_4e2c0c149c0c96 1-28
+packages/@n8n/instance-ai/src/skills/skill-gates.ts
+  s_be3053d6eb937a::t_7d00d39ccdf6f8 8-10,14,21
+packages/@n8n/instance-ai/docs/one-off-task-sandboxes.md
+  s_be3053d6eb937a::t_2ff67e2f0d84b0 3-5,13-15,19-25,32-34,36-40,47-69,73-115,119-158,162-215,219,221-227,229-233,235-237,251-252,255,285,295-305,311-328,332-334
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_be3053d6eb937a::t_be27c09078919c 64-67
+  s_be3053d6eb937a::t_fbd1414b1d15a9 264-279
+packages/@n8n/instance-ai/src/tools/orchestration/one-off-task-agent.tool.ts
+  s_be3053d6eb937a::t_02e651abf9bf58 146-150
+  s_be3053d6eb937a::t_7d08afdf31e905 22-26,31
+  s_be3053d6eb937a::t_634403171023c0 269
+  s_be3053d6eb937a::t_9425cfba37bcf9 1-21,27-30,32-145,151-268,270-303
+  s_be3053d6eb937a::t_e0b07fad059037 304-306
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_be3053d6eb937a::t_b79337885227c5 433-439
+  s_be3053d6eb937a::t_a52c1fcc100179 63-64
+packages/@n8n/instance-ai/skills/one-off-task/SKILL.md
+  s_be3053d6eb937a::t_b2b9fa68674a0e 1-75
+packages/@n8n/config/src/configs/__tests__/feature-flags.config.test.ts
+  s_be3053d6eb937a::t_d7be5d0f2eed02 1-40
+packages/@n8n/config/test/config.test.ts
+  s_be3053d6eb937a::t_15b788e3fc0663 193-195
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_be3053d6eb937a::t_880739e7c8bc8b 190-198
+  s_be3053d6eb937a::t_c71d5a5dce8660 60-63
+packages/@n8n/instance-ai/src/constants/max-steps.ts
+  s_be3053d6eb937a::t_ae815b91f06dc0 16-17
+packages/@n8n/instance-ai/src/tools/orchestration/one-off-task-agent.prompt.ts
+  s_be3053d6eb937a::t_568de6ecd4eeb5 1-37
+  s_be3053d6eb937a::t_9b1af06e704f55 38-39
+packages/@n8n/instance-ai/src/skills/__tests__/skill-gates.test.ts
+  s_be3053d6eb937a::t_6e3edbca972cd2 1-5,9-11,14-23
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_be3053d6eb937a::t_aab12d172df3fc 6-10
+  s_be3053d6eb937a::t_a20ca81b5cdd1d 166-171,178-194
+  s_be3053d6eb937a::t_f6961e5691f03b 195-196
+packages/@n8n/config/src/index.ts
+  s_be3053d6eb937a::t_c078337e6f3f23 320-322
+  s_be3053d6eb937a::t_cc2490efb76668 26
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/one-off-task-agent.tool.test.ts
+  s_be3053d6eb937a::t_c511cd56dc7c5c 1-9,11-44,46-68,70-80,84-95,102-105,117,119-157,161-188
+  s_be3053d6eb937a::t_ca685fc3914f79 96-101,106-116,118
+  s_be3053d6eb937a::t_f86156615495b5 10
+  s_be3053d6eb937a::t_fea429216601fe 81-83
+  s_be3053d6eb937a::t_b3ad52a903f227 69
+  s_be3053d6eb937a::t_407ef43b8fd542 158-160
+  s_be3053d6eb937a::t_3a81c33aa44c3e 45
+packages/@n8n/instance-ai/src/types.ts
+  s_be3053d6eb937a::t_c53383e6136360 1626-1639
+  s_be3053d6eb937a::t_f316049b88407c 1721-1729
+packages/cli/src/modules/instance-ai/sandbox/index.ts
+  s_be3053d6eb937a::t_dd3b5c6342034e 10-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f57c023dcb61580d85f6ed271b9c816447d1ddf9",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be3053d6eb937a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1538c797-8fda-4ad5-8dfd-6897b2da5082",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
