@@ -3,6 +3,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
 
 const contextSettings = new Map<BrowserContext, Partial<Record<string, unknown>>>();
+const contextModuleSettings = new Map<BrowserContext, Partial<Record<string, unknown>>>();
 
 export function setContextSettings(
 	context: BrowserContext,
@@ -13,6 +14,17 @@ export function setContextSettings(
 
 export function getContextSettings(context: BrowserContext) {
 	return contextSettings.get(context);
+}
+
+export function setContextModuleSettings(
+	context: BrowserContext,
+	moduleSettings: Partial<Record<string, unknown>>,
+) {
+	contextModuleSettings.set(context, moduleSettings);
+}
+
+export function getContextModuleSettings(context: BrowserContext) {
+	return contextModuleSettings.get(context);
 }
 
 export async function setupDefaultInterceptors(target: BrowserContext) {
@@ -42,6 +54,34 @@ export async function setupDefaultInterceptors(target: BrowserContext) {
 			});
 		} catch (error) {
 			console.error('Error in /rest/settings intercept:', error);
+			await route.continue();
+		}
+	});
+
+	// Global /rest/module-settings intercept - lets a test pin a backend module's
+	// client settings (e.g. turn `instance-ai` off) without changing the instance.
+	await target.route('**/rest/module-settings', async (route: Route) => {
+		try {
+			const originalResponse = await route.fetch();
+			const originalJson = await originalResponse.json();
+
+			const testModuleSettings = getContextModuleSettings(target);
+
+			const modifiedData = {
+				data:
+					testModuleSettings && Object.keys(testModuleSettings).length > 0
+						? merge(cloneDeep(originalJson.data), testModuleSettings)
+						: originalJson.data,
+			};
+
+			await route.fulfill({
+				status: originalResponse.status(),
+				headers: originalResponse.headers(),
+				contentType: 'application/json',
+				body: JSON.stringify(modifiedData),
+			});
+		} catch (error) {
+			console.error('Error in /rest/module-settings intercept:', error);
 			await route.continue();
 		}
 	});

@@ -7,7 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Project, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 	DATA_TABLE_SYSTEM_TESTING_COLUMN,
@@ -188,6 +188,17 @@ export class DataTableRepository extends Repository<DataTable> {
 			}
 
 			return changed;
+		});
+	}
+
+	async findSummariesByIds(
+		ids: string[],
+	): Promise<Array<Pick<DataTable, 'id' | 'name' | 'projectId'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			select: ['id', 'name', 'projectId'],
+			where: { id: In(ids) },
 		});
 	}
 

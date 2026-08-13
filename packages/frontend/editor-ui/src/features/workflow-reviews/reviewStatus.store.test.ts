@@ -18,6 +18,7 @@ const review = (
 	state: 'open',
 	decision: 'pending',
 	workflowVersionId: 'ver-1',
+	description: null,
 	createdAt: '2026-07-20T10:00:00.000Z',
 	updatedAt: '2026-07-20T10:00:00.000Z',
 	decisionBy: null,
@@ -125,6 +126,29 @@ describe('reviewStatus.store', () => {
 			}),
 		);
 		expect(store.hasOpenReview('workflow-1')).toBe(true);
+	});
+
+	// R1 (P2): the mutation response has no description, so the creating dialog
+	// supplies what it submitted — see LIGO-979_review.md.
+	it('keeps the description the caller submitted with a freshly created review', () => {
+		const store = useWorkflowReviewStatusStore();
+
+		store.setOpenReview(
+			'workflow-1',
+			{
+				id: 'req-9',
+				state: 'open',
+				decision: 'pending',
+				workflowVersionId: 'ver-9',
+				createdAt: '2026-07-20T10:00:00.000Z',
+				updatedAt: '2026-07-20T10:00:00.000Z',
+			},
+			'Please review the retry logic',
+		);
+
+		expect(store.latestReviewRequest('workflow-1')?.description).toBe(
+			'Please review the retry logic',
+		);
 	});
 
 	it('stores null when the API returns no review', async () => {

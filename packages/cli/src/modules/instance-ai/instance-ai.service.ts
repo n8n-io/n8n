@@ -1,4 +1,4 @@
-import { AgentEvent, filterRuntimeSkillSource } from '@n8n/agents';
+import { AgentEvent, createScopedWorkspace, filterRuntimeSkillSource } from '@n8n/agents';
 import type {
 	Message,
 	Workspace,
@@ -9,6 +9,7 @@ import type {
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
+	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
@@ -18,6 +19,7 @@ import {
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
+	type InstanceAiCredits,
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
@@ -34,7 +36,6 @@ import {
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
-	createScopedWorkspace,
 	getPromptWorkspaceRoot,
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
@@ -77,6 +78,7 @@ import {
 	saveAgentBuilderTarget,
 	type ConfirmationData,
 	type DomainAccessTracker,
+	type InstanceAiContext,
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
@@ -127,6 +129,7 @@ import { InstanceWriteAccessService } from '@/services/instance-write-access.ser
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
+import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
@@ -135,6 +138,7 @@ import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-a
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
+import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import {
 	getAgentErrorSeverity,
@@ -182,6 +186,7 @@ import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import { isStreamTransportError } from './stream-transport-error';
 import {
 	SuspendedRunRestorer,
 	type RebuildSuspendedRunOutcome,
@@ -364,14 +369,31 @@ function isStaleResumeError(error: unknown): boolean {
 export const QUOTA_EXHAUSTED_USER_MESSAGE =
 	"You've run out of AI credits. Upgrade your plan to continue using the AI assistant.";
 
+const OPERATIONAL_ERROR_USER_MESSAGE =
+	'I hit an operational error before I could finish that response. Please try again.';
+
+const GENERIC_ERROR_USER_MESSAGE =
+	'Something went wrong before I could finish that response. Please try again.';
+
 /** Structured error code for the UI when a run failed because credits ran out. */
 function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
 	return isQuotaExhaustedError(error) ? 'quota_exhausted' : undefined;
 }
 
-export function getUserFacingErrorMessage(error: unknown): string {
+type TerminalErrorCode = NonNullable<ReturnType<typeof getUserFacingErrorCode>>;
+
+/** `fallback` lets a caller name what specifically failed when the error itself
+ *  carries no user-facing meaning. */
+export function getUserFacingErrorMessage(
+	error: unknown,
+	fallback: string = GENERIC_ERROR_USER_MESSAGE,
+): string {
 	if (isQuotaExhaustedError(error)) {
 		return QUOTA_EXHAUSTED_USER_MESSAGE;
+	}
+
+	if (isStreamTransportError(error)) {
+		return 'The connection to the AI provider dropped before I could finish that response. Please try again.';
 	}
 
 	if (error instanceof UserError) {
@@ -387,14 +409,10 @@ export function getUserFacingErrorMessage(error: unknown): string {
 	}
 
 	if (error instanceof OperationalError) {
-		return 'I hit an operational error before I could finish that response. Please try again.';
+		return OPERATIONAL_ERROR_USER_MESSAGE;
 	}
 
-	if (error instanceof UnexpectedError) {
-		return 'Something went wrong before I could finish that response. Please try again.';
-	}
-
-	return 'Something went wrong before I could finish that response. Please try again.';
+	return fallback;
 }
 
 /**
@@ -409,6 +427,22 @@ export function isMaskedStreamFailure(error: unknown): error is Error {
 	if (!(error instanceof Error)) return false;
 	if (error.name === 'AI_NoOutputGeneratedError') return true;
 	return error.name === 'TypeError' && error.message === 'terminated';
+}
+
+/** Error codes reported by the browser tool wrapper for failures that happen
+ *  before credential persistence (capturing/resolving secrets in the browser). */
+const GENERATION_STAGE_ERROR_CODES = new Set([
+	'missing_captured_fields',
+	'unresolved_field',
+	'gateway_context_missing',
+]);
+
+function failureStageForErrorCode(
+	errorCode: string | undefined,
+): 'generation' | 'persistence' | 'unknown' {
+	if (errorCode && GENERATION_STAGE_ERROR_CODES.has(errorCode)) return 'generation';
+	if (errorCode === 'credential_create_failed') return 'persistence';
+	return 'unknown';
 }
 
 /**
@@ -454,6 +488,44 @@ type RunFinishErrorInfo = {
 	errorSource?: 'stream' | 'exception';
 };
 
+type UnclaimedResumeContext = {
+	threadId: string;
+	runId: string;
+	user: User;
+	signal: AbortSignal;
+	snapshotStorage: DbSnapshotStorage;
+	tracing?: InstanceAiTraceContext;
+	messageGroupId?: string;
+	unregisteredResumeTracing?: InstanceAiTraceContext;
+};
+
+type UnclaimedResumeOutcome =
+	| { kind: 'preserve-hitl' }
+	| { kind: 'stale' }
+	| { kind: 'cancelled' }
+	| { kind: 'errored'; reason: string; errorCode?: TerminalErrorCode; errorMessage: string };
+
+/**
+ * A resume that never claimed its checkpoint gets no terminal event from the run
+ * loop, so one has to be issued for it — except when the checkpoint is stale,
+ * which means another owner is driving the run and may still finish it
+ * successfully. The cancellation reason is left to the caller because reading it
+ * consumes the run's timeout, which must not happen on the silent outcomes.
+ */
+function classifyUnclaimedResume(
+	error: unknown,
+	flags: { aborted: boolean; preserveHitl: boolean },
+): UnclaimedResumeOutcome {
+	if (isStaleResumeError(error)) return { kind: 'stale' };
+	if (flags.aborted) return flags.preserveHitl ? { kind: 'preserve-hitl' } : { kind: 'cancelled' };
+	return {
+		kind: 'errored',
+		reason: getUserFacingErrorMessage(error, RESUME_REJECTED_MESSAGE),
+		errorCode: getUserFacingErrorCode(error),
+		errorMessage: getErrorMessage(error),
+	};
+}
+
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
 /**
@@ -488,9 +560,14 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 		case 'credentialSelection':
 			return { approved: true, credentials: request.credentials };
 		case 'credentialAutoSetup':
-			return { approved: true, autoSetup: { credentialType: request.credentialType } };
+			return {
+				approved: true,
+				autoSetup: { credentialType: request.credentialType, attemptId: request.attemptId },
+			};
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
+		case 'mcpConnect':
+			return { approved: request.approved, connectedSlugs: request.connectedSlugs };
 		case 'setupWorkflowApply':
 			return {
 				approved: true,
@@ -554,6 +631,28 @@ export class InstanceAiService {
 
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
+
+	/**
+	 * Runs where the credentials tool handed off to browser-assisted credential
+	 * setup (`needsBrowserSetup`), keyed by runId with one record per setup
+	 * attempt (a run can attempt several). Resolved to one terminal
+	 * success/failure telemetry event per attempt in `publishRunFinish`.
+	 * Entries exist only between the hand-off and the run's terminal event.
+	 */
+	private readonly pendingBrowserCredentialSetups = new Map<
+		string,
+		{
+			userId: string;
+			attempts: Array<{
+				credentialType: string;
+				setupMethod: 'setup_card' | 'conversation';
+				attemptId?: string;
+				startedAt: number;
+				created: boolean;
+				errorCode?: string;
+			}>;
+		}
+	>();
 
 	/** Counts plan-review confirmations per thread, to tell the first plan apart from later revisions. */
 	private readonly planRequestsByThread = new Map<string, number>();
@@ -857,9 +956,18 @@ export class InstanceAiService {
 		return this.modelService.isProxyEnabled();
 	}
 
-	/** Get current credit usage from the AI service proxy. */
-	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
-		return await this.modelService.getCredits(user);
+	/**
+	 * Get current credit usage from the AI service proxy.
+	 *
+	 * Doubles as the reconcile point for the activation lock: this runs on every page load, so a
+	 * lock call that was lost to a failed request, an evicted record or a process restart is
+	 * re-asserted here without any scheduled job.
+	 */
+	async getCredits(user: User): Promise<InstanceAiCredits> {
+		await this.creditService.ensureQuotaLockApplied(user);
+
+		const credits = await this.modelService.getCredits(user);
+		return maskCreditsForDisplay(credits, this.settingsService.isActivationCapped());
 	}
 
 	/**
@@ -878,9 +986,13 @@ export class InstanceAiService {
 	): Promise<unknown> {
 		if (!isMaskedStreamFailure(error)) return error;
 		try {
-			const { creditsQuota, creditsClaimed } = await this.modelService.getCredits(user);
-			// A negative quota is the unlimited sentinel (e.g. proxy disabled).
-			if (creditsQuota < 0 || creditsClaimed < creditsQuota) return error;
+			const { creditsQuota, creditsClaimed, quotaLocked } =
+				await this.modelService.getCredits(user);
+			// The activation lock refuses use while the quota still has credits left, so the numbers
+			// alone wouldn't explain the failure. Read from the proxy, not from n8n's own trigger
+			// state: that only says the lock *should* apply, so a lock call that failed would turn
+			// any unrelated stream death into a spurious upgrade wall.
+			if (!quotaLocked && (creditsQuota < 0 || creditsClaimed < creditsQuota)) return error;
 		} catch (creditsError) {
 			this.logger.debug('Masked stream failure credit re-check failed; keeping original error', {
 				error: getErrorMessage(creditsError),
@@ -2137,6 +2249,9 @@ export class InstanceAiService {
 		);
 		const userGateway = this.gatewayService.findGateway(user.id);
 
+		// There's another ensure lock check at `getCredits`, which only fires when the frontend mounts.
+		await this.creditService.ensureQuotaLockApplied(user);
+
 		const { searchProxyConfig, tracingProxyConfig, tokenManager, proxyBaseUrl } =
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
@@ -2186,6 +2301,8 @@ export class InstanceAiService {
 		}
 
 		context.runId = runId;
+
+		context.browserCredentialSetup = this.createBrowserCredentialSetupTracker(runId, user.id);
 
 		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
 		// reload/navigation and are visible across mains. Load once per run; a tool resuming
@@ -3903,6 +4020,7 @@ export class InstanceAiService {
 					terminalError ?? new Error('Instance AI stream errored'),
 					{
 						component: 'instance-ai-stream',
+						providerStream: true,
 						threadId,
 						runId,
 						tracing,
@@ -4709,7 +4827,7 @@ export class InstanceAiService {
 		}
 	}
 
-	private async rebuildAgentForAutoSetupResume(
+	private async rebuildAgentForResume(
 		user: User,
 		threadId: string,
 		runId: string,
@@ -4742,7 +4860,7 @@ export class InstanceAiService {
 				orchestrationContext: rebuilt.orchestrationContext,
 			};
 		} catch (error: unknown) {
-			this.logger.warn('Failed to rebuild agent for credential auto-setup resume', {
+			this.logger.warn('Failed to rebuild agent for resume', {
 				threadId,
 				runId,
 				error: getErrorMessage(error),
@@ -4834,6 +4952,8 @@ export class InstanceAiService {
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 			...(data.scope ? { scope: data.scope } : {}),
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
+			...(data.denied ? { denied: true } : {}),
+			...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
 		};
 
 		const resumeTracing = await this.tracing.createOrchestratorResumeTraceContext({
@@ -4875,8 +4995,8 @@ export class InstanceAiService {
 		let resumeAgent = agent;
 		let resumeModelId = modelId;
 		let resumeOrchestrationContext = orchestrationContext;
-		if (data.autoSetup) {
-			const rebuilt = await this.rebuildAgentForAutoSetupResume(
+		if (data.autoSetup || data.connectedSlugs?.length) {
+			const rebuilt = await this.rebuildAgentForResume(
 				activeUser,
 				threadId,
 				runId,
@@ -4886,16 +5006,32 @@ export class InstanceAiService {
 				messageGroupId,
 			);
 			if (!rebuilt) {
+				const rebuildFailure = 'Agent rebuild failed';
 				await this.tracing.finalizeDetachedTraceRun(
 					`resume-rebuild:${runId}`,
 					unregisteredResumeTracing,
 					{
 						status: 'failed',
-						error: 'Agent rebuild failed',
+						error: rebuildFailure,
 						metadata: { completion_source: 'resume_rebuild' },
 					},
 				);
 				this.cancelRun(threadId, 'agent_rebuild_failed');
+				// `activateSuspendedRun` above already promoted this run to active, so
+				// `cancelRun` leaves the terminal event to a run loop that was never
+				// started — and the pending confirmation is already dropped, so the
+				// card can't be retried either.
+				await this.emitTerminalRun({
+					threadId,
+					runId,
+					status: 'errored',
+					reason: OPERATIONAL_ERROR_USER_MESSAGE,
+					errorInfo: { errorMessage: rebuildFailure, errorSource: 'exception' },
+					messageGroupId,
+					user: activeUser,
+					snapshotStorage: this.dbSnapshotStorage,
+				});
+				this.runState.clearActiveRun(threadId, resumeExecutionToken);
 				return null;
 			}
 			resumeAgent = rebuilt.agent;
@@ -4923,7 +5059,7 @@ export class InstanceAiService {
 			resumeExecutionToken,
 			messageGroupId,
 			resumeTracing,
-			discardTracingOnStale: unregisteredResumeTracing,
+			unregisteredResumeTracing,
 		});
 		return { ok: true, runId };
 	}
@@ -4957,7 +5093,7 @@ export class InstanceAiService {
 			resumeExecutionToken?: symbol;
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
-			discardTracingOnStale?: InstanceAiTraceContext;
+			unregisteredResumeTracing?: InstanceAiTraceContext;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -5056,24 +5192,7 @@ export class InstanceAiService {
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
 				const claimError = result.error ?? new Error('Resume checkpoint claim did not complete');
-				this.instanceAiErrorReporter.report(claimError, {
-					component: 'instance-ai-resume-claim',
-					threadId: opts.threadId,
-					runId: opts.runId,
-					tracing: opts.tracing,
-					agentId: orchestratorAgentId(opts.runId),
-					userId: opts.user.id,
-					messageGroupId: opts.messageGroupId,
-				});
-				await this.tracing.finalizeDetachedTraceRun(
-					`unclaimed-resume:${opts.runId}`,
-					opts.discardTracingOnStale,
-					{
-						status: 'failed',
-						error: getErrorMessage(claimError),
-						metadata: { completion_source: 'resume_claim' },
-					},
-				);
+				await this.settleUnclaimedResume(opts, claimError, 'stream');
 				return;
 			}
 			if (result.status === 'suspended') {
@@ -5222,6 +5341,7 @@ export class InstanceAiService {
 					terminalError ?? new Error('Instance AI resumed stream errored'),
 					{
 						component: 'instance-ai-stream',
+						providerStream: true,
 						threadId: opts.threadId,
 						runId: opts.runId,
 						tracing: opts.tracing,
@@ -5313,52 +5433,9 @@ export class InstanceAiService {
 				});
 			}
 		} catch (error) {
-			if (!resumeClaimed && isStaleResumeError(error)) {
-				skipPostRunCleanup = true;
-				await this.tracing.finalizeDetachedTraceRun(
-					`stale-resume:${opts.runId}`,
-					opts.discardTracingOnStale,
-					{
-						status: 'cancelled',
-						outputs: { runId: opts.runId },
-						metadata: { completion_source: 'stale_resume' },
-					},
-				);
-				return;
-			}
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
-				this.instanceAiErrorReporter.report(error, {
-					component: 'instance-ai-resume-claim',
-					threadId: opts.threadId,
-					runId: opts.runId,
-					tracing: opts.tracing,
-					agentId: orchestratorAgentId(opts.runId),
-					userId: opts.user.id,
-					messageGroupId: opts.messageGroupId,
-				});
-				await this.tracing.finalizeDetachedTraceRun(
-					`unclaimed-resume:${opts.runId}`,
-					opts.discardTracingOnStale,
-					{
-						status: 'failed',
-						error: getErrorMessage(error),
-						metadata: { completion_source: 'resume_claim' },
-					},
-				);
-				await this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
-					messageGroupId: this.tracing.getMessageGroupId(opts.runId),
-					errorMessage: RESUME_REJECTED_MESSAGE,
-				});
-				this.publishRunFinish(
-					opts.threadId,
-					opts.runId,
-					'errored',
-					RESUME_REJECTED_MESSAGE,
-					undefined,
-					opts.user.id,
-					{ errorMessage: getErrorMessage(error), errorSource: 'exception' },
-				);
+				await this.settleUnclaimedResume(opts, error, 'exception');
 				return;
 			}
 
@@ -5537,6 +5614,169 @@ export class InstanceAiService {
 			if (errorReporterExecutionToken) {
 				this.instanceAiErrorReporter.endRun(opts.runId, errorReporterExecutionToken);
 			}
+		}
+	}
+
+	private async settleUnclaimedResume(
+		opts: UnclaimedResumeContext,
+		error: unknown,
+		errorSource: NonNullable<RunFinishErrorInfo['errorSource']>,
+	): Promise<void> {
+		const outcome = classifyUnclaimedResume(error, {
+			aborted: opts.signal.aborted,
+			preserveHitl: this.shouldPreserveHitlOnShutdown(opts.runId),
+		});
+
+		switch (outcome.kind) {
+			case 'preserve-hitl':
+				return;
+
+			case 'stale':
+				await this.tracing.finalizeDetachedTraceRun(
+					`stale-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'cancelled',
+						outputs: { runId: opts.runId },
+						metadata: { completion_source: 'stale_resume' },
+					},
+				);
+				return;
+
+			case 'cancelled': {
+				const reason = this.liveness.consumeRunTimeout(opts.runId).timedOut
+					? INSTANCE_AI_RUN_TIMEOUT_REASON
+					: getAbortReason(opts.signal);
+				await this.tracing.finalizeDetachedTraceRun(
+					`cancelled-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'cancelled',
+						outputs: { runId: opts.runId },
+						metadata: { completion_source: 'resume_cancelled', cancellation_reason: reason },
+					},
+				);
+				await this.emitTerminalRun({
+					threadId: opts.threadId,
+					runId: opts.runId,
+					status: 'cancelled',
+					reason,
+					messageGroupId: opts.messageGroupId,
+					user: opts.user,
+					snapshotStorage: opts.snapshotStorage,
+				});
+				return;
+			}
+
+			case 'errored':
+				this.instanceAiErrorReporter.report(error, {
+					component: 'instance-ai-resume-claim',
+					threadId: opts.threadId,
+					runId: opts.runId,
+					tracing: opts.tracing,
+					agentId: orchestratorAgentId(opts.runId),
+					userId: opts.user.id,
+					messageGroupId: opts.messageGroupId,
+				});
+				await this.tracing.finalizeDetachedTraceRun(
+					`unclaimed-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'failed',
+						error: outcome.errorMessage,
+						metadata: { completion_source: 'resume_claim' },
+					},
+				);
+				await this.emitTerminalRun({
+					threadId: opts.threadId,
+					runId: opts.runId,
+					status: 'errored',
+					reason: outcome.reason,
+					errorCode: outcome.errorCode,
+					errorInfo: { errorMessage: outcome.errorMessage, errorSource },
+					// The resume trace context is never registered before the claim, so the
+					// message group has to come from the suspended run, not the trace registry.
+					messageGroupId: opts.messageGroupId,
+					user: opts.user,
+					snapshotStorage: opts.snapshotStorage,
+				});
+				return;
+
+			default:
+				assertNever(outcome);
+		}
+	}
+
+	/**
+	 * Terminalizes a run that ended in a stop or a failure. `publishRunFinish` is
+	 * the one step that has to land — without it the chat hangs forever — so every
+	 * DB-touching step around it is best-effort. `saveAgentTreeSnapshot` rebuilds
+	 * the agent tree by folding the event bus, so it has to come last.
+	 */
+	private async emitTerminalRun(args: {
+		threadId: string;
+		runId: string;
+		status: 'cancelled' | 'errored';
+		reason: string;
+		errorCode?: TerminalErrorCode;
+		errorInfo?: RunFinishErrorInfo;
+		messageGroupId?: string;
+		user: User;
+		snapshotStorage: DbSnapshotStorage;
+	}): Promise<void> {
+		const { threadId, runId, status } = args;
+		const context = { threadId, runId };
+
+		await this.bestEffort(
+			'Failed to evaluate the terminal response for a settling run',
+			context,
+			async () =>
+				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, status, {
+					messageGroupId: args.messageGroupId,
+					...(status === 'errored' ? { errorMessage: args.reason, errorCode: args.errorCode } : {}),
+				}),
+		);
+
+		const archivedWorkflowIds =
+			(await this.bestEffort(
+				'Failed to reap temporary workflows for a settling run',
+				context,
+				async () =>
+					await this.temporaryWorkflowService.reapForRun(
+						threadId,
+						args.user,
+						undefined,
+						this.backgroundTasks.getRunningTasks(threadId).length,
+					),
+			)) ?? [];
+
+		this.publishRunFinish(
+			threadId,
+			runId,
+			status,
+			args.reason,
+			archivedWorkflowIds,
+			args.user.id,
+			args.errorInfo,
+		);
+
+		await this.bestEffort(
+			'Failed to save the agent tree snapshot for a settling run',
+			context,
+			async () => await this.saveAgentTreeSnapshot(threadId, runId, args.snapshotStorage),
+		);
+	}
+
+	private async bestEffort<T>(
+		failureMessage: string,
+		context: { threadId: string; runId: string },
+		step: () => T | Promise<T>,
+	): Promise<Awaited<T> | undefined> {
+		try {
+			return await step();
+		} catch (error) {
+			this.logger.warn(failureMessage, { ...context, error: getErrorMessage(error) });
+			return undefined;
 		}
 	}
 
@@ -5838,6 +6078,8 @@ export class InstanceAiService {
 		payload.inputThreadId = inputThreadId;
 
 		const inputType = payload.inputType as string | undefined;
+		const mcpConnectServers = mcpConnectRequestSchema.safeParse(payload.mcpConnectRequest).data
+			?.servers;
 		let type: string;
 		if (inputType) {
 			type = inputType;
@@ -5845,6 +6087,8 @@ export class InstanceAiService {
 			type = 'setup';
 		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
 			type = 'credential-setup';
+		} else if (mcpConnectServers) {
+			type = 'mcp-connect';
 		} else {
 			type = 'approval';
 		}
@@ -5856,6 +6100,8 @@ export class InstanceAiService {
 			numSteps = payload.setupRequests.length;
 		} else if (Array.isArray(payload.credentialRequests)) {
 			numSteps = payload.credentialRequests.length;
+		} else if (mcpConnectServers) {
+			numSteps = mcpConnectServers.length;
 		}
 
 		if (inputType === 'plan-review') {
@@ -5998,6 +6244,7 @@ export class InstanceAiService {
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
+		this.emitBrowserCredentialSetupOutcomes(threadId, runId, status, reason);
 		if (status === 'errored') {
 			this.telemetry.track('Builder generation errored', {
 				thread_id: threadId,
@@ -6005,6 +6252,113 @@ export class InstanceAiService {
 				error_message: errorInfo?.errorMessage ?? reason ?? 'unknown',
 				...(errorInfo?.errorSource ? { error_source: errorInfo.errorSource } : {}),
 				...(userId ? { user_id: userId } : {}),
+			});
+		}
+	}
+
+	/**
+	 * Per-run bookkeeping behind `context.browserCredentialSetup` (NODE-5511).
+	 * `markPending` opens an attempt when the user clicks auto-setup on the
+	 * credential card; `markCreated`/`markCreateFailed` resolve the latest open
+	 * attempt for the type — or open an implicit `'conversation'` attempt when
+	 * there is none, so LLM-initiated creations (user asked directly in chat,
+	 * no setup card involved) still produce a terminal telemetry event.
+	 */
+	private createBrowserCredentialSetupTracker(
+		runId: string,
+		userId: string,
+	): NonNullable<InstanceAiContext['browserCredentialSetup']> {
+		const getOrCreateAttempts = () => {
+			let pending = this.pendingBrowserCredentialSetups.get(runId);
+			if (!pending) {
+				pending = { userId, attempts: [] };
+				this.pendingBrowserCredentialSetups.set(runId, pending);
+			}
+			return pending.attempts;
+		};
+		const resolveOpenAttempt = (credentialType: string) => {
+			const attempts = getOrCreateAttempts();
+			let attempt = attempts.findLast((a) => a.credentialType === credentialType && !a.created);
+			if (!attempt) {
+				attempt = {
+					credentialType,
+					setupMethod: 'conversation',
+					startedAt: Date.now(),
+					created: false,
+				};
+				attempts.push(attempt);
+			}
+			return attempt;
+		};
+		return {
+			markPending: (credentialType: string, attemptId?: string) => {
+				const attempts = getOrCreateAttempts();
+				if (attemptId && attempts.some((attempt) => attempt.attemptId === attemptId)) {
+					return;
+				}
+				attempts.push({
+					credentialType,
+					setupMethod: 'setup_card',
+					attemptId,
+					startedAt: Date.now(),
+					created: false,
+				});
+			},
+			markCreated: (credentialType: string) => {
+				const attempt = resolveOpenAttempt(credentialType);
+				attempt.created = true;
+				attempt.errorCode = undefined;
+			},
+			markCreateFailed: (credentialType: string, errorCode: string) => {
+				resolveOpenAttempt(credentialType).errorCode = errorCode;
+			},
+		};
+	}
+
+	/**
+	 * Emit one terminal telemetry event per browser-assisted credential setup
+	 * attempt of the finished run (NODE-5511). Consumes the pending record so
+	 * every attempt yields exactly one success or failure event. When the flow
+	 * itself never failed, the run's own termination (user stop, timeout,
+	 * stream error) is reported as the error code so aborts aren't counted as
+	 * flow failures.
+	 */
+	private emitBrowserCredentialSetupOutcomes(
+		threadId: string,
+		runId: string,
+		runStatus: 'completed' | 'cancelled' | 'errored',
+		runFinishReason?: string,
+	): void {
+		const browserSetup = this.pendingBrowserCredentialSetups.get(runId);
+		if (!browserSetup) return;
+		this.pendingBrowserCredentialSetups.delete(runId);
+		const terminalErrorCode =
+			runStatus === 'completed'
+				? 'not_attempted'
+				: runStatus === 'errored'
+					? 'run_errored'
+					: runFinishReason === INSTANCE_AI_RUN_TIMEOUT_REASON
+						? 'run_timed_out'
+						: 'run_cancelled';
+		for (const attempt of browserSetup.attempts) {
+			this.telemetry.track('Instance AI Browser Use credential setup completed', {
+				user_id: browserSetup.userId,
+				credential_type: attempt.credentialType,
+				status: attempt.created ? 'success' : 'failure',
+				...(attempt.created
+					? {}
+					: {
+							failure_stage: failureStageForErrorCode(attempt.errorCode),
+							error_code: attempt.errorCode ?? terminalErrorCode,
+						}),
+				// The flow never runs a credential test, so validation support is unknown.
+				is_valid: null,
+				is_new: true,
+				setup_method: attempt.setupMethod,
+				thread_id: threadId,
+				run_id: runId,
+				...(attempt.attemptId ? { credential_setup_attempt_id: attempt.attemptId } : {}),
+				duration_ms: Date.now() - attempt.startedAt,
 			});
 		}
 	}
