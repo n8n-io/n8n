@@ -96,6 +96,7 @@ export function shouldRearmRunAfterConfirm(payload: InstanceAiConfirmRequest): b
 		case 'questions':
 		case 'setupWorkflowApply':
 		case 'setupWorkflowTestTrigger':
+		case 'mcpConnect':
 			return true;
 		default:
 			return false;

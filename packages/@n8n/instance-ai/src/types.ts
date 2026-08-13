@@ -497,6 +497,7 @@ export interface McpRegistryServerSummary {
 	slug: string;
 	title: string;
 	description: string;
+	credentialType: string;
 	tools: string[];
 }
 
@@ -509,6 +510,8 @@ export interface ConnectedMcpService {
 
 export interface InstanceAiMcpService {
 	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
+	getServers(slugs: string[]): Promise<McpRegistryServerSummary[]>;
+	listConnections(): Promise<Array<{ slug: string }>>;
 }
 
 export interface ExploreResourcesParams {

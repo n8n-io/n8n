@@ -555,6 +555,25 @@ export const channelConfigSchema = z.object({
 });
 export type InstanceAiChannelConfig = z.infer<typeof channelConfigSchema>;
 
+export const mcpConnectServerSchema = z.object({
+	serverSlug: z.string(),
+	title: z.string(),
+	tagline: z.string().optional(),
+	credentialType: z.string(),
+});
+export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
+
+export const mcpConnectRequestSchema = z.object({
+	servers: z.array(mcpConnectServerSchema).min(1),
+});
+export type InstanceAiMcpConnectRequest = z.infer<typeof mcpConnectRequestSchema>;
+
+export const mcpConnectResumeSchema = z.object({
+	approved: z.boolean(),
+	connectedSlugs: z.array(z.string()).optional(),
+});
+export type InstanceAiMcpConnectResume = z.infer<typeof mcpConnectResumeSchema>;
+
 export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
@@ -649,6 +668,9 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'When present, renders agent chat-channel setup UI for this integration type and agent',
 		),
+	mcpConnectRequest: mcpConnectRequestSchema
+		.optional()
+		.describe('When present, renders the inline "Available tools" MCP connect card'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -682,6 +704,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
 	if (payload.channelConfig) return true;
+	if (payload.mcpConnectRequest) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -1189,6 +1212,7 @@ export interface InstanceAiConfirmation {
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
 	channelConfig?: InstanceAiChannelConfig;
+	mcpConnectRequest?: InstanceAiMcpConnectRequest;
 	expired?: boolean;
 }
 

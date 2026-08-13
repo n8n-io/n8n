@@ -490,6 +490,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					tasks: event.payload.tasks,
 					resourceDecision: event.payload.resourceDecision,
 					channelConfig: event.payload.channelConfig,
+					mcpConnectRequest: event.payload.mcpConnectRequest,
 				};
 			}
 			break;

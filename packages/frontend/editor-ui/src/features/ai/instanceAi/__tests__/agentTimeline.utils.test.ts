@@ -306,6 +306,62 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(4);
 	});
 
+	test('an mcp connect confirmation renders as a standalone block', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					confirmation: {
+						requestId: 'req-1',
+						severity: 'info',
+						message: 'To search the web',
+						mcpConnectRequest: {
+							servers: [
+								{ serverSlug: 'brave', title: 'Brave', credentialType: 'braveMcpOAuth2Api' },
+							],
+						},
+					},
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking', 'mcp-connect']);
+	});
+
+	test('an in-flight connect call stays a trace row until its payload arrives', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					args: { action: 'connect' },
+					isLoading: true,
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking']);
+	});
+
+	test('a settled connect call that never suspended stays a trace row', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					args: { action: 'connect' },
+					isLoading: false,
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking']);
+	});
+
 	test('text followed by same-response trace content joins the thinking block', () => {
 		const blocks = blocksOf(
 			[reasoning('r1'), text('Let me check the schema.', 'r1'), toolEntry('tc-1', 'r1')],

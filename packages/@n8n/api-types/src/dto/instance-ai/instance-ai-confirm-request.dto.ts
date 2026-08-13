@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
 	domainAccessActionSchema,
 	instanceGatewayResourceDecisionSchema,
+	mcpConnectResumeSchema,
 } from '../../schemas/instance-ai.schema';
 
 /**
@@ -94,6 +95,10 @@ const setupWorkflowTestTriggerConfirmSchema = z.object({
 	nodeParameters: nodeParametersRecord,
 });
 
+const mcpConnectConfirmSchema = mcpConnectResumeSchema.extend({
+	kind: z.literal('mcpConnect'),
+});
+
 export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
@@ -105,6 +110,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	resourceDecisionConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
+	mcpConnectConfirmSchema,
 ]);
 
 export type InstanceAiConfirmRequest = z.infer<typeof InstanceAiConfirmRequestDto>;
