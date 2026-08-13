@@ -100,6 +100,10 @@ import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
+import { useAddNodesToChat } from '@/features/ai/instanceAi/composables/useAddNodesToChat';
+import type { BuilderWorkflow } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
 const $style = useCssModule();
 
@@ -219,6 +223,9 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
+const { addSelectedNodesToChat } = useAddNodesToChat();
+const instanceAiStore = useInstanceAiStore();
+const instanceAiCapability = useInstanceAiEditorCapability();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -595,6 +602,30 @@ const selectedNodeIdsWithGroupMembers = computed(() => {
 	}
 	return [...ids];
 });
+
+function buildBuilderWorkflow(): BuilderWorkflow {
+	const s = workflowDocumentStore.value;
+	return {
+		nodes: s.allNodes.map((n) => ({ id: n.id, name: n.name, type: n.type })),
+		connections: s.connectionsBySourceNode,
+		groupsById: new Map(
+			s.allGroups.map((g) => [g.id, { id: g.id, name: g.name, nodeIds: g.nodeIds }]),
+		),
+		nodeIdToGroupId: s.nodeIdToGroupId,
+	};
+}
+
+// Toolbar path: no arg — read Canvas.vue's own group-expanded selection.
+// Context-menu path (Task 4.4): pass the menu's nodeIds directly.
+async function onAddNodesToChat(ids: string[] = selectedNodeIdsWithGroupMembers.value) {
+	await addSelectedNodesToChat({
+		workflowId: workflowDocumentStore.value.workflowId,
+		selectedNodeIds: ids,
+		workflow: buildBuilderWorkflow(),
+		isInsideThread: !instanceAiCapability.openWorkflow,
+		onStaged: () => instanceAiStore.requestComposerFocus(),
+	});
+}
 
 const lastSelectedNode = ref<GraphNode>();
 const triggerNodes = computed<CanvasNode[]>(() =>
@@ -1895,6 +1926,7 @@ defineExpose({
 			:read-only="readOnly || suppressInteraction"
 			@group-created="onNodeGroupCreated"
 			@extract-workflow="emit('extract-workflow', $event)"
+			@add-nodes-to-chat="onAddNodesToChat()"
 		/>
 
 		<Transition name="minimap">

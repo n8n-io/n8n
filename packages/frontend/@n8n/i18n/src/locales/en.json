@@ -4354,6 +4354,7 @@
 	"workflowProductionChecklist.timeSaved.description": "Configure the time saved on each run to track the manual work it saves.",
 	"canvas.selection.toolbar.group": "Group nodes",
 	"canvas.selection.toolbar.ungroup": "Ungroup nodes",
+	"canvas.selection.toolbar.addToChat": "Add node to chat | Add {count} nodes to chat",
 	"canvas.nodeGroup.defaultTitle": "Group",
 	"canvas.nodeGroup.connectionAddBlocked.title": "Connection not added",
 	"canvas.nodeGroup.connectionRemoveBlocked.title": "Connection not removed",

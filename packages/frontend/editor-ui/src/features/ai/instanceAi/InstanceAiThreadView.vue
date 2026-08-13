@@ -625,6 +625,16 @@ watch(chatInputRef, (el) => {
 	}
 });
 
+// Context A: canvas "add to chat" staged a node-context attachment directly
+// into this thread's composer — un-expand the preview and focus the input.
+watch(
+	() => store.composerFocusRequest,
+	() => {
+		isPreviewExpanded.value = false;
+		void nextTick(() => chatInputRef.value?.focus());
+	},
+);
+
 // Reset scroll state when switching threads so new content auto-scrolls.
 watch(
 	() => props.threadId,
