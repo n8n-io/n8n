@@ -85,6 +85,7 @@ describe('useAiGatewayTopUp', () => {
 	it('navigates the current tab when the popup is blocked', async () => {
 		const { cloudPlanStore, uiStore } = mockPaidCloudOwner();
 		windowOpen.mockReturnValue(null);
+		const originalWindow = global.window;
 		global.window = Object.create(window);
 		Object.defineProperty(window, 'location', {
 			value: { href: '' },
@@ -92,15 +93,19 @@ describe('useAiGatewayTopUp', () => {
 		});
 		const hrefSpy = vi.spyOn(window.location, 'href', 'set');
 
-		const { openTopUp } = useAiGatewayTopUp();
-		openTopUp({ source: 'settings_page' });
+		try {
+			const { openTopUp } = useAiGatewayTopUp();
+			openTopUp({ source: 'settings_page' });
 
-		await vi.waitFor(() => {
-			expect(hrefSpy).toHaveBeenCalledWith(ADMIN_PANEL_LINK);
-		});
-		expect(uiStore.openModal).not.toHaveBeenCalled();
-		expect(cloudPlanStore.generateCloudDashboardAutoLoginLink).toHaveBeenCalled();
-		hrefSpy.mockRestore();
+			await vi.waitFor(() => {
+				expect(hrefSpy).toHaveBeenCalledWith(ADMIN_PANEL_LINK);
+			});
+			expect(uiStore.openModal).not.toHaveBeenCalled();
+			expect(cloudPlanStore.generateCloudDashboardAutoLoginLink).toHaveBeenCalled();
+		} finally {
+			hrefSpy.mockRestore();
+			global.window = originalWindow;
+		}
 	});
 
 	it('reports the error without closing a tab when the popup is blocked', async () => {
