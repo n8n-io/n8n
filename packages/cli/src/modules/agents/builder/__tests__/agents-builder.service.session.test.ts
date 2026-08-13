@@ -368,7 +368,7 @@ describe('AgentsBuilderService session isolation', () => {
 
 	it.each([
 		['Anthropic', 'anthropic/claude-sonnet-host-resolved'],
-		['OpenAI', 'openai/gpt-5.5'],
+		['OpenAI', 'openai/gpt-5.6-sol'],
 		['Google', 'google/gemini-2.5-pro'],
 	])('enables generic reasoning for a %s builder model', async (_provider, modelConfig) => {
 		const { service, user, credentialProvider } = setup();

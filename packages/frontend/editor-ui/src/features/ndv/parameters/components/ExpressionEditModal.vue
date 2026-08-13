@@ -28,7 +28,7 @@ import { ElDialog } from 'element-plus';
 import {
 	N8nIcon,
 	N8nInput,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nResizeWrapper,
 	N8nText,
 	type ResizeData,
@@ -244,7 +244,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						</N8nText>
 						<div :class="$style.headerControls">
 							<OutputItemSelect />
-							<N8nRadioButtons
+							<N8nSegmentControl
 								v-model="outputRenderMode"
 								size="small"
 								:options="[

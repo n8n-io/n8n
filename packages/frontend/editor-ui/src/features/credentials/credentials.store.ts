@@ -416,12 +416,21 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		await credentialsApi.disconnectOauthToken(rootStore.restApiContext, id);
 	};
 
-	const setConnectedByMe = (id: string, connectedByMe: boolean) => {
+	/**
+	 * Mirrors the caller's own connection state locally. The account identifier is
+	 * only known server-side, so it is cleared unless one is passed in — better no
+	 * label than a stale one from the previously connected account.
+	 */
+	const setConnectedByMe = (
+		id: string,
+		connectedByMe: boolean,
+		connectedAccountIdentifier?: string,
+	) => {
 		const existing = state.value.credentials[id];
 		if (existing) {
 			state.value.credentials = {
 				...state.value.credentials,
-				[id]: { ...existing, connectedByMe },
+				[id]: { ...existing, connectedByMe, connectedAccountIdentifier },
 			};
 		}
 	};

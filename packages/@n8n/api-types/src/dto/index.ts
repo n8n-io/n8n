@@ -132,6 +132,7 @@ export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
+export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
@@ -196,6 +197,7 @@ export {
 	RoleListQueryPublicDto,
 } from './roles/role-public.dto';
 export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';
+export { RoleMappingRulePublicDto } from './roles/role-mapping-rule-public.dto';
 export {
 	PatchRoleMappingRuleDto,
 	type PatchRoleMappingRuleInput,
@@ -333,6 +335,12 @@ export {
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
 export * from './workflow-reviews/list-workflow-review-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
+export {
+	ListWorkflowReviewActivityQueryDto,
+	CreateWorkflowReviewCommentDto,
+	WORKFLOW_REVIEW_COMMENT_MAX_LENGTH,
+	type ListWorkflowReviewActivityResponse,
+} from './workflow-reviews/workflow-review-activity.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';

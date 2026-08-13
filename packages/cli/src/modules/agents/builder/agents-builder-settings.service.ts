@@ -40,6 +40,24 @@ function readEnvAnthropicKey(): string | null {
 	return key && key.length > 0 ? key : null;
 }
 
+/**
+ * Dev/CI backstop: reuse the Instance AI orchestrator model env so local setups
+ * that already point Instance AI at a custom OpenAI-compatible endpoint also
+ * configure the agent-builder settings path without a separate credential.
+ */
+function readEnvInstanceAiModelConfig(): ModelConfig | null {
+	const model = process.env.N8N_INSTANCE_AI_MODEL?.trim();
+	const apiKey = process.env.N8N_INSTANCE_AI_MODEL_API_KEY?.trim();
+	if (!model || !model.includes('/') || !apiKey) return null;
+
+	const modelUrl = process.env.N8N_INSTANCE_AI_MODEL_URL?.trim();
+	const id = model as `${string}/${string}`;
+	if (modelUrl) {
+		return { id, url: modelUrl, apiKey };
+	}
+	return { id, apiKey };
+}
+
 interface BuilderTelemetryProxyConfig {
 	apiUrl: string;
 	getAuthHeaders: () => Promise<Record<string, string>>;
@@ -56,7 +74,10 @@ interface ResolvedBuilderModelConfig {
  * the builder LLM runs on:
  *   1. `mode: 'custom'` — admin-picked credential. Wins regardless of platform.
  *   2. `mode: 'default'` + AI proxy enabled — runs through the n8n AI assistant proxy.
- *   3. `mode: 'default'` + env-var backstop set (`N8N_AI_ANTHROPIC_KEY` /
+ *   3. `mode: 'default'` + Instance AI model env (`N8N_INSTANCE_AI_MODEL` +
+ *      `N8N_INSTANCE_AI_MODEL_API_KEY`) — same provider/model as Instance AI
+ *      (e.g. `custom/Kimi-K3` or `openai/gpt-5-mini`).
+ *   4. `mode: 'default'` + Anthropic env backstop (`N8N_AI_ANTHROPIC_KEY` /
  *      `ANTHROPIC_API_KEY`) — direct Anthropic API calls.
  */
 @Service()
@@ -149,6 +170,11 @@ export class AgentsBuilderSettingsService {
 
 		if (this.aiService.isProxyEnabled()) {
 			return await this.resolveProxyModel(user);
+		}
+
+		const instanceAiEnv = readEnvInstanceAiModelConfig();
+		if (instanceAiEnv) {
+			return { config: instanceAiEnv, isProxied: false };
 		}
 
 		const envKey = readEnvAnthropicKey();

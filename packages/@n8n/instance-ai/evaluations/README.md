@@ -296,6 +296,8 @@ Not yet covered: an automatic "unexpected artifact" fail (a build producing an a
 |----------|----------|-------------|
 | `N8N_INSTANCE_AI_MODEL` | Yes | Model used by Instance AI and, by default, the eval helper calls for mock generation and verification |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | No | Generic eval-model API key override |
+| `N8N_INSTANCE_AI_MODEL_URL` | No | OpenAI-compatible base URL for custom eval models (used with `custom/...` model ids) |
+| `EVAL_MODAL_LLM_HEADERS` | No | Eval-only JSON object of extra HTTP headers for Modal (or other custom) LLM endpoints |
 | `OPENAI_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `openai/` |
 | `ANTHROPIC_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `anthropic/` |
 | `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
@@ -999,6 +1001,32 @@ status.
 Evals run automatically on PRs that change Instance AI code (path-filtered). The workflow boots a set of n8n lane containers, pulls the test-case suite from LangTracer (`--source langtracer --suite baseline`), and runs the CLI against the lanes. See `.github/workflows/test-evals-instance-ai.yml`.
 
 The job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts. When `LANGSMITH_API_KEY` is set via the `EVALS_LANGSMITH_API_KEY` secret, runs also land as LangSmith experiments tagged with commit SHA + branch, so you can compare against master side-by-side.
+
+For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`). Native providers use `model` alone (`anthropic/*`, `openai/*`, `openrouter/*`, `xai/*`, `google-vertex-anthropic/*`). OpenAI-compatible vendors use **`custom/<model>` + `model-url` + `model-key`** — no first-class provider prefixes.
+
+| Experiment | `model` | `model-url` | `model-key` → secret |
+|------------|---------|-------------|----------------------|
+| Anthropic / OpenAI / OpenRouter / xAI | `anthropic/…`, `openai/…`, etc. | empty | (prefix → `EVALS_*`) |
+| Google Vertex Claude | `google-vertex-anthropic/claude-opus-4-8` | empty | (prefix → `EVALS_VERTEX_KEY` + `EVALS_VERTEX_PROJECT_ID`; optional `EVALS_VERTEX_LOCATION`, default `global`) |
+| Baseten | `custom/<model>` | `https://inference.baseten.co/v1` | `baseten` → `EVALS_BASETEN_KEY` |
+| Fireworks | `custom/accounts/fireworks/models/…` | `https://api.fireworks.ai/inference/v1` | `fireworks` → `EVALS_FIREWORKS_KEY` |
+| Together | `custom/moonshotai/Kimi-K3` | `https://api.together.ai/v1` | `together` → `EVALS_TOGETHER_KEY` |
+| Modal | `custom/…` | `https://….modal.direct…/v1` | `modal` → `EVALS_MODAL_KEY` |
+| Databricks | `custom/workspace.default.kimi-k3` | `https://….databricks.com/ai-gateway/mlflow/v1` | `databricks` → `EVALS_DATABRICKS_KEY` |
+| Lyceum | `custom/moonshotai/Kimi-K3` | OpenAI-compatible `/v1` base URL | `lyceum` → `EVALS_LYCEUM_KEY` |
+| Azure OpenAI | `custom/<deployment>` | `https://….openai.azure.com/openai/v1` | `azure` → `EVALS_AZURE_FOUNDRY_KEY` |
+| Keyless custom router | `custom/<model>` | `https://host/v1` | empty (no API key) |
+| Azure Foundry Claude | `anthropic/<deployment>` | Foundry Anthropic base | `azure` (or omit — defaults to Foundry key) |
+
+`lanes` / `eval-concurrency` default to **10 / 32**. For `model-key=baseten` they auto-throttle to **1 / 2** (~0.5M TPM — fits [Baseten Basic verified](https://docs.baseten.co/inference/model-apis/rate-limits-and-budgets)); override the inputs if you have more headroom.
+
+Verifier/mocks always use `EVALS_ANTHROPIC_KEY`.
+
+For `custom/*`, optional dispatch inputs `reasoning-effort` and `supports-structured-outputs`
+override `N8N_INSTANCE_AI_REASONING_EFFORT` / `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS`.
+When unset, the runtime looks up
+`packages/@n8n/instance-ai/src/utils/custom-model-defaults.ts` (substring match on the model id).
+If still unresolved, the field is omitted from the request (no blanket custom default).
 
 ## Architecture
 
