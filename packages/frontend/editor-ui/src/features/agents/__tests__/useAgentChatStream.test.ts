@@ -2123,3 +2123,92 @@ describe('useAgentChatStream — subagent-chunk', () => {
 		});
 	});
 });
+
+describe('useAgentChatStream — stuck/desync recovery', () => {
+	let originalFetch: typeof fetch;
+	let originalLocalStorage: typeof globalThis.localStorage | undefined;
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+		originalLocalStorage = globalThis.localStorage;
+		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
+		cancelAgentChatRunMock.mockReset();
+		cancelAgentChatRunMock.mockResolvedValue({ cancelled: true });
+		getTestChatMessagesMock.mockReset();
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		vi.stubGlobal('localStorage', originalLocalStorage);
+		vi.restoreAllMocks();
+	});
+
+	it('settles in-flight tool calls to done when done arrives without tool-execution-end (desync)', async () => {
+		// tool-execution-start fires, but the terminal tool-execution-end/tool-result
+		// events never arrive before `done` — the UI must stop pulsing.
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-stuck',
+				toolName: 'create_issue',
+				input: { title: 'x' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-stuck',
+				toolName: 'create_issue',
+				startTime: 1_000,
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('go');
+		await nextTick();
+
+		expect(hook.isStreaming.value).toBe(false);
+		// Tool would otherwise keep pulsing as `running` — it must settle.
+		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('done');
+	});
+
+	it('stopGenerating settles stale in-flight tool calls when the stream already ended', async () => {
+		// Same desync: stream ended with a tool still `running`, no open suspension.
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-stuck-2',
+				toolName: 'create_issue',
+				input: { title: 'y' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-stuck-2',
+				toolName: 'create_issue',
+				startTime: 1_000,
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('go');
+		await nextTick();
+
+		// Simulate the desync: force the tool back to `running` after the stream
+		// ended (as if its terminal event had been lost).
+		hook.messages.value[1].toolCalls![0].state = 'running';
+		expect(hook.isStreaming.value).toBe(false);
+
+		await hook.stopGenerating();
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
+		// No backend cancel call — there is no runId/suspension to cancel.
+		expect(cancelAgentChatRunMock).not.toHaveBeenCalled();
+	});
+});
