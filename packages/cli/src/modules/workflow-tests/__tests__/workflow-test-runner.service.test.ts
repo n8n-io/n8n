@@ -95,13 +95,17 @@ describe('WorkflowTestRunnerService', () => {
 		expect(runArg.suppressErrorWorkflow).toBe(true);
 		expect(runArg.forceFullExecutionData).toBe(true);
 		expect(runArg.userId).toBe('user-1');
-		expect(runArg.workflowData?.settings).toEqual({
-			existing: 'setting',
-			saveManualExecutions: true,
-			saveDataErrorExecution: 'all',
-			saveDataSuccessExecution: 'all',
-			saveExecutionProgress: false,
+		expect(runArg.workflowData).toEqual({
+			...workflow,
+			settings: {
+				existing: 'setting',
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				saveExecutionProgress: false,
+			},
 		});
+		expect(runArg.executionData).toBeUndefined();
 
 		expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(executionId);
 
@@ -118,10 +122,47 @@ describe('WorkflowTestRunnerService', () => {
 		workflowRepository.get.mockResolvedValue(null);
 
 		const test = buildTest();
+		let caughtError: unknown;
+		await service.runTest(test, 'user-1').catch((error: unknown) => {
+			caughtError = error;
+		});
 
-		await expect(service.runTest(test, 'user-1')).rejects.toThrow(UnexpectedError);
-		await expect(service.runTest(test, 'user-1')).rejects.toThrow('Workflow workflow-1 not found');
-
+		expect(caughtError).toBeInstanceOf(UnexpectedError);
+		expect(caughtError).toHaveProperty('message', 'Workflow workflow-1 not found');
 		expect(workflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('populates executionData via createRunExecutionData when executionsConfig.mode is queue', async () => {
+		const workflow = {
+			id: 'workflow-1',
+			name: 'Test workflow',
+			nodes: [],
+			connections: {},
+			settings: {},
+		};
+		workflowRepository.get.mockResolvedValue(workflow as never);
+		workflowRunner.run.mockResolvedValue('execution-123');
+		activeExecutions.getPostExecutePromise.mockResolvedValue(undefined);
+		testDiffService.diff.mockReturnValue(mock<WorkflowTestRunResult>());
+
+		executionsConfig.mode = 'queue';
+		try {
+			const test = buildTest();
+			await service.runTest(test, 'user-1');
+
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			const runArg: IWorkflowExecutionDataProcess = workflowRunner.run.mock.calls[0][0];
+
+			expect(runArg.executionData).toBeDefined();
+			const executionData = runArg.executionData!;
+			expect(executionData.resultData.pinData).toEqual(test.fixtures);
+			expect(executionData.manualData).toEqual({
+				userId: 'user-1',
+				triggerToStartFrom: { name: 'Trigger' },
+				suppressErrorWorkflow: true,
+			});
+		} finally {
+			executionsConfig.mode = 'regular';
+		}
 	});
 });
