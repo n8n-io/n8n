@@ -31,6 +31,11 @@ import Transform from './components/Transform.vue';
 import Wait from './components/Wait.vue';
 import When from './components/When.vue';
 
+function pressProps(on: (event: string) => { bound: boolean; emit: () => void }) {
+	const press = on('press');
+	return { pressBound: press.bound, onPress: press.emit };
+}
+
 export const { registry } = defineRegistry(catalog, {
 	components: {
 		Screen: ({ props, children }) => h(Screen, props, { default: () => children }),
@@ -39,26 +44,25 @@ export const { registry } = defineRegistry(catalog, {
 		Heading: ({ props }) => h(Heading, props),
 		Text: ({ props }) => h(Text, props),
 		Callout: ({ props }) => h(Callout, props),
-		When: ({ props, emit }) => h(When, { ...props, onPress: () => emit('press') }),
-		Form: ({ props, emit }) => h(Form, { ...props, onPress: () => emit('press') }),
-		ChatMessage: ({ props, emit }) => h(ChatMessage, { ...props, onPress: () => emit('press') }),
-		Email: ({ props, emit }) => h(Email, { ...props, onPress: () => emit('press') }),
-		Sms: ({ props, emit }) => h(Sms, { ...props, onPress: () => emit('press') }),
-		HttpCall: ({ props, emit }) => h(HttpCall, { ...props, onPress: () => emit('press') }),
-		Terminal: ({ props, emit }) => h(Terminal, { ...props, onPress: () => emit('press') }),
-		FileTransfer: ({ props, emit }) => h(FileTransfer, { ...props, onPress: () => emit('press') }),
-		Spreadsheet: ({ props, emit }) => h(Spreadsheet, { ...props, onPress: () => emit('press') }),
-		Database: ({ props, emit }) => h(Database, { ...props, onPress: () => emit('press') }),
-		Crm: ({ props, emit }) => h(Crm, { ...props, onPress: () => emit('press') }),
-		CalendarEvent: ({ props, emit }) =>
-			h(CalendarEvent, { ...props, onPress: () => emit('press') }),
-		Decision: ({ props, emit }) => h(Decision, { ...props, onPress: () => emit('press') }),
-		Wait: ({ props, emit }) => h(Wait, { ...props, onPress: () => emit('press') }),
-		Approval: ({ props, emit }) => h(Approval, { ...props, onPress: () => emit('press') }),
-		AiTask: ({ props, emit }) => h(AiTask, { ...props, onPress: () => emit('press') }),
-		Knowledge: ({ props, emit }) => h(Knowledge, { ...props, onPress: () => emit('press') }),
-		Transform: ({ props, emit }) => h(Transform, { ...props, onPress: () => emit('press') }),
-		Step: ({ props, emit }) => h(Step, { ...props, onPress: () => emit('press') }),
+		When: ({ props, on }) => h(When, { ...props, ...pressProps(on) }),
+		Form: ({ props, on }) => h(Form, { ...props, ...pressProps(on) }),
+		ChatMessage: ({ props, on }) => h(ChatMessage, { ...props, ...pressProps(on) }),
+		Email: ({ props, on }) => h(Email, { ...props, ...pressProps(on) }),
+		Sms: ({ props, on }) => h(Sms, { ...props, ...pressProps(on) }),
+		HttpCall: ({ props, on }) => h(HttpCall, { ...props, ...pressProps(on) }),
+		Terminal: ({ props, on }) => h(Terminal, { ...props, ...pressProps(on) }),
+		FileTransfer: ({ props, on }) => h(FileTransfer, { ...props, ...pressProps(on) }),
+		Spreadsheet: ({ props, on }) => h(Spreadsheet, { ...props, ...pressProps(on) }),
+		Database: ({ props, on }) => h(Database, { ...props, ...pressProps(on) }),
+		Crm: ({ props, on }) => h(Crm, { ...props, ...pressProps(on) }),
+		CalendarEvent: ({ props, on }) => h(CalendarEvent, { ...props, ...pressProps(on) }),
+		Decision: ({ props, on }) => h(Decision, { ...props, ...pressProps(on) }),
+		Wait: ({ props, on }) => h(Wait, { ...props, ...pressProps(on) }),
+		Approval: ({ props, on }) => h(Approval, { ...props, ...pressProps(on) }),
+		AiTask: ({ props, on }) => h(AiTask, { ...props, ...pressProps(on) }),
+		Knowledge: ({ props, on }) => h(Knowledge, { ...props, ...pressProps(on) }),
+		Transform: ({ props, on }) => h(Transform, { ...props, ...pressProps(on) }),
+		Step: ({ props, on }) => h(Step, { ...props, ...pressProps(on) }),
 		Grid: ({ props, children }) => h(Grid, props, { default: () => children }),
 		Tabs: ({ props, children }) => h(Tabs, props, { default: () => children }),
 		Accordion: ({ props, children }) => h(Accordion, props, { default: () => children }),

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useGenerativeUiLookOnly } from '../nodeLookup';
 import NodeBrand from './NodeBrand.vue';
 
 const props = defineProps<{
@@ -6,23 +8,34 @@ const props = defineProps<{
 	label: string;
 	title: string;
 	badge?: string | null;
+	pressBound?: boolean;
 }>();
 
 const emit = defineEmits<{ press: [] }>();
+const lookOnly = useGenerativeUiLookOnly();
+const interactive = computed(
+	() => Boolean(props.nodeId) && props.pressBound !== false && !lookOnly.value,
+);
 
 function open() {
-	if (props.nodeId) emit('press');
+	if (interactive.value) emit('press');
 }
+
+function onKeydown(event: KeyboardEvent) {
+	if (event.key !== 'Enter' && event.key !== ' ') return;
+	event.preventDefault();
+	open();
+}
+
+const interactiveListeners = { click: open, keydown: onKeydown };
 </script>
 
 <template>
 	<div
-		:class="[$style.card, { [$style.clickable]: nodeId }]"
-		:role="nodeId ? 'button' : undefined"
-		:tabindex="nodeId ? 0 : undefined"
-		@click="open"
-		@keydown.enter.prevent="open"
-		@keydown.space.prevent="open"
+		:class="[$style.card, { [$style.clickable]: interactive }]"
+		:role="interactive ? 'button' : undefined"
+		:tabindex="interactive ? 0 : undefined"
+		v-on="interactive ? interactiveListeners : {}"
 	>
 		<header :class="$style.header">
 			<NodeBrand :node-id="nodeId" />
