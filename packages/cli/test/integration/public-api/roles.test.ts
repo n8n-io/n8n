@@ -1,7 +1,8 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { RoleRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+
+import { createCustomRoleWithScopeSlugs, createRole } from '@test-integration/db/roles';
 import { addApiKey, createOwnerWithApiKey, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -400,6 +401,249 @@ describe('Roles in Public API', () => {
 				.publicApiAgentFor(owner)
 				.post('/roles')
 				.send({ displayName: 'PA unlicensed', roleType: 'global', scopes: ['user:read'] });
+
+			expect(response.status).toBe(403);
+
+			testServer.license.enable('feat:customRoles');
+		});
+	});
+
+	describe('PATCH /roles/{slug}', () => {
+		type CreatedRole = {
+			slug: string;
+			displayName: string;
+			description: string | null;
+			scopes: string[];
+		};
+
+		const createGlobalRole = async (
+			displayName: string,
+			scopes: string[] = ['user:read'],
+		): Promise<CreatedRole> => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/roles')
+				.send({ displayName, roleType: 'global', scopes });
+			expect(response.status).toBe(201);
+			return response.body;
+		};
+
+		it('updates the displayName only, leaving description and scopes unchanged', async () => {
+			const role = await createGlobalRole('PA patch displayName', ['user:read', 'user:list']);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/roles/${role.slug}`)
+				.send({ displayName: 'PA patched displayName' });
+
+			expect(response.status).toBe(200);
+			expect(response.body.displayName).toBe('PA patched displayName');
+			expect(response.body.description).toBeNull();
+			expect(response.body.scopes).toEqual(expect.arrayContaining(['user:read', 'user:list']));
+		});
+
+		it('replaces scopes rather than merging them', async () => {
+			const role = await createGlobalRole('PA patch scopes', ['user:read', 'user:list']);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/roles/${role.slug}`)
+				.send({ scopes: ['user:read'] });
+
+			expect(response.status).toBe(200);
+			expect(response.body.scopes).toEqual(['user:read']);
+		});
+
+		it('updates displayName, description, and scopes together and returns the full public shape', async () => {
+			const role = await createGlobalRole('PA patch all fields');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/roles/${role.slug}`)
+				.send({
+					displayName: 'PA patched all fields',
+					description: 'An updated description',
+					scopes: ['user:read', 'user:list'],
+				});
+
+			expect(response.status).toBe(200);
+			// Full-shape assertion also proves no extra fields leak (e.g. licensed, usedByUsers).
+			expect(response.body).toEqual({
+				slug: role.slug,
+				displayName: 'PA patched all fields',
+				description: 'An updated description',
+				systemRole: false,
+				roleType: 'global',
+				scopes: expect.arrayContaining(['user:read', 'user:list']),
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			});
+			expect(response.body.scopes).toHaveLength(2);
+		});
+
+		it('leaves the role unchanged when the body is empty', async () => {
+			const role = await createGlobalRole('PA patch empty body');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/roles/${role.slug}`)
+				.send({});
+
+			expect(response.status).toBe(200);
+			expect(response.body.displayName).toBe(role.displayName);
+			expect(response.body.description).toBe(role.description);
+			expect(response.body.scopes).toEqual(role.scopes);
+		});
+
+		it('lets a role:manageProject key update a project role (200)', async () => {
+			const agent = await makeManageProjectUserAgent();
+			const created = await agent.post('/roles').send({
+				displayName: 'MP patch project role',
+				roleType: 'project',
+				scopes: ['workflow:read'],
+			});
+			expect(created.status).toBe(201);
+
+			const response = await agent
+				.patch(`/roles/${created.body.slug}`)
+				.send({ displayName: 'MP patched project role' });
+
+			expect(response.status).toBe(200);
+			expect(response.body.displayName).toBe('MP patched project role');
+		});
+
+		it('forbids a role:manageProject key from updating a global role (403)', async () => {
+			const role = await createGlobalRole('PA global role for MP patch test');
+			const agent = await makeManageProjectUserAgent();
+
+			const response = await agent
+				.patch(`/roles/${role.slug}`)
+				.send({ displayName: 'MP should not patch this' });
+
+			expect(response.status).toBe(403);
+		});
+
+		it('returns 404 for an unknown slug', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch('/roles/global:does-not-exist')
+				.send({ displayName: 'Does not matter' });
+
+			expect(response.status).toBe(404);
+		});
+
+		it('returns 404 for a role type not exposed by the public API (e.g. credential)', async () => {
+			const credentialRole = await createRole({ roleType: 'credential', scopes: [] });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/roles/${credentialRole.slug}`)
+				.send({ displayName: 'Should not be reachable' });
+
+			expect(response.status).toBe(404);
+		});
+
+		it('rejects updating a system role with 400', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch('/roles/global:owner')
+				.send({ displayName: 'Renamed owner role' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('Cannot update system roles');
+		});
+
+		it('rejects an unknown scope slug with 400', async () => {
+			const role = await createGlobalRole('PA patch bad slug');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/roles/${role.slug}`)
+				.send({ scopes: ['not:a-real-scope'] });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('Invalid scope');
+		});
+
+		it('rejects a scope not allowed for the role type with 400', async () => {
+			const role = await createGlobalRole('PA patch wrong scope');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/roles/${role.slug}`)
+				.send({ scopes: ['workflow:read'] });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('not allowed for global roles');
+		});
+
+		it('rejects a too-short displayName with 400', async () => {
+			const role = await createGlobalRole('PA patch short name');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/roles/${role.slug}`)
+				.send({ displayName: 'a' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('at least 2');
+		});
+
+		it('rejects renaming onto an existing role name with 400', async () => {
+			await createGlobalRole('PA patch existing name');
+			const role = await createGlobalRole('PA patch rename target');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/roles/${role.slug}`)
+				.send({ displayName: 'PA patch existing name' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('already exists');
+		});
+
+		it('rejects with 401 without an API key', async () => {
+			const role = await createGlobalRole('PA patch no key');
+
+			const response = await testServer
+				.publicApiAgentWithoutApiKey()
+				.patch(`/roles/${role.slug}`)
+				.send({ displayName: 'Should not work' });
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 401 with an invalid API key', async () => {
+			const role = await createGlobalRole('PA patch bad key');
+
+			const response = await testServer
+				.publicApiAgentWithApiKey('invalid-key')
+				.patch(`/roles/${role.slug}`)
+				.send({ displayName: 'Should not work' });
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the key lacks a role scope', async () => {
+			const role = await createGlobalRole('PA patch no scope');
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.patch(`/roles/${role.slug}`)
+				.send({ displayName: 'Should not work' });
+
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects with 403 when the custom roles feature is not licensed', async () => {
+			const role = await createGlobalRole('PA patch unlicensed');
+			testServer.license.disable('feat:customRoles');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/roles/${role.slug}`)
+				.send({ displayName: 'Should not work' });
 
 			expect(response.status).toBe(403);
 
