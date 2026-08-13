@@ -456,34 +456,22 @@ const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value / 2));
 const agentPreviewChatColumnWidth = computed(() =>
 	Math.max(0, (threadAreaWidth.value - previewPanelWidth.value) / 2),
 );
+
+/** Add custom width to Agent Preview chat when canvas area is full expanded. */
 const agentPreviewPanelStyle = computed(() => {
 	const chatColumnWidth = {
 		'--agent-preview-chat-column-width': `${agentPreviewChatColumnWidth.value}px`,
 	};
 
-	if (isAgentPreviewDockOpen.value) {
-		return {
-			...chatColumnWidth,
-			width: `${previewPanelWidth.value + agentPreviewChatColumnWidth.value}px`,
-		};
-	}
-
-	return isPreviewExpanded.value
-		? chatColumnWidth
-		: { ...chatColumnWidth, width: `${previewPanelWidth.value}px` };
+	return isPreviewExpanded.value ? chatColumnWidth : { width: `${previewPanelWidth.value}px` };
 });
 
 function togglePreviewExpanded() {
-	if (isAgentPreviewDockOpen.value) return;
-
 	isPreviewExpanded.value = !isPreviewExpanded.value;
 }
 
 function handleAgentPreviewDockOpenChange(open: boolean) {
 	isAgentPreviewDockOpen.value = open;
-	if (open) {
-		isPreviewExpanded.value = false;
-	}
 }
 
 // Clamp preview width when the available area shrinks (sidebar open, window
@@ -1345,7 +1333,6 @@ async function dismissComposerContextChip() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
-							:is-expand-disabled="isAgentPreviewDockOpen"
 							:preview-toggle-label="artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
