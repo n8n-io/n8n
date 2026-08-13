@@ -39,14 +39,20 @@ export const Z = {
 	class: <T extends z.ZodRawShape>(
 		shape: T,
 		/**
-		 * Pass `strict` when the endpoint must reject an unrecognised key rather than drop it.
-		 * Needed by Public API request bodies whose hand-written spec set
-		 * `additionalProperties: false`: Zod strips by default, so without this a client's typo
-		 * would be silently accepted where it used to return 400.
+		 * `strict` rejects an unrecognised key rather than dropping it. Needed by Public API
+		 * request bodies whose hand-written spec set `additionalProperties: false`: Zod strips by
+		 * default, so without this a client's typo would be silently accepted where it used to
+		 * return 400.
+		 *
+		 * `errorMap` lets a DTO explain those rejections in its own terms - for example, saying a
+		 * key is read-only rather than unrecognised.
 		 */
-		options: { strict?: boolean } = {},
+		options: { strict?: boolean; errorMap?: z.ZodErrorMap } = {},
 	): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> => {
-		const schema = options.strict ? z.object(shape).strict() : z.object(shape);
+		const object = options.errorMap
+			? z.object(shape, { errorMap: options.errorMap })
+			: z.object(shape);
+		const schema = options.strict ? object.strict() : object;
 		type Output = z.objectOutputType<T, z.ZodTypeAny>;
 
 		const DtoClass = class {
