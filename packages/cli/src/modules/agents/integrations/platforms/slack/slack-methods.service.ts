@@ -64,11 +64,11 @@ export class SlackMethodsService {
 		private readonly cipher: Cipher,
 	) {}
 
-	async callSlackApi(
+	async callSlackApi<T extends { [key: string]: unknown }>(
 		method: string,
 		params: Record<string, string> | FormData,
 		headers: Record<string, string> = {},
-	): Promise<Record<string, unknown>> {
+	): Promise<({ ok: true } & T) | { ok: false; error: string }> {
 		try {
 			const requestHeaders = { ...headers };
 			if (!(params instanceof FormData)) {
@@ -87,7 +87,7 @@ export class SlackMethodsService {
 					ignoreHttpStatusErrors: true,
 				});
 			const data: unknown = response.body;
-			return isRecord(data) ? data : { ok: false, error: 'invalid_response' };
+			return isRecord(data) ? (data as { ok: true } & T) : { ok: false, error: 'invalid_response' };
 		} catch {
 			return { ok: false, error: 'slack_request_failed' };
 		}

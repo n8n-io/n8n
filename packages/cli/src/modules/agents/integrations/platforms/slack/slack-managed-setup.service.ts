@@ -116,6 +116,22 @@ interface ManagedBotCredentialContext {
 	teamId: string;
 }
 
+type RefreshTokenResponse = {
+	access_token: string;
+	expires_in: number;
+	refresh_token: string;
+	token_type: string;
+	app_id: string;
+	scope: string;
+	user_id: string;
+	team: {
+		id: string;
+		name: string;
+	};
+	enterprise: Record<string, unknown> | null;
+	is_enterprise_install: boolean;
+};
+
 type SlackApiParams = Record<string, string> | FormData;
 type SlackApiParamsFactory = (accessToken: string) => SlackApiParams;
 
@@ -261,7 +277,7 @@ export class SlackManagedSetupService {
 		if (manager.credential.name !== DEFAULT_SLACK_MANAGER_CREDENTIAL_NAME) return;
 
 		const response = await this.callManagerSlackApi(manager, 'auth.test', {});
-		if (response.ok !== true) return;
+		if (!response.ok) return;
 		const userName = stringProperty(response, 'user');
 		if (!userName) return;
 		const teamName = stringProperty(response, 'team');
@@ -322,7 +338,7 @@ export class SlackManagedSetupService {
 			bot_scopes: SLACK_BOT_SCOPES.join(','),
 		});
 
-		if (response.ok === true) {
+		if (response.ok) {
 			const botAccessToken = stringProperty(
 				childRecord(response, 'api_access_tokens'),
 				'bot_access_token',
@@ -361,7 +377,7 @@ export class SlackManagedSetupService {
 			const cleanupResponse = await this.callManagerSlackApi(manager, 'apps.manifest.delete', {
 				app_id: session.appId,
 			});
-			if (cleanupResponse.ok === true) {
+			if (cleanupResponse.ok) {
 				await this.cacheService.delete(
 					this.managedAppCacheKey({ ...options, userId: options.user.id }),
 				);
@@ -417,7 +433,7 @@ export class SlackManagedSetupService {
 			app_id: bot.managedAppId,
 			manifest: JSON.stringify(updatedManifest),
 		});
-		if (updateResponse.ok !== true) {
+		if (!updateResponse.ok) {
 			throw this.methods.slackError('update the Slack app', updateResponse);
 		}
 
@@ -457,7 +473,7 @@ export class SlackManagedSetupService {
 				const response = await this.callManagerSlackApi(manager, 'apps.manifest.delete', {
 					app_id: managedAppId,
 				});
-				if (response.ok !== true && stringProperty(response, 'error') !== 'app_not_found') {
+				if (!response.ok && stringProperty(response, 'error') !== 'app_not_found') {
 					throw this.methods.slackError('delete the Slack app', response);
 				}
 			} catch (error) {
@@ -532,7 +548,7 @@ export class SlackManagedSetupService {
 		const response = await this.callManagerSlackApi(manager, 'apps.manifest.export', {
 			app_id: managedAppId,
 		});
-		if (response.ok !== true) {
+		if (!response.ok) {
 			throw this.methods.slackError('load the Slack app settings', response);
 		}
 		const manifest = childRecord(response, 'manifest');
@@ -639,7 +655,7 @@ export class SlackManagedSetupService {
 							limit: '100',
 							...(cursor ? { cursor } : {}),
 						});
-				if (response.ok !== true) break;
+				if (!response.ok) break;
 				if (Array.isArray(response.teams)) {
 					workspaceRecords.push(...response.teams.filter(isRecord));
 				}
@@ -732,7 +748,7 @@ export class SlackManagedSetupService {
 			manifest: JSON.stringify(manifest),
 			team_id: options.workspaceId,
 		});
-		if (response.ok !== true) throw this.methods.slackError('create the Slack app', response);
+		if (!response.ok) throw this.methods.slackError('create the Slack app', response);
 
 		const credentials = childRecord(response, 'credentials');
 		const appId = stringProperty(response, 'app_id');
@@ -790,11 +806,11 @@ export class SlackManagedSetupService {
 		return undefined;
 	}
 
-	private async callManagerSlackApi(
+	private async callManagerSlackApi<T extends { [key: string]: unknown }>(
 		manager: ManagerCredentialContext,
 		method: string,
 		params: Record<string, string> | SlackApiParamsFactory,
-	): Promise<Record<string, unknown>> {
+	): Promise<({ ok: true } & T) | { ok: false; error: string }> {
 		const paramsForToken = (accessToken: string): SlackApiParams =>
 			typeof params === 'function' ? params(accessToken) : { ...params, token: accessToken };
 		let response = await this.methods.callSlackApi(method, paramsForToken(manager.accessToken));
@@ -812,14 +828,17 @@ export class SlackManagedSetupService {
 			return response;
 		}
 
-		const refreshResponse = await this.methods.callSlackApi('oauth.v2.access', {
-			grant_type: 'refresh_token',
-			refresh_token: refreshToken,
-			client_id: overwrite.clientId,
-			client_secret: overwrite.clientSecret,
-		});
+		const refreshResponse = await this.methods.callSlackApi<RefreshTokenResponse>(
+			'oauth.v2.access',
+			{
+				grant_type: 'refresh_token',
+				refresh_token: refreshToken,
+				client_id: overwrite.clientId,
+				client_secret: overwrite.clientSecret,
+			},
+		);
 		const refreshedAccessToken = stringProperty(refreshResponse, 'access_token');
-		if (refreshResponse.ok !== true || !refreshedAccessToken) {
+		if (!refreshResponse.ok || !refreshedAccessToken) {
 			return response;
 		}
 
@@ -885,7 +904,7 @@ export class SlackManagedSetupService {
 			);
 			return formData;
 		});
-		if (response.ok !== true) {
+		if (!response.ok) {
 			throw this.methods.slackError('set the Slack app icon', response);
 		}
 	}
