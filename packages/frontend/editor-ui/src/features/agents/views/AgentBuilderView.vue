@@ -63,7 +63,6 @@ import {
 	useInstanceAiAgentPreviewHandoff,
 	type AgentPreviewHandoffParams,
 } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
-import { addMissingAgentPersonalisation } from '@n8n/api-types';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
