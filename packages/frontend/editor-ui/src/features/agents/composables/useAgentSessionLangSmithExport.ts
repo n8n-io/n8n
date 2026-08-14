@@ -43,7 +43,7 @@ export function useAgentSessionLangSmithExport() {
 			if (confirmed !== MODAL_CONFIRM) return;
 
 			const { traceId } = await sessionsStore.exportThreadToLangSmith(projectId, agentId, threadId);
-			await clipboard.copy(traceId);
+			await clipboard.copy(traceId).catch(() => {});
 			showMessage({
 				title: i18n.baseText('agentSessions.langsmithExport.success'),
 				message: i18n.baseText('agentSessions.langsmithExport.successMessage', {

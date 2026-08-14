@@ -1450,7 +1450,7 @@
 	"agentSessions.langsmithExport.confirm.body": "This sends the conversation, tool inputs and outputs, and errors to n8n's LangSmith workspace for debugging. Check the session for sensitive data before continuing.",
 	"agentSessions.langsmithExport.confirm.button": "Send session",
 	"agentSessions.langsmithExport.success": "Session sent to LangSmith",
-	"agentSessions.langsmithExport.successMessage": "Trace ID copied: {traceId}",
+	"agentSessions.langsmithExport.successMessage": "Trace ID: {traceId}",
 	"agentSessions.langsmithExport.error": "Session couldn't be sent to LangSmith. Try again.",
 	"agentSessions.actions": "Actions",
 	"agentSessions.empty": "No agent sessions",
