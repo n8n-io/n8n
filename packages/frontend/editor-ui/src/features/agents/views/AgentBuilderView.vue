@@ -27,6 +27,7 @@ import {
 	getAgent,
 	createAgent,
 	deleteAgent,
+	getAgentTasks,
 	listAgentFiles,
 	uploadAgentFiles,
 	deleteAgentFile,
@@ -1221,11 +1222,35 @@ async function exportAgentJson() {
 	}
 	if (!localConfig.value) return;
 
-	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+	const exportConfig = deepCopy(localConfig.value);
+	// Task refs only carry membership + enabled state; embed each task's body
+	// so the file can recreate the tasks when imported into another agent.
+	if (exportConfig.tasks?.length) {
+		try {
+			const tasks = await getAgentTasks(rootStore.restApiContext, projectId.value, agentId.value);
+			const bodiesById = new Map(tasks.map((task) => [task.id, task]));
+			exportConfig.tasks = exportConfig.tasks.map((ref) => {
+				const body = bodiesById.get(ref.id);
+				return body
+					? {
+							...ref,
+							name: body.name,
+							objective: body.objective,
+							cronExpression: body.cronExpression,
+						}
+					: ref;
+			});
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.loadError'));
+			return;
+		}
+	}
+
+	const blob = new Blob([`${JSON.stringify(exportConfig, null, 2)}\n`], {
 		type: 'application/json',
 	});
 	const url = URL.createObjectURL(blob);
-	const name = localConfig.value.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
+	const name = exportConfig.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
 	const link = Object.assign(document.createElement('a'), {
 		href: url,
 		download: `${name}.json`,
@@ -1236,13 +1261,28 @@ async function exportAgentJson() {
 	URL.revokeObjectURL(url);
 }
 
+async function importAgentConfigJson(config: AgentJsonConfig) {
+	replaceConfigAndScheduleSave(config);
+	// The save recreates imported task bodies server-side and may rewrite their
+	// ids; flush it and refetch so `localConfig` holds the persisted refs
+	// instead of re-sending inline task bodies on later autosaves.
+	try {
+		await flushAutosave();
+	} catch {
+		// The autosave error handler already surfaced the failure; keep the
+		// imported config local so the next successful autosave persists it.
+		return;
+	}
+	await onConfigUpdated().catch(handleArtifactRefreshError);
+}
+
 function openImportJsonModal() {
 	if (!effectiveCanEditAgent.value) return;
 
 	uiStore.openModalWithData({
 		name: AGENT_JSON_IMPORT_MODAL_KEY,
 		data: {
-			onConfirm: replaceConfigAndScheduleSave,
+			onConfirm: importAgentConfigJson,
 		},
 	});
 }

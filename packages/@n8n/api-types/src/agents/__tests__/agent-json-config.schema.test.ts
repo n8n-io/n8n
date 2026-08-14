@@ -546,6 +546,59 @@ describe('AgentJsonConfigSchema — skills', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — tasks', () => {
+	it('accepts a bare task ref', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [{ type: 'task', id: 'task_weekly', enabled: true }],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a task ref with an inline body, as embedded by the agent JSON export', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [
+				{
+					type: 'task',
+					id: 'task_weekly',
+					enabled: true,
+					name: 'Weekly review',
+					objective: 'Summarize the week and post it to the channel.',
+					cronExpression: '0 9 * * 1',
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.data.tasks?.[0]).toMatchObject({
+			name: 'Weekly review',
+			objective: 'Summarize the week and post it to the channel.',
+			cronExpression: '0 9 * * 1',
+		});
+	});
+
+	it('rejects an inline body with an empty objective', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [
+				{
+					type: 'task',
+					id: 'task_weekly',
+					enabled: true,
+					name: 'Weekly review',
+					objective: '',
+					cronExpression: '0 9 * * 1',
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+	});
+});
+
 describe('AgentJsonConfigSchema — model/credential coupling', () => {
 	it('rejects a credential without a model', () => {
 		const result = AgentJsonConfigSchema.safeParse({

@@ -1,10 +1,12 @@
 import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import {
+	AGENT_TASK_ID_MAX_LENGTH,
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
+	type AgentJsonTaskConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -25,7 +27,9 @@ import {
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
+import type { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
+import { isValidCronExpression } from './integrations/cron-validation';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
@@ -35,6 +39,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { generateAgentResourceId } from './utils/agent-resource-id';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
@@ -168,10 +173,17 @@ export class AgentConfigService {
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
+		// Exported agent JSON embeds each task's body in its ref so an import can
+		// recreate tasks the target agent doesn't have. The extracted rows are
+		// inserted right before the agent save below.
+		const importedTaskRows = tasksProvided
+			? await this.extractInlineTaskDefinitions(agentId, validatedConfig, new Set(existingTaskIds))
+			: [];
+
 		const resolvedSubAgents = await this.removeMissingConfigRefs(
 			validatedConfig,
 			entity,
-			new Set(existingTaskIds),
+			new Set([...existingTaskIds, ...importedTaskRows.map((row) => row.id)]),
 		);
 		this.validateSubAgentRefs(resolvedSubAgents, entity);
 
@@ -272,6 +284,12 @@ export class AgentConfigService {
 			user,
 		);
 
+		// Inserted before the agent save so persisted task refs never point at a
+		// task row that does not exist.
+		if (importedTaskRows.length > 0) {
+			await this.agentTaskRepository.save(importedTaskRows);
+		}
+
 		const saved = await this.agentRepository.save(entity);
 		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
@@ -342,6 +360,67 @@ export class AgentConfigService {
 		return [];
 	}
 
+	/**
+	 * Split inline task bodies (name/objective/cronExpression, embedded by the
+	 * agent JSON export) out of the config's task refs. Returns the rows to
+	 * insert for refs that carry a body for a task this agent doesn't have, and
+	 * normalizes all refs back to bare `{ type, id, enabled }` — the task
+	 * definition table stays the single source of truth for bodies, so bodies
+	 * of existing tasks are never overwritten from a config write.
+	 */
+	private async extractInlineTaskDefinitions(
+		agentId: string,
+		config: AgentJsonConfig,
+		existingTaskIds: ReadonlySet<string>,
+	): Promise<AgentTask[]> {
+		const refs = config.tasks ?? [];
+		const definitions: AgentJsonTaskDefinition[] = [];
+		for (const ref of refs) {
+			if (existingTaskIds.has(ref.id)) continue;
+			const providedCount = [ref.name, ref.objective, ref.cronExpression].filter(
+				(field) => field !== undefined,
+			).length;
+			if (providedCount === 0) continue;
+			if (!hasInlineTaskBody(ref)) {
+				throw new UserError(
+					`Invalid agent config: task "${ref.id}" must define name, objective, and cronExpression together`,
+				);
+			}
+			if (!isValidCronExpression(ref.cronExpression)) {
+				throw new UserError(
+					`Invalid agent config: task "${ref.id}" has an invalid cron expression`,
+				);
+			}
+			definitions.push(ref);
+		}
+
+		// Task ids are globally unique (single-column PK), so an id exported from
+		// another agent or instance may already be taken — those tasks get a
+		// fresh id, rewritten on the ref before the refs are persisted.
+		const takenIds = new Set(
+			await this.agentTaskRepository.findExistingIds(definitions.map((ref) => ref.id)),
+		);
+		const usedIds = new Set([...existingTaskIds, ...refs.map((ref) => ref.id)]);
+
+		const rows = definitions.map((ref) => {
+			if (takenIds.has(ref.id) || ref.id.length > AGENT_TASK_ID_MAX_LENGTH) {
+				ref.id = generateAgentResourceId('task', usedIds);
+				usedIds.add(ref.id);
+			}
+			return this.agentTaskRepository.create({
+				id: ref.id,
+				agentId,
+				name: ref.name,
+				objective: ref.objective,
+				cronExpression: ref.cronExpression,
+			});
+		});
+
+		config.tasks = refs.map(({ type, id, enabled }) => ({ type, id, enabled }));
+
+		return rows;
+	}
+
 	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
 		for (const { agentId, agent } of resolvedSubAgents) {
 			if (!agent) continue;
@@ -353,6 +432,13 @@ export class AgentConfigService {
 			}
 		}
 	}
+}
+
+type AgentJsonTaskDefinition = AgentJsonTaskConfig &
+	Required<Pick<AgentJsonTaskConfig, 'name' | 'objective' | 'cronExpression'>>;
+
+function hasInlineTaskBody(ref: AgentJsonTaskConfig): ref is AgentJsonTaskDefinition {
+	return ref.name !== undefined && ref.objective !== undefined && ref.cronExpression !== undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

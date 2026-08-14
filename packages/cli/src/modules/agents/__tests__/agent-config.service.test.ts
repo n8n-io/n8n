@@ -16,6 +16,7 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentValidationService } from '../agent-validation.service';
+import type { AgentTask } from '../entities/agent-task.entity';
 import type { Agent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -75,6 +76,8 @@ function makeService() {
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
+	agentTaskRepository.findExistingIds.mockResolvedValue([]);
+	agentTaskRepository.create.mockImplementation((data) => data as AgentTask);
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
 		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
@@ -489,6 +492,155 @@ describe('AgentConfigService', () => {
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('creates task rows from inline task bodies and persists bare refs', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tasks: [
+						{
+							type: 'task',
+							id: 'task_import',
+							enabled: true,
+							name: 'Weekly review',
+							objective: 'Summarize the week.',
+							cronExpression: '0 9 * * 1',
+						},
+					],
+				},
+				user,
+				byUser,
+			);
+
+			expect(agentTaskRepository.save).toHaveBeenCalledWith([
+				{
+					id: 'task_import',
+					agentId,
+					name: 'Weekly review',
+					objective: 'Summarize the week.',
+					cronExpression: '0 9 * * 1',
+				},
+			]);
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task_import', enabled: true }]);
+		});
+
+		it('remaps an inline task id that is already taken by another agent', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentTaskRepository.findExistingIds.mockResolvedValue(['task_import']);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tasks: [
+						{
+							type: 'task',
+							id: 'task_import',
+							enabled: false,
+							name: 'Weekly review',
+							objective: 'Summarize the week.',
+							cronExpression: '0 9 * * 1',
+						},
+					],
+				},
+				user,
+				byUser,
+			);
+
+			const rows = agentTaskRepository.save.mock.calls[0][0] as AgentTask[];
+			expect(rows).toHaveLength(1);
+			expect(rows[0].id).not.toBe('task_import');
+			expect(rows[0].id).toMatch(/^task_/);
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: rows[0].id, enabled: false }]);
+		});
+
+		it('does not overwrite an existing task body from an inline definition', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentTaskRepository.findByAgentId.mockResolvedValue([{ id: 'task-1' }] as never);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tasks: [
+						{
+							type: 'task',
+							id: 'task-1',
+							enabled: false,
+							name: 'Edited name',
+							objective: 'Edited objective',
+							cronExpression: '0 9 * * 1',
+						},
+					],
+				},
+				user,
+				byUser,
+			);
+
+			expect(agentTaskRepository.save).not.toHaveBeenCalled();
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: false }]);
+		});
+
+		it('rejects a partial inline task body', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						tasks: [{ type: 'task', id: 'task_import', enabled: true, name: 'Weekly review' }],
+					},
+					user,
+					byUser,
+				),
+			).rejects.toThrow('must define name, objective, and cronExpression together');
+			expect(agentTaskRepository.save).not.toHaveBeenCalled();
+			expect(agentRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('rejects an inline task body with an invalid cron expression', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						tasks: [
+							{
+								type: 'task',
+								id: 'task_import',
+								enabled: true,
+								name: 'Weekly review',
+								objective: 'Summarize the week.',
+								cronExpression: 'not-a-cron',
+							},
+						],
+					},
+					user,
+					byUser,
+				),
+			).rejects.toThrow('invalid cron expression');
+			expect(agentTaskRepository.save).not.toHaveBeenCalled();
+			expect(agentRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('sanitizes inaccessible credentials before saving nested config', async () => {

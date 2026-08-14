@@ -393,6 +393,37 @@ describe('sanitizeAgentJsonConfig', () => {
 		});
 	});
 
+	it('preserves inline task bodies while stripping unknown task fields', () => {
+		const config = {
+			...baseConfig,
+			tasks: [
+				{
+					type: 'task',
+					id: 'weekly_review',
+					enabled: true,
+					name: 'Weekly review',
+					objective: 'Summarize the week.',
+					cronExpression: '0 9 * * 1',
+					createdAt: '2025-01-01T00:00:00.000Z',
+				},
+			],
+		};
+
+		expect(sanitizeAgentJsonConfig(config)).toEqual({
+			...baseConfig,
+			tasks: [
+				{
+					type: 'task',
+					id: 'weekly_review',
+					enabled: true,
+					name: 'Weekly review',
+					objective: 'Summarize the week.',
+					cronExpression: '0 9 * * 1',
+				},
+			],
+		});
+	});
+
 	it('leaves malformed typed-array entries in place for schema validation to reject', () => {
 		const config = {
 			...baseConfig,

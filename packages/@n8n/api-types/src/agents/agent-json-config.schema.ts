@@ -2,6 +2,7 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { agentTaskSchema } from './agent-task.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -197,6 +198,10 @@ const AgentJsonSkillConfigSchema = z.object({
 		),
 });
 
+// No `.refine`/`.superRefine` here: `sanitizeAgentJsonConfig` resolves the
+// array element's `type` discriminator from a plain ZodObject, and a
+// ZodEffects wrapper would make it filter every task entry out. The
+// all-or-none body-field rule is enforced by the config write path instead.
 const AgentJsonTaskConfigSchema = z.object({
 	type: z.literal('task'),
 	id: z
@@ -207,6 +212,12 @@ const AgentJsonTaskConfigSchema = z.object({
 			'Task id can only contain letters, numbers, hyphens, and underscores',
 		),
 	enabled: z.boolean(),
+	// Inline task body, embedded by the agent JSON export so an import can
+	// recreate tasks the target agent doesn't have. At rest the body lives in
+	// the task definition table and the persisted config keeps bare refs.
+	name: agentTaskSchema.shape.name.optional(),
+	objective: agentTaskSchema.shape.objective.optional(),
+	cronExpression: agentTaskSchema.shape.cronExpression.optional(),
 });
 
 export const McpAuthenticationSchemaTypes = z.enum([

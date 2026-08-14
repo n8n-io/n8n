@@ -124,6 +124,7 @@ const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const repointConfigMock = vi.fn();
 const deleteAgentMock = vi.fn().mockResolvedValue(undefined);
+const getAgentTasksMock = vi.fn().mockResolvedValue([]);
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
@@ -159,6 +160,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
 	deleteAgent: deleteAgentMock,
+	getAgentTasks: getAgentTasksMock,
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
@@ -220,6 +222,7 @@ interface TestAgentConfig {
 	credential?: string;
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
+	tasks?: AgentJsonConfig['tasks'];
 	personalisation?: AgentJsonConfig['personalisation'];
 }
 
@@ -613,6 +616,8 @@ function resetViewMocks() {
 	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
+	getAgentTasksMock.mockReset();
+	getAgentTasksMock.mockResolvedValue([]);
 	listAgentFilesMock.mockReset();
 	listAgentFilesMock.mockResolvedValue([]);
 	uploadAgentFilesMock.mockReset();
@@ -2540,6 +2545,57 @@ describe('AgentBuilderView — three-column shell', () => {
 		createElementSpy.mockRestore();
 	});
 
+	it('embeds task bodies into the exported JSON so imports can recreate them', async () => {
+		Object.defineProperty(URL, 'createObjectURL', {
+			configurable: true,
+			value: vi.fn(),
+		});
+		Object.defineProperty(URL, 'revokeObjectURL', {
+			configurable: true,
+			value: vi.fn(),
+		});
+		createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:agent-json');
+		revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+		anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			tasks: [{ type: 'task', id: 'task_1', enabled: true }],
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		getAgentTasksMock.mockResolvedValue([
+			{
+				id: 'task_1',
+				name: 'Weekly review',
+				objective: 'Summarize the week.',
+				cronExpression: '0 9 * * 1',
+				createdAt: '2026-01-01T00:00:00Z',
+				updatedAt: '2026-01-01T00:00:00Z',
+			},
+		]);
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'export-json');
+		await flushPromises();
+
+		expect(getAgentTasksMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1');
+		const blob = createObjectURLSpy.mock.calls[0][0] as Blob;
+		const exported = JSON.parse(await readBlobText(blob)) as {
+			tasks: Array<Record<string, unknown>>;
+		};
+		expect(exported.tasks).toEqual([
+			{
+				type: 'task',
+				id: 'task_1',
+				enabled: true,
+				name: 'Weekly review',
+				objective: 'Summarize the week.',
+				cronExpression: '0 9 * * 1',
+			},
+		]);
+	});
+
 	it('opens the JSON import modal and saves imported config from the header menu', async () => {
 		const wrapper = await renderView();
 		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'import-json');
@@ -2560,9 +2616,22 @@ describe('AgentBuilderView — three-column shell', () => {
 			credential: 'cred-openai',
 			instructions: 'Use the imported settings.',
 		};
-		openModalWithDataMock.mock.calls[0][0].data.onConfirm(importedConfig);
-		await nextTick();
+		// The import flow refetches after the save lands (the backend may rewrite
+		// imported task ids); mimic the server echoing the saved config back.
+		intendedConfig = importedConfig;
+		getAgentMock.mockResolvedValue(makeAgentResponse({ name: 'Imported agent' }));
+		await openModalWithDataMock.mock.calls[0][0].data.onConfirm(importedConfig);
+		await flushPromises();
 
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({
+				...importedConfig,
+				memory: { enabled: true, storage: 'n8n' },
+			}),
+		);
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
 		expect((wrapper.vm as unknown as { localConfig: unknown }).localConfig).toMatchObject(
 			importedConfig,
 		);
@@ -2573,17 +2642,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			'a1',
 			'agent',
 			'Imported agent',
-		);
-
-		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
-
-		expect(updateConfigMock).toHaveBeenCalledWith(
-			'p1',
-			'a1',
-			expect.objectContaining({
-				...importedConfig,
-				memory: { enabled: true, storage: 'n8n' },
-			}),
 		);
 	});
 
