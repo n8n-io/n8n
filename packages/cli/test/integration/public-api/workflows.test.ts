@@ -2565,7 +2565,7 @@ describe('PUT /workflows/:id', () => {
 					position: [240, 300],
 				},
 				{
-					id: 'uuid-1234',
+					id: 'uuid-5678',
 					parameters: {},
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',

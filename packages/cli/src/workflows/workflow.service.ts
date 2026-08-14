@@ -442,13 +442,14 @@ export class WorkflowService {
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
-		WorkflowHelpers.validateWorkflowStructure({
-			nodes: workflowUpdateData.nodes ?? workflow.nodes,
-			connections: workflowUpdateData.connections ?? workflow.connections,
-		});
-		// Validate node groups only for structural changes; a metadata-only edit re-persists
-		// already-validated groups, so re-checking is redundant and could block on legacy data.
+		// Validate structure and node groups only for structural changes; a metadata-only edit
+		// re-persists an already-validated graph, so re-checking is redundant and could block on
+		// legacy data. Both are safe to read off workflowUpdateData: it was backfilled above.
 		if (saveNewVersion) {
+			WorkflowHelpers.validateWorkflowStructure({
+				nodes: workflowUpdateData.nodes,
+				connections: workflowUpdateData.connections,
+			});
 			WorkflowHelpers.validateWorkflowNodeGroups(
 				{
 					nodes: workflowUpdateData.nodes,

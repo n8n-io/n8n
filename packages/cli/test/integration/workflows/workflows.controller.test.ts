@@ -180,6 +180,39 @@ describe('POST /workflows', () => {
 		expect(created.staticData).toBeNull();
 	});
 
+	test('should reject a workflow whose nodes share a node id', async () => {
+		const payload = {
+			name: 'duplicate node ids',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('share the node ID "uuid-1234"');
+	});
+
 	test('should retain accept `workflow.id`', async () => {
 		const payload = {
 			id: 'HDssU5Ce250UWyLg_MNG4',
@@ -3294,7 +3327,7 @@ describe('PATCH /workflows/:workflowId', () => {
 					position: [240, 300],
 				},
 				{
-					id: 'uuid-1234',
+					id: 'uuid-5678',
 					parameters: {},
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
@@ -3352,6 +3385,70 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(updated.staticData).toEqual({
 			'node:Trello Trigger': { webhookId: 'registered-by-the-engine' },
 		});
+	});
+
+	test('should allow a metadata-only update of a workflow whose stored nodes share a node id', async () => {
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						parameters: {},
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [240, 300],
+					},
+					{
+						id: 'uuid-1234',
+						parameters: {},
+						name: 'Cron',
+						type: 'n8n-nodes-base.cron',
+						typeVersion: 1,
+						position: [400, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'name updated' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.name).toBe('name updated');
+	});
+
+	test('should reject an update that sends nodes sharing a node id', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('share the node ID "uuid-1234"');
 	});
 
 	test('should broadcast workflow update to collaborators', async () => {
