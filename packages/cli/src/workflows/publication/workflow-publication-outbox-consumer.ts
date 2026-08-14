@@ -42,12 +42,18 @@ const ABANDON_GRACE_LEASE_FRACTION = 0.25;
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It owns the
- * queue mechanics only: the poll loop and claiming the next pending record. For
- * each claimed record it delegates to the applier (which reconciles triggers
- * and returns a result) and then to the reporter (which writes the terminal
- * status and side effects). Any unexpected error from the applier is turned
- * into a failed result so the reporter remains the single writer of terminal
- * outbox statuses.
+ * queue mechanics only: the poll loop and a pool of up to
+ * `workflowPublicationConcurrency` independent workers, each claiming pending
+ * records until none remain. For each claimed record a worker delegates to the
+ * applier (which reconciles triggers and returns a result) and then to the
+ * reporter (which writes the terminal status and side effects). Any unexpected
+ * error from the applier is turned into a failed result so the reporter
+ * remains the single writer of terminal outbox statuses.
+ *
+ * Coordination lives in the database, not in this class: claiming is atomic
+ * and per-workflow serialized, so workers (even across passes) never
+ * double-process a record. A worker stuck on one record therefore only
+ * occupies its own pool slot — the remaining slots keep serving new records.
  */
 @Service()
 export class WorkflowPublicationOutboxConsumer {
@@ -57,7 +63,12 @@ export class WorkflowPublicationOutboxConsumer {
 
 	private isShuttingDown = false;
 
-	private activeDrain: Promise<number> | null = null;
+	private readonly activeWorkers = new Set<Promise<void>>();
+
+	/** Set when a wake-up arrives while the pool is at capacity; a worker
+	 * exiting then starts a follow-up pass, so a record committed after the
+	 * running workers' final claims is still picked up promptly. */
+	private wakeRequested = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -105,8 +116,9 @@ export class WorkflowPublicationOutboxConsumer {
 	async shutdown() {
 		this.isShuttingDown = true;
 		this.stopPolling();
-		// Wait for any in-flight drain to finish so triggers aren't left half-activated.
-		await this.activeDrain;
+		// Wait for in-flight workers to finish their current record so triggers
+		// aren't left half-activated.
+		await this.awaitIdle();
 	}
 
 	/**
@@ -130,14 +142,15 @@ export class WorkflowPublicationOutboxConsumer {
 
 	// The `workflow-publish-wake-up` event drains the outbox promptly (see
 	// `wakeUp`); the poller is kept as a fallback since pubsub delivery is not
-	// ensured.
+	// ensured. Topping up the pool is synchronous, so the next cycle is armed
+	// immediately — a worker stuck on a record never wedges the poll loop.
 	private schedulePollCycle() {
 		clearTimeout(this.pollTimeout);
 		if (!this.shouldKeepPolling()) return;
 
-		this.pollTimeout = setTimeout(async () => {
+		this.pollTimeout = setTimeout(() => {
 			try {
-				await this.pollCycle();
+				this.topUpWorkers();
 			} catch (error) {
 				this.errorReporter.error(error, { shouldBeLogged: true });
 			}
@@ -146,73 +159,88 @@ export class WorkflowPublicationOutboxConsumer {
 		}, this.workflowsConfig.publicationOutboxPollIntervalMs);
 	}
 
-	private async pollCycle() {
-		const processed = await this.drainPending();
-
-		// Only log if we processed more than 1 since we log each individual record
-		if (processed > 1) {
-			this.logger.debug(`Processed ${processed} workflow publication outbox records in this cycle`);
-		}
-	}
-
 	/**
-	 * Claim and process every currently pending record in a single pass, returning
-	 * the number processed. Used both by the scheduled poll cycle and at leader
-	 * startup for an immediate drain. The loop stops if the instance steps down or
-	 * shuts down mid-drain; claiming is atomic, so an extra concurrent drain never
-	 * double-processes a record. Concurrent callers coalesce onto the same in-flight
-	 * pass rather than running an overlapping drain, which also lets shutdown wait
-	 * for the active pass to settle.
+	 * Top the worker pool up to the configured concurrency and resolve once the
+	 * pool goes idle. Used by the pubsub wake-up, by leader startup for an
+	 * immediate drain, and by the reconciler after enqueueing records. Workers
+	 * stop claiming if the instance steps down or shuts down mid-pass.
+	 *
+	 * Resolution waits for every active worker, so a worker stuck on a hung
+	 * record delays it (bounded by the abort/abandon deadline) — but not the
+	 * processing of other records, which the remaining slots keep serving.
+	 * Worker errors are reported, never thrown to callers.
 	 */
-	async drainPending(): Promise<number> {
-		if (this.activeDrain) return await this.activeDrain;
+	async drainPending(): Promise<void> {
+		this.topUpWorkers();
+		await this.awaitIdle();
+	}
 
-		const drain = this.runDrain();
-		this.activeDrain = drain;
-		try {
-			return await drain;
-		} finally {
-			this.activeDrain = null;
+	private async awaitIdle(): Promise<void> {
+		// Loop: a follow-up pass (see `wakeRequested`) can repopulate the pool
+		// after the currently observed workers settle.
+		while (this.activeWorkers.size > 0) {
+			await Promise.allSettled([...this.activeWorkers]);
 		}
 	}
 
-	private async runDrain(): Promise<number> {
+	private topUpWorkers() {
+		if (!this.shouldKeepPolling()) return;
+
 		const concurrency = this.workflowsConfig.workflowPublicationConcurrency;
-		return await this.tracing.startSpan(
+		if (this.activeWorkers.size >= concurrency) {
+			// The running workers' final claims may predate the record behind this
+			// wake-up; have the next worker to exit run a follow-up pass.
+			this.wakeRequested = true;
+			return;
+		}
+
+		while (this.activeWorkers.size < concurrency) this.spawnWorker();
+	}
+
+	private spawnWorker() {
+		const worker = this.runWorkerPass()
+			// A worker failure (e.g. a claim query error) is contained to its own
+			// slot; the poll fallback retries later.
+			.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }))
+			.finally(() => {
+				this.activeWorkers.delete(worker);
+				if (this.wakeRequested) {
+					this.wakeRequested = false;
+					if (this.shouldKeepPolling()) this.spawnWorker();
+				}
+			});
+		this.activeWorkers.add(worker);
+	}
+
+	/** Claim and process pending records until none remain. */
+	private async runWorkerPass(): Promise<void> {
+		await this.tracing.startSpan(
 			{
 				name: 'Publication outbox drain',
 				op: 'publication.outbox.drain',
-				attributes: { 'n8n.publication.consumer_concurrency': concurrency },
+				attributes: {
+					'n8n.publication.consumer_concurrency':
+						this.workflowsConfig.workflowPublicationConcurrency,
+				},
 			},
 			async (span) => {
 				let processed = 0;
-				// Run worker loops in parallel. Each claims and processes records
-				// until none remain (claiming is atomic, so workers never grab the same record).
-				let workerFailed = false;
-				const runWorker = async () => {
-					while (!workerFailed && this.shouldKeepPolling()) {
-						const record = await this.outboxRepository.claimNextPendingRecord();
-						if (!record) break;
+				while (this.shouldKeepPolling()) {
+					const record = await this.outboxRepository.claimNextPendingRecord();
+					if (!record) break;
 
-						if (await this.processRecordWithAbort(record)) processed++;
-					}
-				};
+					if (await this.processRecordWithAbort(record)) processed++;
+				}
 
-				const workerTasks = Array.from({ length: concurrency }, async () => {
-					await runWorker().catch((error) => {
-						workerFailed = true;
-						throw error;
-					});
-				});
-
-				const results = await Promise.allSettled(workerTasks);
-
-				const failure = results.find((r) => r.status === 'rejected');
-				if (failure?.status === 'rejected') throw failure.reason;
+				// Only log if we processed more than 1 since we log each individual record
+				if (processed > 1) {
+					this.logger.debug(
+						`Processed ${processed} workflow publication outbox records in this pass`,
+					);
+				}
 
 				span.setAttribute('n8n.publication.records_processed', processed);
 				span.setStatus({ code: SpanStatus.ok });
-				return processed;
 			},
 		);
 	}
