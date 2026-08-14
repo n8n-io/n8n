@@ -502,6 +502,36 @@ describe('Confluence page:get operation', () => {
 			expect(result.map((page) => page.id)).toEqual(['100', '101']);
 		});
 
+		it('floors a fractional Max Pages', async () => {
+			mockTree({
+				'100': [
+					{ id: '101', type: 'page', depth: 1 },
+					{ id: '102', type: 'page', depth: 1 },
+				],
+			});
+			const ctx = createContext({
+				page: { mode: 'id', value: '100' },
+				includeDescendants: true,
+				maxPages: 2.5,
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject[];
+
+			expect(result.map((page) => page.id)).toEqual(['100', '101']);
+		});
+
+		it('rejects a Max Pages below 1', async () => {
+			const ctx = createContext({
+				page: { mode: 'id', value: '100' },
+				includeDescendants: true,
+				maxPages: 0,
+			});
+
+			await expect(execute.call(ctx, 0)).rejects.toThrow(
+				'Max Pages must be a number of at least 1',
+			);
+		});
+
 		it('skips discovery entirely when Max Pages is 1', async () => {
 			mockTree({});
 			const ctx = createContext({

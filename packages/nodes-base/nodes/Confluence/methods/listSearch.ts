@@ -8,8 +8,15 @@ import type {
 import { extractNextCursor, resolveSpaceKey } from '../actions/common';
 import { confluenceApiRequest } from '../transport';
 
+interface SearchPage {
+	entries: IDataObject[];
+	base: string;
+	next?: string;
+}
+
 const SEARCH_PAGE_SIZE = 50;
 const MAX_FILTERED_SEARCH_PAGES = 10;
+const EMPTY_PAGE: SearchPage = { entries: [], base: '' };
 
 export async function searchSpaces(
 	this: ILoadOptionsFunctions,
@@ -55,14 +62,6 @@ export async function searchSpacesWithAll(
 	}
 	return search;
 }
-
-interface SearchPage {
-	entries: IDataObject[];
-	base: string;
-	next?: string;
-}
-
-const EMPTY_PAGE: SearchPage = { entries: [], base: '' };
 
 async function fetchSearchPage(
 	this: ILoadOptionsFunctions,
