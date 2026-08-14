@@ -38,9 +38,10 @@ it.each([
 				? `✅ Approved by ${user.fullName}`
 				: `✅ ${selectedLabel} selected by ${user.fullName}`,
 		settleActionMessage,
-		resolvePlatformThreadId: () =>
-			'discord:800000000000000001:700000000000000001:600000000000000001',
-		toAgentThreadId: () => ({ id: 'agent-thread-1' }) as never,
+		resolveAgentThread: async () => ({
+			threadId: { id: 'agent-thread-1' } as never,
+			origin: null,
+		}),
 		getPlatformAgentContext: () => ({}),
 		messageContextBridge: { updateLatest: vi.fn().mockResolvedValue(undefined) } as never,
 		streamConsumer: { consume: vi.fn().mockResolvedValue(undefined) } as never,
@@ -67,5 +68,54 @@ it.each([
 	});
 	expect(settleActionMessage.mock.invocationCallOrder[0]).toBeLessThan(
 		resumeForChat.mock.invocationCallOrder[0],
+	);
+});
+
+it('writes message context to the bound originating session', async () => {
+	const updateLatest = vi.fn().mockResolvedValue(undefined);
+	const thread = { post: vi.fn() };
+	const handler = new AgentChatHitlResumeHandler({
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		integration: { type: 'discord', credentialId: 'cred-1' },
+		agentService: { resumeForChat: vi.fn(() => (async function* () {})()) },
+		logger: { warn: vi.fn() } as never,
+		callbackStore: {
+			resolve: vi.fn().mockResolvedValue({
+				actionId: 'resume:run-1:tool-1:0',
+				value: JSON.stringify({ approved: true }),
+				kind: 'approval',
+			}),
+		} as never,
+		deleteActionMessageBeforeResume: false,
+		settleActionMessage: vi.fn().mockResolvedValue(undefined),
+		resolveAgentThread: async () => ({
+			threadId: { id: 'task-task-1-uuid' } as never,
+			origin: { threadId: 'task-task-1-uuid', resourceId: 'task:task-1' },
+		}),
+		getPlatformAgentContext: () => ({}),
+		messageContextBridge: { updateLatest } as never,
+		streamConsumer: { consume: vi.fn().mockResolvedValue(undefined) } as never,
+		createResumeExecutionContext: async () => ({}),
+	});
+
+	await handler.handleAction({
+		actionId: 'callback-key',
+		thread,
+		threadId: 'discord:800000000000000001:700000000000000001:600000000000000001',
+		messageId: 'message-1',
+		user: { userId: 'user-1', userName: 'alice', fullName: 'Alice' },
+		adapter: { deleteMessage: vi.fn() },
+		raw: {},
+	} as never);
+
+	expect(updateLatest).toHaveBeenCalledWith(
+		'task-task-1-uuid',
+		'task:task-1',
+		thread,
+		expect.objectContaining({
+			messageId: 'message-1',
+			interactingUserId: 'user-1',
+		}),
 	);
 });

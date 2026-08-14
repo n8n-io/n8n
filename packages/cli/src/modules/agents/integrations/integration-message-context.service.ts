@@ -3,6 +3,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 
 import type {
+	AgentSessionOrigin,
 	IntegrationMessageContext,
 	IntegrationMessageSubject,
 	IntegrationSubjectPerson,
@@ -13,6 +14,7 @@ import { AgentResourceRepository } from '../repositories/agent-resource.reposito
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
+const CONTINUE_AS_METADATA_KEY = 'continueAs';
 
 @Service()
 export class IntegrationMessageContextService implements IntegrationMessageContextStore {
@@ -32,10 +34,38 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		resourceId: string,
 		context: IntegrationMessageContext,
 	): Promise<void> {
+		await this.writeMetadata(threadId, resourceId, {
+			[MESSAGE_CONTEXT_METADATA_KEY]: context,
+		});
+	}
+
+	/**
+	 * Point a derived chat-session thread id at the run that sent the outbound
+	 * message, so inbound follow-ups continue that session. No-op when the
+	 * derived id already is the origin. Last write wins.
+	 */
+	async bindSession(derivedThreadId: string, origin: AgentSessionOrigin): Promise<void> {
+		if (derivedThreadId === origin.threadId) return;
+		await this.writeMetadata(derivedThreadId, origin.resourceId, {
+			[CONTINUE_AS_METADATA_KEY]: origin,
+		});
+	}
+
+	async resolveSession(derivedThreadId: string): Promise<AgentSessionOrigin | null> {
+		const thread = await this.threadRepository.findOneBy({ id: derivedThreadId });
+		const value = this.parseMetadata(thread?.metadata)[CONTINUE_AS_METADATA_KEY];
+		return isAgentSessionOrigin(value) ? value : null;
+	}
+
+	private async writeMetadata(
+		threadId: string,
+		resourceId: string,
+		patch: Record<string, unknown>,
+	): Promise<void> {
 		const existing = await this.threadRepository.findOneBy({ id: threadId });
 		const metadata = {
 			...this.parseMetadata(existing?.metadata),
-			[MESSAGE_CONTEXT_METADATA_KEY]: context,
+			...patch,
 		};
 
 		if (existing) {
@@ -73,6 +103,12 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			return {};
 		}
 	}
+}
+
+function isAgentSessionOrigin(value: unknown): value is AgentSessionOrigin {
+	return (
+		isRecord(value) && typeof value.threadId === 'string' && typeof value.resourceId === 'string'
+	);
 }
 
 export function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {

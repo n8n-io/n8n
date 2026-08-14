@@ -35,11 +35,11 @@ import { buildSuspendCardPayload, isApprovalSuspendPayload } from './agent-chat-
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
-import type { ReplyExpectation } from './integration-tools';
+import type { AgentSessionOrigin, ReplyExpectation } from './integration-tools';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
-import { type InternalThread, toInternalThreadId } from './types';
+import { type InternalThread, toChatSessionThreadId, toInternalThreadId } from './types';
 
 interface AgentExecutor {
 	executeForChatPublished(config: {
@@ -102,7 +102,7 @@ export class AgentChatBridge {
 		private readonly logger: Logger,
 		private readonly n8nProjectId: string,
 		private readonly integration: AgentIntegrationConfig,
-		messageContextStore?: IntegrationMessageContextService,
+		private readonly messageContextStore?: IntegrationMessageContextService,
 		private readonly attachmentService?: AgentChatAttachmentService,
 		private readonly discordHttpClient?: HttpRequestClient,
 	) {
@@ -145,8 +145,7 @@ export class AgentChatBridge {
 			formatActionDecisionMessage: (params) =>
 				this.integrationImpl?.formatActionDecisionMessage?.(params),
 			settleActionMessage: this.integrationImpl?.settleActionMessage?.bind(this.integrationImpl),
-			resolvePlatformThreadId: this.resolvePlatformThreadId.bind(this),
-			toAgentThreadId: this.toAgentThreadId.bind(this),
+			resolveAgentThread: this.resolveAgentThread.bind(this),
 			getPlatformAgentContext: this.getPlatformAgentContext.bind(this),
 			messageContextBridge: this.messageContextBridge,
 			streamConsumer: this.streamConsumer,
@@ -275,7 +274,18 @@ export class AgentChatBridge {
 	}
 
 	private toAgentThreadId(platformThreadId: string) {
-		return toInternalThreadId(`${this.agentId}:${platformThreadId}`);
+		return toInternalThreadId(toChatSessionThreadId(this.agentId, platformThreadId));
+	}
+
+	private async resolveAgentThread(
+		thread: Thread<unknown, unknown>,
+	): Promise<{ threadId: InternalThread; origin: AgentSessionOrigin | null }> {
+		const derived = this.toAgentThreadId(this.resolvePlatformThreadId(thread));
+		const origin = (await this.messageContextStore?.resolveSession?.(derived.id)) ?? null;
+		return {
+			threadId: origin ? toInternalThreadId(origin.threadId) : derived,
+			origin,
+		};
 	}
 
 	/**
@@ -310,9 +320,10 @@ export class AgentChatBridge {
 		const inboundAttachments = message.attachments ?? [];
 		if (!text && inboundAttachments.length === 0) return;
 
-		const platformThreadId = this.resolvePlatformThreadId(thread);
-		const threadId = this.toAgentThreadId(platformThreadId);
-		const resourceId = integrationMemoryResourceId(this.integration.type, message.author.userId);
+		const { threadId, origin } = await this.resolveAgentThread(thread);
+		const resourceId =
+			origin?.resourceId ??
+			integrationMemoryResourceId(this.integration.type, message.author.userId);
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inboundAttachments,
 			threadId.id,
@@ -343,13 +354,18 @@ export class AgentChatBridge {
 				this.messageContextBridge.resolveSubject(message),
 			]);
 			statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
-			await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
-				messageId: message.id,
-				interactingUserId: message.author.userId,
-				...bridgeExecutionContext.platformAgentContext,
-				subject,
-				replyExpectation,
-			});
+			await this.messageContextBridge.updateLatest(
+				threadId.id,
+				origin?.resourceId ?? message.author.userId,
+				thread,
+				{
+					messageId: message.id,
+					interactingUserId: message.author.userId,
+					...bridgeExecutionContext.platformAgentContext,
+					subject,
+					replyExpectation,
+				},
+			);
 			// threadId.id is agent-prefixed for observation storage; resourceId keeps
 			// the platform user identity so episodic recall works across threads for
 			// the same user while staying isolated between users.

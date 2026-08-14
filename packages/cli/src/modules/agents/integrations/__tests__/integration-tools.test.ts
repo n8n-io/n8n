@@ -909,6 +909,7 @@ describe('integration tools', () => {
 			expect.objectContaining({
 				action: 'send_dm',
 				input: { userId: 'U123', message: { text: 'Hello' } },
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 			}),
 		);
 	});

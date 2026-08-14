@@ -19,13 +19,16 @@ import {
 	normalizePlatformId,
 	unsupportedAction,
 } from './integration-helpers';
+import { IntegrationMessageContextService } from './integration-message-context.service';
 import type {
+	AgentSessionOrigin,
 	IntegrationAction,
 	IntegrationActionExecutor,
 	IntegrationActionResult,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
+import { toChatSessionThreadId } from './types';
 
 // The shared wire schema from @n8n/api-types — the same definition the tool
 // boundary validates against and the editor-ui renderer parses with.
@@ -67,17 +70,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	constructor(
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
+		private readonly messageContextService?: IntegrationMessageContextService,
 	) {}
 
-	async execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		action: IntegrationAction;
-		input: Record<string, unknown>;
-		awaitResponse: boolean;
-		runId?: string;
-		toolCallId?: string;
-		currentMessageContext?: IntegrationMessageContext;
-	}): Promise<IntegrationActionResult> {
+	async execute(params: ExecuteParams): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
 		if (params.action === 'do_not_respond') {
@@ -259,7 +255,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		}
 
 		const thread = chat.thread(threadId);
-		await this.prepareSentThread(params.descriptor, thread);
+		await this.prepareSentThread(params.descriptor, thread, params.persistence);
 		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
 
 		return {
@@ -278,7 +274,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
 		const thread = await chat.openDM(input.userId);
-		await this.prepareSentThread(params.descriptor, thread);
+		await this.prepareSentThread(params.descriptor, thread, params.persistence);
 		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
 
 		return {
@@ -340,7 +336,11 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			await this.toPostable(params.descriptor, input.message, params),
 		);
 		if (sent.threadId) {
-			await this.prepareSentThread(params.descriptor, chat.thread(sent.threadId));
+			await this.prepareSentThread(
+				params.descriptor,
+				chat.thread(sent.threadId),
+				params.persistence,
+			);
 		}
 
 		return {
@@ -404,8 +404,16 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	private async prepareSentThread(
 		descriptor: IntegrationToolConnectionDescriptor,
 		thread: Parameters<NonNullable<AgentChatIntegration['prepareSentThread']>>[0],
+		persistence?: AgentSessionOrigin,
 	): Promise<void> {
-		await this.integrationRegistry.get(descriptor.integration.type)?.prepareSentThread?.(thread);
+		const integration = this.integrationRegistry.get(descriptor.integration.type);
+		await integration?.prepareSentThread?.(thread);
+		if (!persistence || !this.messageContextService || !descriptor.agentId) return;
+		const platformThreadId = integration?.formatThreadId?.fromSdk(thread) ?? thread.id;
+		await this.messageContextService.bindSession(
+			toChatSessionThreadId(descriptor.agentId, platformThreadId),
+			persistence,
+		);
 	}
 }
 
@@ -425,6 +433,7 @@ interface ExecuteParams {
 	runId?: string;
 	toolCallId?: string;
 	currentMessageContext?: IntegrationMessageContext;
+	persistence?: AgentSessionOrigin;
 }
 
 function buildMessageContextFromSentMessage(params: {

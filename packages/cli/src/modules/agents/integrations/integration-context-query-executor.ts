@@ -5,6 +5,7 @@ import { ChatIntegrationService } from './chat-integration.service';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import { connectionUnavailable, integrationError } from './integration-helpers';
 import type {
+	AgentSessionOrigin,
 	IntegrationContextQuery,
 	IntegrationContextQueryExecutor,
 	IntegrationToolConnectionDescriptor,
@@ -26,7 +27,7 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 		descriptor: IntegrationToolConnectionDescriptor;
 		query: IntegrationContextQuery;
 		input: Record<string, unknown>;
-		persistence?: { threadId: string; resourceId: string };
+		persistence?: AgentSessionOrigin;
 	}): Promise<unknown> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 

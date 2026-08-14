@@ -203,6 +203,7 @@ export async function executeActionToolOperation(params: {
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		currentMessageContext,
+		persistence,
 	});
 
 	if (!result.ok) return result;

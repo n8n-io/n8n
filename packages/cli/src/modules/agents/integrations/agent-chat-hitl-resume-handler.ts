@@ -13,6 +13,7 @@ import { onceStatusHandle } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
+import type { AgentSessionOrigin } from './integration-tools';
 import type { InternalThread } from './types';
 
 interface ResumeExecutor {
@@ -36,8 +37,9 @@ interface AgentChatHitlResumeHandlerOptions {
 	deleteActionMessageBeforeResume: boolean;
 	formatActionDecisionMessage?: ActionDecisionMessageFormatter;
 	settleActionMessage?: SettleActionMessage;
-	resolvePlatformThreadId: (thread: Thread<unknown, unknown>) => string;
-	toAgentThreadId: (platformThreadId: string) => InternalThread;
+	resolveAgentThread: (
+		thread: Thread<unknown, unknown>,
+	) => Promise<{ threadId: InternalThread; origin: AgentSessionOrigin | null }>;
 	getPlatformAgentContext: () => PlatformAgentContext;
 	messageContextBridge: AgentChatMessageContextBridge;
 	streamConsumer: AgentChatStreamConsumer;
@@ -76,16 +78,20 @@ export class AgentChatHitlResumeHandler {
 		// Persist the interacting user / messageId into the thread's message
 		// context so tools running on resume can read it via the message
 		// context store — no need to bolt a duplicate copy onto resumeData.
-		const platformThreadId = this.options.resolvePlatformThreadId(thread);
-		const threadId = this.options.toAgentThreadId(platformThreadId);
-		await this.options.messageContextBridge.updateLatest(threadId.id, event.user.userId, thread, {
-			messageId: event.messageId,
-			interactingUserId: event.user.userId,
-			...this.options.getPlatformAgentContext(),
-			// The resume response streams back to this thread like any chat turn,
-			// so the same reply-delivery rules apply.
-			replyExpectation: 'required',
-		});
+		const { threadId, origin } = await this.options.resolveAgentThread(thread);
+		await this.options.messageContextBridge.updateLatest(
+			threadId.id,
+			origin?.resourceId ?? event.user.userId,
+			thread,
+			{
+				messageId: event.messageId,
+				interactingUserId: event.user.userId,
+				...this.options.getPlatformAgentContext(),
+				// The resume response streams back to this thread like any chat turn,
+				// so the same reply-delivery rules apply.
+				replyExpectation: 'required',
+			},
+		);
 
 		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
 		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);

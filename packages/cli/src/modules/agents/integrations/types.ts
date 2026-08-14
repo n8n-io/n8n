@@ -19,3 +19,7 @@ export const toInternalThreadId = (id: string): InternalThread => {
 		id,
 	};
 };
+
+/** Agent-prefixed chat session id the bridge derives from a platform thread. */
+export const toChatSessionThreadId = (agentId: string, platformThreadId: string): string =>
+	`${agentId}:${platformThreadId}`;

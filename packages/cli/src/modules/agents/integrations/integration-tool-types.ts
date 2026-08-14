@@ -3,6 +3,11 @@ import type { z } from 'zod';
 
 import type { IntegrationErrorCode } from './integration-error-codes';
 
+export interface AgentSessionOrigin {
+	threadId: string;
+	resourceId: string;
+}
+
 export type IntegrationMessageTarget =
 	| {
 			type: 'thread';
@@ -138,7 +143,7 @@ export interface IntegrationContextQueryExecutor {
 		descriptor: IntegrationToolConnectionDescriptor;
 		query: IntegrationContextQuery;
 		input: Record<string, unknown>;
-		persistence?: { threadId: string; resourceId: string };
+		persistence?: AgentSessionOrigin;
 	}): Promise<unknown>;
 }
 
@@ -151,6 +156,7 @@ export interface IntegrationActionExecutor {
 		runId?: string;
 		toolCallId?: string;
 		currentMessageContext?: IntegrationMessageContext;
+		persistence?: AgentSessionOrigin;
 	}): Promise<IntegrationActionResult>;
 }
 

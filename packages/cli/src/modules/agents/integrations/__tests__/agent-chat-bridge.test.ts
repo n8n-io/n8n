@@ -684,6 +684,49 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
+		it('continues a bound originating session on a subscribed follow-up', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue({
+				threadId: 'task-task-1-uuid',
+				resourceId: 'task:task-1',
+			});
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				text: 'what did you send me?',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(messageContextStore.resolveSession).toHaveBeenCalledWith('agent-1:slack:D123');
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'task-task-1-uuid' }),
+						resourceId: 'task:task-1',
+					}),
+				}),
+			);
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'task-task-1-uuid',
+				'task:task-1',
+				expect.anything(),
+			);
+		});
+
 		it('keeps a formatted thread ID separate from the platform user memory partition', async () => {
 			const { bot, handlers } = makeBot();
 			const thread1 = makeThread('1001', { botUserId: 'bot-1' });

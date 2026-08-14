@@ -58,6 +58,7 @@ import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
+import type { IntegrationMessageContextService } from '../integration-message-context.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
@@ -251,6 +252,43 @@ describe('ChatIntegrationActionExecutor', () => {
 				updatedAt: expect.any(String),
 			},
 		});
+	});
+
+	it('binds a Slack DM thread to the originating session', async () => {
+		const sentMessage = {
+			id: '123.456',
+			threadId: 'slack:D123:123.456',
+		};
+		const thread = {
+			id: 'slack:D123:123.456',
+			post: vi.fn().mockResolvedValue(sentMessage),
+			subscribe: vi.fn().mockResolvedValue(undefined),
+		};
+		const chat = mock<ChatInstance>();
+		chat.openDM.mockResolvedValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const messageContextService = mock<IntegrationMessageContextService>();
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			messageContextService,
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+		const persistence = { threadId: 'task-task-1-uuid', resourceId: 'task:task-1' };
+
+		await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: 'U123', message: { text: 'Hello' } },
+			awaitResponse: false,
+			persistence,
+		});
+
+		expect(messageContextService.bindSession).toHaveBeenCalledWith(
+			'agent-1:slack:D123:123.456',
+			persistence,
+		);
 	});
 
 	it('posts generic message card buttons with their labels', async () => {
