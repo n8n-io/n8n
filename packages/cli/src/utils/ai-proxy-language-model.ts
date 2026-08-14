@@ -4,6 +4,7 @@ import {
 	buildProxyHeaders,
 	isMoonshotaiKimiK3ModelId,
 	type N8nProxyFeature,
+	type ProxyContext,
 } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { LanguageModel } from 'ai';
@@ -14,7 +15,7 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 const ANTHROPIC_PROXY_PATH = '/anthropic/v1';
 const KIMI_PROXY_PATH = '/kimi/v1';
 
-export interface CreateProxyLanguageModelOptions {
+export interface CreateProxyLanguageModelOptions extends ProxyContext {
 	proxyBaseUrl: string;
 	modelId: string;
 	tokenManager: ProxyTokenManager;
@@ -30,6 +31,8 @@ export async function createProxyLanguageModel(
 	const proxyHeaders = buildProxyHeaders({
 		feature: options.feature,
 		n8nVersion: options.n8nVersion,
+		runId: options.runId,
+		threadId: options.threadId,
 	});
 	const modelFetch = createAiProxyFetch(options.outboundHttp);
 	const fetch: typeof globalThis.fetch = async (input, init) => {

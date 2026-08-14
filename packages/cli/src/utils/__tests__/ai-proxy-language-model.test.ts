@@ -3,6 +3,8 @@ import {
 	MOONSHOTAI_KIMI_K3_MODEL_NAME,
 	MOONSHOTAI_KIMI_K3_PROVIDER,
 	X_N8N_FEATURE_HEADER,
+	X_N8N_RUN_ID_HEADER,
+	X_N8N_THREAD_ID_HEADER,
 } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
@@ -117,7 +119,7 @@ describe('createProxyLanguageModel', () => {
 		expect(sdk.anthropicCalls[0]?.opts.baseURL).toBe('https://proxy.example/api/anthropic/v1');
 	});
 
-	it('stamps proxy auth and feature headers on Kimi requests', async () => {
+	it('stamps proxy auth, feature and run/thread id headers on Kimi requests', async () => {
 		await createProxyLanguageModel({
 			proxyBaseUrl: 'https://proxy.example/api',
 			modelId: MOONSHOTAI_KIMI_K3_MODEL_ID,
@@ -125,6 +127,8 @@ describe('createProxyLanguageModel', () => {
 			feature: 'instance-ai',
 			n8nVersion: '1.2.3',
 			outboundHttp,
+			runId: 'run-abc123',
+			threadId: 'thread-xyz789',
 		});
 
 		const fetch = sdk.kimiCalls[0]?.opts.fetch as typeof globalThis.fetch;
@@ -144,5 +148,54 @@ describe('createProxyLanguageModel', () => {
 		expect(headers.get('Authorization')).toBe('Bearer tok');
 		expect(headers.get(X_N8N_FEATURE_HEADER)).toBe('instance-ai');
 		expect(headers.get('x-n8n-version')).toBe('1.2.3');
+		expect(headers.get(X_N8N_RUN_ID_HEADER)).toBe('run-abc123');
+		expect(headers.get(X_N8N_THREAD_ID_HEADER)).toBe('thread-xyz789');
+	});
+
+	it('stamps run/thread id headers on Anthropic requests too', async () => {
+		await createProxyLanguageModel({
+			proxyBaseUrl: 'https://proxy.example/api',
+			modelId: 'anthropic/claude-opus-5',
+			tokenManager,
+			feature: 'instance-ai',
+			n8nVersion: '1.2.3',
+			outboundHttp,
+			runId: 'run-abc123',
+			threadId: 'thread-xyz789',
+		});
+
+		const fetch = sdk.anthropicCalls[0]?.opts.fetch as typeof globalThis.fetch;
+		await fetch('https://proxy.example/api/anthropic/v1/messages', { method: 'POST' });
+
+		const headers = modelFetch.mock.calls[0]?.[1]?.headers;
+		expect(headers).toBeInstanceOf(Headers);
+		if (!(headers instanceof Headers)) {
+			throw new Error('expected Headers');
+		}
+		expect(headers.get('Authorization')).toBe('Bearer tok');
+		expect(headers.get(X_N8N_RUN_ID_HEADER)).toBe('run-abc123');
+		expect(headers.get(X_N8N_THREAD_ID_HEADER)).toBe('thread-xyz789');
+	});
+
+	it('omits run/thread id headers when no ids are provided', async () => {
+		await createProxyLanguageModel({
+			proxyBaseUrl: 'https://proxy.example/api',
+			modelId: MOONSHOTAI_KIMI_K3_MODEL_ID,
+			tokenManager,
+			feature: 'instance-ai',
+			n8nVersion: '1.2.3',
+			outboundHttp,
+		});
+
+		const fetch = sdk.kimiCalls[0]?.opts.fetch as typeof globalThis.fetch;
+		await fetch('https://proxy.example/api/kimi/v1/chat/completions', { method: 'POST' });
+
+		const headers = modelFetch.mock.calls[0]?.[1]?.headers;
+		expect(headers).toBeInstanceOf(Headers);
+		if (!(headers instanceof Headers)) {
+			throw new Error('expected Headers');
+		}
+		expect(headers.get(X_N8N_RUN_ID_HEADER)).toBeNull();
+		expect(headers.get(X_N8N_THREAD_ID_HEADER)).toBeNull();
 	});
 });
