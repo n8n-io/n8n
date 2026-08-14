@@ -136,6 +136,27 @@ describe('getAdditionalKeys', () => {
 		expect(result.$execution?.mode).toBe('test');
 	});
 
+	it('should return test mode for a sub-workflow whose root execution is manual', () => {
+		const subWorkflowData = { ...additionalData, rootExecutionMode: 'manual' as const };
+		const result = getAdditionalKeys(subWorkflowData, 'integrated', null);
+
+		expect(result.$execution?.mode).toBe('test');
+	});
+
+	it('should return production mode for a sub-workflow whose root execution is production', () => {
+		const subWorkflowData = { ...additionalData, rootExecutionMode: 'trigger' as const };
+		const result = getAdditionalKeys(subWorkflowData, 'integrated', null);
+
+		expect(result.$execution?.mode).toBe('production');
+	});
+
+	it('should honour the root mode for any non-manual execution mode', () => {
+		const nodeToolData = { ...additionalData, rootExecutionMode: 'manual' as const };
+		const result = getAdditionalKeys(nodeToolData, 'internal', null);
+
+		expect(result.$execution?.mode).toBe('test');
+	});
+
 	it('should return variables from additionalData', () => {
 		const result = getAdditionalKeys(additionalData, 'manual', null);
 		expect(result.$vars?.testVar).toEqual('value');
