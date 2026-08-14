@@ -67,11 +67,53 @@ const TURN_ENV = { ...process.env };
 if (BOX_ID) TURN_ENV.CODESPACE_NAME = BOX_ID;
 if (GITHUB_USER) TURN_ENV.GITHUB_USER = GITHUB_USER;
 
-function runClaude({ message, sessionId, cwd }) {
+const CODESPACE_DOCS = '.devcontainer/codespaces/README.md';
+
+// A session cannot be told any of this after its final message, and a system
+// prompt is not part of the resumed transcript, so send it on every turn. State
+// the turn's hard limits inline: a session that has to read a file to learn them
+// can reply before it gets there. Point at the box docs for the rest — they
+// already cover dev:up, ports, and build cost, and AGENTS.md does not.
+function turnContract(author) {
+	return [
+		'# Your runtime',
+		'You are one turn of a Slack thread, driven by an n8n workflow that runs you as a headless',
+		'`claude -p` on a GitHub codespace. Your final message is the reply that reaches Slack, so keep',
+		'it short and skip heavy markdown.',
+		author ? `You are replying to ${author}.` : '',
+		'',
+		'# A turn is atomic',
+		'The turn ends when you emit your final message, and everything you started ends with it:',
+		'background Bash tasks are killed, Monitor events never arrive, PushNotification has nowhere to',
+		'go, and ScheduleWakeup never fires. You get no turn of your own afterwards — you cannot speak',
+		'again until a human writes again. So run long work (builds, test suites, restarts) in the',
+		'foreground of this turn and wait for it, or do not start it at all. Never end a turn promising',
+		`to verify, check back, or follow up. Work that will not fit the turn limit of ~${Math.round(
+			TURN_TIMEOUT_MS / 60_000,
+		)} minutes`,
+		'should be split: do the part that fits, then say what to ask for next.',
+		'',
+		'# This box',
+		`You are on codespace ${BOX_ID ?? '(unknown)'}, not a laptop. Before you build, start, or expose`,
+		`the app, read ${CODESPACE_DOCS} ("Build and run the app in a session"). It is box-specific and`,
+		'the repo AGENTS.md does not cover it.',
+	]
+		.filter(Boolean)
+		.join('\n');
+}
+
+function runClaude({ message, sessionId, cwd, author }) {
 	const safeCwd = resolvePath(typeof cwd === 'string' && cwd ? cwd : `${ROOT}/n8n`);
 	if (safeCwd !== ROOT && !safeCwd.startsWith(ROOT + sep))
 		throw new Error(`cwd must be under ${ROOT}`);
-	const args = ['-p', '--output-format', 'json', '--dangerously-skip-permissions'];
+	const args = [
+		'-p',
+		'--output-format',
+		'json',
+		'--dangerously-skip-permissions',
+		'--append-system-prompt',
+		turnContract(typeof author === 'string' ? author : ''),
+	];
 	if (sessionId) args.push('--resume', sessionId);
 	args.push(message);
 	return new Promise((res, rej) => {
