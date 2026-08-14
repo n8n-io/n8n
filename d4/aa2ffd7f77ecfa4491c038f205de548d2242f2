@@ -1,0 +1,95 @@
+packages/nodes-base/nodes/Kafka/test/v2/transport/admin.test.ts
+  s_c08ff1af07eaeb::t_8cdeab5f0fd07c 123,139-140
+  s_fd1f599c048758::t_15ebdbab3730e8 118-122,124-126
+  s_fd1f599c048758::t_0ebb5f4740e420 129-138
+  s_c08ff1af07eaeb::t_1976ee8bd4bb49 92-97,99-102
+  s_c08ff1af07eaeb::t_e520bf3abfc5e3 47
+  s_c08ff1af07eaeb::t_a00223ef9be7af 1-8,10-12,14-18,20-46,48-71,74-79,103-117,141,145-152,154,158-161,163,165,169-176
+  s_fd1f599c048758::t_5183d4f5348715 72-73,80-91,127
+  s_fd1f599c048758::t_b01c16d603256e 19
+  s_fd1f599c048758::t_17ddf4bfd215de 13
+  s_c08ff1af07eaeb::t_d18ffc535e1404 9
+  s_fd1f599c048758::t_31dc7301bd5e20 128
+  s_fd1f599c048758::t_c830c423f65872 98,153,162
+  s_c08ff1af07eaeb::t_6d9930f2ba32c6 142-144,155-157
+  s_c08ff1af07eaeb::t_f7998929bd1462 164,166-168
+packages/nodes-base/nodes/Kafka/v2/transport/admin.ts
+  s_fd1f599c048758::t_1f564cf6449d0c 104
+  s_c08ff1af07eaeb::t_465e08efdad193 2-5,7-8,15,24,29,43-51,54-55,62-64,74,99-103,106-109,113,117
+  s_fd1f599c048758::t_113919e38cea82 65-69,71-73
+  s_fd1f599c048758::t_810975d274ac5b 25-28
+  s_fd1f599c048758::t_4ead7e96099175 88
+  s_fd1f599c048758::t_3102915f48ded0 70,75
+  s_fd1f599c048758::t_7f92a35bb0635a 10-12
+  s_fd1f599c048758::t_6c5da8f7afbd7a 110,114,116
+  s_c08ff1af07eaeb::t_d2dfcf99b0c0a3 9,13-14
+  s_fd1f599c048758::t_9fd8ef090195d0 6
+  s_fd1f599c048758::t_a9c65e665ce660 56-61
+  s_fd1f599c048758::t_51e1c1f82c131a 23
+  s_fd1f599c048758::t_f2dd9d12f769ba 76-77
+  s_c08ff1af07eaeb::t_a7f4f21c0bf7f1 78-86
+  s_fd1f599c048758::t_2cb962e4e43a28 87,89-91,93-98
+  s_fd1f599c048758::t_c2042d9868584a 92
+  s_fd1f599c048758::t_bfba4f88045858 111-112
+  s_fd1f599c048758::t_2de4bcd591a3be 1,16-22
+  s_fd1f599c048758::t_539693fd77b8c5 30-36,39-42
+  s_c08ff1af07eaeb::t_6a094750902a74 115
+  s_fd1f599c048758::t_acb6972a4bd970 37-38,52-53
+  s_fd1f599c048758::t_9ce6d9d7f682c4 105
+packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
+  s_fd1f599c048758::t_4dc692982a3f84 225
+  s_c08ff1af07eaeb::t_3be2764cb91b39 260
+  s_c08ff1af07eaeb::t_6d9930f2ba32c6 85,91,98
+  s_fd1f599c048758::t_d571ec42d2bb08 110-117
+  s_fd1f599c048758::t_86af169329de33 263
+  s_c08ff1af07eaeb::t_93d583a7c3370b 45-54,59,76,81,83,93,100-109,118,121-123,131-135
+  s_fd1f599c048758::t_a187009ec12b2f 124-127
+  s_c08ff1af07eaeb::t_0f107f2e2ab837 136
+  s_c08ff1af07eaeb::t_272c0b5fcf4533 84,86,95-97,99
+  s_fd1f599c048758::t_e68df58842d6b4 55-57
+  s_c08ff1af07eaeb::t_7bc48172123f98 264
+  s_fd1f599c048758::t_36b4e593a29dab 226-228
+  s_c08ff1af07eaeb::t_b62f9ab6e89009 213
+  s_c08ff1af07eaeb::t_09bb4b7e251eee 119-120,128-130
+  s_c08ff1af07eaeb::t_41da7ef1bde1a1 247-251
+  s_fd1f599c048758::t_843b1dfec50255 77-80,82,87-90,92,94
+packages/nodes-base/nodes/Kafka/v2/KafkaTriggerV2.node.ts
+  s_c08ff1af07eaeb::t_6c990b2bfce53e 75-78
+  s_c08ff1af07eaeb::t_acc3ecab43de50 15
+packages/nodes-base/nodes/Kafka/v2/transport/index.ts
+  s_c08ff1af07eaeb::t_fca4f6ebb4b1e4 3
+packages/nodes-base/nodes/Kafka/test/v2/kafka.integration.test.ts
+  s_c08ff1af07eaeb::t_ac5d154c72f423 409-443
+  s_c08ff1af07eaeb::t_d784eea5a8b8de 36
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.test.ts
+  s_c08ff1af07eaeb::t_9327b08e36bb13 514-516,518-525,527-534,544,556-563,565-573
+  s_c08ff1af07eaeb::t_6d9930f2ba32c6 537-543,546-547
+  s_c08ff1af07eaeb::t_230913754965b4 564
+  s_c08ff1af07eaeb::t_cd298c0ddec4b9 535-536,545,548,550-555
+  s_c08ff1af07eaeb::t_c078fde5cf8617 19-20,24
+  s_fd1f599c048758::t_69f3c882a534e3 517,526,549
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d4aa2ffd7f77ecfa4491c038f205de548d2242f2",
+  "prompts": {},
+  "sessions": {
+    "s_c08ff1af07eaeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bbca935-0c2a-42a6-bf52-815a6d2dd432",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_fd1f599c048758": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e494b28e-7553-4399-9ec6-66db2950ac5e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}
