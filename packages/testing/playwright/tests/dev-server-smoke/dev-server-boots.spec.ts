@@ -11,6 +11,9 @@ import { test } from '../../fixtures/base';
  * any error-level console message or uncaught page error is observed during the
  * load. They are intentionally light — UI behaviour is covered elsewhere.
  *
+ * They also fail on `[modals]` warnings; see `MODAL_WARNING_RE` for why that one
+ * warning class is treated as an error here and nowhere else.
+ *
  * Must run against the Vite dev server (`N8N_EDITOR_URL` set), which is what the
  * `test:dev-server-smoke` script wires up.
  */
@@ -24,18 +27,42 @@ const BENIGN_PATTERNS: Array<{ messageRe: RegExp; reason: string }> = [
 
 const isBenign = (text: string) => BENIGN_PATTERNS.some((p) => p.messageRe.test(text));
 
+/**
+ * `ui.store`'s unknown-modal-key warning, and the reason this job asserts on a
+ * warning at all.
+ *
+ * An unregistered modal key renders closed instead of throwing (deliberate, since
+ * CAT-3967), so a modal that lost its registration does not fail — it silently
+ * never opens. This warning is the only signal that the modal-key inversion broke
+ * something, and it is behind `import.meta.env.DEV`, which strips it from the
+ * production bundle the e2e job builds. This job boots the Vite dev server, so it
+ * is the only place in CI where the class is observable.
+ *
+ * Scoped to this prefix on purpose: other warnings stay non-fatal.
+ */
+const MODAL_WARNING_RE = /\[modals\]/;
+
 const navigateAndAssertNoErrors = async (
 	page: Page,
 	label: string,
 	navigate: () => Promise<void>,
 ) => {
 	const consoleErrors: string[] = [];
+	const modalWarnings: string[] = [];
 	const pageErrors: string[] = [];
 
 	const onConsole = (message: ConsoleMessage) => {
+		const text = message.text();
+		const at = `(at ${message.location().url ?? '<unknown>'})`;
+
+		if (message.type() === 'warning') {
+			if (MODAL_WARNING_RE.test(text)) modalWarnings.push(`${text} ${at}`);
+			return;
+		}
+
 		if (message.type() !== 'error') return;
-		if (isBenign(message.text())) return;
-		consoleErrors.push(`${message.text()} (at ${message.location().url ?? '<unknown>'})`);
+		if (isBenign(text)) return;
+		consoleErrors.push(`${text} ${at}`);
 	};
 	const onPageError = (error: Error) => {
 		const firstFrame = error.stack?.split('\n')[1]?.trim() ?? '';
@@ -65,10 +92,14 @@ const navigateAndAssertNoErrors = async (
 		page.off('pageerror', onPageError);
 	}
 
-	if (pageErrors.length > 0 || consoleErrors.length > 0) {
+	if (pageErrors.length > 0 || consoleErrors.length > 0 || modalWarnings.length > 0) {
 		const sections = [
 			pageErrors.length > 0 && `Uncaught page errors:\n  ${pageErrors.join('\n  ')}`,
 			consoleErrors.length > 0 && `Error-level console messages:\n  ${consoleErrors.join('\n  ')}`,
+			modalWarnings.length > 0 &&
+				`Modal keys nothing defines — the modal will not open, it will not throw:\n  ${modalWarnings.join(
+					'\n  ',
+				)}`,
 			navigationError &&
 				`Navigation also failed (likely a downstream effect): ${navigationError.message.split('\n')[0]}`,
 		].filter(Boolean);
@@ -86,7 +117,7 @@ test.describe(
 			{
 				type: 'description',
 				description:
-					'Boots representative routes against the Vite dev server and fails on any error-level console message or uncaught page error during load.',
+					'Boots representative routes against the Vite dev server and fails on any error-level console message, uncaught page error, or [modals] unknown-key warning during load.',
 			},
 		],
 	},
