@@ -24,7 +24,7 @@ import {
 } from './agent-execution.service';
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
+import { buildToolCallDetails, ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import type { ToolRegistry } from './tool-registry';
@@ -157,6 +157,24 @@ export interface StreamChatResponseConfig {
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
+	/** Add full sanitized tool configuration to approval cards in preview chat. */
+	includeHitlToolDetails?: boolean;
+}
+
+function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
+	if (chunk.type !== 'tool-call-suspended' || !isRecord(chunk.suspendPayload)) return chunk;
+	if (chunk.suspendPayload.type !== 'approval') return chunk;
+
+	const toolName = chunk.suspendPayload.toolName;
+	if (typeof toolName !== 'string' || toolName.length === 0) return chunk;
+
+	return {
+		...chunk,
+		suspendPayload: {
+			...chunk.suspendPayload,
+			details: buildToolCallDetails(toolRegistry, toolName, chunk.suspendPayload.args),
+		},
+	};
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -401,6 +419,7 @@ export class AgentExecutionOrchestratorService {
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
 			});
+			recorder.recordHitlResponse(toolCallId, resumeData);
 			const startParams: StartExecutionParams = {
 				threadId,
 				agentId,
@@ -419,8 +438,9 @@ export class AgentExecutionOrchestratorService {
 				'Failed to start resumed agent execution recording',
 			);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
-				recorder.record(value);
-				yield value;
+				const chunk = usePublishedVersion ? value : withApprovalToolDetails(value, toolRegistry);
+				recorder.record(chunk);
+				yield chunk;
 			}
 		} catch (error) {
 			recorder.record({ type: 'error', error });
@@ -502,6 +522,7 @@ export class AgentExecutionOrchestratorService {
 			},
 			onExecutionRecorded,
 			abortSignal,
+			includeHitlToolDetails: true,
 		});
 	}
 
@@ -631,6 +652,7 @@ export class AgentExecutionOrchestratorService {
 			telemetry,
 			onExecutionRecorded,
 			abortSignal,
+			includeHitlToolDetails,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -681,21 +703,22 @@ export class AgentExecutionOrchestratorService {
 				'Failed to start agent execution recording',
 			);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
-				recorder.record(value);
-				if (value.type === 'tool-call-suspended') {
+				const chunk = includeHitlToolDetails ? withApprovalToolDetails(value, toolRegistry) : value;
+				recorder.record(chunk);
+				if (chunk.type === 'tool-call-suspended') {
 					this.logger.info('Chat: tool-call-suspended chunk received', {
 						agentId,
-						toolCallId: value.toolCallId,
-						toolName: value.toolName,
+						toolCallId: chunk.toolCallId,
+						toolName: chunk.toolName,
 					});
 				}
-				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+				if (chunk.type === 'finish' && chunk.finishReason === 'max-iterations') {
 					for (const chunk of getMaxIterationsChunks()) {
 						recorder.record(chunk);
 						yield chunk;
 					}
 				}
-				yield value;
+				yield chunk;
 			}
 		} catch (error) {
 			recorder.record({ type: 'error', error });

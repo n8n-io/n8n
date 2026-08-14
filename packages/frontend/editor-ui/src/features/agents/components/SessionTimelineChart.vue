@@ -6,7 +6,13 @@ import { N8nBadge, N8nHoverCard, N8nIconButton } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import { formatDuration, isSubAgentTimelineItem, itemFilterKey } from '../session-timeline.utils';
+import {
+	formatDuration,
+	hitlTimelineNameKey,
+	isErroredToolCallTimelineItem,
+	isSubAgentTimelineItem,
+	itemFilterKey,
+} from '../session-timeline.utils';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
@@ -105,7 +111,13 @@ function popoverLabel(item: TimelineItem): string {
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspension');
+			return i18n.baseText(
+				item.hitlRequestType === 'approval'
+					? 'agentSessions.timeline.approvalRequested'
+					: 'agentSessions.timeline.hitlRequested',
+			);
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:
 			return '';
 	}
@@ -127,10 +139,35 @@ function popoverName(item: TimelineItem): string {
 		case 'node':
 			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
+		case 'hitl-response': {
+			const toolName =
+				item.hitlToolDisplayName ??
+				item.workflowName ??
+				item.nodeDisplayName ??
+				resolveToolNameForDisplay(item.toolName, i18n);
+			const nameKey = hitlTimelineNameKey(item);
+			return nameKey ? i18n.baseText(nameKey, { interpolate: { toolName } }) : toolName;
+		}
 		default:
 			return '';
 	}
+}
+
+function hitlResponseLabel(item: TimelineItem): string | undefined {
+	if (item.kind !== 'hitl-response') return undefined;
+	if (item.hitlResponseStatus === 'approved') {
+		return i18n.baseText('agentSessions.timeline.approved');
+	}
+	if (item.hitlResponseStatus === 'declined') {
+		return i18n.baseText('agentSessions.timeline.declined');
+	}
+	return i18n.baseText('agentSessions.timeline.responseReceived');
+}
+
+function toolErrorLabel(item: TimelineItem): string | undefined {
+	return isErroredToolCallTimelineItem(item)
+		? i18n.baseText('agentSessions.timeline.error')
+		: undefined;
 }
 
 /**
@@ -156,11 +193,7 @@ function popoverTime(item: TimelineItem): string {
 }
 
 function blockAriaLabel(item: TimelineItem): string {
-	return [
-		popoverLabel(item),
-		popoverName(item),
-		item.toolOutcome === 'declined' ? i18n.baseText('agentSessions.timeline.declined') : undefined,
-	]
+	return [popoverLabel(item), popoverName(item), hitlResponseLabel(item), toolErrorLabel(item)]
 		.filter((part): part is string => Boolean(part))
 		.join(', ');
 }
@@ -327,12 +360,22 @@ onBeforeUnmount(() => {
 						/>
 						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
 						<N8nBadge
-							v-if="activePopover.segment.item.toolOutcome === 'declined'"
-							theme="default"
+							v-if="activePopover.segment.item.kind === 'hitl-response'"
+							:theme="
+								activePopover.segment.item.hitlResponseStatus === 'approved' ? 'success' : 'default'
+							"
 							size="xsmall"
-							data-test-id="timeline-popover-declined-badge"
+							data-test-id="timeline-popover-hitl-response-badge"
 						>
-							{{ i18n.baseText('agentSessions.timeline.declined') }}
+							{{ hitlResponseLabel(activePopover.segment.item) }}
+						</N8nBadge>
+						<N8nBadge
+							v-if="isErroredToolCallTimelineItem(activePopover.segment.item)"
+							theme="danger"
+							size="xsmall"
+							data-test-id="timeline-popover-tool-error-badge"
+						>
+							{{ i18n.baseText('agentSessions.timeline.error') }}
 						</N8nBadge>
 						<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
 							{{ popoverDuration(activePopover.segment.item) }}

@@ -107,21 +107,75 @@ describe('SessionTimelineTable', () => {
 		expect(w.text()).toContain('Card sender');
 	});
 
-	it('renders the declined badge only for declined tool calls', () => {
+	it('renders the decision on the HITL response, not the tool call or request', () => {
+		const w = mountTable({
+			items: [
+				{
+					kind: 'node',
+					executionId: 'e1',
+					timestamp: 1000,
+					toolName: 'protected_action',
+				},
+				{
+					kind: 'suspension',
+					executionId: 'e1',
+					timestamp: 2000,
+					toolName: 'protected_action',
+					hitlRequestType: 'approval',
+				},
+				{
+					kind: 'hitl-response',
+					executionId: 'e2',
+					timestamp: 3000,
+					toolName: 'protected_action',
+					hitlRequestType: 'approval',
+					hitlResponseStatus: 'declined',
+				},
+			],
+			selectedIndex: null,
+			visibleKinds: new Set<string>(),
+		});
+
+		const badges = w.findAll('[data-test-id="timeline-hitl-response-badge"]');
+		expect(badges).toHaveLength(1);
+		expect(badges[0].text()).toBe('Declined');
+		expect(w.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
+		const rows = w.findAll('[data-test-id="timeline-row"]');
+		expect(rows[0].text()).toContain('Protected action');
+		expect(rows[0].text()).not.toContain('Approval');
+		expect(rows[1].text()).toContain('Approval request for Protected action');
+		expect(rows[2].text()).toContain('Approval response for Protected action');
+	});
+
+	it('shows an Error badge only on failed tool calls', () => {
 		const w = mountTable({
 			items: [
 				{
 					kind: 'tool',
 					executionId: 'e1',
 					timestamp: 1000,
-					toolName: 'protected_action',
-					toolOutcome: 'declined',
+					toolName: 'http',
+					toolOutcome: 'error',
+				},
+				{
+					kind: 'node',
+					executionId: 'e1',
+					timestamp: 2000,
+					toolName: 'send_message',
+					toolOutcome: 'error',
+				},
+				{
+					kind: 'workflow',
+					executionId: 'e1',
+					timestamp: 3000,
+					workflowName: 'Run report',
+					toolOutcome: 'error',
 				},
 				{
 					kind: 'tool',
 					executionId: 'e1',
-					timestamp: 2000,
-					toolName: 'approved_action',
+					timestamp: 4000,
+					toolName: 'successful_tool',
 					toolOutcome: 'success',
 				},
 			],
@@ -129,9 +183,10 @@ describe('SessionTimelineTable', () => {
 			visibleKinds: new Set<string>(),
 		});
 
-		const badges = w.findAll('[data-test-id="timeline-declined-badge"]');
-		expect(badges).toHaveLength(1);
-		expect(badges[0].text()).toBe('Declined');
+		const badges = w.findAll('[data-test-id="timeline-tool-error-badge"]');
+		expect(badges).toHaveLength(3);
+		expect(badges.every((badge) => badge.text() === 'Error')).toBe(true);
+		expect(w.findAll('[data-test-id="timeline-row"]')[3].text()).not.toContain('Error');
 	});
 
 	it('hides items whose filterKey is not in visibleKinds', () => {

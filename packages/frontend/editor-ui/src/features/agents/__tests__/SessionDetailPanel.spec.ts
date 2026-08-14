@@ -195,37 +195,67 @@ describe('SessionDetailPanel — workflow branches', () => {
 	});
 });
 
-describe('SessionDetailPanel — declined tool calls', () => {
-	it.each(['tool', 'node', 'workflow'] as const)(
-		'renders a declined state instead of an error for %s calls',
-		(kind) => {
-			const w = mountIt({
-				kind,
-				executionId: 'e1',
-				timestamp: 0,
-				toolName: 'protected_action',
-				toolInput: { recordId: '1' },
-				toolOutput: {
-					declined: true,
-					message: 'Tool "protected_action" was not approved',
-				},
-				toolOutcome: 'declined',
-				workflowId: 'wf-1',
-				workflowExecutionId: 'exec-1',
-				nodeType: 'n8n-nodes-base.httpRequest',
-				nodeTypeVersion: 4.2,
-				nodeDisplayName: 'HTTP Request',
-			});
+describe('SessionDetailPanel — HITL sequence', () => {
+	it('keeps the original node call focused on its input and configuration', () => {
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'check_ledger',
+			toolInput: {},
+			toolOutcome: undefined,
+			nodeType: 'n8n-nodes-base.dataTableTool',
+			nodeTypeVersion: 1.1,
+			nodeDisplayName: 'Check ledger',
+			nodeParameters: { operation: 'get', returnAll: true },
+		});
 
-			expect(w.get('[data-test-id="detail-declined-badge"]').text()).toBe('Declined');
-			expect(w.get('[data-test-id="tool-call-declined-callout"]').text()).toContain(
-				"Tool call declined. The tool wasn't run.",
-			);
-			expect(w.find('[data-test-id="wf-error-fallback"]').exists()).toBe(false);
-			expect(w.find('[data-test-id="node-error-callout"]').exists()).toBe(false);
-			expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(false);
-		},
-	);
+		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="detail-hitl-response-badge"]').exists()).toBe(false);
+	});
+
+	it('shows the linked tool and full request details on the HITL request', () => {
+		const w = mountIt({
+			kind: 'suspension',
+			executionId: 'e1',
+			timestamp: 100,
+			toolName: 'check_ledger',
+			hitlRequestType: 'approval',
+			hitlToolDisplayName: 'Check ledger',
+			hitlRequest: {
+				type: 'approval',
+				toolName: 'check_ledger',
+				args: { returnAll: true },
+			},
+		});
+
+		expect(w.text()).toContain('Approval request for Check ledger');
+		expect(w.text()).toContain('Check ledger');
+		expect(w.get('[data-test-id="hitl-request-details"]').text()).toContain('returnAll');
+	});
+
+	it.each([
+		['approved', 'Approved'],
+		['declined', 'Declined'],
+		['responded', 'Response received'],
+	] as const)('shows a %s status and response on the HITL response', (status, label) => {
+		const w = mountIt({
+			kind: 'hitl-response',
+			executionId: 'e2',
+			timestamp: 200,
+			toolName: 'check_ledger',
+			hitlRequestType: status === 'responded' ? 'interaction' : 'approval',
+			hitlResponseStatus: status,
+			hitlResponse: { value: status },
+		});
+
+		expect(w.get('[data-test-id="detail-hitl-response-badge"]').text()).toBe(label);
+		expect(w.text()).toContain(
+			status === 'responded' ? 'User response' : 'Approval response for Check ledger',
+		);
+		expect(w.get('[data-test-id="hitl-response-details"]').text()).toContain(status);
+		expect(w.find('[data-test-id="node-error-callout"]').exists()).toBe(false);
+	});
 });
 
 describe('SessionDetailPanel — other kinds', () => {
@@ -270,13 +300,14 @@ describe('SessionDetailPanel — other kinds', () => {
 			nodeDisplayName: 'Telegram',
 			toolInput: { chatId: '1' },
 			toolOutput: { error: 'Node does not have any credentials set' },
-			toolSuccess: false,
+			toolOutcome: 'error',
 		});
 		const callout = w.find('[data-test-id="node-error-callout"]');
 		expect(callout.exists()).toBe(true);
 		expect(callout.text()).toContain(
 			'Tool experienced an error: Node does not have any credentials set',
 		);
+		expect(w.get('[data-test-id="detail-tool-error-badge"]').text()).toBe('Error');
 	});
 
 	it('falls back to the prefix-only message when the failed node output has no error string', () => {
@@ -309,9 +340,10 @@ describe('SessionDetailPanel — other kinds', () => {
 			nodeDisplayName: 'HTTP Request',
 			toolInput: { url: 'https://x' },
 			toolOutput: { status: 200 },
-			toolSuccess: true,
+			toolOutcome: 'success',
 		});
 		expect(w.find('[data-test-id="node-error-callout"]').exists()).toBe(false);
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(false);
 	});
 
 	it('renders markdown for user messages', () => {

@@ -75,6 +75,7 @@ function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
 }
 
 function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }]) {
+	const toolRegistry: ToolRegistry = new Map();
 	return {
 		agent: {
 			name: 'Runtime Agent',
@@ -92,7 +93,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 			resume: Mock;
 			structuredOutput: Mock;
 		},
-		toolRegistry: mock<ToolRegistry>(),
+		toolRegistry,
 		projectId,
 		agentId,
 		telemetryConfiguration: telemetryContext.configuration,
@@ -384,6 +385,72 @@ describe('AgentExecutionOrchestratorService', () => {
 				modelId: 'anthropic/claude-sonnet-4-5',
 			}),
 		);
+	});
+
+	it('adds full tool configuration to preview approval payloads only', async () => {
+		const { service, runtimeCacheService } = makeService();
+		const approvalChunk: StreamChunk = {
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'check_ledger',
+			runId: 'run-1',
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'check_ledger',
+				args: {},
+			},
+		};
+		const previewRuntime = makeRuntime([approvalChunk]);
+		previewRuntime.toolRegistry = new Map([
+			[
+				'check_ledger',
+				{
+					kind: 'node',
+					nodeType: 'n8n-nodes-base.dataTableTool',
+					nodeParameters: { resource: 'row', operation: 'get', returnAll: true },
+				},
+			],
+		]);
+		const publishedRuntime = makeRuntime([approvalChunk]);
+		publishedRuntime.toolRegistry = previewRuntime.toolRegistry;
+		runtimeCacheService.getRuntime
+			.mockResolvedValueOnce(previewRuntime)
+			.mockResolvedValueOnce(publishedRuntime);
+
+		const previewChunks = await collect(
+			service.executeForChat({
+				agentId,
+				projectId,
+				message: 'check the ledger',
+				user,
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+			}),
+		);
+		const publishedChunks = await collect(
+			service.executeForChatPublished({
+				agentId,
+				projectId,
+				message: 'check the ledger',
+				memory: { threadId: 'thread-2', resourceId: 'platform-user-1' },
+				integrationType: 'slack',
+			}),
+		);
+
+		expect(previewChunks[0]).toMatchObject({
+			type: 'tool-call-suspended',
+			suspendPayload: {
+				type: 'approval',
+				details: {
+					toolName: 'check_ledger',
+					input: {},
+					node: {
+						type: 'n8n-nodes-base.dataTableTool',
+						parameters: { resource: 'row', operation: 'get', returnAll: true },
+					},
+				},
+			},
+		});
+		expect(publishedChunks[0]).toEqual(approvalChunk);
 	});
 
 	it('executes published integration chat with integration-scoped runtime', async () => {
@@ -723,6 +790,15 @@ describe('AgentExecutionOrchestratorService', () => {
 					runType: 'production',
 					configuration: runtime.telemetryConfiguration,
 				},
+				record: expect.objectContaining({
+					timeline: [
+						expect.objectContaining({
+							type: 'hitl-response',
+							toolCallId: 'tc-1',
+							response: { value: 'yes' },
+						}),
+					],
+				}),
 			}),
 		);
 	});
@@ -765,7 +841,14 @@ describe('AgentExecutionOrchestratorService', () => {
 					assistantResponse: 'partial resumed answer',
 					finishReason: 'cancelled',
 					error: null,
-					timeline: [expect.objectContaining({ type: 'text', content: 'partial resumed answer' })],
+					timeline: [
+						expect.objectContaining({
+							type: 'hitl-response',
+							toolCallId: 'tc-1',
+							response: { value: 'yes' },
+						}),
+						expect.objectContaining({ type: 'text', content: 'partial resumed answer' }),
+					],
 				}),
 			}),
 		);

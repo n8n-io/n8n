@@ -1258,6 +1258,80 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(hook.warnings.value.map((w) => w.server)).toEqual(['s2']);
 	});
 
+	it('does not show the same warning again after it is dismissed', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'warning',
+				message: 'Invalid access token',
+				code: 'mcp_connection_failed',
+				source: 'mcp',
+				server: 'Linear',
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		hook.dismissWarning(0);
+
+		await hook.sendMessage('run again');
+
+		expect(hook.warnings.value).toHaveLength(0);
+	});
+
+	it('shows a dismissed warning again in a new chat composable instance', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'warning',
+				message: 'Invalid access token',
+				code: 'mcp_connection_failed',
+				source: 'mcp',
+				server: 'Linear',
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const firstHook = buildHook();
+		await firstHook.sendMessage('run');
+		firstHook.dismissWarning(0);
+
+		const refreshedHook = buildHook();
+		await refreshedHook.sendMessage('run');
+
+		expect(refreshedHook.warnings.value).toEqual([
+			{
+				message: 'Invalid access token',
+				code: 'mcp_connection_failed',
+				server: 'Linear',
+			},
+		]);
+	});
+
+	it('still shows a different warning after another warning is dismissed', async () => {
+		const firstEvents: AgentSseEvent[] = [
+			{ type: 'warning', message: 'Invalid access token', source: 'mcp', server: 'Linear' },
+			{ type: 'done' },
+		];
+		const secondEvents: AgentSseEvent[] = [
+			{ type: 'warning', message: 'Connection timed out', source: 'mcp', server: 'Linear' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi
+			.fn()
+			.mockResolvedValueOnce(makeSseResponse(firstEvents))
+			.mockResolvedValueOnce(makeSseResponse(secondEvents)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		hook.dismissWarning(0);
+
+		await hook.sendMessage('run again');
+
+		expect(hook.warnings.value).toEqual([{ message: 'Connection timed out', server: 'Linear' }]);
+	});
+
 	it('sets fatalError (not a message bubble) for agent_misconfigured errors', async () => {
 		const events: AgentSseEvent[] = [
 			{

@@ -143,14 +143,15 @@ describe('SessionTimelineChart', () => {
 		}
 	});
 
-	it('exposes declined status in the block label and hover card', async () => {
+	it('exposes the HITL response status in the block label and hover card', async () => {
 		vi.useFakeTimers();
 		const w = mountChart({
 			items: [
 				item({
-					kind: 'tool',
+					kind: 'hitl-response',
 					toolName: 'protected_action',
-					toolOutcome: 'declined',
+					hitlRequestType: 'approval',
+					hitlResponseStatus: 'declined',
 					timestamp: 1000,
 					endTimestamp: 1000,
 				}),
@@ -160,12 +161,44 @@ describe('SessionTimelineChart', () => {
 		try {
 			const block = w.get('[data-test-id="timeline-block"]');
 			expect(block.attributes('aria-label')).toContain('Declined');
+			expect(block.attributes('aria-label')).toContain('Approval response for Protected action');
 
 			await block.trigger('focus');
 			await vi.runAllTimersAsync();
 
-			const badge = w.get('[data-test-id="timeline-popover-declined-badge"]');
+			const badge = w.get('[data-test-id="timeline-popover-hitl-response-badge"]');
 			expect(badge.text()).toBe('Declined');
+			expect(w.get('[data-test-id="timeline-hover-card"]').text()).toContain(
+				'Approval response for Protected action',
+			);
+		} finally {
+			w.unmount();
+			vi.useRealTimers();
+		}
+	});
+
+	it('exposes a failed tool call as an error in the block label and hover card', async () => {
+		vi.useFakeTimers();
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'tool',
+					toolName: 'http_request',
+					toolOutcome: 'error',
+					timestamp: 1000,
+					endTimestamp: 1200,
+				}),
+			],
+		});
+
+		try {
+			const block = w.get('[data-test-id="timeline-block"]');
+			expect(block.attributes('aria-label')).toContain('Error');
+
+			await block.trigger('focus');
+			await vi.runAllTimersAsync();
+
+			expect(w.get('[data-test-id="timeline-popover-tool-error-badge"]').text()).toBe('Error');
 		} finally {
 			w.unmount();
 			vi.useRealTimers();

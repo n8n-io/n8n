@@ -7,7 +7,11 @@ import { truncate } from '@n8n/utils/string/truncate';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
-import { isSubAgentTimelineItem } from '../session-timeline.utils';
+import {
+	hitlTimelineNameKey,
+	isErroredToolCallTimelineItem,
+	isSubAgentTimelineItem,
+} from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
@@ -38,6 +42,25 @@ const workflowHref = computed((): string => {
 		.href;
 });
 
+function linkedToolName(item: TimelineItem): string {
+	return (
+		item.hitlToolDisplayName ??
+		item.workflowName ??
+		item.nodeDisplayName ??
+		resolveToolNameForDisplay(item.toolName, i18n)
+	);
+}
+
+function hitlResponseLabel(item: TimelineItem): string {
+	if (item.hitlResponseStatus === 'approved') {
+		return i18n.baseText('agentSessions.timeline.approved');
+	}
+	if (item.hitlResponseStatus === 'declined') {
+		return i18n.baseText('agentSessions.timeline.declined');
+	}
+	return i18n.baseText('agentSessions.timeline.responseReceived');
+}
+
 const infoText = computed((): string => {
 	const it = props.item;
 	switch (it.kind) {
@@ -45,7 +68,6 @@ const infoText = computed((): string => {
 		case 'agent':
 			return truncate(it.content ?? '', 500);
 		case 'tool': {
-			if (it.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
 			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
 			return resolveToolNameForDisplay(it.toolName, i18n);
 		}
@@ -54,7 +76,11 @@ const infoText = computed((): string => {
 		case 'node':
 			return it.nodeDisplayName ?? formatToolNameForDisplay(it.toolName);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
+		case 'hitl-response': {
+			const toolName = linkedToolName(it);
+			const nameKey = hitlTimelineNameKey(it);
+			return nameKey ? i18n.baseText(nameKey, { interpolate: { toolName } }) : toolName;
+		}
 		default:
 			return '';
 	}
@@ -84,7 +110,13 @@ const label = computed((): string => {
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspended');
+			return i18n.baseText(
+				props.item.hitlRequestType === 'approval'
+					? 'agentSessions.timeline.approvalRequested'
+					: 'agentSessions.timeline.hitlRequested',
+			);
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:
 			return '';
 	}
@@ -111,13 +143,22 @@ const label = computed((): string => {
 				<span>{{ infoText }}</span>
 			</template>
 			<N8nBadge
-				v-if="item.toolOutcome === 'declined'"
+				v-if="item.kind === 'hitl-response'"
 				:class="$style.statusBadge"
-				theme="default"
+				:theme="item.hitlResponseStatus === 'approved' ? 'success' : 'default'"
 				size="xsmall"
-				data-test-id="timeline-declined-badge"
+				data-test-id="timeline-hitl-response-badge"
 			>
-				{{ i18n.baseText('agentSessions.timeline.declined') }}
+				{{ hitlResponseLabel(item) }}
+			</N8nBadge>
+			<N8nBadge
+				v-if="isErroredToolCallTimelineItem(item)"
+				:class="$style.statusBadge"
+				theme="danger"
+				size="xsmall"
+				data-test-id="timeline-tool-error-badge"
+			>
+				{{ i18n.baseText('agentSessions.timeline.error') }}
 			</N8nBadge>
 			<N8nTooltip v-if="attachmentChip" :content="attachmentChip.tooltip" placement="top">
 				<span :class="$style.attachmentChip" data-testid="timeline-attachment-chip">

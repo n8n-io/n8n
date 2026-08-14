@@ -1,6 +1,15 @@
-export type EventKind = 'user' | 'agent' | 'tool' | 'node' | 'workflow' | 'suspension';
+export type EventKind =
+	| 'user'
+	| 'agent'
+	| 'tool'
+	| 'node'
+	| 'workflow'
+	| 'suspension'
+	| 'hitl-response';
 
-export type ToolCallOutcome = 'success' | 'error' | 'declined';
+export type ToolCallOutcome = 'success' | 'error';
+export type HitlRequestType = 'approval' | 'interaction';
+export type HitlResponseStatus = 'approved' | 'declined' | 'responded';
 
 export interface TimelineItem {
 	kind: EventKind;
@@ -14,7 +23,7 @@ export interface TimelineItem {
 	toolCallId?: string;
 	toolInput?: unknown;
 	toolOutput?: unknown;
-	/** Terminal outcome of a tool-like event. Declined calls are intentional user decisions, not errors. */
+	/** Terminal outcome of a tool execution. Human decisions are represented on HITL response items. */
 	toolOutcome?: ToolCallOutcome;
 	/** @deprecated Use `toolOutcome`. Kept for compatibility with existing timeline consumers. */
 	toolSuccess?: boolean;
@@ -25,6 +34,12 @@ export interface TimelineItem {
 	nodeType?: string;
 	nodeTypeVersion?: number;
 	nodeDisplayName?: string;
+	/** Request and response data correlated across a suspended tool call. */
+	hitlRequestType?: HitlRequestType;
+	hitlRequest?: unknown;
+	hitlResponse?: unknown;
+	hitlResponseStatus?: HitlResponseStatus;
+	hitlToolDisplayName?: string;
 	/**
 	 * Configured node parameters from the agent's JSON config (only set for
 	 * `kind: 'node'`). Surfaced in the IO viewer so the user can see the node's
@@ -39,12 +54,6 @@ export interface TimelineItem {
 	 */
 	subAgentName?: string;
 	resumed?: boolean;
-	/**
-	 * True for the tool-call entry a resumed execution records when the user
-	 * answers an interactive suspension: it carries the user's feedback as its
-	 * output and is labelled "User feedback received" instead of a tool call.
-	 */
-	isUserFeedback?: boolean;
 }
 
 export interface IdleRange {

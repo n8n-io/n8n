@@ -23,7 +23,11 @@ import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
-import { isSubAgentTimelineItem } from '../session-timeline.utils';
+import {
+	hitlTimelineNameKey,
+	isErroredToolCallTimelineItem,
+	isSubAgentTimelineItem,
+} from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 
@@ -152,9 +156,45 @@ function highlightJson(value: unknown, indent = 0): string {
 }
 
 const toolDisplayName = computed((): string => {
-	if (!props.item || (props.item.kind !== 'tool' && props.item.kind !== 'suspension')) return '';
-	if (props.item.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
+	if (
+		!props.item ||
+		(props.item.kind !== 'tool' &&
+			props.item.kind !== 'suspension' &&
+			props.item.kind !== 'hitl-response')
+	) {
+		return '';
+	}
 	return resolveToolNameForDisplay(props.item.toolName, i18n);
+});
+
+const linkedToolName = computed((): string => {
+	const item = props.item;
+	if (!item) return '';
+	return (
+		item.hitlToolDisplayName ?? item.workflowName ?? item.nodeDisplayName ?? toolDisplayName.value
+	);
+});
+
+const hitlRequestContent = computed((): unknown => {
+	const item = props.item;
+	if (!item || item.kind !== 'suspension') return undefined;
+	const request = ensureParsed(item.hitlRequest);
+	if (
+		item.hitlRequestType === 'approval' &&
+		request !== null &&
+		typeof request === 'object' &&
+		'args' in request
+	) {
+		return request.args;
+	}
+	return request;
+});
+
+const hitlResponseLabel = computed((): string => {
+	const status = props.item?.hitlResponseStatus;
+	if (status === 'approved') return i18n.baseText('agentSessions.timeline.approved');
+	if (status === 'declined') return i18n.baseText('agentSessions.timeline.declined');
+	return i18n.baseText('agentSessions.timeline.responseReceived');
 });
 
 const isSubAgent = computed((): boolean =>
@@ -190,7 +230,18 @@ const headerTitle = computed((): string => {
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
 	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
-	return i18n.baseText('agentSessions.timeline.suspended');
+	if (item.kind === 'suspension') {
+		const nameKey = hitlTimelineNameKey(item);
+		if (nameKey) {
+			return i18n.baseText(nameKey, { interpolate: { toolName: linkedToolName.value } });
+		}
+		return i18n.baseText('agentSessions.timeline.hitlRequested');
+	}
+	const nameKey = hitlTimelineNameKey(item);
+	if (nameKey) {
+		return i18n.baseText(nameKey, { interpolate: { toolName: linkedToolName.value } });
+	}
+	return i18n.baseText('agentSessions.timeline.hitlResponse');
 });
 
 const headerIcon = computed((): IconName => {
@@ -202,6 +253,7 @@ const headerIcon = computed((): IconName => {
 	if (item.kind === 'node') return 'box';
 	if (item.kind === 'user') return 'user';
 	if (item.kind === 'agent') return 'bot';
+	if (item.kind === 'hitl-response') return 'message-square';
 	return 'clock';
 });
 
@@ -224,8 +276,6 @@ const nodeErrorMessage = computed((): string => {
 	return prefix;
 });
 
-const isToolCallDeclined = computed((): boolean => props.item?.toolOutcome === 'declined');
-
 const workflowFormOutput = computed((): { formUrl: string; message: string } | null => {
 	const o = props.item?.toolOutput;
 	if (typeof o !== 'object' || o === null) return null;
@@ -246,12 +296,20 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					<N8nIcon :icon="headerIcon" :size="16" />
 					<N8nText bold>{{ headerTitle }}</N8nText>
 					<N8nBadge
-						v-if="isToolCallDeclined"
-						theme="default"
+						v-if="item.kind === 'hitl-response'"
+						:theme="item.hitlResponseStatus === 'approved' ? 'success' : 'default'"
 						size="xsmall"
-						data-test-id="detail-declined-badge"
+						data-test-id="detail-hitl-response-badge"
 					>
-						{{ i18n.baseText('agentSessions.timeline.declined') }}
+						{{ hitlResponseLabel }}
+					</N8nBadge>
+					<N8nBadge
+						v-if="isErroredToolCallTimelineItem(item)"
+						theme="danger"
+						size="xsmall"
+						data-test-id="detail-tool-error-badge"
+					>
+						{{ i18n.baseText('agentSessions.timeline.error') }}
 					</N8nBadge>
 				</div>
 				<N8nIconButton
@@ -267,6 +325,13 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						<dt :class="$style.label">{{ i18n.baseText('agentSessions.timeline.created') }}</dt>
 						<dd :class="$style.value">{{ formatTimestamp(item.timestamp) }}</dd>
 					</dl>
+					<dl
+						v-if="item.kind === 'suspension' || item.kind === 'hitl-response'"
+						:class="$style.infoRow"
+					>
+						<dt :class="$style.label">{{ i18n.baseText('agentSessions.timeline.tool') }}</dt>
+						<dd :class="$style.value">{{ linkedToolName }}</dd>
+					</dl>
 					<div v-if="fullExecutionHref" :class="$style.executionButton">
 						<N8nButton
 							variant="outline"
@@ -279,25 +344,85 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 				</N8nCard>
 
 				<div :class="$style.output">
-					<N8nCallout
-						v-if="isToolCallDeclined"
-						theme="info"
-						iconless
-						data-test-id="tool-call-declined-callout"
-					>
-						{{ i18n.baseText('agentSessions.timeline.declinedDescription') }}
-					</N8nCallout>
-					<template v-if="item.kind === 'workflow'">
+					<template v-if="item.kind === 'suspension'">
+						<div data-test-id="hitl-request-details">
+							<div :class="$style.label">
+								{{ i18n.baseText('agentSessions.timeline.requestDetails') }}
+							</div>
+							<div :class="$style.codeBlock">
+								<div :class="$style.codeBlockCopy">
+									<N8nTooltip
+										:content="
+											copiedBlock === 'hitl-request'
+												? i18n.baseText('generic.copied')
+												: i18n.baseText('generic.copy')
+										"
+									>
+										<N8nButton
+											variant="outline"
+											size="small"
+											icon-only
+											:icon="copiedBlock === 'hitl-request' ? 'check' : 'copy'"
+											:aria-label="
+												copiedBlock === 'hitl-request'
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
+											"
+											@click="copyJsonBlock('hitl-request', hitlRequestContent)"
+										/>
+									</N8nTooltip>
+								</div>
+								<!-- eslint-disable vue/no-v-html -->
+								<pre :class="$style.json" v-html="highlightJson(hitlRequestContent)" />
+								<!-- eslint-enable vue/no-v-html -->
+							</div>
+						</div>
+					</template>
+
+					<template v-else-if="item.kind === 'hitl-response'">
+						<div data-test-id="hitl-response-details">
+							<div :class="$style.label">
+								{{ i18n.baseText('agentSessions.timeline.response') }}
+							</div>
+							<div :class="$style.codeBlock">
+								<div :class="$style.codeBlockCopy">
+									<N8nTooltip
+										:content="
+											copiedBlock === 'hitl-response'
+												? i18n.baseText('generic.copied')
+												: i18n.baseText('generic.copy')
+										"
+									>
+										<N8nButton
+											variant="outline"
+											size="small"
+											icon-only
+											:icon="copiedBlock === 'hitl-response' ? 'check' : 'copy'"
+											:aria-label="
+												copiedBlock === 'hitl-response'
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
+											"
+											@click="copyJsonBlock('hitl-response', item.hitlResponse)"
+										/>
+									</N8nTooltip>
+								</div>
+								<!-- eslint-disable vue/no-v-html -->
+								<pre :class="$style.json" v-html="highlightJson(item.hitlResponse)" />
+								<!-- eslint-enable vue/no-v-html -->
+							</div>
+						</div>
+					</template>
+
+					<template v-else-if="item.kind === 'workflow'">
 						<WorkflowExecutionLogViewer
-							v-if="!isToolCallDeclined && item.workflowExecutionId && item.workflowId"
+							v-if="item.workflowExecutionId && item.workflowId"
 							:key="`${item.workflowId}:${item.workflowExecutionId}`"
 							:workflow-id="item.workflowId"
 							:workflow-execution-id="item.workflowExecutionId"
 						/>
 						<div
-							v-else-if="
-								!isToolCallDeclined && item.workflowTriggerType === 'form' && workflowFormOutput
-							"
+							v-else-if="item.workflowTriggerType === 'form' && workflowFormOutput"
 							data-test-id="wf-form-card"
 							:class="$style.formCard"
 						>
@@ -310,11 +435,15 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 								>{{ i18n.baseText('agentSessions.timeline.openForm') }}</a
 							>
 						</div>
-						<div
-							v-else-if="!isToolCallDeclined"
-							data-test-id="wf-error-fallback"
-							:class="$style.errorFallback"
-						>
+						<div v-else-if="item.toolSuccess === undefined" data-test-id="workflow-input">
+							<div :class="$style.label">
+								{{ i18n.baseText('agentSessions.timeline.input') }}
+							</div>
+							<!-- eslint-disable vue/no-v-html -->
+							<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
+							<!-- eslint-enable vue/no-v-html -->
+						</div>
+						<div v-else data-test-id="wf-error-fallback" :class="$style.errorFallback">
 							<div :class="$style.errorBanner">
 								{{ i18n.baseText('agentSessions.timeline.workflowError') }}
 							</div>
@@ -383,7 +512,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 									<!-- eslint-enable vue/no-v-html -->
 								</div>
 							</div>
-							<div>
+							<div v-if="item.toolOutput !== undefined">
 								<div :class="$style.label">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</div>
@@ -419,18 +548,16 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'node'">
-						<template v-if="!isToolCallDeclined">
-							<N8nCallout v-if="nodeErrorMessage" theme="danger" data-test-id="node-error-callout">
-								{{ nodeErrorMessage }}
-							</N8nCallout>
-							<ToolIoView
-								:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
-								:input="item.toolInput"
-								:output="item.toolOutput"
-								:node-parameters="item.nodeParameters"
-								:success="item.toolOutcome ? item.toolOutcome !== 'error' : item.toolSuccess"
-							/>
-						</template>
+						<N8nCallout v-if="nodeErrorMessage" theme="danger" data-test-id="node-error-callout">
+							{{ nodeErrorMessage }}
+						</N8nCallout>
+						<ToolIoView
+							:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
+							:input="item.toolInput"
+							:output="item.toolOutput"
+							:node-parameters="item.nodeParameters"
+							:success="item.toolOutcome ? item.toolOutcome !== 'error' : item.toolSuccess"
+						/>
 					</template>
 
 					<template v-else-if="item.kind === 'agent' && agentStructuredContent !== undefined">
