@@ -395,7 +395,11 @@ function delegatedChildThreadId(event: TimelineEvent): string | undefined {
 }
 
 function toolError(output: unknown): string {
-	if (isRecord(output) && typeof output.error === 'string') return output.error;
+	if (typeof output === 'string') return output;
+	if (isRecord(output)) {
+		if (typeof output.error === 'string') return output.error;
+		if (typeof output.message === 'string') return output.message;
+	}
 	return 'Tool call failed';
 }
 

@@ -105,7 +105,7 @@ function makeExecution(overrides: Partial<AgentExecution> = {}): AgentExecution 
 				name: 'failing_tool',
 				toolCallId: 'tool-failure',
 				input: {},
-				output: { error: 'Failed for robin@example.com' },
+				output: { message: 'Failed for robin@example.com' },
 				startTime: Date.parse('2026-08-14T09:00:00.500Z'),
 				endTime: Date.parse('2026-08-14T09:00:00.600Z'),
 				success: false,
