@@ -44,6 +44,9 @@ jobs:
       - name: Build full chain (no cache)
         uses: ./.github/actions/setup-nodejs
         with:
+          # Keep in sync with NODE_VERSION in docker/images/n8n/Dockerfile: the image
+          # copies native bindings from the host build.
+          node-version: '24.18.1'
           build-command: 'pnpm build:docker:clean'
           enable-docker-cache: true
 

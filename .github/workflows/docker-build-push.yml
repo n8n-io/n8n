@@ -149,6 +149,8 @@ jobs:
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
         with:
+          # The image copies native bindings from the host build, so both need the same Node.
+          node-version: ${{ env.NODE_VERSION }}
           build-command: pnpm build:n8n
           enable-docker-cache: 'true'
         env:
@@ -175,7 +177,7 @@ jobs:
             ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
 
           echo "=== Generated Docker Tags ==="
-          cat "$GITHUB_OUTPUT" | grep "_tags=" | while IFS='=' read -r key value; do
+          grep "_tags=" "$GITHUB_OUTPUT" | while IFS='=' read -r key value; do
             echo "${key}: ${value%%,*}..."  # Show first tag for brevity
           done
 

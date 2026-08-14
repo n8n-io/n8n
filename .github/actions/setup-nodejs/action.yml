@@ -145,7 +145,10 @@ runs:
       shell: bash
       run: node .github/scripts/verify-safechain.mjs
 
+    # Confluent ships no Node 26 prebuilt and its vendored librdkafka cannot build
+    # inside node_modules: https://github.com/confluentinc/confluent-kafka-javascript/issues/397
     - name: Skip Kafka native build (no Node 26 prebuilds)
+      if: ${{ startsWith(inputs.node-version, '26.') }}
       shell: bash
       run: |
         node -e "
