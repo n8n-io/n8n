@@ -50,10 +50,37 @@ describe('GitConnectionsGitService', () => {
 			['host starting with a dash', 'user@-oProxyCommand=evil:path'],
 			['bare ssh:// with no path', 'ssh://github.com'],
 			['ssh:// with a password in the userinfo', 'ssh://git:secret@github.com/org/repo.git'],
-			['Windows drive path with forward slashes', 'C:/Users/n8n/repo'],
-			['Windows drive path with backslashes', 'C:\\Users\\n8n\\repo'],
 		])('rejects %s', (_label, url) => {
 			expect(() => service.validateRepositoryUrl(url, 'ssh')).toThrow(BadRequestError);
+		});
+
+		describe('drive-letter prefixes', () => {
+			const originalPlatform = process.platform;
+
+			const setPlatform = (platform: NodeJS.Platform) => {
+				Object.defineProperty(process, 'platform', { value: platform, configurable: true });
+			};
+
+			afterEach(() => {
+				setPlatform(originalPlatform);
+			});
+
+			// git reads `C:\path` / `C:/path` as a local filesystem path only on
+			// Windows, where allowing it would clone off the host's disk.
+			it.each(['C:/Users/n8n/repo', 'C:\\Users\\n8n\\repo', 'c:repo'])(
+				'rejects %s on Windows',
+				(url) => {
+					setPlatform('win32');
+					expect(() => service.validateRepositoryUrl(url, 'ssh')).toThrow(BadRequestError);
+				},
+			);
+
+			// On other platforms git treats `c:path` as a scp-like remote to a
+			// one-character host, which is a legitimate SSH alias.
+			it.each(['C:/Users/n8n/repo', 'c:repo'])('accepts %s on non-Windows', (url) => {
+				setPlatform('linux');
+				expect(() => service.validateRepositoryUrl(url, 'ssh')).not.toThrow();
+			});
 		});
 	});
 });
