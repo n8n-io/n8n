@@ -332,17 +332,21 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(applier.apply).toHaveBeenCalledWith(r2, expect.anything());
 		});
 
-		test('drainPending rejects when a worker pass fails, leaving reporting to the caller', async () => {
+		test('drainPending rejects with a wrapping error after the pool reported the failure', async () => {
 			const error = new Error('claim failed');
 			outboxRepository.claimNextPendingRecord.mockRejectedValueOnce(error);
 			consumer.startPolling();
 
 			// Awaiting callers (e.g. the reconciler) must still observe drain
 			// failures, or they would report success for records nobody claimed.
-			await expect(consumer.drainPending()).rejects.toThrow('claim failed');
-			// Every awaiting caller already reports the rejection itself, so the
-			// consumer must not report it too.
-			expect(errorReporter.error).not.toHaveBeenCalled();
+			// The wrapper lets them fail their own operation; the underlying error
+			// is reported by the pool alone, exactly once.
+			await expect(consumer.drainPending()).rejects.toMatchObject({
+				message: expect.stringContaining('drain failed'),
+				cause: error,
+			});
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
 		});
 
 		test('an idle pass starts no tracing span', async () => {
@@ -701,13 +705,30 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(vi.getTimerCount()).toBe(0);
 		});
 
-		test('reports a drain failure instead of rejecting', async () => {
+		test('never rejects on a drain failure, which is reported exactly once', async () => {
 			const error = new Error('claim failed');
 			outboxRepository.claimNextPendingRecord.mockRejectedValueOnce(error);
 
 			// Pubsub dispatch drops handler rejections, so a rejecting wakeUp would
 			// surface as an unhandled promise rejection.
 			await expect(consumer.wakeUp()).resolves.toBeUndefined();
+
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
+		});
+
+		test('overlapping wake-ups report a shared drain failure exactly once', async () => {
+			const error = new Error('claim failed');
+			let rejectClaim!: (reason: Error) => void;
+			const claimGate = new Promise<WorkflowPublicationOutbox | null>((_resolve, reject) => {
+				rejectClaim = reject;
+			});
+			outboxRepository.claimNextPendingRecord.mockImplementationOnce(async () => await claimGate);
+
+			const first = consumer.wakeUp();
+			const second = consumer.wakeUp();
+			rejectClaim(error);
+			await Promise.all([first, second]);
 
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
 			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });

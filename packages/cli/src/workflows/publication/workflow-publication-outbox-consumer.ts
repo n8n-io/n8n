@@ -72,11 +72,6 @@ export class WorkflowPublicationOutboxConsumer {
 	 * running workers' final claims is still picked up promptly. */
 	private wakeRequested = false;
 
-	/** Callers currently awaiting {@link drainPending}. While one exists, a
-	 * worker error is delivered through the rejection and reported by that
-	 * caller; the consumer only reports errors nobody is around to receive. */
-	private drainAwaiters = 0;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowsConfig: WorkflowsConfig,
@@ -147,9 +142,12 @@ export class WorkflowPublicationOutboxConsumer {
 		try {
 			await this.drainPending();
 		} catch (error) {
-			// Pubsub dispatch drops handler rejections (they would surface as
-			// unhandled promise rejections), so report the failure here instead.
-			this.errorReporter.error(ensureError(error), { shouldBeLogged: true });
+			// The pool already reported the underlying failure, and pubsub dispatch
+			// drops handler rejections (they would surface as unhandled promise
+			// rejections) — so neither rethrow nor re-report, just trace.
+			this.logger.debug('Publication outbox drain triggered by a wake-up failed', {
+				error: ensureError(error).message,
+			});
 		}
 	}
 
@@ -177,18 +175,17 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Resolution waits for every active worker, so a worker stuck on a hung
 	 * record delays it (bounded by the abort/abandon deadline) — but not the
 	 * processing of other records, which the remaining slots keep serving.
-	 * Rejects with the first worker error observed, so awaiting callers (e.g.
-	 * the reconciler's failure telemetry) still see drain failures. The caller
-	 * owns reporting a rejection; the consumer does not report it too.
+	 * Rejects once the pool idles if a worker pass failed, with an error
+	 * wrapping the first failure. The pool has already reported the underlying
+	 * error (exactly once, at the source); the rejection exists so awaiting
+	 * callers can fail their own operation (e.g. the reconciler's failure
+	 * telemetry) — they report their layer's outcome, never the pool's error.
 	 */
 	async drainPending(): Promise<void> {
-		this.drainAwaiters++;
-		try {
-			this.topUpWorkers();
-			const error = await this.awaitIdle();
-			if (error) throw error;
-		} finally {
-			this.drainAwaiters--;
+		this.topUpWorkers();
+		const error = await this.awaitIdle();
+		if (error) {
+			throw new OperationalError('Workflow publication outbox drain failed', { cause: error });
 		}
 	}
 
@@ -225,13 +222,12 @@ export class WorkflowPublicationOutboxConsumer {
 				() => null,
 				(error) => {
 					// A worker failure (e.g. a claim query error) is contained to its own
-					// slot. With a drain awaiter present, `drainPending` rejects with it and
-					// that caller reports it; only a fire-and-forget pass (poll top-up with
-					// nobody awaiting) is reported here, so failures surface exactly once.
+					// slot. The pool owns its workers' errors and reports each exactly once
+					// here at the source, regardless of who is awaiting; `drainPending`
+					// rejects with a wrapper so awaiting callers can fail their own
+					// operation without re-reporting the cause.
 					const failure = ensureError(error);
-					if (this.drainAwaiters === 0) {
-						this.errorReporter.error(failure, { shouldBeLogged: true });
-					}
+					this.errorReporter.error(failure, { shouldBeLogged: true });
 					return failure;
 				},
 			)
