@@ -20,6 +20,7 @@ import {
 } from '../errors';
 import { buildExtensionConnectUrl } from '../extension-connect';
 import { createLogger } from '../logger';
+import { applyExtensionOptOut } from './extension-opt-out';
 import { HTML_PROBE_SCRIPT, parseHtmlProbeResult } from '../sensitivity/html-probe';
 import type {
 	ClickOptions,
@@ -400,8 +401,10 @@ export class PlaywrightAdapter {
 		text: string,
 		options?: TypeOptions,
 	): Promise<void> {
-		await this.ensurePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
+
+		await applyExtensionOptOut(async (script) => await page.evaluate(script));
 
 		if (options?.clear) {
 			await locator.clear();
