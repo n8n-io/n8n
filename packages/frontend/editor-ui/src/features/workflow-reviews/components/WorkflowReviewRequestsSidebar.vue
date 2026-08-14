@@ -248,7 +248,13 @@ function onListBackgroundClick() {
 				</div>
 
 				<template v-if="!group.collapsed">
-					<N8nLoading v-if="group.section.loading" :loading="true" :rows="3" />
+					<N8nLoading
+						v-if="group.section.loading"
+						:loading="true"
+						:rows="3"
+						:data-section="group.key"
+						data-test-id="workflow-review-section-skeleton"
+					/>
 					<N8nText
 						v-else-if="group.isEmpty"
 						color="text-light"

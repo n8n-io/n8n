@@ -192,30 +192,41 @@ describe('WorkflowReviewRequestsSidebar', () => {
 				props: openProps([{ error: new Error('nope'), hasMore: true }, {}]),
 			});
 
-			for (const testId of ['workflow-review-section-header', 'workflow-review-section-retry']) {
+			for (const testId of [
+				'workflow-review-section-header',
+				'workflow-review-section-retry',
+				'workflow-review-section-load-more',
+			]) {
 				for (const element of getAllByTestId(testId)) {
 					expect(element.closest('[role="listbox"]')).toBeNull();
 				}
 			}
 		});
 
-		it('keeps the possessive waiting labels for a regular member', () => {
-			mockedStore(useUsersStore).isAdminOrOwner = false;
+		// Admins see the whole instance backlog, so `waiting` holds reviews nobody
+		// assigned them. The member wording is covered by the header-order test above.
+		it('drops the possessive waiting labels for an admin', () => {
+			mockedStore(useUsersStore).isAdminOrOwner = true;
 
 			const { getAllByTestId } = renderComponent({ props: openProps([{}, {}]) });
 
 			expect(getAllByTestId('workflow-review-section-header')[0]).toHaveTextContent(
-				'Waiting for your review',
+				'Waiting for review',
+			);
+			expect(getAllByTestId('workflow-review-section-empty')[0]).toHaveTextContent(
+				'No reviews waiting',
 			);
 		});
 
-		it('renders a per-section skeleton without touching the sibling', () => {
-			const { getAllByTestId, container } = renderComponent({
+		it('shows the skeleton only in the loading section, leaving the sibling rendered', () => {
+			const { getAllByTestId } = renderComponent({
 				props: openProps([{ loading: true }, { items: [makeItem()] }]),
 			});
 
+			const skeletons = getAllByTestId('workflow-review-section-skeleton');
+			expect(skeletons).toHaveLength(1);
+			expect(skeletons[0].dataset.section).toBe('waiting');
 			expect(getAllByTestId('workflow-review-request-row')).toHaveLength(1);
-			expect(container.querySelectorAll('[role="listbox"]')[1]).toBeInTheDocument();
 		});
 	});
 
