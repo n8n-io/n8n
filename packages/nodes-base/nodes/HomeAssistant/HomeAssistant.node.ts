@@ -10,6 +10,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	setSafeObjectProperty,
 } from 'n8n-workflow';
 
 import { cameraProxyFields, cameraProxyOperations } from './CameraProxyDescription';
@@ -260,7 +261,7 @@ export class HomeAssistant implements INodeType {
 							if (stateAttributes.attributes !== undefined) {
 								const attributes: IDataObject = {};
 								stateAttributes.attributes.forEach((attribute) => {
-									attributes[attribute.name as string] = attribute.value;
+									setSafeObjectProperty(attributes, attribute.name as string, attribute.value);
 								});
 								body.attributes = attributes;
 							}

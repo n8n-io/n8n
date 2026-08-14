@@ -117,5 +117,37 @@ describe('HomeAssistant Node', () => {
 				},
 			});
 		});
+
+		it('should not write unsafe prototype-polluting attribute keys', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, unknown> = {
+					resource: 'state',
+					operation: 'upsert',
+					entityId: 'sensor.test',
+					state: 'on',
+					stateAttributes: {
+						attributes: [
+							{ name: '__proto__', value: { polluted: true } },
+							{ name: 'friendly_name', value: 'Test Sensor' },
+						],
+					},
+				};
+				return params[paramName];
+			});
+
+			mockHomeAssistantApiRequest.mockResolvedValue({ entity_id: 'sensor.test', state: 'on' });
+
+			await homeAssistant.execute.call(mockExecuteFunctions);
+
+			const sentBody = mockHomeAssistantApiRequest.mock.calls[0][2] as {
+				attributes: IDataObject;
+			};
+			// The unsafe key must be skipped, and safe keys still written.
+			expect(Object.prototype.hasOwnProperty.call(sentBody.attributes, '__proto__')).toBe(false);
+			expect(sentBody.attributes).toEqual({ friendly_name: 'Test Sensor' });
+			// An unsafe assignment would reparent the object's prototype; the safe write leaves it intact.
+			expect(Object.getPrototypeOf(sentBody.attributes)).toBe(Object.prototype);
+			expect((sentBody.attributes as IDataObject).polluted).toBeUndefined();
+		});
 	});
 });
