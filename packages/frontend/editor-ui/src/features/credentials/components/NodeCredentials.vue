@@ -1387,6 +1387,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								{ [$style.balanceIndicatorMuted]: isBalanceIndicatorMuted(type.name) },
 							]"
 						>
+							<!-- Invisible copy of the selected label reserves its exact rendered
+							     width so the badge sits the same spacing--2xs gap after it as in
+							     the dropdown row, instead of a hardcoded label-width guess. -->
+							<span :class="$style.balanceLabelSizer" aria-hidden="true">{{
+								N8N_CREDITS_LABEL
+							}}</span>
 							<N8nActionPill size="small" :type="balancePill?.type" :text="balancePill?.text" />
 						</div>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
@@ -1719,22 +1725,30 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 }
 
 // Non-interactive status pill rendered over the select, like .dynamicIndicator.
+// The invisible sizer reserves the label's width so the pill lands the same
+// spacing--2xs gap after it as the dropdown row (see .balanceLabelSizer).
 .balanceIndicator {
-	--balance-indicator-offset: calc(
-		var(--credential-select-label-padding) + 7ch + var(--spacing--2xs)
-	);
-
 	display: flex;
 	align-items: center;
 	align-self: center;
 	justify-self: start;
-	max-width: calc(100% - var(--balance-indicator-offset) - 35px);
-	margin-left: var(--balance-indicator-offset);
+	gap: var(--spacing--2xs);
+	padding-left: var(--credential-select-label-padding);
+	max-width: calc(100% - 35px);
 	z-index: 1;
 	pointer-events: none;
 }
 
-.balanceIndicator > span,
+// Mirrors the el-select trigger label (size small = 12px) so its width matches
+// the rendered selection exactly; hidden but still occupies layout space.
+.balanceLabelSizer {
+	flex-shrink: 0;
+	font-size: var(--font-size--2xs);
+	white-space: nowrap;
+	visibility: hidden;
+}
+
+.balanceIndicator > span:not(.balanceLabelSizer),
 .credentialOption > .optionName + span,
 .entryPill {
 	padding: var(--spacing--5xs) var(--spacing--3xs);
