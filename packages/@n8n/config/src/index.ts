@@ -30,6 +30,7 @@ import { InstanceAiConfig } from './configs/instance-ai.config';
 import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
+import { MemoryGuardConfig } from './configs/memory-guard.config';
 import { McpClientConfig } from './configs/mcp-client.config';
 import { McpServerConfig } from './configs/mcp-server.config';
 import { MfaConfig } from './configs/mfa.config';
@@ -69,6 +70,7 @@ export {
 } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
+export { MemoryGuardConfig } from './configs/memory-guard.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
@@ -191,6 +193,9 @@ export class GlobalConfig {
 
 	@Nested
 	executions: ExecutionsConfig;
+
+	@Nested
+	memoryGuard: MemoryGuardConfig;
 
 	@Nested
 	diagnostics: DiagnosticsConfig;

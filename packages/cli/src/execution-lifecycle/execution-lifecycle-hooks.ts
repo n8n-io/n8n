@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
@@ -25,6 +26,7 @@ import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } fro
 
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ShedRegistry } from '@/memory-guard/shed-registry';
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -580,6 +582,24 @@ function hookFunctionsSave(
 			workflowId: this.workflowData.id,
 		});
 
+		// An execution killed by the memory guard is saved without its run data.
+		// The victim may hold hundreds of MB, and serializing that while the
+		// instance is nearly out of memory could cause the very OOM the guard
+		// exists to prevent. The user sees the stored error instead. The error
+		// workflow is also skipped: it would dispatch new work at the worst
+		// possible moment.
+		const shedError = Container.get(ShedRegistry).consume(this.executionId);
+		if (shedError) {
+			fullRunData.data = {
+				...fullRunData.data,
+				resultData: {
+					runData: {},
+					lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted,
+					error: shedError,
+				},
+			};
+		}
+
 		await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
 		// If this is a subworkflow execution, duplicate binary data to the parent's
@@ -590,7 +610,7 @@ function hookFunctionsSave(
 		}
 
 		const isManualMode = this.mode === 'manual';
-		const dispatchesErrorWorkflow = !isManualMode && !suppressErrorWorkflow;
+		const dispatchesErrorWorkflow = !isManualMode && !suppressErrorWorkflow && !shedError;
 
 		try {
 			if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {

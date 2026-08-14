@@ -44,6 +44,7 @@ import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { UrlService } from '@/services/url.service';
+import { MemoryGuardService } from '@/memory-guard/memory-guard.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import { BaseCommand } from './base-command';
@@ -267,6 +268,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
+		Container.get(MemoryGuardService).init();
+		this.logger.debug('Memory guard init complete');
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
 		await this.initDataDeduplicationService();

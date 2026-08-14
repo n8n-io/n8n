@@ -8,6 +8,7 @@ export { ExpressionError } from './expression.error';
 export {
 	ExecutionCancelledError,
 	ManualExecutionCancelledError,
+	MemoryPressureExecutionCancelledError,
 	SystemShutdownExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	type CancellationReason,

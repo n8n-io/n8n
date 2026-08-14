@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { WorkflowExecuteMode } from 'n8n-workflow';
 
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
@@ -168,13 +169,55 @@ export class ConcurrencyControlService {
 	}
 
 	/**
+	 * While set, production executions wait in `throttle()` instead of
+	 * starting. The memory guard sets this when memory runs high and clears it
+	 * once memory has recovered.
+	 *
+	 * `throttle()` checks this gate in two places, for two reasons:
+	 *
+	 * - Before the concurrency queue, and regardless of `isEnabled`. With
+	 *   unlimited concurrency (the self-hosted default) no queue exists and
+	 *   `throttle()` would otherwise return immediately, bypassing the gate.
+	 * - Again after leaving the concurrency queue. An execution may have
+	 *   waited there for a while, and its turn tends to come exactly when the
+	 *   guard kills an execution (killing frees a concurrency slot). Without
+	 *   this second check, every kill would launch a parked execution into an
+	 *   instance that is nearly out of memory.
+	 */
+	private admissionGate: IDeferredPromise<void> | undefined;
+
+	pauseProductionAdmission() {
+		this.admissionGate ??= createDeferredPromise();
+	}
+
+	resumeProductionAdmission() {
+		this.admissionGate?.resolve();
+		this.admissionGate = undefined;
+	}
+
+	private isProductionMode(mode: WorkflowExecuteMode) {
+		return mode === 'webhook' || mode === 'trigger' || mode === 'chat';
+	}
+
+	private async waitForAdmission(mode: WorkflowExecuteMode) {
+		if (!this.isProductionMode(mode)) return;
+
+		while (this.admissionGate) await this.admissionGate.promise;
+	}
+
+	/**
 	 * Block or let through an execution based on concurrency capacity.
 	 */
 	async throttle({ mode, executionId }: CapacityTarget) {
 		if (mode === 'evaluation') this.ensureEvalQueueResolved();
+
+		await this.waitForAdmission(mode);
+
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		await this.getQueue(mode)?.enqueue(executionId);
+
+		await this.waitForAdmission(mode);
 	}
 
 	/**
@@ -224,6 +267,9 @@ export class ConcurrencyControlService {
 
 	disable() {
 		this.isEnabled = false;
+		// Release any executions parked at the admission gate so shutdown can
+		// cancel them instead of leaving them suspended.
+		this.resumeProductionAdmission();
 	}
 
 	// ----------------------------------

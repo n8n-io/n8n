@@ -1,6 +1,6 @@
 import { ExecutionBaseError } from './abstract/execution-base.error';
 
-export type CancellationReason = 'manual' | 'timeout' | 'shutdown';
+export type CancellationReason = 'manual' | 'timeout' | 'shutdown' | 'memory-pressure';
 
 export abstract class ExecutionCancelledError extends ExecutionBaseError {
 	readonly reason: CancellationReason;
@@ -33,5 +33,12 @@ export class SystemShutdownExecutionCancelledError extends ExecutionCancelledErr
 	constructor(executionId: string) {
 		super(executionId, 'shutdown');
 		this.message = 'The execution was cancelled because the system is shutting down';
+	}
+}
+
+export class MemoryPressureExecutionCancelledError extends ExecutionCancelledError {
+	constructor(executionId: string) {
+		super(executionId, 'memory-pressure');
+		this.message = 'The execution was stopped because the instance was about to run out of memory';
 	}
 }

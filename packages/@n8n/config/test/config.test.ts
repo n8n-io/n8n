@@ -544,6 +544,13 @@ describe('GlobalConfig', () => {
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
 		},
+		memoryGuard: {
+			enabled: false,
+			holdThreshold: 0.8,
+			killThreshold: 0.85,
+			intervalMs: 2000,
+			deactivateAfterKills: 3,
+		},
 		diagnostics: {
 			enabled: true,
 			frontendConfig: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
