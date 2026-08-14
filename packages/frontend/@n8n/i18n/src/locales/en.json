@@ -7751,6 +7751,7 @@
 	"agents.builder.tasks.deleteConfirm.confirm": "Delete",
 	"agents.builder.tasks.loadError": "Could not load schedules",
 	"agents.builder.tasks.deleteError": "Could not delete schedule",
+	"agents.builder.tasks.importError": "Could not import schedules",
 	"agents.builder.tasks.create.title": "Add schedule",
 	"agents.builder.tasks.edit.title": "Edit schedule",
 	"agents.builder.tasks.name.label": "Name",

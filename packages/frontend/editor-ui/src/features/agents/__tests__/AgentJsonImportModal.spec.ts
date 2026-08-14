@@ -102,8 +102,65 @@ describe('AgentJsonImportModal', () => {
 		});
 		await wrapper.find('[data-testid="agent-json-import-confirm"]').trigger('click');
 
-		expect(onConfirm).toHaveBeenCalledWith(config);
+		expect(onConfirm).toHaveBeenCalledWith({ config, taskDefinitions: [] });
 		expect(closeModalMock).toHaveBeenCalledWith('agentJsonImportModal');
+	});
+
+	it('passes the bundled task definitions along with the config', async () => {
+		const onConfirm = vi.fn();
+		const config: AgentJsonConfig = {
+			name: 'Imported agent',
+			model: 'openai/gpt-4o-mini',
+			credential: 'cred-openai',
+			instructions: 'Use imported settings.',
+			tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+		};
+		const taskDefinitions = [
+			{
+				name: 'Daily summary',
+				objective: 'Summarize yesterday.',
+				cronExpression: '0 9 * * *',
+				enabled: false,
+			},
+		];
+		const wrapper = await mountModal(onConfirm);
+
+		await selectFile(wrapper, makeJsonFile(JSON.stringify({ ...config, taskDefinitions })));
+		await vi.waitFor(() => {
+			expect(wrapper.find('[data-testid="agent-json-import-confirm"]').attributes('disabled')).toBe(
+				undefined,
+			);
+		});
+		await wrapper.find('[data-testid="agent-json-import-confirm"]').trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith({ config, taskDefinitions });
+	});
+
+	it('rejects a file whose task definitions are malformed', async () => {
+		const onConfirm = vi.fn();
+		const wrapper = await mountModal(onConfirm);
+
+		await selectFile(
+			wrapper,
+			makeJsonFile(
+				JSON.stringify({
+					name: 'Imported agent',
+					model: 'openai/gpt-4o-mini',
+					credential: 'cred-openai',
+					instructions: 'Use imported settings.',
+					taskDefinitions: [{ name: 'Daily summary' }],
+				}),
+			),
+		);
+
+		await vi.waitFor(() => {
+			expect(wrapper.find('[data-testid="agent-json-import-error"]').text()).toContain(
+				'Agent JSON could not be read',
+			);
+		});
+		expect(wrapper.find('[data-testid="agent-json-import-confirm"]').attributes('disabled')).toBe(
+			'',
+		);
 	});
 
 	it('clears selected file state when the modal is cancelled', async () => {

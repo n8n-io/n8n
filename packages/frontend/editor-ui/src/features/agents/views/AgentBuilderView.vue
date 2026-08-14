@@ -26,7 +26,9 @@ import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
 	createAgent,
+	createAgentTask,
 	deleteAgent,
+	getAgentTasks,
 	listAgentFiles,
 	uploadAgentFiles,
 	deleteAgentFile,
@@ -39,9 +41,11 @@ import type {
 	AgentContinueLoadedEvent,
 	AgentFixWithAssistantEvent,
 	AgentJsonConfig,
+	AgentJsonImportPayload,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
 } from '../types';
+import type { AgentExportTask } from '@n8n/api-types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
@@ -1211,6 +1215,31 @@ const headerActions = computed(() => {
 	return actions;
 });
 
+/**
+ * The bodies behind the config's task refs. The refs only carry ids that exist
+ * on this agent, so an export without the bodies cannot be replayed elsewhere.
+ */
+async function collectExportedTaskDefinitions(): Promise<AgentExportTask[]> {
+	const taskRefs = localConfig.value?.tasks ?? [];
+	// An unsaved agent has no task rows to read yet.
+	if (taskRefs.length === 0 || isUnsaved.value) return [];
+
+	const bodies = await getAgentTasks(rootStore.restApiContext, projectId.value, agentId.value);
+	const bodiesById = new Map(bodies.map((body) => [body.id, body]));
+	return taskRefs.flatMap((taskRef) => {
+		const body = bodiesById.get(taskRef.id);
+		if (!body) return [];
+		return [
+			{
+				name: body.name,
+				objective: body.objective,
+				cronExpression: body.cronExpression,
+				enabled: taskRef.enabled,
+			},
+		];
+	});
+}
+
 async function exportAgentJson() {
 	if (!localConfig.value) return;
 
@@ -1221,7 +1250,21 @@ async function exportAgentJson() {
 	}
 	if (!localConfig.value) return;
 
-	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+	let taskDefinitions: AgentExportTask[];
+	try {
+		taskDefinitions = await collectExportedTaskDefinitions();
+	} catch (error) {
+		// Exporting a file that silently lost the schedules is worse than not
+		// exporting at all — the user can retry once the fetch succeeds.
+		showError(error, locale.baseText('agents.builder.tasks.loadError'));
+		return;
+	}
+
+	const exported = {
+		...localConfig.value,
+		...(taskDefinitions.length > 0 ? { taskDefinitions } : {}),
+	};
+	const blob = new Blob([`${JSON.stringify(exported, null, 2)}\n`], {
 		type: 'application/json',
 	});
 	const url = URL.createObjectURL(blob);
@@ -1236,13 +1279,38 @@ async function exportAgentJson() {
 	URL.revokeObjectURL(url);
 }
 
+/**
+ * Apply an imported agent JSON file. The imported task refs are dropped — their
+ * ids belong to the exporting agent — and the bundled bodies are recreated
+ * instead, which is what re-attaches refs to this agent's config.
+ */
+async function importAgentJson({ config, taskDefinitions }: AgentJsonImportPayload) {
+	replaceConfigAndScheduleSave({ ...config, tasks: [] });
+	if (taskDefinitions.length === 0) return;
+
+	try {
+		// The replaced config has to land first: it is saved as a whole, so a
+		// later flush would drop the refs the creates below add server-side.
+		await flushAutosave();
+		// Sequential on purpose — each create reads and rewrites the agent's
+		// config to append its ref, so parallel creates would lose refs.
+		for (const task of taskDefinitions) {
+			await createAgentTask(rootStore.restApiContext, projectId.value, agentId.value, task);
+		}
+	} catch (error) {
+		showError(error, locale.baseText('agents.builder.tasks.importError' as BaseTextKey));
+	}
+	// Pick up the refs the creates attached (and refresh the schedules panel).
+	await onConfigUpdated();
+}
+
 function openImportJsonModal() {
 	if (!effectiveCanEditAgent.value) return;
 
 	uiStore.openModalWithData({
 		name: AGENT_JSON_IMPORT_MODAL_KEY,
 		data: {
-			onConfirm: replaceConfigAndScheduleSave,
+			onConfirm: importAgentJson,
 		},
 	});
 }

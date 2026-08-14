@@ -1,27 +1,27 @@
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue';
-import { AgentJsonConfigSchema } from '@n8n/api-types';
+import { AgentExportSchema, AgentJsonConfigSchema } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { AgentJsonConfig } from '../types';
+import type { AgentJsonImportPayload } from '../types';
 
 const props = defineProps<{
 	modalName: string;
-	data: { onConfirm: (config: AgentJsonConfig) => void | Promise<void> };
+	data: { onConfirm: (payload: AgentJsonImportPayload) => void | Promise<void> };
 }>();
 
 const i18n = useI18n();
 const uiStore = useUIStore();
-const parsedConfig = ref<AgentJsonConfig | null>(null);
+const parsedImport = ref<AgentJsonImportPayload | null>(null);
 const errorMessage = ref('');
 const importing = ref(false);
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 
 function resetImportState() {
-	parsedConfig.value = null;
+	parsedImport.value = null;
 	errorMessage.value = '';
 	if (fileInput.value) {
 		fileInput.value.value = '';
@@ -38,28 +38,34 @@ async function onFileChange(event: Event) {
 	if (!(input instanceof HTMLInputElement)) return;
 
 	const file = input.files?.[0];
-	parsedConfig.value = null;
+	parsedImport.value = null;
 	errorMessage.value = '';
 	if (!file) return;
 
 	try {
 		const parsed = JSON.parse(await file.text()) as unknown;
 		const result = AgentJsonConfigSchema.safeParse(parsed);
-		if (!result.success) {
+		// Task bodies ride alongside the config in the same object, so they are
+		// parsed separately — the config schema ignores them.
+		const extras = AgentExportSchema.safeParse(parsed);
+		if (!result.success || !extras.success) {
 			throw new Error('Invalid agent JSON');
 		}
-		parsedConfig.value = result.data;
+		parsedImport.value = {
+			config: result.data,
+			taskDefinitions: extras.data.taskDefinitions ?? [],
+		};
 	} catch {
 		errorMessage.value = i18n.baseText('agents.builder.importJsonModal.invalidJson' as BaseTextKey);
 	}
 }
 
 async function onConfirm() {
-	if (!parsedConfig.value || importing.value) return;
+	if (!parsedImport.value || importing.value) return;
 
 	importing.value = true;
 	try {
-		await props.data.onConfirm(parsedConfig.value);
+		await props.data.onConfirm(parsedImport.value);
 		closeModal();
 	} finally {
 		importing.value = false;
@@ -104,7 +110,7 @@ async function onConfirm() {
 				<N8nButton variant="subtle" :label="i18n.baseText('generic.cancel')" @click="closeModal" />
 				<N8nButton
 					:label="i18n.baseText('agents.builder.importJsonModal.import' as BaseTextKey)"
-					:disabled="!parsedConfig || importing"
+					:disabled="!parsedImport || importing"
 					data-testid="agent-json-import-confirm"
 					@click="onConfirm"
 				/>

@@ -1,5 +1,7 @@
 import type { BaseResource } from '@/Interface';
 import type {
+	AgentExportTask,
+	AgentJsonConfig,
 	AgentJsonToolConfig,
 	AgentReasoningLevel,
 	AgentSkill,
@@ -130,6 +132,16 @@ export interface TelemetrySchema {
 }
 
 export type WorkflowToolRef = AgentJsonToolConfig & { type: 'workflow' };
+
+/**
+ * What the JSON import modal hands back: the parsed agent config plus the task
+ * bodies bundled next to it. Task refs in `config` point at ids from the
+ * exporting agent, so the bodies are what the importer replays.
+ */
+export interface AgentJsonImportPayload {
+	config: AgentJsonConfig;
+	taskDefinitions: AgentExportTask[];
+}
 
 export type {
 	NodeToolConfig,

@@ -120,6 +120,8 @@ const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
 const createAgentMock = vi.fn();
+const getAgentTasksMock = vi.fn().mockResolvedValue([]);
+const createAgentTaskMock = vi.fn().mockResolvedValue(undefined);
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const repointConfigMock = vi.fn();
@@ -155,6 +157,8 @@ const stopSessionAutoRefreshMock = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
 	createAgent: createAgentMock,
+	getAgentTasks: getAgentTasksMock,
+	createAgentTask: createAgentTaskMock,
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
@@ -220,6 +224,7 @@ interface TestAgentConfig {
 	credential?: string;
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
+	tasks?: AgentJsonConfig['tasks'];
 	personalisation?: AgentJsonConfig['personalisation'];
 }
 
@@ -610,6 +615,10 @@ function resetViewMocks() {
 	getAgentMock.mockResolvedValue(makeAgentResponse());
 	createAgentMock.mockReset();
 	createAgentMock.mockResolvedValue(makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' }));
+	getAgentTasksMock.mockReset();
+	getAgentTasksMock.mockResolvedValue([]);
+	createAgentTaskMock.mockReset();
+	createAgentTaskMock.mockResolvedValue(undefined);
 	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
@@ -2560,7 +2569,10 @@ describe('AgentBuilderView — three-column shell', () => {
 			credential: 'cred-openai',
 			instructions: 'Use the imported settings.',
 		};
-		openModalWithDataMock.mock.calls[0][0].data.onConfirm(importedConfig);
+		void openModalWithDataMock.mock.calls[0][0].data.onConfirm({
+			config: importedConfig,
+			taskDefinitions: [],
+		});
 		await nextTick();
 
 		expect((wrapper.vm as unknown as { localConfig: unknown }).localConfig).toMatchObject(
@@ -2585,6 +2597,104 @@ describe('AgentBuilderView — three-column shell', () => {
 				memory: { enabled: true, storage: 'n8n' },
 			}),
 		);
+	});
+
+	it('bundles the bodies behind the config task refs into the exported JSON', async () => {
+		Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+		Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+		createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:agent-json');
+		revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+		anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			tasks: [
+				{ type: 'task', id: 'task-1', enabled: true },
+				{ type: 'task', id: 'task-2', enabled: false },
+			],
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		// Returned out of ref order to prove the export follows the config refs.
+		getAgentTasksMock.mockResolvedValue([
+			{
+				id: 'task-2',
+				name: 'Weekly digest',
+				objective: 'Send the digest.',
+				cronExpression: '0 8 * * 1',
+				createdAt: '2026-01-01T00:00:00Z',
+				updatedAt: '2026-01-01T00:00:00Z',
+			},
+			{
+				id: 'task-1',
+				name: 'Daily summary',
+				objective: 'Summarize yesterday.',
+				cronExpression: '0 9 * * *',
+				createdAt: '2026-01-01T00:00:00Z',
+				updatedAt: '2026-01-01T00:00:00Z',
+			},
+		]);
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'export-json');
+		await flushPromises();
+
+		const blob = createObjectURLSpy.mock.calls[0][0] as Blob;
+		const exported = JSON.parse(await readBlobText(blob));
+		expect(exported.tasks).toEqual(intendedConfig.tasks);
+		expect(exported.taskDefinitions).toEqual([
+			{
+				name: 'Daily summary',
+				objective: 'Summarize yesterday.',
+				cronExpression: '0 9 * * *',
+				enabled: true,
+			},
+			{
+				name: 'Weekly digest',
+				objective: 'Send the digest.',
+				cronExpression: '0 8 * * 1',
+				enabled: false,
+			},
+		]);
+	});
+
+	it('recreates the bundled task bodies when importing JSON', async () => {
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'import-json');
+		await nextTick();
+
+		const taskDefinitions = [
+			{
+				name: 'Daily summary',
+				objective: 'Summarize yesterday.',
+				cronExpression: '0 9 * * *',
+				enabled: false,
+			},
+		];
+		await openModalWithDataMock.mock.calls[0][0].data.onConfirm({
+			config: {
+				name: 'Imported agent',
+				model: 'openai/gpt-4o-mini',
+				credential: 'cred-openai',
+				instructions: 'Use the imported settings.',
+				// Points at a task of the exporting agent — must not survive.
+				tasks: [{ type: 'task', id: 'task-from-export', enabled: true }],
+			},
+			taskDefinitions,
+		});
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ tasks: [] }),
+		);
+		expect(createAgentTaskMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			taskDefinitions[0],
+		);
+		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 
 	it('no longer renders the old editor-column action dropdown', async () => {
