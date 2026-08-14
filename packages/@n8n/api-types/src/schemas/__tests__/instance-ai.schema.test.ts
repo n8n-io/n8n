@@ -1,5 +1,14 @@
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	base64EncodedSize,
+	exceedsAttachmentSizeLimit,
+	formatAttachmentSizeLimit,
+	formatTotalAttachmentSizeLimit,
+	MAX_ATTACHMENT_DECODED_BYTES,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
+	instanceAiFileAttachmentSchema,
+	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
 	buildDataTablesSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
@@ -596,5 +605,151 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 			],
 		});
 		expect(backed).toEqual([]);
+	});
+});
+
+describe('instanceAiFileAttachmentSchema size bound', () => {
+	function attachmentWithEncodedSize(bytes: number) {
+		return {
+			type: 'file' as const,
+			data: 'A'.repeat(bytes),
+			mimeType: 'image/png',
+			fileName: 'pasted.png',
+		};
+	}
+
+	it('accepts a payload exactly at the base64 limit', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a payload one byte over the base64 limit', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES + 1),
+		);
+		expect(result.success).toBe(false);
+	});
+
+	it('bounds the base64-encoded size, not the decoded size', () => {
+		// The provider limit applies to the encoded payload. A bound expressed in
+		// decoded bytes would be ~4/3 larger and admit payloads it rejects.
+		const decodedUnitBound = Math.ceil((MAX_ATTACHMENT_BASE64_BYTES * 4) / 3);
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(decodedUnitBound),
+		);
+		expect(result.success).toBe(false);
+	});
+
+	it('states the limit as the raw file size the user sees, not the encoded one', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES + 1),
+		);
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toContain(formatAttachmentSizeLimit());
+		}
+	});
+});
+
+describe('base64EncodedSize', () => {
+	it.each([
+		[0, 0],
+		[1, 4],
+		[2, 4],
+		[3, 4],
+		[4, 8],
+	])('encodes %i raw bytes as %i base64 bytes', (raw, encoded) => {
+		expect(base64EncodedSize(raw)).toBe(encoded);
+	});
+
+	it('inflates by roughly 4/3', () => {
+		expect(base64EncodedSize(3 * 1024 * 1024)).toBe(4 * 1024 * 1024);
+	});
+});
+
+describe('exceedsAttachmentSizeLimit', () => {
+	// A file is measured by its *encoded* size, so the largest file that fits is
+	// three quarters of the limit — not the limit itself.
+	const largestAllowedRawBytes = (MAX_ATTACHMENT_BASE64_BYTES / 4) * 3;
+
+	it('accepts a file whose encoded form lands exactly on the limit', () => {
+		expect(exceedsAttachmentSizeLimit(largestAllowedRawBytes)).toBe(false);
+	});
+
+	it('rejects a file whose encoded form crosses the limit', () => {
+		expect(exceedsAttachmentSizeLimit(largestAllowedRawBytes + 1)).toBe(true);
+	});
+
+	it('rejects a raw size that only fits when the 4/3 inflation is ignored', () => {
+		// This is the case a naive `file.size > limit` check lets through.
+		expect(largestAllowedRawBytes + 1).toBeLessThan(MAX_ATTACHMENT_BASE64_BYTES);
+		expect(exceedsAttachmentSizeLimit(MAX_ATTACHMENT_BASE64_BYTES)).toBe(true);
+	});
+});
+
+describe('MAX_ATTACHMENT_DECODED_BYTES', () => {
+	it('is the largest raw file whose encoded form still fits', () => {
+		expect(exceedsAttachmentSizeLimit(MAX_ATTACHMENT_DECODED_BYTES)).toBe(false);
+		expect(exceedsAttachmentSizeLimit(MAX_ATTACHMENT_DECODED_BYTES + 1)).toBe(true);
+	});
+
+	it('is smaller than the encoded limit, because base64 inflates', () => {
+		expect(MAX_ATTACHMENT_DECODED_BYTES).toBeLessThan(MAX_ATTACHMENT_BASE64_BYTES);
+	});
+});
+
+describe('formatAttachmentSizeLimit', () => {
+	// Users compare against the file on their disk, which is the decoded size. Quoting
+	// the encoded limit would tell someone with an 8 MB file that it "exceeds 10 MB".
+	it('describes the limit as the raw file size a user would see', () => {
+		expect(formatAttachmentSizeLimit()).toBe('7.5 MB');
+	});
+});
+
+describe('instanceAiFileAttachmentSchema rejection message', () => {
+	it('quotes the raw-file limit, not the encoded one', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse({
+			type: 'file',
+			data: 'A'.repeat(MAX_ATTACHMENT_BASE64_BYTES + 1),
+			mimeType: 'image/png',
+			fileName: 'pasted.png',
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const { message } = result.error.issues[0];
+			expect(message).toContain('7.5 MB');
+			expect(message).not.toContain('10 MB');
+		}
+	});
+
+	it('tells the user what to do about it', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse({
+			type: 'file',
+			data: 'A'.repeat(MAX_ATTACHMENT_BASE64_BYTES + 1),
+			mimeType: 'image/png',
+			fileName: 'pasted.png',
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message.toLowerCase()).toContain('smaller');
+		}
+	});
+});
+
+describe('total attachment budget', () => {
+	it('exposes the combined ceiling as a raw file size', () => {
+		expect(MAX_TOTAL_ATTACHMENT_DECODED_BYTES).toBe((MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 4) * 3);
+	});
+
+	it('describes the combined limit for user-facing copy', () => {
+		expect(formatTotalAttachmentSizeLimit()).toBe('12.0 MB');
+	});
+
+	it('leaves room for more than one max-size file', () => {
+		expect(MAX_TOTAL_ATTACHMENT_DECODED_BYTES).toBeGreaterThan(MAX_ATTACHMENT_DECODED_BYTES);
 	});
 });
