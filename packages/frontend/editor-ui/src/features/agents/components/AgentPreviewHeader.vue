@@ -94,12 +94,16 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 								:class="$style.sessionTitle"
 								:aria-label="i18n.baseText('agentSessions.sessionName')"
 							>
-								<span :class="$style.sessionTitleLabel">{{ props.sessionTitle }}</span>
+								<span :class="$style.sessionTitleLabel">{{
+									props.sessionTitle ?? 'New session'
+								}}</span>
 								<N8nIcon icon="chevron-down" color="text-light" :size="12" />
 							</N8nButton>
 						</template>
 						<template #item-label="{ item }">
-							<N8nText bold :class="$style.sessionDropdownName">{{ item.label }}</N8nText>
+							<N8nText bold :class="$style.sessionDropdownName">{{
+								item.label ?? 'New session'
+							}}</N8nText>
 						</template>
 						<template #item-trailing="{ item }">
 							<N8nText v-if="item.data?.when" :class="$style.sessionDropdownDate">

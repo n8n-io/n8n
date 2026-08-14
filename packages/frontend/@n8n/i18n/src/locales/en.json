@@ -7425,6 +7425,7 @@
 	"agents.list.empty.heading": "Create your first agent",
 	"agents.list.empty.description": "Agents automate tasks and answer questions using your connected tools and data",
 	"agents.list.empty.button.disabled.tooltip": "Your current role in the project does not allow you to create agents",
+	"agents.list.actions.newChat": "New chat",
 	"agents.list.actions.publish": "Publish",
 	"agents.list.actions.unpublish": "Unpublish",
 	"agents.list.actions.enableMCPAccess": "Enable MCP access",

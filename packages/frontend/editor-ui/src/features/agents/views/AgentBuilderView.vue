@@ -71,6 +71,7 @@ import {
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	NEW_SESSION_PARAM,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
@@ -1460,7 +1461,11 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			}
 		})();
 
-		if (isPreviewActive.value) bindPreviewSession();
+		if (isStandalonePreview.value && route.query[NEW_SESSION_PARAM] === 'true') {
+			onNewChat();
+		} else if (isPreviewActive.value) {
+			bindPreviewSession();
+		}
 
 		if (!isArtifactMode.value && (route.query.prompt || route.query.expandBuildChat)) {
 			void router.replace({
