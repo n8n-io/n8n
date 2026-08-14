@@ -8,6 +8,15 @@ import { In } from '@n8n/typeorm';
 
 import { RoleService } from '@/services/role.service';
 
+const authorizedCredentialBrand = Symbol('authorizedCredential');
+
+export type AuthorizedCredential<S extends Scope> = {
+	credential: CredentialsEntity;
+	scope: S;
+	userId: string;
+	readonly [authorizedCredentialBrand]: true;
+};
+
 @Service()
 export class CredentialsFinderService {
 	constructor(
@@ -296,6 +305,26 @@ export class CredentialsFinderService {
 		}
 
 		return result;
+	}
+
+	async findAuthorizedCredentialsByIdsForUser<S extends Scope>(
+		credentialIds: string[],
+		user: User,
+		scope: S,
+	): Promise<Array<AuthorizedCredential<S>>> {
+		const accessibleIds = await this.findCredentialIdsWithScopeForUser(credentialIds, user, [
+			scope,
+		]);
+		const credentials = await this.credentialsRepository.getManyByIds([...accessibleIds], {
+			withSharings: true,
+		});
+
+		return credentials.map((credential) => ({
+			credential,
+			scope,
+			userId: user.id,
+			[authorizedCredentialBrand]: true,
+		}));
 	}
 
 	async getCredentialIdsByUserAndRole(

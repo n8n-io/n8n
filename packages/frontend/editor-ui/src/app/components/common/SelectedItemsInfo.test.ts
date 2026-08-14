@@ -58,4 +58,36 @@ describe('SelectedItemsInfo', () => {
 		expect(emitted().clearSelection).toBeTruthy();
 		expect(emitted().clearSelection).toHaveLength(1);
 	});
+
+	it('should render all actions inside a single "Bulk actions" dropdown', () => {
+		const { getByTestId, getByText, queryByTestId } = renderComponent({
+			props: {
+				selectedCount: 2,
+				actions: [
+					{ id: 'move', label: 'Move' },
+					{ id: 'archive', label: 'Archive' },
+					{ id: 'delete', label: 'Delete', destructive: true },
+				],
+			},
+		});
+
+		expect(getByTestId('selection-bulk-actions')).toBeInTheDocument();
+		expect(getByText('generic.list.bulkActions')).toBeInTheDocument();
+		// Actions API replaces the default delete button with the dropdown.
+		expect(queryByTestId('delete-selected-button')).not.toBeInTheDocument();
+		expect(getByTestId('clear-selection-button')).toBeInTheDocument();
+	});
+
+	it('should show the no-actions message when the actions list is empty', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				selectedCount: 2,
+				actions: [],
+				noActionsText: 'No actions available',
+			},
+		});
+
+		expect(getByTestId('selection-no-actions')).toBeInTheDocument();
+		expect(queryByTestId('selection-bulk-actions')).not.toBeInTheDocument();
+	});
 });

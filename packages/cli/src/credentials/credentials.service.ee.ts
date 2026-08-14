@@ -11,6 +11,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { assert } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
@@ -21,7 +22,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsFinderService } from './credentials-finder.service';
+import { type AuthorizedCredential, CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
 
@@ -200,17 +201,7 @@ export class EnterpriseCredentialsService {
 			`Could not find the credential with the id "${credentialId}". Make sure you have the permission to move it.`,
 		);
 
-		// 2. get owner-sharing
-		const ownerSharing = credential.shared.find((s) => s.role === 'credential:owner');
-		NotFoundError.isDefinedAndNotNull(
-			ownerSharing,
-			`Could not find owner for credential "${credential.id}"`,
-		);
-
-		// 3. get source project
-		const sourceProject = ownerSharing.project;
-
-		// 4. get destination project
+		// 2. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(
 			user,
 			destinationProjectId,
@@ -221,7 +212,41 @@ export class EnterpriseCredentialsService {
 			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create credentials in it.`,
 		);
 
-		// 5. checks
+		await this.validateTransfer(user, credential, destinationProject);
+		await this.performTransfer(credential, destinationProject);
+	}
+
+	async validateTransferAuthorized(
+		user: User,
+		authorized: AuthorizedCredential<'credential:move'>,
+		destinationProject: Project,
+	): Promise<void> {
+		this.assertAuthorizedCredential(user, authorized, 'credential:move');
+		await this.validateTransfer(user, authorized.credential, destinationProject);
+	}
+
+	async transferAuthorized(
+		user: User,
+		authorized: AuthorizedCredential<'credential:move'>,
+		destinationProject: Project,
+	): Promise<void> {
+		this.assertAuthorizedCredential(user, authorized, 'credential:move');
+		await this.validateTransfer(user, authorized.credential, destinationProject);
+		await this.performTransfer(authorized.credential, destinationProject);
+	}
+
+	private async validateTransfer(
+		user: User,
+		credential: CredentialsEntity,
+		destinationProject: Project,
+	): Promise<void> {
+		const ownerSharing = credential.shared.find((sharing) => sharing.role === 'credential:owner');
+		NotFoundError.isDefinedAndNotNull(
+			ownerSharing,
+			`Could not find owner for credential "${credential.id}"`,
+		);
+		const sourceProject = ownerSharing.project;
+
 		if (sourceProject.id === destinationProject.id) {
 			throw new TransferCredentialError(
 				"You can't transfer a credential into the project that's already owning it.",
@@ -247,8 +272,12 @@ export class EnterpriseCredentialsService {
 				'transfer',
 			);
 		}
+	}
 
-		// 7. projects losing access — the move drops all their sharings
+	private async performTransfer(
+		credential: CredentialsEntity,
+		destinationProject: Project,
+	): Promise<void> {
 		const affectedProjectIds = [...new Set(credential.shared.map((s) => s.projectId))];
 
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
@@ -272,5 +301,16 @@ export class EnterpriseCredentialsService {
 				trx,
 			);
 		});
+	}
+
+	private assertAuthorizedCredential<S extends 'credential:move'>(
+		user: User,
+		authorized: AuthorizedCredential<S>,
+		requiredScope: S,
+	): void {
+		assert(
+			authorized.userId === user.id && authorized.scope === requiredScope,
+			'Authorized credential does not match the requested actor and scope',
+		);
 	}
 }

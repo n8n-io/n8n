@@ -44,6 +44,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import SelectableCard from '@/app/components/common/SelectableCard.vue';
 import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
@@ -79,6 +80,10 @@ const props = withDefaults(
 		canManageInstanceMcp?: boolean;
 		isWorkflowCardMcpToggleEnabled?: boolean;
 		areFoldersEnabled?: boolean;
+		selectable?: boolean;
+		selected?: boolean;
+		selectionActive?: boolean;
+		selectionDisabled?: boolean;
 	}>(),
 	{
 		readOnly: false,
@@ -90,6 +95,10 @@ const props = withDefaults(
 		canManageInstanceMcp: false,
 		isWorkflowCardMcpToggleEnabled: false,
 		areFoldersEnabled: false,
+		selectable: false,
+		selected: false,
+		selectionActive: false,
+		selectionDisabled: false,
 	},
 );
 
@@ -110,6 +119,7 @@ const emit = defineEmits<{
 			homeProjectId?: string;
 		},
 	];
+	'update:selected': [value: boolean];
 }>();
 
 const toast = useToast();
@@ -597,151 +607,167 @@ const tags = computed(
 </script>
 
 <template>
-	<N8nCard
-		:class="{
-			[$style.cardLink]: true,
-			[$style.cardArchived]: data.isArchived,
-		}"
-		data-test-id="workflow-card"
-		@click="onClick"
+	<SelectableCard
+		:model-value="selected"
+		:selectable="selectable"
+		:selection-active="selectionActive"
+		:selection-disabled="selectionDisabled"
+		:checkbox-aria-label="
+			locale.baseText('workflows.bulkActions.selectRow', {
+				interpolate: { name: data.name },
+			})
+		"
+		checkbox-test-id="workflow-card-checkbox"
+		@update:model-value="emit('update:selected', $event)"
 	>
-		<template #header>
-			<N8nText
-				tag="h2"
-				bold
-				:class="{
-					[$style.cardHeading]: true,
-					[$style.cardHeadingArchived]: data.isArchived,
-				}"
-				data-test-id="workflow-card-name"
-			>
-				{{ data.name }}
-				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
-					{{ locale.baseText('workflows.item.readonly') }}
-				</N8nBadge>
-			</N8nText>
-		</template>
-		<div :class="$style.cardDescription">
-			<span v-show="data">
-				{{ locale.baseText('workflows.item.updated') }}
-				<TimeAgo :date="String(data.updatedAt)" />
-			</span>
-			<span v-show="data" :class="$style.divider">|</span>
-			<span v-show="data">
-				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-			</span>
-			<span v-if="showLegacyMcpIndicator" :class="$style.divider">|</span>
-			<span
-				v-show="showLegacyMcpIndicator"
-				:class="$style.legacyMcpIndicator"
-				data-test-id="workflow-card-mcp"
-			>
-				<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
-					<N8nIcon icon="mcp" size="medium" />
-				</N8nTooltip>
-			</span>
-			<span v-if="hasDynamicCredentials" :class="$style.divider">|</span>
-			<span
-				v-if="hasDynamicCredentials"
-				:class="$style.privateCredentialIndicator"
-				data-test-id="workflow-card-private-credential"
-			>
-				<PrivateCredentialIcon
-					:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
-					:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
-					size="small"
-				/>
-			</span>
-			<span
-				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
-				v-show="data"
-				:class="$style.cardTags"
-			>
-				<N8nTags
-					:tags="tags"
-					:truncate-at="3"
-					truncate
-					data-test-id="workflow-card-tags"
-					@click:tag="onClickTag"
-					@expand="onExpandTags"
-				/>
-			</span>
-		</div>
-		<template #append>
-			<div :class="$style.cardActions" @click.stop>
-				<DependencyPill
-					v-if="workflowHasDependencies"
-					resource-type="workflow"
-					:resource-id="data.id"
-					source="workflow_card"
-					data-test-id="workflow-card-dependencies"
-				/>
-				<ProjectCardBadge
-					v-if="showOwnershipBadge"
-					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
-					:resource="data"
-					:resource-type="ResourceType.Workflow"
-					:resource-type-label="resourceTypeLabel"
-					:personal-project="projectsStore.personalProject"
-					:show-badge-border="false"
-				>
-					<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
-						<N8nBreadcrumbs
-							:items="cardBreadcrumbs"
-							:hidden-items="
-								data.parentFolder?.parentFolderId !== null ? hiddenBreadcrumbsItemsAsync : undefined
-							"
-							:path-truncated="data.parentFolder?.parentFolderId !== null"
-							:highlight-last-item="false"
-							hidden-items-trigger="hover"
-							theme="small"
-							data-test-id="workflow-card-breadcrumbs"
-							@tooltip-opened="fetchHiddenBreadCrumbsItems"
-							@item-selected="onBreadcrumbItemClick"
-						>
-							<template #prepend></template>
-						</N8nBreadcrumbs>
-					</div>
-				</ProjectCardBadge>
+		<N8nCard
+			:class="{
+				[$style.cardLink]: true,
+				[$style.cardArchived]: data.isArchived,
+			}"
+			data-test-id="workflow-card"
+			@click="onClick"
+		>
+			<template #header>
 				<N8nText
-					v-if="data.isArchived"
-					color="text-light"
-					size="small"
+					tag="h2"
 					bold
-					class="ml-s mr-s"
-					data-test-id="workflow-card-archived"
+					:class="{
+						[$style.cardHeading]: true,
+						[$style.cardHeadingArchived]: data.isArchived,
+					}"
+					data-test-id="workflow-card-name"
 				>
-					{{ locale.baseText('workflows.item.archived') }}
+					{{ data.name }}
+					<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+						{{ locale.baseText('workflows.item.readonly') }}
+					</N8nBadge>
 				</N8nText>
-				<div
-					v-else-if="isWorkflowPublished"
-					:class="$style.publishIndicator"
-					data-test-id="workflow-card-publish-indicator"
+			</template>
+			<div :class="$style.cardDescription">
+				<span v-show="data">
+					{{ locale.baseText('workflows.item.updated') }}
+					<TimeAgo :date="String(data.updatedAt)" />
+				</span>
+				<span v-show="data" :class="$style.divider">|</span>
+				<span v-show="data">
+					{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
+				</span>
+				<span v-if="showLegacyMcpIndicator" :class="$style.divider">|</span>
+				<span
+					v-show="showLegacyMcpIndicator"
+					:class="$style.legacyMcpIndicator"
+					data-test-id="workflow-card-mcp"
 				>
-					<span :class="$style.publishIndicatorDot" />
-					<N8nText size="small" color="text-base">{{
-						locale.baseText('workflows.published')
-					}}</N8nText>
-				</div>
-				<WorkflowCardMcpToggle
-					v-if="props.isWorkflowCardMcpToggleEnabled"
-					:workflow-id="data.id"
-					:available-in-mcp="data.settings?.availableInMCP ?? false"
-					:can-edit="canEditMcp"
-					:is-mcp-enabled="props.isMcpEnabled"
-					:is-mcp-module-active="props.isMcpModuleActive"
-					:can-manage-instance-mcp="props.canManageInstanceMcp"
-				/>
-				<N8nActionToggle
-					:actions="actions"
-					placement="bottom-end"
-					theme="dark"
-					data-test-id="workflow-card-actions"
-					@action="onAction"
-				/>
+					<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
+						<N8nIcon icon="mcp" size="medium" />
+					</N8nTooltip>
+				</span>
+				<span v-if="hasDynamicCredentials" :class="$style.divider">|</span>
+				<span
+					v-if="hasDynamicCredentials"
+					:class="$style.privateCredentialIndicator"
+					data-test-id="workflow-card-private-credential"
+				>
+					<PrivateCredentialIcon
+						:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
+						:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
+						size="small"
+					/>
+				</span>
+				<span
+					v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
+					v-show="data"
+					:class="$style.cardTags"
+				>
+					<N8nTags
+						:tags="tags"
+						:truncate-at="3"
+						truncate
+						data-test-id="workflow-card-tags"
+						@click:tag="onClickTag"
+						@expand="onExpandTags"
+					/>
+				</span>
 			</div>
-		</template>
-	</N8nCard>
+			<template #append>
+				<div :class="$style.cardActions" @click.stop>
+					<DependencyPill
+						v-if="workflowHasDependencies"
+						resource-type="workflow"
+						:resource-id="data.id"
+						source="workflow_card"
+						data-test-id="workflow-card-dependencies"
+					/>
+					<ProjectCardBadge
+						v-if="showOwnershipBadge"
+						:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
+						:resource="data"
+						:resource-type="ResourceType.Workflow"
+						:resource-type-label="resourceTypeLabel"
+						:personal-project="projectsStore.personalProject"
+						:show-badge-border="false"
+					>
+						<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
+							<N8nBreadcrumbs
+								:items="cardBreadcrumbs"
+								:hidden-items="
+									data.parentFolder?.parentFolderId !== null
+										? hiddenBreadcrumbsItemsAsync
+										: undefined
+								"
+								:path-truncated="data.parentFolder?.parentFolderId !== null"
+								:highlight-last-item="false"
+								hidden-items-trigger="hover"
+								theme="small"
+								data-test-id="workflow-card-breadcrumbs"
+								@tooltip-opened="fetchHiddenBreadCrumbsItems"
+								@item-selected="onBreadcrumbItemClick"
+							>
+								<template #prepend></template>
+							</N8nBreadcrumbs>
+						</div>
+					</ProjectCardBadge>
+					<N8nText
+						v-if="data.isArchived"
+						color="text-light"
+						size="small"
+						bold
+						class="ml-s mr-s"
+						data-test-id="workflow-card-archived"
+					>
+						{{ locale.baseText('workflows.item.archived') }}
+					</N8nText>
+					<div
+						v-else-if="isWorkflowPublished"
+						:class="$style.publishIndicator"
+						data-test-id="workflow-card-publish-indicator"
+					>
+						<span :class="$style.publishIndicatorDot" />
+						<N8nText size="small" color="text-base">{{
+							locale.baseText('workflows.published')
+						}}</N8nText>
+					</div>
+					<WorkflowCardMcpToggle
+						v-if="props.isWorkflowCardMcpToggleEnabled"
+						:workflow-id="data.id"
+						:available-in-mcp="data.settings?.availableInMCP ?? false"
+						:can-edit="canEditMcp"
+						:is-mcp-enabled="props.isMcpEnabled"
+						:is-mcp-module-active="props.isMcpModuleActive"
+						:can-manage-instance-mcp="props.canManageInstanceMcp"
+					/>
+					<N8nActionToggle
+						:actions="actions"
+						placement="bottom-end"
+						theme="dark"
+						data-test-id="workflow-card-actions"
+						@action="onAction"
+					/>
+				</div>
+			</template>
+		</N8nCard>
+	</SelectableCard>
 </template>
 
 <style lang="scss" module>

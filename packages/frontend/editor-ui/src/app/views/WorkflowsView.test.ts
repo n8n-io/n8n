@@ -539,6 +539,135 @@ describe('Folders', () => {
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
 	});
 
+	it('should keep all card checkboxes visible after selecting a card', async () => {
+		const secondWorkflow = {
+			...TEST_WORKFLOW_RESOURCE,
+			id: '3',
+			name: 'Workflow 3',
+		} satisfies WorkflowListResource;
+		foldersStore.totalWorkflowCount = 2;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			TEST_WORKFLOW_RESOURCE,
+			secondWorkflow,
+		]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getAllByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		const selectionControls = getAllByTestId('card-selection-checkbox');
+		expect(selectionControls).toHaveLength(2);
+		expect(
+			selectionControls.every(
+				(control) => control.getAttribute('data-selection-visible') === 'false',
+			),
+		).toBe(true);
+
+		await userEvent.click(getAllByTestId('workflow-card-checkbox')[0]);
+
+		await waitFor(() => {
+			expect(
+				selectionControls.every(
+					(control) => control.getAttribute('data-selection-visible') === 'true',
+				),
+			).toBe(true);
+		});
+	});
+
+	it('should not select folders when selecting all', async () => {
+		foldersStore.totalWorkflowCount = 2;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			TEST_WORKFLOW_RESOURCE,
+			TEST_FOLDER_RESOURCE,
+		]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(queryByTestId('folder-card-checkbox')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('select-all-checkbox'));
+
+		expect(getByTestId('selected-items-info')).toHaveTextContent('1');
+		expect(getByTestId('workflow-card-checkbox')).toBeChecked();
+	});
+
+	it('should preserve selected cards across pages', async () => {
+		const secondWorkflow = {
+			...TEST_WORKFLOW_RESOURCE,
+			id: '3',
+			name: 'Workflow 3',
+		} satisfies WorkflowListResource;
+		foldersStore.totalWorkflowCount = 100;
+		workflowsListStore.totalWorkflowCount = 100;
+		workflowsListStore.fetchWorkflowsPage.mockImplementation(async (_projectId, page) =>
+			page === 1 ? [TEST_WORKFLOW_RESOURCE] : [secondWorkflow],
+		);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('workflow-card-checkbox'));
+		await userEvent.click(
+			within(getByTestId('resources-list-pagination')).getByLabelText('page 2'),
+		);
+
+		await waitFor(() => {
+			expect(getByTestId('workflow-card-name')).toHaveTextContent(secondWorkflow.name);
+		});
+		expect(getByTestId('card-selection-checkbox')).toHaveAttribute(
+			'data-selection-visible',
+			'true',
+		);
+
+		await userEvent.click(getByTestId('workflow-card-checkbox'));
+
+		expect(getByTestId('selected-items-info')).toHaveTextContent('2');
+	});
+
+	it('should offer unpublish when at least one selected workflow is published', async () => {
+		const unpublishedWorkflow = {
+			...TEST_WORKFLOW_RESOURCE,
+			id: '3',
+			name: 'Workflow 3',
+			activeVersionId: null,
+		} satisfies WorkflowListResource;
+		foldersStore.totalWorkflowCount = 2;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			TEST_WORKFLOW_RESOURCE,
+			unpublishedWorkflow,
+		]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getAllByText, getByTestId, getByText } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('select-all-checkbox'));
+		await userEvent.click(within(getByTestId('selection-bulk-actions')).getByRole('button'));
+		await userEvent.click(getByText('Unpublish'));
+
+		expect(getByText('2 items selected. 1 will change')).toBeInTheDocument();
+		const workflowsTrigger = getAllByText('Workflows')
+			.map((element) => element.closest('button'))
+			.find((element) => element !== null);
+		expect(workflowsTrigger).toBeInTheDocument();
+		expect(workflowsTrigger?.querySelector('svg')).toBeInTheDocument();
+	});
+
+	it('should not offer unpublish when no selected workflow is published', async () => {
+		const unpublishedWorkflow = {
+			...TEST_WORKFLOW_RESOURCE,
+			activeVersionId: null,
+		} satisfies WorkflowListResource;
+		foldersStore.totalWorkflowCount = 1;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([unpublishedWorkflow]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getByTestId, queryByText } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('workflow-card-checkbox'));
+		await userEvent.click(within(getByTestId('selection-bulk-actions')).getByRole('button'));
+
+		expect(queryByText('Unpublish')).not.toBeInTheDocument();
+	});
+
 	it('should show folder actions menu when not in the overview or sharing pages', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);

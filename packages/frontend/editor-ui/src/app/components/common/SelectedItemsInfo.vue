@@ -1,37 +1,79 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
+
+export type SelectionBarAction = {
+	id: string;
+	label: string;
+	destructive?: boolean;
+};
+
 interface Props {
 	selectedCount: number;
+	/**
+	 * When provided, the component renders a single "Bulk actions" dropdown
+	 * listing all actions and emits `action` with the chosen id. When omitted,
+	 * the legacy `actions` slot / default Delete button is used instead.
+	 */
+	actions?: SelectionBarAction[];
+	selectedText?: string;
+	noActionsText?: string;
+	noActionsTooltip?: string;
 }
 
-const props = withDefaults(defineProps<Props>(), {});
+const props = withDefaults(defineProps<Props>(), {
+	actions: undefined,
+	selectedText: undefined,
+	noActionsText: undefined,
+	noActionsTooltip: undefined,
+});
 
 const emit = defineEmits<{
 	deleteSelected: [];
 	clearSelection: [];
+	action: [id: string];
 }>();
 
 const i18n = useI18n();
 
-const getSelectedText = () => {
-	return i18n.baseText('generic.list.selected', {
-		adjustToNumber: props.selectedCount,
-		interpolate: { count: `${props.selectedCount}` },
-	});
-};
+const usesActionsApi = computed(() => props.actions !== undefined);
 
-const getClearSelectionText = () => {
-	return i18n.baseText('generic.list.clearSelection');
-};
+const selectedText = computed(
+	() =>
+		props.selectedText ??
+		i18n.baseText('generic.list.selected', {
+			adjustToNumber: props.selectedCount,
+			interpolate: { count: `${props.selectedCount}` },
+		}),
+);
 
-const handleDeleteSelected = () => {
-	emit('deleteSelected');
-};
+const clearSelectionText = computed(() => i18n.baseText('generic.list.clearSelection'));
 
-const handleClearSelection = () => {
-	emit('clearSelection');
-};
+const bulkActionsText = computed(() => i18n.baseText('generic.list.bulkActions'));
+
+const hasNoActions = computed(() => usesActionsApi.value && (props.actions ?? []).length === 0);
+
+// Every action lives in the "Bulk actions" dropdown: non-destructive first,
+// then a divider before the danger group.
+const actionItems = computed<Array<ActionDropdownItem<string>>>(() => {
+	const nonDestructive = (props.actions ?? []).filter((a) => !a.destructive);
+	const destructive = (props.actions ?? []).filter((a) => a.destructive);
+	return [
+		...nonDestructive.map((a) => ({ id: a.id, label: a.label })),
+		...destructive.map((a, index) => ({
+			id: a.id,
+			label: a.label,
+			variant: 'destructive' as const,
+			divided: index === 0 && nonDestructive.length > 0,
+		})),
+	];
+});
+
+const handleDeleteSelected = () => emit('deleteSelected');
+const handleClearSelection = () => emit('clearSelection');
+const handleAction = (id: string) => emit('action', id);
 </script>
 
 <template>
@@ -40,11 +82,34 @@ const handleClearSelection = () => {
 		:class="$style.selectionOptions"
 		:data-test-id="`selected-items-info`"
 	>
-		<span>
-			{{ getSelectedText() }}
-		</span>
-		<!-- Custom bulk actions; defaults to the delete button for existing consumers -->
-		<slot name="actions">
+		<span>{{ selectedText }}</span>
+
+		<!-- Actions API: buttons + overflow -->
+		<template v-if="usesActionsApi">
+			<N8nTooltip v-if="hasNoActions" :disabled="!noActionsTooltip" placement="top">
+				<template #content>{{ noActionsTooltip }}</template>
+				<N8nText size="small" color="text-light" data-test-id="selection-no-actions">
+					{{ noActionsText }}
+				</N8nText>
+			</N8nTooltip>
+			<N8nActionDropdown
+				v-else
+				:items="actionItems"
+				placement="top-start"
+				data-test-id="selection-bulk-actions"
+				@select="handleAction"
+			>
+				<template #activator>
+					<N8nButton variant="subtle" :class="$style.button">
+						{{ bulkActionsText }}
+						<N8nIcon icon="chevron-down" :class="$style.caret" />
+					</N8nButton>
+				</template>
+			</N8nActionDropdown>
+		</template>
+
+		<!-- Legacy: custom slot, defaults to Delete button -->
+		<slot v-else name="actions">
 			<N8nButton
 				variant="subtle"
 				data-test-id="delete-selected-button"
@@ -53,10 +118,11 @@ const handleClearSelection = () => {
 				@click="handleDeleteSelected"
 			/>
 		</slot>
+
 		<N8nButton
 			variant="subtle"
 			data-test-id="clear-selection-button"
-			:label="getClearSelectionText()"
+			:label="clearSelectionText"
 			:class="$style.button"
 			@click="handleClearSelection"
 		/>
@@ -83,5 +149,9 @@ const handleClearSelection = () => {
 .button {
 	display: flex;
 	align-items: center;
+}
+
+.caret {
+	margin-left: var(--spacing--4xs);
 }
 </style>

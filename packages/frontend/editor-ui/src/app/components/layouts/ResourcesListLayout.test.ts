@@ -144,6 +144,20 @@ describe('ResourcesListLayout', () => {
 		expect(getByTestId('resources-list')).toBeTruthy();
 	});
 
+	it('should pass the filtered resource projection to the preamble slot', () => {
+		const preamble = vi.fn((_props: { resources: Resource[] }) => '<div />');
+		renderComponent({
+			props: {
+				resources: TEST_WORKFLOWS,
+				filters: { search: 'Workflow 2', homeProject: '' },
+			},
+			slots: { preamble },
+		});
+
+		expect(preamble).toHaveBeenCalled();
+		expect(preamble.mock.calls.at(-1)?.[0].resources).toEqual([TEST_WORKFLOWS[1]]);
+	});
+
 	it('should render paginated list based on `type` prop', () => {
 		const { getByTestId } = renderComponent({
 			props: {

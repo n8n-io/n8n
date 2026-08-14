@@ -1354,6 +1354,39 @@ describe('PUT /credentials/:id/share - split share/unshare scopes', () => {
 	});
 });
 
+describe('POST /credentials/bulk/transfer', () => {
+	test('transfers credentials from different projects to one destination', async () => {
+		const destination = await createTeamProject('Bulk destination', owner);
+		const credentials = await Promise.all([
+			saveCredential(randomCredentialPayload(), {
+				user: owner,
+			}),
+			saveCredential(randomCredentialPayload(), {
+				user: member,
+			}),
+		]);
+
+		const response = await authOwnerAgent
+			.post('/credentials/bulk/transfer')
+			.send({
+				credentialIds: credentials.map(({ id }) => id),
+				destinationProjectId: destination.id,
+			})
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			status: 'completed',
+			results: credentials.map(({ id }) => ({ credentialId: id, status: 'completed' })),
+		});
+		const ownerSharings = await Container.get(SharedCredentialsRepository).findByCredentialIds(
+			credentials.map(({ id }) => id),
+			'credential:owner',
+		);
+		expect(ownerSharings).toHaveLength(2);
+		expect(ownerSharings.every(({ projectId }) => projectId === destination.id)).toBe(true);
+	});
+});
+
 describe('PUT /:credentialId/transfer', () => {
 	test('cannot transfer into the same project', async () => {
 		const destinationProject = await createTeamProject('Destination Project', member);

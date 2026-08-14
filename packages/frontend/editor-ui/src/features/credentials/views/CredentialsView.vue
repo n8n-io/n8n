@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import CredentialCard from '../components/CredentialCard.vue';
+import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
+import type { SelectionBarAction } from '@/app/components/common/SelectedItemsInfo.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
-import type { BaseFilters, Resource } from '@/Interface';
+import type { BaseFilters, CredentialsResource, Resource } from '@/Interface';
 import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
@@ -32,6 +35,14 @@ import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
+import { useResourcesListSelection } from '@/app/composables/useResourcesListSelection';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import BulkCredentialActionReviewDialog from '../bulkActions/BulkCredentialActionReviewDialog.vue';
+import {
+	formatBulkCredentialActionError,
+	useBulkCredentialActions,
+} from '../bulkActions/useBulkCredentialActions';
+import type { BulkCredentialActionConfig } from '../bulkActions/bulkCredentialActions.types';
 
 import { N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -55,8 +66,12 @@ const documentTitle = useDocumentTitle();
 const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
+const toast = useToast();
 const i18n = useI18n();
 const overview = useProjectPages();
+const projectSearchFn = useAvailableProjectSearch();
+
+const MAX_SELECTED_CREDENTIALS = 100;
 
 type Filters = BaseFilters & {
 	type?: string[];
@@ -64,6 +79,7 @@ type Filters = BaseFilters & {
 	externalSecretsStore?: string;
 };
 const updateFilter = (state: Filters) => {
+	selection.clear();
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
 
@@ -93,7 +109,7 @@ const needsSetup = (credential: ICredentialsResponse): boolean => {
 	return Object.values(dataObject).every((value) => !value || value === CREDENTIAL_EMPTY_VALUE);
 };
 
-const allCredentials = computed<Resource[]>(() =>
+const allCredentials = computed<CredentialsResource[]>(() =>
 	credentialsStore.allCredentials.map((credential) => ({
 		resourceType: 'credential',
 		id: credential.id,
@@ -112,6 +128,30 @@ const allCredentials = computed<Resource[]>(() =>
 		type: credential.type,
 	})),
 );
+
+const selection = useResourcesListSelection<CredentialsResource>({
+	maxSelected: MAX_SELECTED_CREDENTIALS,
+});
+const selectedCredentials = selection.selectedItems;
+const selectedCount = selection.selectedCount;
+const selectionLimitReached = selection.isLimitReached;
+
+const bulkActions = useBulkCredentialActions({
+	selectedItems: selectedCredentials,
+	teamProjectsEnabled: computed(() => projectsStore.isTeamProjectFeatureEnabled),
+});
+const selectionBarActions = computed<SelectionBarAction[]>(() =>
+	bulkActions.availableActions.value.map((action) => ({
+		id: action.id,
+		label: action.label,
+		destructive: action.destructive,
+	})),
+);
+const activeBulkAction = bulkActions.activeAction;
+const isBulkDialogOpen = computed(() => activeBulkAction.value !== null);
+const isBulkSubmitting = ref(false);
+const bulkDialogError = ref<string | null>(null);
+const bulkDialogErrorDetails = ref<string[]>([]);
 
 const allCredentialTypes = computed<ICredentialType[]>(() => credentialsStore.allCredentialTypes);
 
@@ -141,12 +181,79 @@ const setRouteCredentialId = (credentialId?: string) => {
 	void router.replace({ params: { credentialId }, query: route.query });
 };
 
-const refreshCredentials = () => {
-	void credentialsStore.fetchAllCredentials({
+const refreshCredentials = async () => {
+	selection.clear();
+	await credentialsStore.fetchAllCredentials({
 		projectId: route?.params?.projectId as string | undefined,
 		includeScopes: true,
 		externalSecretsStore: filters.value.externalSecretsStore,
 	});
+};
+
+const onBulkActionSelected = (id: string) => {
+	const action = bulkActions.availableActions.value.find((candidate) => candidate.id === id);
+	if (!action) return;
+	bulkDialogError.value = null;
+	bulkDialogErrorDetails.value = [];
+	bulkActions.openAction(action.id);
+};
+
+const onBulkDialogOpenChange = (open: boolean) => {
+	if (open) return;
+	bulkActions.closeDialog();
+	bulkDialogError.value = null;
+	bulkDialogErrorDetails.value = [];
+};
+
+const onBulkConfirm = async (config: BulkCredentialActionConfig) => {
+	const actionId = activeBulkAction.value?.id;
+	if (!actionId) return;
+
+	isBulkSubmitting.value = true;
+	bulkDialogError.value = null;
+	bulkDialogErrorDetails.value = [];
+	try {
+		const result = await bulkActions.execute(config);
+		const completed = result.items.filter((item) => item.status === 'completed').length;
+		const failed = result.items.filter((item) => item.status === 'failed').length;
+		const notAttempted = result.items.filter((item) => item.status === 'notAttempted').length;
+
+		bulkActions.closeDialog();
+		selection.clear();
+		await refreshCredentials();
+
+		if (result.status === 'completed') {
+			toast.showMessage({
+				title: i18n.baseText(`credentials.bulkActions.toast.success.${actionId}`, {
+					adjustToNumber: completed,
+					interpolate: { count: String(completed) },
+				}),
+				type: 'success',
+			});
+		} else {
+			toast.showMessage({
+				title: i18n.baseText(`credentials.bulkActions.toast.partial.title.${actionId}`),
+				message: i18n.baseText(`credentials.bulkActions.toast.partial.message.${actionId}`, {
+					interpolate: {
+						completed: String(completed),
+						failed: String(failed),
+						notAttempted: String(notAttempted),
+					},
+				}),
+				type: 'warning',
+			});
+		}
+	} catch (error) {
+		const formatted = formatBulkCredentialActionError(
+			error,
+			selectedCredentials.value,
+			i18n.baseText(`credentials.bulkActions.error.${actionId}`),
+		);
+		bulkDialogError.value = formatted.message;
+		bulkDialogErrorDetails.value = formatted.details;
+	} finally {
+		isBulkSubmitting.value = false;
+	}
 };
 
 const addCredential = () => {
@@ -164,7 +271,7 @@ listenForModalChanges({
 		}
 		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && credentialsStore.pendingOAuthRefresh) {
 			credentialsStore.pendingOAuthRefresh = false;
-			refreshCredentials();
+			void refreshCredentials();
 		}
 	},
 });
@@ -229,6 +336,7 @@ const maybeEditCredential = async () => {
 };
 
 const initialize = async () => {
+	selection.clear();
 	loading.value = true;
 	const isVarsEnabled =
 		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
@@ -262,9 +370,10 @@ const initialize = async () => {
 };
 
 credentialsStore.$onAction(({ name, after }) => {
+	if (name === 'fetchAllCredentials') selection.clear();
 	if (name === 'createNewCredential' || name === 'updateCredential') {
 		after(() => {
-			refreshCredentials();
+			void refreshCredentials();
 		});
 	}
 });
@@ -316,6 +425,7 @@ onMounted(() => {
 		:disabled="readOnlyEnv || !projectPermissions.credential.create"
 		@update:filters="updateFilter"
 		@update:search="onSearchUpdated"
+		@update:pagination-and-sort="selection.clear"
 	>
 		<template #header>
 			<ProjectHeader main-button="credential">
@@ -327,6 +437,17 @@ onMounted(() => {
 				/>
 			</ProjectHeader>
 		</template>
+		<template #list-controls="{ resources }">
+			<N8nCheckbox
+				v-if="resources.length"
+				:model-value="selection.isPageChecked(resources)"
+				:indeterminate="selection.isPageIndeterminate(resources)"
+				:label="i18n.baseText('credentials.bulkActions.selectAll')"
+				:class="$style.selectAllCheckbox"
+				data-test-id="select-all-credentials-checkbox"
+				@update:model-value="selection.togglePage(resources, $event)"
+			/>
+		</template>
 		<template #default="{ data }">
 			<CredentialCard
 				data-test-id="resources-list-item"
@@ -334,8 +455,13 @@ onMounted(() => {
 				:data="data"
 				:read-only="data.readOnly"
 				:needs-setup="data.needsSetup"
+				:selectable="true"
+				:selected="selection.isSelected(data)"
+				:selection-active="selectedCount > 0"
+				:selection-disabled="!selection.canSelect(data)"
 				@click="setRouteCredentialId"
 				@connected="refreshCredentials"
+				@update:selected="selection.toggleItem(data, $event)"
 			/>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -419,12 +545,51 @@ onMounted(() => {
 				@click:button="addCredential"
 			/>
 		</template>
+		<template #postamble>
+			<SelectedItemsInfo
+				:selected-count="selectedCount"
+				:actions="selectionBarActions"
+				:selected-text="
+					i18n.baseText(
+						selectionLimitReached
+							? 'credentials.bulkActions.selectedCountMaximum'
+							: 'credentials.bulkActions.selectedCount',
+						{
+							adjustToNumber: selectedCount,
+							interpolate: { count: String(selectedCount) },
+						},
+					)
+				"
+				:no-actions-text="i18n.baseText('credentials.bulkActions.noActions')"
+				:no-actions-tooltip="i18n.baseText('credentials.bulkActions.noActions.tooltip')"
+				@action="onBulkActionSelected"
+				@clear-selection="selection.clear"
+			/>
+
+			<BulkCredentialActionReviewDialog
+				:open="isBulkDialogOpen"
+				:action="activeBulkAction"
+				:submitting="isBulkSubmitting"
+				:error-message="bulkDialogError"
+				:error-details="bulkDialogErrorDetails"
+				:project-search-fn="projectSearchFn"
+				@update:open="onBulkDialogOpenChange"
+				@confirm="onBulkConfirm"
+			/>
+		</template>
 	</ResourcesListLayout>
 </template>
 
 <style lang="scss" module>
 .type-input {
 	--select--dropdown--max-width: 265px;
+}
+
+.selectAllCheckbox {
+	margin: 0;
+	// Align the checkbox square with the per-card selection checkboxes, which are
+	// centered in a --spacing--xl (32px) gutter: (32px - 16px square) / 2 = 8px.
+	padding-left: var(--spacing--2xs);
 }
 
 .sidebarContainer ul {

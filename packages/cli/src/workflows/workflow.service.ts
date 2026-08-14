@@ -31,7 +31,7 @@ import { v4 as uuid } from 'uuid';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
-import { WorkflowFinderService } from './workflow-finder.service';
+import { type AuthorizedWorkflow, WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.service';
@@ -997,8 +997,6 @@ export class WorkflowService {
 			source?: WorkflowActionSource;
 		},
 	): Promise<WorkflowEntity> {
-		const source = options?.source ?? 'ui';
-		const publicApi = source === 'api';
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -1016,6 +1014,32 @@ export class WorkflowService {
 			);
 		}
 
+		return await this.deactivateWorkflowEntity(user, workflow, options);
+	}
+
+	async deactivateAuthorized(
+		user: User,
+		authorized: AuthorizedWorkflow<'workflow:unpublish'>,
+		options?: {
+			expectedChecksum?: string;
+			source?: WorkflowActionSource;
+		},
+	): Promise<WorkflowEntity> {
+		this.assertAuthorizedWorkflow(user, authorized, 'workflow:unpublish');
+		return await this.deactivateWorkflowEntity(user, authorized.workflow, options);
+	}
+
+	private async deactivateWorkflowEntity(
+		user: User,
+		workflow: WorkflowEntity,
+		options?: {
+			expectedChecksum?: string;
+			source?: WorkflowActionSource;
+		},
+	): Promise<WorkflowEntity> {
+		const source = options?.source ?? 'ui';
+		const publicApi = source === 'api';
+		const workflowId = workflow.id;
 		const deactivatedVersionId = workflow.activeVersionId;
 		if (deactivatedVersionId === null) {
 			return workflow;
@@ -1159,6 +1183,28 @@ export class WorkflowService {
 			return;
 		}
 
+		return await this.deleteWorkflowEntity(user, workflow, force);
+	}
+
+	async deleteAuthorized(
+		user: User,
+		authorized: AuthorizedWorkflow<'workflow:delete'>,
+		force = false,
+	): Promise<WorkflowEntity> {
+		this.assertAuthorizedWorkflow(user, authorized, 'workflow:delete');
+		await this.externalHooks.run('workflow.delete', [
+			authorized.workflow.id,
+			toWorkflowLifecycleHookActor(user),
+		]);
+		return await this.deleteWorkflowEntity(user, authorized.workflow, force);
+	}
+
+	private async deleteWorkflowEntity(
+		user: User,
+		workflow: WorkflowEntity,
+		force: boolean,
+	): Promise<WorkflowEntity> {
+		const workflowId = workflow.id;
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			if (workflow.activeVersionId !== null) {
 				throw new ConflictError(
@@ -1227,6 +1273,24 @@ export class WorkflowService {
 			return;
 		}
 
+		return await this.archiveWorkflowEntity(user, workflow, options);
+	}
+
+	async archiveAuthorized(
+		user: User,
+		authorized: AuthorizedWorkflow<'workflow:delete'>,
+		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: boolean },
+	): Promise<WorkflowEntity> {
+		this.assertAuthorizedWorkflow(user, authorized, 'workflow:delete');
+		return await this.archiveWorkflowEntity(user, authorized.workflow, options);
+	}
+
+	private async archiveWorkflowEntity(
+		user: User,
+		workflow: WorkflowEntity,
+		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: boolean },
+	): Promise<WorkflowEntity> {
+		const workflowId = workflow.id;
 		if (workflow.isArchived) {
 			if (options?.skipArchived) {
 				return workflow;
@@ -1665,6 +1729,17 @@ export class WorkflowService {
 		// Wake the leader now that the record is committed, so it drains without
 		// waiting for the next poll cycle.
 		this.workflowPublicationNotifier.requestDrain();
+	}
+
+	private assertAuthorizedWorkflow<S extends Scope>(
+		user: User,
+		authorized: AuthorizedWorkflow<S>,
+		requiredScope: S,
+	): void {
+		assert(
+			authorized.userId === user.id && authorized.scope === requiredScope,
+			'Authorized workflow does not match the requested actor and scope',
+		);
 	}
 
 	/**

@@ -20,6 +20,7 @@ import type { CredentialsResource } from '@/Interface';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
+import SelectableCard from '@/app/components/common/SelectableCard.vue';
 
 import {
 	N8nActionToggle,
@@ -39,6 +40,7 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 const emit = defineEmits<{
 	click: [credentialId: string];
 	connected: [credentialId: string];
+	'update:selected': [value: boolean];
 }>();
 
 const props = withDefaults(
@@ -46,10 +48,18 @@ const props = withDefaults(
 		data: CredentialsResource;
 		readOnly?: boolean;
 		needsSetup?: boolean;
+		selectable?: boolean;
+		selected?: boolean;
+		selectionActive?: boolean;
+		selectionDisabled?: boolean;
 	}>(),
 	{
 		readOnly: false,
 		needsSetup: false,
+		selectable: false,
+		selected: false,
+		selectionActive: false,
+		selectionDisabled: false,
 	},
 );
 
@@ -230,83 +240,97 @@ function moveResource() {
 </script>
 
 <template>
-	<N8nCard :class="$style.cardLink" @click.stop="onClick">
-		<template #prepend>
-			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
-		</template>
-		<template #header>
-			<N8nText tag="h2" bold :class="$style.cardHeading">
-				{{ data.name }}
-				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
-					{{ locale.baseText('credentials.item.readonly') }}
-				</N8nBadge>
-				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
-					{{ locale.baseText('credentials.item.needsSetup') }}
-				</N8nBadge>
-			</N8nText>
-		</template>
-		<div :class="$style.cardDescription">
-			<N8nText color="text-light" size="small">
-				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
-				<span v-show="data"
-					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+	<SelectableCard
+		:model-value="selected"
+		:selectable="selectable"
+		:selection-active="selectionActive"
+		:selection-disabled="selectionDisabled"
+		:checkbox-aria-label="
+			locale.baseText('credentials.bulkActions.selectRow', {
+				interpolate: { name: data.name },
+			})
+		"
+		checkbox-test-id="credential-card-checkbox"
+		@update:model-value="emit('update:selected', $event)"
+	>
+		<N8nCard :class="$style.cardLink" @click.stop="onClick">
+			<template #prepend>
+				<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
+			</template>
+			<template #header>
+				<N8nText tag="h2" bold :class="$style.cardHeading">
+					{{ data.name }}
+					<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+						{{ locale.baseText('credentials.item.readonly') }}
+					</N8nBadge>
+					<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
+						{{ locale.baseText('credentials.item.needsSetup') }}
+					</N8nBadge>
+				</N8nText>
+			</template>
+			<div :class="$style.cardDescription">
+				<N8nText color="text-light" size="small">
+					<span v-if="credentialType">{{ credentialType.displayName }} | </span>
+					<span v-show="data"
+						>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+					</span>
+					<span v-show="data"
+						>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+					</span>
+				</N8nText>
+				<span
+					v-if="isPrivateCredentialsEnabled && data.isResolvable"
+					:class="$style.privateCredentialIndicator"
+					data-test-id="credential-card-dynamic"
+				>
+					<PrivateCredentialIcon
+						:tooltip-title="locale.baseText('credentials.private.tooltipTitle')"
+						:tooltip-text="locale.baseText('credentials.private.tooltip')"
+						size="small"
+					/>
 				</span>
-				<span v-show="data"
-					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
-				</span>
-			</N8nText>
-			<span
-				v-if="isPrivateCredentialsEnabled && data.isResolvable"
-				:class="$style.privateCredentialIndicator"
-				data-test-id="credential-card-dynamic"
-			>
-				<PrivateCredentialIcon
-					:tooltip-title="locale.baseText('credentials.private.tooltipTitle')"
-					:tooltip-text="locale.baseText('credentials.private.tooltip')"
-					size="small"
-				/>
-			</span>
-		</div>
-		<template #append>
-			<div :class="$style.cardActions" @click.stop>
-				<DependencyPill
-					v-if="credentialHasDependents"
-					resource-type="credential"
-					:resource-id="data.id"
-					source="credential_card"
-					data-test-id="credential-card-dependents"
-				/>
-				<ProjectCardBadge
-					:class="$style.cardBadge"
-					:resource="data"
-					:resource-type="ResourceType.Credential"
-					:resource-type-label="resourceTypeLabel"
-					:personal-project="projectsStore.personalProject"
-					:show-badge-border="false"
-					:global="data.isGlobal"
-				/>
-				<N8nTooltip v-if="isPrivateUnconnected" placement="top">
-					<template #content>
-						{{ locale.baseText('credentials.item.connect.tooltip') }}
-					</template>
-					<N8nButton
-						size="mini"
-						:loading="isConnecting"
-						data-test-id="credential-card-connect"
-						@click="onConnect"
-					>
-						{{ locale.baseText('credentials.item.connect') }}
-					</N8nButton>
-				</N8nTooltip>
-				<N8nActionToggle
-					data-test-id="credential-card-actions"
-					:actions="actions"
-					theme="dark"
-					@action="onAction"
-				/>
 			</div>
-		</template>
-	</N8nCard>
+			<template #append>
+				<div :class="$style.cardActions" @click.stop>
+					<DependencyPill
+						v-if="credentialHasDependents"
+						resource-type="credential"
+						:resource-id="data.id"
+						source="credential_card"
+						data-test-id="credential-card-dependents"
+					/>
+					<ProjectCardBadge
+						:class="$style.cardBadge"
+						:resource="data"
+						:resource-type="ResourceType.Credential"
+						:resource-type-label="resourceTypeLabel"
+						:personal-project="projectsStore.personalProject"
+						:show-badge-border="false"
+						:global="data.isGlobal"
+					/>
+					<N8nTooltip v-if="isPrivateUnconnected" placement="top">
+						<template #content>
+							{{ locale.baseText('credentials.item.connect.tooltip') }}
+						</template>
+						<N8nButton
+							size="mini"
+							:loading="isConnecting"
+							data-test-id="credential-card-connect"
+							@click="onConnect"
+						>
+							{{ locale.baseText('credentials.item.connect') }}
+						</N8nButton>
+					</N8nTooltip>
+					<N8nActionToggle
+						data-test-id="credential-card-actions"
+						:actions="actions"
+						theme="dark"
+						@action="onAction"
+					/>
+				</div>
+			</template>
+		</N8nCard>
+	</SelectableCard>
 </template>
 
 <style lang="scss" module>

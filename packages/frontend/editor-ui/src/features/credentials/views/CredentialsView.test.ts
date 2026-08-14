@@ -157,6 +157,83 @@ describe('CredentialsView', () => {
 		expect(within(items[1]).getByText('Read only')).toBeInTheDocument();
 	});
 
+	describe('bulk selection', () => {
+		const buildCredential = (
+			id: string,
+			scopes: ICredentialsResponse['scopes'],
+		): ICredentialsResponse => ({
+			id,
+			name: `Credential ${id}`,
+			type: 'test',
+			createdAt: '2021-05-05T00:00:00Z',
+			updatedAt: '2021-05-05T00:00:00Z',
+			isManaged: false,
+			scopes,
+		});
+
+		it('selects visible credentials and shows their common actions', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				buildCredential('1', ['credential:move', 'credential:delete']),
+				buildCredential('2', ['credential:move', 'credential:delete']),
+			];
+
+			const { getByRole, getByTestId } = renderComponent();
+			await flushPromises();
+			credentialsStore.fetchAllCredentials.mockClear();
+			await userEvent.click(getByRole('checkbox', { name: 'Select all' }));
+			await flushPromises();
+
+			expect(getByTestId('selected-items-info')).toHaveTextContent('2 selected');
+			expect(getByTestId('selection-bulk-actions')).toBeInTheDocument();
+		});
+
+		it('shows no actions when selected credentials share no permitted action', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				buildCredential('1', ['credential:move']),
+				buildCredential('2', ['credential:delete']),
+			];
+
+			const { getByRole, getByTestId } = renderComponent();
+			await flushPromises();
+			credentialsStore.fetchAllCredentials.mockClear();
+			await userEvent.click(getByRole('checkbox', { name: 'Select all' }));
+			await flushPromises();
+
+			expect(getByTestId('selection-no-actions')).toHaveTextContent('No actions available');
+		});
+
+		it('selects at most the first 100 visible credentials', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = Array.from({ length: 101 }, (_, index) =>
+				buildCredential(String(index), ['credential:delete']),
+			);
+
+			const { getByRole, getByTestId } = renderComponent();
+			await flushPromises();
+			await userEvent.click(getByRole('checkbox', { name: 'Select all' }));
+
+			expect(getByTestId('selected-items-info')).toHaveTextContent('100 selected (maximum)');
+		});
+
+		it('clears selection when search changes', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [buildCredential('1', ['credential:delete'])];
+
+			const { getByRole, getByTestId, queryByTestId } = renderComponent();
+			await flushPromises();
+			credentialsStore.fetchAllCredentials.mockClear();
+			await userEvent.click(getByRole('checkbox', { name: 'Select Credential 1' }));
+			await flushPromises();
+			expect(getByTestId('selected-items-info')).toBeInTheDocument();
+
+			await userEvent.type(getByTestId('resources-list-search'), 'missing');
+
+			expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('create credential', () => {
 		it('should show the modal on the route if the user has the scope to create credentials in the project.', async () => {
 			const uiStore = mockedStore(useUIStore);
@@ -233,9 +310,11 @@ describe('CredentialsView', () => {
 			const { getByTestId } = renderComponent();
 
 			/**
-			 * userEvent DOES NOT work here
+			 * userEvent DOES NOT work here.
+			 * Click the card heading rather than the item root: the root is the
+			 * selection wrapper, and the open handler lives on the inner card.
 			 */
-			await fireEvent.click(getByTestId('resources-list-item'));
+			await fireEvent.click(within(getByTestId('resources-list-item')).getByRole('heading'));
 			await waitFor(() =>
 				expect(replaceSpy).toHaveBeenCalledWith(
 					expect.objectContaining({ params: { credentialId: '1' } }),

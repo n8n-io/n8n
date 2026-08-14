@@ -99,6 +99,12 @@ export { PushWorkFolderRequestDto } from './source-control/push-work-folder-requ
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
+export {
+	BulkDeleteCredentialsDto,
+	BulkTransferCredentialsDto,
+	type BulkCredentialActionResult,
+	type BulkCredentialActionResultItem,
+} from './credentials/bulk-credential-action.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
 	CreateVariableRequestDto,
@@ -130,6 +136,15 @@ export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
+export {
+	BulkArchiveWorkflowsDto,
+	BulkDeleteWorkflowsDto,
+	BulkTransferWorkflowsDto,
+	BulkUnpublishWorkflowsDto,
+	type BulkWorkflowActionItemStatus,
+	type BulkWorkflowActionResult,
+	type BulkWorkflowActionResultItem,
+} from './workflows/bulk-workflow-action.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';

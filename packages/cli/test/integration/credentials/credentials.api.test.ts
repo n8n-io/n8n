@@ -1128,6 +1128,60 @@ describe('POST /credentials', () => {
 	});
 });
 
+describe('POST /credentials/bulk/delete', () => {
+	test('deletes project credentials from different projects', async () => {
+		const credentials = await Promise.all([
+			saveCredential(randomCredentialPayload(), {
+				user: owner,
+				role: 'credential:owner',
+			}),
+			saveCredential(randomCredentialPayload(), {
+				user: member,
+				role: 'credential:owner',
+			}),
+		]);
+
+		const response = await authOwnerAgent
+			.post('/credentials/bulk/delete')
+			.send({ credentialIds: credentials.map(({ id }) => id) })
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			status: 'completed',
+			results: credentials.map(({ id }) => ({ credentialId: id, status: 'completed' })),
+		});
+		await expect(
+			Container.get(CredentialsRepository).getManyByIds(credentials.map(({ id }) => id)),
+		).resolves.toHaveLength(0);
+	});
+
+	test('does not delete any credential when strict preflight fails', async () => {
+		const accessible = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+		const inaccessible = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authMemberAgent
+			.post('/credentials/bulk/delete')
+			.send({ credentialIds: [accessible.id, inaccessible.id] })
+			.expect(422);
+
+		expect(response.body.meta.issues).toEqual([
+			expect.objectContaining({
+				credentialId: inaccessible.id,
+				reason: 'notFoundOrForbidden',
+			}),
+		]);
+		await expect(
+			Container.get(CredentialsRepository).getManyByIds([accessible.id, inaccessible.id]),
+		).resolves.toHaveLength(2);
+	});
+});
+
 describe('DELETE /credentials/:id', () => {
 	test('should delete owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), {

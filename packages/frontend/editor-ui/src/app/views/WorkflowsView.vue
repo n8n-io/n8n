@@ -78,6 +78,17 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useResourcesListSelection } from '@/app/composables/useResourcesListSelection';
+import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
+import type { SelectionBarAction } from '@/app/components/common/SelectedItemsInfo.vue';
+import { useBulkWorkflowActions } from '@/features/workflows/bulkActions/useBulkWorkflowActions';
+import BulkActionReviewDialog from '@/features/workflows/bulkActions/BulkActionReviewDialog.vue';
+import type {
+	BulkActionConfig,
+	BulkActionId,
+} from '@/features/workflows/bulkActions/bulkActions.types';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
@@ -544,6 +555,118 @@ const workflowListResources = computed<Resource[]>(() => {
 	return resources;
 });
 
+/**
+ * BULK SELECTION & ACTIONS (prototype)
+ */
+
+// Folders aren't selectable because their contents and available actions aren't
+// fully represented in the list response.
+const pageResources = computed(() =>
+	workflowListResources.value.filter((r): r is WorkflowResource => r.resourceType === 'workflow'),
+);
+
+const selection = useResourcesListSelection<WorkflowResource>();
+
+const selectedResources = selection.selectedItems;
+
+const isPageSelected = computed(() => selection.isPageChecked(pageResources.value));
+const isPageIndeterminate = computed(() => selection.isPageIndeterminate(pageResources.value));
+const isPageSelectionDisabled = computed(
+	() => selection.isLimitReached.value && !isPageSelected.value && !isPageIndeterminate.value,
+);
+
+const bulkActions = useBulkWorkflowActions({
+	selectedItems: selectedResources,
+	workflowsAndFolders,
+	mcpEnabled,
+});
+
+const selectionBarActions = computed<SelectionBarAction[]>(() =>
+	bulkActions.availableActions.value.map((action) => ({
+		id: action.id,
+		label: action.label,
+		destructive: action.destructive,
+	})),
+);
+
+const projectSearchFn = useAvailableProjectSearch();
+const moveProjectFilterFn = (project: ProjectListItem) =>
+	!project.scopes || getResourcePermissions(project.scopes).workflow.create === true;
+
+// Flat aliases so the template unwraps these refs (nested refs on the composable
+// objects aren't auto-unwrapped in templates).
+const selectedCount = selection.selectedCount;
+const activeBulkAction = bulkActions.activeAction;
+
+const isBulkDialogOpen = computed(() => bulkActions.activeAction.value !== null);
+const isBulkSubmitting = ref(false);
+const bulkDialogError = ref<string | null>(null);
+
+const onSelectAllPage = (value: boolean) => {
+	selection.togglePage(pageResources.value, value);
+};
+
+const onBulkActionSelected = (id: string) => {
+	bulkDialogError.value = null;
+	bulkActions.openAction(id as BulkActionId);
+};
+
+const onBulkDialogOpenChange = (open: boolean) => {
+	if (open) return;
+	bulkActions.closeDialog();
+	bulkDialogError.value = null;
+};
+
+const showBulkResultToast = (result: Awaited<ReturnType<typeof bulkActions.execute>>) => {
+	const completed = result.items.filter((item) => item.status === 'completed').length;
+	const failed = result.items.filter((item) => item.status === 'failed').length;
+	const notAttempted = result.items.filter((item) => item.status === 'notAttempted').length;
+
+	if (result.status === 'completed') {
+		toast.showMessage({
+			title: i18n.baseText('workflows.bulkActions.toast.success', {
+				adjustToNumber: completed,
+				interpolate: { count: String(completed) },
+			}),
+			type: 'success',
+		});
+		return;
+	}
+
+	toast.showMessage({
+		title: i18n.baseText('workflows.bulkActions.toast.partial.title'),
+		message: i18n.baseText('workflows.bulkActions.toast.partial.message', {
+			interpolate: {
+				completed: String(completed),
+				failed: String(failed),
+				notAttempted: String(notAttempted),
+			},
+		}),
+		type: 'warning',
+	});
+};
+
+const onBulkConfirm = async (config: BulkActionConfig) => {
+	isBulkSubmitting.value = true;
+	bulkDialogError.value = null;
+	try {
+		const result = await bulkActions.execute(config);
+		bulkActions.closeDialog();
+		selection.clear();
+		// Mocked operations are session-only, so they intentionally skip the refresh.
+		if (!result.mocked) {
+			await refreshWorkflows();
+		}
+		showBulkResultToast(result);
+	} catch (error) {
+		// Keep the dialog and selection open so the user can retry.
+		bulkDialogError.value =
+			error instanceof Error ? error.message : i18n.baseText('workflows.bulkActions.toast.error');
+	} finally {
+		isBulkSubmitting.value = false;
+	}
+};
+
 const statusFilterOptions = computed(() => [
 	{
 		label: i18n.baseText('workflows.filters.status.all'),
@@ -729,6 +852,8 @@ const showTemplateRecommendationV3 = computed(() => {
 	return personalizedTemplatesV3Store.isFeatureEnabled() && !loading.value;
 });
 
+const onResourceMovedRefresh = () => fetchWorkflows();
+
 /**
  * LIFE-CYCLE HOOKS
  */
@@ -744,7 +869,7 @@ onMounted(async () => {
 		void initialize();
 	}
 
-	workflowListEventBus.on('resource-moved', fetchWorkflows);
+	workflowListEventBus.on('resource-moved', onResourceMovedRefresh);
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
 	workflowListEventBus.on('folder-moved', moveFolder);
@@ -754,7 +879,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-	workflowListEventBus.off('resource-moved', fetchWorkflows);
+	workflowListEventBus.off('resource-moved', onResourceMovedRefresh);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
 	workflowListEventBus.off('folder-moved', moveFolder);
@@ -844,8 +969,12 @@ const initialize = async () => {
  * - Total count of workflows and folders in the current project
  * - Path to the current folder (if not cached)
  */
-const fetchWorkflows = async () => {
+const fetchWorkflows = async ({ preserveSelection = false } = {}) => {
 	const isCurrent = nextFetch();
+
+	if (!preserveSelection) {
+		selection.clear();
+	}
 
 	// We debounce here so that fast enough fetches don't trigger
 	// the placeholder graphics for a few milliseconds, which would cause a flicker
@@ -986,6 +1115,7 @@ const onSearchUpdated = async (search: string) => {
 };
 
 const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
+	const isPageChange = payload.page !== undefined;
 	if (payload.page) {
 		currentPage.value = payload.page;
 	}
@@ -1000,7 +1130,10 @@ const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
 	// This will prevent unnecessary API calls when changing sort and pagination from url/local storage
 	// when switching between projects
 	if (!loading.value) {
-		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+		await callDebounced(() => fetchWorkflows({ preserveSelection: isPageChange }), {
+			debounceTime: FILTERS_DEBOUNCE_TIME,
+			trailing: true,
+		});
 	}
 };
 
@@ -2353,10 +2486,23 @@ const onNameSubmit = async (name: string) => {
 				</FolderBreadcrumbs>
 			</div>
 		</template>
+		<template #list-controls>
+			<N8nCheckbox
+				v-if="pageResources.length"
+				:model-value="isPageSelected"
+				:indeterminate="isPageIndeterminate"
+				:disabled="isPageSelectionDisabled"
+				:label="i18n.baseText('workflows.bulkActions.selectAll')"
+				:class="$style['select-all-checkbox']"
+				data-test-id="select-all-checkbox"
+				@update:model-value="onSelectAllPage"
+			/>
+		</template>
 		<template #item="{ item: data, index }">
 			<Draggable
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:key="`folder-${index}`"
+				:class="$style.selectableListItem"
 				:disabled="!isDragNDropEnabled"
 				type="move"
 				target-data-key="folder"
@@ -2401,6 +2547,7 @@ const onNameSubmit = async (name: string) => {
 			<Draggable
 				v-else
 				:key="`workflow-${index}`"
+				:class="$style.selectableListItem"
 				:disabled="!isDragNDropEnabled"
 				type="move"
 				target-data-key="workflow"
@@ -2436,6 +2583,11 @@ const onNameSubmit = async (name: string) => {
 					:is-mcp-module-active="mcpModuleActive"
 					:can-manage-instance-mcp="canManageInstanceMcp"
 					:is-workflow-card-mcp-toggle-enabled="isWorkflowCardMcpToggleEnabled"
+					:selectable="true"
+					:selected="selection.isSelected(data as WorkflowResource)"
+					:selection-active="selectedCount > 0"
+					:selection-disabled="!selection.canSelect(data as WorkflowResource)"
+					@update:selected="selection.toggleItem(data as WorkflowResource, $event)"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"
@@ -2565,6 +2717,33 @@ const onNameSubmit = async (name: string) => {
 					@click:button="addWorkflow"
 				/>
 			</div>
+
+			<SelectedItemsInfo
+				:selected-count="selectedCount"
+				:actions="selectionBarActions"
+				:selected-text="
+					i18n.baseText('workflows.bulkActions.selectedCount', {
+						adjustToNumber: selectedCount,
+						interpolate: { count: String(selectedCount) },
+					})
+				"
+				:no-actions-text="i18n.baseText('workflows.bulkActions.noActions')"
+				:no-actions-tooltip="i18n.baseText('workflows.bulkActions.noActions.tooltip')"
+				@action="onBulkActionSelected"
+				@clear-selection="selection.clear"
+			/>
+
+			<BulkActionReviewDialog
+				:open="isBulkDialogOpen"
+				:action="activeBulkAction"
+				:submitting="isBulkSubmitting"
+				:error-message="bulkDialogError"
+				:project-search-fn="projectSearchFn"
+				:move-filter-fn="moveProjectFilterFn"
+				:current-project-id="currentProject?.id"
+				@update:open="onBulkDialogOpenChange"
+				@confirm="onBulkConfirm"
+			/>
 		</template>
 	</ResourcesListLayout>
 </template>
@@ -2581,6 +2760,22 @@ const onNameSubmit = async (name: string) => {
 		align-items: center;
 		gap: var(--spacing--md);
 	}
+}
+
+.select-all-checkbox {
+	margin: 0;
+	// Align the checkbox square with the per-card selection checkboxes, which are
+	// centered in a --spacing--xl (32px) gutter: (32px - 16px square) / 2 = 8px.
+	padding-left: var(--spacing--2xs);
+
+	// Match the breadcrumb text next to it (N8nText size="medium" color="text-base").
+	label {
+		color: var(--text-color--subtle);
+	}
+}
+
+.selectableListItem {
+	padding-left: var(--spacing--xl);
 }
 
 .breadcrumbs-container {

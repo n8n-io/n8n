@@ -219,13 +219,15 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
 			<N8nCard :class="$style.card">
 				<template #prepend>
-					<N8nIcon
-						data-test-id="folder-card-icon"
-						:class="$style['folder-icon']"
-						icon="folder"
-						size="xlarge"
-						:stroke-width="1"
-					/>
+					<div :class="$style['prepend']">
+						<N8nIcon
+							data-test-id="folder-card-icon"
+							:class="$style['folder-icon']"
+							icon="folder"
+							size="xlarge"
+							:stroke-width="1"
+						/>
+					</div>
 				</template>
 				<template #header>
 					<div :class="$style['card-header']">
@@ -378,6 +380,12 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
 	}
+}
+
+.prepend {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .folder-icon {

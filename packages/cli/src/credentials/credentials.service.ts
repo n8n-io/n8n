@@ -41,6 +41,7 @@ import type {
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
+	assert,
 	deepCopy,
 	displayParameter,
 	isExpression,
@@ -75,7 +76,7 @@ import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
 } from './credential-dependency.service';
-import { CredentialsFinderService } from './credentials-finder.service';
+import { type AuthorizedCredential, CredentialsFinderService } from './credentials-finder.service';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { InstanceCredentialUseRegistry } from './instance-credential-use.registry';
 import {
@@ -1184,10 +1185,24 @@ export class CredentialsService {
 			return;
 		}
 
+		await this.deleteCredentialEntity(user, credential);
+	}
+
+	async deleteAuthorized(
+		user: User,
+		authorized: AuthorizedCredential<'credential:delete'>,
+	): Promise<void> {
+		this.assertAuthorizedCredential(user, authorized, 'credential:delete');
+		await this.deleteCredentialEntity(user, authorized.credential);
+	}
+
+	private async deleteCredentialEntity(user: User, credential: CredentialsEntity): Promise<void> {
+		const credentialId = credential.id;
 		if (credential.isResolvable) {
-			const owningProject =
-				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
-			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
+			const ownerProjectId =
+				credential.shared.find(({ role }) => role === 'credential:owner')?.projectId ??
+				(await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId))?.id;
+			await this.ensureCanManageEndUserCredential(user, ownerProjectId);
 		}
 		await this.externalHooks.run('credentials.delete', [credentialId]);
 
@@ -1819,6 +1834,17 @@ export class CredentialsService {
 	 */
 	async createManagedCredential(dto: CreateCredentialDto, user: User) {
 		return await this.createCredential({ ...dto, isManaged: true }, user);
+	}
+
+	private assertAuthorizedCredential<S extends Scope>(
+		user: User,
+		authorized: AuthorizedCredential<S>,
+		requiredScope: S,
+	): void {
+		assert(
+			authorized.userId === user.id && authorized.scope === requiredScope,
+			'Authorized credential does not match the requested actor and scope',
+		);
 	}
 
 	/**
