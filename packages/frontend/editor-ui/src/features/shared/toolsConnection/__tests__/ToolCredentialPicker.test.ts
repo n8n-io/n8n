@@ -78,7 +78,7 @@ describe('ToolCredentialPicker', () => {
 
 		expect(
 			disconnected.getByTestId('tool-credential-picker-trigger-disconnected'),
-		).toHaveTextContent('Disconnected');
+		).toHaveTextContent('Reconnect');
 		expect(disconnected.queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
 		disconnected.unmount();
 

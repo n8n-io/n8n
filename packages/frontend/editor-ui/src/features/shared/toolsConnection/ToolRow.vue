@@ -66,7 +66,11 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 const actionLabel = computed(() =>
 	props.item.communityPreview
 		? i18n.baseText('communityNodeDetails.install')
-		: i18n.baseText('tools.connection.action.connect'),
+		: i18n.baseText(
+				props.item.status === 'disconnected'
+					? 'tools.connection.action.reconnect'
+					: 'tools.connection.action.connect',
+			),
 );
 
 const installBlocked = computed(
@@ -211,14 +215,16 @@ function handleConnect() {
 					{{ actionLabel }}
 				</N8nButton>
 			</template>
-			<span
+			<N8nButton
 				v-else-if="item.status === 'disconnected'"
-				:class="$style.statusMarker"
+				variant="outline"
+				size="small"
 				data-test-id="tools-connection-row-disconnected"
+				@click="handleRowClick"
 			>
 				<span :class="[$style.statusDot, $style.statusDotDisconnected]" aria-hidden="true" />
-				{{ i18n.baseText('tools.connection.action.disconnected') }}
-			</span>
+				{{ i18n.baseText('tools.connection.action.reconnect') }}
+			</N8nButton>
 		</div>
 	</div>
 </template>

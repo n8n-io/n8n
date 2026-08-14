@@ -57,7 +57,7 @@ const statusLabel = computed(() => {
 		return i18n.baseText('tools.connection.action.connected');
 	}
 	if (props.item.status === 'disconnected') {
-		return i18n.baseText('tools.connection.action.disconnected');
+		return i18n.baseText('tools.connection.action.reconnect');
 	}
 	return '';
 });
@@ -127,19 +127,23 @@ function editCredential(credentialId: string) {
 		data-test-id="tool-credential-picker"
 	>
 		<template #trigger>
+			<N8nButton
+				v-if="item.status === 'disconnected'"
+				variant="outline"
+				size="small"
+				data-test-id="tool-credential-picker-trigger-disconnected"
+			>
+				<span :class="[$style.statusDot, $style.statusDotDisconnected]" aria-hidden="true" />
+				<span>{{ statusLabel }}</span>
+				<N8nIcon icon="chevron-down" :size="12" />
+			</N8nButton>
 			<button
-				v-if="hasToolConnection(item.status)"
+				v-else-if="hasToolConnection(item.status)"
 				type="button"
 				:class="$style.statusPill"
 				:data-test-id="`tool-credential-picker-trigger-${item.status}`"
 			>
-				<span
-					:class="[
-						$style.statusDot,
-						item.status === 'disconnected' && $style.statusDotDisconnected,
-					]"
-					aria-hidden="true"
-				/>
+				<span :class="$style.statusDot" aria-hidden="true" />
 				<span>{{ statusLabel }}</span>
 				<N8nIcon icon="chevron-down" :size="12" />
 			</button>
@@ -214,16 +218,16 @@ function editCredential(credentialId: string) {
 			</button>
 		</template>
 	</N8nPopover>
-	<button
+	<N8nButton
 		v-else-if="item.status === 'disconnected'"
-		type="button"
-		:class="$style.statusPill"
+		variant="outline"
+		size="small"
 		data-test-id="tool-credential-picker-trigger-disconnected"
 		@click="createCredential('direct')"
 	>
 		<span :class="[$style.statusDot, $style.statusDotDisconnected]" aria-hidden="true" />
-		<span>{{ i18n.baseText('tools.connection.action.disconnected') }}</span>
-	</button>
+		<span>{{ i18n.baseText('tools.connection.action.reconnect') }}</span>
+	</N8nButton>
 	<N8nButton
 		v-else
 		:variant="connectVariant"
