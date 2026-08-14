@@ -1,7 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
+import WorkflowCustomTelemetryTags from '@/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 
 const validTags = [{ key: 'env', value: 'production' }];
 const duplicateTags = [

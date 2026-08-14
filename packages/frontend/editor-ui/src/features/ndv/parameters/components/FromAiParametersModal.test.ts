@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
+import FromAiParametersModal from '@/features/ndv/parameters/components/FromAiParametersModal.vue';
 import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';

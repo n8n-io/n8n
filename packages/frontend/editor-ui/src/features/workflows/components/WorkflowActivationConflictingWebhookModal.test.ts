@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import WorkflowActivationConflictingWebhookModal from '@/app/components/WorkflowActivationConflictingWebhookModal.vue';
+import WorkflowActivationConflictingWebhookModal from '@/features/workflows/components/WorkflowActivationConflictingWebhookModal.vue';
 import {
 	SLACK_TRIGGER_NODE_TYPE,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,

@@ -14,10 +14,10 @@ import {
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-} from '../constants';
+} from '@/app/constants';
 
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
-import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const checked = ref(false);
 

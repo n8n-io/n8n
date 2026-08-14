@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { STOP_MANY_EXECUTIONS_MODAL_KEY } from '../constants';
+import { STOP_MANY_EXECUTIONS_MODAL_KEY } from '@/app/constants';
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import type { RenderResult } from '@testing-library/vue';
 

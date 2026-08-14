@@ -2,14 +2,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
+import WorkflowDescriptionModal from '@/features/workflows/components/WorkflowDescriptionModal.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { STORES } from '@n8n/stores';
-import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
+import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('@n8n/composables/useToast', () => {
