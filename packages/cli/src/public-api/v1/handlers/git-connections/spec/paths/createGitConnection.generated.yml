@@ -1,9 +1,9 @@
-operationId: create
+operationId: createGitConnection
 tags:
-  - Git connections
+  - GitConnections
 summary: Create a Git connection
 description: Creates a Git connection and its authentication material.
-x-required-scope: sourceControl:pull
+x-required-scope: gitConnection:create
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true

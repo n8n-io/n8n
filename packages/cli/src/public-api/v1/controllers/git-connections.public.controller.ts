@@ -4,6 +4,7 @@ import {
 	GitConnectionListPublicDto,
 	GitConnectionPublicDto,
 	ListGitConnectionsQueryDto,
+	MAX_ITEMS_PER_PAGE,
 	UpdateGitConnectionDto,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -32,21 +33,21 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { GitConnectionsPublicApiService } from '@/public-api/v1/services/git-connections-public-api.service';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
 
-const tags = ['Git connections'];
+const tags = ['GitConnections'];
 
 @PublicApiController('/git-connections')
 export class GitConnectionsPublicController {
 	constructor(private readonly gitConnections: GitConnectionsPublicApiService) {}
 
 	@Post('/')
-	@ApiKeyScope('sourceControl:pull')
-	@GlobalScope('sourceControl:manage')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:create')
+	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a Git connection')
 	@ApiDescription('Creates a Git connection and its authentication material.')
 	@ApiTags(tags)
 	@ApiResponse(201, GitConnectionPublicDto)
-	async create(
+	async createGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Body input: CreateGitConnectionDto,
@@ -55,14 +56,14 @@ export class GitConnectionsPublicController {
 	}
 
 	@Get('/')
-	@ApiKeyScope('sourceControl:pull')
-	@GlobalScope('sourceControl:manage')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:list')
+	@GlobalScope('gitConnection:list')
 	@ApiSummary('List Git connections')
 	@ApiDescription('Returns a cursor-paginated list of Git connections.')
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionListPublicDto)
-	async list(
+	async getGitConnections(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListGitConnectionsQueryDto,
@@ -79,6 +80,12 @@ export class GitConnectionsPublicController {
 				if (error instanceof BadRequestError) throw error;
 				throw new BadRequestError('An invalid cursor was provided');
 			}
+			// A cursor is unsigned base64 the client can forge, so re-validate the
+			// bounds already enforced on the raw query params before hitting the DB.
+			if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1) {
+				throw new BadRequestError('An invalid cursor was provided');
+			}
+			limit = Math.min(limit, MAX_ITEMS_PER_PAGE);
 		}
 		const { data, count } = await this.gitConnections.list(offset, limit);
 		return {
@@ -88,14 +95,14 @@ export class GitConnectionsPublicController {
 	}
 
 	@Get('/:id')
-	@ApiKeyScope('sourceControl:pull')
-	@GlobalScope('sourceControl:manage')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:read')
+	@GlobalScope('gitConnection:read')
 	@ApiSummary('Retrieve a Git connection')
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPublicDto)
 	@ApiErrorResponse(404)
-	async get(
+	async getGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
@@ -104,15 +111,15 @@ export class GitConnectionsPublicController {
 	}
 
 	@Put('/:id')
-	@ApiKeyScope('sourceControl:pull')
-	@GlobalScope('sourceControl:manage')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:update')
+	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a Git connection')
 	@ApiDescription('Updates only the supplied fields. Secrets are never returned.')
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPublicDto)
 	@ApiErrorResponse(404)
-	async update(
+	async updateGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
@@ -122,15 +129,15 @@ export class GitConnectionsPublicController {
 	}
 
 	@Post('/:id/connect')
-	@ApiKeyScope('sourceControl:pull')
-	@GlobalScope('sourceControl:manage')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:connect')
+	@GlobalScope('gitConnection:connect')
 	@ApiSummary('Connect a Git connection')
 	@ApiDescription('Clones the repository into local storage. Safe to call repeatedly.')
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPublicDto)
 	@ApiErrorResponse(404)
-	async connect(
+	async connectGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
@@ -140,9 +147,9 @@ export class GitConnectionsPublicController {
 	}
 
 	@Post('/:id/disconnect')
-	@ApiKeyScope('sourceControl:pull')
-	@GlobalScope('sourceControl:manage')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:connect')
+	@GlobalScope('gitConnection:connect')
 	@ApiSummary('Disconnect a Git connection')
 	@ApiDescription(
 		'Removes the local clone. The connection and its authentication material are retained.',
@@ -150,7 +157,7 @@ export class GitConnectionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPublicDto)
 	@ApiErrorResponse(404)
-	async disconnect(
+	async disconnectGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
@@ -159,15 +166,19 @@ export class GitConnectionsPublicController {
 	}
 
 	@Delete('/:id')
-	@ApiKeyScope('sourceControl:pull')
-	@GlobalScope('sourceControl:manage')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:delete')
+	@GlobalScope('gitConnection:delete')
 	@ApiSummary('Delete a Git connection')
 	@ApiDescription('Deletes a Git connection and its local files.')
 	@ApiTags(tags)
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
-	async delete(_req: AuthenticatedRequest, _res: Response, @Param('id') id: string): Promise<void> {
+	async deleteGitConnection(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<void> {
 		await this.gitConnections.delete(id);
 	}
 }

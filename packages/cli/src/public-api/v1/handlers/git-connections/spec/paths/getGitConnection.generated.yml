@@ -1,9 +1,8 @@
-operationId: disconnect
+operationId: getGitConnection
 tags:
-  - Git connections
-summary: Disconnect a Git connection
-description: Removes the local clone. The connection and its authentication material are retained.
-x-required-scope: sourceControl:pull
+  - GitConnections
+summary: Retrieve a Git connection
+x-required-scope: gitConnection:read
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true

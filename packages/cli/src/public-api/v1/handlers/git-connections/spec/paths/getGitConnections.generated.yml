@@ -1,9 +1,9 @@
-operationId: list
+operationId: getGitConnections
 tags:
-  - Git connections
+  - GitConnections
 summary: List Git connections
 description: Returns a cursor-paginated list of Git connections.
-x-required-scope: sourceControl:pull
+x-required-scope: gitConnection:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
   - $ref: ../../../../shared/spec/parameters/cursor.yml

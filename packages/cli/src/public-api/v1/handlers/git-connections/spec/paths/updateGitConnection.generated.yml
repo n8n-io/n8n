@@ -1,9 +1,9 @@
-operationId: update
+operationId: updateGitConnection
 tags:
-  - Git connections
+  - GitConnections
 summary: Update a Git connection
 description: Updates only the supplied fields. Secrets are never returned.
-x-required-scope: sourceControl:pull
+x-required-scope: gitConnection:update
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true

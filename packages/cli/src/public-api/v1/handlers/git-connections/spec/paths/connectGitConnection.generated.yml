@@ -1,9 +1,9 @@
-operationId: connect
+operationId: connectGitConnection
 tags:
-  - Git connections
+  - GitConnections
 summary: Connect a Git connection
 description: Clones the repository into local storage. Safe to call repeatedly.
-x-required-scope: sourceControl:pull
+x-required-scope: gitConnection:connect
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
