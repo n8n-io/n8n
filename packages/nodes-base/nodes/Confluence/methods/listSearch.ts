@@ -152,10 +152,10 @@ export async function getPages(
 	const cql =
 		escaped === ''
 			? `type=page${spaceClause} ORDER BY lastmodified DESC`
-			: `type=page${spaceClause} AND title ~ "${escaped}*" AND title != "${escaped}" ORDER BY lastmodified DESC`;
+			: `type=page${spaceClause} AND title ~ "${escaped}*" ORDER BY lastmodified DESC`;
 
-	// An exact-title page can be buried behind newer prefix matches, so page one
-	// fetches it separately and the prefix query excludes it
+	// Exact-title pages can be buried behind newer prefix matches, so page one
+	// fetches them separately; toPageItems drops the overlap
 	const exact =
 		escaped !== '' && paginationToken === undefined
 			? await fetchSearchPage.call(this, `type=page${spaceClause} AND title = "${escaped}"`)

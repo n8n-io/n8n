@@ -73,7 +73,7 @@ describe('Confluence listSearch.getPages', () => {
 				const cql = (qs as { cql: string }).cql;
 				if (cql === 'type=page AND space = "DOCS" AND title = "plan"') return { results: [] };
 				expect(cql).toBe(
-					'type=page AND space = "DOCS" AND title ~ "plan*" AND title != "plan" ORDER BY lastmodified DESC',
+					'type=page AND space = "DOCS" AND title ~ "plan*" ORDER BY lastmodified DESC',
 				);
 				return {
 					results: [
@@ -159,7 +159,7 @@ describe('Confluence listSearch.getPages', () => {
 			'/wiki/rest/api/search',
 			{},
 			expect.objectContaining({
-				cql: 'type=page AND title ~ "He said \\"hi\\" \\\\ back*" AND title != "He said \\"hi\\" \\\\ back" ORDER BY lastmodified DESC',
+				cql: 'type=page AND title ~ "He said \\"hi\\" \\\\ back*" ORDER BY lastmodified DESC',
 			}),
 		);
 	});
@@ -171,9 +171,7 @@ describe('Confluence listSearch.getPages', () => {
 			if (cql === 'type=page AND title = "Notes"') {
 				return { results: [{ content: { id: 1, title: 'Notes' } }] };
 			}
-			expect(cql).toBe(
-				'type=page AND title ~ "Notes*" AND title != "Notes" ORDER BY lastmodified DESC',
-			);
+			expect(cql).toBe('type=page AND title ~ "Notes*" ORDER BY lastmodified DESC');
 			return {
 				results: [
 					{ content: { id: 2, title: 'Notes 2026' } },
