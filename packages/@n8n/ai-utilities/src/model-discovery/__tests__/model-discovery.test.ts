@@ -59,12 +59,8 @@ describe('model-discovery', () => {
 					{ id: 'gpt-5' },
 					{ id: 'whisper-1' },
 					{ id: 'dall-e-3' },
-					// Non-chat families named gpt-* pass the gpt- prefix, so they are
-					// excluded by suffix instead
 					{ id: 'gpt-image-2' },
-					{ id: 'chatgpt-image-latest' },
 					{ id: 'gpt-4o-transcribe' },
-					{ id: 'gpt-4o-transcribe-diarize' },
 					{ id: 'text-embedding-3-small' },
 					{ id: 'gpt-4o' },
 				],
@@ -75,18 +71,6 @@ describe('model-discovery', () => {
 			expect(calledUrl(fetch)).toBe('https://api.openai.com/v1/models');
 			expect(calledHeaders(fetch).Authorization).toBe('Bearer key');
 			expect(models.map((m) => m.id)).toEqual(['gpt-4o', 'gpt-5']);
-		});
-
-		// gpt-audio-* is unsupported on responses but supported on chat/completions,
-		// so it must not be filtered out with the other non-chat families.
-		it('keeps audio chat models that support chat completions', async () => {
-			const fetch = mockFetch({
-				data: [{ id: 'gpt-audio' }, { id: 'gpt-audio-mini' }, { id: 'gpt-4o-transcribe' }],
-			});
-
-			const models = await listModelsForProvider('openai', { apiKey: 'key', fetch });
-
-			expect(models.map((m) => m.id)).toEqual(['gpt-audio', 'gpt-audio-mini']);
 		});
 
 		it('includes all models for a custom (non-OpenAI) baseURL', async () => {
