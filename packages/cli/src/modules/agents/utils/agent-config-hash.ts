@@ -13,14 +13,14 @@ function canonicalizeJson(value: unknown): unknown {
 	return sorted;
 }
 
-// Accepts the exported shape (a superset of the persisted shape), so both
-// bare persisted configs and hydrated export/response configs hash cleanly.
+// The parameter type is the exported shape, a superset of the persisted
+// shape. Thus the function accepts bare persisted configs and exported
+// configs with inline definition bodies.
 export function getAgentConfigHash(config: ExportedAgentJsonConfig | null): string | null {
 	if (!config) return null;
 
-	// Hash the bare-ref shape so the result is identical whether the config
-	// came straight off the schema column or had task/skill/custom-tool
-	// definition bodies inlined for export.
+	// Hash the bare-ref shape. Then a config from the schema column and the
+	// same config with inline definition bodies get the same hash.
 	return createHash('sha256')
 		.update(JSON.stringify(canonicalizeJson(withBareConfigRefs(config))))
 		.digest('hex');

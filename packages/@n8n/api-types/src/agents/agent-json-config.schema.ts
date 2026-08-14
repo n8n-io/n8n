@@ -209,8 +209,8 @@ const AgentJsonTaskConfigSchema = z.object({
 	id: z
 		.string()
 		.min(1)
-		// Persisted as the `agent_task_definition` primary key, so the schema
-		// must enforce the same length cap as the column.
+		// This id is the primary key of the `agent_task_definition` table. The
+		// schema must apply the same length limit as that column.
 		.max(AGENT_TASK_ID_MAX_LENGTH)
 		.regex(
 			/^[A-Za-z0-9_-]+$/,
@@ -220,10 +220,10 @@ const AgentJsonTaskConfigSchema = z.object({
 });
 
 /**
- * Skill ref with its definition body inlined, as carried in exported/imported
- * agent JSON so a skill survives a round-trip between instances. Bodies are
- * persisted in the agent's `skills` column, not on the agent schema, so the
- * stored ref keeps only `{ type, id }`.
+ * Skill ref with its definition body inlined. Exported agent JSON carries the
+ * body so a skill survives a round-trip between instances. The agent schema
+ * stores only the bare `{ type, id }` ref. The body persists in the agent's
+ * `skills` column.
  */
 export const ExportedAgentSkillConfigSchema = AgentJsonSkillConfigSchema.extend({
 	name: agentSkillShape.name.optional(),
@@ -234,10 +234,10 @@ export const ExportedAgentSkillConfigSchema = AgentJsonSkillConfigSchema.extend(
 });
 
 /**
- * Task ref with its definition body inlined, as carried in exported/imported
- * agent JSON so a scheduled task survives a round-trip between instances. The
- * definition is persisted in the `agent_task_definition` table, not on the
- * agent schema column, so the stored ref keeps only `{ type, id, enabled }`.
+ * Task ref with its definition body inlined. Exported agent JSON carries the
+ * body so a scheduled task survives a round-trip between instances. The agent
+ * schema stores only the bare `{ type, id, enabled }` ref. The definition
+ * persists in the `agent_task_definition` table.
  */
 export const ExportedAgentTaskConfigSchema = AgentJsonTaskConfigSchema.extend({
 	name: z.string().min(1).max(AGENT_TASK_NAME_MAX_LENGTH).optional(),
@@ -416,13 +416,12 @@ const CustomToolJsonConfigSchema = z.object({
 });
 
 /**
- * Custom tool ref with its source code inlined, as carried in exported/
- * imported agent JSON so a custom tool survives a round-trip between
- * instances. The compiled entry (code + descriptor) is persisted in the
- * agent's `tools` column, not on the agent schema, so the stored ref keeps
- * only `{ type, id, requireApproval }`. On import the descriptor is
- * re-derived from the code in the secure runtime, never taken from the
- * imported JSON.
+ * Custom tool ref with its source code inlined. Exported agent JSON carries
+ * the code so a custom tool survives a round-trip between instances. The
+ * agent schema stores only the bare `{ type, id, requireApproval }` ref. The
+ * compiled entry (code + descriptor) persists in the agent's `tools` column.
+ * On import, the secure runtime derives the descriptor from the code again.
+ * The import never reads the descriptor from the JSON.
  */
 export const ExportedCustomToolJsonConfigSchema = CustomToolJsonConfigSchema.extend({
 	code: z.string().min(1).optional(),
@@ -582,9 +581,9 @@ export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine(
 );
 
 /**
- * Unrefined shape of {@link ExportedAgentJsonConfigSchema}. Use for schema
- * derivation only (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
- * {@link ExportedAgentJsonConfigSchema} instead.
+ * Unrefined shape of {@link ExportedAgentJsonConfigSchema}. Use it for schema
+ * derivation only (`.extend`, `.pick`, `.partial`, `.shape`). Validate with
+ * {@link ExportedAgentJsonConfigSchema}.
  */
 export const ExportedAgentJsonConfigBaseSchema = AgentJsonConfigBaseSchema.extend({
 	tools: z
@@ -620,11 +619,11 @@ export const ExportedAgentJsonConfigBaseSchema = AgentJsonConfigBaseSchema.exten
 });
 
 /**
- * Agent config as it travels between instances (export download / JSON
- * import): task, skill, and custom-tool refs may carry their definition body
- * inline so the document is self-contained. The persisted agent schema
- * ({@link AgentJsonConfigSchema}) stores only bare refs — bodies live in
- * their own stores and are inlined on export / recreated on import.
+ * Agent config as it travels between instances (export download, JSON
+ * import). Task, skill, and custom tool refs can carry their definition body
+ * inline, so the document is self-contained. The persisted agent schema
+ * ({@link AgentJsonConfigSchema}) stores only bare refs. Export inlines the
+ * bodies, and import recreates the definitions from them.
  */
 export const ExportedAgentJsonConfigSchema = ExportedAgentJsonConfigBaseSchema.superRefine(
 	requireModelWithCredential,

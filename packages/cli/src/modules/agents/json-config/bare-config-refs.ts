@@ -13,11 +13,11 @@ type BareCustomToolRef = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 type ExportedCustomToolRef = Extract<ExportedAgentJsonToolConfig, { type: 'custom' }>;
 
 /**
- * Reduce exported config entries to the bare reference shape persisted on the
- * agent schema column. Task, skill, and custom tool refs may carry an inline
- * definition body in exported/imported agent JSON; the body lives in its own
- * store (`agent_task_definition` table, `skills`/`tools` columns) and must
- * never be duplicated into the schema.
+ * Reduce exported config entries to the bare ref shape that the agent schema
+ * column persists. Task, skill, and custom tool refs can carry an inline
+ * definition body in exported agent JSON. The body lives in its own store
+ * (the `agent_task_definition` table, the `skills` and `tools` columns). The
+ * schema must never contain a copy of the body.
  */
 
 export function toBareTaskRef(ref: ExportedAgentTaskConfig): BareTaskRef {
@@ -37,9 +37,9 @@ export function toBareCustomToolRef(ref: ExportedCustomToolRef): BareCustomToolR
 }
 
 /**
- * A copy of the config with every task/skill/custom-tool ref reduced to its
- * bare shape. Lets consumers compare or hash configs independently of whether
- * definition bodies were inlined for export.
+ * Make a copy of the config with every task, skill, and custom tool ref
+ * reduced to its bare shape. Consumers can then compare or hash a config in
+ * its bare form and in its inlined form, and get the same result.
  */
 export function withBareConfigRefs(config: ExportedAgentJsonConfig): AgentJsonConfig {
 	return {

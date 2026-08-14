@@ -1183,9 +1183,10 @@ async function exportAgentJson() {
 	}
 	if (!localConfig.value) return;
 
-	// Inline the task/skill/custom-tool definition bodies so the download is
-	// self-contained — the config itself carries only bare refs. Skill bodies
-	// and tool code are on the agent resource; task bodies are fetched here.
+	// Inline the task, skill, and custom tool definition bodies, so the
+	// download is self-contained. The config itself carries only bare refs.
+	// Skill bodies and tool code are on the agent resource. This function
+	// fetches the task bodies.
 	let tasks: AgentTaskDto[] = [];
 	if (localConfig.value.tasks?.length && !isUnsaved.value) {
 		try {

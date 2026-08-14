@@ -203,9 +203,9 @@ function stripUnknownSchemaFields(value: unknown, schema: z.ZodTypeAny): unknown
 
 /**
  * Strip legacy or unsupported typed entries from agent JSON config before strict
- * Zod validation. Unknown top-level keys are dropped from
- * `ExportedAgentJsonConfigBaseSchema` — the superset shape, so inline
- * definition bodies on imported refs survive sanitization.
+ * Zod validation. The function removes top-level keys that
+ * `ExportedAgentJsonConfigBaseSchema` does not define. That schema includes
+ * the inline definition bodies, so imported refs keep them.
  * This intentionally cleans unknown fields gracefully, so older persisted configs
  * and generated drafts can move forward as the schema evolves.
  *

@@ -809,12 +809,11 @@ describe('AgentConfigService', () => {
 		});
 	});
 
-	// Reproduces AGENT-582: a scheduled task's reference lives in the agent
-	// schema, but its definition (name/objective/cronExpression) lives in the
-	// separate `agent_task_definition` table. Exported agent JSON (built by the
-	// frontend from the builder's data) carries the definition inline on the
-	// ref, and import must recreate it — otherwise the task is silently lost
-	// when an agent JSON leaves one instance and is imported into another.
+	// Reproduces AGENT-582. A scheduled task's ref lives in the agent schema.
+	// Its definition (name, objective, cronExpression) lives in the separate
+	// `agent_task_definition` table. Exported agent JSON carries the definition
+	// inline on the ref, and import must recreate it. Otherwise the instance
+	// that imports the JSON silently loses the task.
 	describe('scheduled task import', () => {
 		const taskReference = { type: 'task', id: 'weekly_review', enabled: true } as const;
 		const taskDefinition = {
@@ -877,9 +876,9 @@ describe('AgentConfigService', () => {
 		it('assigns a fresh id when the imported task id is already taken by another agent', async () => {
 			const { service, agentRepository, agentTaskRepository, txManager } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
-			// The task id is the table's sole primary key; reusing it would hijack
-			// the other agent's row. This happens on every same-instance import,
-			// since the source agent still owns the exported id.
+			// The task id is the only primary key of the table. A write under a
+			// taken id changes the other agent's row. Every same-instance import
+			// hits this, because the source agent still owns the exported id.
 			agentTaskRepository.findOwningAgentIds.mockResolvedValue(
 				new Map([['weekly_review', 'agent-other']]),
 			);
@@ -918,8 +917,8 @@ describe('AgentConfigService', () => {
 				),
 			).rejects.toThrow('save failed');
 
-			// Task rows are only written inside the agent-save transaction, so a
-			// failed update can't leave orphan definitions behind.
+			// Task rows are written only inside the agent-save transaction, so a
+			// failed update cannot leave orphan definitions behind.
 			expect(agentRepository.manager.transaction).toHaveBeenCalledTimes(1);
 			expect(agentRepository.save).not.toHaveBeenCalled();
 		});

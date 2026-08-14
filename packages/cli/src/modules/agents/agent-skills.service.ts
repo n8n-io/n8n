@@ -274,7 +274,7 @@ export class AgentSkillsService {
 		return skillId;
 	}
 
-	/** Whether a skill other than `currentSkillId` already uses this name. */
+	/** Returns true when a skill other than `currentSkillId` already uses this name. */
 	isSkillNameTaken(
 		existing: Record<string, AgentSkill>,
 		name: string,

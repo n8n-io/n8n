@@ -64,10 +64,10 @@ export class AgentConfigService {
 	) {}
 
 	/**
-	 * Get the JSON config for an agent. Refs are bare — task, skill, and custom
-	 * tool definition bodies live in their own stores; the frontend inlines them
-	 * at export time (see `buildExportedAgentJson`), and the write path accepts
-	 * them back inline on import.
+	 * Get the JSON config for an agent. All refs are bare. Task, skill, and
+	 * custom tool definition bodies live in their own stores. The frontend
+	 * inlines them at export time (see `buildExportedAgentJson`), and the write
+	 * path accepts them back inline on import.
 	 */
 	async getConfig(agentId: string, projectId: string): Promise<AgentJsonConfig> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -80,9 +80,9 @@ export class AgentConfigService {
 	}
 
 	/**
-	 * Validate an agent JSON config: runs Zod schema validation and checks any
-	 * node tool configurations against their JSON-Schema definitions. Validates
-	 * against the exported-config schema, since the write path also accepts
+	 * Validate an agent JSON config. The method does Zod schema validation and
+	 * validates node tool configurations against their JSON-Schema definitions.
+	 * It uses the exported-config schema, because the write path also accepts
 	 * imported agent JSON whose refs carry inline definition bodies.
 	 */
 	async validateConfig(
@@ -182,10 +182,10 @@ export class AgentConfigService {
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
-		// Prepare task definitions that arrived inline with the config (e.g. an
-		// imported agent JSON) but have no row on this agent yet, so their refs
-		// survive instead of being dropped as orphans by `removeMissingConfigRefs`.
-		// The rows are written later, in the same transaction as the agent save.
+		// Prepare the task definitions that arrived inline with the config (for
+		// example, an imported agent JSON) and have no row on this agent yet.
+		// Without this step, `removeMissingConfigRefs` drops their refs as
+		// orphans. The agent-save transaction writes the prepared rows.
 		const importedTasks = tasksProvided
 			? await this.prepareImportedTaskDefinitions(
 					agentId,
@@ -195,9 +195,9 @@ export class AgentConfigService {
 			: [];
 		const importedTaskIds = importedTasks.map((task) => task.id);
 
-		// Same for skill and custom tool definitions, which live on the agent's
-		// `skills`/`tools` columns: recreate them on the entity before
-		// `removeMissingConfigRefs` filters refs against those columns.
+		// Do the same for skill and custom tool definitions, which live on the
+		// agent's `skills` and `tools` columns. Recreate them on the entity
+		// before `removeMissingConfigRefs` filters refs against those columns.
 		if (validatedConfig.skills !== undefined) {
 			this.recreateImportedSkillDefinitions(entity, validatedConfig.skills);
 		}
@@ -309,9 +309,10 @@ export class AgentConfigService {
 			user,
 		);
 
-		// Imported task rows and the agent are saved in one transaction — the
-		// same all-or-nothing coupling `AgentTaskService.createTasksBatch` uses —
-		// so the `agent_task_definition` table and schema refs can't diverge.
+		// One transaction saves the imported task rows and the agent, with the
+		// same all-or-nothing coupling as `AgentTaskService.createTasksBatch`.
+		// Thus the `agent_task_definition` table and the schema refs stay in
+		// agreement.
 		const saved =
 			importedTasks.length === 0
 				? await this.agentRepository.save(entity)
@@ -358,9 +359,9 @@ export class AgentConfigService {
 		entity: Agent,
 		existingTaskIds: ReadonlySet<string>,
 	): Promise<ResolvedSubAgentRef[]> {
-		// Each block keeps only refs backed by a definition, and strips any
-		// inline body: the schema column stores just the bare ref; bodies live
-		// in the `skills`/`tools` columns and the `agent_task_definition` table.
+		// Each block keeps only the refs that have a definition, and removes any
+		// inline body. The schema column stores the bare ref. Bodies live in the
+		// `skills` and `tools` columns and in the `agent_task_definition` table.
 		if (config.skills !== undefined) {
 			const skills = entity.skills ?? {};
 			config.skills = config.skills
@@ -398,14 +399,14 @@ export class AgentConfigService {
 	}
 
 	/**
-	 * Prepare task definitions that arrived inline on the config but have no row
-	 * for this agent yet (an imported agent JSON), for persistence alongside the
-	 * agent save. A task is skipped — and its ref later dropped as an orphan —
-	 * when the inline body is missing or incomplete or the cron expression is
-	 * invalid. The task id is the table's sole primary key, so an id already
-	 * taken by another agent (importing an export whose source lives on the same
-	 * instance) is replaced with a fresh one, on both the row and the config
-	 * ref, instead of hijacking that agent's row.
+	 * Prepare the task definitions that arrived inline on the config (an
+	 * imported agent JSON) and have no row for this agent yet. The agent-save
+	 * transaction persists the prepared rows. The method skips a task when its
+	 * inline body is incomplete or its cron expression is invalid.
+	 * `removeMissingConfigRefs` then drops the skipped ref as an orphan. The
+	 * task id is the only primary key of the table. When another agent already
+	 * owns an id, the method assigns a fresh id to both the row and the config
+	 * ref. This occurs when the export source lives on the same instance.
 	 */
 	private async prepareImportedTaskDefinitions(
 		agentId: string,
@@ -437,8 +438,8 @@ export class AgentConfigService {
 			let taskId = task.id;
 			if (owningAgentIds.get(taskId) !== undefined && owningAgentIds.get(taskId) !== agentId) {
 				taskId = generateAgentResourceId('task', takenIds);
-				// The ref is part of the config being persisted, so the rename
-				// carries through to the schema and the update response.
+				// The ref is part of the persisted config, so the new id carries
+				// through to the schema and the update response.
 				task.ref.id = taskId;
 				this.logger.warn('Imported agent task id already taken: assigned a new id', {
 					taskId: task.id,
@@ -461,12 +462,13 @@ export class AgentConfigService {
 	}
 
 	/**
-	 * Write skill bodies that arrived inline on the config but are missing from
-	 * the agent's `skills` column (an imported agent JSON), so their refs are
-	 * kept instead of dropped as orphans. A ref is skipped — and its ref later
-	 * dropped — when the inline body is incomplete, fails skill validation, or
-	 * its name collides with a skill already on the agent. An existing skill
-	 * under the same id always wins over the imported body.
+	 * Write the skill bodies that arrived inline on the config (an imported
+	 * agent JSON) and are missing from the agent's `skills` column. Without
+	 * this step, `removeMissingConfigRefs` drops their refs as orphans. The
+	 * method skips a skill when its inline body is incomplete, when the body
+	 * fails skill validation, or when its name collides with a skill on the
+	 * agent. When the agent already has a skill under the same id, the method
+	 * keeps that skill and ignores the imported body.
 	 */
 	private recreateImportedSkillDefinitions(
 		entity: Agent,
@@ -513,12 +515,14 @@ export class AgentConfigService {
 	}
 
 	/**
-	 * Compile custom tools whose source arrived inline on the config but have
-	 * no entry in the agent's `tools` column (an imported agent JSON), so their
-	 * refs are kept instead of dropped as orphans. The descriptor is re-derived
-	 * from the code in the secure runtime — never taken from the imported JSON —
-	 * and a tool is skipped when its code fails to compile or declares a name
-	 * different from the ref id. An existing tool under the same id always wins.
+	 * Compile the custom tools whose source code arrived inline on the config
+	 * (an imported agent JSON) and have no entry in the agent's `tools` column.
+	 * Without this step, `removeMissingConfigRefs` drops their refs as orphans.
+	 * The secure runtime derives the descriptor from the code. The method never
+	 * reads the descriptor from the imported JSON. The method skips a tool when
+	 * its code does not compile or declares a name that differs from the ref
+	 * id. When the agent already has a tool under the same id, the method keeps
+	 * that tool and ignores the imported code.
 	 */
 	private async recreateImportedCustomToolDefinitions(
 		entity: Agent,
@@ -542,9 +546,9 @@ export class AgentConfigService {
 				continue;
 			}
 
-			// The tools column is keyed by the name the code declares
-			// (see `AgentCustomToolsService.buildCustomTool`), so a mismatched
-			// ref id would create an entry the ref still can't resolve.
+			// The tools column is keyed by the name that the code declares
+			// (see `AgentCustomToolsService.buildCustomTool`). If the ref id
+			// differs from that name, the ref cannot resolve the created entry.
 			if (descriptor.name !== ref.id) {
 				this.logger.warn('Skipping imported custom tool: declared name does not match ref id', {
 					toolId: ref.id,
