@@ -183,9 +183,7 @@ export class GitConnectionsGitService {
 				const privateKeyPath = path.join(temporaryFolder, 'private-key');
 				await writeFile(privateKeyPath, credentials.privateKey, { mode: 0o600 });
 				await chmod(privateKeyPath, 0o600);
-				const connectionRoot =
-					path.basename(baseDir) === 'repository' ? path.dirname(baseDir) : baseDir;
-				const sshFolder = path.join(connectionRoot, '.ssh');
+				const sshFolder = path.join(baseDir, '.ssh');
 				await mkdir(sshFolder, { recursive: true });
 				const sshCommand = buildSshCommand({
 					privateKeyPath,
