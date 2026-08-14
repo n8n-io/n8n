@@ -6,6 +6,7 @@ import { getPages, searchSpaces, searchSpacesWithAll } from '../../methods/listS
 import { confluenceApiRequest } from '../../transport';
 
 vi.mock('../../transport', () => ({
+	CONFLUENCE_CREDENTIAL_NAME: 'confluenceCloudOAuth2Api',
 	confluenceApiRequest: vi.fn(),
 }));
 
@@ -18,6 +19,15 @@ describe('Confluence listSearch.getPages', () => {
 		vi.clearAllMocks();
 		clearSpaceKeyCache();
 		ctx = mockDeep<ILoadOptionsFunctions>();
+		vi.mocked(ctx.getNode).mockReturnValue({
+			id: 'test-node',
+			name: 'Test Confluence Node',
+			type: 'n8n-nodes-base.confluence',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { confluenceCloudOAuth2Api: { id: 'cred-1', name: 'account' } },
+		});
 	});
 
 	it('lists recently modified pages when no filter is given', async () => {
@@ -85,6 +95,37 @@ describe('Confluence listSearch.getPages', () => {
 			([, endpoint]) => endpoint === '/wiki/api/v2/spaces/999',
 		);
 		expect(spaceLookups).toHaveLength(1);
+	});
+
+	it('does not reuse cached space keys across credentials', async () => {
+		apiRequest.mockImplementation(async (_method, endpoint) => {
+			if (endpoint === '/wiki/api/v2/spaces/999') return { id: 999, key: 'DOCS' };
+			if (endpoint === '/wiki/rest/api/search') return { results: [] };
+			throw new Error(`unexpected endpoint ${endpoint}`);
+		});
+		const createCtx = (credentialId: string) => {
+			const scopedCtx = mockDeep<ILoadOptionsFunctions>();
+			vi.mocked(scopedCtx.getCurrentNodeParameter).mockReturnValue('999');
+			scopedCtx.getNode.mockReturnValue({
+				id: 'test-node',
+				name: 'Test Confluence Node',
+				type: 'n8n-nodes-base.confluence',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { confluenceCloudOAuth2Api: { id: credentialId, name: 'account' } },
+			});
+			return scopedCtx;
+		};
+
+		await getPages.call(createCtx('cred-1'));
+		await getPages.call(createCtx('cred-1'));
+		await getPages.call(createCtx('cred-2'));
+
+		const spaceLookups = apiRequest.mock.calls.filter(
+			([, endpoint]) => endpoint === '/wiki/api/v2/spaces/999',
+		);
+		expect(spaceLookups).toHaveLength(2);
 	});
 
 	it('advances the offset even when a page comes back empty with a next link', async () => {

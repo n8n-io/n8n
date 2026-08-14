@@ -12,6 +12,7 @@ import { execute } from '../../../actions/page/get.operation';
 import { confluenceApiRequest } from '../../../transport';
 
 vi.mock('../../../transport', () => ({
+	CONFLUENCE_CREDENTIAL_NAME: 'confluenceCloudOAuth2Api',
 	confluenceApiRequest: vi.fn(),
 }));
 

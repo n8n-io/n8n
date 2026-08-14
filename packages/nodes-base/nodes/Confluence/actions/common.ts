@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { confluenceApiRequest } from '../transport';
+import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
 
 export const PAGE_LIMIT = 250;
 
@@ -158,7 +158,12 @@ export async function resolveSpaceKey(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	spaceId: string,
 ): Promise<string | undefined> {
-	const cached = spaceKeyCache.get(spaceId);
+	// Space IDs are only unique per site, so the cache is keyed per credential
+	const rawCredentialId = this.getNode().credentials?.[CONFLUENCE_CREDENTIAL_NAME]?.id;
+	const credentialId = typeof rawCredentialId === 'string' ? rawCredentialId : '';
+	const cacheKey = `${credentialId}:${spaceId}`;
+
+	const cached = spaceKeyCache.get(cacheKey);
 	if (cached !== undefined) return cached;
 
 	const space = await confluenceApiRequest.call(
@@ -167,7 +172,7 @@ export async function resolveSpaceKey(
 		`/wiki/api/v2/spaces/${encodeURIComponent(spaceId)}`,
 	);
 	if (typeof space.key !== 'string' || space.key === '') return undefined;
-	spaceKeyCache.set(spaceId, space.key);
+	spaceKeyCache.set(cacheKey, space.key);
 	return space.key;
 }
 
