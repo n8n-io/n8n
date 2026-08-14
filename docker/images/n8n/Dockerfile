@@ -35,8 +35,8 @@ RUN cd /usr/local/lib/node_modules/n8n/node_modules/sqlite3 && \
 # only the binding and link it against the `librdkafka` that the runtime base
 # installs.
 RUN apk add --no-cache librdkafka-dev && \
-    cd /usr/local/lib/node_modules/n8n && \
-    BUILD_LIBRDKAFKA=0 npm_config_build_from_source=true npm rebuild @confluentinc/kafka-javascript
+    cd /usr/local/lib/node_modules/n8n/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript && \
+    BUILD_LIBRDKAFKA=0 node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
 COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
      /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build/Release/isolated_vm.node
 # node-gyp-build finds build/Release first. Delete the prebuilds to remove the glibc fallback.
