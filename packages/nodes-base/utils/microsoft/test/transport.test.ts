@@ -484,9 +484,7 @@ describe('Microsoft Graph transport kernel', () => {
 		});
 
 		it('leaves an already-decoded id unchanged', () => {
-			expect(validateMicrosoftGraphId('19:abc@thread.tacv2', mockNode)).toBe(
-				'19:abc@thread.tacv2',
-			);
+			expect(validateMicrosoftGraphId('19:abc@thread.tacv2', mockNode)).toBe('19:abc@thread.tacv2');
 		});
 
 		it.each(['', '   '])('rejects empty / whitespace-only ids', (id) => {
