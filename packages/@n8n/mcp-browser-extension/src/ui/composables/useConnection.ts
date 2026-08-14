@@ -152,6 +152,12 @@ export function useConnection() {
 			if (isStatusResponse(statusResponse)) {
 				controlledTabIds.value = statusResponse.tabIds ?? [];
 			}
+			// Direct connect flow opens this page in an extension-owned popup window;
+			// once connected the popup has served its purpose. Regular tabs stay open.
+			const currentWindow = await chrome.windows.getCurrent();
+			if (currentWindow.type === 'popup') {
+				window.close();
+			}
 		} else {
 			status.value = 'disconnected';
 			errorMessage.value = isConnectResponse(raw)

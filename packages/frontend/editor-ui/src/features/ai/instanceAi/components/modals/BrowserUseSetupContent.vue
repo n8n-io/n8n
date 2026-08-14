@@ -1,13 +1,12 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
+import BrowserUseConnectStep from './BrowserUseConnectStep.vue';
 
 import { CHROME_EXTENSION_URL } from './constants';
-
-const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
 
 const props = withDefaults(
 	defineProps<{
@@ -23,40 +22,12 @@ const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
 
 const isConnected = computed(() => store.browserConnected);
-const connectUrl = ref<string | null>(null);
-let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+const statusChecked = ref(false);
 
-function clearRefreshTimer(): void {
-	if (refreshTimer) {
-		clearTimeout(refreshTimer);
-		refreshTimer = undefined;
-	}
-}
-
-async function refreshConnectUrl(): Promise<void> {
-	clearRefreshTimer();
-	connectUrl.value = await store.fetchBrowserConnectUrl();
-
-	const expiresAt = store.browserConnectUrlExpiresAt;
-	if (!connectUrl.value || !expiresAt) return;
-
-	const delay = Date.parse(expiresAt) - Date.now() - CONNECT_URL_REFRESH_MARGIN_MS;
-	if (!Number.isFinite(delay) || delay <= 0) return;
-
-	refreshTimer = setTimeout(() => void refreshConnectUrl(), delay);
-}
-
-onMounted(() => {
+onMounted(async () => {
 	telemetry.trackModalOpened();
-	void store.fetchBrowserStatus();
-	if (!store.browserConnected) {
-		void refreshConnectUrl();
-	}
-});
-
-onBeforeUnmount(() => {
-	clearRefreshTimer();
-	store.clearBrowserConnectUrl();
+	await store.fetchBrowserStatus();
+	statusChecked.value = true;
 });
 </script>
 
@@ -104,24 +75,8 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 
-			<div :class="$style.step">
-				<N8nText :bold="true" size="small">
-					{{ i18n.baseText('instanceAi.browserUse.step.connect.title') }}
-				</N8nText>
-				<N8nText color="text-light" size="small">
-					{{ i18n.baseText('instanceAi.browserUse.step.connect.description') }}
-				</N8nText>
-				<N8nButton
-					:label="i18n.baseText('instanceAi.browserUse.step.connect.cta')"
-					:href="connectUrl ?? undefined"
-					target="_blank"
-					variant="solid"
-					size="medium"
-					icon="external-link"
-					:disabled="!connectUrl"
-					data-test-id="browser-use-open-connect-page"
-					@click="telemetry.trackOpenExtensionClicked"
-				/>
+			<div v-if="statusChecked" :class="$style.step">
+				<BrowserUseConnectStep />
 			</div>
 
 			<div :class="$style.waitingRow">

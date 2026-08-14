@@ -6,17 +6,26 @@
 // ---------------------------------------------------------------------------
 
 type TabUpdatedHandler = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => void;
+type ExternalMessageHandler = (
+	message: unknown,
+	sender: chrome.runtime.MessageSender,
+	sendResponse: (response: unknown) => void,
+) => unknown;
 
 const EXT_ORIGIN = 'chrome-extension://testextensionid/';
 const CONNECT_URL = `${EXT_ORIGIN}connect.html`;
 
 const tabUpdatedListeners: TabUpdatedHandler[] = [];
+const externalMessageListeners: ExternalMessageHandler[] = [];
 
 const chromeMock = {
 	runtime: {
 		getURL: vi.fn((path: string) => `${EXT_ORIGIN}${path}`),
 		sendMessage: vi.fn().mockResolvedValue(undefined),
 		onMessage: { addListener: vi.fn() },
+		onMessageExternal: {
+			addListener: vi.fn((fn: ExternalMessageHandler) => externalMessageListeners.push(fn)),
+		},
 	},
 	tabs: {
 		query: vi.fn().mockResolvedValue([]),
@@ -29,7 +38,11 @@ const chromeMock = {
 			addListener: vi.fn((fn: TabUpdatedHandler) => tabUpdatedListeners.push(fn)),
 		},
 	},
-	windows: { update: vi.fn().mockResolvedValue(undefined) },
+	windows: {
+		update: vi.fn().mockResolvedValue(undefined),
+		create: vi.fn().mockResolvedValue(undefined),
+		getLastFocused: vi.fn().mockResolvedValue({ left: 0, top: 0, width: 1920, height: 1080 }),
+	},
 	storage: {
 		session: {
 			set: vi.fn().mockResolvedValue(undefined),
@@ -59,6 +72,16 @@ function connectUrlWithRelay(relayUrl: string): string {
 /** Invoke the registered tab-update listeners as Chrome would. */
 function simulateTabUpdated(tabId: number, url: string): void {
 	for (const fn of tabUpdatedListeners) fn(tabId, { url } as chrome.tabs.TabChangeInfo);
+}
+
+/** Invoke the registered external-message listeners and collect the response. */
+async function simulateExternalMessage(message: unknown, origin: string): Promise<unknown> {
+	let response: unknown;
+	for (const fn of externalMessageListeners) {
+		fn(message, { origin } as chrome.runtime.MessageSender, (r) => (response = r));
+	}
+	await flush();
+	return response;
 }
 
 /** Flush pending microtasks/macrotasks so the listener's async IIFE settles. */
@@ -146,5 +169,106 @@ describe('connect.html tab deduplication', () => {
 
 		expect(chromeMock.storage.session.set).not.toHaveBeenCalled();
 		expect(chromeMock.tabs.query).not.toHaveBeenCalled();
+	});
+});
+
+describe('external messages (direct connect flow)', () => {
+	const ALLOWED_ORIGIN = 'https://acme.app.n8n.cloud';
+	const RELAY_URL = 'wss://acme.app.n8n.cloud/browser-use/extension/abc?token=bu_x';
+
+	// The throttle keys off Date.now(); advance it past the window before each
+	// test. Re-applied per test because the config restores mocks after each one.
+	let nowMs = 0;
+	beforeEach(() => {
+		nowMs += 60_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => nowMs);
+		chromeMock.tabs.query.mockResolvedValue([]);
+		chromeMock.windows.getLastFocused.mockResolvedValue({
+			left: 0,
+			top: 0,
+			width: 1920,
+			height: 1080,
+		});
+	});
+
+	it('responds to ping from an allowed origin', async () => {
+		const response = await simulateExternalMessage({ type: 'ping' }, ALLOWED_ORIGIN);
+		expect(response).toEqual({ pong: true });
+	});
+
+	it('ignores messages from disallowed origins', async () => {
+		const response = await simulateExternalMessage({ type: 'ping' }, 'https://evil.example.com');
+		expect(response).toBeUndefined();
+	});
+
+	it('ignores malformed messages', async () => {
+		const response = await simulateExternalMessage({ type: 'connect' }, ALLOWED_ORIGIN);
+		expect(response).toBeUndefined();
+		expect(chromeMock.windows.create).not.toHaveBeenCalled();
+	});
+
+	it('opens a centered popup window with the connect page when none is open', async () => {
+		const response = await simulateExternalMessage(
+			{ type: 'connect', relayUrl: RELAY_URL },
+			ALLOWED_ORIGIN,
+		);
+
+		expect(response).toEqual({ accepted: true });
+		expect(chromeMock.storage.session.set).toHaveBeenCalledWith({ pendingRelayUrl: RELAY_URL });
+		expect(chromeMock.windows.create).toHaveBeenCalledWith({
+			url: connectUrlWithRelay(RELAY_URL),
+			type: 'popup',
+			width: 420,
+			height: 640,
+			left: 750,
+			top: 220,
+		});
+	});
+
+	it('reuses an already-open connect page instead of opening a new popup', async () => {
+		chromeMock.tabs.query.mockResolvedValue([
+			{ id: 5, windowId: 50, url: connectUrlWithRelay('ws://localhost:1111') },
+		]);
+
+		const response = await simulateExternalMessage(
+			{ type: 'connect', relayUrl: RELAY_URL },
+			ALLOWED_ORIGIN,
+		);
+
+		expect(response).toEqual({ accepted: true });
+		expect(chromeMock.windows.create).not.toHaveBeenCalled();
+		expect(chromeMock.tabs.update).toHaveBeenCalledWith(5, { active: true });
+		expect(chromeMock.windows.update).toHaveBeenCalledWith(50, { focused: true });
+		expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
+			type: 'relayUrlReady',
+			relayUrl: RELAY_URL,
+		});
+	});
+
+	it('rejects a relay URL that is not a recognized n8n instance', async () => {
+		const response = await simulateExternalMessage(
+			{ type: 'connect', relayUrl: 'wss://evil.example.com/relay' },
+			ALLOWED_ORIGIN,
+		);
+
+		expect(response).toEqual({ accepted: false, error: 'Not a recognized n8n instance.' });
+		expect(chromeMock.windows.create).not.toHaveBeenCalled();
+		expect(chromeMock.storage.session.set).not.toHaveBeenCalled();
+	});
+
+	it('throttles rapid connect requests', async () => {
+		const first = await simulateExternalMessage(
+			{ type: 'connect', relayUrl: RELAY_URL },
+			ALLOWED_ORIGIN,
+		);
+		nowMs += 1_000;
+		const second = await simulateExternalMessage(
+			{ type: 'connect', relayUrl: RELAY_URL },
+			ALLOWED_ORIGIN,
+		);
+
+		expect(first).toEqual({ accepted: true });
+		expect(second).toEqual({ accepted: false, error: 'Too many connect requests.' });
+		expect(chromeMock.windows.create).toHaveBeenCalledTimes(1);
 	});
 });
