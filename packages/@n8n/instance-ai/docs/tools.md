@@ -754,13 +754,15 @@ conversation. Creation and editing stay on `build-agent`.
 
 ### `mcp-servers` *(domain tool — conditional)*
 
-Tool to interact with connected and available MCP servers.
+Tool to interact with connected and available MCP servers, and to let the user connect one from the chat.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `action` | `'connected' \| 'details' \| 'search'` | yes | Discriminator |
+| `action` | `'connected' \| 'details' \| 'search' \| 'connect'` | yes | Discriminator |
 | `slug` | string | `details` | Server slug, as returned by `connected` |
 | `queries` | string[] | `search` | Free-text queries matched against server name, title, description |
+| `serverSlugs` | string[] | `connect` | Slugs returned by `search`, best match first, max 3 |
+| `reason` | string | `connect` | One sentence for the confirmation record |
 
 **`connected`** → `{ servers: [{ slug, toolCount }], hint? }`. Every connected MCP
 server, counts only — names are `details`' job.
@@ -770,6 +772,10 @@ unconnected slug apart from a connected server that loaded no tools.
 
 **`search`** → `{ results: [{ slug, title, description, tools }], hint? }`, capped
 at 5, most relevant first. Only servers the user has *not* connected come back.
+
+**`connect`** → `{ connectedSlugs, message }`. Suspends to render the inline
+**Available tools** card, resuming when the user connects or skips. `connectedSlugs`
+are the ones the server confirms on resume, not the ones the client claimed.
 
 ## Other Domain Tools
 

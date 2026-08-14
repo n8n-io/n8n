@@ -3,6 +3,8 @@ import type { JSONSchema7 } from 'json-schema';
 import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
 
+import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
+import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
@@ -13,6 +15,7 @@ import type { StreamChunk } from '../../types/sdk/agent';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { Workspace, createWorkspaceTools } from '../../workspace';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentEventBus } from '../state/event-bus';
@@ -7785,6 +7788,233 @@ describe('AgentRuntime — oversized tool results', () => {
 		expect(envelope.head).toContain('MESSAGE_HEAD');
 		expect(envelope.tail).toContain('MESSAGE_TAIL');
 		expect(fileBlock).toMatchObject({ type: 'file', mediaType: 'text/plain', data: fileData });
+	});
+
+	describe('Workspace-backed oversized tool results', () => {
+		type OffloadedEnvelope = {
+			_offloaded: true;
+			path: string;
+			originalCharCount: number;
+			estimatedTokenCount: number;
+			requiredAction: {
+				toolName: 'workspace_read_tool_result';
+				input: { path: string; view: 'describe' };
+			};
+		};
+
+		function parseOffloadedEnvelope(value: string | undefined): OffloadedEnvelope {
+			try {
+				return JSON.parse(value ?? '') as OffloadedEnvelope;
+			} catch {
+				throw new Error('Expected a valid offloaded result envelope');
+			}
+		}
+
+		function modelToolResults(): unknown[] {
+			const call = generateText.mock.calls[1][0] as {
+				messages: Array<{
+					role: string;
+					content: Array<{ type: string; output?: { type: string; value: unknown } }>;
+				}>;
+			};
+			return call.messages
+				.filter((message) => message.role === 'tool')
+				.flatMap((message) => message.content)
+				.filter((part) => part.type === 'tool-result')
+				.map((part) => part.output?.value);
+		}
+
+		function createWorkspaceAgent(filesystem: InMemoryFilesystem, tools: BuiltTool[]) {
+			return new Agent('workspace-result-test')
+				.model('openai/gpt-4o-mini')
+				.instructions('Test')
+				.tool(tools)
+				.toolCallConcurrency(Infinity)
+				.workspace(new Workspace({ filesystem }));
+		}
+
+		it('stores complete concurrent transformed results without changing raw outputs', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const transformedOutputs = {
+				first: { value: `FIRST${'a '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}` },
+				second: { value: `SECOND${'b '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}` },
+			};
+			const tools = (Object.keys(transformedOutputs) as Array<keyof typeof transformedOutputs>).map(
+				(name): BuiltTool => ({
+					name,
+					description: name,
+					inputSchema: z.object({}),
+					handler: async () => await Promise.resolve({ raw: name }),
+					toModelOutput: () => transformedOutputs[name],
+				}),
+			);
+			const agent = createWorkspaceAgent(filesystem, tools);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([
+						{ toolCallId: 'tc/first', toolName: 'first', args: {} },
+						{ toolCallId: 'tc/second', toolName: 'second', args: {} },
+					]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			const result = await agent.generate('run', {
+				persistence: { threadId: 'slack:C123:123.456', resourceId: 'user-1' },
+			});
+			const envelopes = modelToolResults() as OffloadedEnvelope[];
+
+			expect(envelopes).toHaveLength(2);
+			expect(new Set(envelopes.map(({ path }) => path)).size).toBe(2);
+			expect(envelopes.every(({ _offloaded }) => _offloaded)).toBe(true);
+			expect(envelopes.map(({ requiredAction }) => requiredAction)).toEqual(
+				envelopes.map(({ path }) => ({
+					toolName: 'workspace_read_tool_result',
+					input: { path, view: 'describe' },
+				})),
+			);
+			await expect(filesystem.readFile(envelopes[0].path, { encoding: 'utf8' })).resolves.toBe(
+				JSON.stringify(transformedOutputs.first),
+			);
+			await expect(filesystem.readFile(envelopes[1].path, { encoding: 'utf8' })).resolves.toBe(
+				JSON.stringify(transformedOutputs.second),
+			);
+			expect(result.toolCalls?.map(({ output }) => output)).toEqual([
+				{ raw: 'first' },
+				{ raw: 'second' },
+			]);
+
+			const reader = createWorkspaceTools({ filesystem }).find(
+				(tool) => tool.name === 'workspace_read_tool_result',
+			);
+			if (!reader?.handler) throw new Error('Expected workspace_read_tool_result');
+			await expect(reader.handler(envelopes[0].requiredAction.input, {} as never)).resolves.toEqual(
+				{
+					view: 'describe',
+					pointer: '',
+					type: 'object',
+					childCount: 1,
+				},
+			);
+		});
+
+		it('stores oversized errors without changing the rejected tool-call state', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const tool: BuiltTool = {
+				name: 'large_error',
+				description: 'large error',
+				inputSchema: z.object({}),
+				handler: () => {
+					throw new Error(`ERROR_HEAD${'e '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}`);
+				},
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-error', toolName: tool.name, args: {} }]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			const result = await agent.generate('run', {
+				persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+			});
+			const toolCall = result.messages
+				.flatMap((message) => ('content' in message ? message.content : []))
+				.find(
+					(content): content is ContentToolCall =>
+						content.type === 'tool-call' && content.toolCallId === 'tc-error',
+				);
+			const envelope = parseOffloadedEnvelope(
+				toolCall?.state === 'rejected' ? toolCall.error : undefined,
+			);
+
+			expect(toolCall?.state).toBe('rejected');
+			expect(envelope._offloaded).toBe(true);
+			expect(envelope.requiredAction).toEqual({
+				toolName: 'workspace_read_tool_result',
+				input: { path: envelope.path, view: 'describe' },
+			});
+			await expect(filesystem.readFile(envelope.path, { encoding: 'utf8' })).resolves.toContain(
+				'ERROR_HEAD',
+			);
+		});
+
+		it('stores oversized custom-message text while preserving file content', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const fileData = Buffer.from('file').toString('base64');
+			const messageText = `MESSAGE${'m '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}`;
+			const tool: BuiltTool = {
+				name: 'large_message',
+				description: 'large message',
+				inputSchema: z.object({}),
+				handler: async () => await Promise.resolve({ ok: true }),
+				toMessage: async () =>
+					await Promise.resolve({
+						role: 'assistant',
+						content: [
+							{ type: 'text', text: messageText },
+							{ type: 'file', mediaType: 'text/plain', data: fileData },
+						],
+					}),
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-message', toolName: tool.name, args: {} }]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			const result = await agent.generate('run', {
+				persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+			});
+			const message = result.messages.find(
+				(candidate) =>
+					'content' in candidate &&
+					candidate.content.some((content) => content.type === 'file' && content.data === fileData),
+			);
+			const text =
+				message && 'content' in message
+					? message.content.find((content) => content.type === 'text')?.text
+					: undefined;
+			const envelope = parseOffloadedEnvelope(text);
+
+			expect(envelope._offloaded).toBe(true);
+			expect(envelope.requiredAction).toEqual({
+				toolName: 'workspace_read_tool_result',
+				input: { path: envelope.path, view: 'describe' },
+			});
+			expect(message && 'content' in message ? message.content : []).toContainEqual({
+				type: 'file',
+				mediaType: 'text/plain',
+				data: fileData,
+			});
+			await expect(filesystem.readFile(envelope.path, { encoding: 'utf8' })).resolves.toBe(
+				JSON.stringify([{ type: 'text', text: messageText }]),
+			);
+		});
+
+		it('falls back to bounded truncation when storing the result fails', async () => {
+			const filesystem = new InMemoryFilesystem();
+			vi.spyOn(filesystem, 'writeFile').mockRejectedValue(new Error('storage unavailable'));
+			const tool: BuiltTool = {
+				name: 'large_result',
+				description: 'large result',
+				inputSchema: z.object({}),
+				handler: async () =>
+					await Promise.resolve({
+						value: `HEAD${'x '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}TAIL`,
+					}),
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-large', toolName: tool.name, args: {} }]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			await agent.generate('run');
+
+			expect(modelToolResults()[0]).toMatchObject({ _truncated: true });
+		});
 	});
 });
 

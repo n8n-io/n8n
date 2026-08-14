@@ -203,7 +203,7 @@ const submit = async () => {
 
 		// install the response before clearing the local flag so the
 		// publish gate never opens while a refetch is in flight
-		reviewStatusStore.setOpenReview(workflowId, reviewRequest);
+		reviewStatusStore.setOpenReview(workflowId, reviewRequest, trimmedDescription || null);
 		reviewRequiredStore.setReviewRequired(workflowId, false);
 		emit('update:open', false);
 		emit('submitted', reviewRequest.id);
