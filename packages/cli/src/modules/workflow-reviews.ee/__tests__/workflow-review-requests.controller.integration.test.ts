@@ -1589,7 +1589,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 	});
 
 	test('returns 403 for the requesting author without admin override', async () => {
-		const { request } = await seedRequest(member);
+		const { request } = await seedRequest(member, {}, [owner.id]);
 
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
@@ -1602,7 +1602,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		});
 	});
 
-	test('returns 403 for a user who became an author via update-version', async () => {
+	test('allows an assigned reviewer to decide after they update the review version', async () => {
 		const { request, workflow } = await seedRequest(owner);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
 
@@ -1618,7 +1618,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
 			.send({ decision: 'approved' })
-			.expect(403);
+			.expect(200);
 	});
 
 	test('allows the instance owner to decide their own review (admin override)', async () => {
@@ -3358,13 +3358,23 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		// `missing_reviewer_permission` cannot happen over HTTP. The eligibility service
 		// unit tests cover that branch.
 
-		test('tells an assigned author why they cannot decide their own review', async () => {
+		test('lets an assigned author decide', async () => {
 			const workflow = await createWorkflow({}, teamProject);
 			const request = await seedRequest(workflow.id, null, member);
 			await reviewerRepository.addReviewers(
 				{ workflowReviewRequestId: request.id, userIds: [member.id] },
 				{},
 			);
+
+			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(true);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBeNull();
+		});
+
+		test('tells a non-assigned author why they cannot decide their own review', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, member);
 
 			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 
