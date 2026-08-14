@@ -71,6 +71,10 @@ export class GitConnectionsGitService {
 			} catch {
 				throw error;
 			}
+			// A bare username is the legitimate SSH user (e.g. `git@`); a password in
+			// the userinfo would be stored/returned in `repositoryUrl` and treated by
+			// git as part of the SSH user. Credentials must come through the encrypted fields.
+			if (url.password) throw new BadRequestError('Repository URL must not contain credentials');
 			if (!url.hostname || !url.pathname || url.pathname === '/') throw error;
 			return;
 		}

@@ -49,6 +49,7 @@ describe('GitConnectionsGitService', () => {
 			['leading dash (option injection)', '--upload-pack=/tmp/x'],
 			['host starting with a dash', 'user@-oProxyCommand=evil:path'],
 			['bare ssh:// with no path', 'ssh://github.com'],
+			['ssh:// with a password in the userinfo', 'ssh://git:secret@github.com/org/repo.git'],
 		])('rejects %s', (_label, url) => {
 			expect(() => service.validateRepositoryUrl(url, 'ssh')).toThrow(BadRequestError);
 		});
