@@ -20,6 +20,10 @@ import {
 	scopedSessionHint,
 } from '../descriptions';
 
+export function sanitizeMongoUriInMessage(message: string): string {
+	return message.replace(/mongodb(\+srv)?:\/\/[^\s/@]*@/gi, 'mongodb$1://[REDACTED]@');
+}
+
 export class MemoryMongoDbChat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MongoDB Chat Memory',
@@ -165,7 +169,11 @@ export class MemoryMongoDbChat implements INodeType {
 			};
 		} catch (error) {
 			void client.close();
-			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			throw new NodeOperationError(
+				this.getNode(),
+				`MongoDB connection error: ${sanitizeMongoUriInMessage(errorMessage)}`,
+			);
 		}
 	}
 }
