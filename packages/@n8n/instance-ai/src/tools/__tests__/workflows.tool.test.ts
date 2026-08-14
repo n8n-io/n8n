@@ -1378,15 +1378,16 @@ describe('workflows tool', () => {
 			]);
 
 			const context = createMockContext({
+				runId: 'run-1',
 				workflowBuildContext: {
 					threadId: 't1',
-					runId: 'r1',
+					runId: 'run-1',
 					taskId: 'task-1',
 					workItemId: 'wi-1',
 					workflowTaskService: {
 						getLatestBuildOutcomeForWorkflow: vi
 							.fn()
-							.mockResolvedValue({ changedNodeNames: ['Google Sheets'] }),
+							.mockResolvedValue({ runId: 'run-1', changedNodeNames: ['Google Sheets'] }),
 					},
 				} as never,
 			});
@@ -1414,15 +1415,16 @@ describe('workflows tool', () => {
 			]);
 
 			const context = createMockContext({
+				runId: 'run-1',
 				workflowBuildContext: {
 					threadId: 't1',
-					runId: 'r1',
+					runId: 'run-1',
 					taskId: 'task-1',
 					workItemId: 'wi-1',
 					workflowTaskService: {
 						getLatestBuildOutcomeForWorkflow: vi
 							.fn()
-							.mockResolvedValue({ changedNodeNames: ['Build Message'] }),
+							.mockResolvedValue({ runId: 'run-1', changedNodeNames: ['Build Message'] }),
 					},
 				} as never,
 			});
@@ -1451,8 +1453,9 @@ describe('workflows tool', () => {
 
 			const getLatestBuildOutcomeForWorkflow = vi
 				.fn()
-				.mockResolvedValue({ changedNodeNames: ['Build Message'] });
+				.mockResolvedValue({ runId: 'run-1', changedNodeNames: ['Build Message'] });
 			const context = createMockContext({
+				runId: 'run-1',
 				workflowBuildContext: {
 					threadId: 't1',
 					runId: 'r1',
@@ -1470,6 +1473,45 @@ describe('workflows tool', () => {
 			} as never);
 
 			expect(getLatestBuildOutcomeForWorkflow).not.toHaveBeenCalled();
+			expect(suspend).toHaveBeenCalled();
+			expect(suspend.mock.calls[0][0].setupRequests).toEqual([
+				expect.objectContaining({ node: expect.objectContaining({ name: 'Slack' }) }),
+			]);
+		});
+
+		it('should not scope setup when the latest build belongs to an earlier run', async () => {
+			// A setup call outside the build's own run is user-initiated ("set up
+			// my workflow"), so it must cover the whole workflow.
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext({
+				runId: 'run-2',
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-2',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi
+							.fn()
+							.mockResolvedValue({ runId: 'run-1', changedNodeNames: ['Build Message'] }),
+					},
+				} as never,
+			});
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0].setupRequests).toEqual([
 				expect.objectContaining({ node: expect.objectContaining({ name: 'Slack' }) }),

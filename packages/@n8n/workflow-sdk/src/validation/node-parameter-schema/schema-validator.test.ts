@@ -105,16 +105,66 @@ describe('schema-validator', () => {
 			expect(result.errors).toEqual([]);
 		});
 
-		it('flags an omitted discriminator with missingDiscriminator', () => {
-			// Telegram v1.2 has a resource/operation union with no default resolution,
-			// and editor-saved workflows omit default discriminators.
-			const result = validateNodeConfig('n8n-nodes-base.telegram', 1.2, {
-				parameters: { chatId: '123', text: 'hello' },
+		describe('missingDiscriminator flag', () => {
+			// Hand-authored union with NO default resolution, so these tests stay
+			// deterministic against generator changes (real node schemas resolve
+			// defaulted discriminators since #35952 and never reach this path).
+			let tmpRoot: string;
+
+			beforeAll(() => {
+				tmpRoot = mkdtempSync(path.join(tmpdir(), 'sdk-schema-discriminator-'));
+				const nodeDir = path.join(tmpRoot, 'nodes', 'custom-pkg', 'messenger');
+				mkdirSync(nodeDir, { recursive: true });
+				writeFileSync(
+					path.join(nodeDir, 'v1.schema.js'),
+					`module.exports = function ({ z }) {
+	const sendVariant = z.object({
+		parameters: z.object({
+			resource: z.literal('message'),
+			operation: z.literal('send'),
+			channel: z.string(),
+			recipient: z.string(),
+		}),
+	});
+	const listVariant = z.object({
+		parameters: z.object({
+			resource: z.literal('channel'),
+			operation: z.literal('list'),
+			channel: z.string(),
+		}),
+	});
+	return z.union([sendVariant, listVariant]);
+};
+`,
+				);
+				setSchemaBaseDirs([tmpRoot]);
 			});
-			expect(result.valid).toBe(false);
-			expect(result.errors.length).toBeGreaterThan(0);
-			expect(result.errors[0].message).toContain('Missing discriminator');
-			expect(result.errors[0].missingDiscriminator).toBe(true);
+
+			afterAll(() => {
+				rmSync(tmpRoot, { recursive: true, force: true });
+				setSchemaBaseDirs(originalBaseDirs);
+			});
+
+			it('flags an omitted discriminator when the rest of the config is sound', () => {
+				const result = validateNodeConfig('custom-pkg.messenger', 1, {
+					parameters: { channel: '#general', recipient: 'bob' },
+				});
+				expect(result.valid).toBe(false);
+				expect(result.errors.length).toBeGreaterThan(0);
+				expect(result.errors[0].message).toContain('Missing discriminator');
+				expect(result.errors[0].missingDiscriminator).toBe(true);
+			});
+
+			it('does not flag when the union also fails on other fields', () => {
+				// Discriminators are omitted AND `channel` has the wrong type in
+				// every variant — a genuinely misconfigured node must stay blocking.
+				const result = validateNodeConfig('custom-pkg.messenger', 1, {
+					parameters: { channel: 123 },
+				});
+				expect(result.valid).toBe(false);
+				expect(result.errors[0].message).toContain('Missing discriminator');
+				expect(result.errors[0].missingDiscriminator).toBeUndefined();
+			});
 		});
 
 		it('does not flag a wrong discriminator value as missingDiscriminator', () => {

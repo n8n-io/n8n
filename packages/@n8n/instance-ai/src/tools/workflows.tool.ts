@@ -764,9 +764,11 @@ async function handleSetupApply(
 
 /**
  * Node names the latest build for this workflow changed, read from the stored
- * build outcome. Undefined when there is no build outcome in this thread (e.g.
- * user-initiated setup) or the outcome predates change tracking — setup then
- * covers the whole workflow.
+ * build outcome. Scoping only applies to the build-bound setup handoff — the
+ * setup call made in the same run as the build. A setup call in any later run
+ * is user-initiated (e.g. "set up my workflow"), so it covers the whole
+ * workflow even when an unchanged node is the one the user wants configured.
+ * Also undefined when there is no build outcome or it predates change tracking.
  */
 async function resolveSetupScopeNodeNames(
 	context: InstanceAiContext,
@@ -776,8 +778,16 @@ async function resolveSetupScopeNodeNames(
 	if (!workflowTaskService) return undefined;
 	try {
 		const outcome = await workflowTaskService.getLatestBuildOutcomeForWorkflow(workflowId);
-		return outcome?.changedNodeNames;
-	} catch {
+		if (!outcome?.runId || outcome.runId !== context.runId) return undefined;
+		return outcome.changedNodeNames;
+	} catch (error) {
+		// Fail open: an unscoped setup equals the long-standing behavior (shows
+		// more, never less), while failing closed would block user-initiated
+		// setup on a storage hiccup.
+		context.logger.warn('Failed to resolve setup scope from the latest build outcome', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
 		return undefined;
 	}
 }

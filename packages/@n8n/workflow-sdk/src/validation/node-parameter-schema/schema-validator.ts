@@ -518,9 +518,21 @@ function extractUnionErrorSummary(
 
 					const expectedStr = expectedValues.map((v) => `"${String(v)}"`).join(', ');
 					if (receivedValue === undefined) {
+						// The downgrade signal only applies when the union fails on nothing
+						// but omitted discriminators. Any other issue in the best-matching
+						// variant means the node is genuinely misconfigured, so consumers
+						// must keep it blocking.
+						const onlyOmittedDiscriminators = bestPathIssues.every(
+							(iss) =>
+								iss.code === 'invalid_literal' &&
+								(iss as { received?: unknown }).received === undefined &&
+								discriminatorFields.some((discriminator) =>
+									iss.path.join('.').endsWith(discriminator),
+								),
+						);
 						return {
 							message: `Missing discriminator "${path}". Expected one of: ${expectedStr}. When "${field}" is omitted, n8n falls back to the node default at runtime (the editor strips default values on save), so this can be intentional. If you set it, make sure "${field}" is inside "parameters".`,
-							missingDiscriminator: true,
+							...(onlyOmittedDiscriminators ? { missingDiscriminator: true } : {}),
 						};
 					}
 					let receivedStr: string;
