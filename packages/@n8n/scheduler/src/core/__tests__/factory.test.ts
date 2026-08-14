@@ -348,6 +348,7 @@ describe('createScheduler materialize', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -393,6 +394,7 @@ describe('createScheduler materialize', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -1045,6 +1047,7 @@ describe('createScheduler tracing', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -1097,6 +1100,7 @@ describe('createScheduler tracing', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -1392,6 +1396,7 @@ describe('createScheduler metrics', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);

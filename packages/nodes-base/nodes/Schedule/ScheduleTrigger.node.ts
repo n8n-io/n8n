@@ -433,7 +433,8 @@ export class ScheduleTrigger implements INodeType {
 				type: 'options',
 				default: 'skip',
 				options: [
-					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce' },
+					{ name: 'Run the Most Recent Missed Execution Per Rule', value: 'coalesce' },
+					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce_owner' },
 					{ name: "Don't Run Missed Executions", value: 'skip' },
 				],
 				hint: 'Applies once an execution is later than the grace period set below',

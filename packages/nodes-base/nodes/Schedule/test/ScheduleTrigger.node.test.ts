@@ -25,7 +25,7 @@ describe('ScheduleTrigger', () => {
 			expect(node.description.version).toContain(1.4);
 		});
 
-		it('defines misfirePolicy as a node setting offering exactly two values, defaulting to skip', () => {
+		it('defines misfirePolicy as a node setting offering exactly three values, defaulting to skip', () => {
 			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
 
 			expect(misfirePolicy).toMatchObject({
@@ -34,7 +34,8 @@ describe('ScheduleTrigger', () => {
 				isNodeSetting: true,
 				noDataExpression: true,
 				options: [
-					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce' },
+					{ name: 'Run the Most Recent Missed Execution Per Rule', value: 'coalesce' },
+					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce_owner' },
 					{ name: "Don't Run Missed Executions", value: 'skip' },
 				],
 			});
