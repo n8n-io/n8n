@@ -88,6 +88,10 @@ export async function getGoogleAccessToken(
 
 	const scopes = scopeOverride ?? (service ? googleServiceAccountScopes[service] : []);
 
+	if (scopes.length === 0) {
+		throw new Error('At least one scope is required to generate a Google access token.');
+	}
+
 	const privateKey = formatPemBlock(credentials.privateKey as string);
 	credentials.email = ((credentials.email as string) || '').trim();
 

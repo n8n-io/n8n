@@ -4,10 +4,8 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
+import { parseGoogleScopes } from '../../../../../credentials/common/google-scopes';
 import { getGoogleAccessToken, googleServiceAccountScopes } from '../../../GenericFunctions';
-
-// Matches the scope-string parsing in GoogleApi.credentials.ts's `authenticate`.
-const SCOPE_SEPARATOR = /[,\s]+/;
 
 export async function googleApiCredentialTest(
 	this: ICredentialTestFunctions,
@@ -22,16 +20,8 @@ export async function googleApiCredentialTest(
 	// every non-Sheets scope, even though the credential works fine at request time.
 	const isHttpNodeCredential = data.httpNode === true;
 	const rawScopes = typeof data.scopes === 'string' ? data.scopes : '';
-	const scopeOverride = isHttpNodeCredential
-		? rawScopes.split(SCOPE_SEPARATOR).filter(Boolean)
-		: undefined;
-
-	if (scopeOverride?.length === 0) {
-		return {
-			status: 'Error',
-			message: 'Add at least one scope in the "Scope(s)" field to test this credential.',
-		};
-	}
+	const parsedScopes = isHttpNodeCredential ? parseGoogleScopes(rawScopes) : [];
+	const scopeOverride = parsedScopes.length > 0 ? parsedScopes : undefined;
 
 	// When testing user-configured scopes, don't also pass the sheetV2 default:
 	// getGoogleAccessToken would ignore it, but keeping it out makes it obvious

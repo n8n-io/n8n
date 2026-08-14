@@ -8,6 +8,7 @@ import type {
 	Icon,
 } from 'n8n-workflow';
 
+import { formatGoogleScopesForJwt, parseGoogleScopes } from './common/google-scopes';
 import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
 
 const regions = [
@@ -330,14 +331,11 @@ export class GoogleApi implements ICredentialType {
 		if (!credentials.httpNode) return requestOptions;
 
 		const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
-		const credentialsScopes = (credentials.scopes as string).replace(/\\n/g, '\n').trim();
 		credentials.email = (credentials.email as string).trim();
 
-		const regex = /[,\s\n]+/;
-		const scopes = credentialsScopes
-			.split(regex)
-			.filter((scope) => scope)
-			.join(' ');
+		const scopes = formatGoogleScopesForJwt(
+			parseGoogleScopes(typeof credentials.scopes === 'string' ? credentials.scopes : ''),
+		);
 
 		const now = moment().unix();
 
