@@ -118,6 +118,14 @@ node after a side-effect needs the original data, reference it by node name
 (`$('Compute Change').item.json.status`) or wire it in parallel from the
 data-producing node instead of chaining through the send.
 
+The same trap applies in reverse when **inserting** a side-effect node into an
+existing connection: adding C between A→B (e.g. a create-if-missing step before
+a write, during a repair) makes B read C's API response instead of A's data —
+auto-mapped columns silently fill with metadata. Keep the data path intact:
+branch C in parallel off the data producer, reorder C upstream of the data
+producer (trigger → ensure-target → produce data → write), or have B reference
+`$('Data Node')` explicitly.
+
 ## Code Nodes
 
 When a Code node is necessary, use real n8n item APIs such as `$input.all()` /

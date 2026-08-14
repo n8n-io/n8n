@@ -20,6 +20,11 @@ especially when the build result contains `postBuildFlow.required: true`, or whe
 the current message contains `<workflow-verification-follow-up>` or
 `<workflow-setup-required>`.
 
+One-off builds (`postBuildFlow.reason: "direct-one-off-build-succeeded"`) hand
+off to the `one-off-operations` skill instead — verification is optional there
+and completion is a live run with read-back. If both sets of instructions are
+in context for a one-off build, the one-off flow wins.
+
 These instructions are in English, but user-visible text you write while
 following them stays in the user's conversation language.
 
@@ -328,7 +333,12 @@ has "no errors" unless this turn has a passing `verify-built-workflow` or
 `build-workflow`/save, a static `workflows(action="validate")`, or your own
 narration are NOT execution evidence. For a produced artifact (a file, generated
 document, or Code-node output), read the real output before calling it complete;
-do not infer correctness from the fact that a node ran. If you could not run the
+do not infer correctness from the fact that a node ran. The same applies to rows
+or records written to an external system: never make quantitative claims ("22
+rows written", "columns matched") that you did not read back from the effect
+node's actual output (`executions(action="get-node-output")`) or from the target
+system itself — a successful run status does not prove the *right data* was
+written, only that nodes ran. If you could not run the
 failing path or inspect the artifact, say so plainly — "I couldn't verify X
 because Y" — and name what is unconfirmed. An honest "could not verify" beats an
 unverified success claim.

@@ -332,6 +332,18 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	/**
+	 * How the user intends to use this workflow. `one-off`: a concrete effect
+	 * wanted once — verification becomes optional and completion is a live run
+	 * with read-back. Absent means `reusable` (the default flow).
+	 *
+	 * Deliberately a NEW OPTIONAL FIELD rather than a new
+	 * `verificationReadiness` status: previously deployed readers strip unknown
+	 * object keys but hard-fail on unknown union variants — and the loop storage
+	 * parses the whole per-thread map as one unit, so a single unparseable
+	 * outcome would wipe every work-item record on rollback.
+	 */
+	executionIntent: z.enum(['one-off', 'reusable']).optional(),
+	/**
 	 * Deterministic post-build routing verdict. The orchestrator should use this
 	 * instead of reasoning over pin-data internals or trigger allow-lists.
 	 */
@@ -387,6 +399,9 @@ export const workflowVerificationObligationSchema = z.object({
 	readiness: workflowVerificationReadinessSchema.optional(),
 	setupRequirement: workflowSetupRequirementSchema.optional(),
 	evidence: workflowVerificationEvidenceSchema.optional(),
+	/** Mirrors the outcome's intent so consumers (e.g. the checklist projector)
+	 *  can tell a by-design one-off settlement from a could-not-verify one. */
+	executionIntent: z.enum(['one-off', 'reusable']).optional(),
 	blockingReason: z.string().optional(),
 	updatedAt: z.string(),
 });
