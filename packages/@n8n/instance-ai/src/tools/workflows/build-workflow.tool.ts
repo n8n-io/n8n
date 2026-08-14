@@ -18,6 +18,7 @@ import {
 	resolveCredentials,
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
+import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
 	combineWarnings,
@@ -198,7 +199,11 @@ const verificationReadinessOutputSchema = z.discriminatedUnion('status', [
 ]);
 
 const setupRequirementOutputSchema = z.discriminatedUnion('status', [
-	z.object({ status: z.literal('not_required') }),
+	z.object({
+		status: z.literal('not_required'),
+		reason: z.literal('skipped-by-user').optional(),
+		guidance: z.string().optional(),
+	}),
 	z.object({
 		status: z.literal('required'),
 		reason: z.enum(['mocked-credentials', 'unresolved-placeholders', 'workflow-needs-setup']),
@@ -840,7 +845,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					operation: 'create' | 'update',
 				) => {
 					const setupRequests = await analyzeWorkflow(context, saved.id);
-					const workflowNeedsSetup = setupRequests.some((request) => request.needsAction);
+					// A credential the user skipped earlier in this thread must not re-arm the
+					// setup follow-up on this build — see setup-skip-state.
+					const { pending: pendingSetupRequests, skippedByUser: skippedSetupRequests } =
+						partitionSkippedSetupRequests(setupRequests, getSkippedSetupSubjects(context));
+					const workflowNeedsSetup = pendingSetupRequests.some((request) => request.needsAction);
+					const onlySkippedSetupRemains =
+						!workflowNeedsSetup && skippedSetupRequests.some((request) => request.needsAction);
 					const { nodeSimulationPlan, simulationFixtures, waitGateScripts } =
 						await planVerificationSimulation({
 							workflow: json,
@@ -920,6 +931,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							? mockResult.resolvedCredentialsByNode
 							: undefined,
 						workflowNeedsSetup,
+						onlySkippedSetupRemains,
 						nodeSimulationPlan,
 						simulationFixtures,
 						waitGateScripts,

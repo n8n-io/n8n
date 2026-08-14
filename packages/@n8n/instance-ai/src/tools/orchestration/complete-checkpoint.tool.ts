@@ -14,6 +14,10 @@ import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
+import {
+	getSkippedSetupSubjects,
+	partitionSkippedSetupRequests,
+} from '../workflows/setup-skip-state';
 import { analyzeWorkflow } from '../workflows/setup-workflow.service';
 
 const inputSchema = z.object({
@@ -79,7 +83,13 @@ async function rejectIfSetupStillRequired(
 	for (const workflowId of dependentWorkflowIds) {
 		try {
 			const setupRequests = await analyzeWorkflow(domainContext, workflowId);
-			const pendingRequests = setupRequests.filter((request) => request.needsAction);
+			// Credentials the user skipped can never be satisfied by another setup call, so
+			// counting them here would deadlock the checkpoint against a card that must not reopen.
+			const { pending } = partitionSkippedSetupRequests(
+				setupRequests,
+				getSkippedSetupSubjects(domainContext),
+			);
+			const pendingRequests = pending.filter((request) => request.needsAction);
 			if (pendingRequests.length > 0) {
 				const nodeNames = pendingRequests
 					.map((request) => request.node.name)

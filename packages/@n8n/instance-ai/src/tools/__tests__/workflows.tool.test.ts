@@ -1555,6 +1555,156 @@ describe('workflows tool', () => {
 			// Settled requests never count as pending, so the apply is not partial.
 			expect(result).not.toHaveProperty('partial');
 		});
+
+		describe('credentials the user skipped', () => {
+			const slackRequest = {
+				node: { name: 'Post to Slack', type: 'n8n-nodes-base.slack' },
+				credentialType: 'slackApi',
+				needsAction: true,
+			};
+			const sheetsRequest = {
+				node: { name: 'Log to Sheet', type: 'n8n-nodes-base.googleSheets' },
+				credentialType: 'googleSheetsOAuth2Api',
+				needsAction: true,
+			};
+
+			/** Mirrors the service wiring: one mutable set, read and written through the context. */
+			function createGrantAwareContext(granted: string[] = []) {
+				const sessionApprovedToolKeys = new Set(granted);
+				return createMockContext({
+					sessionApprovedToolKeys,
+					grantSessionToolApproval: vi.fn(async (key: string) => {
+						await Promise.resolve();
+						sessionApprovedToolKeys.add(key);
+					}),
+					revokeSessionToolApproval: vi.fn(async (key: string) => {
+						await Promise.resolve();
+						sessionApprovedToolKeys.delete(key);
+					}),
+				});
+			}
+
+			it('leaves skipped credentials out of the setup card', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest, sheetsRequest]);
+				const context = createGrantAwareContext(['workflows:setup-skip:slackApi']);
+				const suspend = vi.fn();
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					suspend,
+					resumeData: undefined,
+				} as never);
+
+				expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [sheetsRequest] });
+			});
+
+			it('reports instead of suspending when only skipped credentials remain', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest]);
+				const context = createGrantAwareContext(['workflows:setup-skip:slackApi']);
+				const suspend = vi.fn();
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					suspend,
+					resumeData: undefined,
+				} as never);
+
+				expect(suspend).not.toHaveBeenCalled();
+				expect(result).toMatchObject({
+					success: true,
+					skippedByUser: [{ nodeName: 'Post to Slack', credentialType: 'slackApi' }],
+				});
+			});
+
+			it('re-opens a skipped card when the user asks for it', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest]);
+				const context = createGrantAwareContext(['workflows:setup-skip:slackApi']);
+				const suspend = vi.fn();
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(
+					tool,
+					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['Post to Slack'] },
+					{
+						suspend,
+						resumeData: undefined,
+					} as never,
+				);
+
+				expect(context.revokeSessionToolApproval).toHaveBeenCalledWith(
+					'workflows:setup-skip:slackApi',
+				);
+				expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [slackRequest] });
+			});
+
+			it('remembers everything still pending when the user skips the whole card', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest, sheetsRequest]);
+				const context = createGrantAwareContext();
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					resumeData: { approved: false },
+				} as never);
+
+				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
+					'workflows:setup-skip:slackApi',
+				);
+				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
+					'workflows:setup-skip:googleSheetsOAuth2Api',
+				);
+				expect(result).toMatchObject({ success: true, deferred: true });
+			});
+
+			it('separates a card the user skipped from one that is merely unconfigured', async () => {
+				// The Slack card was dismissed; the Sheets one was left half-filled. Reporting both
+				// as "still need configuration" is what made the agent re-open setup.
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest, sheetsRequest]);
+				(applyNodeChanges as Mock).mockResolvedValue({ applied: [], failed: [] });
+				(buildCompletedReport as Mock).mockReturnValue([]);
+				const context = createGrantAwareContext();
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						skippedNodes: ['Post to Slack'],
+					},
+				} as never);
+
+				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
+					'workflows:setup-skip:slackApi',
+				);
+				expect(result).toMatchObject({
+					partial: true,
+					nodesStillNeedingSetup: [{ nodeName: 'Log to Sheet' }],
+					skippedByUser: [{ nodeName: 'Post to Slack', credentialType: 'slackApi' }],
+				});
+			});
+
+			it('forgets a skip once that credential is configured', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([{ ...slackRequest, needsAction: false }]);
+				(applyNodeChanges as Mock).mockResolvedValue({ applied: ['Post to Slack'], failed: [] });
+				(buildCompletedReport as Mock).mockReturnValue([
+					{ nodeName: 'Post to Slack', credentialType: 'slackApi' },
+				]);
+				const context = createGrantAwareContext(['workflows:setup-skip:slackApi']);
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						credentials: { 'Post to Slack': { slackApi: 'cred-1' } },
+					},
+				} as never);
+
+				expect(context.revokeSessionToolApproval).toHaveBeenCalledWith(
+					'workflows:setup-skip:slackApi',
+				);
+				expect(result).not.toHaveProperty('skippedByUser');
+			});
+		});
 	});
 
 	describe('unpublish action', () => {

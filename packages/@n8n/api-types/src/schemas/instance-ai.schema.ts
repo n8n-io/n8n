@@ -73,6 +73,35 @@ export function buildDataTablesSessionGrantKey(action: string): string {
 	return `data-tables:${action}`;
 }
 
+// --- Workflow-setup skips ---
+
+const SETUP_SKIP_GRANT_PREFIX = 'workflows:setup-skip:';
+
+/**
+ * Builds the thread-level key recording that the user passed on setting up a credential
+ * type (e.g. `slackApi`). Unlike its siblings this records a *declined* decision rather
+ * than an approval, but it belongs on the same per-thread, per-user store: the setup flow
+ * reads it to stop re-opening the blocking setup card for something the user already
+ * skipped in this conversation.
+ *
+ * Setup cards without a credential type (parameter-only or trigger-only) are keyed by node
+ * name instead, so `subject` is either a credential type or a node name.
+ */
+export function buildSetupSkipGrantKey(subject: string): string {
+	return `${SETUP_SKIP_GRANT_PREFIX}${subject}`;
+}
+
+/** The credential types / node names the user skipped, parsed out of persisted grant keys. */
+export function parseSetupSkipGrants(keys: ReadonlySet<string>): Set<string> {
+	const skipped = new Set<string>();
+	for (const key of keys) {
+		if (key.startsWith(SETUP_SKIP_GRANT_PREFIX)) {
+			skipped.add(key.slice(SETUP_SKIP_GRANT_PREFIX.length));
+		}
+	}
+	return skipped;
+}
+
 // --- Domain-access grants ("always allow" for web access) ---
 // These keys mirror the research tool's action names (`fetch-url`, `web-search`) the same
 // way `executions:run:<id>` mirrors the executions `run` action, so a persisted grant row
