@@ -11,6 +11,7 @@ import {
 	buildProxyHeaders,
 	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
+	formatAttachmentSizeLimit,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
@@ -122,10 +123,10 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { AiService } from '@/services/ai.service';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
@@ -134,6 +135,7 @@ import { assertNever } from '@/utils';
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
@@ -361,6 +363,53 @@ function isStaleResumeError(error: unknown): boolean {
 	return error instanceof Error && error.name === 'StaleResumeError';
 }
 
+/** Signals that the failure is about an attached file rather than the request as a whole. */
+const ATTACHMENT_SUBJECT_PATTERN = /image|attachment/;
+
+/** Signals that the attachment was refused for its size/decodability, not merely mentioned. */
+const ATTACHMENT_REFUSAL_PATTERN = /exceed|too large|maximum|max allowed|could not process/;
+
+/**
+ * Every scrap of message text reachable from an error, following `cause` chains,
+ * arrays (an aggregate of stream failures) and the message-bearing fields the AI
+ * SDK hangs the provider's response on.
+ *
+ * Needed because the terminal error is the ai-sdk's `AI_NoOutputGeneratedError`
+ * wrapper: the provider's actual refusal is nested underneath it, and a plain
+ * `error.message` check sees only "No output generated".
+ */
+function collectErrorText(value: unknown, depth = 0): string[] {
+	if (depth > 4 || value === null || value === undefined) return [];
+	if (typeof value === 'string') return [value];
+	if (Array.isArray(value)) return value.flatMap((item) => collectErrorText(item, depth + 1));
+	if (value instanceof Error) {
+		return [value.message, ...collectErrorText(Reflect.get(value, 'cause'), depth + 1)];
+	}
+	if (typeof value === 'object') {
+		const record = value as Record<string, unknown>;
+		return ['message', 'error', 'responseBody', 'data', 'cause', 'errors'].flatMap((key) =>
+			collectErrorText(record[key], depth + 1),
+		);
+	}
+	return [];
+}
+
+/**
+ * True when the provider refused an attached file outright. Both signals must be
+ * present: matching on the subject alone would misclassify unrelated failures that
+ * happen to mention an image.
+ *
+ * Matched on the message text because the provider surfaces this as a plain 400
+ * with no machine-readable discriminator. `validateAttachmentSizes` rejects the
+ * known cases before the request is built, so this is the net for provider-side
+ * limits we don't model (pixel dimensions, per-provider ceilings, format quirks) —
+ * without it, such a rejection sticks in thread history and fails every later turn.
+ */
+export function isAttachmentRejectedByProviderError(error: unknown): boolean {
+	const haystack = [getErrorMessage(error), ...collectErrorText(error)].join(' ').toLowerCase();
+	return ATTACHMENT_SUBJECT_PATTERN.test(haystack) && ATTACHMENT_REFUSAL_PATTERN.test(haystack);
+}
+
 /**
  * Shown when the user has exhausted their AI credits/quota. Self-contained so it
  * still reads clearly on older clients that don't render the structured
@@ -387,6 +436,14 @@ type TerminalErrorCode = NonNullable<ReturnType<typeof getUserFacingErrorCode>>;
 export function getUserFacingErrorMessage(
 	error: unknown,
 	fallback: string = GENERIC_ERROR_USER_MESSAGE,
+	opts: {
+		/**
+		 * Whether the refused attachment was actually removed from thread history.
+		 * `false` means the thread still replays it, so the guidance must send the user
+		 * to a new conversation rather than promise a clean slate.
+		 */
+		attachmentRemoved?: boolean;
+	} = {},
 ): string {
 	if (isQuotaExhaustedError(error)) {
 		return QUOTA_EXHAUSTED_USER_MESSAGE;
@@ -406,6 +463,22 @@ export function getUserFacingErrorMessage(
 
 	if (isSandboxEndpointNotAllowedError(error)) {
 		return "I couldn't finish preparing the workspace sandbox. Please try again in a moment.";
+	}
+
+	// Deliberately no "try again": retrying replays the same attachment. Wording stays
+	// generic because PDFs and spreadsheets get refused too, and the size hint is only
+	// offered when the error actually says so — the provider's text is usually
+	// unavailable here, and guessing "too large" would misdirect the user.
+	if (opts.attachmentRemoved !== undefined || isAttachmentRejectedByProviderError(error)) {
+		const sizeAdvice = isAttachmentRejectedByProviderError(error)
+			? ` Keep it under ${formatAttachmentSizeLimit()}, and for images no more than 8000x8000 pixels.`
+			: '';
+
+		return opts.attachmentRemoved === false
+			? 'I could not read one of the attached files, and I could not remove it from this ' +
+					`conversation either. Start a new chat and attach it again.${sizeAdvice}`
+			: 'I could not read one of the attached files, so I left it out. Attach it again — ' +
+					`ideally a smaller version.${sizeAdvice}`;
 	}
 
 	if (error instanceof OperationalError) {
@@ -736,7 +809,7 @@ export class InstanceAiService {
 		private readonly urlService: UrlService,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly telemetry: Telemetry,
 		private readonly mcpRegistryService: InstanceAiMcpRegistryService,
 		private readonly userRepository: UserRepository,
@@ -979,6 +1052,63 @@ export class InstanceAiService {
 	 * re-check failure keeps the original error, so genuinely unexplained
 	 * stream deaths stay visible.
 	 */
+	/**
+	 * Whether this run died because the provider refused an attachment.
+	 *
+	 * The terminal error is frequently the ai-sdk's masked wrapper
+	 * (`AI_NoOutputGeneratedError`), which carries none of the provider's text — the
+	 * refusal reaches us as a stream `error` event instead. Checking the run's own
+	 * events is what makes the recovery fire on the path that actually occurs;
+	 * classifying the terminal error alone silently misses it.
+	 */
+	/**
+	 * Whether a failed turn's attachments should be dropped from thread history.
+	 *
+	 * Deliberately *not* based on the provider's error text. That text is
+	 * unreachable by the time a run ends: the terminal error is an
+	 * `AI_NoOutputGeneratedError` wrapper whose `cause` is undefined, the agent's own
+	 * error events carry the same wrapper, and the error event holding the provider
+	 * message is not published until after the terminal handler has run. Matching on
+	 * it looks correct in unit tests and silently never fires in production.
+	 *
+	 * So key off what is knowable: this turn carried files, and it ended without
+	 * producing output. That is exactly the shape that strands a thread — the
+	 * attachment is already persisted, so every later turn replays it and dies the
+	 * same way. Dropping it on an unrelated transient failure is the acceptable
+	 * trade: the user is told, and re-attaching costs one message. Leaving it risks
+	 * a conversation that can never recover.
+	 */
+	/**
+	 * Translate a cleanup outcome into the `attachmentRemoved` hint the message
+	 * formatter takes. `undefined` means "say nothing about attachments" — a thread
+	 * that held none must not be told its attachment could not be removed.
+	 */
+	private async dropTurnAttachments(args: {
+		threadId: string;
+		resourceId: string;
+	}): Promise<boolean | undefined> {
+		const outcome = await dropRejectedAttachmentsFromHistory(
+			this.agentMemory,
+			{ threadId: args.threadId, resourceId: args.resourceId },
+			this.logger,
+		);
+		if (outcome === 'no-attachments') return undefined;
+		return outcome === 'removed';
+	}
+
+	private shouldDropTurnAttachments(args: {
+		/**
+		 * Whether this turn introduced files. Unknown on a resumed run — it replays
+		 * history rather than accepting new input — so callers there pass `true` and
+		 * rely on `dropRejectedAttachmentsFromHistory` no-opping when the thread holds
+		 * no inline files.
+		 */
+		turnHadAttachments: boolean;
+		producedNoOutput: boolean;
+	}): boolean {
+		return args.turnHadAttachments && args.producedNoOutput;
+	}
+
 	private async reclassifyMaskedStreamFailure(
 		error: unknown,
 		user: User,
@@ -1077,7 +1207,8 @@ export class InstanceAiService {
 	 */
 	private subscribeToAgentErrors(agent: InstanceAgent, threadId: string, runId: string): void {
 		agent.on(AgentEvent.Error, (event: AgentEventData) => {
-			if (event.type !== AgentEvent.Error || !event.source) return;
+			if (event.type !== AgentEvent.Error) return;
+			if (!event.source) return;
 			const severity = getAgentErrorSeverity(event.source);
 			this.instanceAiErrorReporter.report(event.error, {
 				component: `instance-ai-${event.source}`,
@@ -2255,10 +2386,11 @@ export class InstanceAiService {
 		const { searchProxyConfig, tracingProxyConfig, tokenManager, proxyBaseUrl } =
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
+		const proxyContext = { runId, threadId };
 		const modelId =
 			proxyBaseUrl && tokenManager
-				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager)
-				: await this.modelService.resolveAgentModelConfig(user);
+				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
+				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
 
 		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
 		const mcpConnectionsEnabled = await this.adapterService.isMcpConnectionsEnabled(user);
@@ -2295,7 +2427,7 @@ export class InstanceAiService {
 		}
 
 		context.permissions = this.settingsService.getPermissions();
-		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
+		if (this.instanceWriteAccess.isReadOnly()) {
 			context.permissions = applyBranchReadOnlyOverrides(context.permissions);
 			context.branchReadOnly = true;
 		}
@@ -3447,6 +3579,8 @@ export class InstanceAiService {
 		let activeSnapshotStorage: DbSnapshotStorage | undefined;
 		let messageId = '';
 		let streamReached = false;
+		/** Declared out here so the terminal handlers below can see it. */
+		let turnHadFileAttachments = false;
 		const turnStartedAt = new Date();
 		let errorReporterExecutionToken: symbol | undefined;
 
@@ -3729,6 +3863,7 @@ export class InstanceAiService {
 				nonStructuredAttachments = fileAttachments.filter(
 					(attachment) => !isParseableAttachment(attachment),
 				);
+				turnHadFileAttachments = nonStructuredAttachments.length > 0;
 				hasParseableAttachment = classifiedAttachments.some(
 					(attachment: { parseable: boolean }) => attachment.parseable,
 				);
@@ -4031,8 +4166,19 @@ export class InstanceAiService {
 					},
 				);
 			}
+			// A refused attachment usually lands here rather than in the catch below:
+			// the stream reports the failure instead of throwing. Recovering only on
+			// thrown errors would leave the attachment in history on the common path.
+			const attachmentRemoved = this.shouldDropTurnAttachments({
+				turnHadAttachments: turnHadFileAttachments,
+				producedNoOutput: result.status === 'errored' && outputText.length === 0,
+			})
+				? await this.dropTurnAttachments({ threadId, resourceId: user.id })
+				: undefined;
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(terminalError) : undefined;
+				result.status === 'errored'
+					? getUserFacingErrorMessage(terminalError, undefined, { attachmentRemoved })
+					: undefined;
 			const userFacingErrorCode =
 				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
@@ -4165,8 +4311,20 @@ export class InstanceAiService {
 				threadId,
 				runId,
 			});
+			// The attachment is persisted in history before the model call is known to
+			// have succeeded, so a refused file would fail every later turn as well.
+			// Drop it here to keep the thread usable, and tell the user what really
+			// happened — a failed cleanup leaves the thread poisoned.
+			const attachmentRemoved = this.shouldDropTurnAttachments({
+				turnHadAttachments: turnHadFileAttachments,
+				producedNoOutput: true,
+			})
+				? await this.dropTurnAttachments({ threadId, resourceId: user.id })
+				: undefined;
 			const errorMessage = getErrorMessage(terminalError);
-			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError, undefined, {
+				attachmentRemoved,
+			});
 			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const errCtx: InstanceAiObservabilityContext = {
@@ -5102,6 +5260,13 @@ export class InstanceAiService {
 		let resumeClaimed = false;
 		let resumeTraceRegistered = false;
 		let errorReporterExecutionToken: symbol | undefined;
+		/**
+		 * Set once the model run has yielded output. The catch below also wraps
+		 * post-result finalization, so without this a finalization failure after a
+		 * perfectly good turn would be read as "the run produced nothing" and would
+		 * strip that turn's attachments out of history.
+		 */
+		let resumedRunProducedOutput = false;
 		const onResumeClaimed = async () => {
 			if (resumeClaimed) return;
 			resumeClaimed = true;
@@ -5328,6 +5493,7 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			resumedRunProducedOutput = outputText.length > 0;
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 			const terminalError =
 				result.status === 'errored'
@@ -5351,8 +5517,21 @@ export class InstanceAiService {
 					},
 				);
 			}
+			// A turn that suspended for a confirmation replays its inline files on resume,
+			// so a refusal here strands the thread exactly as it would on the first run.
+			const attachmentRemoved = this.shouldDropTurnAttachments({
+				turnHadAttachments: true,
+				producedNoOutput: result.status === 'errored' && outputText.length === 0,
+			})
+				? await this.dropTurnAttachments({
+						threadId: opts.threadId,
+						resourceId: opts.user.id,
+					})
+				: undefined;
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(terminalError) : undefined;
+				result.status === 'errored'
+					? getUserFacingErrorMessage(terminalError, undefined, { attachmentRemoved })
+					: undefined;
 			const userFacingErrorCode =
 				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
@@ -5494,8 +5673,24 @@ export class InstanceAiService {
 				threadId: opts.threadId,
 				runId: opts.runId,
 			});
+			// Same reasoning as the resumed errored-result path above: a suspended
+			// file-bearing turn replays its attachments, so a thrown refusal here would
+			// leave them in history too. Gated on the run having produced nothing,
+			// because this catch also covers post-result finalization — a failure there
+			// follows a good turn whose attachments must be left alone.
+			const attachmentRemoved = this.shouldDropTurnAttachments({
+				turnHadAttachments: true,
+				producedNoOutput: !resumedRunProducedOutput,
+			})
+				? await this.dropTurnAttachments({
+						threadId: opts.threadId,
+						resourceId: opts.user.id,
+					})
+				: undefined;
 			const errorMessage = getErrorMessage(terminalError);
-			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError, undefined, {
+				attachmentRemoved,
+			});
 			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);

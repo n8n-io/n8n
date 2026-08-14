@@ -11,6 +11,9 @@ paths:
       $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml
     post:
       $ref: ./handlers/roles/spec/paths/createRole.generated.yml
+  /roles/{slug}:
+    get:
+      $ref: ./handlers/roles/spec/paths/getRole.generated.yml
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml

@@ -109,6 +109,11 @@ export const columnNameSchema = z
 		'Column name. Must start with a letter, contain only letters, numbers, and underscores (max 63 chars)',
 	);
 
+export const dataTableRowSchema = z.record(
+	z.string(),
+	z.union([z.string(), z.number(), z.boolean(), z.null()]),
+);
+
 export const successMessageOutputSchema = {
 	success: z.boolean().describe('Whether the operation succeeded'),
 	message: z.string().describe('Description of the result'),
