@@ -11,6 +11,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
+import { useReviewActivityStore } from '../reviewActivity.store';
 import { useReviewInboxStore } from '../reviewInbox.store';
 import WorkflowReviewRequestsView from './WorkflowReviewRequestsView.vue';
 
@@ -61,12 +62,19 @@ const renderComponent = createComponentRenderer(WorkflowReviewRequestsView, {
 				template: '<div data-test-id="workflow-review-requests-view"><slot /></div>',
 			},
 			WorkflowReviewRequestsSidebar: {
+				props: ['sections'],
 				template: `
-					<div data-test-id="workflow-review-requests-sidebar">
+					<div
+						data-test-id="workflow-review-requests-sidebar"
+						:data-sections="sections.map((section) => section.key).join(',')"
+					>
 						<button data-test-id="select-review" @click="$emit('select', 'req-1')" />
+						<button data-test-id="select-other-review" @click="$emit('select', 'req-2')" />
 						<button data-test-id="clear-review" @click="$emit('clear')" />
 						<button data-test-id="select-closed-tab" @click="$emit('update:active-tab', 'closed')" />
 						<button data-test-id="select-open-tab" @click="$emit('update:active-tab', 'open')" />
+						<button data-test-id="load-more-authored" @click="$emit('load-more', 'authored')" />
+						<button data-test-id="retry-waiting" @click="$emit('retry', 'waiting')" />
 					</div>`,
 			},
 			// The real tooltip renders its content in a popper on hover, which jsdom
@@ -84,6 +92,7 @@ const renderComponent = createComponentRenderer(WorkflowReviewRequestsView, {
 
 describe('WorkflowReviewRequestsView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useReviewInboxStore>>;
+	let activityStore: ReturnType<typeof mockedStore<typeof useReviewActivityStore>>;
 
 	beforeEach(async () => {
 		createTestingPinia();
@@ -98,20 +107,22 @@ describe('WorkflowReviewRequestsView', () => {
 		store = mockedStore(useReviewInboxStore);
 		store.probeSettled = false;
 		store.showSidebar = false;
-		store.items = [];
 		store.detail = null;
 		store.detailLoading = false;
 		store.detailNotFound = false;
 		store.activeTab = 'open';
-		store.loading = false;
-		store.loadingMore = false;
-		store.hasMore = false;
 		store.isEmpty = false;
 		store.probeInbox.mockResolvedValue(undefined);
+		store.fetchActiveTab.mockResolvedValue(undefined);
 		store.fetchDetail.mockResolvedValue(undefined);
 		store.setActiveTab.mockResolvedValue(undefined);
 		store.loadMore.mockResolvedValue(undefined);
+		store.retry.mockResolvedValue(undefined);
+		store.findItemById.mockReturnValue(null);
 		store.reset.mockClear();
+
+		activityStore = mockedStore(useReviewActivityStore);
+		activityStore.fetchFeed.mockResolvedValue(undefined);
 	});
 
 	it('probes the inbox on mount', async () => {
@@ -160,6 +171,30 @@ describe('WorkflowReviewRequestsView', () => {
 		await waitAllPromises();
 
 		expect(store.fetchDetail).toHaveBeenCalledWith('req-1');
+	});
+
+	it('opens a review with its activity already loading', async () => {
+		await router.replace('/workflow-review-requests/req-1');
+		store.probeSettled = true;
+		store.showSidebar = true;
+
+		renderComponent();
+		await waitAllPromises();
+
+		expect(activityStore.fetchFeed).toHaveBeenCalledWith('req-1');
+	});
+
+	it('swaps in the activity of the next review the viewer picks', async () => {
+		await router.replace('/workflow-review-requests/req-1');
+		store.probeSettled = true;
+		store.showSidebar = true;
+
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+		getByTestId('select-other-review').click();
+		await waitAllPromises();
+
+		expect(activityStore.fetchFeed).toHaveBeenLastCalledWith('req-2');
 	});
 
 	it('selects a review with replace and preserves the query', async () => {
@@ -234,7 +269,6 @@ describe('WorkflowReviewRequestsView', () => {
 		store.showSidebar = true;
 		store.detailLoading = true;
 		store.detail = null;
-		store.items = [];
 
 		const { container, queryByTestId } = renderComponent();
 		await waitAllPromises();
@@ -262,7 +296,8 @@ describe('WorkflowReviewRequestsView', () => {
 		await router.replace('/workflow-review-requests/req-1');
 		store.probeSettled = true;
 		store.showSidebar = true;
-		store.items = [createInboxItem()];
+		// Resolved by id across sections, so it works from either one.
+		store.findItemById.mockReturnValue(createInboxItem());
 
 		const { getByTestId, queryByTestId } = renderComponent();
 		await waitAllPromises();
@@ -328,6 +363,43 @@ describe('WorkflowReviewRequestsView', () => {
 		await waitAllPromises();
 
 		expect(store.setActiveTab).toHaveBeenCalledWith('closed');
+	});
+
+	describe('sidebar sections', () => {
+		beforeEach(() => {
+			store.probeSettled = true;
+			store.showSidebar = true;
+		});
+
+		it('passes both authorship sections on the open tab', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-requests-sidebar').dataset.sections).toBe(
+				'waiting,authored',
+			);
+		});
+
+		it('passes a single flat section on the closed tab', async () => {
+			await router.replace('/workflow-review-requests?state=closed');
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-requests-sidebar').dataset.sections).toBe('closed');
+		});
+
+		it('forwards load-more and retry to the section that asked', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('load-more-authored').click();
+			getByTestId('retry-waiting').click();
+			await waitAllPromises();
+
+			expect(store.loadMore).toHaveBeenCalledWith('authored');
+			expect(store.retry).toHaveBeenCalledWith('waiting');
+		});
 	});
 
 	describe('detail tabs', () => {
@@ -598,17 +670,17 @@ describe('WorkflowReviewRequestsView', () => {
 
 		// The detail pane wins over the list item, so a failed decision must refresh it
 		// too — otherwise the pane stays open and actionable and every retry re-fails.
-		it('refreshes the detail as well as the list when the decision fails', async () => {
+		it('refreshes the detail as well as both sections when the decision fails', async () => {
 			store.decideOnReview.mockRejectedValueOnce(new Error('conflict'));
-			store.fetchList.mockResolvedValue(undefined);
 
 			const { getByTestId } = renderComponent();
 			await waitAllPromises();
 			store.fetchDetail.mockClear();
+			store.fetchActiveTab.mockClear();
 			getByTestId('workflow-review-approve-button').click();
 			await waitAllPromises();
 
-			expect(store.fetchList).toHaveBeenCalledWith({ reset: true });
+			expect(store.fetchActiveTab).toHaveBeenCalledTimes(1);
 			expect(store.fetchDetail).toHaveBeenCalledWith('req-1');
 		});
 
@@ -645,7 +717,7 @@ describe('WorkflowReviewRequestsView', () => {
 		it('falls back to the generic permission hint for any other reason', async () => {
 			store.detail = createDetail({
 				viewerCanDecide: false,
-				viewerDecisionIneligibilityReason: 'missing_publish_permission',
+				viewerDecisionIneligibilityReason: 'missing_reviewer_permission',
 			});
 
 			const { getByTestId } = renderComponent();
@@ -761,6 +833,7 @@ function createInboxItem(): WorkflowReviewInboxItem {
 		workflowName: 'My workflow',
 		workflowVersionId: null,
 		requester: null,
+		authors: [],
 		reviewers: [],
 		decision: 'pending',
 		state: 'open',
@@ -778,6 +851,7 @@ function createDetail(
 		workflows: [],
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
+		viewerCanComment: true,
 		...overrides,
 	};
 }

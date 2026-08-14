@@ -123,6 +123,11 @@ export const folderOutputSchema = {
 		.describe('Error message explaining why the operation failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
+export const dataTableRowSchema = z.record(
+	z.string(),
+	z.union([z.string(), z.number(), z.boolean(), z.null()]),
+);
+
 export const successMessageOutputSchema = {
 	success: z.boolean().describe('Whether the operation succeeded'),
 	message: z.string().describe('Description of the result'),

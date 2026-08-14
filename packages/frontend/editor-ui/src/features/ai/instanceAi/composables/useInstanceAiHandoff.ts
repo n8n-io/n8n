@@ -12,10 +12,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import { useToast } from '@n8n/composables/useToast';
+import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -69,6 +71,7 @@ export function buildInstanceAiArtifactCredentialQuestion(
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
 const pendingHandoffContextKey = (threadId: string) =>
 	`n8n-instance-ai-handoff-context:${threadId}`;
+const pendingComposerDraftKey = (threadId: string) => `n8n-instance-ai-composer-draft:${threadId}`;
 const pendingAgentAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-agent-attachment:${threadId}`;
 
@@ -156,15 +159,33 @@ export function stashPendingHandoffContext(
 	localStorage.setItem(pendingHandoffContextKey(threadId), JSON.stringify(context));
 }
 
-export function consumePendingHandoffContext(threadId: string): InstanceAiHandoffContext | null {
+export function getPendingHandoffContext(threadId: string): InstanceAiHandoffContext | null {
 	const raw = localStorage.getItem(pendingHandoffContextKey(threadId));
 	if (!raw) return null;
-	localStorage.removeItem(pendingHandoffContextKey(threadId));
 	try {
 		return JSON.parse(raw) as InstanceAiHandoffContext;
 	} catch {
+		clearPendingHandoffContext(threadId);
 		return null;
 	}
+}
+
+export function clearPendingHandoffContext(threadId: string): void {
+	localStorage.removeItem(pendingHandoffContextKey(threadId));
+}
+
+export function stashPendingComposerDraft(threadId: string, draft: string): void {
+	localStorage.setItem(pendingComposerDraftKey(threadId), draft);
+}
+
+export function getPendingComposerDraft(threadId: string): string | null {
+	const draft = localStorage.getItem(pendingComposerDraftKey(threadId));
+	if (!draft) return null;
+	return draft;
+}
+
+export function clearPendingComposerDraft(threadId: string): void {
+	localStorage.removeItem(pendingComposerDraftKey(threadId));
 }
 
 export function stashPendingAgentAttachment(
@@ -187,6 +208,12 @@ export function getPendingAgentAttachment(threadId: string): InstanceAiAgentAtta
 
 export function clearPendingAgentAttachment(threadId: string): void {
 	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
+}
+
+export function clearPendingThreadHandoff(threadId: string): void {
+	clearPendingHandoffContext(threadId);
+	clearPendingComposerDraft(threadId);
+	clearPendingAgentAttachment(threadId);
 }
 
 /** Resolve the personal project a launched thread binds to, loading it on first use. */
@@ -227,6 +254,7 @@ export async function provisionContextOnlyThread(
 	projectId: string,
 	context: InstanceAiHandoffContext,
 	launch: InstanceAiThreadLaunch,
+	initialDraft?: string,
 ): Promise<string | null> {
 	const threadId = uuidv4();
 	try {
@@ -235,6 +263,7 @@ export async function provisionContextOnlyThread(
 		return null;
 	}
 	stashPendingHandoffContext(threadId, context);
+	if (initialDraft) stashPendingComposerDraft(threadId, initialDraft);
 	return threadId;
 }
 
@@ -250,10 +279,22 @@ export function useInstanceAiHandoff() {
 	const rootStore = useRootStore();
 	const router = useRouter();
 	const toast = useToast();
+	const i18n = useI18n();
+
+	function showOpenFailed() {
+		toast.showError(
+			new Error(i18n.baseText('instanceAi.handoff.openFailed.message')),
+			i18n.baseText('instanceAi.handoff.openFailed.title'),
+		);
+	}
 
 	async function openAgentArtifactThread(
 		attachment: InstanceAiAgentAttachment,
 		launch: InstanceAiThreadLaunch,
+		options?: {
+			context?: InstanceAiHandoffContext;
+			initialDraft?: string;
+		},
 	): Promise<boolean> {
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
@@ -261,19 +302,46 @@ export function useInstanceAiHandoff() {
 			const threadId = uuidv4();
 			try {
 				await instanceAiStore.syncThread(threadId, attachment.projectId, launch);
+			} catch {
+				showOpenFailed();
+				return false;
+			}
+			try {
 				await instanceAiStore.updateThreadMetadata(threadId, {
 					[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
 						agentId: attachment.id,
 						projectId: attachment.projectId,
 						...(attachment.name ? { name: attachment.name } : {}),
 					},
+					...(options?.context?.source === 'agent-preview'
+						? {
+								[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY]: {
+									agentId: options.context.agentId,
+									threadId: options.context.threadId,
+								},
+							}
+						: {}),
 				});
 			} catch {
-				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				await instanceAiStore.deleteThread(threadId);
+				showOpenFailed();
 				return false;
 			}
 			stashPendingAgentAttachment(threadId, attachment);
-			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+			if (options?.context) stashPendingHandoffContext(threadId, options.context);
+			if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
+			try {
+				const failure = await router.push({
+					name: INSTANCE_AI_THREAD_VIEW,
+					params: { threadId },
+				});
+				if (failure) throw new Error('Navigation failed');
+			} catch {
+				clearPendingThreadHandoff(threadId);
+				await instanceAiStore.deleteThread(threadId);
+				showOpenFailed();
+				return false;
+			}
 			return true;
 		} finally {
 			handoffInFlight = false;
@@ -286,16 +354,22 @@ export function useInstanceAiHandoff() {
 		launch: InstanceAiThreadLaunch,
 		options?: {
 			newTab?: boolean;
+			initialDraft?: string;
 		},
 	): Promise<boolean> {
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
 			const tab = options?.newTab ? window.open('', '_blank') : null;
-			const threadId = await provisionContextOnlyThread(projectId, context, launch);
+			const threadId = await provisionContextOnlyThread(
+				projectId,
+				context,
+				launch,
+				options?.initialDraft,
+			);
 			if (!threadId) {
 				tab?.close();
-				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				showOpenFailed();
 				return false;
 			}
 			const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
@@ -337,7 +411,7 @@ export function useInstanceAiHandoff() {
 				);
 				if (!threadId) {
 					tab?.close();
-					toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+					showOpenFailed();
 					return;
 				}
 				const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
@@ -350,7 +424,7 @@ export function useInstanceAiHandoff() {
 			try {
 				await instanceAiStore.syncThread(threadId, projectId, launch);
 			} catch {
-				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				showOpenFailed();
 				return;
 			}
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);

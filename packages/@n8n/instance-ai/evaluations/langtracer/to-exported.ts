@@ -42,6 +42,7 @@ export interface LangTracerCreateCaseBody {
 	 *  Only the authored arm: a replay seed is derived from a source thread by
 	 *  promote/scrub over there, so pushing one would fabricate provenance. */
 	seed?: Extract<CaseSeed, { mode: 'inline' }>;
+	credentialFixture?: string;
 }
 
 export interface ToLangTracerOptions {
@@ -50,7 +51,7 @@ export interface ToLangTracerOptions {
 	synthetic: boolean;
 }
 
-/** Seeding modes the case-write API can't take. An INLINE seed is pushable — it's a
+/** Case content the case-write API can't take. An INLINE seed is pushable — it's a
  *  durable fixture, and the API stores it verbatim. A REPLAY seed isn't: it points at
  *  a LangSmith trace that expires, lang-tracer derives it from a source thread it
  *  already holds, and such a case is barred from suites anyway. Returns a
@@ -109,6 +110,7 @@ export function diskCaseToLangTracerCreate(
 	if (testCase.credentials !== undefined) body.credentials = testCase.credentials;
 	// Replay never reaches here — `unsupportedPushReason` skips those cases upstream.
 	if (testCase.seed?.mode === 'inline') body.seed = testCase.seed;
+	if (testCase.credentialFixture !== undefined) body.credentialFixture = testCase.credentialFixture;
 
 	return body;
 }

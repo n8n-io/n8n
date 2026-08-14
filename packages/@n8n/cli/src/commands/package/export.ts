@@ -81,6 +81,12 @@ export default class PackageExport extends BaseCommand {
 				'What to do when a dependency workflow (sub-workflow) is not explicitly included in the package target',
 			aliases: ['missing-workflow-dependency-policy'],
 		}),
+		workflowVersionPolicy: Flags.string({
+			options: ['published-strict', 'prefer-published', 'ignore-unpublished', 'latest'],
+			default: 'latest',
+			description: 'Which version of each workflow travels in the package',
+			aliases: ['workflow-version-policy'],
+		}),
 	};
 
 	async run(): Promise<void> {
@@ -91,6 +97,7 @@ export default class PackageExport extends BaseCommand {
 		const includeVariableValues = flags.includeVariableValues !== 'false';
 		const includeTags = flags.includeTags !== 'false';
 		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
+		const workflowVersionPolicy = flags.workflowVersionPolicy;
 
 		// A package is either loose workflows/folders or whole projects, not both.
 		if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
@@ -106,13 +113,20 @@ export default class PackageExport extends BaseCommand {
 			try {
 				result = await client.exportPackage(
 					projectIds.length > 0
-						? { projectIds, includeVariableValues, includeTags, missingWorkflowDependencyPolicy }
+						? {
+								projectIds,
+								includeVariableValues,
+								includeTags,
+								missingWorkflowDependencyPolicy,
+								workflowVersionPolicy,
+							}
 						: {
 								workflowIds,
 								folderIds,
 								includeVariableValues,
 								includeTags,
 								missingWorkflowDependencyPolicy,
+								workflowVersionPolicy,
 							},
 				);
 			} catch (error) {

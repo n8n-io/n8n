@@ -22,12 +22,22 @@ function validateCredentialData(
 	credentialType: string,
 	data: IDataObject,
 	res: express.Response,
+	options?: { partialData?: boolean },
 ): express.Response | void {
 	const properties = Container.get(CredentialsHelper)
 		.getCredentialsProperties(credentialType)
 		.filter((property) => property.type !== 'hidden');
 
 	const schema = toJsonSchema(properties);
+
+	// A partial payload is merged into the stored data after validation, so
+	// key-presence requirements (top-level `required` and conditional `allOf`
+	// blocks) cannot be checked against the payload alone; per-key type checks
+	// still apply.
+	if (options?.partialData) {
+		delete schema.required;
+		delete schema.allOf;
+	}
 
 	const { valid, errors } = validate(data, schema, { nestedErrors: true });
 
@@ -107,7 +117,9 @@ export const validCredentialsPropertiesForUpdate = async (
 		}
 
 		// Validate data against type
-		const validationResult = validateCredentialData(type, data, res);
+		const validationResult = validateCredentialData(type, data, res, {
+			partialData: req.body.isPartialData === true,
+		});
 		if (validationResult) {
 			return validationResult;
 		}

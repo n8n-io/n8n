@@ -1,6 +1,6 @@
 {
   "name": "@n8n/engine",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "n8n workflow execution engine (v2)",
   "scripts": {
     "clean": "rimraf dist .turbo compiled",
@@ -40,6 +40,7 @@
     "@types/express": "catalog:",
     "@types/pg": "^8.15.6",
     "@types/supertest": "^6.0.3",
+    "n8n-containers": "workspace:*",
     "supertest": "^7.1.1",
     "testcontainers": "catalog:",
     "typescript": "catalog:typescript",

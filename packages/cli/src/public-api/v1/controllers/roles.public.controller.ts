@@ -1,22 +1,54 @@
-import { CreateRoleDto, RolePublicDto } from '@n8n/api-types';
+import {
+	CreateRoleDto,
+	RoleGetPublicDto,
+	RoleListPublicDto,
+	RoleListQueryPublicDto,
+	RolePublicDto,
+} from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
+	ApiErrorResponse,
 	ApiKeyScope,
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
 	Body,
+	Get,
 	Licensed,
+	Param,
 	Post,
 	PublicApiController,
+	Query,
 } from '@n8n/decorators';
+import { RoleNamespace, type Role as RoleDTO } from '@n8n/permissions';
 import type { Response } from 'express';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { assertCanManageRoleType } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
+
+type PublicRoleNamespace = Extract<RoleNamespace, 'global' | 'project'>;
+const isPublicRole = (role: RoleDTO): role is RoleDTO & { roleType: PublicRoleNamespace } =>
+	role.roleType === 'global' || role.roleType === 'project';
+
+const toPublicRole = <T extends PublicRoleNamespace>(
+	role: RoleDTO & { roleType: T },
+	withUsageCount = false,
+) => ({
+	slug: role.slug,
+	displayName: role.displayName,
+	description: role.description,
+	systemRole: role.systemRole,
+	roleType: role.roleType,
+	licensed: role.licensed,
+	scopes: role.scopes,
+	createdAt: role.createdAt!.toISOString(),
+	updatedAt: role.updatedAt!.toISOString(),
+	...(withUsageCount ? { usedByUsers: role.usedByUsers, usedByProjects: role.usedByProjects } : {}),
+});
 
 @PublicApiController('/roles')
 export class RolesPublicController {
@@ -24,6 +56,57 @@ export class RolesPublicController {
 		private readonly roleService: RoleService,
 		private readonly eventService: EventService,
 	) {}
+
+	@Get('/')
+	@ApiKeyScope('role:list')
+	@ApiSummary('Retrieve all roles')
+	@ApiDescription(
+		'Returns all roles grouped by type (global and project). Set `withUsageCount` to include how many users and projects use each role.',
+	)
+	@ApiTags(['Role'])
+	@ApiResponse(200, RoleListPublicDto)
+	async getAllRoles(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: RoleListQueryPublicDto,
+	): Promise<RoleListPublicDto> {
+		const { withUsageCount } = query;
+		const allRoles = await this.roleService.getAllRoles(withUsageCount);
+		const publicRoles = allRoles.filter(isPublicRole);
+
+		const groupOf = <T extends PublicRoleNamespace>(roleType: T) =>
+			publicRoles
+				.filter((role): role is RoleDTO & { roleType: T } => role.roleType === roleType)
+				.map((role) => toPublicRole(role, withUsageCount));
+
+		return {
+			global: groupOf('global'),
+			project: groupOf('project'),
+		};
+	}
+
+	@Get('/:slug')
+	@ApiKeyScope('role:read')
+	@ApiSummary('Retrieve a role')
+	@ApiDescription(
+		'Returns a single role with its scopes. Set `withUsageCount` to include how many users and projects use the role.',
+	)
+	@ApiTags(['Role'])
+	@ApiResponse(200, RoleGetPublicDto)
+	@ApiErrorResponse(404)
+	async getRole(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('slug') slug: string,
+		@Query query: RoleListQueryPublicDto,
+	): Promise<RoleGetPublicDto> {
+		const { withUsageCount } = query;
+		const role = await this.roleService.getRole(slug, withUsageCount);
+		if (!isPublicRole(role)) {
+			throw new NotFoundError('Role not found');
+		}
+		return toPublicRole(role, withUsageCount);
+	}
 
 	@Post('/')
 	@ApiKeyScope({ anyOf: ['role:manage', 'role:manageProject'] })

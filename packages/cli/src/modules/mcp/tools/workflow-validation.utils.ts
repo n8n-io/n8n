@@ -89,11 +89,14 @@ export async function getMcpWorkflow(
 	workflowFinderService: WorkflowFinderService,
 	options?: GetMcpWorkflowOptions,
 ): Promise<FoundWorkflow> {
-	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, scopes, {
-		includeActiveVersion: options?.includeActiveVersion,
-		includeTags: options?.includeTags,
-		includeParentFolder: options?.includeParentFolder,
-	});
+	// Forwarded whole: hand-copying each flag is what let `includeParentFolder`
+	// go missing here while the finder already supported it.
+	const workflow = await workflowFinderService.findWorkflowForUser(
+		workflowId,
+		user,
+		scopes,
+		options ?? {},
+	);
 
 	return validateMcpWorkflow(workflow);
 }

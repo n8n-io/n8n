@@ -64,6 +64,7 @@ import {
 	createAddDataTableRowsTool,
 	createCreateDataTableTool,
 	createDeleteDataTableColumnTool,
+	createGetDataTableRowsTool,
 	createRenameDataTableColumnTool,
 	createRenameDataTableTool,
 	createSearchDataTablesTool,
@@ -73,6 +74,7 @@ import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
+import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
@@ -491,6 +493,14 @@ export class McpService {
 		);
 		registerIfAllowed(workflowVersionTool);
 
+		const workflowVersionsDiffTool = createGetWorkflowVersionsDiffTool(
+			user,
+			this.workflowFinderService,
+			this.workflowHistoryService,
+			this.telemetry,
+		);
+		registerIfAllowed(workflowVersionsDiffTool);
+
 		const publishWorkflowTool = createPublishWorkflowTool(
 			user,
 			this.workflowFinderService,
@@ -581,6 +591,9 @@ export class McpService {
 
 		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
 		registerIfAllowed(addDataTableRowsTool);
+
+		const getDataTableRowsTool = createGetDataTableRowsTool(user, dataTableOps, this.telemetry);
+		registerIfAllowed(getDataTableRowsTool);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
