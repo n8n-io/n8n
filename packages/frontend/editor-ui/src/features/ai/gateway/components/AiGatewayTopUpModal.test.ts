@@ -7,8 +7,8 @@ import { ROLE } from '@n8n/api-types';
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
+import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import AiGatewayTopUpModal from './AiGatewayTopUpModal.vue';
@@ -54,24 +54,19 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 const renderComponent = createComponentRenderer(AiGatewayTopUpModal);
 
 function renderModal({
-	isInstanceOwner,
-	userIsTrialing,
+	variant,
 	allUsers = [],
 }: {
-	isInstanceOwner: boolean;
-	userIsTrialing: boolean;
+	variant: AiGatewayTopUpVariant;
 	allUsers?: IUser[];
 }) {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const usersStore = mockedStore(useUsersStore);
-	const cloudPlanStore = mockedStore(useCloudPlanStore);
 	const uiStore = mockedStore(useUIStore);
-	usersStore.isInstanceOwner = isInstanceOwner;
 	usersStore.allUsers = allUsers;
 	usersStore.fetchUsers = vi.fn().mockResolvedValue(undefined);
-	cloudPlanStore.userIsTrialing = userIsTrialing;
-	renderComponent({ pinia });
+	renderComponent({ pinia, props: { variant } });
 	return { usersStore, uiStore };
 }
 
@@ -84,7 +79,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 	});
 
 	it('shows the contact-admin alert for non-owners on a paid plan', () => {
-		renderModal({ isInstanceOwner: false, userIsTrialing: false });
+		renderModal({ variant: 'member' });
 
 		expect(screen.getByRole('dialog')).toBeInTheDocument();
 		expect(screen.getByText('Contact your admin to top-up')).toBeInTheDocument();
@@ -96,7 +91,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 	});
 
 	it('tells trial non-owners that the Instance Owner must upgrade and top up', () => {
-		renderModal({ isInstanceOwner: false, userIsTrialing: true });
+		renderModal({ variant: 'memberTrial' });
 
 		expect(screen.getByText('Contact your admin to top-up')).toBeInTheDocument();
 		expect(screen.getByText(/needs to upgrade to a paid plan/)).toBeInTheDocument();
@@ -107,8 +102,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 
 	it('mails the Instance Owner when Contact admin is clicked', async () => {
 		const { uiStore } = renderModal({
-			isInstanceOwner: false,
-			userIsTrialing: false,
+			variant: 'member',
 			allUsers: [{ email: 'owner@example.com', role: ROLE.Owner } as IUser],
 		});
 
@@ -122,8 +116,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 
 	it('opens a blank mailto when no Instance Owner email is available', async () => {
 		renderModal({
-			isInstanceOwner: false,
-			userIsTrialing: false,
+			variant: 'member',
 			allUsers: [{ email: '', role: ROLE.Owner } as IUser],
 		});
 
@@ -133,7 +126,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 	});
 
 	it('closes the dialog when Cancel is clicked', async () => {
-		const { uiStore } = renderModal({ isInstanceOwner: false, userIsTrialing: false });
+		const { uiStore } = renderModal({ variant: 'member' });
 
 		await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -142,7 +135,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 	});
 
 	it('ignores update:open true so the dialog stays open', async () => {
-		const { uiStore } = renderModal({ isInstanceOwner: false, userIsTrialing: false });
+		const { uiStore } = renderModal({ variant: 'member' });
 
 		await userEvent.click(screen.getByTestId('ai-gateway-topup-keep-open'));
 
@@ -151,7 +144,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 	});
 
 	it('shows Upgrade copy and covered services for owners during trial', async () => {
-		renderModal({ isInstanceOwner: true, userIsTrialing: true });
+		renderModal({ variant: 'ownerTrial' });
 
 		expect(screen.getByText('Upgrade your plan to top-up')).toBeInTheDocument();
 		expect(screen.getByText(/Access to a paid plan is required/)).toBeInTheDocument();
@@ -164,7 +157,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 	});
 
 	it('names every featured partner, installed or not', () => {
-		renderModal({ isInstanceOwner: true, userIsTrialing: true });
+		renderModal({ variant: 'ownerTrial' });
 
 		for (const name of [
 			'OpenAI',
@@ -181,7 +174,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 	});
 
 	it('shows a logo for every featured partner, installed or not', () => {
-		renderModal({ isInstanceOwner: true, userIsTrialing: true });
+		renderModal({ variant: 'ownerTrial' });
 
 		expect(screen.getByTestId('credential-icon-openAiApi')).toBeInTheDocument();
 		for (const credentialType of [

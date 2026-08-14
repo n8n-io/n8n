@@ -14,8 +14,6 @@ import { useVersionsStore } from '../versions.store';
  */
 export type UpgradeRedirectGuard = () => Promise<boolean>;
 
-export type CloudDashboardRedirectMode = 'open' | 'redirect';
-
 /**
  * Injectable page-redirection composable. The app-facing `usePageRedirectionHelper`
  * wraps this and supplies the guard, which keeps this base free of any feature
@@ -37,7 +35,6 @@ export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirect
 		usersStore.isInstanceOwner && settingsStore.isCloudDeployment;
 
 	/**
-	 * Auto-login a Cloud instance owner to an Admin Panel path.
 	 * `open` reserves the tab in the click so later navigation is not treated as a popup.
 	 */
 	const goToCloudDashboard = async ({
@@ -45,7 +42,7 @@ export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirect
 		mode = 'redirect',
 	}: {
 		redirectionPath: string;
-		mode?: CloudDashboardRedirectMode;
+		mode?: 'open' | 'redirect';
 	}): Promise<boolean> => {
 		if (!canAutoLoginToCloudDashboard()) {
 			return false;

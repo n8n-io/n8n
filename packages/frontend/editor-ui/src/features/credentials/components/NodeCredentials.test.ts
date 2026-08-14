@@ -1758,14 +1758,17 @@ describe('NodeCredentials', () => {
 					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
 				};
 				ndvStore.activeNode = nodeWithGateway;
-				vi.spyOn(uiStore, 'openModal');
+				vi.spyOn(uiStore, 'openModalWithData');
 
 				renderComponent({ props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' } });
 
 				await userEvent.click(screen.getByTestId('credential-topup-button'));
 
 				await waitFor(() => {
-					expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
+					expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+						name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+						data: { variant: 'member' },
+					});
 				});
 			});
 

@@ -3,12 +3,12 @@ import { computed, onMounted, ref, type Component } from 'vue';
 import { ROLE } from '@n8n/api-types';
 import { N8nAlertDialog, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
+import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import BraveSearchLogo from '../assets/service-icons/brave-search.svg?component';
 import BrowserbaseLogo from '../assets/service-icons/browserbase.svg?component';
 import FirecrawlLogo from '../assets/service-icons/firecrawl.svg?component';
@@ -46,22 +46,17 @@ const FEATURED_SERVICES = [
 	logo?: Component;
 }>;
 
+const props = defineProps<{
+	variant: AiGatewayTopUpVariant;
+}>();
+
 const i18n = useI18n();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
-const cloudPlanStore = useCloudPlanStore();
 const { goToUpgrade } = usePageRedirectionHelper();
 
 const isOpen = ref(true);
-
-type TopUpVariant = 'member' | 'memberTrial' | 'ownerTrial';
-
-const variant = computed<TopUpVariant>(() => {
-	if (usersStore.isInstanceOwner) return 'ownerTrial';
-	return cloudPlanStore.userIsTrialing ? 'memberTrial' : 'member';
-});
-
-const isOwnerTrial = computed(() => variant.value === 'ownerTrial');
+const isOwnerTrial = computed(() => props.variant === 'ownerTrial');
 
 onMounted(async () => {
 	if (isOwnerTrial.value) return;
@@ -80,8 +75,8 @@ const description = computed(() => {
 		ownerTrial: 'aiGateway.topUp.modal.description.trial',
 		memberTrial: 'aiGateway.topUp.modal.description.member.trial',
 		member: 'aiGateway.topUp.modal.description.member',
-	} as const satisfies Record<TopUpVariant, BaseTextKey>;
-	return i18n.baseText(keys[variant.value]);
+	} as const satisfies Record<AiGatewayTopUpVariant, BaseTextKey>;
+	return i18n.baseText(keys[props.variant]);
 });
 
 const actionLabel = computed(() =>
