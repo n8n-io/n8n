@@ -73,7 +73,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_connect_services', 'explore_node_resources'],
-	'dataTable:read': ['search_data_tables'],
+	'dataTable:read': ['search_data_tables', 'get_data_table_rows'],
 	// Writing requires finding tables, so search rides along.
 	'dataTable:write': [
 		'search_data_tables',

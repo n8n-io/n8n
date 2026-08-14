@@ -67,6 +67,7 @@ import {
 	createAddDataTableRowsTool,
 	createCreateDataTableTool,
 	createDeleteDataTableColumnTool,
+	createGetDataTableRowsTool,
 	createRenameDataTableColumnTool,
 	createRenameDataTableTool,
 	createSearchDataTablesTool,
@@ -590,6 +591,9 @@ export class McpService {
 
 		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
 		registerIfAllowed(addDataTableRowsTool);
+
+		const getDataTableRowsTool = createGetDataTableRowsTool(user, dataTableOps, this.telemetry);
+		registerIfAllowed(getDataTableRowsTool);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
