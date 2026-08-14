@@ -134,7 +134,12 @@ export class GitConnectionsGitService {
 		} catch (error) {
 			await rm(nextRepositoryFolder, { recursive: true, force: true });
 			if (error instanceof BadRequestError) throw error;
-			this.logger.warn('Failed to connect to Git repository');
+			// Withhold the raw git output (it can echo the credential-helper config);
+			// log only a redacted subset that lets an operator correlate the failure.
+			this.logger.warn('Failed to connect to Git repository', {
+				connectionId: connection.id,
+				branchName,
+			});
 			throw new BadRequestError('Could not connect to the Git repository');
 		}
 	}
