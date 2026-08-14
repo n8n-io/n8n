@@ -33,9 +33,9 @@ export class TypeOrmStepStore implements StepStore {
 		// instances, and these are plain values.
 		const rows = records.map((record) => ({ ...record, executionId, id: generateId() }));
 
-		// Shared side of the failure fence (see `claimStep`): rows either commit
-		// before a failure (whose sweep then cancels them) or are never created.
-		// Unfenced, a late insert would strand rows `queued` forever.
+		// The execution-row lock serializes this insert with `failStep`, so rows
+		// land before the failure (its sweep cancels them) or not at all.
+		// Otherwise rows inserted after the sweep would stay `queued` forever.
 		return await this.repo.manager.transaction(async (manager) => {
 			await manager.query('SELECT id FROM workflow_execution WHERE id = $1 FOR SHARE', [
 				executionId,
@@ -80,9 +80,9 @@ export class TypeOrmStepStore implements StepStore {
 		// only the identity columns: a step claimed out of `queued` can't have
 		// an outcome yet, so `outputs`/`error` are `null` by the lifecycle.
 		//
-		// The failure fence: the claim contends with `failStep` on the execution
-		// row (shared vs exclusive lock), so it either waits out a committing
-		// failure and sees it, or committed strictly before it.
+		// The execution-row lock serializes the claim with `failStep`, so no
+		// step starts running once its execution has a failed step. Claims
+		// don't block each other (shared lock).
 		return await this.repo.manager.transaction(async (manager) => {
 			const [execution] = await manager.query<Array<{ id: string }>>(
 				`SELECT id FROM workflow_execution
@@ -130,8 +130,9 @@ export class TypeOrmStepStore implements StepStore {
 	}
 
 	async failStep(id: string, error: StepError): Promise<boolean> {
-		// Exclusive side of the claim fence (see `claimStep`). NO KEY UPDATE
-		// rather than UPDATE so FK-checked step inserts don't queue behind it.
+		// Locking the execution row makes concurrent claims and planning inserts
+		// wait for this failure to commit (see `claimStep` and `createSteps`).
+		// NO KEY UPDATE, not UPDATE, so plain FK checks don't queue behind it.
 		return await this.repo.manager.transaction(async (manager) => {
 			await manager.query(
 				`SELECT id FROM workflow_execution
@@ -217,8 +218,8 @@ export class TypeOrmStepStore implements StepStore {
 }
 
 /**
- * Runtime mirror of `NewStepRecord`'s union for callers outside the type
- * system, widened so the checks don't narrow the union to `never`.
+ * Re-checks `NewStepRecord`'s union at runtime for callers outside the type
+ * system. The widened parameter keeps the checks from narrowing to `never`.
  */
 function assertOutputsMatchStatus(record: {
 	nodeId: string;

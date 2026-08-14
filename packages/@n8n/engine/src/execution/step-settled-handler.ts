@@ -49,8 +49,8 @@ export class StepSettledHandler {
 
 		let queued = 0;
 		if (step.status === 'completed' || step.status === 'skipped') {
-			// Fail-fast: a failure recorded anywhere ends the run before more work
-			// is planned, even while its own settled event is still queued.
+			// a failure elsewhere may still have its settled event queued behind
+			// this one, so it must end the execution here, before planning
 			if (await this.stepStore.hasFailedSteps(execution.id)) {
 				await this.failExecution(execution.id);
 				return;

@@ -178,8 +178,8 @@ describe('StepSettledHandler', () => {
 	});
 
 	it('fails the execution before planning when any step has failed', async () => {
-		// b failed but settled(c) is handled first: m must not be planned off
-		// c's live edge
+		// b failed but settled(c) is handled first, so m must not be planned
+		// off c's live edge
 		const stepStore = makeStepStore(
 			{ id: 'step-c', nodeId: 'c' },
 			{ hasFailedSteps: vi.fn().mockResolvedValue(true) },

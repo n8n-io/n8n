@@ -202,14 +202,14 @@ describe('workflow_step_execution table (integration)', () => {
 	it('TypeOrmStepStore.claimStep refuses once any step in the execution failed', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		// b is planned first; a's failure lands before b's step:ready is claimed
+		// b is planned first, then a's failure lands before b's step:ready is claimed
 		const { id } = await createStep(store, executionId, { nodeId: 'b', status: 'queued' });
 		await seedStep({ executionId, nodeId: 'a', status: 'failed' });
 
 		expect(await store.claimStep(id)).toBeNull();
 		expect((await store.loadStep(id)).status).toBe('queued');
 
-		// a failure in one execution doesn't fence claims in another
+		// a failure in one execution doesn't block claims in another
 		const otherExecutionId = await createExecution();
 		const other = await createStep(store, otherExecutionId, { nodeId: 'a', status: 'queued' });
 		expect(await store.claimStep(other.id)).not.toBeNull();
@@ -258,8 +258,8 @@ describe('workflow_step_execution table (integration)', () => {
 		const failing = await seedStep({ executionId, nodeId: 'a', status: 'running' });
 		const { id } = await createStep(store, executionId, { nodeId: 'b', status: 'queued' });
 
-		// An in-flight failStep: execution lock held, failed row written, commit
-		// pending. A snapshot-only claim would see no failure and go through.
+		// A failStep mid-transaction, with the lock held and the failed row
+		// uncommitted. Without the lock, the claim would see no failure and succeed.
 		const failure = dataSource.createQueryRunner();
 		await failure.connect();
 		await failure.startTransaction();

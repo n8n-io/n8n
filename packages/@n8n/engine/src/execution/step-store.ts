@@ -4,10 +4,9 @@ import type { StepSlots, StepStatus } from './execution.types';
 /**
  * A new step to persist. `id` and timestamps are assigned by the store.
  *
- * Creation statuses only: the rest are reachable solely through their
- * transitions (`claimStep`, `failStep`, `cancelQueuedSteps`), so a row can't
- * enter a state without passing that transition's guarantees, the failure
- * fence above all.
+ * Creation statuses only: a row becomes `running`, `failed`, or `cancelled`
+ * solely through `claimStep`, `failStep`, or `cancelQueuedSteps`, so it
+ * cannot bypass the checks and locking those transitions enforce.
  *
  * A step created `completed` (the trigger) must carry its slot list, even
  * `[]`: a missing one persists as SQL NULL, which liveness reads as every

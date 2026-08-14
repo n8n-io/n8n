@@ -38,7 +38,7 @@ describe('validateExecutableGraph', () => {
 	});
 
 	it('rejects an edge feeding a reachable node from one the trigger cannot reach', () => {
-		// r would never settle, leaving a waiting on it forever
+		// nothing ever reaches r, so it never settles and a would wait forever
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'r', name: 'R', type: 'v1-node' }],
 			edges: [...validGraph.edges, { from: 'r', to: 'a', outputIndex: 0, inputIndex: 1 }],
