@@ -248,6 +248,7 @@ describe('resolveContentSecurityPolicies', () => {
 				enforced: undefined,
 				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
 			});
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('is deprecated'));
 		});
 
 		it('should never read a boolean as a policy', () => {
