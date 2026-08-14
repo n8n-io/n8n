@@ -275,7 +275,7 @@ describe('external messages (direct connect flow)', () => {
 			{ type: 'connect', relayUrl: RELAY_URL },
 			ALLOWED_ORIGIN,
 		);
-		nowMs += 1_000;
+		nowMs += 500;
 		const second = await simulateExternalMessage(
 			{ type: 'connect', relayUrl: RELAY_URL },
 			ALLOWED_ORIGIN,

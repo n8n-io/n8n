@@ -190,7 +190,7 @@ async function deliverRelayUrl(
 // requests a connection and the user confirms in an extension-owned popup.
 // ---------------------------------------------------------------------------
 
-const EXTERNAL_CONNECT_THROTTLE_MS = 5000;
+const EXTERNAL_CONNECT_THROTTLE_MS = 1000;
 const CONNECT_POPUP_WIDTH = 620;
 const CONNECT_POPUP_HEIGHT = 640;
 
