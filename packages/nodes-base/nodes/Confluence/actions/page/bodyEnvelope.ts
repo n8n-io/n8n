@@ -2,6 +2,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { ConfluenceBodyFormat } from '../common';
+import { bodyFormatOption } from '../common';
 
 export interface ConfluenceBodyEnvelope extends IDataObject {
 	representation: 'storage' | 'atlas_doc_format';
@@ -12,27 +13,26 @@ export function bodyProperties(operations: string[]): INodeProperties[] {
 	const show = { resource: ['page'], operation: operations };
 	return [
 		{
-			displayName: 'Body Format',
-			name: 'bodyFormat',
-			type: 'options',
+			...bodyFormatOption,
 			default: 'plainText',
 			description: 'How the page content below is interpreted',
 			displayOptions: { show },
+			// Same values as the shared selector; write-oriented descriptions
 			options: [
+				{
+					name: 'Atlas Doc Format',
+					value: 'atlas_doc_format',
+					description: 'Raw Atlassian Document Format JSON document',
+				},
 				{
 					name: 'Plain Text',
 					value: 'plainText',
 					description: 'Text is wrapped in paragraph blocks; no markup needed',
 				},
 				{
-					name: 'Storage (HTML)',
+					name: 'Storage',
 					value: 'storage',
-					description: 'Confluence storage format, e.g. <h2>Title</h2><p>Text</p>',
-				},
-				{
-					name: 'ADF JSON',
-					value: 'atlas_doc_format',
-					description: 'Raw Atlassian Document Format JSON document',
+					description: 'Confluence storage-format XHTML, e.g. <h2>Title</h2><p>Text</p>',
 				},
 			],
 		},
