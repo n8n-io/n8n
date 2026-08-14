@@ -139,6 +139,17 @@ export class GitConnectionsGitService {
 		}
 	}
 
+	/**
+	 * Remove the cached working copy but keep `.ssh/known_hosts`, so a pinned
+	 * host key survives credential rotation and reconnects (preserving MITM
+	 * protection). Used when auth/target changes invalidate the clone.
+	 */
+	async resetWorkingCopy(rootFolder: string) {
+		await rm(path.join(rootFolder, 'repository'), { recursive: true, force: true });
+		await rm(path.join(rootFolder, 'repository-next'), { recursive: true, force: true });
+	}
+
+	/** Remove everything for a connection, including the pinned host key. */
 	async cleanup(rootFolder: string) {
 		await rm(rootFolder, { recursive: true, force: true });
 	}

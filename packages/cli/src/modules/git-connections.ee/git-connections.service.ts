@@ -61,9 +61,13 @@ export class GitConnectionsService {
 		this.gitService.validateRepositoryUrl(targetUrl, targetType);
 		if (input.branchName) await this.gitService.validateBranchName(input.branchName);
 
-		const changesAuth =
+		// Any auth or target (url/branch) change invalidates the cached working
+		// copy on disk — the branch is part of the target, so a branch-only change
+		// must invalidate too, otherwise the clone stays on the old branch.
+		const changesTarget =
 			input.connectionType !== undefined ||
 			input.repositoryUrl !== undefined ||
+			input.branchName !== undefined ||
 			input.username !== undefined ||
 			input.password !== undefined ||
 			input.keyGeneratorType !== undefined;
@@ -76,8 +80,7 @@ export class GitConnectionsService {
 		await this.applyUpdatedAuthentication(updated, current, input);
 
 		const saved = await this.repository.save(updated);
-		// Any auth/target change invalidates the cached working copy on disk.
-		if (changesAuth) await this.cleanup(id);
+		if (changesTarget) await this.resetWorkingCopy(id);
 		return this.toPublic(saved);
 	}
 
@@ -98,13 +101,13 @@ export class GitConnectionsService {
 
 	async disconnect(id: string) {
 		const connection = await this.getEntity(id);
-		await this.cleanup(id);
+		await this.resetWorkingCopy(id);
 		return this.toPublic(connection);
 	}
 
 	async delete(id: string) {
 		const connection = await this.getEntity(id);
-		await this.cleanup(id);
+		await this.purge(id);
 		await this.repository.remove(connection);
 	}
 
@@ -214,7 +217,13 @@ export class GitConnectionsService {
 		return path.join(this.instanceSettings.n8nFolder, 'git-connections', id);
 	}
 
-	private async cleanup(id: string) {
+	/** Drop the cached working copy but keep the pinned host key. */
+	private async resetWorkingCopy(id: string) {
+		await this.gitService.resetWorkingCopy(this.rootFolder(id));
+	}
+
+	/** Remove everything on disk for a connection, including the pinned host key. */
+	private async purge(id: string) {
 		await this.gitService.cleanup(this.rootFolder(id));
 	}
 
