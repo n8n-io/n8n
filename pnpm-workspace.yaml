@@ -16,6 +16,7 @@ catalog:
   '@ai-sdk/deepseek': ^3.0.13
   '@ai-sdk/gateway': ^4.0.37
   '@ai-sdk/google': ^4.0.24
+  '@ai-sdk/google-vertex': ^5.0.47
   '@ai-sdk/groq': ^4.0.13
   '@ai-sdk/mistral': ^4.0.14
   '@ai-sdk/openai': ^4.0.20
@@ -180,7 +181,7 @@ catalog:
   mqtt-packet: 9.0.0
   ms: 2.1.3
   mysql2: 3.23.1
-  nanoid: 3.3.17
+  nanoid: 3.3.18
   nock: 14.0.14
   nodemailer: 8.0.10
   openai: 6.46.0
@@ -291,3 +292,7 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  # Fresh Claude model IDs (e.g. Opus 5) ship in @ai-sdk/anthropic patches; allow
+  # installing before the 3-day minimumReleaseAge so agents/evals aren't stuck on
+  # the unknown-model 4096 max_tokens default.
+  - '@ai-sdk/anthropic'
