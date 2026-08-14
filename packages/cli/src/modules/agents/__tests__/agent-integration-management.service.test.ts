@@ -384,13 +384,8 @@ describe('AgentIntegrationManagementService', () => {
 
 	describe('removing a channel', () => {
 		it('runs platform cleanup before removal and returns its warning', async () => {
-			const {
-				service,
-				persistenceService,
-				chatService,
-				implementation,
-				agentRepository,
-			} = makeService();
+			const { service, persistenceService, chatService, implementation, agentRepository } =
+				makeService();
 			const agent = makeAgent({ integrations: [integration] });
 			const warning = {
 				integrationType: 'slack',
@@ -417,9 +412,7 @@ describe('AgentIntegrationManagementService', () => {
 				}),
 			).resolves.toMatchObject({ warning });
 
-			expect(order(removal.onRemove)).toBeLessThan(
-				order(persistenceService.applyIntegrationDelta),
-			);
+			expect(order(removal.onRemove)).toBeLessThan(order(persistenceService.applyIntegrationDelta));
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
 				order(chatService.disconnectChannel),
 			);
