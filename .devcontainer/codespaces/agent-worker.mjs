@@ -10,17 +10,20 @@
 // Env:
 //   N8N_DEQUEUE_URL     n8n webhook that hands back one pending turn (required)
 //   AGENT_WORKER_TOKEN  shared bearer sent on every dequeue (required)
-//   GITHUB_USER         box owner's login; the bootstrap route for a new thread (codespaces set this)
-//   CODESPACE_NAME      stable box id; routes a thread back to the box holding its session (codespaces set this)
+//   GITHUB_USER         box owner's login; the bootstrap route for a new thread (see codespace-env.mjs)
+//   CODESPACE_NAME      stable box id; routes a thread back to the box holding its session (same source)
 //   TURN_TIMEOUT_MS     per-turn limit; keep below the n8n Wait limit (default 25 min)
 import { execFile } from 'node:child_process';
 import { resolve as resolvePath, sep } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
+import { codespaceEnv } from '../../scripts/codespace-env.mjs';
+
 const DEQUEUE_URL = process.env.N8N_DEQUEUE_URL;
 const TOKEN = process.env.AGENT_WORKER_TOKEN;
-const GITHUB_USER = process.env.GITHUB_USER;
-const BOX_ID = process.env.CODESPACE_NAME;
+// Read both identities from the codespace. tmux can give an empty copy of either.
+const GITHUB_USER = codespaceEnv('GITHUB_USER');
+const BOX_ID = codespaceEnv('CODESPACE_NAME');
 const ROOT = '/workspaces';
 
 const POLL_INTERVAL_MS = 3000;
@@ -53,7 +56,16 @@ for (const [k, v] of Object.entries({
 
 // Not fatal, but box pinning needs it: without a box id every turn routes by
 // owner, so a thread cannot follow the box holding its session.
-if (!BOX_ID) console.error('CODESPACE_NAME is not set — box pinning disabled; turns route by githubUser only.');
+if (!BOX_ID)
+	console.error(
+		'CODESPACE_NAME did not resolve — box pinning disabled; turns route by githubUser only.',
+	);
+
+// A turn gets a copy of this environment. Put the correct values in it, because
+// `pnpm dev:up` and `gh -c $CODESPACE_NAME` in the session need them.
+const TURN_ENV = { ...process.env };
+if (BOX_ID) TURN_ENV.CODESPACE_NAME = BOX_ID;
+if (GITHUB_USER) TURN_ENV.GITHUB_USER = GITHUB_USER;
 
 function runClaude({ message, sessionId, cwd }) {
 	const safeCwd = resolvePath(typeof cwd === 'string' && cwd ? cwd : `${ROOT}/n8n`);
@@ -66,7 +78,7 @@ function runClaude({ message, sessionId, cwd }) {
 		execFile(
 			'claude',
 			args,
-			{ cwd: safeCwd, timeout: TURN_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 },
+			{ cwd: safeCwd, env: TURN_ENV, timeout: TURN_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 },
 			(err, stdout, stderr) => {
 				try {
 					res(JSON.parse(stdout));

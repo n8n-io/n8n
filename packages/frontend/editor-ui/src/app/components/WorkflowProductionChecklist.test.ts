@@ -314,7 +314,7 @@ describe('WorkflowProductionChecklist', () => {
 						completed: false,
 					},
 				]);
-				expect(mockN8nSuggestedActionsProps.popoverAlignment).toBe('end');
+				expect(mockN8nSuggestedActionsProps.popoverAlignment).toBe('start');
 			});
 		});
 

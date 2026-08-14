@@ -255,8 +255,16 @@ What we use for testing and writing tests:
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
   See `packages/testing/playwright/README.md` for details.
 - **To iterate on a feature without docker rebuilds**, boot service containers
-  and run `pnpm dev` locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
-  then `pnpm dev`. See [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
+  and run the dev servers locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
+  then `pnpm dev:be` (backend on 5678). For frontend hot reload, also run
+  `pnpm dev:fe:editor` (8080). The root `pnpm dev` does not exist: it prints a
+  notice and exits with code 0, thus `pnpm dev && …` looks successful but no
+  server runs. See
+  [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
+- **In a codespace agent session**, use `pnpm dev:up`. It installs the missing
+  dependencies, starts the backend, waits for health, shares the port with the
+  org, and prints the URL. See
+  [.devcontainer/codespaces/README.md](.devcontainer/codespaces/README.md).
 - **For Playwright test maintenance/cleanup**, see `packages/testing/playwright/AGENTS.md` (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
 ### Common Development Tasks
