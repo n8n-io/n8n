@@ -19,19 +19,11 @@ const isGetNodeParameterCall = (node: TSESTree.CallExpression) =>
 	node.callee.property.type === TSESTree.AST_NODE_TYPES.Identifier &&
 	node.callee.property.name === 'getNodeParameter';
 
-/** The identifier passed as the item index, including `itemIndex ?? 0` forms. */
-const itemIndexArgument = (node: TSESTree.CallExpression) => {
-	const arg = node.arguments[1];
-	if (!arg) return undefined;
-	if (arg.type === TSESTree.AST_NODE_TYPES.Identifier) return arg;
-	if (
-		arg.type === TSESTree.AST_NODE_TYPES.LogicalExpression &&
-		arg.left.type === TSESTree.AST_NODE_TYPES.Identifier
-	) {
-		return arg.left;
-	}
-	return undefined;
-};
+/** `itemIndex ?? 0` / `itemIndex || 0` in the index position. */
+const isItemIndexFallback = (argument: TSESTree.Node) =>
+	argument.type === TSESTree.AST_NODE_TYPES.LogicalExpression &&
+	argument.left.type === TSESTree.AST_NODE_TYPES.Identifier &&
+	argument.left.name === ITEM_INDEX;
 
 /**
  * Whether a call site can leave this parameter out, following the binding up
@@ -67,6 +59,8 @@ export const NoDefaultedItemIndexRule = ESLintUtils.RuleCreator.withoutDocs({
 		messages: {
 			requireItemIndex:
 				'Make `itemIndex` required: it is passed to getNodeParameter, so a default resolves every item at item 0. Put it before any defaulted parameters, and pass a literal 0 from load-options call sites.',
+			noItemIndexFallback:
+				'Pass the item index itself: a fallback here means the index can be missing, and then every item resolves at item 0. Make `itemIndex` required instead, and drop the fallback.',
 		},
 		schema: [],
 	},
@@ -78,8 +72,21 @@ export const NoDefaultedItemIndexRule = ESLintUtils.RuleCreator.withoutDocs({
 			CallExpression(node) {
 				if (!isGetNodeParameterCall(node)) return;
 
-				const argument = itemIndexArgument(node);
-				if (argument?.name !== ITEM_INDEX) return;
+				const argument = node.arguments[1];
+				if (!argument) return;
+
+				// A fallback covers for an index that may not have been passed, whatever
+				// the binding looks like. That also catches the shapes scope analysis
+				// cannot judge on its own, such as an optional `itemIndex` property of a
+				// named parameter type.
+				if (isItemIndexFallback(argument)) {
+					context.report({ messageId: 'noItemIndexFallback', node: argument });
+					return;
+				}
+
+				if (argument.type !== TSESTree.AST_NODE_TYPES.Identifier || argument.name !== ITEM_INDEX) {
+					return;
+				}
 
 				// Resolve the identifier through scope, so a local `for (let itemIndex …)`
 				// is recognised as its own binding instead of the outer parameter it

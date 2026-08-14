@@ -43,7 +43,19 @@ ruleTester.run('no-defaulted-item-index', NoDefaultedItemIndexRule, {
 		},
 		{
 			code: 'function resolveTarget(this: IExecuteFunctions, itemIndex?: number) { return this.getNodeParameter("target", itemIndex ?? 0); }',
-			errors: [{ messageId: 'requireItemIndex' }],
+			errors: [{ messageId: 'noItemIndexFallback' }],
+		},
+		// An optional property of a required destructured parameter: scope alone
+		// cannot see that callers may omit it, the fallback gives it away.
+		{
+			code: 'function resolveTarget(this: IExecuteFunctions, { itemIndex }: { itemIndex?: number }) { return this.getNodeParameter("target", itemIndex ?? 0); }',
+			errors: [{ messageId: 'noItemIndexFallback' }],
+		},
+		// Same for a named parameter type, which the rule cannot resolve without
+		// type information.
+		{
+			code: 'function resolveTarget(this: IExecuteFunctions, { itemIndex }: SendOptions) { return this.getNodeParameter("target", itemIndex || 0); }',
+			errors: [{ messageId: 'noItemIndexFallback' }],
 		},
 		// Defaulted index sitting before other defaulted params is still defaulted.
 		{
