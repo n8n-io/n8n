@@ -90,6 +90,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'insights:read',
 	'role:manage',
 	'role:list',
+	'role:read',
 	'roleMappingRule:create',
 ];
 

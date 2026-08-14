@@ -1,7 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { RoleRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { addApiKey, createOwnerWithApiKey, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -125,6 +124,123 @@ describe('Roles in Public API', () => {
 			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
 
 			const response = await testServer.publicApiAgentFor(scopedOwner).get('/roles');
+
+			expect(response.status).toBe(403);
+		});
+	});
+
+	describe('GET /roles/:slug', () => {
+		const systemRoleBody = (slug: string, roleType: string) => ({
+			slug,
+			displayName: expect.any(String),
+			description: expect.any(String),
+			systemRole: true,
+			roleType,
+			licensed: expect.any(Boolean),
+			scopes: expect.any(Array),
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+		});
+
+		it('returns a system role with its scopes', async () => {
+			const response = await testServer.publicApiAgentFor(owner).get('/roles/global:owner');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual(systemRoleBody('global:owner', 'global'));
+			expect(response.body.scopes.length).toBeGreaterThan(0);
+		});
+
+		it('returns a newly created custom role', async () => {
+			const created = await testServer
+				.publicApiAgentFor(owner)
+				.post('/roles')
+				.send({ displayName: 'PA get role', roleType: 'global', scopes: ['user:read'] });
+			expect(created.status).toBe(201);
+
+			const response = await testServer.publicApiAgentFor(owner).get(`/roles/${created.body.slug}`);
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({
+				slug: created.body.slug,
+				displayName: 'PA get role',
+				description: null,
+				systemRole: false,
+				roleType: 'global',
+				licensed: expect.any(Boolean),
+				scopes: ['user:read'],
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			});
+		});
+
+		it('returns a project role', async () => {
+			const response = await testServer.publicApiAgentFor(owner).get('/roles/project:admin');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual(systemRoleBody('project:admin', 'project'));
+		});
+
+		it('omits usage counts by default', async () => {
+			const response = await testServer.publicApiAgentFor(owner).get('/roles/global:owner');
+
+			expect(response.status).toBe(200);
+			expect(response.body).not.toHaveProperty('usedByUsers');
+			expect(response.body).not.toHaveProperty('usedByProjects');
+		});
+
+		it('includes usage counts when withUsageCount is set', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/roles/global:owner')
+				.query({ withUsageCount: 'true' });
+
+			expect(response.status).toBe(200);
+			expect(response.body.usedByUsers).toBeGreaterThanOrEqual(1);
+			expect(response.body.usedByProjects).toBeGreaterThanOrEqual(0);
+		});
+
+		it('returns 404 for an unknown slug', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/roles/global:does-not-exist');
+
+			expect(response.status).toBe(404);
+		});
+
+		it('returns 404 for a non-public role type', async () => {
+			const response = await testServer.publicApiAgentFor(owner).get('/roles/credential:owner');
+
+			expect(response.status).toBe(404);
+		});
+
+		it('works when the custom roles feature is not licensed', async () => {
+			testServer.license.disable('feat:customRoles');
+
+			const response = await testServer.publicApiAgentFor(owner).get('/roles/global:owner');
+
+			expect(response.status).toBe(200);
+
+			testServer.license.enable('feat:customRoles');
+		});
+
+		it('rejects with 401 without an API key', async () => {
+			const response = await testServer.publicApiAgentWithoutApiKey().get('/roles/global:owner');
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 401 with an invalid API key', async () => {
+			const response = await testServer
+				.publicApiAgentWithApiKey('invalid-key')
+				.get('/roles/global:owner');
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the key lacks the role:read scope', async () => {
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['role:list'] });
+
+			const response = await testServer.publicApiAgentFor(scopedOwner).get('/roles/global:owner');
 
 			expect(response.status).toBe(403);
 		});
