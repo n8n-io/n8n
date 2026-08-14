@@ -25,9 +25,3 @@ yet. Turbo builds them first; the bare pnpm form does not.
   omits sibling modules from `paths`, which blocks an accidental import but not
   a deliberate one (declaring the dependency makes it typecheck clean). The
   ESLint rule that actually enforces it is CAT-3692.
-
-## Adding UI
-
-`@vitejs/plugin-vue` is already wired into `vite.config.ts`, so a `.vue` file
-compiles in tests without further setup. Route components must load lazily —
-see the note in `src/instance-registry.module.ts`.
