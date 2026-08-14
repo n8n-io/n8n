@@ -11,15 +11,38 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { SandboxConfig } from '@n8n/instance-ai';
+import type { ModelConfig, SandboxConfig } from '@n8n/instance-ai';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
+import { Telemetry } from '@/telemetry';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 
 const VERIFICATION_TIMEOUT_MS = 30_000;
+
+const MAX_ERROR_MESSAGE_LENGTH = 512;
+
+/** Query strings can carry API keys (e.g. ?key=...), so drop them from any URL echoed back by a provider. */
+function sanitizeVerificationError(error: unknown): string {
+	return ensureError(error)
+		.message.replace(/(https?:\/\/[^\s?]+)\?\S*/g, '$1')
+		.slice(0, MAX_ERROR_MESSAGE_LENGTH);
+}
+
+function modelProviderOf(config: ModelConfig): string | null {
+	const id =
+		typeof config === 'string'
+			? config
+			: typeof config === 'object' && 'id' in config && typeof config.id === 'string'
+				? config.id
+				: null;
+	if (!id) return null;
+	const provider = id.split('/', 1)[0];
+	return provider || null;
+}
 
 function numericStatus(error: unknown): number | undefined {
 	if (typeof error !== 'object' || error === null) return undefined;
@@ -76,12 +99,14 @@ export class InstanceAiVerificationService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelService: InstanceAiModelService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	async verifyModel(
 		user: User,
 		request: InstanceAiVerifyModelRequest,
 	): Promise<InstanceAiVerificationResponse> {
+		let provider: string | null = null;
 		try {
 			const connection = request.connection
 				? await this.settingsService.resolveModelConnectionForVerification(request.connection)
@@ -91,6 +116,7 @@ export class InstanceAiVerificationService {
 				: request.modelName
 					? await this.settingsService.resolveModelConfigForVerification(user, request.modelName)
 					: await this.modelService.resolveAgentModelConfig(user);
+			provider = modelProviderOf(modelConfig);
 			const { createModel } = await import('@n8n/agents');
 			const { generateText } = await import('ai');
 			const startedAt = performance.now();
@@ -103,7 +129,7 @@ export class InstanceAiVerificationService {
 			return { ok: true, latencyMs: Math.round(performance.now() - startedAt) };
 		} catch (error) {
 			const failure = classifyFailure(error);
-			this.logVerificationFailure('model', failure, error);
+			this.logVerificationFailure('model', failure, error, provider);
 			return { ok: false, failure };
 		}
 	}
@@ -148,7 +174,7 @@ export class InstanceAiVerificationService {
 				provider === 'daytona' && classifiedFailure === 'forbidden'
 					? 'quota_exceeded'
 					: classifiedFailure;
-			this.logVerificationFailure('sandbox', failure, error, { provider });
+			this.logVerificationFailure('sandbox', failure, error, provider, { provider });
 			return {
 				ok: false,
 				failure,
@@ -173,6 +199,7 @@ export class InstanceAiVerificationService {
 	async verifySearch(
 		request: InstanceAiVerifySearchRequest,
 	): Promise<InstanceAiVerificationResponse> {
+		let provider: string | null = null;
 		try {
 			const connection = request.connection
 				? await this.settingsService.resolveSearchConnectionForVerification(request.connection)
@@ -180,6 +207,7 @@ export class InstanceAiVerificationService {
 			const saved = connection ? undefined : await this.settingsService.resolveSearchConfig();
 			const braveApiKey = connectionString(connection, 'apiKey') ?? saved?.braveApiKey;
 			const searxngUrl = connectionString(connection, 'apiUrl') ?? saved?.searxngUrl;
+			provider = braveApiKey ? 'brave' : searxngUrl ? 'searxng' : null;
 			const { braveSearch, searxngSearch } = await import('@n8n/ai-utilities');
 			const options = {
 				maxResults: 10,
@@ -194,7 +222,7 @@ export class InstanceAiVerificationService {
 			return { ok: true, resultCount: result.results.length };
 		} catch (error) {
 			const failure = classifyFailure(error);
-			this.logVerificationFailure('search', failure, error);
+			this.logVerificationFailure('search', failure, error, provider);
 			return { ok: false, failure };
 		}
 	}
@@ -203,12 +231,19 @@ export class InstanceAiVerificationService {
 		kind: 'model' | 'sandbox' | 'search',
 		failure: InstanceAiVerificationFailure,
 		error: unknown,
+		provider: string | null,
 		context: Record<string, unknown> = {},
 	): void {
 		this.logger.warn(`Instance AI ${kind} verification failed`, {
 			...context,
 			error: ensureError(error).message,
 			failure,
+		});
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_CONNECTION_FAILED, {
+			component: kind === 'search' ? 'web_search' : kind,
+			provider,
+			failure,
+			error_message: sanitizeVerificationError(error),
 		});
 	}
 

@@ -82,7 +82,7 @@ export interface InstanceAiSandboxStatus {
 }
 
 /** Credential types we support and their model provider mapping. */
-const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
+export const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	openAiApi: 'openai',
 	anthropicApi: 'anthropic',
 	googlePalmApi: 'google',
@@ -261,12 +261,12 @@ interface PreparedConnection {
 	encryptedData?: ICredentialsDb;
 }
 
-interface AdminModelSelection {
+export interface AdminModelSelection {
 	modelCredentialId: string | null;
 	modelName: string | null;
 }
 
-interface AdminCredentialSelection extends AdminModelSelection {
+export interface AdminCredentialSelection extends AdminModelSelection {
 	daytonaCredentialId: string | null;
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
@@ -600,9 +600,8 @@ export class InstanceAiSettingsService {
 						: settingsUpdate.sandboxProvider,
 		);
 		await this.runConnectionHooks([modelPrepared, searchPrepared, sandboxPrepared]);
-		const { previous, next, credentialSelection } = await this.dbLockService.withLockContext(
-			DbLock.INSTANCE_AI_SETTINGS,
-			async (ctx) => {
+		const { previous, next, credentialSelection, previousSelection } =
+			await this.dbLockService.withLockContext(DbLock.INSTANCE_AI_SETTINGS, async (ctx) => {
 				if (user && modelConnection !== undefined) {
 					modelCredentialId = await this.upsertConnection(
 						user,
@@ -767,11 +766,20 @@ export class InstanceAiSettingsService {
 						n8nSandboxCredentialId: nextN8nCredentialId,
 						searchCredentialId: nextSearchCredentialId,
 					} satisfies AdminCredentialSelection,
+					previousSelection: {
+						modelCredentialId: currentModelCredentialId,
+						modelName: current.modelName ?? null,
+						daytonaCredentialId: currentDaytonaCredentialId,
+						n8nSandboxCredentialId: currentN8nCredentialId,
+						searchCredentialId: currentSearchCredentialId,
+					} satisfies AdminCredentialSelection,
 				};
-			},
-		);
+			});
 		this.applyAdminSettings(next);
-		this.emitSettingsUpdated(previous, next);
+		this.emitSettingsUpdated(previous, next, {
+			previous: previousSelection,
+			next: credentialSelection,
+		});
 
 		return this.buildAdminSettingsResponse(credentialSelection);
 	}
@@ -1830,12 +1838,14 @@ export class InstanceAiSettingsService {
 	private emitSettingsUpdated(
 		previous: PersistedAdminSettings,
 		current: PersistedAdminSettings,
+		credentialSelections?: { previous: AdminCredentialSelection; next: AdminCredentialSelection },
 	): void {
 		try {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
 					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+				credentialSelections,
 			});
 		} catch (error) {
 			Container.get(Logger)
