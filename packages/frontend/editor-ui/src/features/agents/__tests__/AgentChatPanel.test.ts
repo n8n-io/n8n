@@ -541,17 +541,23 @@ describe('AgentPreviewDock stream lifecycle', () => {
 		);
 	}
 
-	it.each([
-		['closes', 'agent-preview-close-btn'],
-		['starts a new session', 'agent-preview-new-chat-btn'],
-	])('stops an in-flight stream when the preview %s', async (_action, testId) => {
+	it('stops an in-flight stream when the preview starts a new session', async () => {
 		const wrapper = mountPreviewDock();
 
-		await wrapper.get(`[data-testid="${testId}"]`).trigger('click');
+		await wrapper.get('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
 		await flushPromises();
 
 		expect(stopGeneratingMock).toHaveBeenCalledOnce();
 		isStreamingMock.value = false;
 		wrapper.unmount();
+	});
+
+	it('stops an in-flight stream when the preview unmounts', async () => {
+		const wrapper = mountPreviewDock();
+
+		wrapper.unmount();
+		await flushPromises();
+
+		expect(stopGeneratingMock).toHaveBeenCalledOnce();
 	});
 });

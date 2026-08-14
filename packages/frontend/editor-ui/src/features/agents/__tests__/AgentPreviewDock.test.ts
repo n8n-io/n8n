@@ -141,11 +141,6 @@ describe('AgentPreviewDock', () => {
 				icon: 'message-circle-plus',
 				label: 'agents.builder.chat.newChat.label',
 			},
-			{
-				testId: 'agent-preview-close-btn',
-				icon: 'x',
-				label: 'agents.builder.preview.close.ariaLabel',
-			},
 		];
 		const traceTooltip = wrapper.get('[data-testid="agent-preview-view-session-tooltip"]');
 
@@ -169,7 +164,7 @@ describe('AgentPreviewDock', () => {
 
 		expect(wrapper.emitted('view-trace')).toEqual([[]]);
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
-		expect(wrapper.emitted('close')).toEqual([[]]);
+		expect(wrapper.emitted('close')).toBeUndefined();
 	});
 
 	it.each([
@@ -209,24 +204,17 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('send-to-assistant')).toEqual([[fixEvent]]);
 	});
 
-	it('shows shortcut tooltips for the new-session and close actions', () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
+	it('shows the new-session shortcut tooltip', () => {
 		const wrapper = mountDock();
 		const tooltips = wrapper.findAllComponents({
 			name: 'KeyboardShortcutTooltip',
 		});
-		const [newSessionTooltip, closeTooltip] = tooltips;
 
-		expect(tooltips).toHaveLength(2);
-		expect(newSessionTooltip?.props()).toMatchObject({
+		expect(tooltips).toHaveLength(1);
+		expect(tooltips[0]?.props()).toMatchObject({
 			label: 'agents.builder.chat.newChat.label',
 			placement: 'bottom',
 			shortcut: { metaKey: true, shiftKey: true, keys: [';'] },
-		});
-		expect(closeTooltip?.props()).toMatchObject({
-			label: 'generic.close',
-			placement: 'bottom',
-			shortcut: { keys: ['Esc'] },
 		});
 	});
 
@@ -255,7 +243,9 @@ describe('AgentPreviewDock', () => {
 		outsideButton.focus();
 		expect(escapeBinding.disabled()).toBe(true);
 
-		(wrapper.get('[data-testid="agent-preview-close-btn"]').element as HTMLButtonElement).focus();
+		(
+			wrapper.get('[data-testid="agent-preview-new-chat-btn"]').element as HTMLButtonElement
+		).focus();
 		expect(escapeBinding.disabled()).toBe(false);
 		escapeBinding.run();
 		expect(wrapper.emitted('close')).toEqual([[]]);
