@@ -878,8 +878,10 @@ async function handleSetup(
 		);
 
 		// Validated against the workflow's node URLs so a recipe can't set one of
-		// the workflow's own (action) endpoints as its probe testUrl.
-		const nodeUrls = setupRequests.map((request) => request.node.parameters?.url);
+		// the workflow's own (action) endpoints as its probe testUrl. Checked against every
+		// analyzed node, not just the pending ones — narrowing it to what the card shows would
+		// let a skipped node's endpoint through.
+		const nodeUrls = analyzedRequests.map((request) => request.node.parameters?.url);
 		const hintProblems = (input.credentialHints ?? []).flatMap((hint) =>
 			findSetupHintProblems(hint, { nodeUrls }).map((problem) =>
 				hint.nodeName ? `${hint.nodeName}: ${problem}` : problem,
