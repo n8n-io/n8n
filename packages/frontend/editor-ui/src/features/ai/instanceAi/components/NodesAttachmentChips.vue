@@ -12,6 +12,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { isNodeChipRemovalKey } from '../constants';
 
 // Per ADO-5770 (N = 4). NOT the legacy CHIP_BUNDLE_THRESHOLD — different semantics:
 // this only governs the single-lone-set explode/bundle decision.
@@ -152,6 +153,16 @@ function removeChip(chip: ChipVM) {
 	else removeSet(chip.setIndex);
 }
 
+// The panel's remove button is a native <button>, so Enter/Space already
+// trigger it via the browser's default click behavior. X/Delete/Backspace
+// don't, so wire them here to match the top-level chips' removal keys.
+function handlePanelRowKeydown(setIndex: number, nodeIndex: number, event: KeyboardEvent) {
+	if (isNodeChipRemovalKey(event.key)) {
+		event.preventDefault();
+		removeNode(setIndex, nodeIndex);
+	}
+}
+
 // which bundled set's panel is open (index into attachment.sets), null = none open
 const expandedSetIndex = ref<number | null>(null);
 function toggleExpanded(index: number) {
@@ -215,6 +226,7 @@ const totalNodeCount = computed(() =>
 						:key="node.id"
 						:class="$style.panelRow"
 						data-testid="nodes-chip-panel-row"
+						@keydown="handlePanelRowKeydown(chip.setIndex, nodeIndex, $event)"
 					>
 						<NodeIcon v-if="node.nodeType" :node-type="node.nodeType" :size="12" />
 						<N8nIcon v-else icon="crosshair" size="xsmall" />

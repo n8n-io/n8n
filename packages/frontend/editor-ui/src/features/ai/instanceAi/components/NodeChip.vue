@@ -2,10 +2,11 @@
 import { N8nIcon } from '@n8n/design-system';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { isNodeChipRemovalKey } from '../constants';
 
 // A single chip: a node-type (or fallback) icon, a name, and optional caret/remove
 // buttons. The parent owns all state — this only renders and emits clicks.
-defineProps<{
+const props = defineProps<{
 	label: string;
 	nodeType?: INodeTypeDescription | null;
 	testid: string;
@@ -17,10 +18,34 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{ remove: []; 'toggle-expand': [] }>();
+
+// The chip is one tab stop (its inner buttons are tabindex="-1"), so a keyboard
+// user walks chip-by-chip and acts on the focused chip with these keys instead
+// of having to tab into each button separately.
+function handleKeydown(event: KeyboardEvent) {
+	const isActivationKey = event.key === 'Enter';
+	if (isActivationKey && props.expanded != null) {
+		event.preventDefault();
+		emit('toggle-expand');
+		return;
+	}
+
+	if (isNodeChipRemovalKey(event.key) && props.removable) {
+		event.preventDefault();
+		emit('remove');
+	}
+}
 </script>
 
 <template>
-	<span :class="$style.chip" :data-testid="testid">
+	<span
+		:class="$style.chip"
+		:data-testid="testid"
+		tabindex="0"
+		role="group"
+		:aria-label="label"
+		@keydown="handleKeydown"
+	>
 		<N8nIcon v-if="icon" :icon="icon" size="xsmall" />
 		<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
 		<N8nIcon v-else icon="crosshair" size="xsmall" />
@@ -29,6 +54,7 @@ const emit = defineEmits<{ remove: []; 'toggle-expand': [] }>();
 			v-if="expanded != null"
 			:class="$style.iconBtn"
 			data-testid="nodes-chip-expand"
+			tabindex="-1"
 			@click.stop="emit('toggle-expand')"
 		>
 			<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="xsmall" />
@@ -37,6 +63,7 @@ const emit = defineEmits<{ remove: []; 'toggle-expand': [] }>();
 			v-if="removable"
 			:class="$style.iconBtn"
 			data-testid="nodes-chip-remove"
+			tabindex="-1"
 			@click.stop="emit('remove')"
 		>
 			<N8nIcon icon="x" size="xsmall" />
@@ -56,6 +83,11 @@ const emit = defineEmits<{ remove: []; 'toggle-expand': [] }>();
 	background: var(--background--success);
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--success);
+
+	&:focus-visible {
+		outline: 2px solid var(--color--primary);
+		outline-offset: 2px;
+	}
 }
 
 .name {
