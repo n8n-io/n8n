@@ -3,65 +3,12 @@ import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
-
 import { Container, Service } from '@n8n/di';
-
-export const getCspReportOnlyDirectives = (nonce: string) =>
-	`script-src 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'; object-src 'none'; base-uri 'none';`;
-
-export const buildCspMiddleware = (
-	cspDirectives: { [key: string]: Iterable<string> } | undefined,
-	cspReportOnly: boolean,
-	nonce: string,
-) => {
-	const buildHeaderFromDirectives = (directives: { [key: string]: Array<string> }) =>
-		Object.entries(directives)
-			.map(([k, v]) => `${k} ${v.join(' ')}`)
-			.join('; ');
-
-	// If no custom directives provided, return the predefined header string.
-	if (isEmpty(cspDirectives)) {
-		const header = getCspReportOnlyDirectives(nonce);
-		const headerName = cspReportOnly
-			? 'Content-Security-Policy-Report-Only'
-			: 'Content-Security-Policy';
-		return (req: any, res: any, next: () => void) => {
-			res.setHeader(headerName, header);
-			next();
-		};
-	}
-
-	const mergedDirectives: { [key: string]: Array<string> } = {};
-	Object.entries(cspDirectives).forEach(([k, v]) => {
-		mergedDirectives[k] = Array.isArray(v) ? [...v] : Array.from(v as Iterable<string>);
-	});
-
-	const scriptKey = 'script-src';
-	const nonceToken = `'nonce-${nonce}'`;
-	// If user provided `script-src`, respect it completely (allow full overwrite).
-	// Only inject a nonce when the user did not specify `script-src`.
-	if (!mergedDirectives[scriptKey]) {
-		mergedDirectives[scriptKey] = [nonceToken, "'strict-dynamic'", "'unsafe-eval'"];
-	}
-
-	const header = buildHeaderFromDirectives(mergedDirectives);
-	const headerName = cspReportOnly
-		? 'Content-Security-Policy-Report-Only'
-		: 'Content-Security-Policy';
-	return (req: any, res: any, next: () => void) => {
-		res.setHeader(headerName, header);
-		next();
-	};
-};
-
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess, readFile } from 'fs/promises';
-import { randomBytes } from 'crypto';
 import helmet from 'helmet';
-import isEmpty from 'lodash/isEmpty';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
@@ -75,10 +22,15 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
+import { createContentSecurityPolicyMiddleware } from '@/middlewares/content-security-policy';
 import { PostHogClient } from '@/posthog';
 import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
+import {
+	HTML_NONCE_PLACEHOLDER,
+	resolveContentSecurityPolicies,
+} from '@/security/content-security-policy';
 import type { FrontendService } from '@/services/frontend.service';
 import { Telemetry } from '@/telemetry';
 
@@ -253,6 +205,20 @@ export class Server extends AbstractServer {
 			req.browserId = req.headers['browser-id'] as string;
 			next();
 		});
+
+		// Serve the CSP on the HTML pages below - the editor, the OAuth callbacks and the
+		// SAML test pages. Deliberately installed here, after the webhook and form routes
+		// that `AbstractServer` registers with their own `sandbox` policy.
+		const securityConfig = Container.get(SecurityConfig);
+		this.app.use(
+			createContentSecurityPolicyMiddleware(
+				resolveContentSecurityPolicies(
+					securityConfig.contentSecurityPolicy,
+					securityConfig.contentSecurityPolicyReportOnly,
+					this.logger,
+				),
+			),
+		);
 
 		// ----------------------------------------
 		// Public API
@@ -441,17 +407,9 @@ export class Server extends AbstractServer {
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
-			const cspDirectives = jsonParse<{ [key: string]: Iterable<string> }>(
-				Container.get(SecurityConfig).contentSecurityPolicy,
-				{
-					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
-				},
-			);
 			const crossOriginOpenerPolicy = Container.get(SecurityConfig).crossOriginOpenerPolicy;
-			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
-			// Disable global CSP here and apply a per-request CSP middleware below so
-			// we can inject a per-request nonce into `script-src` without overwriting
-			// other route-specific CSP headers (some handlers set CSP directly).
+			// The CSP is served by `createContentSecurityPolicyMiddleware` instead, which can
+			// inject a per-request nonce and leaves responses that carry their own policy alone.
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: false,
 				xFrameOptions:
@@ -475,9 +433,6 @@ export class Server extends AbstractServer {
 				},
 			});
 
-			// buildCspMiddleware is exported at module level so tests can validate
-			// merging and report-only behavior.
-
 			// Route all UI urls to index.html to support history-api
 			const nonUIRoutes: readonly string[] = [
 				'favicon.ico',
@@ -492,6 +447,18 @@ export class Server extends AbstractServer {
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
+
+			// `index.html` is compiled into the static cache dir at startup and does not
+			// change while n8n runs, so read it once and keep it split around the nonce
+			// placeholders - serving a request is then just a join.
+			let indexHtmlParts: string[] | undefined;
+			const indexHtmlTemplate = async () => {
+				indexHtmlParts ??= (await readFile(resolve(staticCacheDir, 'index.html'), 'utf8')).split(
+					HTML_NONCE_PLACEHOLDER,
+				);
+				return indexHtmlParts;
+			};
+
 			const historyApiHandler: express.RequestHandler = async (req, res, next) => {
 				const {
 					method,
@@ -506,35 +473,20 @@ export class Server extends AbstractServer {
 				) {
 					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
 
-					const nonce = randomBytes(16).toString('base64');
-
-					// Apply CSP per-request so we can inject the nonce into
-					// `script-src` while merging any directives from
-					// `N8N_CONTENT_SECURITY_POLICY`. This avoids overwriting
-					// route-specific CSP set elsewhere and honors the
-					// `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` flag.
-					const cspMiddleware = buildCspMiddleware(cspDirectives, cspReportOnly, nonce);
-
-					let indexHtml = '';
+					let template: string[];
 					try {
-						indexHtml = await readFile(resolve(staticCacheDir, 'index.html'), 'utf8');
+						template = await indexHtmlTemplate();
 					} catch (error) {
-						this.logger.error('Could not read index.html for CSP nonce injection', { error });
+						this.logger.error('Could not read index.html', { error });
 						res.sendStatus(500);
 						return;
 					}
 
-					// Only replace explicit nonce placeholders injected at build-time.
-					// Additionally, add nonce attributes to trusted build assets (under
-					// /assets/ and /static/) so Vite-injected scripts receive the nonce.
-					// We do NOT add nonces to arbitrary script tags to avoid granting a
-					// nonce to attacker-injected scripts.
-					const content = indexHtml.replace(/nonce="\{\{CSP_NONCE\}\}"/g, `nonce="${nonce}"`);
-
-					cspMiddleware(req, res, () => {
-						securityHeadersMiddleware(req, res, () => {
-							res.send(content);
-						});
+					// Give the scripts n8n ships the request's nonce, so `strict-dynamic` lets
+					// them run. Only the placeholders the build put there are replaced - markup
+					// that arrived some other way must not get a nonce.
+					securityHeadersMiddleware(req, res, () => {
+						res.type('html').send(template.join(res.locals.cspNonce));
 					});
 				} else {
 					next();

@@ -63,18 +63,32 @@ export class SecurityConfig {
 	daysAbandonedWorkflow: number = 90;
 
 	/**
-	 * Set [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) headers as [helmet.js](https://helmetjs.github.io/#content-security-policy) nested directives object.
-	 * Example: { "frame-ancestors": ["http://localhost:3000"] }
+	 * The [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) n8n serves
+	 * on its HTML pages, replacing the nonce-based default policy. Two formats are accepted:
+	 *
+	 * - a [helmet.js](https://helmetjs.github.io/#content-security-policy) nested directives object,
+	 *   e.g. `{ "frame-ancestors": ["http://localhost:3000"] }`
+	 * - a policy string, as the header itself is written,
+	 *   e.g. `frame-ancestors http://localhost:3000`
+	 *
+	 * The value replaces the default policy in full. Write `<nonce>` where the per-request nonce
+	 * should go to keep n8n's own scripts working, e.g. `script-src <nonce> 'strict-dynamic'`.
 	 */
-	// TODO: create a new type that parses and validates this string into a strongly-typed object
 	@Env('N8N_CONTENT_SECURITY_POLICY')
 	contentSecurityPolicy: string = '{}';
 
 	/**
-	 * Whether to set the `Content-Security-Policy-Report-Only` header instead of `Content-Security-Policy`.
+	 * Set to `true` to send the policy as `Content-Security-Policy-Report-Only` instead of enforcing
+	 * it, or to `false` to enforce it.
+	 *
+	 * Can also hold a policy of its own - in either format accepted by `N8N_CONTENT_SECURITY_POLICY` -
+	 * to report on a candidate policy while a different one is enforced.
+	 *
+	 * When neither this nor `N8N_CONTENT_SECURITY_POLICY` is set, n8n reports on its default policy
+	 * without enforcing it.
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
-	contentSecurityPolicyReportOnly: boolean = false;
+	contentSecurityPolicyReportOnly: string = '';
 
 	/**
 	 * Configuration for the `Cross-Origin-Opener-Policy` header.
