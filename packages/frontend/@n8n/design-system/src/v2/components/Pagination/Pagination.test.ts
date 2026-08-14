@@ -580,35 +580,7 @@ describe('v2/components/Pagination', () => {
 			});
 
 			expect(wrapper.getByTestId('pagination')).toBeInTheDocument();
-		});
-
-		it('should calculate pages from pageCount prop', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					pageCount: 5,
-					itemsPerPage: 10,
-					showEdges: true,
-				},
-			});
-
-			expect(wrapper.getByText('5')).toBeInTheDocument();
-		});
-
-		it('should prefer pageCount over total when both are set', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					pageCount: 3,
-					total: 1000,
-					itemsPerPage: 10,
-					showEdges: true,
-				},
-			});
-
-			const pageNumbers = wrapper
-				.queryAllByTestId('pagination-item')
-				.map((item) => item.textContent?.trim());
-
-			expect(pageNumbers).toEqual(['1', '2', '3']);
+			expect(wrapper.getByTestId('pagination-total')).toHaveTextContent('Total 0');
 		});
 	});
 

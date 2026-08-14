@@ -4,8 +4,10 @@ export type PaginationSizes = 'small' | 'medium';
 
 export type PaginationProps = Omit<
 	PaginationRootProps,
-	'dir' | 'asChild' | 'as' | 'itemsPerPage'
+	'dir' | 'asChild' | 'as' | 'itemsPerPage' | 'total'
 > & {
+	/** Total number of items across all pages. */
+	total: number;
 	/** Number of items per page. Supports `v-model:items-per-page`. */
 	itemsPerPage?: number;
 	/**
@@ -18,8 +20,6 @@ export type PaginationProps = Omit<
 	 * @defaultValue [10, 20, 30, 40, 50, 100]
 	 */
 	pageSizes?: number[];
-	/** Total number of pages. Takes precedence over `total` when set. */
-	pageCount?: number;
 	/**
 	 * Show the total item count.
 	 * @defaultValue true

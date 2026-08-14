@@ -18,7 +18,7 @@ Extends Reka UI [`PaginationRootProps`](https://reka-ui.com/docs/components/pagi
 - `page?: number` - Controlled current page (1-indexed). Supports `v-model:page`. When set, the parent value stays authoritative until it accepts `@update:page`
 - `defaultPage?: number` - Initial page in uncontrolled mode. Default: `1`
 - `itemsPerPage?: number` - Controlled items per page. Supports `v-model:items-per-page`. When set, the parent value stays authoritative until it accepts `@update:items-per-page`
-- `total?: number` - Total number of items across all pages. Optional; when omitted the total label renders empty
+- `total: number` - Total number of items across all pages
 - `siblingCount?: number` - Pages to show on each side of the current page before ellipsis. Default: `1`
 - `showEdges?: boolean` - Always show first and last page buttons (with ellipsis when needed). Default: `true`
 - `disabled?: boolean` - Disable all pagination controls. Default: `false`
@@ -30,7 +30,6 @@ Extends Reka UI [`PaginationRootProps`](https://reka-ui.com/docs/components/pagi
 - `showTotal?: boolean` - Show the total item count. Default: `true`
 - `showSizes?: boolean` - Show the page size selector. Default: `true`
 - `showJumper?: boolean` - Show the go-to-page jumper. Default: `true`
-- `pageCount?: number` - Total number of pages. Takes precedence over `total` when set
 - `hideOnSinglePage?: boolean` - Hide the component when there is only one page. Default: `false`
 - `size?: 'small' | 'medium'` - Size variant. Default: `'medium'`
 

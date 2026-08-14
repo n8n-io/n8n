@@ -45,11 +45,7 @@ export default {
 		},
 		total: {
 			control: 'number',
-			description: 'Total number of items. Optional; when omitted the total label renders empty.',
-		},
-		pageCount: {
-			control: 'number',
-			description: 'Total number of pages. Takes precedence over `total`.',
+			description: 'Total number of items across all pages',
 		},
 		siblingCount: {
 			control: 'number',
@@ -169,14 +165,6 @@ export const HideOnSinglePage: Story = {
 		</div>
 		`,
 	}),
-};
-
-export const PageCount: Story = {
-	render: Template,
-	args: {
-		pageCount: 12,
-		itemsPerPage: 10,
-	},
 };
 
 export const Sizes: Story = {

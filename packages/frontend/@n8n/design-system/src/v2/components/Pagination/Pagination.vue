@@ -102,18 +102,8 @@ watch(
 );
 
 function resolvedPageCount() {
-	if (props.pageCount !== undefined) return props.pageCount;
 	if (!props.total || !currentItemsPerPage.value) return 1;
 	return Math.ceil(props.total / currentItemsPerPage.value);
-}
-
-// pageCount takes precedence over total per DS-323
-function resolvedTotalItems() {
-	if (props.pageCount !== undefined) {
-		return props.pageCount * currentItemsPerPage.value;
-	}
-	if (props.total !== undefined) return props.total;
-	return 0;
 }
 
 function shouldHide() {
@@ -245,7 +235,7 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		v-bind="rootAttrs"
 	>
 		<div v-if="showTotal" :class="$style.total" data-test-id="pagination-total">
-			{{ total === undefined ? '' : t('pagination.total', { total }) }}
+			{{ t('pagination.total', { total }) }}
 		</div>
 
 		<PaginationRoot
@@ -253,7 +243,7 @@ function handlePagerKeydown(event: KeyboardEvent) {
 			v-bind="rootProps"
 			:page="currentPage"
 			:items-per-page="currentItemsPerPage"
-			:total="resolvedTotalItems()"
+			:total="total"
 			@update:page="handlePageUpdate"
 		>
 			<PaginationList
