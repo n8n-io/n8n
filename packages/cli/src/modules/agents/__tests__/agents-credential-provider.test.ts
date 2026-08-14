@@ -140,6 +140,8 @@ describe('AgentsCredentialProvider', () => {
 			'slackApi',
 			'internal',
 		);
+		// `getBase` must be project-scoped — it supplies the project's variables.
+		expect(getBaseMock).toHaveBeenCalledWith({ userId: undefined, projectId: 'project-1' });
 	});
 
 	it('resolves a global credential when no request user is provided', async () => {
@@ -160,7 +162,10 @@ describe('AgentsCredentialProvider', () => {
 		);
 	});
 
-	it('returns the resolved secret for an External Secrets backed credential', async () => {
+	// Expression evaluation itself (a stored `={{ $secrets... }}` resolving to
+	// plaintext, and a missing secret rejecting) is covered against a real
+	// `CredentialsHelper` in `test/integration/agents/agents-credential-provider.test.ts`.
+	it('defaults apiKey to an empty string for a credential type that has none', async () => {
 		const credentialsService = mock<CredentialsService>();
 		const bearerCred = credential({
 			id: 'bearer-cred',
@@ -169,34 +174,14 @@ describe('AgentsCredentialProvider', () => {
 		});
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([bearerCred]);
 		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
-		// `getDecrypted` is the path that evaluates `={{ $secrets... }}`; the raw
-		// stored value would be the unevaluated expression.
-		credentialsHelper.getDecrypted.mockResolvedValue({ token: 'secret-from-1password' });
+		credentialsHelper.getDecrypted.mockResolvedValue({ token: 'bearer-token' });
 
 		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
 
 		await expect(provider.resolve('bearer-cred')).resolves.toEqual({
-			token: 'secret-from-1password',
+			token: 'bearer-token',
 			apiKey: '',
 		});
-		// Project scope must reach `getBase` — it supplies the project's variables.
-		expect(getBaseMock).toHaveBeenCalledWith({ userId: undefined, projectId: 'project-1' });
-	});
-
-	it('propagates a failed secret lookup instead of returning empty credential data', async () => {
-		const credentialsService = mock<CredentialsService>();
-		const bearerCred = credential({
-			id: 'bearer-cred',
-			name: 'MCP bearer',
-			type: 'httpBearerAuth',
-		});
-		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([bearerCred]);
-		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
-		credentialsHelper.getDecrypted.mockRejectedValue(new Error('Could not load secrets'));
-
-		const provider = new AgentsCredentialProvider(credentialsService, 'project-1');
-
-		await expect(provider.resolve('bearer-cred')).rejects.toThrow('Could not load secrets');
 	});
 
 	it('rejects resolve for a credential not in project or global scope when no request user is provided', async () => {
