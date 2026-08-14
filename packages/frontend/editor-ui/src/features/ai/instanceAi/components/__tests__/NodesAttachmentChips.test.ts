@@ -107,6 +107,16 @@ describe('NodesAttachmentChips', () => {
 		expect(summary.textContent).toContain('7 nodes');
 	});
 
+	it('the collapsed summary X clears all sets at once (emits remove-all)', async () => {
+		const sets = nodeRefs('A', 'B', 'C', 'D', 'E', 'F', 'G').map((n) => ({ nodes: [n] }));
+		const { getByTestId, emitted } = renderComponent(NodesAttachmentChips, {
+			props: { attachment: att(sets), isRemovable: true },
+		});
+		await fireEvent.click(getByTestId('nodes-chips-collapse'));
+		await fireEvent.click(getByTestId('nodes-chips-collapsed-remove'));
+		expect(emitted()['remove-all']).toBeTruthy();
+	});
+
 	it('removing a node from the bundle expand panel emits update:attachment without it', async () => {
 		const { getByTestId, getAllByTestId, emitted } = renderComponent(NodesAttachmentChips, {
 			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },

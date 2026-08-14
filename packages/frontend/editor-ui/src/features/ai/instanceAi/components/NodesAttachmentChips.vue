@@ -184,6 +184,14 @@ const totalNodeCount = computed(() =>
 					})
 				}}
 			</span>
+			<button
+				v-if="isRemovable"
+				:class="$style.summaryRemove"
+				data-testid="nodes-chips-collapsed-remove"
+				@click.stop="emit('remove-all')"
+			>
+				<N8nIcon icon="x" size="xsmall" />
+			</button>
 		</span>
 		<template v-else>
 			<span v-for="chip in chips" :key="chip.key" :class="$style.chipAnchor">
@@ -270,6 +278,17 @@ const totalNodeCount = computed(() =>
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.summaryRemove {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: none;
+	padding: 0;
+	cursor: pointer;
+	color: inherit; // match the summary chip's success text color
 }
 
 .panel {
