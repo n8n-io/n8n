@@ -1,0 +1,28 @@
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_e73f4c6b078185::t_e35b9c7909c255 539-555
+  s_e73f4c6b078185::t_4e1ef83cea9181 508,516
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  h_32d8cd6a0d6aad 179,181,255,257,260,262,268-269,271
+  s_e73f4c6b078185::t_d0164e1c99dcb3 283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c3902df7ab9e053460abc522a1ffb6926cf4dbc6",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e73f4c6b078185": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32f90690-9f76-4859-b1bb-e96e7404144c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
