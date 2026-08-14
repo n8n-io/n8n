@@ -412,12 +412,8 @@ describe('AgentIntegrationManagementService', () => {
 				}),
 			).resolves.toMatchObject({ warning });
 
-			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
-				order(removal.onRemove),
-			);
-			expect(order(removal.onRemove)).toBeLessThan(
-				order(chatService.disconnectChannel),
-			);
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(order(removal.onRemove));
+			expect(order(removal.onRemove)).toBeLessThan(order(chatService.disconnectChannel));
 		});
 
 		it('tears down the runtime when platform cleanup fails after durable removal', async () => {
@@ -444,12 +440,8 @@ describe('AgentIntegrationManagementService', () => {
 			).rejects.toBe(cleanupError);
 
 			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
-			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
-				order(removal.onRemove),
-			);
-			expect(order(removal.onRemove)).toBeLessThan(
-				order(chatService.disconnectChannel),
-			);
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(order(removal.onRemove));
+			expect(order(removal.onRemove)).toBeLessThan(order(chatService.disconnectChannel));
 		});
 
 		it('removes persistence before tearing down the runtime channel', async () => {
