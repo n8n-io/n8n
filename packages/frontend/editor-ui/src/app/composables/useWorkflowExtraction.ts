@@ -14,7 +14,7 @@ import type {
 	INode,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { useToast } from './useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useRouter } from 'vue-router';
 import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -30,7 +30,7 @@ import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { checkExhaustive } from '@/app/utils/typeGuards';
 import isEqual from 'lodash/isEqual';
 import uniq from 'lodash/uniq';

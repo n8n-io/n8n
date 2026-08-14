@@ -248,6 +248,7 @@ export class AiController {
 	@Licensed('feat:aiGateway')
 	@Get('/gateway/config')
 	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
+		this.aiGatewayService.assertEnabled();
 		try {
 			return await this.aiGatewayService.getGatewayConfig();
 		} catch (e) {
@@ -259,6 +260,7 @@ export class AiController {
 	@Licensed('feat:aiGateway')
 	@Get('/gateway/wallet')
 	async getGatewayWallet(req: AuthenticatedRequest): Promise<{ budget: number; balance: number }> {
+		this.aiGatewayService.assertEnabled();
 		try {
 			return await this.aiGatewayService.getWallet(req.user.id);
 		} catch (e) {
@@ -274,6 +276,7 @@ export class AiController {
 		_: Response,
 		@Query query: AiGatewayUsageQueryDto,
 	): Promise<AiGatewayUsageResponse> {
+		this.aiGatewayService.assertEnabled();
 		try {
 			return await this.aiGatewayService.getUsage(req.user.id, query.offset, query.limit);
 		} catch (e) {

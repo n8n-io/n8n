@@ -19,11 +19,16 @@ export interface ImportPackageFields {
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
 	variableMissingMode?: string;
+	variableConflictPolicy?: string;
+	variableParentPolicy?: string;
+	tagMissingMode?: string;
+	tagConflictPolicy?: string;
 }
 
 export interface ExportPackageFields {
@@ -31,6 +36,7 @@ export interface ExportPackageFields {
 	folderIds?: string[];
 	projectIds?: string[];
 	includeVariableValues?: boolean;
+	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: string;
 }
 
@@ -41,6 +47,8 @@ export interface ExportPackageCounts {
 	credentials: number;
 	dataTables: number;
 	variables: number;
+	/** Absent when the server predates tag export. */
+	tags?: number;
 }
 
 export interface ExportPackageResult {
@@ -462,6 +470,7 @@ export class N8nClient {
 			folderIds?: string[];
 			projectIds?: string[];
 			includeVariableValues?: boolean;
+			includeTags?: boolean;
 			missingWorkflowDependencyPolicy?: string;
 		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
@@ -469,6 +478,7 @@ export class N8nClient {
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
 		// `undefined` is dropped by JSON serialization, so the API's default applies.
 		body.includeVariableValues = fields.includeVariableValues;
+		body.includeTags = fields.includeTags;
 		if (fields.missingWorkflowDependencyPolicy)
 			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
 

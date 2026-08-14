@@ -10,17 +10,14 @@ import {
 	N8nLoading,
 	N8nTabs,
 	N8nText,
-	N8nUserStack,
-	type UserStackGroups,
 } from '@n8n/design-system';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
 const props = defineProps<{
 	items: WorkflowReviewInboxItem[];
-	activeState: WorkflowReviewRequestState;
+	activeTab: WorkflowReviewRequestState;
 	openCount: number;
 	closedCount: number;
 	selectedId: string | null;
@@ -33,24 +30,13 @@ const props = defineProps<{
 const emit = defineEmits<{
 	select: [id: string];
 	clear: [];
-	'update:activeState': [state: WorkflowReviewRequestState];
+	'update:activeTab': [tab: WorkflowReviewRequestState];
 	loadMore: [];
 }>();
 
 const i18n = useI18n();
-const usersStore = useUsersStore();
 const listRef = ref<HTMLElement | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
-
-const currentUserEmail = computed(() => usersStore.currentUser?.email ?? null);
-
-// Keep the requester first so it occupies a visible avatar slot.
-function userGroups(item: WorkflowReviewInboxItem): UserStackGroups {
-	return {
-		[i18n.baseText('workflowReviews.roles.requester')]: item.requester ? [item.requester] : [],
-		[i18n.baseText('workflowReviews.roles.reviewers')]: item.reviewers,
-	};
-}
 
 const tabOptions = computed(() => [
 	{
@@ -82,7 +68,7 @@ watch(
 );
 
 function onTabChange(value: string | number | boolean) {
-	emit('update:activeState', String(value) as WorkflowReviewRequestState);
+	emit('update:activeTab', String(value) as WorkflowReviewRequestState);
 }
 
 function onListBackgroundClick() {
@@ -101,8 +87,9 @@ function onListBackgroundClick() {
 		</div>
 		<div :class="$style.header">
 			<N8nTabs
-				:model-value="activeState"
+				:model-value="activeTab"
 				:options="tabOptions"
+				variant="modern"
 				data-test-id="workflow-reviews-tabs"
 				@update:model-value="onTabChange"
 			/>
@@ -123,7 +110,7 @@ function onListBackgroundClick() {
 					size="small"
 					data-test-id="workflow-reviews-empty"
 				>
-					{{ i18n.baseText(`workflowReviews.sidebar.empty.${activeState}`) }}
+					{{ i18n.baseText(`workflowReviews.sidebar.empty.${activeTab}`) }}
 				</N8nText>
 				<N8nCard
 					v-for="item in items"
@@ -158,14 +145,6 @@ function onListBackgroundClick() {
 								</span>
 							</N8nBadge>
 							<div :class="$style.cardMetaActions">
-								<N8nUserStack
-									v-if="item.requester || item.reviewers.length > 0"
-									:users="userGroups(item)"
-									:max-avatars="3"
-									:current-user-email="currentUserEmail"
-									size="xsmall"
-									data-test-id="workflow-review-request-users"
-								/>
 								<N8nText
 									size="xsmall"
 									color="text-light"
@@ -189,10 +168,13 @@ function onListBackgroundClick() {
 
 <style lang="scss" module>
 .sidebar {
+	--review-sidebar--width: 22rem;
+
 	display: flex;
 	flex-direction: column;
-	flex: 0 0 35%;
-	min-width: 12rem;
+	flex: 0 0 var(--review-sidebar--width);
+	min-width: 0;
+	max-width: var(--review-sidebar--width);
 	height: 100%;
 	border-right: var(--border-width) solid var(--color--foreground--tint-1);
 }
@@ -206,9 +188,10 @@ function onListBackgroundClick() {
 
 .header {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: 0 var(--spacing--md) var(--spacing--md) 0;
+	align-items: center;
+	height: var(--review-tab-bar--height, var(--height--sm));
+	padding-right: var(--spacing--md);
+	margin-bottom: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
 }
 
 .list {
@@ -216,6 +199,7 @@ function onListBackgroundClick() {
 	flex: 1;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	min-width: 0;
 	overflow-y: auto;
 	padding: 0 var(--spacing--md) var(--spacing--md) 0;
 }
@@ -224,7 +208,7 @@ function onListBackgroundClick() {
 	cursor: pointer;
 	padding: var(--spacing--xs);
 	align-items: stretch;
-	border: var(--border-width) solid var(--color--foreground--tint-1);
+	border: var(--border-width) solid var(--border-color);
 	transition: background-color 0.3s ease;
 
 	&:hover:not(.cardSelected) {
@@ -270,7 +254,6 @@ function onListBackgroundClick() {
 
 .cardMeta {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
@@ -292,12 +275,11 @@ function onListBackgroundClick() {
 
 .workflowBadge {
 	flex: 0 1 auto;
-	max-width: 100%;
+	min-width: 0;
 	border: var(--border);
 	border-radius: var(--radius);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	color: var(--color--text);
-	max-width: max(65%, 8rem);
 
 	> span {
 		max-width: 100%;

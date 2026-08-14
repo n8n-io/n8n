@@ -1,5 +1,5 @@
-import { describeAiRootShape, findEnvelopeKey, isAiRootNodeType } from './ai-root-shapes';
-import { collectDownstreamConsumers } from './context';
+import { describeAiRootShape, isAiRootNodeType } from './ai-root-shapes';
+import { collectDownstreamConsumers, resolveEnvelopeKey } from './context';
 import { workflowToMermaid } from './mermaid';
 import type { NodeSchemaContext, PinDataGenerationInstructions } from './types';
 import type { WorkflowJSON } from '../types/base';
@@ -44,7 +44,7 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 			lines.push(`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType)}`);
 		}
 		if (ctx.outputParser?.schemaText) {
-			const envelopeKey = findEnvelopeKey(ctx.schema);
+			const envelopeKey = resolveEnvelopeKey(ctx.nodeType, ctx.schema);
 			const target = envelopeKey ? `The \`${envelopeKey}\` object` : 'The top-level `json` fields';
 			const label = ctx.outputParser.schemaIsExample
 				? `- ${target} must have the same shape and field names as this example:`
@@ -59,6 +59,19 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 			lines.push(truncated);
 			lines.push('```');
 		}
+	}
+
+	// Real table columns are authoritative and supersede the static `__schema__`
+	// (which only knows the system columns).
+	if (ctx.dataTableColumns && ctx.dataTableColumns.length > 0) {
+		const columnList = ctx.dataTableColumns.map((c) => `${c.name} (${c.type})`).join(', ');
+		lines.push(
+			'- REAL Data Table columns — every pinned row MUST contain exactly these keys plus ' +
+				'`id` (a NUMBER, auto-incremented: 1, 2, 3…), `createdAt`, `updatedAt` (ISO ' +
+				'timestamps), and no others (values may be empty/null when the scenario calls ' +
+				`for it): ${columnList}`,
+		);
+		return lines;
 	}
 
 	if (ctx.schema) {

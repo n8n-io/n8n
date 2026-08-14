@@ -9,7 +9,7 @@ import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecut
 import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 

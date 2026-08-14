@@ -22,6 +22,7 @@ type EndpointGroup =
 	| 'community-packages'
 	| 'ldap'
 	| 'saml'
+	| 'oidc'
 	| 'otel'
 	| 'sourceControl'
 	| 'eventBus'
@@ -90,6 +91,7 @@ export interface TestServer {
 	publicApiAgentFor: (user: User) => TestAgent;
 	publicApiAgentWithApiKey: (apiKey: string) => TestAgent;
 	publicApiAgentWithoutApiKey: () => TestAgent;
+	publicApiAgentWithCookie: (user: User) => TestAgent;
 	authlessAgent: TestAgent;
 	restlessAgent: TestAgent;
 	license: LicenseMocker;

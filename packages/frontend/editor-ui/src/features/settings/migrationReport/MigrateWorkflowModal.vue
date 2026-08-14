@@ -12,7 +12,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
 

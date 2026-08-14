@@ -64,6 +64,7 @@ erDiagram
   varchar_128_ name
   varchar_255_ projectId FK
   TEXT schema
+  datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools
   datetime_3_ updatedAt

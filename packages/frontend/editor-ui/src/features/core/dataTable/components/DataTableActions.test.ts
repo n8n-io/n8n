@@ -35,7 +35,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => mockMessage,
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => mockToast,
 }));
 

@@ -25,7 +25,8 @@ import {
 	ExecutionContextHookRegistry,
 	StorageConfig,
 } from 'n8n-core';
-import { Expression, sleep, UnexpectedError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { Expression, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import * as CrashJournal from '@/crash-journal';

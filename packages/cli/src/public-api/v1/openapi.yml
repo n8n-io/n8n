@@ -47,12 +47,18 @@ tags:
     description: Beta — breaking changes may still occur without major version bump.
   - name: Projects
     description: Operations about projects
+  - name: Role
+    description: Operations about roles
+  - name: RoleMappingRule
+    description: Operations about identity-provider role-mapping rules
   - name: SecurityPolicy
     description: Operations about the instance security policy settings
   - name: SettingsLdap
     description: Operations about LDAP settings
   - name: SettingsOtel
     description: Operations about OpenTelemetry settings
+  - name: SettingsSsoOidc
+    description: Operations about OIDC SSO settings
   - name: SettingsSsoSaml
     description: Operations about SAML SSO settings
   - name: SourceControl
@@ -79,6 +85,8 @@ paths:
     $ref: './handlers/otel/spec/paths/settings.otel.yml'
   /settings/otel/test-trace:
     $ref: './handlers/otel/spec/paths/settings.otel.test-trace.yml'
+  /settings/sso/oidc:
+    $ref: './handlers/sso-oidc/spec/paths/settings.sso.oidc.yml'
   /settings/sso/saml:
     $ref: './handlers/sso-saml/spec/paths/settings.sso.saml.yml'
   /credentials:
@@ -111,8 +119,6 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}:
     $ref: './handlers/workflows/spec/paths/workflows.id.yml'
-  /workflows/{id}/history:
-    $ref: './handlers/workflows/spec/paths/workflows.id.history.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
   /workflows/{id}/activate:
@@ -129,8 +135,6 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.unarchive.yml'
   /workflows/{id}/transfer:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
-  /workflows/{id}/tags:
-    $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /workflows/{id}/test-runs:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
   /workflows/{id}/test-runs/{runId}:
@@ -217,7 +221,13 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      # Must match AUTH_COOKIE_NAME in packages/cli/src/constants.ts
+      name: n8n-auth
 
 security:
   - ApiKeyAuth: []
   - BearerAuth: []
+  - CookieAuth: []

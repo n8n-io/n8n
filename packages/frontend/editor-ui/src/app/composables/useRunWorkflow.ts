@@ -24,7 +24,7 @@ import {
 import { retry } from '@n8n/utils/retry';
 import { computed, getCurrentInstance, type Ref } from 'vue';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
@@ -53,8 +53,8 @@ import { isEmpty } from '@/app/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
 import get from 'lodash/get';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useTelemetry } from './useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';

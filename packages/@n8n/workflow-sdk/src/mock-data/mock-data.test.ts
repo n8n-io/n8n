@@ -3,8 +3,9 @@ import { buildDateAnchors } from './date-anchors';
 import { workflowToMermaid } from './mermaid';
 import { parsePinDataResponse, repairStructuredOutput } from './parse';
 import { buildNodeSchemaSection, buildPinDataUserPrompt } from './prompt';
-import type { OutputSchemaLookup } from './types';
-import type { WorkflowJSON } from '../types/base';
+import type { NodeSchemaContext, OutputSchemaLookup } from './types';
+import { buildFieldViolationRetryMessage, collectPinFieldViolations } from './validate';
+import type { NodeJSON, WorkflowJSON } from '../types/base';
 
 const workflow = {
 	nodes: [
@@ -330,6 +331,255 @@ describe('repairStructuredOutput', () => {
 
 		expect(repaired.Root[0]).toEqual({ json: { data: { a: 1 } } });
 		expect(repaired.Root[1]).toEqual({ json: { data: { a: 2 } } });
+	});
+});
+
+describe('information extractor own-schema enrichment', () => {
+	const extractorNode = {
+		name: 'Extract Invoice Details',
+		type: '@n8n/n8n-nodes-langchain.informationExtractor',
+		typeVersion: 1.2,
+		parameters: {
+			schemaType: 'fromAttributes',
+			attributes: {
+				attributes: [
+					{ name: 'invoice_number', type: 'string', description: 'The invoice id', required: true },
+					{ name: 'total_amount', type: 'number', required: false },
+				],
+			},
+		},
+	} as unknown as NodeJSON;
+	const extractorWorkflow = {
+		nodes: [extractorNode],
+		connections: {},
+	} as unknown as WorkflowJSON;
+
+	it('surfaces the declared attributes as a schema and a field contract', () => {
+		const [ctx] = buildSchemaContexts([extractorNode]);
+
+		expect(ctx.outputParser?.schemaIsExample).toBe(false);
+		expect(ctx.outputParser?.schemaText).toContain('"invoice_number"');
+		expect(ctx.outputParser?.schemaText).toContain('"total_amount"');
+		expect(ctx.outputParser?.schemaText).toContain('"required": [\n    "invoice_number"\n  ]');
+		expect(ctx.declaredFields).toEqual({
+			keys: ['invoice_number', 'total_amount'],
+			envelopeKey: 'output',
+			exact: false,
+			source: 'declared-schema',
+		});
+	});
+
+	it('embeds the attribute names in the prompt schema section', () => {
+		const [ctx] = buildSchemaContexts([extractorNode]);
+		const section = buildNodeSchemaSection(ctx).join('\n');
+
+		expect(section).toContain('total_amount');
+		expect(section).toContain('use its exact field names');
+	});
+
+	it('reads fromJson examples and manual schemas off the extractor parameters', () => {
+		const fromJson = {
+			...extractorNode,
+			parameters: { schemaType: 'fromJson', jsonSchemaExample: '{"po_number": "PO-1"}' },
+		};
+		expect(buildSchemaContexts([fromJson])[0].declaredFields).toMatchObject({
+			keys: ['po_number'],
+			envelopeKey: 'output',
+		});
+
+		const manual = {
+			...extractorNode,
+			parameters: {
+				schemaType: 'manual',
+				inputSchema: '{"type":"object","properties":{"po_number":{}}}',
+			},
+		};
+		expect(buildSchemaContexts([manual])[0].declaredFields).toMatchObject({
+			keys: ['po_number'],
+		});
+	});
+
+	it('reads schema declarations stored as raw objects (eval-builder quirk)', () => {
+		const rawObjectExample = {
+			...extractorNode,
+			parameters: {
+				schemaType: 'fromJson',
+				jsonSchemaExample: { amount: 4750, po_number: 'PO-1' },
+			},
+		};
+		expect(buildSchemaContexts([rawObjectExample])[0].declaredFields).toMatchObject({
+			keys: ['amount', 'po_number'],
+			envelopeKey: 'output',
+		});
+
+		const parserWorkflow = {
+			nodes: [
+				{
+					name: 'Invoice Schema',
+					type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+					typeVersion: 1.2,
+					parameters: { schemaType: 'fromJson', jsonSchemaExample: { amount: 1 } },
+				},
+			],
+			connections: {
+				'Invoice Schema': {
+					ai_outputParser: [[{ node: 'AI Root', type: 'ai_outputParser', index: 0 }]],
+				},
+			},
+		} as unknown as WorkflowJSON;
+		expect(findOutputParserTargets(parserWorkflow).get('AI Root')).toEqual({
+			schemaText: '{"amount":1}',
+			schemaIsExample: true,
+		});
+	});
+
+	it('repairs flat extractor pins into the output envelope without a parser connection', () => {
+		const flat = { 'Extract Invoice Details': [{ json: { invoice_number: 'INV-1' } }] };
+
+		expect(
+			repairStructuredOutput(flat, extractorWorkflow, buildSchemaContexts([extractorNode]))[
+				'Extract Invoice Details'
+			][0],
+		).toEqual({ json: { output: { invoice_number: 'INV-1' } } });
+	});
+});
+
+describe('data table column contracts', () => {
+	const dataTableNode = workflow.nodes[0]; // Get Rows
+
+	it('builds an exact contract including the system columns', () => {
+		const [ctx] = buildSchemaContexts([dataTableNode], undefined, undefined, {
+			'Get Rows': [
+				{ name: 'contact_email', type: 'string' },
+				{ name: 'contact_name', type: 'string' },
+			],
+		});
+
+		expect(ctx.declaredFields).toEqual({
+			keys: ['id', 'createdAt', 'updatedAt', 'contact_email', 'contact_name'],
+			exact: true,
+			source: 'data-table-columns',
+		});
+	});
+
+	it('renders the real columns as the authoritative row shape in the prompt', () => {
+		const [ctx] = buildSchemaContexts(
+			[dataTableNode],
+			() => ({ type: 'object', properties: { id: {} } }),
+			undefined,
+			{ 'Get Rows': [{ name: 'contact_email', type: 'string' }] },
+		);
+		const section = buildNodeSchemaSection(ctx).join('\n');
+
+		expect(section).toContain('REAL Data Table columns');
+		expect(section).toContain('contact_email (string)');
+		// The static `__schema__` (system columns only) is superseded, not embedded.
+		expect(section).not.toContain('Output JSON Schema');
+	});
+});
+
+describe('collectPinFieldViolations', () => {
+	const contexts = [
+		{
+			nodeName: 'Get Rows',
+			nodeType: 'n8n-nodes-base.dataTable',
+			typeVersion: 1,
+			declaredFields: {
+				keys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
+				exact: true,
+				source: 'data-table-columns',
+			},
+		},
+		{
+			nodeName: 'Extract',
+			nodeType: '@n8n/n8n-nodes-langchain.informationExtractor',
+			typeVersion: 1.2,
+			declaredFields: {
+				keys: ['total_amount', 'po_number'],
+				envelopeKey: 'output',
+				exact: false,
+				source: 'declared-schema',
+			},
+		},
+	] satisfies NodeSchemaContext[];
+
+	it('flags renamed and missing keys on exact contracts', () => {
+		const violations = collectPinFieldViolations(
+			{
+				'Get Rows': [{ json: { id: 1, createdAt: 'x', updatedAt: 'x', email: 'a@example.com' } }],
+			},
+			contexts,
+		);
+
+		expect(violations).toEqual([
+			{
+				nodeName: 'Get Rows',
+				unknownKeys: ['email'],
+				missingKeys: ['contact_email'],
+				declaredKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
+				envelopeKey: undefined,
+			},
+		]);
+	});
+
+	it('checks fields inside the declared envelope and allows subsets there', () => {
+		const drifted = { Extract: [{ json: { output: { invoice_amount: 5 } } }] };
+		expect(collectPinFieldViolations(drifted, contexts)).toMatchObject([
+			{ nodeName: 'Extract', unknownKeys: ['invoice_amount'], missingKeys: [] },
+		]);
+
+		const subset = { Extract: [{ json: { output: { total_amount: 5 } } }] };
+		expect(collectPinFieldViolations(subset, contexts)).toEqual([]);
+	});
+
+	it.each([
+		['a non-object json payload', 'not a row'],
+		['an array json payload', [] as unknown],
+	])('flags %s under an exact contract as missing every declared key', (_label, json) => {
+		// Skipping malformed items let the pin pass with rows no downstream column
+		// expression can resolve — it must take the correction/failure path instead.
+		expect(collectPinFieldViolations({ 'Get Rows': [{ json }] }, contexts)).toEqual([
+			{
+				nodeName: 'Get Rows',
+				unknownKeys: [],
+				missingKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
+				declaredKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
+				envelopeKey: undefined,
+			},
+		]);
+	});
+
+	it('leaves malformed items alone when the contract is not exact', () => {
+		// A plain-text agent answer is a legitimate non-object payload.
+		expect(collectPinFieldViolations({ Extract: [{ json: 'plain answer' }] }, contexts)).toEqual(
+			[],
+		);
+	});
+
+	it('accepts empty pins, conforming rows, and nodes without contracts', () => {
+		const pinData = {
+			'Get Rows': [],
+			Extract: [{ json: { output: { total_amount: 5, po_number: 'PO-1' } } }],
+			Unrelated: [{ json: { whatever: true } }],
+		};
+
+		expect(collectPinFieldViolations(pinData, contexts)).toEqual([]);
+	});
+
+	it('builds an actionable retry message', () => {
+		const message = buildFieldViolationRetryMessage([
+			{
+				nodeName: 'Get Rows',
+				unknownKeys: ['email'],
+				missingKeys: ['contact_email'],
+				declaredKeys: ['id', 'contact_email'],
+				envelopeKey: undefined,
+			},
+		]);
+
+		expect(message).toContain('Get Rows');
+		expect(message).toContain('remove/rename these unknown fields: email');
+		expect(message).toContain('every item must also carry: contact_email');
 	});
 });
 

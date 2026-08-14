@@ -4,8 +4,10 @@ import type {
 	LoadedClass,
 	INodeType,
 	IVersionedNodeType,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeVersionNotFoundError, VersionedNodeType } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -45,6 +47,15 @@ describe('NodeTypes', () => {
 				return v2Node;
 			},
 		},
+	};
+	// Backed by a REAL VersionedNodeType (not a stubbed getNodeType) so an unknown
+	// version exercises the actual resolution path end-to-end.
+	const realVersionedNode: LoadedClass<IVersionedNodeType> = {
+		sourcePath: '',
+		type: new VersionedNodeType(
+			{ 1: v1Node, 2: v2Node },
+			mock<INodeTypeBaseDescription>({ name: 'n8n-nodes-base.realVersioned', defaultVersion: 2 }),
+		),
 	};
 	const toolNode: LoadedClass<INodeType> = {
 		sourcePath: '',
@@ -243,6 +254,7 @@ describe('NodeTypes', () => {
 		if (packageName === 'n8n-nodes-base') {
 			if (nodeType === 'nonVersioned') return nonVersionedNode;
 			if (nodeType === 'versioned') return versionedNode;
+			if (nodeType === 'realVersioned') return realVersionedNode;
 			if (nodeType === 'testNode') return toolSupportingNode;
 			if (nodeType === 'declarativeNode') return declarativeNode;
 			if (nodeType === 'toolNode') return toolNode;
@@ -284,6 +296,25 @@ describe('NodeTypes', () => {
 			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-base.unknownNode')).toThrow(
 				'Unrecognized node type: n8n-nodes-base.unknownNode',
 			);
+		});
+
+		it('should throw NodeVersionNotFoundError (not an opaque TypeError) for an unknown version', () => {
+			let caught: unknown;
+			try {
+				nodeTypes.getByNameAndVersion('n8n-nodes-base.realVersioned', 4.4);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeVersionNotFoundError);
+			const error = caught as NodeVersionNotFoundError;
+			expect(error.message).not.toContain(
+				"Cannot read properties of undefined (reading 'execute')",
+			);
+			expect(error.message).toBe(
+				'Node type "n8n-nodes-base.realVersioned" is not available in version 4.4. Available versions: 1, 2. Use the latest version 2.',
+			);
+			expect(error.availableVersions).toEqual([1, 2]);
 		});
 
 		it('should return a regular node-type without version', () => {

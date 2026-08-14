@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
 import { N8nIconPicker, N8nInlineTextEdit } from '@n8n/design-system';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { AgentJsonConfig } from '../types';

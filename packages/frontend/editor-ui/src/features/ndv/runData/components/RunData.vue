@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 import { saveAs } from 'file-saver';
 import NodeSettingsHint from '@/features/ndv/settings/components/NodeSettingsHint.vue';
 import type {
@@ -54,8 +54,8 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeType } from '@/app/composables/useNodeType';
 import type { PinDataSource, UnpinDataSource } from '@/app/composables/usePinnedData';
 import { usePinnedData } from '@/app/composables/usePinnedData';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -669,8 +669,6 @@ const isSchemaPreviewEnabled = computed(
 		!(nodeType.value?.codex?.categories ?? []).some((category) => category === CORE_NODES_CATEGORY),
 );
 
-const isNDVV2 = computed(() => true);
-
 const hasPreviewSchema = asyncComputed(async () => {
 	if (!isSchemaPreviewEnabled.value || props.nodes.length === 0) return false;
 	const nodes = props.nodes
@@ -1037,7 +1035,7 @@ function onClickSaveEdit() {
 		const clearedValue = clearJsonKey(value) as INodeExecutionData[];
 		try {
 			pinnedData.setData(clearedValue, 'save-edit');
-		} catch (error) {
+		} catch {
 			// setData function already shows toasts on error, so just return here
 			return;
 		}
@@ -1345,9 +1343,7 @@ function init() {
 		emit('displayModeChange', 'schema');
 	}
 
-	if (isNDVV2.value) {
-		pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
-	}
+	pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
 
 	if (props.paneType === 'output') {
 		setDisplayMode();
@@ -1469,7 +1465,6 @@ defineExpose({ enterEditMode });
 			'run-data',
 			$style.container,
 			{
-				[$style['ndv-v2']]: isNDVV2,
 				[$style.compact]: compact,
 				[$style.showActionsOnHover]: showActionsOnHover && !search,
 			},
@@ -1787,7 +1782,6 @@ defineExpose({ enterEditMode });
 				<N8nButton
 					v-if="pinnedData.hasData.value"
 					class="mt-s"
-					type="secondary"
 					size="small"
 					data-test-id="ndv-trimmed-corrupted-unpin"
 					@click="onTogglePinData({ source: 'context-menu' })"
@@ -2222,13 +2216,7 @@ defineExpose({ enterEditMode });
 			@update:current-page="onCurrentPageChange"
 			@update:page-size="onPageSizeChange"
 		/>
-		<N8nBlockUi
-			:show="blockUI"
-			:class="{
-				[$style.uiBlocker]: true,
-				[$style.uiBlockerNdvV2]: isNDVV2,
-			}"
-		/>
+		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
 	</div>
 </template>
 
@@ -2253,7 +2241,7 @@ defineExpose({ enterEditMode });
 }
 
 .container {
-	--ndv--spacing: var(--spacing--sm);
+	--ndv--spacing: var(--spacing--2xs);
 	position: relative;
 	width: 100%;
 	height: 100%;
@@ -2267,14 +2255,15 @@ defineExpose({ enterEditMode });
 	border-top: 0;
 	border-left: 0;
 	border-right: 0;
-	height: 40px;
+	height: var(--ndv--header--height);
 }
 
 .header {
 	display: flex;
 	align-items: center;
+	height: var(--ndv--header--height);
 	margin-bottom: var(--ndv--spacing);
-	padding: var(--ndv--spacing) var(--spacing--3xs) 0 var(--ndv--spacing);
+	padding: 0 var(--spacing--4xs) 0 var(--spacing--sm);
 	position: relative;
 	/* Scroll overflowing header controls within the header itself, so they stay
 	   reachable on narrow panels without dragging the whole panel's background along */
@@ -2283,11 +2272,12 @@ defineExpose({ enterEditMode });
 	min-height: calc(30px + var(--ndv--spacing));
 	scrollbar-width: thin;
 	container-type: inline-size;
+	flex-shrink: 0;
 
 	.compact & {
-		margin-bottom: var(--spacing--4xs);
-		padding: var(--spacing--2xs);
+		height: auto;
 		margin-bottom: 0;
+		padding: var(--spacing--2xs);
 		flex-shrink: 0;
 		flex-grow: 0;
 		min-height: auto;
@@ -2356,14 +2346,10 @@ defineExpose({ enterEditMode });
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding-left: var(--ndv--spacing);
+	padding-left: var(--spacing--xs);
 	padding-right: var(--ndv--spacing);
 	padding-bottom: var(--ndv--spacing);
 	flex-flow: wrap;
-}
-
-.ndv-v2 .itemsCount {
-	padding-left: var(--spacing--xs);
 }
 
 .inputSelect {
@@ -2487,11 +2473,6 @@ defineExpose({ enterEditMode });
 }
 
 .uiBlocker {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-}
-
-.uiBlockerNdvV2 {
 	border-radius: 0;
 }
 
@@ -2561,11 +2542,6 @@ defineExpose({ enterEditMode });
 		visibility: hidden;
 		width: 0;
 	}
-}
-
-.ndv-v2,
-.compact {
-	--ndv--spacing: var(--spacing--2xs);
 }
 
 .dataSizeWarning {

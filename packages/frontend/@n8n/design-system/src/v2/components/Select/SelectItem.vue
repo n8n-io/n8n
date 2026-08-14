@@ -1,10 +1,13 @@
 <script setup lang="ts">
+// Aliased: this SFC is itself named `SelectItem`, so an unaliased import leaves
+// `<SelectItem>` in the template ambiguous with the component's own
+// self-reference. Runtime always picked reka-ui's, but the type checker resolved
+// it to this component's own props during declaration emit.
 import { SelectItem as RekaSelectItem, SelectItemIndicator, SelectItemText } from 'reka-ui';
 import { computed, useCssModule } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import type { SelectItemSlots, SelectOptionBase } from './Select.types';
+import Icon from '../../../components/N8nIcon/Icon.vue';
 
 defineOptions({ inheritAttrs: false });
 

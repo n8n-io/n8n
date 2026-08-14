@@ -9,7 +9,7 @@ import { useEvalCollectionsStore } from '../../evalCollections.store';
 import CompareHeader from './CompareHeader.vue';
 
 const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError, showMessage: vi.fn() }),
 }));
 

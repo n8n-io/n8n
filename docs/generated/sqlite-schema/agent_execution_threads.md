@@ -90,12 +90,14 @@ erDiagram
   varchar_128_ name
   varchar_255_ projectId FK
   TEXT schema
+  datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId
 }
 "agent_execution" {
+  TEXT attachments
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
@@ -109,7 +111,7 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   datetime_3_ stoppedAt
-  VARCHAR_2_ storedAt
+  varchar_2_ storedAt
   varchar_128_ threadId FK
   TEXT timeline
   INTEGER totalTokens

@@ -49,6 +49,33 @@ export type RecurringCronUnit = (typeof RecurringCronUnit)[keyof typeof Recurrin
 export const RecurringCronUnitList = Object.values(RecurringCronUnit);
 
 /**
+ * What a schedule does with occurrences that missed their grace window:
+ * - `coalesce`: run the most recent one and drop the rest
+ * - `skip`: drop all of them and resume from the next occurrence
+ *
+ * Either way the schedule's clock advances past the backlog, so it never replays.
+ *
+ * A one-off schedule has no next occurrence to resume from, so `coalesce` still runs
+ * it, late, while `skip` discards it for good.
+ */
+export const ScheduledJobMisfirePolicy = {
+	Coalesce: 'coalesce',
+	Skip: 'skip',
+} as const;
+
+export type ScheduledJobMisfirePolicy =
+	(typeof ScheduledJobMisfirePolicy)[keyof typeof ScheduledJobMisfirePolicy];
+
+/**
+ * How late an occurrence may be before its schedule's misfire policy applies,
+ * for a job provisioned without an explicit grace.
+ *
+ * Migrations pin their own copy of this value: a column's default at migration
+ * time must stay fixed even if this constant changes later.
+ */
+export const DEFAULT_MISFIRE_GRACE_SECONDS = 60;
+
+/**
  * Where a scheduled task is in its lifecycle, from waiting to run to a final outcome.
  */
 export const ScheduledTaskStatus = {

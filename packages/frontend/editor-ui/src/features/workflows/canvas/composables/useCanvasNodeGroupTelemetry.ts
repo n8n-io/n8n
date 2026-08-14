@@ -1,6 +1,6 @@
 import type { IWorkflowGroup } from 'n8n-workflow';
 
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 

@@ -7,13 +7,13 @@ import N8nButton from '@n8n/design-system/components/N8nButton';
 import N8nDialog from '@n8n/design-system/components/N8nDialog/Dialog.vue';
 import N8nDialogClose from '@n8n/design-system/components/N8nDialog/DialogClose.vue';
 import N8nDialogFooter from '@n8n/design-system/components/N8nDialog/DialogFooter.vue';
-import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
 import N8nInputLabel from '@n8n/design-system/components/N8nInputLabel';
 import N8nText from '@n8n/design-system/components/N8nText';
 
 import type { SelectItem } from './Select.types';
 import Select from './Select.vue';
+import N8nIcon from '../../../components/N8nIcon/Icon.vue';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;

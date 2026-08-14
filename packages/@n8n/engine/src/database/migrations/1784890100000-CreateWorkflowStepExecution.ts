@@ -14,6 +14,19 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 					{ name: 'node_id', type: 'varchar' },
 					{ name: 'status', type: 'varchar', length: '32' },
 					{
+						name: 'outputs',
+						type: 'jsonb',
+						isNullable: true,
+						comment:
+							'Step outputs, persisted without inspection and reloaded as downstream inputs. Shape is step-type-specific.',
+					},
+					{
+						name: 'error',
+						type: 'jsonb',
+						isNullable: true,
+						comment: 'Name and message of the error that failed this step.',
+					},
+					{
 						name: 'created_at',
 						type: 'timestamptz',
 						precision: 3,
@@ -27,7 +40,14 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 					},
 				],
 				indices: [
-					{ name: 'idx_workflow_step_execution_execution_id', columnNames: ['execution_id'] },
+					// Index execution and node id to look up inputs on the hot path. Unique
+					// to prevent double writes on failure recovery.
+					// TODO(CAT-2875): looping adds an iteration to this key.
+					{
+						name: 'uniq_workflow_step_execution_execution_id_node_id',
+						columnNames: ['execution_id', 'node_id'],
+						isUnique: true,
+					},
 				],
 				foreignKeys: [
 					{

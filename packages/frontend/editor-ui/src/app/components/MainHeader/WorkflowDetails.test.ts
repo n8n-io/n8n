@@ -15,7 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -61,10 +61,10 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
-	const showToast = vi.fn();
+	const showToast = vi.fn(() => ({ close: vi.fn() }));
 	return {
 		useToast: () => ({
 			showError,
@@ -216,11 +216,11 @@ describe('WorkflowDetails', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders workflow name and tags', async () => {
+	it('renders workflow name', async () => {
 		vi.mocked(useRoute).mockReturnValueOnce({
 			query: { parentFolderId: '1' },
 		} as unknown as ReturnType<typeof useRoute>);
-		const { getByTestId, getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				...defaultProps,
 			},
@@ -229,8 +229,6 @@ describe('WorkflowDetails', () => {
 		const workflowNameInput = getByTestId('inline-edit-input');
 
 		expect(workflowNameInput).toHaveValue('Test Workflow');
-		expect(getByText('tag1')).toBeInTheDocument();
-		expect(getByText('tag2')).toBeInTheDocument();
 	});
 
 	it('opens share modal on share button click', async () => {
@@ -266,8 +264,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import')).not.toBeInTheDocument();
 		});
 
 		it('should not have workflow duplicate and import when collaboration is read-only', async () => {
@@ -284,8 +281,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import')).not.toBeInTheDocument();
 		});
 
 		it('should have workflow duplicate and import options if permission update is true', async () => {
@@ -300,8 +296,8 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(getByTestId('workflow-menu-item-duplicate')).not.toHaveClass('disabled');
-			expect(getByTestId('workflow-menu-item-import-from-url')).not.toHaveClass('disabled');
-			expect(getByTestId('workflow-menu-item-import-from-file')).not.toHaveClass('disabled');
+			// Import options live in a sub-menu; its trigger stands in for them here
+			expect(getByTestId('workflow-menu-item-import')).not.toHaveClass('disabled');
 			expect(queryByTestId('workflow-menu-item-share')).not.toHaveClass('disabled');
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
@@ -600,6 +596,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
 			expect(toast.showToast).toHaveBeenCalledTimes(1);
+			const archiveToast = vi.mocked(toast.showToast).mock.results[0].value;
 			const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
 			expect(toastConfig.message).toContain('archive-toast-delete-permanently-link');
 			expect(toastConfig.onClick).toBeDefined();
@@ -611,6 +608,8 @@ describe('WorkflowDetails', () => {
 				expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
 			});
 			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
+			// Archive toast is dismissed immediately so its stale CTA doesn't linger.
+			expect(archiveToast.close).toHaveBeenCalledTimes(1);
 		});
 
 		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {

@@ -123,8 +123,8 @@ The monorepo is organized into these key packages:
 - **`packages/workflow`**: Core workflow interfaces and types
 - **`packages/core`**: Workflow execution engine
 - **`packages/cli`**: Express server, REST API, and CLI commands
-- **`packages/editor-ui`**: Vue 3 frontend application
-- **`packages/@n8n/i18n`**: Internationalization for UI text
+- **`packages/frontend/editor-ui`**: Vue 3 frontend application
+- **`packages/frontend/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
 - **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
@@ -264,9 +264,9 @@ What we use for testing and writing tests:
 When implementing features:
 1. Define API types in `packages/@n8n/api-types`
 2. Implement backend logic in `packages/cli` module, follow
-   `@packages/cli/scripts/backend-module/backend-module-guide.md`
+   `scripts/backend-module/backend-module-guide.md`
 3. Add API endpoints via controllers
-4. Update frontend in `packages/editor-ui` with i18n support
+4. Update frontend in `packages/frontend/editor-ui` with i18n support
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
 

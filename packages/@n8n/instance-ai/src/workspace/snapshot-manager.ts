@@ -15,6 +15,7 @@
 import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytona/sdk';
 import type { RuntimeSkillSource } from '@n8n/agents';
 import { DAYTONA_WORKSPACE_ROOT, loadDaytona } from '@n8n/agents/sandbox';
+import { sleep } from '@n8n/utils/sleep';
 
 import {
 	buildKnowledgeBaseWorkspaceBundle,
@@ -41,9 +42,6 @@ const SNAPSHOT_BUILDING_STATES = new Set(['building', 'pending', 'pulling']);
 const SNAPSHOT_VERIFY_POLL_MS = 5_000;
 const DEFAULT_SNAPSHOT_VERIFY_TIMEOUT_S = 1_800;
 
-async function sleep(ms: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, ms));
-}
 function isAlreadyExistsError(error: unknown): error is TDaytonaError {
 	const { DaytonaError } = loadDaytona();
 	if (!(error instanceof DaytonaError)) return false;

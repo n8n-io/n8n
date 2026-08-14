@@ -19,6 +19,7 @@ import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
 vi.mock('../workflows/setup-workflow.service', () => ({
 	analyzeWorkflow: vi.fn().mockResolvedValue([]),
+	applyCredentialHints: vi.fn(),
 	applyNodeCredentials: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeParameters: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeChanges: vi.fn().mockResolvedValue({ applied: [], failed: [] }),
@@ -759,6 +760,144 @@ describe('workflows tool', () => {
 		});
 	});
 
+	describe('update action', () => {
+		const workflowPayload = { name: 'Updated WF', nodes: [], connections: {} };
+
+		it('should suspend for approval before updating a foreign workflow', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+			});
+			(context.workflowService.get as Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Foreign WF',
+			});
+			const suspend = vi.fn();
+
+			await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ suspend } as never,
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Update workflow "Foreign WF" (ID: wf1)?',
+					severity: 'warning',
+					workflowId: 'wf1',
+				}),
+			);
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('should update without approval when the workflow was created in this run', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+				aiCreatedWorkflowIds: new Set(['wf1']),
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+			});
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ suspend } as never,
+			);
+
+			expect(result).toEqual({ success: true, workflowId: 'wf1' });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf1',
+				workflowPayload,
+			);
+		});
+
+		it('should update without approval when the workflow has a session ownership grant', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+				sessionApprovedToolKeys: new Set(['workflows:update:wf1']),
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+			});
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ suspend } as never,
+			);
+
+			expect(result).toEqual({ success: true, workflowId: 'wf1' });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalled();
+		});
+
+		it('should still block updates when admin policy denies them for owned workflows', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+				aiCreatedWorkflowIds: new Set(['wf1']),
+			});
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'Action blocked by admin',
+			});
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('should persist a session update grant when resumed with scope=session', async () => {
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+				grantSessionToolApproval,
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+			});
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ resumeData: { approved: true, scope: 'session' } } as never,
+			);
+
+			expect(result).toEqual({ success: true, workflowId: 'wf1' });
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('workflows:update:wf1');
+		});
+
+		it('should not persist a grant for a one-time update approval', async () => {
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+				grantSessionToolApproval,
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+			});
+
+			await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ resumeData: { approved: true } } as never,
+			);
+
+			expect(grantSessionToolApproval).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('delete action', () => {
 		it('should return denied when permission is blocked', async () => {
 			const context = createMockContext({
@@ -1224,6 +1363,98 @@ describe('workflows tool', () => {
 			});
 		});
 
+		it('should reject a new plain generic credential on an HTTP Request node', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Call Replicate', type: 'n8n-nodes-base.httpRequest' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				error: 'plain_generic_auth',
+				nodes: [{ nodeName: 'Call Replicate', credentialType: 'httpBearerAuth' }],
+			});
+		});
+
+		it('should allow a plain generic credential when explicitly permitted', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Call Replicate', type: 'n8n-nodes-base.httpRequest' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1', allowPlainGenericAuth: true }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+		});
+
+		it('should allow a plain generic type when credentials of it already exist', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Call Replicate', type: 'n8n-nodes-base.httpRequest' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [{ id: 'cred-1', name: 'Existing bearer' }],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+		});
+
+		it('should not gate plain generic auth on non-HTTP-Request nodes', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'MCP Client', type: 'n8n-nodes-langchain.mcpClientTool' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+		});
+
 		it('should return success when no nodes need setup', async () => {
 			(analyzeWorkflow as Mock).mockResolvedValue([]);
 
@@ -1278,6 +1509,51 @@ describe('workflows tool', () => {
 				{ 'HTTP Request': { url: 'https://example.com/api' } },
 				['HTTP Request'],
 			);
+		});
+
+		it('reports a just-applied credential whose test failed as a failed node', async () => {
+			// A bound credential is settled (needsAction=false) even when its test
+			// fails, so the apply path must re-analyze with includeSettled to keep
+			// the failure reportable instead of silently marking the node complete.
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: false,
+					credentialTestResult: { success: false, message: 'Invalid token' },
+				},
+			]);
+			(applyNodeChanges as Mock).mockResolvedValue({ applied: ['Slack'], failed: [] });
+			(buildCompletedReport as Mock).mockReturnValue([
+				{ nodeName: 'Slack', credentialType: 'slackApi' },
+			]);
+
+			const context = createMockContext();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					credentials: { Slack: { slackApi: 'cred-1' } },
+				},
+			} as never);
+
+			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+				includeSettled: true,
+			});
+			expect(result).toMatchObject({
+				success: true,
+				completedNodes: [],
+				failedNodes: [
+					{
+						nodeName: 'Slack',
+						error: 'Credential test failed for slackApi: Invalid token',
+					},
+				],
+			});
+			// Settled requests never count as pending, so the apply is not partial.
+			expect(result).not.toHaveProperty('partial');
 		});
 	});
 

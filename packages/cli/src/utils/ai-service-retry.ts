@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import { OperationalError } from 'n8n-workflow';
 
 const AI_SERVICE_MAX_ATTEMPTS = 3;
@@ -21,10 +22,6 @@ type RetryOptions = {
 };
 
 class AiServiceCallTimeoutError extends Error {}
-
-async function sleep(ms: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 // The SDK's fetch calls carry no timeout, so a stalled connection would hang the caller
 // forever and never reach the retry loop; the race unblocks the caller (the underlying

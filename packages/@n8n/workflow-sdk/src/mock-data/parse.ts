@@ -1,5 +1,5 @@
 import { findEnvelopeKey } from './ai-root-shapes';
-import { findOutputParserTargets } from './context';
+import { findOutputParserTargets, INFORMATION_EXTRACTOR_NODE_TYPE } from './context';
 import type { NodeSchemaContext, PinData } from './types';
 import type { WorkflowJSON } from '../types/base';
 
@@ -91,10 +91,25 @@ export function repairStructuredOutput(
 	);
 	const repaired: PinData = { ...pinData };
 
-	for (const nodeName of findOutputParserTargets(workflow).keys()) {
+	// Information extractors wrap in `{ output: ... }` like parser targets do,
+	// but have no ai_outputParser connection — include them explicitly. Their
+	// envelope is always `output`, even when no `__schema__` resolves; other
+	// roots must declare theirs (chainLlm with a parser emits fields FLAT).
+	const targets = new Set<string>(findOutputParserTargets(workflow).keys());
+	const extractorNames = new Set<string>();
+	for (const node of workflow.nodes) {
+		if (node.name && node.type === INFORMATION_EXTRACTOR_NODE_TYPE) {
+			targets.add(node.name);
+			extractorNames.add(node.name);
+		}
+	}
+
+	for (const nodeName of targets) {
 		const items = repaired[nodeName];
 		if (!items) continue;
-		const envelopeKey = findEnvelopeKey(schemaByName.get(nodeName));
+		const envelopeKey =
+			findEnvelopeKey(schemaByName.get(nodeName)) ??
+			(extractorNames.has(nodeName) ? 'output' : undefined);
 		if (!envelopeKey) continue;
 
 		repaired[nodeName] = items.map((item) => {

@@ -13,11 +13,16 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'workflowPublishingPolicy',
 	'workflowIdPolicy',
 	'missingNodeTypeMode',
+	'projectConflictPolicy',
 	'folderConflictPolicy',
 	'dataTableMatchingMode',
 	'dataTableMissingMode',
 	'dataTableSchemaConflictPolicy',
 	'variableMissingMode',
+	'variableConflictPolicy',
+	'variableParentPolicy',
+	'tagMissingMode',
+	'tagConflictPolicy',
 ] as const;
 
 /** Multipart text fields: empty / whitespace-only values become `undefined`. */
@@ -39,6 +44,16 @@ const optionalEnum = <const T extends [string, ...string[]]>(values: T, defaultV
 	z.preprocess(
 		(value) => (typeof value === 'string' && value.trim().length === 0 ? undefined : value),
 		z.enum(values).optional().default(defaultValue),
+	);
+
+/**
+ * Like {@link optionalEnum} but without a default, so an omitted field arrives as `undefined`
+ * and stays tellable from an explicit value — for fields only some requests may carry.
+ */
+const optionalEnumNoDefault = <const T extends [string, ...string[]]>(values: T) =>
+	z.preprocess(
+		(value) => (typeof value === 'string' && value.trim().length === 0 ? undefined : value),
+		z.enum(values).optional(),
 	);
 
 const BINDINGS_ERROR_MESSAGE =
@@ -87,9 +102,17 @@ export class ImportPackageRequestDto extends Z.class({
 	),
 	workflowIdPolicy: optionalEnum(['new', 'source'], 'source'),
 	missingNodeTypeMode: optionalEnum(['fail', 'import-anyway'], 'fail'),
+	projectConflictPolicy: optionalEnum(['merge', 'fail', 'overwrite'], 'merge'),
 	folderConflictPolicy: optionalEnum(['merge', 'fail'], 'merge'),
 	dataTableMatchingMode: optionalEnum(['by-id'], 'by-id'),
 	dataTableMissingMode: optionalEnum(['create', 'must-preexist', 'do-nothing'], 'create'),
 	dataTableSchemaConflictPolicy: optionalEnum(['keep-existing', 'fail'], 'keep-existing'),
-	variableMissingMode: optionalEnum(['do-nothing', 'must-preexist'], 'do-nothing'),
+	variableMissingMode: optionalEnum(
+		['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
+		'create-with-value',
+	),
+	variableConflictPolicy: optionalEnum(['keep-existing', 'overwrite', 'fail'], 'keep-existing'),
+	variableParentPolicy: optionalEnumNoDefault(['project', 'global']),
+	tagMissingMode: optionalEnum(['create', 'do-nothing'], 'create'),
+	tagConflictPolicy: optionalEnum(['skip', 'fail', 'rename'], 'skip'),
 }) {}

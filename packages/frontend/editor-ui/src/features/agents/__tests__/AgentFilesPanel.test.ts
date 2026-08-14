@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { n8nHtml } from '@n8n/design-system/directives';
+import { n8nHtml } from '@n8n/design-system';
 import type { AgentFileDto } from '@n8n/api-types';
 
 import AgentFilesPanel from '../components/AgentFilesPanel.vue';
@@ -56,12 +56,13 @@ const file: AgentFileDto = {
 };
 
 describe('AgentFilesPanel', () => {
-	it('enables the upload button with the normal upload tooltip', () => {
-		const wrapper = mountPanel();
+	it('enables the upload button with the normal upload tooltip when files exist', () => {
+		const wrapper = mountPanel({ files: [file] });
 
 		const uploadButton = wrapper.find('[data-testid="agent-files-upload"]');
 		expect(uploadButton.attributes('disabled')).toBeUndefined();
 		expect(uploadButton.attributes('aria-label')).toBe('agents.builder.files.addFile');
+		expect(wrapper.findComponent({ name: 'N8nEmptyState' }).exists()).toBe(false);
 	});
 
 	it('shows the normal empty-state message', () => {
@@ -70,7 +71,24 @@ describe('AgentFilesPanel', () => {
 		expect(wrapper.text()).toContain('agents.builder.files.empty');
 	});
 
-	it('shows the knowledge base title with a tooltip and icon-only add action', () => {
+	it('opens the file picker from the empty-state button', async () => {
+		const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click');
+		const wrapper = mountPanel({ files: [] });
+
+		wrapper.findComponent({ name: 'N8nEmptyState' }).vm.$emit('click:button');
+		await wrapper.vm.$nextTick();
+
+		expect(clickSpy).toHaveBeenCalledOnce();
+		clickSpy.mockRestore();
+	});
+
+	it('disables the empty-state button when uploads are disabled', () => {
+		const wrapper = mountPanel({ files: [], disabled: true });
+
+		expect(wrapper.findComponent({ name: 'N8nEmptyState' }).props('buttonDisabled')).toBe(true);
+	});
+
+	it('shows the knowledge base title with a tooltip and add action', () => {
 		const wrapper = mountPanel({ files: [file] });
 
 		expect(wrapper.find('[data-testid="agent-files-title"]').text()).toContain(
@@ -79,9 +97,7 @@ describe('AgentFilesPanel', () => {
 
 		const uploadButton = wrapper.findComponent({ name: 'N8nButton' });
 		expect(uploadButton.props('variant')).toBe('ghost');
-		expect(uploadButton.props('iconOnly')).toBe(true);
 		expect(uploadButton.props('icon')).toBe('plus');
-		expect(wrapper.find('[data-testid="agent-files-upload"]').text()).toBe('');
 	});
 
 	it('renders uploaded files as table rows with owner, type, size, and date metadata', () => {

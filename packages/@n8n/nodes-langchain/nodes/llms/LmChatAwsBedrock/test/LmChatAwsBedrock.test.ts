@@ -43,6 +43,8 @@ const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHa
 const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
 const mockedResolveAwsCredentials = vi.mocked(resolveAwsCredentials);
 
+const keepAliveAgentOptions = { keepAlive: true, keepAliveMsecs: 30_000 };
+
 describe('LmChatAwsBedrock', () => {
 	let node: LmChatAwsBedrock;
 	let mockContext: Mocked<ISupplyDataFunctions>;
@@ -207,6 +209,7 @@ describe('LmChatAwsBedrock', () => {
 
 			expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
 				'https://bedrock-runtime.cn-north-1.amazonaws.com.cn',
+				keepAliveAgentOptions,
 			);
 			expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
 				expect.objectContaining({ region: 'cn-north-1' }),
@@ -229,6 +232,7 @@ describe('LmChatAwsBedrock', () => {
 
 			expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
 				'https://bedrock-runtime.us-gov-west-1.amazonaws.com',
+				keepAliveAgentOptions,
 			);
 			expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
 				expect.objectContaining({ region: 'us-gov-west-1' }),
@@ -419,11 +423,12 @@ describe('LmChatAwsBedrock', () => {
 				expect(clientConfig).not.toHaveProperty('endpoint');
 				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
 					'https://bedrock-runtime.eu-west-3.amazonaws.com',
+					keepAliveAgentOptions,
 				);
 			});
 		});
 
-		describe('request handler (timeout & proxy)', () => {
+		describe('request handler (keepalive, timeout & proxy)', () => {
 			const setNodeParameters = (options: Record<string, unknown>) => {
 				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model') return 'amazon.nova-pro-v1:0';
@@ -432,13 +437,15 @@ describe('LmChatAwsBedrock', () => {
 				});
 			};
 
-			it('creates a handler with requestTimeout when timeout is set and no proxy is configured', async () => {
+			it('creates a keepalive handler with requestTimeout when timeout is set and no proxy is configured', async () => {
 				const ctx = setupMockContext();
 				setNodeParameters({ timeout: 120000 });
 
 				await node.supplyData.call(ctx, 0);
 
 				expect(MockedNodeHttpHandler).toHaveBeenCalledWith({
+					httpAgent: keepAliveAgentOptions,
+					httpsAgent: keepAliveAgentOptions,
 					requestTimeout: 120000,
 					throwOnRequestTimeout: true,
 				});
@@ -463,6 +470,20 @@ describe('LmChatAwsBedrock', () => {
 				});
 			});
 
+			it('requests keepalive on the proxy agent', async () => {
+				const ctx = setupMockContext();
+				const fakeAgent = { fake: 'agent' } as unknown as ReturnType<typeof getNodeProxyAgent>;
+				mockedGetNodeProxyAgent.mockReturnValue(fakeAgent);
+				setNodeParameters({});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
+					'https://bedrock-runtime.us-east-1.amazonaws.com',
+					keepAliveAgentOptions,
+				);
+			});
+
 			it('creates a proxy-only handler without timeout keys when timeout is unset', async () => {
 				const ctx = setupMockContext();
 				const fakeAgent = { fake: 'agent' } as unknown as ReturnType<typeof getNodeProxyAgent>;
@@ -478,15 +499,22 @@ describe('LmChatAwsBedrock', () => {
 				expect(handlerOptions).not.toHaveProperty('throwOnRequestTimeout');
 			});
 
-			it('creates no handler at all when neither timeout nor proxy is configured', async () => {
+			it('installs a keepalive handler even when neither timeout nor proxy is configured', async () => {
 				const ctx = setupMockContext();
 				setNodeParameters({});
 
 				await node.supplyData.call(ctx, 0);
 
-				expect(MockedNodeHttpHandler).not.toHaveBeenCalled();
-				const clientConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0] ?? {};
-				expect(clientConfig).not.toHaveProperty('requestHandler');
+				expect(MockedNodeHttpHandler).toHaveBeenCalledTimes(1);
+				const handlerOptions = MockedNodeHttpHandler.mock.calls.at(-1)?.[0] ?? {};
+				expect(handlerOptions).toEqual({
+					httpAgent: keepAliveAgentOptions,
+					httpsAgent: keepAliveAgentOptions,
+				});
+				expect(handlerOptions).not.toHaveProperty('requestTimeout');
+				expect(handlerOptions).not.toHaveProperty('throwOnRequestTimeout');
+				const clientConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0];
+				expect(clientConfig?.requestHandler).toBe(MockedNodeHttpHandler.mock.instances.at(-1));
 			});
 
 			it('passes timeout 0 through as a disabled requestTimeout', async () => {
@@ -495,10 +523,12 @@ describe('LmChatAwsBedrock', () => {
 
 				await node.supplyData.call(ctx, 0);
 
-				expect(MockedNodeHttpHandler).toHaveBeenCalledWith({
-					requestTimeout: 0,
-					throwOnRequestTimeout: true,
-				});
+				expect(MockedNodeHttpHandler).toHaveBeenCalledWith(
+					expect.objectContaining({
+						requestTimeout: 0,
+						throwOnRequestTimeout: true,
+					}),
+				);
 			});
 		});
 
@@ -557,6 +587,7 @@ describe('LmChatAwsBedrock', () => {
 
 				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
 					'https://bedrock-runtime.eu-central-1.amazonaws.com',
+					keepAliveAgentOptions,
 				);
 			});
 		});
@@ -582,7 +613,7 @@ describe('LmChatAwsBedrock', () => {
 				await node.supplyData.call(ctx, 0);
 
 				const expected = 'https://vpce-abc.bedrock-runtime.us-east-1.vpce.amazonaws.com';
-				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(expected);
+				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(expected, keepAliveAgentOptions);
 				expect(MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0]?.endpoint).toBe(expected);
 			});
 
@@ -595,6 +626,7 @@ describe('LmChatAwsBedrock', () => {
 				expect(MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0]?.endpoint).toBeUndefined();
 				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
 					'https://bedrock-runtime.us-east-1.amazonaws.com',
+					keepAliveAgentOptions,
 				);
 			});
 

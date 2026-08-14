@@ -252,6 +252,25 @@ export const nodeSimulationVerdictSchema = z.object({
 
 export type NodeSimulationVerdict = z.infer<typeof nodeSimulationVerdictSchema>;
 
+/**
+ * Scripted verification for a wait gate on a loop: verify runs one pass per
+ * decision with `cutEdge` removed from the run's connections, so every pass
+ * is acyclic no matter which way the decision routes. The gate keeps its
+ * `haltBranch` verdict as the fallback for older readers of this outcome.
+ */
+export const waitGateScriptSchema = z.object({
+	nodeName: z.string(),
+	/** Loop edge (main connection) removed for the scripted passes. */
+	cutEdge: z.object({ source: z.string(), target: z.string() }),
+	/** Response fixtures, one verification pass per entry. */
+	decisions: z
+		.array(z.object({ label: z.string(), items: z.array(z.record(z.unknown())) }))
+		.min(1)
+		.max(3),
+});
+
+export type WaitGateScript = z.infer<typeof waitGateScriptSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
@@ -299,6 +318,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * this build, never persisted to the workflow.
 	 */
 	nodeSimulationPlan: z.array(nodeSimulationVerdictSchema).optional(),
+	/** Scripted decisions for wait gates on loops — see `waitGateScriptSchema`. */
+	waitGateScripts: z.array(waitGateScriptSchema).optional(),
 	/**
 	 * LLM-generated mock output for `simulate`-verdict nodes, keyed by node
 	 * name. Items are plain objects (no `{json}` envelope) — the shape

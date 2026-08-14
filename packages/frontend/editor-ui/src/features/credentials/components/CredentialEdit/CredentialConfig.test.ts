@@ -1,5 +1,6 @@
 import CredentialConfig from './CredentialConfig.vue';
 import { screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -597,6 +598,61 @@ describe('CredentialConfig', () => {
 			expect(emitted().oauth).toBeTruthy();
 		});
 
+		describe('connected account label', () => {
+			it('names the provider account an end-user credential is connected as', () => {
+				renderComponent({
+					props: {
+						...oAuthConnectedProps,
+						isPrivateCredentialsEnabled: true,
+						isResolvable: true,
+						connectedByMe: true,
+						connectedAccountIdentifier: 'jane@gmail.com',
+					},
+				});
+
+				expect(screen.getByTestId('oauth-connect-success-banner')).toHaveTextContent(
+					'Connected as jane@gmail.com',
+				);
+			});
+
+			it('stays generic rather than naming the n8n account when the provider tells us none', () => {
+				renderComponent({
+					pinia: createTestingPinia({
+						initialState: {
+							[STORES.USERS]: {
+								currentUserId: 'user-1',
+								usersById: { 'user-1': { id: 'user-1', email: 'signed-in@n8n.io' } },
+							},
+						},
+					}),
+					props: {
+						...oAuthConnectedProps,
+						isPrivateCredentialsEnabled: true,
+						isResolvable: true,
+						connectedByMe: true,
+					},
+				});
+
+				const banner = screen.getByTestId('oauth-connect-success-banner');
+				expect(banner).toHaveTextContent('Account connected');
+				expect(banner).not.toHaveTextContent('signed-in@n8n.io');
+			});
+
+			it('names the provider account a fixed credential is connected as', () => {
+				renderComponent({
+					props: {
+						...oAuthConnectedProps,
+						isResolvable: false,
+						credentialData: { accountIdentifier: 'octocat' } as ICredentialDataDecryptedObject,
+					},
+				});
+
+				expect(screen.getByTestId('oauth-connect-success-banner')).toHaveTextContent(
+					'Connected as octocat',
+				);
+			});
+		});
+
 		it('shows stale-connection actions and emits their events on auth error', async () => {
 			const { emitted } = renderComponent({
 				props: {
@@ -1032,6 +1088,137 @@ describe('CredentialConfig', () => {
 
 			expect(screen.getByTestId('oauth-not-connected-banner')).toBeInTheDocument();
 			expect(screen.queryByTestId('quick-connect-button')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('templated custom auth pane', () => {
+		const templatedProps = {
+			...defaultRenderOptions.props,
+			isManaged: false,
+			credentialId: 'cred-1',
+			credentialType: {
+				name: 'httpTemplatedCustomAuth',
+				displayName: 'Simplified Custom Auth',
+				properties: [],
+			},
+			credentialData: {
+				template: JSON.stringify({ headers: { Authorization: 'Bearer {{api_key}}' } }),
+			} as unknown as ICredentialDataDecryptedObject,
+			credentialPermissions: {
+				...(defaultRenderOptions.props?.credentialPermissions ?? {}),
+				update: true,
+			},
+		};
+
+		it('defaults to the guided form and switches to edit setup in place', async () => {
+			renderComponent({ props: templatedProps });
+
+			expect(screen.getByTestId('templated-auth-simple-view')).toBeInTheDocument();
+			expect(screen.getByTestId('templated-auth-value-input')).toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('templated-auth-edit-setup'));
+
+			expect(screen.getByTestId('templated-auth-template-input')).toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-value-input')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('templated-auth-back'));
+
+			expect(screen.getByTestId('templated-auth-value-input')).toBeInTheDocument();
+		});
+
+		it('opens on edit setup when the template has no markers', () => {
+			renderComponent({
+				props: {
+					...templatedProps,
+					credentialData: {
+						template: JSON.stringify({ headers: { Accept: 'application/json' } }),
+					} as unknown as ICredentialDataDecryptedObject,
+				},
+			});
+
+			expect(screen.getByTestId('templated-auth-template-input')).toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-value-input')).not.toBeInTheDocument();
+		});
+
+		it('switches to the guided form when the credential data loads with markers', async () => {
+			// the modal loads credential data asynchronously — the pane mounts with
+			// an empty template and must follow the data once it arrives
+			const { rerender } = renderComponent({
+				props: {
+					...templatedProps,
+					credentialData: {} as ICredentialDataDecryptedObject,
+				},
+			});
+
+			expect(screen.getByTestId('templated-auth-template-input')).toBeInTheDocument();
+
+			await rerender({ credentialData: templatedProps.credentialData });
+
+			expect(screen.getByTestId('templated-auth-value-input')).toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-template-input')).not.toBeInTheDocument();
+		});
+
+		it('stays on edit setup while the user is editing the template', async () => {
+			const { rerender } = renderComponent({
+				props: {
+					...templatedProps,
+					credentialData: {} as ICredentialDataDecryptedObject,
+				},
+			});
+
+			await userEvent.type(screen.getByTestId('templated-auth-template-input'), '{{');
+
+			// adding the first marker to the template must not eject the user from
+			// the editor mid-typing
+			await rerender({ credentialData: templatedProps.credentialData });
+
+			expect(screen.getByTestId('templated-auth-template-input')).toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-value-input')).not.toBeInTheDocument();
+		});
+
+		it('hands the AI help handler the guided-form labels and key page of a pre-filled credential', async () => {
+			const helpSpy = vi.fn().mockResolvedValue(false);
+			renderComponent({
+				props: {
+					...templatedProps,
+					credentialData: {
+						...templatedProps.credentialData,
+						docsUrl: 'https://replicate.com/account/api-tokens',
+					} as unknown as ICredentialDataDecryptedObject,
+					credentialProperties: [
+						{ displayName: 'Template', name: 'template', type: 'json', default: '' },
+					],
+					instanceAiCredentialHelp: helpSpy,
+				},
+			});
+
+			const button = screen
+				.getByTestId('credential-edit-instance-ai-help-button')
+				.querySelector('button');
+			await userEvent.click(button!);
+
+			// no defs stored → the start-cased marker name stands in as the label; the
+			// recipe's key page rides along so the thread can link the exact URL
+			expect(helpSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					credentialType: 'httpTemplatedCustomAuth',
+					placeholderTitles: ['Api Key'],
+					docsUrl: 'https://replicate.com/account/api-tokens',
+				}),
+			);
+		});
+
+		it('renders the raw field set for other credential types', () => {
+			renderComponent({
+				props: {
+					...templatedProps,
+					credentialType: mockCredentialType,
+					credentialData: {} as ICredentialDataDecryptedObject,
+				},
+			});
+
+			expect(screen.queryByTestId('templated-auth-simple-view')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-edit-setup')).not.toBeInTheDocument();
 		});
 	});
 });

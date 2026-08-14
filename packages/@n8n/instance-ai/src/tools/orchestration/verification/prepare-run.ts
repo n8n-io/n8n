@@ -1,12 +1,17 @@
 import type { VerifyBuiltWorkflowOutput, VerifyToolInput } from './types';
 import { createRemediation } from '../../../workflow-loop/remediation';
-import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
+import type {
+	WaitGateScript,
+	WorkflowBuildOutcome,
+} from '../../../workflow-loop/workflow-loop-state';
 
 export interface PreparedVerificationRun {
 	verificationPinData: Record<string, unknown[]> | undefined;
 	simulatedNodes: Array<{ nodeName: string; reason: string }>;
 	/** Wait-gate nodes pinned with zero items — verification halts at these. */
 	haltedGateNames: string[];
+	/** When set, verify runs one scripted pass per decision instead of halting. */
+	gateScript?: WaitGateScript;
 }
 
 function getInvalidFixtureOverrideNodeNames(
@@ -61,10 +66,15 @@ function buildVerificationPinData(
 		}
 	}
 
+	const gateScript = (buildOutcome.waitGateScripts ?? []).find((script) =>
+		haltedGateNames.includes(script.nodeName),
+	);
+
 	return {
 		verificationPinData: Object.keys(merged).length > 0 ? merged : undefined,
 		simulatedNodes,
 		haltedGateNames,
+		...(gateScript ? { gateScript } : {}),
 	};
 }
 
@@ -83,9 +93,10 @@ export function prepareVerificationRun(
 	if (haltedOverrideNodeNames.length > 0) {
 		const guidance =
 			`Node(s) ${haltedOverrideNodeNames.join(', ')} pause the workflow for a human decision and sit on a loop — ` +
-			'verification always halts there and their output cannot be overridden: a canned response would ' +
-			're-run the loop with the same answer forever. Treat reaching the gate as verified and tell the ' +
-			'user the approval loop needs a manual end-to-end test.';
+			'their output cannot be overridden: a constant canned response would re-run the loop with the same ' +
+			'answer forever. Verification drives such gates with scripted decisions where possible, or halts at ' +
+			'them otherwise. Treat the scripted/halted result as authoritative and tell the user the approval ' +
+			'loop needs a manual end-to-end test for final confirmation.';
 		const remediation = createRemediation({
 			category: 'blocked',
 			shouldEdit: false,

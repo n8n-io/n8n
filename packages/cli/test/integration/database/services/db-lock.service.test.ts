@@ -9,7 +9,8 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { OperationalError, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { OperationalError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 let dbLockService: DbLockService;

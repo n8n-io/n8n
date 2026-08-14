@@ -12,6 +12,7 @@ import type {
 	AiModelSelectorMenuItemData,
 } from './AiModelSelectorDropdown.types';
 import { useI18n } from '../../composables/useI18n';
+import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nBadge from '../N8nBadge';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
@@ -19,6 +20,13 @@ import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 
 const MAX_SELECTED_NAME_CHARS = 30;
+
+/**
+ * Model lists are long, so the provider sub-menus get twice the shared cap.
+ * Applies to every consumer of this dropdown, which is why it is set here
+ * rather than passed in per call site.
+ */
+const SUB_MENU_MAX_HEIGHT = 'calc(var(--spacing--5xl) * 2)';
 
 const {
 	items,
@@ -106,6 +114,7 @@ defineExpose({
 		teleported
 		searchable
 		width="var(--reka-dropdown-menu-trigger-width)"
+		:sub-menu-max-height="SUB_MENU_MAX_HEIGHT"
 		@select="handleSelect"
 	>
 		<template #trigger>
@@ -174,7 +183,9 @@ defineExpose({
 				</div>
 			</template>
 			<div v-else :class="[$style.labelWithBadge, ui.class]">
-				<N8nText size="medium" color="text-dark">{{ item.label }}</N8nText>
+				<N8nText size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">{{
+					item.label
+				}}</N8nText>
 				<N8nBadge
 					v-if="item.data?.badgeLabel"
 					:class="$style.badge"
@@ -184,6 +195,12 @@ defineExpose({
 				>
 					{{ item.data.badgeLabel }}
 				</N8nBadge>
+				<N8nActionPill
+					v-if="item.data?.actionPill"
+					size="small"
+					:type="item.data.actionPill.type ?? 'default'"
+					:text="item.data.actionPill.text"
+				/>
 			</div>
 		</template>
 

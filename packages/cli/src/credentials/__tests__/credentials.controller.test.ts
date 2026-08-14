@@ -114,6 +114,8 @@ describe('CredentialsController', () => {
 		ensureCanManageEndUserCredentialSpy = vi
 			.spyOn(credentialsService, 'ensureCanManageEndUserCredential')
 			.mockResolvedValue(undefined);
+		// stubbed by default: backed by connectionStatusProxy, which unit tests don't wire up
+		vi.spyOn(credentialsService, 'populateConnectedByMe').mockResolvedValue(undefined);
 		findCredentialOwningProjectSpy = sharedCredentialsRepository.findCredentialOwningProject;
 		emitSpy = eventService.emit;
 		// Set up credentialsRepository.create to return the input data
@@ -441,6 +443,56 @@ describe('CredentialsController', () => {
 				'Provider connection type cannot be changed',
 			);
 			expect(prepareUpdateDataSpy).not.toHaveBeenCalled();
+		});
+
+		it('should clear the OAuth token when switching a credential to a different auth type', async () => {
+			// A previous OAuth connection on `existingCredential.type` must not carry over once
+			// the credential is switched to a different auth method (e.g. Service Account -> OAuth).
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'oAuth2Api',
+					data: { clientId: 'cid' },
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(prepareUpdateDataSpy).toHaveBeenCalledWith(
+				ownerReq.user,
+				ownerReq.body,
+				existingCredential,
+				{ clearOauthTokenData: true },
+			);
+		});
+
+		it('should not clear the OAuth token when the auth type is unchanged', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: existingCredential.type,
+					data: { apiKey: 'updated-key' },
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(prepareUpdateDataSpy).toHaveBeenCalledWith(
+				ownerReq.user,
+				ownerReq.body,
+				existingCredential,
+				{ clearOauthTokenData: false },
+			);
 		});
 
 		it('should emit "credentials-updated" with jweEnabled true when JWE is enabled in payload', async () => {
@@ -850,6 +902,7 @@ describe('CredentialsController', () => {
 			expect(getChangedSharedFieldsSpy).toHaveBeenCalled();
 			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
 				deleteUserEntries: true,
+				user: ownerReq.user,
 			});
 			expect(emitSpy).toHaveBeenCalledWith('private-credential-connections-cleared', {
 				user: ownerReq.user,
@@ -879,6 +932,7 @@ describe('CredentialsController', () => {
 
 			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
 				deleteUserEntries: false,
+				user: ownerReq.user,
 			});
 			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-connections-cleared');
@@ -906,6 +960,7 @@ describe('CredentialsController', () => {
 			expect(getChangedSharedFieldsSpy).not.toHaveBeenCalled();
 			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
 				deleteUserEntries: true,
+				user: ownerReq.user,
 			});
 		});
 

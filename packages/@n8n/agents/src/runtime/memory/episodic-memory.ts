@@ -13,6 +13,7 @@ import { Tool } from '../../sdk/tool';
 import type {
 	BuiltEpisodicMemoryStore,
 	BuiltMemory,
+	BuiltTelemetry,
 	EpisodicMemoryConfig,
 	EpisodicMemoryEntry,
 	EpisodicMemoryExtractionCandidate,
@@ -25,6 +26,7 @@ import type {
 import type { AgentExecutionCounter, AgentPersistenceOptions } from '../../types/sdk/agent';
 import type { ObservationLogEntry, ObservationLogScope } from '../../types/sdk/observation-log';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
+import { inferMemoryStoreAttributes, withMemorySpan } from '../telemetry/runtime-telemetry';
 
 export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
 
@@ -70,6 +72,8 @@ export interface RunEpisodicMemoryIndexerOpts {
 	threadId: string;
 	now?: Date;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
+	agentName?: string;
 }
 
 export type RunEpisodicMemoryIndexerResult =
@@ -151,16 +155,35 @@ export async function runEpisodicMemoryIndexer(
 
 	const savedEntries: EpisodicMemoryEntry[] = [];
 	if (candidates.length > 0) {
-		const { embedMany } = await import('ai');
-		const { embeddings, usage } = await embedMany({
-			model: normalized.embedder,
-			values: candidates.map((entry) => entry.content),
-		});
-		incrementTokenCountFromUsage(opts.executionCounter, usage);
-		for (const [index, candidate] of candidates.entries()) {
-			const saved = await saveCandidate(opts, normalized, candidate, embeddings[index]);
-			if (saved) savedEntries.push(saved);
-		}
+		await withMemorySpan(
+			'save_memory',
+			opts.agentName ?? 'agent',
+			opts.telemetry,
+			() => ({
+				types: ['agent'],
+				owners: [opts.scope.resourceId],
+				...inferMemoryStoreAttributes(opts.memory),
+			}),
+			async () => {
+				const { embedMany } = await import('ai');
+				const { embeddings, usage } = await embedMany({
+					model: normalized.embedder,
+					values: candidates.map((entry) => entry.content),
+				});
+				incrementTokenCountFromUsage(opts.executionCounter, usage);
+				for (const [index, candidate] of candidates.entries()) {
+					const saved = await saveCandidate(opts, normalized, candidate, embeddings[index]);
+					if (saved) savedEntries.push(saved);
+				}
+				return {
+					result: undefined,
+					attributes: {
+						ids: savedEntries.map((entry) => entry.id),
+						operations: savedEntries.map(() => 'created' as const),
+					},
+				};
+			},
+		);
 	}
 
 	if (savedEntries.length > 0 && normalized.reflect) {
@@ -179,6 +202,7 @@ export function createRecallMemoryTool(opts: {
 	config: EpisodicMemoryConfig;
 	scope: EpisodicMemoryScope;
 	executionCounter?: AgentExecutionCounter;
+	agentName?: string;
 }) {
 	const normalized = withEpisodicMemoryDefaults(opts.config);
 
@@ -197,11 +221,29 @@ export function createRecallMemoryTool(opts: {
 				abortSignal: ctx.abortSignal,
 			});
 			incrementTokenCountFromUsage(opts.executionCounter, usage);
-			const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {
-				topK: normalized.topK,
-				queryEmbedding,
-			});
-			return { entries: entries.map(toRecallToolEntry) };
+			return await withMemorySpan(
+				'query_memory',
+				opts.agentName ?? 'agent',
+				ctx.parentTelemetry,
+				() => ({
+					types: ['agent'],
+					owners: [opts.scope.resourceId],
+					...inferMemoryStoreAttributes(opts.memory),
+				}),
+				async () => {
+					const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {
+						topK: normalized.topK,
+						queryEmbedding,
+					});
+					return {
+						result: { entries: entries.map(toRecallToolEntry) },
+						attributes: {
+							ids: entries.map((entry) => entry.id),
+							operations: entries.map(() => 'query_memory' as const),
+						},
+					};
+				},
+			);
 		})
 		.toModelOutput((output) => ({
 			entries: output.entries.map((entry) => ({

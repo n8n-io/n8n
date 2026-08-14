@@ -40,11 +40,13 @@ import type {
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
 import { ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
-import get from 'lodash/get';
+// `.js` on purpose, unlike the extensionless form used elsewhere in the repo:
+// `lodash` is CJS with no `exports` map, so Node cannot resolve the extensionless
+// subpath once a consumer loads our `dist` as native ESM. Bundlers accept both.
+import get from 'lodash/get.js';
 import { computed, h, shallowRef, useSlots, watch } from 'vue';
 
-import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
-
+import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nPagination from '../N8nPagination';
 
 type VueClass = string | string[] | Record<string, boolean> | undefined;
@@ -336,7 +338,11 @@ function handlePageSizeChange(newPageSize: number) {
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
 	data,
-	columns: columnsDefinition.value,
+	// A getter keeps the column set reactive, so tables can add/remove columns
+	// after mount (e.g. contextual columns that depend on the active tab).
+	get columns() {
+		return columnsDefinition.value;
+	},
 	get rowCount() {
 		return props.itemsLength;
 	},

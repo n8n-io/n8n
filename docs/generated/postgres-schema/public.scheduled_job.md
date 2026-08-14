@@ -13,6 +13,8 @@
 | kind | varchar(16) |  | false |  |  | Recurrence kind; selects which of the schedule columns below apply. |
 | lastFiredAt | timestamp(3) with time zone |  | true |  |  | Last time an occurrence was materialized; used to recompute nextRunAt. |
 | maxAttempts | integer | 1 | false |  |  | Retry ceiling copied onto each occurrence this job materializes. |
+| misfireGraceSeconds | integer | 60 | false |  |  | How late an occurrence may be before the misfire policy applies to it; an ordinary restart stays inside it. |
+| misfirePolicy | varchar(16) | 'coalesce'::character varying | false |  |  | What to do with occurrences that came due while nothing ran them: 'coalesce' records a single catch-up run, 'skip' records none. |
 | name | varchar(255) |  | false |  |  | Human-readable job name. A well-known scheduler key for system jobs; generated for workflow trigger jobs. |
 | nextRunAt | timestamp(3) with time zone |  | true |  |  | Next time an occurrence is due; the scheduler sweep reads this to find work. NULL once disabled or a one-off has fired. |
 | nodeId | varchar(36) |  | true |  |  | Trigger node within the workflow that owns this job; NULL for non-trigger jobs. |
@@ -32,6 +34,8 @@
 | CHK_scheduled_job_fire_at | CHECK | CHECK ((((kind)::text <> 'one_off'::text) OR ("fireAt" IS NOT NULL))) |
 | CHK_scheduled_job_interval_seconds | CHECK | CHECK ((((kind)::text <> 'interval'::text) OR ("intervalSeconds" IS NOT NULL))) |
 | CHK_scheduled_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['cron'::character varying, 'interval'::character varying, 'one_off'::character varying, 'recurring_cron'::character varying])::text[]))) |
+| CHK_scheduled_job_misfireGraceSeconds | CHECK | CHECK (("misfireGraceSeconds" > 0)) |
+| CHK_scheduled_job_misfirePolicy | CHECK | CHECK ((("misfirePolicy")::text = ANY ((ARRAY['coalesce'::character varying, 'skip'::character varying])::text[]))) |
 | CHK_scheduled_job_recurrence_size | CHECK | CHECK (("recurrenceSize" >= 2)) |
 | CHK_scheduled_job_recurrence_unit | CHECK | CHECK ((("recurrenceUnit")::text = ANY ((ARRAY['hours'::character varying, 'days'::character varying, 'weeks'::character varying, 'months'::character varying])::text[]))) |
 | CHK_scheduled_job_recurring_cron | CHECK | CHECK ((((kind)::text <> 'recurring_cron'::text) OR (("cronExpression" IS NOT NULL) AND ("recurrenceUnit" IS NOT NULL) AND ("recurrenceSize" IS NOT NULL)))) |
@@ -42,6 +46,8 @@
 | scheduled_job_id_not_null | n | NOT NULL id |
 | scheduled_job_kind_not_null | n | NOT NULL kind |
 | scheduled_job_maxAttempts_not_null | n | NOT NULL "maxAttempts" |
+| scheduled_job_misfireGraceSeconds_not_null | n | NOT NULL "misfireGraceSeconds" |
+| scheduled_job_misfirePolicy_not_null | n | NOT NULL "misfirePolicy" |
 | scheduled_job_name_not_null | n | NOT NULL name |
 | scheduled_job_payload_not_null | n | NOT NULL payload |
 | scheduled_job_taskType_not_null | n | NOT NULL "taskType" |
@@ -74,6 +80,8 @@ erDiagram
   varchar_16_ kind
   timestamp_3__with_time_zone lastFiredAt
   integer maxAttempts
+  integer misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_255_ name
   timestamp_3__with_time_zone nextRunAt
   varchar_36_ nodeId
@@ -97,6 +105,7 @@ erDiagram
   integer leaseEpoch
   timestamp_3__with_time_zone leaseExpiresAt
   integer maxAttempts
+  timestamp_3__with_time_zone missedAfter
   json payload
   timestamp_3__with_time_zone runAt
   timestamp_3__with_time_zone scheduledFor

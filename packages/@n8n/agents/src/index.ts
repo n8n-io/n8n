@@ -16,17 +16,22 @@ export type {
 	EvalRunResult,
 	EvalResults,
 	ToolContext,
+	ToolCancellationContext,
 	ToolExecutionContext,
 	InterruptibleToolContext,
+	ToolSuspendOptions,
 	CheckpointStore,
 	StreamChunk,
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
+	ReasoningLevel,
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
@@ -95,16 +100,18 @@ export type {
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
-	TokenCounter,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
 export {
-	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
 } from './types';
+export {
+	estimateObservationTokens,
+	type TokenCounter,
+} from './runtime/model/model-token-counter';
 
 export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
 export type { Cancellation } from './sdk/cancellation';
@@ -114,7 +121,19 @@ export {
 	raceWithAbort,
 	throwIfAborted,
 } from './sdk/abort';
-export { Tool, wrapToolForApproval, sanitizeToolName } from './sdk/tool';
+export {
+	DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+	DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
+	ModelStreamStallError,
+} from './runtime/streaming/stream-stall';
+export {
+	APPROVAL_RESUME_SCHEMA,
+	APPROVAL_SUSPEND_SCHEMA,
+	Tool,
+	wrapToolForApproval,
+	sanitizeToolName,
+} from './sdk/tool';
+export type { ApprovalResumePayload, ApprovalSuspendPayload } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';
 export {
@@ -207,9 +226,12 @@ export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
 export type {
 	ContentCitation,
+	ContentCustom,
 	ContentFile,
+	ContentFileRef,
 	ContentMetadata,
 	ContentReasoning,
+	ContentReasoningFile,
 	ContentText,
 	ContentToolCall,
 	Message,
@@ -219,6 +241,8 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
+export { stripHydratedFileData } from './types/sdk/message';
+export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
@@ -231,6 +255,7 @@ export type {
 	ModelInfo,
 	ModelCost,
 	ModelLimits,
+	ModelModalities,
 } from './sdk/catalog';
 export { BaseMemory } from './storage/base-memory';
 export { BaseVectorStore } from './storage/base-vector-store';
@@ -267,13 +292,19 @@ export {
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
+	parseDelegateSubAgentContinuation,
 	renderDelegateSubAgentPrompt,
 } from './runtime/tools/delegate-sub-agent-tool';
 export type {
 	CreateDelegateSubAgentToolOptions,
+	DelegateSubAgentCancelRequest,
+	DelegateSubAgentCancelRunner,
+	DelegateSubAgentContinuation,
 	DelegateSubAgentInput,
 	DelegateSubAgentPolicy,
 	DelegateSubAgentRequest,
+	DelegateSubAgentResumeRequest,
+	DelegateSubAgentResumeRunner,
 	DelegateSubAgentRunner,
 	DelegateSubAgentRunnerHelpers,
 	DelegateSubAgentToolOutput,
@@ -389,7 +420,12 @@ export type {
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';
-export { createWorkspaceTools } from './workspace';
+export {
+	CORE_WORKSPACE_TOOL_NAMES,
+	createScopedWorkspace,
+	createWorkspaceTools,
+	getToolResultThreadDirectory,
+} from './workspace';
 export { SandboxProcessManager, ProcessHandle } from './workspace';
 
 export type {

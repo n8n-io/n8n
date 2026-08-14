@@ -265,7 +265,7 @@ describe('LDAP configuration in Public API', () => {
 
 				expect(response.status).toBe(400);
 				expect((response.body as ErrorBody).message).toContain(
-					'LDAP cannot be enabled while another authentication method is active',
+					'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active',
 				);
 			},
 		);

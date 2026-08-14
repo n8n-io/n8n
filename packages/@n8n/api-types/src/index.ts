@@ -1,10 +1,11 @@
-export { Z, type ZodClass } from './zod-class';
+export { Z, type ZodClass, type ZodArrayClass } from './zod-class';
 export type * from './datetime';
 export * from './dto';
 export type * from './push';
 export type * from './scaling';
 export * from './frontend-settings';
 export type * from './user';
+export type * from './consent';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
@@ -13,8 +14,10 @@ export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
+export type * from './workflow-review-activity';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
+export * from './workflow-publish-blocked-details';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -285,6 +288,8 @@ export {
 
 export {
 	buildRunWorkflowSessionGrantKey,
+	buildUpdateWorkflowSessionGrantKey,
+	buildDataTablesSessionGrantKey,
 	buildFetchUrlGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	WEB_SEARCH_GRANT_KEY,
@@ -310,8 +315,16 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
+	mcpConnectServerSchema,
+	mcpConnectRequestSchema,
+	mcpConnectResumeSchema,
+	credentialPlaceholderDefSchema,
 	credentialRequestSchema,
+	credentialSetupHintSchema,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	GENERIC_AUTH_CREDENTIAL_TYPES,
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
@@ -326,8 +339,12 @@ export {
 	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	CANVAS_NODE_CONTEXT_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
+	instanceAiApprovalResumeSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
 	instanceAiCredentialHandoffContextSchema,
@@ -341,6 +358,7 @@ export {
 	isInstanceAiSandboxProvider,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	INSTANCE_AI_CATALOG_PROVIDERS,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
@@ -362,11 +380,16 @@ export {
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
+	instanceAiEvalSeedAgentSchema,
+	findUnbackedSeedWorkflowTools,
 	applyBranchReadOnlyOverrides,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -376,6 +399,10 @@ export type {
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
+	InstanceAiCatalogProvider,
+	InstanceAiCatalogModel,
+	InstanceAiModelCatalogResponse,
+	InstanceAiCredits,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -388,9 +415,16 @@ export type {
 	InstanceAiConfirmation,
 	InstanceAiConfirmationInputType,
 	InstanceAiChannelConfig,
+	InstanceAiMcpConnectServer,
+	InstanceAiMcpConnectRequest,
+	InstanceAiMcpConnectResume,
 	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
+	InstanceAiApprovalResumeData,
+	InstanceAiCredentialPlaceholderDef,
+	InstanceAiTargetApproval,
 	InstanceAiCredentialRequest,
+	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,
 	InstanceAiAgentKind,
 	TaskItem,
@@ -440,6 +474,9 @@ export type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiConfirmResponse,
 	InstanceAiAdminSettingsResponse,
+	InstanceAiEnvManagedFields,
+	InstanceAiVerificationFailure,
+	InstanceAiVerificationResponse,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiSandboxProvider,
@@ -483,6 +520,7 @@ export type {
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedAgent,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -529,6 +567,7 @@ export {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
+	MCP_AGENT_SCOPES,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,
 	MCP_CLIENT_TYPE_FILTERS,
@@ -583,6 +622,11 @@ export {
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalRunSchema,
 	CreateAgentEvalRunDto,
+	AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+	AgentEvalRunDetailQueryDto,
+	agentEvalCorrectionSchema,
+	AGENT_EVAL_MAX_COMMENT_CHARS,
+	AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS,
 	createAgentEvalRatingSchema,
 	CreateAgentEvalRatingDto,
 	agentEvalDraftCaseSchema,
@@ -594,15 +638,19 @@ export type {
 	AgentEvalRunStatus,
 	AgentEvalResultStatus,
 	AgentEvalVote,
+	AgentEvalCorrection,
 	CreateAgentEvalDatasetDto,
 	UpdateAgentEvalDatasetPayload,
 	CreateAgentEvalRunPayload,
 	CreateAgentEvalRatingPayload,
+	AgentEvalPage,
 	AgentEvalDatasetRecord,
 	AgentEvalRunRecord,
 	AgentEvalResultRecord,
 	AgentEvalRatingRecord,
+	AgentEvalRunList,
 	AgentEvalRunDetail,
+	AgentEvalRunSummary,
 	AgentEvalDraftCase,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
@@ -634,4 +682,10 @@ export {
 	type N8nProxyFeature,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export {
+	MOONSHOTAI_KIMI_K3_MODEL_ID,
+	MOONSHOTAI_KIMI_K3_MODEL_NAME,
+	MOONSHOTAI_KIMI_K3_PROVIDER,
+	isMoonshotaiKimiK3ModelId,
+} from './constants/instance-ai-models';
 export { BLOCK_ACCESS_ASSIGNMENT } from './constants/role-mapping';

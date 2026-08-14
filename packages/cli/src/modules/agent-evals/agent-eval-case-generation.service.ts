@@ -1,7 +1,6 @@
 import type { Agent } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
-	AGENT_EVALS_FLAG,
 	MANAGED_CREDENTIAL_TOKEN,
 	type AgentEvalDraftCase,
 	type AgentJsonConfig,
@@ -16,10 +15,9 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { PostHogClient } from '@/posthog';
 
+import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { AgentConfigService } from '../agents/agent-config.service';
 import {
 	buildAgentSummary,
@@ -83,7 +81,7 @@ export class AgentEvalCaseGenerationService {
 		private readonly credentialsService: CredentialsService,
 		private readonly dataTableService: DataTableService,
 		private readonly datasetRepository: AgentEvalDatasetRepository,
-		private readonly postHogClient: PostHogClient,
+		private readonly flagGate: AgentEvalsFlagGate,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {}
 
@@ -99,7 +97,7 @@ export class AgentEvalCaseGenerationService {
 		agentId: string,
 		options: GenerateDraftCasesOptions = {},
 	): Promise<GenerateDraftCasesResult> {
-		await this.assertFeatureEnabled(user);
+		await this.flagGate.assertEnabled(user);
 		this.assertInstanceWriteAccess();
 
 		const config = await this.agentConfigService.getConfig(agentId, projectId);
@@ -143,18 +141,6 @@ export class AgentEvalCaseGenerationService {
 	}
 
 	// ---- internals ----
-
-	/**
-	 * Gate on the agent-evals rollout flag (honors the env override). Throws
-	 * NotFoundError rather than Forbidden so a flag-off instance looks like an
-	 * unknown feature and leaks no flag state (matching the eval-collections gate).
-	 */
-	private async assertFeatureEnabled(user: User): Promise<void> {
-		const flags = await this.postHogClient.getFeatureFlags(user);
-		if (flags?.[AGENT_EVALS_FLAG] !== true) {
-			throw new NotFoundError('Not found');
-		}
-	}
 
 	/**
 	 * Block writes on a source-control read-only (protected) instance. This

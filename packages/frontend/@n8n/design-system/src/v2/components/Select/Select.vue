@@ -26,7 +26,6 @@ import {
 	watch,
 } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
 
@@ -44,6 +43,7 @@ import type {
 	SelectVariants,
 } from './Select.types';
 import N8nSelectItem from './SelectItem.vue';
+import Icon from '../../../components/N8nIcon/Icon.vue';
 
 defineOptions({ inheritAttrs: false });
 

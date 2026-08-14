@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createHttpsProxyAgent } from '@n8n/backend-network/proxy';
+import type { SsrfBridge } from '@n8n/backend-network';
+import {
+	createHttpProxyAgent,
+	createHttpsProxyAgent,
+	resolveProxyUrl,
+} from '@n8n/backend-network/proxy';
 import axios from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as qs from 'querystring';
@@ -15,7 +20,7 @@ import type {
 	OAuth2AuthenticationMethod,
 	OAuth2ClientCredentialType,
 } from './types';
-import { getAuthError } from './utils';
+import { getAuthError, tryParseUrl } from './utils';
 
 export interface ClientOAuth2RequestObject {
 	url: string;
@@ -44,6 +49,12 @@ export interface ClientOAuth2Options {
 	query?: qs.ParsedUrlQuery;
 	resource?: string;
 	ignoreSSLIssues?: boolean;
+	/**
+	 * When provided, token endpoint requests are validated against the host's
+	 * outbound network policy before dispatch, at DNS resolution time, and on
+	 * every redirect. Omit to leave the request unchecked.
+	 */
+	ssrfBridge?: SsrfBridge;
 }
 
 export class ResponseError extends Error {
@@ -109,13 +120,39 @@ export class ClientOAuth2 {
 			proxy: false,
 		};
 
-		if (options.ignoreSSLIssues) {
-			// Build a proxy-aware agent that relaxes TLS verification, so ignoring SSL
-			// issues still routes through the env proxy (HTTPS_PROXY / NO_PROXY) instead
-			// of connecting directly and bypassing the proxy.
+		const { ssrfBridge } = this.options;
+
+		if (ssrfBridge) {
+			const parsed = tryParseUrl(url);
+			if (parsed) {
+				const result = await ssrfBridge.validateUrl(parsed);
+				if (!result.ok) throw result.error;
+			}
+
+			requestConfig.beforeRedirect = (redirected) => {
+				ssrfBridge.validateRedirectSync(String(redirected.href));
+			};
+		}
+
+		// Resolution is re-checked on the agent, so a hostname that resolves to a
+		// different address between validation and connect is still caught. Only for
+		// direct connections though: through a proxy the agent resolves the proxy host,
+		// not the final target, so applying the lookup there would check the wrong host.
+		const lookup = resolveProxyUrl(url) ? undefined : ssrfBridge?.createSecureLookup();
+
+		// Agents are built here rather than left to the global ones so the per-request
+		// `lookup` and relaxed TLS apply. Both factories are proxy-aware, so ignoring SSL
+		// issues still routes through the env proxy (HTTP(S)_PROXY / NO_PROXY) instead of
+		// connecting directly and bypassing it.
+		if (options.ignoreSSLIssues || lookup) {
 			requestConfig.httpsAgent = createHttpsProxyAgent(url, undefined, {
-				rejectUnauthorized: false,
+				...(options.ignoreSSLIssues ? { rejectUnauthorized: false } : {}),
+				...(lookup ? { lookup } : {}),
 			});
+		}
+
+		if (lookup) {
+			requestConfig.httpAgent = createHttpProxyAgent(url, undefined, { lookup });
 		}
 
 		const response = await axios.request(requestConfig);

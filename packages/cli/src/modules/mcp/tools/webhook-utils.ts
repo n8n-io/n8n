@@ -69,6 +69,7 @@ const buildEndpointBaseUrl = (baseUrl: string, endpoint: string) => {
 export const getTriggerDetails = async (
 	user: User,
 	supportedTriggers: INode[],
+	unsupportedTriggers: INode[],
 	baseUrl: string,
 	credentialsService: CredentialsService,
 	nodeTypes: INodeTypes,
@@ -77,6 +78,10 @@ export const getTriggerDetails = async (
 	testBaseUrl: string = baseUrl,
 ): Promise<string> => {
 	if (supportedTriggers.length === 0) {
+		if (unsupportedTriggers.length > 0) {
+			const names = unsupportedTriggers.map((trigger) => trigger.name).join(', ');
+			return `This workflow's trigger(s) are not supported for direct execution through MCP: ${names}. Only Schedule, Webhook, Form, and Chat triggers can be executed directly through MCP, so this workflow cannot be executed through MCP. Its trigger(s) still run normally when the workflow is active.`;
+		}
 		return 'This workflow has no production triggers (Schedule, Webhook, Form, or Chat). It can only be executed in manual mode.';
 	}
 

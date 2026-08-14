@@ -97,7 +97,7 @@ describe('ProjectExporter', () => {
 		const { exporter, projectService } = makeExporter({ projects: [project] });
 		const writer = new CapturingWriter();
 
-		await exporter.export({ user, projectIds: [project.id], writer });
+		await exporter.export({ user, projectIds: [project.id], writer, includeTags: true });
 
 		expect(projectService.findProjectsByIdsForUser).toHaveBeenCalledWith(
 			user,
@@ -111,9 +111,9 @@ describe('ProjectExporter', () => {
 		const { exporter } = makeExporter({ projects: [] });
 		const writer = new CapturingWriter();
 
-		await expect(exporter.export({ user, projectIds: [project.id], writer })).rejects.toThrow(
-			'1 project(s) not found or not accessible. Export aborted.',
-		);
+		await expect(
+			exporter.export({ user, projectIds: [project.id], writer, includeTags: true }),
+		).rejects.toThrow('1 project(s) not found or not accessible. Export aborted.');
 	});
 
 	it('throws PackageEntityNotFoundError when the missing project does not exist at all', async () => {
@@ -121,9 +121,9 @@ describe('ProjectExporter', () => {
 		projectService.findExistingProjectIds.mockResolvedValue(new Set());
 		const writer = new CapturingWriter();
 
-		await expect(exporter.export({ user, projectIds: ['missing'], writer })).rejects.toBeInstanceOf(
-			PackageEntityNotFoundError,
-		);
+		await expect(
+			exporter.export({ user, projectIds: ['missing'], writer, includeTags: true }),
+		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
 
 	it('throws PackageEntityAccessDeniedError when the missing project exists but is inaccessible', async () => {
@@ -132,7 +132,7 @@ describe('ProjectExporter', () => {
 		const writer = new CapturingWriter();
 
 		await expect(
-			exporter.export({ user, projectIds: ['denied-1'], writer }),
+			exporter.export({ user, projectIds: ['denied-1'], writer, includeTags: true }),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
@@ -141,7 +141,12 @@ describe('ProjectExporter', () => {
 		const { exporter } = makeExporter({ projects: [project] });
 		const writer = new CapturingWriter();
 
-		const { entries } = await exporter.export({ user, projectIds: [project.id], writer });
+		const { entries } = await exporter.export({
+			user,
+			projectIds: [project.id],
+			writer,
+			includeTags: true,
+		});
 
 		expect(entries).toEqual([
 			{
@@ -179,6 +184,7 @@ describe('ProjectExporter', () => {
 			user,
 			projectIds: [newerProject.id, olderProject.id],
 			writer,
+			includeTags: true,
 		});
 
 		expect(entries).toEqual([
@@ -200,7 +206,12 @@ describe('ProjectExporter', () => {
 		const { exporter } = makeExporter({ projects: [project] });
 		const writer = new CapturingWriter();
 
-		const { entries } = await exporter.export({ user, projectIds: [project.id], writer });
+		const { entries } = await exporter.export({
+			user,
+			projectIds: [project.id],
+			writer,
+			includeTags: true,
+		});
 
 		expect(entries).toEqual([
 			{

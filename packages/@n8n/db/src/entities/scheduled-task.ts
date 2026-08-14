@@ -41,6 +41,7 @@ export {
 @Index(['runAt'], { where: '"status" = \'pending\'' })
 @Index(['leaseExpiresAt'], { where: '"status" = \'running\'' })
 @Index(['finishedAt'], { where: '"finishedAt" IS NOT NULL' })
+@Index(['missedAfter'], { where: '"status" = \'pending\' AND "missedAfter" IS NOT NULL' })
 export class ScheduledTask extends WithCreatedAt {
 	/**
 	 * 64-bit identity.
@@ -99,7 +100,8 @@ export class ScheduledTask extends WithCreatedAt {
 
 	/**
 	 * Earliest time a worker may pick this run up.
-	 * Starts equal to {@link scheduledFor}.
+	 * Starts equal to {@link scheduledFor}, except for a catch-up run, which becomes
+	 * visible when it was materialized rather than when it was originally due.
 	 * If a try fails it is pushed later so the retry waits a bit before running again.
 	 */
 	@DateTimeColumn()
@@ -191,4 +193,13 @@ export class ScheduledTask extends WithCreatedAt {
 	 */
 	@Column({ type: 'text', nullable: true })
 	errorMessage: string | null;
+
+	/**
+	 * Deadline past which this occurrence counts as missed: {@link runAt} plus the
+	 * job's misfire grace, resolved at materialization so the claim compares one
+	 * column against the clock instead of joining to the job. `null` means no
+	 * deadline.
+	 */
+	@DateTimeColumn({ nullable: true })
+	missedAfter: Date | null;
 }

@@ -1,3 +1,4 @@
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { testDb } from '@n8n/backend-test-utils';
 import type {
 	NewScheduledJob,
@@ -85,6 +86,8 @@ describe('scheduled repositories', () => {
 	/** A minimal interval job row; bookkeeping columns take their defaults. */
 	const newJobRow = (name: string, overrides: Partial<NewScheduledJob> = {}): NewScheduledJob => ({
 		name,
+		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+		misfireGraceSeconds: 60,
 		workflowId: null,
 		nodeId: null,
 		taskType: 'scheduleTrigger',
@@ -548,6 +551,67 @@ describe('scheduled repositories', () => {
 				const stored = await jobRepository.findOneByOrFail({ name: `wf:node:${i}` });
 				expect(ids[i]).toBe(stored.id);
 			}
+		});
+	});
+
+	describe('ScheduledJobRepository.updateMisfirePolicy', () => {
+		it('rewrites the policy and grace of the given jobs only', async () => {
+			const updated = await createJob({
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 60,
+			});
+			const untouched = await createJob({
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 60,
+			});
+
+			await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.updateMisfirePolicy(trx, [updated.id], {
+						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+						misfireGraceSeconds: 120,
+					}),
+			);
+
+			const after = await jobRepository.findOneByOrFail({ id: updated.id });
+			expect(after.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Skip);
+			expect(after.misfireGraceSeconds).toBe(120);
+			expect(after.intervalSeconds).toBe(updated.intervalSeconds);
+			expect(after.nextRunAt).toEqual(updated.nextRunAt);
+
+			const other = await jobRepository.findOneByOrFail({ id: untouched.id });
+			expect(other.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Coalesce);
+			expect(other.misfireGraceSeconds).toBe(60);
+		});
+
+		it('leaves the queued occurrences of an updated job in place', async () => {
+			const job = await createJob();
+			await createTask(job.id);
+
+			await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.updateMisfirePolicy(trx, [job.id], {
+						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+						misfireGraceSeconds: 60,
+					}),
+			);
+
+			expect(await taskRepository.countBy({ jobId: job.id })).toBe(1);
+		});
+
+		it('does nothing when given no jobs', async () => {
+			const job = await createJob();
+
+			await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.updateMisfirePolicy(trx, [], {
+						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+						misfireGraceSeconds: 120,
+					}),
+			);
+
+			const after = await jobRepository.findOneByOrFail({ id: job.id });
+			expect(after.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Coalesce);
 		});
 	});
 

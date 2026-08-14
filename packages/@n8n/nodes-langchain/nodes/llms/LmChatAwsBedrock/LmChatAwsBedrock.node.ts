@@ -6,7 +6,9 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import type { DocumentType } from '@smithy/types';
-import { assertSupportedAwsRegion } from 'n8n-nodes-base/aws-credentials';
+import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
+import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
+import { resolveBedrockRegion } from '@utils/aws/resolveBedrockRegion';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 import {
 	jsonParse,
@@ -17,9 +19,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
-import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 import { listModels } from './methods/listModels';
 
@@ -388,17 +387,7 @@ export class LmChatAwsBedrock implements INodeType {
 			};
 		};
 
-		// If the model is specified as a full ARN, extract the region from it
-		// ARN format: arn:<partition>:bedrock:<region>:<account-id>:inference-profile/<profile-id>
-		// Partition covers commercial (aws), China (aws-cn) and GovCloud (aws-us-gov).
-		let region = credentialRegion;
-		const arnMatch = modelName.match(/^arn:(?:aws|aws-cn|aws-us-gov):bedrock:([a-z0-9-]+):/);
-		if (arnMatch) {
-			const arnRegion = arnMatch[1];
-			// Validate before the region is interpolated into the bedrock-runtime endpoint URL below.
-			assertSupportedAwsRegion(arnRegion);
-			region = arnRegion;
-		}
+		const region = resolveBedrockRegion(modelName, credentialRegion);
 
 		const client = createBedrockRuntimeClient({
 			region,

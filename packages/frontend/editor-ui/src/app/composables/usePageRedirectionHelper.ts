@@ -1,14 +1,16 @@
-import { confirmIfBuilderStreaming } from '@/features/ai/assistant/composables/useBuilderStreamingGuard';
-import { useBasePageRedirectionHelper } from './useBasePageRedirectionHelper';
+import { useBasePageRedirectionHelper } from '@n8n/stores/composables/useBasePageRedirectionHelper';
 
-export type { UpgradeRedirectGuard } from './useBasePageRedirectionHelper';
+import { confirmIfBuilderStreaming } from '@/features/ai/assistant/composables/useBuilderStreamingGuard';
+
+export type { UpgradeRedirectGuard } from '@n8n/stores/composables/useBasePageRedirectionHelper';
 
 /**
  * App-facing `usePageRedirectionHelper`, pre-bound with the AI builder streaming
  * guard so every upgrade CTA confirms before discarding an in-flight build.
  *
- * The guard lives in the feature layer; binding it here keeps the underlying
- * composable free of that dependency (it moves to `@n8n/composables` in N8N-71).
+ * This wrapper is permanent, not a migration shim: the guard lives in the feature
+ * layer, and `@n8n/stores` — where the base composable now lives — must not reach
+ * into `features/ai/assistant`. Binding it here is what keeps that boundary clean.
  */
 export function usePageRedirectionHelper() {
 	return useBasePageRedirectionHelper({ guard: confirmIfBuilderStreaming });

@@ -32,6 +32,7 @@ import type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	UnavailableLocatorValue,
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
@@ -41,7 +42,8 @@ import type {
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
-	InstanceAiBuilderDelegate,
+	InstanceAiMcpService,
+	McpRegistryServerSummary,
 	ModelConfig,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
@@ -51,30 +53,32 @@ import {
 	wrapUntrustedData,
 	deriveCredentialHosts,
 	WorkflowSaveConflictError,
+	WorkflowNotFoundError,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES, Time } from '@n8n/constants';
+import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiMcpRegistryService } from './mcp';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 import {
 	buildInstanceAiRunPinDataPlan,
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
-import {
-	resolveBuiltinNodeDefinitionDirs,
-	listNodeDiscriminators,
-} from './node-definition-resolver';
+import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import {
 	AiBuilderTemporaryWorkflowRepository,
@@ -123,8 +127,10 @@ import {
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EventService } from '@/events/event.service';
@@ -139,8 +145,11 @@ import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -291,12 +300,19 @@ export class InstanceAiAdapterService {
 			projectId?: string;
 			/** Eval-only: restrict the credential `list()` view to these IDs. */
 			credentialIdAllowlist?: string[];
+			/** Eval-only: resolve a credential's connection test as successful without
+			 *  contacting the provider. A predicate rather than a list because the
+			 *  harness registers bypasses mid-run, after this context is built. */
+			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
 			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
+			/** Per-user MCP registry gate (via `isMcpConnectionsEnabled`). Falsy →
+			 *  mcp service/tool not wired. */
+			mcpConnectionsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -308,8 +324,10 @@ export class InstanceAiAdapterService {
 			threadId,
 			projectId,
 			credentialIdAllowlist,
+			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
+			mcpConnectionsEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -325,7 +343,12 @@ export class InstanceAiAdapterService {
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
+			credentialService: this.createCredentialAdapter(
+				user,
+				projectId,
+				credentialIdAllowlist,
+				shouldBypassCredentialTest,
+			),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			...(configEvalsEnabled && this.evaluationConfigService
@@ -336,6 +359,7 @@ export class InstanceAiAdapterService {
 						),
 					}
 				: {}),
+			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -352,37 +376,13 @@ export class InstanceAiAdapterService {
 				: {}),
 			...(builderDelegateAdapter && projectId
 				? {
-						builderDelegate: this.withBuilderCreateTelemetry(
-							builderDelegateAdapter.createDelegate(
-								user,
-								projectId,
-								new AgentsCredentialProvider(this.credentialsService, projectId, user),
-							),
-							threadId,
+						builderDelegate: builderDelegateAdapter.createDelegate(
+							user,
+							projectId,
+							new AgentsCredentialProvider(this.credentialsService, projectId, user),
 						),
 					}
 				: {}),
-		};
-	}
-
-	/** Mirror of the workflow-adapter telemetry: track agent creation via the
-	 *  builder sub-agent at the delegate boundary, only in a thread context. */
-	private withBuilderCreateTelemetry(
-		delegate: InstanceAiBuilderDelegate,
-		threadId: string | undefined,
-	): InstanceAiBuilderDelegate {
-		if (!threadId) return delegate;
-		return {
-			...delegate,
-			createAgent: async (name) => {
-				const created = await delegate.createAgent(name);
-				this.telemetry.track('Builder created agent', {
-					thread_id: threadId,
-					agent_id: created.agentId,
-					project_id: created.projectId,
-				});
-				return created;
-			},
 		};
 	}
 
@@ -408,19 +408,14 @@ export class InstanceAiAdapterService {
 
 	/**
 	 * Fail-open read of the AI Gateway config. Returns null when the instance is
-	 * unlicensed for the gateway or the fetch fails for any reason. Every consumer
+	 * disabled or the fetch fails for any reason. Every consumer
 	 * (node annotations, credential list, verifier) treats a null as "gateway not
 	 * available", a valid degraded state. Backed by `AiGatewayService`'s own
 	 * process-wide cache (1h TTL), so repeated calls are cheap.
 	 */
 	private async getGatewayConfigOrNull(): Promise<AiGatewayConfigDto | null> {
-		// Gate on the AI Gateway license before touching the config. The FE path
-		// is gated by `@Licensed('feat:aiGateway')` on the controller; this adapter
-		// calls the service directly, so it must enforce the same license itself —
-		// otherwise unlicensed instances would surface n8n Connect (node metadata,
-		// managed credentials) and count it as available in telemetry.
-		if (!this.license.isLicensed(LICENSE_FEATURES.AI_GATEWAY)) return null;
 		try {
+			this.aiGatewayService.assertEnabled();
 			return await this.aiGatewayService.getGatewayConfig();
 		} catch {
 			return null;
@@ -433,6 +428,59 @@ export class InstanceAiAdapterService {
 	async isConfigEvalsEnabled(user: User): Promise<boolean> {
 		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
 		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
+	}
+
+	/** Gate for MCP registry discovery tool. All three must hold:
+	 * 1. the `mcp-registry` module is active
+	 * 2. the admin allows MCP access instance-wide
+	 * 3. the user is part of the MCP connections experiment */
+	async isMcpConnectionsEnabled(user: User): Promise<boolean> {
+		if (!Container.get(ModuleRegistry).isActive('mcp-registry')) return false;
+		if (!this.settingsService.isMcpAccessEnabled()) return false;
+		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		return (
+			flags?.[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT
+		);
+	}
+
+	private createMcpAdapter(user: User): InstanceAiMcpService {
+		const toSummaries = (servers: McpRegistrySearchResult[]): McpRegistryServerSummary[] =>
+			servers.map((server) => ({
+				slug: server.slug,
+				title: server.title,
+				description: server.description,
+				credentialType: server.credentialType,
+				tools: server.tools.map((tool) => tool.name),
+			}));
+
+		return {
+			/** Connected servers are filtered out: `connected` answers what the user has,
+			 *  so search only has to answer what they could add. */
+			search: async (queries: string[]): Promise<McpRegistryServerSummary[]> => {
+				const [servers, connections] = await Promise.all([
+					Container.get(McpRegistryService).search(queries),
+					this.listMcpRegistryConnections(user),
+				]);
+				const connected = new Set(connections.map((connection) => connection.slug));
+				return toSummaries(servers.filter((server) => !connected.has(server.slug)));
+			},
+			getServers: async (slugs: string[]): Promise<McpRegistryServerSummary[]> =>
+				toSummaries(await Container.get(McpRegistryService).resolveBySlugs(slugs)),
+			listConnections: async (): Promise<Array<{ slug: string }>> =>
+				await this.listMcpRegistryConnections(user),
+		};
+	}
+
+	/** Reads the connection rows rather than resolving them into loadable servers:
+	 *  resolving decrypts credentials per connection, and a row that fails to resolve
+	 *  is still connected (one connection per user+slug). */
+	private async listMcpRegistryConnections(user: User): Promise<Array<{ slug: string }>> {
+		const connections = await Container.get(InstanceAiMcpRegistryService).listConnectionsForUser(
+			user,
+		);
+		return [...new Set(connections.map((connection) => connection.serverSlug))].map((slug) => ({
+			slug,
+		}));
 	}
 
 	private buildAiGatewayNodeMeta(
@@ -600,7 +648,7 @@ export class InstanceAiAdapterService {
 				]);
 
 				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 
 				return await toWorkflowDetailWithChecksum(workflow, { redactParameters });
@@ -610,7 +658,7 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
 				if (!result) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 			},
 
@@ -618,7 +666,7 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				const result = await workflowService.unarchive(user, workflowId);
 				if (!result) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 			},
 
@@ -668,6 +716,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 						executed_by: 'ai',
@@ -687,7 +736,7 @@ export class InstanceAiAdapterService {
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
-				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				if (!wf) throw new WorkflowNotFoundError(workflowId);
 				if (!versionId) return toWorkflowJSON(wf, { redactParameters });
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 				return toWorkflowJSON(wf, { redactParameters, graph: version });
@@ -697,7 +746,7 @@ export class InstanceAiAdapterService {
 				const head = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
 					'workflow:read',
 				]);
-				if (!head) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				if (!head) throw new WorkflowNotFoundError(workflowId);
 				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
 			},
 
@@ -705,7 +754,7 @@ export class InstanceAiAdapterService {
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
-				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				if (!wf) throw new WorkflowNotFoundError(workflowId);
 				return {
 					json: toWorkflowJSON(wf, { redactParameters }),
 					versionId: wf.versionId,
@@ -745,9 +794,15 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				const projectId = await resolveBoundProjectId(['workflow:create']);
 
+				// Without an explicit order the engine falls back to legacy v0, which walks
+				// the graph breadth-first. Generated code still wins if it sets its own.
+				const settings = {
+					executionOrder: 'v1',
+					...(json.settings ?? {}),
+				} as IWorkflowSettings;
+
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
-				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
 					const canUpdateRedaction = await userHasScopes(
 						user,
@@ -841,6 +896,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: updated.id,
 					});
@@ -912,6 +968,9 @@ export class InstanceAiAdapterService {
 					if (error instanceof ConflictError) {
 						throw new WorkflowSaveConflictError(workflowId);
 					}
+					if (error instanceof NotFoundError) {
+						throw new WorkflowNotFoundError(workflowId);
+					}
 					logger.warn('AI-builder workflow save failed', {
 						threadId,
 						workflowId,
@@ -922,6 +981,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 					});
@@ -1124,7 +1184,7 @@ export class InstanceAiAdapterService {
 				]);
 
 				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 
 				const nodes = workflow.nodes ?? [];
@@ -1138,6 +1198,12 @@ export class InstanceAiAdapterService {
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
+				// Sever the listed edges on this run's ephemeral copy only — used by
+				// scripted wait-gate verification to keep each pass acyclic.
+				const connections = options?.omitConnections?.length
+					? omitWorkflowConnections(workflow.connections, options.omitConnections)
+					: workflow.connections;
+
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
 				// instance-wide or per-workflow save settings. Manual mode is gated by
@@ -1149,6 +1215,7 @@ export class InstanceAiAdapterService {
 						: ('manual' as WorkflowExecuteMode),
 					workflowData: {
 						...workflow,
+						connections,
 						settings: {
 							...workflow.settings,
 							saveManualExecutions: true,
@@ -1161,6 +1228,12 @@ export class InstanceAiAdapterService {
 					},
 					userId: user.id,
 					pushRef,
+					// A verification run picks a production execution mode above so the
+					// trigger behaves realistically. Without this opt-out, a failed build
+					// attempt would dispatch the user's error workflow as if production
+					// had broken — the one side effect node simulation cannot pin, since
+					// it is dispatched by the execution lifecycle, not by a node.
+					...(options?.isVerificationRun ? { suppressErrorWorkflow: true } : {}),
 				};
 
 				const pinDataPlan = buildInstanceAiRunPinDataPlan({
@@ -1193,12 +1266,16 @@ export class InstanceAiAdapterService {
 
 				// In queue mode the worker rebuilds the run from persisted `execution.data`,
 				// where top-level `runData.source` doesn't survive. Persist it in
-				// `manualData` so worker-side statistics can classify IAI runs.
+				// `manualData` so worker-side statistics can classify IAI runs, and so
+				// the worker's save hook honours `suppressErrorWorkflow`. A run without
+				// `executionData` has no trigger node, which means `executionMode` is
+				// 'manual' and the error workflow is already skipped.
 				if (runData.executionData) {
 					runData.executionData.manualData = {
 						...runData.executionData.manualData,
 						userId: user.id,
 						source: runData.source,
+						suppressErrorWorkflow: runData.suppressErrorWorkflow,
 					};
 				}
 
@@ -1235,6 +1312,7 @@ export class InstanceAiAdapterService {
 					if (!threadId) return;
 
 					telemetry.track('Builder executed workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 						executed_by: 'ai',
@@ -1444,6 +1522,7 @@ export class InstanceAiAdapterService {
 		user: User,
 		boundProjectId?: string,
 		credentialIdAllowlist?: string[],
+		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
@@ -1527,6 +1606,17 @@ export class InstanceAiAdapterService {
 					throw new Error(`Credential ${credentialId} not found or not accessible`);
 				}
 
+				// Eval-only, and deliberately AFTER the access check above so a bypass can
+				// never turn "not accessible" into a synthetic success: an eval seeds
+				// placeholder tokens, so a real test would always fail and the setup card
+				// refuses to apply a credential that fails one. The message stays
+				// indistinguishable from a genuine pass on purpose — a hint that it was
+				// bypassed would make the agent hedge, which is the very behaviour such a
+				// case exists to rule out. The harness records the bypass on its own side.
+				if (shouldBypassCredentialTest?.(credentialId) === true) {
+					return { success: true, message: 'Connection tested successfully' };
+				}
+
 				const credentialsToTest: ICredentialsDecrypted = {
 					id: credential.id,
 					name: credential.name,
@@ -1539,6 +1629,48 @@ export class InstanceAiAdapterService {
 					success: result.status === 'OK',
 					message: result.message,
 				};
+			},
+
+			// Same-service filtering for the shared Templated Custom Auth type:
+			// decryption stays on this side of the boundary and only the recipe's
+			// non-secret `serviceHost` crosses it — never credential data.
+			async getTemplatedCredentialHosts(credentialIds: string[]) {
+				// The stored value is a bare host stamped from the recipe, but the
+				// field is user-editable — tolerate a pasted URL by extracting its
+				// hostname; anything unparseable stays untagged (never offered).
+				const normalizeHost = (value: string): string | null => {
+					const trimmed = value.trim().toLowerCase();
+					if (!/^https?:\/\//.test(trimmed)) return trimmed || null;
+					try {
+						return new URL(trimmed).hostname || null;
+					} catch {
+						return null;
+					}
+				};
+				const hosts: Record<string, string | null> = {};
+				await Promise.all(
+					credentialIds.map(async (credentialId) => {
+						hosts[credentialId] = null;
+						try {
+							const credential = await credentialsFinderService.findCredentialForUser(
+								credentialId,
+								user,
+								['credential:read'],
+							);
+							if (!credential || credential.type !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+								return;
+							}
+							const data = await credentialsService.decrypt(credential, true);
+							const serviceHost = data.serviceHost;
+							if (typeof serviceHost === 'string') {
+								hosts[credentialId] = normalizeHost(serviceHost);
+							}
+						} catch {
+							// Unreadable credential — leave it untagged (never offered).
+						}
+					}),
+				);
+				return hosts;
 			},
 
 			async isTestable(credentialType: string) {
@@ -1744,15 +1876,12 @@ export class InstanceAiAdapterService {
 					// Fallback for legacy credentials: oauthTokenData is blanked by
 					// redaction, so we need unredacted access here only.
 					const raw = await credentialsService.decrypt(credential, true);
-					const tokenData = raw.oauthTokenData;
-					if (tokenData && typeof tokenData === 'object') {
-						const { OauthService } = await import('@/oauth/oauth.service.js');
-						const identifier = OauthService.extractAccountIdentifier(
-							tokenData as Record<string, unknown>,
-						);
-						if (identifier) {
-							return { accountIdentifier: mask(identifier) };
-						}
+					const { extractAccountIdentifierFromData } = await import(
+						'@/oauth/account-identifier.js'
+					);
+					const identifier = extractAccountIdentifierFromData(raw);
+					if (identifier) {
+						return { accountIdentifier: mask(identifier) };
 					}
 
 					return { accountIdentifier: undefined };
@@ -1771,6 +1900,18 @@ export class InstanceAiAdapterService {
 			async listAiGatewayCredentialTypes(): Promise<string[]> {
 				const config = await getGatewayConfig();
 				return config?.credentialTypes ?? [];
+			},
+
+			async isManagedOAuthCredentialType(credType: string): Promise<boolean> {
+				// Lets resolve-credentials prefer one-click managed OAuth over API-key
+				// auth types when materializing built workflows. Best-effort: never throws.
+				try {
+					return await Promise.resolve(
+						Container.get(CredentialsOverwrites).isManagedOAuthType(credType),
+					);
+				} catch {
+					return false;
+				}
 			},
 		};
 
@@ -1800,7 +1941,7 @@ export class InstanceAiAdapterService {
 		): Promise<WorkflowEntity> => {
 			const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [scope]);
 			if (!workflow) {
-				throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				throw new WorkflowNotFoundError(workflowId);
 			}
 			return workflow;
 		};
@@ -2409,7 +2550,7 @@ export class InstanceAiAdapterService {
 					if (n.builderHint) {
 						result.builderHint = {};
 						if (n.builderHint.searchHint) {
-							result.builderHint.message = n.builderHint.searchHint;
+							result.builderHint.searchHint = n.builderHint.searchHint;
 						}
 						if (n.builderHint.inputs) {
 							const inputs: Record<
@@ -2707,6 +2848,9 @@ export class InstanceAiAdapterService {
 
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
 				await this.nodeResourceExplorerService.exploreResources(user, params),
+
+			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
+				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),
 		};
 	}
 
@@ -2790,7 +2934,7 @@ export class InstanceAiAdapterService {
 								'workflow:update',
 							]);
 							if (!workflow) {
-								throw new Error(`Workflow ${workflowId} not found or not accessible`);
+								throw new WorkflowNotFoundError(workflowId);
 							}
 							await workflowService.update(user, workflow, workflowId, {
 								parentFolderId: folderId,
@@ -2806,7 +2950,7 @@ export class InstanceAiAdapterService {
 					'workflow:update',
 				]);
 				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 
 				// Resolve tag names to IDs, creating missing tags
@@ -2862,7 +3006,7 @@ export class InstanceAiAdapterService {
 					'workflow:execute',
 				]);
 				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 
 				const olderThanHours = options?.olderThanHours ?? 1;
@@ -3459,6 +3603,25 @@ function findTriggerNode(nodes: INode[]): INode | undefined {
 	if (known) return known;
 
 	return nodes.find((n) => isTriggerNodeType(n.type));
+}
+
+/** Copy of `connections` minus every listed source→target edge (any type). */
+function omitWorkflowConnections(
+	connections: IConnections,
+	omit: Array<{ source: string; target: string }>,
+): IConnections {
+	const omitted = new Set(omit.map((edge) => `${edge.source}→${edge.target}`));
+	const result: IConnections = {};
+	for (const [source, byType] of Object.entries(connections)) {
+		const nextByType: IConnections[string] = {};
+		for (const [type, groups] of Object.entries(byType)) {
+			nextByType[type] = (groups ?? []).map((group) =>
+				group ? group.filter((connection) => !omitted.has(`${source}→${connection.node}`)) : group,
+			);
+		}
+		result[source] = nextByType;
+	}
+	return result;
 }
 
 /** Get the execution mode based on the trigger node type. */

@@ -47,6 +47,31 @@ export interface AgentSseMessage {
 	content: AgentPersistedMessageContentPart[];
 }
 
+/**
+ * Child stream chunks forwarded live while a `delegate_subagent` tool runs.
+ * Structural mirror of `@n8n/agents` `ForwardedChildChunk` (api-types cannot
+ * import from that package).
+ */
+export type ForwardedChildChunkWire =
+	| { type: 'text-delta'; id: string; delta: string }
+	| { type: 'reasoning-start'; id: string }
+	| { type: 'reasoning-delta'; id: string; delta: string }
+	| { type: 'reasoning-end'; id: string }
+	| { type: 'tool-input-start'; toolCallId: string; toolName: string }
+	| {
+			type: 'tool-execution-start';
+			toolCallId: string;
+			toolName: string;
+			startTime: number;
+	  }
+	| {
+			type: 'tool-execution-end';
+			toolCallId: string;
+			toolName: string;
+			isError: boolean;
+			endTime: number;
+	  };
+
 export type AgentSseEvent =
 	| { type: 'start-step' }
 	| { type: 'finish-step' }
@@ -94,6 +119,17 @@ export type AgentSseEvent =
 			canceled?: boolean;
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
+	| {
+			/**
+			 * Live progress from a delegated child agent. Correlated to the parent
+			 * `delegate_subagent` tool call via `parentToolCallId`. Ephemeral —
+			 * not persisted or replayed from history.
+			 */
+			type: 'subagent-chunk';
+			parentToolCallId: string;
+			taskPath: string;
+			chunk: ForwardedChildChunkWire;
+	  }
 	| { type: 'message'; message: AgentSseMessage }
 	| {
 			/** A warning message from the MCP server when it fails to connect or initialize. */
