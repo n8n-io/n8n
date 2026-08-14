@@ -9,6 +9,7 @@ import type {
 	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewActivityEntry,
 	WorkflowReviewEligibleReviewersList,
+	WorkflowReviewInboxCategory,
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
@@ -18,6 +19,8 @@ import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
 export type FetchWorkflowReviewInboxParams = {
 	state?: WorkflowReviewRequestState;
+	/** Partitions the open tab by authorship */
+	category?: WorkflowReviewInboxCategory;
 	limit?: number;
 	cursor?: string;
 };
