@@ -156,6 +156,17 @@ describe('BrowserUseSetupModal', () => {
 		expect(getByTestId('browser-use-open-connect-page')).not.toBeDisabled();
 	});
 
+	it('probes once when both return triggers fire together', async () => {
+		await renderWithExtensionState('not-installed');
+		detectExtensionMock.mockClear();
+
+		document.dispatchEvent(new Event('visibilitychange'));
+		window.dispatchEvent(new Event('focus'));
+		await flushPromises();
+
+		expect(detectExtensionMock).toHaveBeenCalledTimes(1);
+	});
+
 	it('does not render the connect steps when already connected', () => {
 		settingsStoreMock.mockReturnValue(makeSettingsStore({ browserConnected: true }));
 		const { queryByTestId } = renderComponent();
