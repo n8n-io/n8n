@@ -1,0 +1,375 @@
+packages/cli/src/scaling/hypervisor-leader-election.ts
+  s_3e2de9c50fdafd::t_7bbb2e66c59b59 2-3,12,14
+  s_3e2de9c50fdafd::t_1b83a16673bdf6 1,4-8,11,13,15-34,39-43,46-49,51-59,67-71,74-111
+  s_3e2de9c50fdafd::t_ff25dd5ebab468 35-38,44-45,50,60-66,73
+  s_3e2de9c50fdafd::t_f66228e11da987 72
+  s_3e2de9c50fdafd::t_6c1f6b9ae336d5 9-10
+  s_3e2de9c50fdafd::t_e62871c457befc 112-182
+packages/@n8n/api-types/src/instance-registry-types.ts
+  s_3e2de9c50fdafd::t_0e7de1a08c3dea 16
+  s_3e2de9c50fdafd::t_72c11257a1c540 72-73
+packages/cli/src/scaling/__tests__/transport-mode.service.test.ts
+  s_3e2de9c50fdafd::t_74ba82d5b70ad7 1-15,17-28,38-71,100-101
+  s_3e2de9c50fdafd::t_f1505c5d9f718c 16
+  s_3e2de9c50fdafd::t_a9624758336cea 29-37
+  s_ee871748970946::t_f2b69109b26cd7 86-99
+packages/cli/src/scaling/__tests__/hypervisor-leader-election.test.ts
+  s_3e2de9c50fdafd::t_7e291fa582df17 2,11-12
+  s_3e2de9c50fdafd::t_d16bfe061af96f 45-47,57
+  s_3e2de9c50fdafd::t_ca6281ee226882 1,3-5,6,8,13-44,48-56,58-59,62-116,152-160,162-172
+  s_3e2de9c50fdafd::t_407796a0a210c5 161
+  s_3e2de9c50fdafd::t_b5d7ba72826717 117-151
+  s_3e2de9c50fdafd::t_ff9b0509943c9d 173-257
+  s_3e2de9c50fdafd::t_e21da98e4bd00e 9-10
+  s_ee871748970946::t_cc28c70f2a2451 7
+  s_ee871748970946::t_0be6e993689ea7 60-61
+packages/@n8n/config/src/index.ts
+  s_3e2de9c50fdafd::t_0135dcd49d67b7 51
+  s_3e2de9c50fdafd::t_335f72c029ff2a 175-176
+  s_3e2de9c50fdafd::t_bdfd1726bc0e64 174
+packages/cli/src/modules/instance-registry/instance-registry.controller.ts
+  s_3e2de9c50fdafd::t_a18256ff2356f4 2-3
+  s_3e2de9c50fdafd::t_2efb5c9fbab81b 66
+  s_3e2de9c50fdafd::t_9acc263526c79e 16
+packages/@n8n/config/src/configs/transport.config.ts
+  s_3e2de9c50fdafd::t_55c5671a5d8bcd 1-7,13-23,31-36,45
+  s_3e2de9c50fdafd::t_62d8472cc817d1 37-42
+  s_3e2de9c50fdafd::t_f370333cd8b1c7 12
+  s_3e2de9c50fdafd::t_60f7458138925d 8-11
+  s_3e2de9c50fdafd::t_86a710e58e0d27 24-30
+  s_3e2de9c50fdafd::t_94edae39c42b35 43-44
+packages/cli/src/commands/hypervisor.ts
+  s_3e2de9c50fdafd::t_1b7d111f6b6d74 3,8
+  s_3e2de9c50fdafd::t_d54c13dab35273 113
+  s_3e2de9c50fdafd::t_699e3a9066e40d 118-119,143
+  s_3e2de9c50fdafd::t_8c11e1aa9798e9 67-68,86
+  s_3e2de9c50fdafd::t_5e469cdba44dc3 154
+  s_3e2de9c50fdafd::t_cd7d03800fe854 6-7,20-26,103
+  s_3e2de9c50fdafd::t_3a365132d782ed 218-220
+  s_3e2de9c50fdafd::t_78160fae2633f8 27-28,42-43,48,69,94,101-102
+  s_3e2de9c50fdafd::t_09d595075f1f88 112,221
+  s_3e2de9c50fdafd::t_edc3bb954731b9 1,5,114,190-191,193,196-197,200-201,205-207
+  s_3e2de9c50fdafd::t_4634f2822e929f 2,4,16-19,104-111,115-117,140-142,176,192,194,198,202-204,208-209,214-217,222-224
+  s_3e2de9c50fdafd::t_eea6cca06592ba 195
+  s_3e2de9c50fdafd::t_2896d582a88c6b 199
+  s_3e2de9c50fdafd::t_a5f95c8582a48f 225-227
+  s_3e2de9c50fdafd::t_3d1fe362f67c0a 9-11
+  s_3e2de9c50fdafd::t_dd8a3dcd323c5b 120,123-125,155,184-188
+  s_3e2de9c50fdafd::t_d0aba1a16da9aa 127
+  s_3e2de9c50fdafd::t_bceec8dbb1c6fc 15
+  s_ee871748970946::t_3c5083fd333a80 13
+  s_ee871748970946::t_aee68aff971037 128
+  s_3e2de9c50fdafd::t_3edcafe85b777f 160-166,177-179
+  s_3e2de9c50fdafd::t_b8705756c20817 121-122,132-139,144-150,152-153,156-159,167-174,180-182
+  s_3e2de9c50fdafd::t_07482f17efac8c 29-60,62-70,72-82,84-103
+  s_3e2de9c50fdafd::t_e13c1fb20bef19 104
+  s_3e2de9c50fdafd::t_2bd73c08c0a454 183
+  s_3e2de9c50fdafd::t_a5399875117cd9 151
+  s_3e2de9c50fdafd::t_d15bbf42eaa734 61,71,83
+  s_3e2de9c50fdafd::t_0dbc0686ba52ec 129-130
+  s_3e2de9c50fdafd::t_d78bd05c14c85f 210-213
+  s_3e2de9c50fdafd::t_3944b49358d6fb 12
+packages/cli/src/commands/start.ts
+  s_3e2de9c50fdafd::t_ebce40ea617176 350-352,355
+  s_3e2de9c50fdafd::t_577327acfb322f 218-223
+  s_3e2de9c50fdafd::t_f0fc2353628d1e 353-354,356-357
+  s_3e2de9c50fdafd::t_472282b531e996 224-225
+  s_3e2de9c50fdafd::t_b21a20dc162ca5 358-360
+  s_3e2de9c50fdafd::t_6b412dc99468c1 13,40,48
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.controller.test.ts
+  s_3e2de9c50fdafd::t_6d460fb7b4e546 116-118,122
+packages/@n8n/config/src/configs/__tests__/transport.config.test.ts
+  s_3e2de9c50fdafd::t_ceac9e4cc1ddc3 1-15,17-19,21-22,24-33,35-38,41-43,55-57
+  s_3e2de9c50fdafd::t_508bf5b2b264f1 23
+  s_3e2de9c50fdafd::t_0d818f48ac1d6c 46,49-52,54-55
+  s_3e2de9c50fdafd::t_f5c039c94104bc 16,20,34,39-40
+  s_3e2de9c50fdafd::t_5e7dd24e123b7c 44,47-48,53
+packages/cli/src/modules/instance-registry/instance-registry.service.ts
+  s_3e2de9c50fdafd::t_0ed3a2407180cc 106
+  s_3e2de9c50fdafd::t_1b8a467bd715e7 111,113-118
+  s_3e2de9c50fdafd::t_d0ed17a2d5afd5 31
+  s_3e2de9c50fdafd::t_c345f32c08a40d 92
+  s_3e2de9c50fdafd::t_ecebcebed33432 8
+packages/cli/src/commands/__tests__/hypervisor.test.ts
+  s_3e2de9c50fdafd::t_adce52a012b3e9 1-3
+  s_3e2de9c50fdafd::t_f4f9684e858feb 4-7,10-11,15-16,18-20,23-31,34,36-38,41-42,70,95-97,99-113,115-128,130-134
+  s_3e2de9c50fdafd::t_09d595075f1f88 13-14
+  s_3e2de9c50fdafd::t_2ce130910ce350 39,47
+  s_3e2de9c50fdafd::t_47d09748a9c14b 157,196,201,204,206-207,211,214,218-219,256-257
+  s_3e2de9c50fdafd::t_e33be114e156b6 32-33
+  s_3e2de9c50fdafd::t_4987153de7cdf8 8,17
+  s_3e2de9c50fdafd::t_17f376fe702ae3 35,98,114,129
+  s_3e2de9c50fdafd::t_7afed11018bb34 21-22
+  s_3e2de9c50fdafd::t_c2852b4a6d7c6b 66-69,71
+  s_3e2de9c50fdafd::t_f5a1fd8bf7b42d 224-225,242-243,252,254
+  s_3e2de9c50fdafd::t_2d720390951dce 135-156
+  s_3e2de9c50fdafd::t_dd9a4277b1a5ca 48-51,56-60,65
+  s_3e2de9c50fdafd::t_e41d98ab8ed214 54,63
+  s_ee871748970946::t_bf40e6ab009623 55,64
+  s_3e2de9c50fdafd::t_1bd68b53315ecf 12
+  s_3e2de9c50fdafd::t_04ba1d6987c469 161-162,170-171
+  s_3e2de9c50fdafd::t_cf9057968d3344 9
+  s_3e2de9c50fdafd::t_1b68a6a4ad66ff 72-73
+  s_3e2de9c50fdafd::t_b3392a0c8e2920 40,43-46
+  s_3e2de9c50fdafd::t_e77b8e85acb244 76-94
+  s_3e2de9c50fdafd::t_be1427e79de786 74,157-160,163-169,172-196,208-252
+  s_3e2de9c50fdafd::t_d1e13a8d1ed3d4 75
+  s_3e2de9c50fdafd::t_827a5e4963c963 253-255
+  s_3e2de9c50fdafd::t_6462f5c9fa0b9a 197-207
+packages/cli/src/scaling/transport-mode.service.ts
+  s_3e2de9c50fdafd::t_6ca027feca2d24 1-5,12-24,28-30,36,40-41,43-46,65-66
+  s_3e2de9c50fdafd::t_faee6d0c1b7603 6-11
+  s_3e2de9c50fdafd::t_abaebd0297346e 25-27
+  s_3e2de9c50fdafd::t_621155cd4b5660 53-58
+  s_ee871748970946::t_e9062b59d46db7 53,60-64
+  s_ee871748970946::t_3ce732fd036e9e 59
+packages/@n8n/config/test/config.test.ts
+  s_3e2de9c50fdafd::t_8f11656ca472ad 404-405,407-408,410
+  s_3e2de9c50fdafd::t_d2e1e9998f3f17 409
+  s_3e2de9c50fdafd::t_73c2744f1e4c93 406
+packages/cli/src/modules/instance-registry/storage/instance-storage.interface.ts
+  s_3e2de9c50fdafd::t_0e0c38202b3683 9
+packages/cli/src/scaling/__tests__/hypervisor-message-router.test.ts
+  s_3e2de9c50fdafd::t_a720a7bb101b55 1-62
+packages/cli/src/modules/instance-registry/storage/__tests__/ipc-instance-storage.test.ts
+  s_3e2de9c50fdafd::t_30b2bcc1acc847 1-100,106-110,113-124,127-128,130-134,136-137
+  s_3e2de9c50fdafd::t_435842c854a98e 101-105,135
+  s_3e2de9c50fdafd::t_22fff4d7d01d7c 111-112,125-126,129
+  s_3e2de9c50fdafd::t_cd37c9a1c8240e 138-140
+packages/cli/src/scaling/hypervisor-message-router.ts
+  s_3e2de9c50fdafd::t_094cbe5fa1d647 1-60
+packages/cli/src/modules/instance-registry/storage/ipc-instance-storage.ts
+  s_3e2de9c50fdafd::t_07d24e33d32655 2
+  s_3e2de9c50fdafd::t_7fb92d51b07ed7 1,3-165
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.service.test.ts
+  s_3e2de9c50fdafd::t_416ea85a7ead93 72-78
+  s_3e2de9c50fdafd::t_a222b39ff9191b 272
+  s_3e2de9c50fdafd::t_b0759d3c6b5d05 107,111,116-117,124-125,129,140,142
+  s_3e2de9c50fdafd::t_4508ebcff45e6b 7
+  s_3e2de9c50fdafd::t_235c5d43212c94 8
+packages/cli/src/scaling/queue/job-queue.interface.ts
+  s_ee871748970946::t_3970f2e7a0ebc3 1-68
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_ee871748970946::t_caf2f3f86e9ad3 34,654,699,732
+packages/cli/src/scaling/queue/in-memory-job-queue.ts
+  s_ee871748970946::t_f98e256b66f96c 1-161
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_ee871748970946::t_e73ca885596cbb 47,138,169,204,210,248,252,298,350,389,440,488,502,548,599,612,661,676,749,768,824,843,855,927,949,1022,1042,1100,1236,1259,1344,1439,1529,1629,1715,1742,1807,1884,2003,2070,2144,2166,2183,2197,2205,2220,2239,2245,2254,2261,2270,2276
+  s_ee871748970946::t_92e5933bec0e28 501
+  s_ee871748970946::t_f4fc7a9d5db6fe 2115
+  s_ee871748970946::t_6eb10b3036b68b 559-560
+packages/cli/src/scaling/job-processor.ts
+  s_ee871748970946::t_d5101821ea507d 224,236,247,359,449,462
+  s_ee871748970946::t_30a22a4b06f1ec 49
+  s_ee871748970946::t_34492577abe88c 66
+  s_ee871748970946::t_dd98f342247d1b 487
+  s_ee871748970946::t_9a8678414d1dde 503
+  s_ee871748970946::t_7f187e23922a1e 83
+packages/cli/src/scaling/queue/__tests__/job-queue.contract.ts
+  s_ee871748970946::t_ee035f9ee400d7 1-127
+packages/cli/src/scaling/queue/__tests__/in-memory-job-queue.test.ts
+  s_ee871748970946::t_66d4d99c6d2173 1-8
+packages/cli/src/scaling/queue/__tests__/bull-job-queue.test.ts
+  s_ee871748970946::t_104249b7d39c45 198-199
+  s_ee871748970946::t_0cc333449d626b 158-160
+  s_ee871748970946::t_11f069062e91ac 11
+  s_ee871748970946::t_d9e08e88e00ced 86-91
+  s_ee871748970946::t_5db102e48f8edd 33-38
+  s_ee871748970946::t_630c1b6b2a1b6c 171
+  s_ee871748970946::t_269bd62151f01a 185
+  s_ee871748970946::t_2e3962e7edf8df 1-10,12-32,39-85,92-157,161-170,172-184,186-197,200-264
+packages/cli/src/scaling/scaling.service.ts
+  s_ee871748970946::t_1787c10388a961 137
+  s_ee871748970946::t_58677f787cabd7 21,28
+  s_ee871748970946::t_cf5bb1a173086b 48
+  s_ee871748970946::t_248328cc391178 56-59,65,66
+  s_ee871748970946::t_68ffd3ee41b9ab 33
+  s_ee871748970946::t_12043ed3251702 213
+  s_ee871748970946::t_8b0e8067c7e798 631
+  s_ee871748970946::t_b86fccc91b664a 419
+  s_ee871748970946::t_929c60f3728ad7 170
+  s_ee871748970946::t_ad61ac796f4dca 198
+  s_ee871748970946::t_9f27cdd17c96c2 297,301
+  s_ee871748970946::t_d3f612bcf6aa71 496
+  s_ee871748970946::t_da93bfe1494e11 324,332-334
+  s_ee871748970946::t_aecddef360b539 225,235,241-242,246,249,254
+  s_ee871748970946::t_58b312e3810d06 113,119
+  s_ee871748970946::t_a23e11b857e431 154
+  s_ee871748970946::t_25034feee067ae 60-64
+  s_ee871748970946::t_40f4c633f1c9b2 74-104
+  s_ee871748970946::t_dee3050b11bc33 10
+packages/cli/src/workflow-runner.ts
+  s_ee871748970946::t_30045521e2d2e4 593,598
+  s_ee871748970946::t_d0ff71751adc3b 646,665
+  s_ee871748970946::t_d0a578f7ee6a6e 551
+  s_ee871748970946::t_eee7b1aeee6b4b 54-55
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_ee871748970946::t_5c79a9e7fbc2ec 14,16,18-19,77,79,85,96-106,109,117,120-127,153,166,179,191,196-197,199-200,204,206-207,218,239,246,261,273,278,280,283,285-286,294,298,306,310,319,323-324,330,340,355,359,368,378,382,391,398,402,411,421,425,428,441,456,466-468,478-480,492,507-509,515,528
+  s_ee871748970946::t_3f85d0e3eb8cd5 529-530,538,574,603,631
+  s_ee871748970946::t_b1e93bb7aa441b 198,201-203,205
+  s_ee871748970946::t_56fb6113f6e5df 75-76,78
+  s_ee871748970946::t_477a7e90376e33 6
+  s_ee871748970946::t_e9690d86e8d6d9 15
+packages/cli/src/scaling/queue/bull-job-queue.ts
+  s_ee871748970946::t_c4d816d5c9b7f6 1-121
+packages/cli/src/task-runners/task-broker/auth/__tests__/task-broker-auth.service.test.ts
+  s_3e2de9c50fdafd::t_baf123b13ad33a 8,30
+packages/cli/src/services/cache/__tests__/ipc.cache-manager.test.ts
+  s_3e2de9c50fdafd::t_c31bb0807efec3 1-126
+packages/cli/test/integration/activation-errors.service.test.ts
+  s_3e2de9c50fdafd::t_baf123b13ad33a 6,12
+packages/cli/src/services/cache/ipc.cache-manager.ts
+  s_3e2de9c50fdafd::t_4aed4347728762 1-224
+  s_3e2de9c50fdafd::t_d2d6b8c8d7e6d4 225-227
+packages/cli/src/services/cache/__tests__/cache.service.test.ts
+  s_3e2de9c50fdafd::t_79c5b2ce116baf 30-31
+  s_3e2de9c50fdafd::t_021f2c0a55c792 44
+  s_3e2de9c50fdafd::t_45f73e528372cc 316-337
+  s_3e2de9c50fdafd::t_af5dd19c0c429e 7
+packages/cli/src/modules/agents/integrations/__tests__/callback-store.test.ts
+  s_3e2de9c50fdafd::t_baf123b13ad33a 7,21
+packages/cli/src/task-runners/task-broker/auth/__tests__/task-broker-auth.controller.test.ts
+  s_3e2de9c50fdafd::t_baf123b13ad33a 5,27
+packages/cli/src/services/cache/cache.types.ts
+  s_3e2de9c50fdafd::t_5f029f78ae69b6 3,10
+  s_3e2de9c50fdafd::t_f7df431f943b69 11
+packages/cli/src/services/cache/cache.service.ts
+  s_3e2de9c50fdafd::t_bceec8dbb1c6fc 9
+  s_3e2de9c50fdafd::t_f0b5ec0f10487b 14
+  s_3e2de9c50fdafd::t_1bc30cce9563f8 103-106
+  s_3e2de9c50fdafd::t_fed89fb0eb20d2 30-33,37,40,42-48,50
+packages/cli/src/commands/base-command.ts
+  s_ee871748970946::t_c27dddfe450f69 165-168
+  s_ee871748970946::t_638c9a4e088d34 148-150,152-155
+packages/cli/src/scaling/queue/__tests__/ipc-job-queue.test.ts
+  s_ee871748970946::t_c992e75c1ae467 71,98-99,120,123
+  s_ee871748970946::t_85ad32de641030 1-8,15-70,72-97,100-119,121-122,124-129
+  s_ee871748970946::t_3bc9a5e1d80ca0 9-14
+  s_ee871748970946::t_12085d4415fed2 130-135
+packages/cli/src/scaling/queue/ipc-job-queue.ts
+  s_ee871748970946::t_39516c5859ac7a 270-276
+  s_ee871748970946::t_ecbc1eaf0be586 203,207-208
+  s_ee871748970946::t_c85c2002eace6d 195
+  s_ee871748970946::t_fc70cc7f7bee5d 105
+  s_ee871748970946::t_f4666b92bc4b77 152-153
+  s_ee871748970946::t_27661e30dd1a67 1-91,95-104,106-151,154-162,164-170,172-194,196-202,204-206,209-217,220-230,233-269,277-481
+  s_ee871748970946::t_8585f86becf6a2 218-219,231-232
+  s_ee871748970946::t_aab15e88af0222 92-94
+  s_ee871748970946::t_58f4adc949820c 163,171
+packages/cli/src/modules/chat-hub/chat-hub-execution-store.service.ts
+  s_ee871748970946::t_af6e4a2e80cfa2 68-73
+  s_ee871748970946::t_2942f3f1ac454b 6,10
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_ee871748970946::t_21ccd827ad655e 52
+packages/cli/src/modules/chat-hub/chat-stream-state.service.ts
+  s_ee871748970946::t_9060029a3394bd 78-83
+  s_ee871748970946::t_2942f3f1ac454b 6,10
+packages/cli/src/scaling/pubsub/publisher.service.ts
+  s_ee871748970946::t_82fa92c5796f04 3,9
+  s_ee871748970946::t_25543a8ebbfd01 29
+  s_ee871748970946::t_11c1d685116115 73
+  s_ee871748970946::t_27a84998416350 136-143,146,151,155,159
+  s_ee871748970946::t_24682bcc609266 6
+  s_ee871748970946::t_6cbc6c9e7ce110 58-63
+  s_ee871748970946::t_754de733ac1e87 67-68
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3e2de9c50fdafd::t_ec04c385bcb5db 3657
+  s_3e2de9c50fdafd::t_c18eafe9a487b0 3658-3665,3669
+  s_3e2de9c50fdafd::t_c8d2481a92d698 3666-3667
+  s_3e2de9c50fdafd::t_243ea852b81a1c 3668
+packages/frontend/editor-ui/src/features/instanceRegistry/stores/__tests__/instanceRegistry.store.test.ts
+  s_3e2de9c50fdafd::t_b321dfcde97027 73-94,96,102
+  s_3e2de9c50fdafd::t_dd8cc016dd6bf9 8,15-16
+  s_3e2de9c50fdafd::t_48afac5fb08e4e 3
+  s_3e2de9c50fdafd::t_74f77162279f6e 72,95,97-101,103-115
+  s_3e2de9c50fdafd::t_c63829edb8daa2 45
+  s_3e2de9c50fdafd::t_253ad6fbb2728d 17-18
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_3e2de9c50fdafd::t_ddd3adde16b225 172-180
+  s_3e2de9c50fdafd::t_71f308e93f2d8b 171
+packages/frontend/@n8n/rest-api-client/src/api/index.ts
+  s_3e2de9c50fdafd::t_13340fa4eddff8 4
+packages/frontend/editor-ui/src/app/router.ts
+  s_3e2de9c50fdafd::t_d0a7538b1a5bf1 66-67
+  s_3e2de9c50fdafd::t_bb9b2071c80d17 1071-1080
+  s_3e2de9c50fdafd::t_36258703718069 1070
+packages/frontend/editor-ui/src/features/instanceRegistry/stores/instanceRegistry.store.ts
+  s_3e2de9c50fdafd::t_20946d3d1911f2 2,16,29-38,41,44
+  s_3e2de9c50fdafd::t_1ca20a06871e37 13-15
+  s_3e2de9c50fdafd::t_1777c7a8e111a2 1
+packages/cli/src/scaling/hypervisor-supervisor-info.ts
+  s_3e2de9c50fdafd::t_500e98492e7fb9 1
+  s_3e2de9c50fdafd::t_4bf5c82e7759a3 2-3,5,7-10,24-30,38-41,49-53,60-61,68-74,77-81,111-120,122,125-126,129-131,133-139,189-194,196-198,200-204,220-221
+  s_3e2de9c50fdafd::t_f34b99214da506 4,6,11-23,31-37,42-48,54-59,62-67,75-76,82-110
+  s_3e2de9c50fdafd::t_24d7ebdf080ecc 121,123-124,127-128,132,142-188,195,199,205-219
+  s_3e2de9c50fdafd::t_903e5554a3c162 140-141
+  s_3e2de9c50fdafd::t_982103b1d7a6e0 222-224
+packages/@n8n/api-types/src/cluster-info-types.ts
+  s_3e2de9c50fdafd::t_2388f9734fd110 1-20
+  s_3e2de9c50fdafd::t_faee2019af77ed 21-32
+packages/cli/src/modules/instance-registry/instance-registry.module.ts
+  s_3e2de9c50fdafd::t_c59891212a18f4 17
+packages/frontend/@n8n/frontend-constants/src/views.ts
+  s_3e2de9c50fdafd::t_45c7f47831bdca 59
+packages/@n8n/api-types/src/index.ts
+  s_3e2de9c50fdafd::t_d0cb1b2a3dad73 12
+packages/frontend/@n8n/rest-api-client/src/api/cluster-info.ts
+  s_3e2de9c50fdafd::t_c7a1908017f783 1,7-9,11
+  s_3e2de9c50fdafd::t_f94ea0106afbd6 2-6,10,12-13
+packages/cli/src/modules/instance-registry/__tests__/cluster-info.controller.test.ts
+  s_3e2de9c50fdafd::t_f8456b0f9d2413 1,8-15,17-21,23,25,27,29-45,47-48,51-52,54
+  s_3e2de9c50fdafd::t_9eefe976dbdbd7 2-7,16,22,24,26,28,46,49-50,53,55-56
+packages/frontend/editor-ui/src/features/instanceRegistry/views/SettingsClusterView.vue
+  s_3e2de9c50fdafd::t_be137e259cf21b 2-5,12-17,25-80,82,84-86,90,97
+  s_3e2de9c50fdafd::t_d5e7807132b1f5 174-175,188-232
+  s_3e2de9c50fdafd::t_446df111c2c933 176-187
+  s_3e2de9c50fdafd::t_81bda72de298d0 1,6-11,18-21,24,87-89,91-96,98-173,233-313,320-332
+  s_3e2de9c50fdafd::t_2e45e638f323a9 314-319
+  s_3e2de9c50fdafd::t_0fe879210d3feb 81,83
+  s_3e2de9c50fdafd::t_9022e6ed4eacac 22-23
+  s_3e2de9c50fdafd::t_438752b9743303 333-334
+packages/cli/src/modules/instance-registry/cluster-info.controller.ts
+  s_3e2de9c50fdafd::t_4fd74071f792a6 1,8-12,16,20-26
+  s_3e2de9c50fdafd::t_20586ade2bfa88 2-7,13-15,17-19,27-28
+packages/cli/src/scaling/__tests__/hypervisor-supervisor-info.test.ts
+  s_3e2de9c50fdafd::t_80b91a0c73b946 37-39,44,47,59,63
+  s_3e2de9c50fdafd::t_f5bb04445dc228 26,28
+  s_3e2de9c50fdafd::t_47bfc4223a067b 119-146
+  s_3e2de9c50fdafd::t_fdcc147d792713 2,12-20,34-36,40-43,45-46,48-52,54-58,60-62,64-67,75-77
+  s_3e2de9c50fdafd::t_245bccc7610021 1,3-11,21-25,27,29-33,53,68-74,78-118,147
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_3e2de9c50fdafd::t_9ca121db3b0456 20
+  s_3e2de9c50fdafd::t_2f071f541b3800 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6bdebb7b4ce182554c0d87ecc5bd854409c1d778",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3e2de9c50fdafd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71471209-e89f-4d40-8aa6-c40750a3f307",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_ee871748970946": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0aca0d0f-1b2b-435b-891c-746f9b5703b3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
