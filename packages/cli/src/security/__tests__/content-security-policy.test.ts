@@ -158,20 +158,36 @@ describe('resolveContentSecurityPolicies', () => {
 		});
 	});
 
+	// The variable was a boolean from 1.100 until it took a policy, so instances in the
+	// wild set it that way. These cases pin the compatibility path.
 	describe('with the report-only var set to a legacy boolean', () => {
-		it.each(['true', 'TRUE', '1', 'false', '0'])('should warn and ignore "%s"', (value) => {
-			expect(resolve(DEFAULTS.policy, value)).toEqual({
+		it.each(['true', 'TRUE', '1'])('should keep the policy report-only for "%s"', (value) => {
+			expect(resolve('script-src <nonce>', value)).toEqual({
 				enforced: undefined,
-				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+				reportOnly: 'script-src <nonce>',
 			});
-			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('no longer takes'));
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('is deprecated'));
 		});
 
-		it('should keep enforcing the policy that is set', () => {
-			expect(resolve('script-src <nonce>', 'true')).toEqual({
+		it.each(['false', 'FALSE', '0'])('should keep enforcing the policy for "%s"', (value) => {
+			expect(resolve('script-src <nonce>', value)).toEqual({
 				enforced: 'script-src <nonce>',
 				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
 			});
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('is deprecated'));
+		});
+
+		it('should report on the default policy when no policy is configured', () => {
+			expect(resolve('{}', 'true')).toEqual({
+				enforced: undefined,
+				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+			});
+		});
+
+		it('should never read a boolean as a policy', () => {
+			const { enforced, reportOnly } = resolve('{}', 'true');
+			expect(enforced).not.toBe('true');
+			expect(reportOnly).not.toBe('true');
 		});
 	});
 });

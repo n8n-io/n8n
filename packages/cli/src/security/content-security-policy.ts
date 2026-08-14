@@ -20,8 +20,12 @@ export type ContentSecurityPolicies = {
 	reportOnly?: string;
 };
 
-/** `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` was a boolean before it took a policy. */
-const LEGACY_BOOLEANS = ['true', '1', 'false', '0'];
+/**
+ * `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` was a boolean from 1.100 until it took a
+ * policy. These are the values `@n8n/config` accepted for it.
+ */
+const LEGACY_TRUE = ['true', '1'];
+const LEGACY_FALSE = ['false', '0'];
 
 /** `scriptSrc` -> `script-src`, matching how helmet.js normalizes directive names. */
 const toDirectiveName = (name: string) =>
@@ -102,17 +106,26 @@ export const resolveContentSecurityPolicies = (
 		return parseContentSecurityPolicy(value, envVarName, logger) ?? fallback;
 	};
 
-	// It used to be a boolean. A bare `true` is not a policy, so say so rather than
-	// serving a header made of nonsense.
+	// The variable was a boolean before it held a policy, and instances have been setting
+	// it that way since 1.100. A boolean is honoured one last time, with a warning, rather
+	// than read as a policy: `true` especially must not start enforcing a policy that the
+	// instance deliberately kept report-only.
 	const reportOnlyValue = rawReportOnly?.trim() ?? '';
-	if (LEGACY_BOOLEANS.includes(reportOnlyValue.toLowerCase())) {
+	const legacyBoolean = LEGACY_TRUE.includes(reportOnlyValue.toLowerCase())
+		? true
+		: LEGACY_FALSE.includes(reportOnlyValue.toLowerCase())
+			? false
+			: undefined;
+
+	if (legacyBoolean !== undefined) {
 		logger.warn(
-			`N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY no longer takes \`${reportOnlyValue}\`: it now holds a policy, like N8N_CONTENT_SECURITY_POLICY. Reporting on the default policy instead - set a policy to report on, \`{}\` to report on nothing, or N8N_CONTENT_SECURITY_POLICY to enforce one.`,
+			`N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY=${reportOnlyValue} is deprecated: the variable now holds the policy to report on, in the same formats as N8N_CONTENT_SECURITY_POLICY. Honouring the old meaning for now - set it to a policy, or to \`{}\` to report on nothing.`,
 		);
-		return {
-			enforced: resolve(rawPolicy, 'N8N_CONTENT_SECURITY_POLICY'),
-			reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
-		};
+		const configured = resolve(rawPolicy, 'N8N_CONTENT_SECURITY_POLICY');
+
+		return legacyBoolean
+			? { reportOnly: configured ?? DEFAULT_CONTENT_SECURITY_POLICY }
+			: { enforced: configured, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY };
 	}
 
 	return {
