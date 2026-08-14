@@ -133,37 +133,21 @@ function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isOffloadedToolResult(value: unknown): value is OffloadedToolResult {
-	if (!isRecord(value)) return false;
-	const path = Reflect.get(value, 'path');
-	const requiredAction = Reflect.get(value, 'requiredAction');
-	if (
-		Reflect.get(value, '_offloaded') !== true ||
-		typeof path !== 'string' ||
-		!isToolResultPath(path) ||
-		typeof Reflect.get(value, 'originalCharCount') !== 'number' ||
-		typeof Reflect.get(value, 'estimatedTokenCount') !== 'number' ||
-		typeof Reflect.get(value, 'message') !== 'string' ||
-		!isRecord(requiredAction) ||
-		Reflect.get(requiredAction, 'toolName') !== 'workspace_read_tool_result'
-	) {
-		return false;
-	}
-
-	const input = Reflect.get(requiredAction, 'input');
+function isOffloadedToolResult(value: unknown): boolean {
 	return (
-		isRecord(input) &&
-		Reflect.get(input, 'path') === path &&
-		Reflect.get(input, 'view') === 'describe'
+		isRecord(value) &&
+		value._offloaded === true &&
+		typeof value.path === 'string' &&
+		isToolResultPath(value.path)
 	);
 }
 
-function parseOffloadedToolResult(value: string): OffloadedToolResult | undefined {
+function isSerializedOffloadedToolResult(value: string): boolean {
 	try {
 		const parsed: unknown = JSON.parse(value);
-		return isOffloadedToolResult(parsed) ? parsed : undefined;
+		return isOffloadedToolResult(parsed);
 	} catch {
-		return undefined;
+		return false;
 	}
 }
 
@@ -178,12 +162,12 @@ export function sanitizeOffloadedToolResultsForMemory(
 				if (block.state === 'resolved' && isOffloadedToolResult(block.output)) {
 					return { ...block, output: { ...EXPIRED_OFFLOADED_TOOL_RESULT } };
 				}
-				if (block.state === 'rejected' && parseOffloadedToolResult(block.error)) {
+				if (block.state === 'rejected' && isSerializedOffloadedToolResult(block.error)) {
 					return { ...block, error: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
 				}
 			}
 
-			if (block.type === 'text' && parseOffloadedToolResult(block.text)) {
+			if (block.type === 'text' && isSerializedOffloadedToolResult(block.text)) {
 				return { ...block, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
 			}
 
