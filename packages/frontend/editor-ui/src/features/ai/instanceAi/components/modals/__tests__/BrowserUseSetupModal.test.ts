@@ -121,12 +121,15 @@ describe('BrowserUseSetupModal', () => {
 	});
 
 	it('tracks the open extension button click', async () => {
+		const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
 		const { getByTestId } = renderComponent();
 		await flushPromises();
 
 		await fireEvent.click(getByTestId('browser-use-open-connect-page'));
 
 		expect(telemetryMock.trackOpenExtensionClicked).toHaveBeenCalledTimes(1);
+
+		openSpy.mockRestore();
 	});
 
 	it('replaces the connect step with an explanation when the extension is not installed', async () => {
@@ -189,6 +192,20 @@ describe('BrowserUseSetupModal', () => {
 		await flushPromises();
 
 		expect(detectExtensionMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('starts a fresh direct connect attempt once the extension gets installed', async () => {
+		installExtensionMock({ connect: { accepted: true } });
+		const { getByTestId, queryByTestId } = await renderWithExtensionState('not-installed');
+		expect(telemetryMock.trackDirectConnectRequested).not.toHaveBeenCalled();
+		expect(queryByTestId('browser-use-direct-connect-waiting')).toBeNull();
+
+		detectExtensionMock.mockResolvedValue('installed');
+		window.dispatchEvent(new Event('focus'));
+		await flushPromises();
+
+		expect(telemetryMock.trackDirectConnectRequested).toHaveBeenCalledTimes(1);
+		expect(getByTestId('browser-use-direct-connect-waiting')).toBeVisible();
 	});
 
 	it('does not render the connect steps when already connected', () => {

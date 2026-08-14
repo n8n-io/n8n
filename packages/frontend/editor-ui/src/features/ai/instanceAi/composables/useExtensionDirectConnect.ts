@@ -52,11 +52,19 @@ async function timeout(ms: number): Promise<undefined> {
  */
 export function useExtensionDirectConnect() {
 	const status: Ref<DirectConnectStatus> = ref('idle');
-	let attemptId = 0;
+	let isAttempting = false;
 
 	async function attempt(connectUrl: string): Promise<void> {
-		const id = ++attemptId;
+		if (isAttempting) return;
+		isAttempting = true;
+		try {
+			await runAttempt(connectUrl);
+		} finally {
+			isAttempting = false;
+		}
+	}
 
+	async function runAttempt(connectUrl: string): Promise<void> {
 		const runtime = getExtensionRuntime();
 		let extensionId = '';
 		let relayUrl: string | null = null;
@@ -72,13 +80,11 @@ export function useExtensionDirectConnect() {
 
 		try {
 			const response = await sendToExtension(runtime, extensionId, { type: 'connect', relayUrl });
-			if (id !== attemptId) return;
 			if (!isRecord(response) || response.accepted !== true) {
 				status.value = 'unsupported';
 				return;
 			}
 		} catch {
-			if (id !== attemptId) return;
 			status.value = 'unsupported';
 			return;
 		}
@@ -93,7 +99,6 @@ export function useExtensionDirectConnect() {
 			]);
 			connected = isRecord(result) && result.connected === true;
 		} catch {}
-		if (id !== attemptId) return;
 		if (!connected) {
 			status.value = 'failed';
 		}

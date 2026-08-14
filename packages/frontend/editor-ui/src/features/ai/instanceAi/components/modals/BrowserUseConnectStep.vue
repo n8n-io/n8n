@@ -7,15 +7,8 @@ import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.tel
 import { useExtensionDirectConnect } from '../../composables/useExtensionDirectConnect';
 
 const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
-
-const props = withDefaults(
-	defineProps<{
-		extensionMissing?: boolean;
-	}>(),
-	{
-		extensionMissing: false,
-	},
-);
+const CONNECT_POPUP_WIDTH = 620;
+const CONNECT_POPUP_HEIGHT = 640;
 
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
@@ -59,6 +52,24 @@ async function retry(): Promise<void> {
 	await attempt(connectUrl.value);
 }
 
+function openConnectPage(): void {
+	if (!connectUrl.value) return;
+	telemetry.trackOpenExtensionClicked();
+	const left = Math.max(
+		0,
+		Math.round(window.screenX + (window.outerWidth - CONNECT_POPUP_WIDTH) / 2),
+	);
+	const top = Math.max(
+		0,
+		Math.round(window.screenY + (window.outerHeight - CONNECT_POPUP_HEIGHT) / 2),
+	);
+	window.open(
+		connectUrl.value,
+		'n8n-browser-use-connect',
+		`popup,width=${CONNECT_POPUP_WIDTH},height=${CONNECT_POPUP_HEIGHT},left=${left},top=${top}`,
+	);
+}
+
 onBeforeUnmount(() => {
 	clearRefreshTimer();
 	store.clearBrowserConnectUrl();
@@ -71,17 +82,8 @@ onBeforeUnmount(() => {
 			{{ i18n.baseText('instanceAi.browserUse.step.connect.title') }}
 		</N8nText>
 
-		<N8nText
-			v-if="props.extensionMissing"
-			color="text-light"
-			size="small"
-			data-test-id="browser-use-extension-missing-note"
-		>
-			{{ i18n.baseText('instanceAi.browserUse.step.connect.extensionMissing') }}
-		</N8nText>
-
 		<div
-			v-else-if="status === 'waiting'"
+			v-if="status === 'waiting'"
 			:class="$style.waiting"
 			data-test-id="browser-use-direct-connect-waiting"
 		>
@@ -110,14 +112,12 @@ onBeforeUnmount(() => {
 			</N8nText>
 			<N8nButton
 				:label="i18n.baseText('instanceAi.browserUse.step.connect.cta')"
-				:href="connectUrl ?? undefined"
-				target="_blank"
 				variant="solid"
 				size="medium"
 				icon="external-link"
 				:disabled="!connectUrl"
 				data-test-id="browser-use-open-connect-page"
-				@click="telemetry.trackOpenExtensionClicked"
+				@click="openConnectPage"
 			/>
 		</template>
 	</div>

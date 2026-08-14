@@ -54,8 +54,7 @@ async function refreshExtensionState(): Promise<void> {
 onMounted(async () => {
 	telemetry.trackModalOpened(isBrowserSupported);
 	if (!isBrowserSupported) return;
-	void refreshExtensionState();
-	await store.fetchBrowserStatus();
+	await Promise.all([refreshExtensionState(), store.fetchBrowserStatus()]);
 	statusChecked.value = true;
 });
 
@@ -126,8 +125,17 @@ useEventListener(window, 'focus', reprobeExtension);
 				/>
 			</div>
 
-			<div v-if="statusChecked" :class="$style.step">
-				<BrowserUseConnectStep :extension-missing="isExtensionMissing" />
+			<div v-if="isExtensionMissing" :class="$style.step">
+				<N8nText :bold="true" size="small">
+					{{ i18n.baseText('instanceAi.browserUse.step.connect.title') }}
+				</N8nText>
+				<N8nText color="text-light" size="small" data-test-id="browser-use-extension-missing-note">
+					{{ i18n.baseText('instanceAi.browserUse.step.connect.extensionMissing') }}
+				</N8nText>
+			</div>
+
+			<div v-else-if="statusChecked" :class="$style.step">
+				<BrowserUseConnectStep />
 			</div>
 
 			<div v-if="!isExtensionMissing" :class="$style.waitingRow">

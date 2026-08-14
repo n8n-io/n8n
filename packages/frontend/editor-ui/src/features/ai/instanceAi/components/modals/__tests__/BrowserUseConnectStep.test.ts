@@ -85,16 +85,6 @@ describe('BrowserUseConnectStep', () => {
 		expect(queryByTestId('browser-use-direct-connect-retry')).toBeNull();
 	});
 
-	it('shows the extension missing note instead of any connect action', async () => {
-		installExtensionMock({ connect: { accepted: true } });
-		const { getByTestId, queryByTestId } = renderComponent({ props: { extensionMissing: true } });
-		await flushPromises();
-
-		expect(getByTestId('browser-use-extension-missing-note')).toBeVisible();
-		expect(queryByTestId('browser-use-direct-connect-waiting')).toBeNull();
-		expect(queryByTestId('browser-use-open-connect-page')).toBeNull();
-	});
-
 	it('waits for the connect result once the extension opened the popup', async () => {
 		installExtensionMock({ connect: { accepted: true } });
 		const { getByTestId, queryByTestId } = renderComponent();
@@ -128,13 +118,21 @@ describe('BrowserUseConnectStep', () => {
 		expect(getByTestId('browser-use-open-connect-page')).toBeVisible();
 	});
 
-	it('tracks the manual connect link click', async () => {
+	it('opens the connect page as a popup on the manual connect button', async () => {
+		const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
 		const { getByTestId } = renderComponent();
 		await flushPromises();
 
 		await fireEvent.click(getByTestId('browser-use-open-connect-page'));
 
 		expect(telemetryMock.trackOpenExtensionClicked).toHaveBeenCalledTimes(1);
+		expect(openSpy).toHaveBeenCalledWith(
+			CONNECT_URL,
+			'n8n-browser-use-connect',
+			expect.stringMatching(/^popup,width=620,height=640,left=\d+,top=\d+$/),
+		);
+
+		openSpy.mockRestore();
 	});
 
 	it('clears the stored connect URL when unmounted', async () => {

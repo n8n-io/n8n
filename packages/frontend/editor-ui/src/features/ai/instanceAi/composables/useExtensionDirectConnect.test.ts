@@ -141,19 +141,17 @@ describe('useExtensionDirectConnect', () => {
 		expect(status.value).toBe('failed');
 	});
 
-	it('ignores a stale attempt resolving after a newer one started', async () => {
+	it('ignores a second attempt while one is in flight', async () => {
 		mockExtensionResponses({ connect: HOLD_RESPONSE, connectResult: HOLD_RESPONSE });
 		const { status, attempt } = useExtensionDirectConnect();
-		const first = attempt(CONNECT_URL);
+		void attempt(CONNECT_URL);
 		await settle();
 		void attempt(CONNECT_URL);
 		await settle();
 
-		heldCallbacks[0]({ accepted: false });
-		await first;
-		expect(status.value).toBe('idle');
+		expect(chromeMock.runtime.sendMessage).toHaveBeenCalledTimes(1);
 
-		heldCallbacks[1]({ accepted: true });
+		heldCallbacks[0]({ accepted: true });
 		await settle();
 		expect(status.value).toBe('waiting');
 	});
