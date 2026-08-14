@@ -1,20 +1,23 @@
 import type { JsonValue } from '../common';
 import type { StepSlots, StepStatus } from './execution.types';
 
-/** A new step to persist. `id` and timestamps are assigned by the store. */
-export interface NewStepRecord {
-	nodeId: string;
-	/**
-	 * Creation statuses only. The rest are reachable solely through their
-	 * transitions — `running` via `claimStep`, `failed` via `failStep`,
-	 * `cancelled` via `cancelQueuedSteps` — so a row can't enter a state
-	 * without passing that transition's guarantees (the failure fence above
-	 * all: a `failed` row created here would bypass its exclusive lock).
-	 */
-	status: Extract<StepStatus, 'queued' | 'completed' | 'skipped'>;
-	/** Only for a step recorded already-completed, such as the trigger. */
-	outputs?: StepSlots;
-}
+/**
+ * A new step to persist. `id` and timestamps are assigned by the store.
+ *
+ * Creation statuses only. The rest are reachable solely through their
+ * transitions — `running` via `claimStep`, `failed` via `failStep`,
+ * `cancelled` via `cancelQueuedSteps` — so a row can't enter a state
+ * without passing that transition's guarantees (the failure fence above
+ * all: a `failed` row created here would bypass its exclusive lock).
+ *
+ * A step created `completed` (the trigger) must carry its slot list, even
+ * `[]`: a missing one persists as SQL NULL, which liveness reads as every
+ * output slot dead. The other statuses have no outputs by definition.
+ */
+export type NewStepRecord = { nodeId: string } & (
+	| { status: Extract<StepStatus, 'queued' | 'skipped'>; outputs?: never }
+	| { status: Extract<StepStatus, 'completed'>; outputs: StepSlots }
+);
 
 /** The error that failed a step, as persisted on its row. */
 export interface StepError {

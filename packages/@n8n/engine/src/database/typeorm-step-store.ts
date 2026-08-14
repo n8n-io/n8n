@@ -27,13 +27,7 @@ export class TypeOrmStepStore implements StepStore {
 	): Promise<Array<{ id: string; nodeId: string }>> {
 		if (records.length === 0) return [];
 
-		for (const record of records) {
-			if (record.outputs && record.status !== 'completed') {
-				throw new UnexpectedError(
-					`step for node ${record.nodeId} carries outputs but is created ${record.status}; only a step created completed may carry outputs`,
-				);
-			}
-		}
+		for (const record of records) assertOutputsMatchStatus(record);
 
 		// Ids are assigned here because the entity's insert hook only runs on class
 		// instances, and these are plain values.
@@ -222,5 +216,26 @@ export class TypeOrmStepStore implements StepStore {
 
 	async hasFailedSteps(executionId: string): Promise<boolean> {
 		return await this.repo.exists({ where: { executionId, status: 'failed' } });
+	}
+}
+
+/**
+ * Runtime mirror of `NewStepRecord`'s union for callers outside the type
+ * system, widened so the checks don't narrow the union to `never`.
+ */
+function assertOutputsMatchStatus(record: {
+	nodeId: string;
+	status: StepStatus;
+	outputs?: StepSlots;
+}): void {
+	if (record.outputs !== undefined && record.status !== 'completed') {
+		throw new UnexpectedError(
+			`step for node ${record.nodeId} carries outputs but is created ${record.status}; only a step created completed may carry outputs`,
+		);
+	}
+	if (record.status === 'completed' && record.outputs === undefined) {
+		throw new UnexpectedError(
+			`step for node ${record.nodeId} is created completed without outputs; a NULL outputs column reads as every slot dead — pass [] for a step that fired nothing`,
+		);
 	}
 }

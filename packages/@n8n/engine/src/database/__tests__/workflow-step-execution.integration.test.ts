@@ -99,7 +99,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 
 		const ids = await store.createSteps(executionId, [
-			{ nodeId: 'trigger', status: 'completed' },
+			{ nodeId: 'trigger', status: 'completed', outputs: [{}] },
 			{ nodeId: 'a', status: 'queued' },
 			{ nodeId: 'b', status: 'queued' },
 		]);
@@ -123,15 +123,26 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.createSteps('00000000-0000-7000-8000-000000000000', [])).toEqual([]);
 	});
 
-	it('TypeOrmStepStore.createSteps rejects a step created with outputs but not completed', async () => {
+	it('TypeOrmStepStore.createSteps rejects outputs mismatched with status at runtime', async () => {
+		// both shapes are unrepresentable in NewStepRecord; the casts simulate a
+		// caller outside the type system reaching the runtime guard
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 
+		const queuedWithOutputs = { nodeId: 'x', status: 'queued', outputs: [{}] };
 		await expect(
-			store.createSteps(executionId, [{ nodeId: 'x', status: 'queued', outputs: [{}] }]),
+			store.createSteps(executionId, [queuedWithOutputs as unknown as NewStepRecord]),
 		).rejects.toMatchObject({
 			name: 'UnexpectedError',
-			message: expect.stringContaining('completed') as string,
+			message: expect.stringContaining('carries outputs') as string,
+		});
+
+		const completedWithoutOutputs = { nodeId: 'x', status: 'completed' };
+		await expect(
+			store.createSteps(executionId, [completedWithoutOutputs as unknown as NewStepRecord]),
+		).rejects.toMatchObject({
+			name: 'UnexpectedError',
+			message: expect.stringContaining('without outputs') as string,
 		});
 	});
 
@@ -322,6 +333,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const { id: completedId } = await createStep(store, executionId, {
 			nodeId: 'c',
 			status: 'completed',
+			outputs: [{}],
 		});
 		// scoped to the execution: a sibling execution's queued work is untouched
 		const { id: otherId } = await createStep(store, otherExecutionId, {
@@ -439,7 +451,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		await store.createSteps(executionId, [
-			{ nodeId: 'trigger', status: 'completed' },
+			{ nodeId: 'trigger', status: 'completed', outputs: [{}] },
 			{ nodeId: 'a', status: 'skipped' },
 			{ nodeId: 'c', status: 'queued' },
 		]);
@@ -449,7 +461,7 @@ describe('workflow_step_execution table (integration)', () => {
 		await store.failStep(eId, { name: 'Error', message: 'node blew up' });
 		// a sibling execution's settled rows must not count
 		const otherExecutionId = await createExecution();
-		await createStep(store, otherExecutionId, { nodeId: 'x', status: 'completed' });
+		await createStep(store, otherExecutionId, { nodeId: 'x', status: 'completed', outputs: [{}] });
 
 		// trigger, a, b, e — not c (queued) or d (running)
 		expect(await store.countSettledSteps(executionId)).toBe(4);
