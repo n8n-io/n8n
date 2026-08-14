@@ -128,6 +128,6 @@ export function assertToolsAgentMode(ctx: IExecuteFunctions) {
 
 	throw new NodeOperationError(node, `The "${displayName}" mode is no longer available`, {
 		description:
-			'Replace this node with an AI Agent on the latest version, which uses the Tools Agent, and connect the tools it needs.',
+			'Replace this node with an AI Agent on the latest version and connect the tools it needs.',
 	});
 }
