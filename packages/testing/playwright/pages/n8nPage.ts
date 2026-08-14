@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { AgentSessionsPage } from './AgentSessionsPage';
 import { AIAssistantPage } from './AIAssistantPage';
 import { CanvasPage } from './CanvasPage';
 import { ChatHubChatPage } from './ChatHubChatPage';
@@ -78,6 +79,7 @@ export class n8nPage {
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
 	readonly aiBuilder: AIBuilderPage;
+	readonly agentSessions: AgentSessionsPage;
 	readonly canvas: CanvasPage;
 	readonly chatHubChat: ChatHubChatPage;
 	readonly chatHubPersonalAgents: ChatHubPersonalAgentsPage;
@@ -162,6 +164,7 @@ export class n8nPage {
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
 		this.aiBuilder = new AIBuilderPage(page);
+		this.agentSessions = new AgentSessionsPage(page);
 		this.canvas = new CanvasPage(page);
 		this.chatHubChat = new ChatHubChatPage(page);
 		this.chatHubPersonalAgents = new ChatHubPersonalAgentsPage(page);

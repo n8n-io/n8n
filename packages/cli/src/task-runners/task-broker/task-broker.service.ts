@@ -591,7 +591,6 @@ export class TaskBroker {
 		if (this.taskRunnersConfig.mode === 'internal') {
 			this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task', {
 				runnerId: task.runnerId,
-				taskTypes: this.knownRunners.get(task.runnerId)?.runner.taskTypes ?? [],
 			});
 		} else if (this.taskRunnersConfig.mode === 'external') {
 			await this.messageRunner(task.runnerId, {
@@ -811,18 +810,15 @@ export class TaskBroker {
 
 	/**
 	 * Reports a runner as unresponsive, so its transport can be torn down and, in internal
-	 * mode, its process force-restarted. A no-op for a runner that is no longer registered,
-	 * as it has nothing left to tear down.
+	 * mode, its process force-restarted.
+	 *
+	 * Reports a runner that is no longer registered too: concurrent acceptances can reach the
+	 * timeout threshold after the transport deregistered the runner, and a process that
+	 * outlived its transport is exactly what still needs restarting.
 	 */
 	private reportUnresponsive(runnerId: TaskRunner['id'], cause: string) {
-		const runner = this.knownRunners.get(runnerId)?.runner;
-		if (runner) {
-			this.logger.warn(`Runner (${runnerId}) ${cause}, reporting it as unresponsive`);
-			this.taskRunnerLifecycleEvents.emit('runner:unresponsive', {
-				runnerId,
-				taskTypes: runner.taskTypes,
-			});
-		}
+		this.logger.warn(`Runner (${runnerId}) ${cause}, reporting it as unresponsive`);
+		this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId });
 	}
 
 	private isSilent(runnerId: TaskRunner['id']) {

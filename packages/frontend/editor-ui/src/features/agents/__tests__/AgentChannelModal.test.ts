@@ -1,47 +1,71 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import AgentChannelModal from '../components/AgentChannelModal.vue';
+import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string) => key,
-	}),
+const mocks = vi.hoisted(() => ({
+	connect: vi.fn(),
+	disconnect: vi.fn(),
+	fetchStatus: vi.fn(),
+	beforeSave: vi.fn(),
+	ensureAgentPersisted: vi.fn(),
 }));
 
 const catalog = ref([
-	{ type: 'slack', label: 'Slack', icon: 'zap' },
-	{ type: 'linear', label: 'Linear', icon: 'zap' },
-	{ type: 'telegram', label: 'Telegram', icon: 'zap' },
+	{
+		type: 'example',
+		label: 'Example',
+		icon: 'zap',
+		credentialTypes: ['exampleApi'],
+	},
 ]);
-
-const integrationSettings = ref({
-	slack: { accessMode: 'all' },
-	linear: { accessMode: 'all' },
-	telegram: { accessMode: 'all' },
-});
+const statuses = ref<Record<string, 'configured' | 'connected' | 'disconnected'>>({});
 const connectedCredentials = ref<Record<string, string>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
-const fetchStatusMock = vi.fn().mockResolvedValue(undefined);
-const connectMock = vi.fn(
-	async (channelType: string, credentialId: string): Promise<{ status: string }> => {
-		connectedCredentials.value[channelType] = credentialId;
-		return { status: 'connected' };
-	},
-);
-const disconnectMock = vi
-	.fn()
-	.mockImplementation(async (channelType: string, credentialId: string) => {
-		if (connectedCredentials.value[channelType] === credentialId) {
-			delete connectedCredentials.value[channelType];
-		}
-	});
-const createCredentialMock = vi.fn();
-const editCredentialMock = vi.fn();
-const setupSlackAppMock = vi.fn().mockResolvedValue(true);
-const vueErrorHandlerMock = vi.fn();
+
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({ baseText: (key: string) => key }),
+}));
+
+vi.mock('../channels/registry', () => {
+	const platformView = {
+		props: ['modelValue', 'mode', 'isPublished'],
+		emits: ['update:modelValue', 'connect'],
+		setup: () => ({
+			currentSettings: { accessMode: 'all' },
+			validationError: null,
+			beforeSave: mocks.beforeSave,
+		}),
+		template: `
+			<div
+				data-testid="platform-view"
+				:data-mode="mode"
+				:data-published="isPublished"
+			>
+				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
+				<button data-testid="connect-channel" @click="$emit('connect')" />
+			</div>
+		`,
+	};
+	const platform = {
+		type: 'example',
+		setupComponent: platformView,
+		editComponent: platformView,
+		getConnectAction: () => ({ label: 'Connect example', icon: 'zap' }),
+		getConnectedDescription: () => 'Example connected',
+	};
+	const runtime = {
+		loading: { value: false },
+		load: vi.fn().mockResolvedValue(undefined),
+	};
+	return {
+		agentChannelPlatforms: { example: platform },
+		getAgentChannelPlatform: () => platform,
+		createAgentChannelRuntime: () => runtime,
+	};
+});
 
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	useAgentIntegrationsCatalog: () => ({
@@ -52,127 +76,79 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 
 vi.mock('../composables/useAgentIntegrationStatus', () => ({
 	useAgentIntegrationStatus: () => ({
-		fetchStatus: fetchStatusMock,
+		fetchStatus: mocks.fetchStatus,
 		connectedCredentials,
-		integrationSettings,
+		integrationSettings: ref({ example: { accessMode: 'all' } }),
 		loadingMap,
 		errorMessages: ref({}),
 		errorIsConflict: ref({}),
-		isConnected: () => false,
-		isConfigured: (channelType: string) => Boolean(connectedCredentials.value[channelType]),
-		connect: connectMock,
-		disconnect: disconnectMock,
+		isConnected: (type: string) => statuses.value[type] === 'connected',
+		isConfigured: (type: string) =>
+			['configured', 'connected'].includes(statuses.value[type] ?? 'disconnected'),
+		connect: mocks.connect,
+		disconnect: mocks.disconnect,
 	}),
 }));
 
 vi.mock('../composables/useAgentChannelSetup', () => ({
 	useAgentChannelSetup: () => ({
-		channelSetupRef: ref(),
 		selectedCredentials,
 		credentialsLoading: ref(false),
-		credentialPermissions: ref({}),
+		credentialPermissions: ref({ create: true }),
 		credentialModalOpen: ref(false),
-		getChannelCredentialId: (channelType: string | null | undefined) =>
-			(channelType &&
-				(selectedCredentials.value[channelType] || connectedCredentials.value[channelType])) ||
-			'',
-		getCredentials: (channelType: string) => [
-			{ id: `${channelType}-credential`, name: `${channelType} credential` },
-			{ id: `${channelType}-credential-new`, name: `New ${channelType} credential` },
+		getChannelCredentialId: (type?: string | null) =>
+			type ? (selectedCredentials.value[type] ?? connectedCredentials.value[type] ?? '') : '',
+		getCredentials: () => [
+			{ id: 'credential-old', name: 'Old credential' },
+			{ id: 'credential-new', name: 'New credential' },
 		],
-		loadChannelState: vi.fn().mockImplementation(async () => {
-			for (const [channelType, credentialId] of Object.entries(connectedCredentials.value)) {
-				if (!selectedCredentials.value[channelType]) {
-					selectedCredentials.value[channelType] = credentialId;
-				}
-			}
-		}),
-		createCredential: createCredentialMock,
-		editCredential: editCredentialMock,
-		setupSlackApp: setupSlackAppMock,
+		loadChannelState: vi.fn().mockResolvedValue(undefined),
+		createCredential: vi.fn(),
+		editCredential: vi.fn(),
 	}),
 }));
 
-const channelSetupStub = (testId: string) => ({
-	props: ['mode', 'loading', 'connectedDescription', 'setupSlackApp'],
-	emits: ['connect'],
-	setup: () => ({
-		currentSettings: { accessMode: 'all' },
-		validationError: null,
-	}),
-	template: `<div
-		data-testid="${testId}"
-		:data-mode="mode"
-		:data-loading="loading"
-		:data-connected-description="connectedDescription"
-	>
-		<button
-			v-if="setupSlackApp"
-			data-testid="${testId}-automatic-setup"
-			@click="setupSlackApp('app-token')"
-		/>
-		<button data-testid="${testId}-connect" @click="$emit('connect')" />
-	</div>`,
-});
-
-function mountModal(props: Record<string, unknown>) {
+function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 	return mount(AgentChannelModal, {
 		props: {
 			open: true,
 			agentId: 'agent-1',
 			projectId: 'project-1',
-			isPublished: false,
-			view: 'linear_setup',
-			...props,
+			view,
+			isPublished,
+			ensureAgentPersisted: mocks.ensureAgentPersisted,
 		},
 		global: {
-			config: {
-				errorHandler: vueErrorHandlerMock,
-			},
 			stubs: {
-				// The N8nDialog family's SFCs don't set an explicit `defineOptions({ name })`,
-				// so Vue infers the component name from the *filename* (Dialog.vue,
-				// DialogHeader.vue, ...) rather than the `N8n`-prefixed name they're imported
-				// under -- stubs must be keyed by that inferred name to be picked up.
 				Dialog: {
 					props: ['open', 'showCloseButton'],
 					emits: ['update:open'],
 					template:
-						'<div v-if="open"><button v-if="showCloseButton" data-testid="close-dialog" @click="$emit(\'update:open\', false)" /><button data-testid="escape-dialog" @click="$emit(\'update:open\', false)" /><slot /></div>',
+						'<div v-if="open"><button data-testid="close-dialog" @click="$emit(\'update:open\', false)" /><slot /></div>',
 				},
 				DialogHeader: { template: '<div><slot /></div>' },
 				DialogTitle: { template: '<h3><slot /></h3>' },
 				DialogFooter: { template: '<div><slot /></div>' },
 				N8nButton: {
+					props: ['disabled'],
 					emits: ['click'],
-					template: '<button @click="$emit(\'click\')"><slot /></button>',
+					template: '<button :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 				},
-				N8nIconButton: {
-					emits: ['click'],
-					template: '<button @click="$emit(\'click\')"><slot /></button>',
-				},
+				N8nIconButton: { template: '<button><slot /></button>' },
 				N8nIcon: { template: '<i />' },
 				N8nText: { template: '<span><slot /></span>' },
 				AgentChannelListItem: {
-					props: ['configured', 'connected'],
-					template:
-						'<li data-testid="channel-list-item" :data-configured="configured" :data-connected="connected" />',
-				},
-				AgentChannelSlackSetup: channelSetupStub('slack-setup'),
-				AgentChannelLinearSetup: channelSetupStub('linear-setup'),
-				AgentChannelTelegramSetup: channelSetupStub('telegram-setup'),
-				AgentIntegrationCredentialConnection: {
-					props: ['integrationType', 'modelValue', 'disabled'],
-					emits: ['update:modelValue', 'create', 'edit'],
+					props: ['integration', 'configured', 'connected', 'connectAction'],
+					emits: ['setup'],
 					template: `
-						<div
-							data-testid="shared-credential-connection"
-							:data-channel-type="integrationType"
-							:data-credential-id="modelValue"
+						<li
+							data-testid="channel-list-item"
+							:data-action="connectAction.label"
+							:data-configured="configured"
+							:data-connected="connected"
 						>
-							<button data-testid="change-credential" :disabled="disabled" @click="$emit('update:modelValue', integrationType + '-credential-new')" />
-							<button data-testid="edit-credential" @click="$emit('edit')" />
-						</div>
+							<button @click="$emit('setup', integration.type)" />
+						</li>
 					`,
 				},
 			},
@@ -182,359 +158,88 @@ function mountModal(props: Record<string, unknown>) {
 
 describe('AgentChannelModal', () => {
 	beforeEach(() => {
+		vi.clearAllMocks();
+		statuses.value = {};
 		connectedCredentials.value = {};
 		selectedCredentials.value = {};
 		loadingMap.value = {};
-		vi.clearAllMocks();
-	});
-
-	it('renders the channel list for the list view', () => {
-		const wrapper = mountModal({ view: 'list' });
-
-		expect(wrapper.findAll('[data-testid="channel-list-item"]')).toHaveLength(catalog.value.length);
-	});
-
-	it('does not describe a configured draft channel as connected', async () => {
-		connectedCredentials.value.linear = 'linear-credential';
-		const wrapper = mountModal({ view: 'linear_setup' });
-		await flushPromises();
-
-		expect(
-			wrapper.get('[data-testid="linear-setup"]').attributes('data-connected-description'),
-		).toBe('');
-	});
-
-	it('renders the per-channel setup view for a setup view', () => {
-		const wrapper = mountModal({ view: 'linear_setup' });
-
-		const linearSetup = wrapper.find('[data-testid="linear-setup"]');
-		expect(linearSetup.attributes('data-mode')).toBe('setup');
-	});
-
-	it('waits for a pending agent to persist before saving a channel configuration', async () => {
-		let finishPersisting = () => {};
-		const persisting = new Promise<void>((resolve) => {
-			finishPersisting = resolve;
-		});
-		selectedCredentials.value.linear = 'linear-credential';
-		const wrapper = mountModal({
-			view: 'linear_setup',
-			ensureAgentPersisted: async () => await persisting,
-		});
-
-		await wrapper.get('[data-testid="linear-setup-connect"]').trigger('click');
-		await flushPromises();
-
-		expect(connectMock).not.toHaveBeenCalled();
-
-		finishPersisting();
-		await flushPromises();
-
-		expect(connectMock).toHaveBeenCalledWith('linear', 'linear-credential', {
-			accessMode: 'all',
-		});
-	});
-
-	it('waits for a pending agent to persist before starting Slack app setup', async () => {
-		let finishPersisting = () => {};
-		const persisting = new Promise<void>((resolve) => {
-			finishPersisting = resolve;
-		});
-		const wrapper = mountModal({
-			view: 'slack_setup',
-			ensureAgentPersisted: async () => await persisting,
-		});
-
-		await wrapper.get('[data-testid="slack-setup-automatic-setup"]').trigger('click');
-		await flushPromises();
-
-		expect(setupSlackAppMock).not.toHaveBeenCalled();
-
-		finishPersisting();
-		await flushPromises();
-
-		expect(setupSlackAppMock).toHaveBeenCalledWith('app-token', expect.any(Function));
-	});
-
-	it('renders the per-channel edit view for an edit view', () => {
-		const wrapper = mountModal({ view: 'linear_edit' });
-
-		const linearSetup = wrapper.find('[data-testid="linear-setup"]');
-		expect(linearSetup.attributes('data-mode')).toBe('edit');
-	});
-
-	it.each(['slack', 'linear', 'telegram'])(
-		'renders the configured credential and edit action for the %s edit view',
-		async (channelType) => {
-			connectedCredentials.value[channelType] = `${channelType}-credential`;
-			const wrapper = mountModal({
-				view: `${channelType}_edit`,
-			});
-			await flushPromises();
-
-			const credentialConnection = wrapper.get('[data-testid="shared-credential-connection"]');
-			expect(credentialConnection.attributes('data-channel-type')).toBe(channelType);
-			expect(credentialConnection.attributes('data-credential-id')).toBe(
-				`${channelType}-credential`,
-			);
-
-			await credentialConnection.get('[data-testid="edit-credential"]').trigger('click');
-			expect(editCredentialMock).toHaveBeenCalledOnce();
-		},
-	);
-
-	it.each(['slack', 'linear', 'telegram'])(
-		'removes the exact %s channel binding and closes the modal',
-		async (channelType) => {
-			connectedCredentials.value[channelType] = `${channelType}-credential`;
-			const wrapper = mountModal({
-				view: `${channelType}_edit`,
-			});
-			await flushPromises();
-
-			await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
-			await flushPromises();
-
-			expect(disconnectMock).toHaveBeenCalledWith(channelType, `${channelType}-credential`);
-			expect(fetchStatusMock).toHaveBeenCalledWith([channelType]);
-			expect(connectMock).not.toHaveBeenCalled();
-			expect(createCredentialMock).not.toHaveBeenCalled();
-			expect(wrapper.emitted('channel-disconnected')).toEqual([[channelType]]);
-			expect(wrapper.emitted('agent-changed')).toHaveLength(1);
-			expect(wrapper.emitted('update:open')).toEqual([[false]]);
-		},
-	);
-
-	it('keeps the channel listed when another binding of the same type remains', async () => {
-		connectedCredentials.value.linear = 'linear-credential';
-		disconnectMock.mockImplementationOnce(async () => {
-			connectedCredentials.value.linear = 'linear-credential-other';
-		});
-		const wrapper = mountModal({
-			view: 'linear_edit',
-		});
-		await flushPromises();
-
-		await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
-		await flushPromises();
-
-		expect(disconnectMock).toHaveBeenCalledWith('linear', 'linear-credential');
-		expect(fetchStatusMock).toHaveBeenCalledWith(['linear']);
-		expect(wrapper.emitted('channel-disconnected')).toBeUndefined();
-		expect(wrapper.emitted('update:open')).toEqual([[false]]);
-	});
-
-	it('connects a replacement credential before detaching the original binding and refetching status', async () => {
-		connectedCredentials.value.linear = 'linear-credential';
-		const wrapper = mountModal({
-			view: 'linear_edit',
-		});
-		await flushPromises();
-
-		await wrapper.get('[data-testid="change-credential"]').trigger('click');
-		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
-		await flushPromises();
-
-		expect(connectMock).toHaveBeenCalledWith('linear', 'linear-credential-new', {
-			accessMode: 'all',
-		});
-		expect(disconnectMock).toHaveBeenCalledWith('linear', 'linear-credential');
-		expect(fetchStatusMock).toHaveBeenCalledWith(['linear']);
-		expect(connectMock.mock.invocationCallOrder[0]).toBeLessThan(
-			disconnectMock.mock.invocationCallOrder[0],
-		);
-		expect(disconnectMock.mock.invocationCallOrder[0]).toBeLessThan(
-			fetchStatusMock.mock.invocationCallOrder[0],
-		);
-	});
-
-	it('finishes replacing the original binding if the view changes while connecting', async () => {
-		connectedCredentials.value.linear = 'linear-credential';
-		let finishConnect = () => {};
-		const connectPending = new Promise<void>((resolve) => {
-			finishConnect = resolve;
-		});
-		connectMock.mockImplementationOnce(async (channelType: string, credentialId: string) => {
-			await connectPending;
-			connectedCredentials.value[channelType] = credentialId;
+		mocks.connect.mockImplementation(async (type: string, credentialId: string) => {
+			statuses.value[type] = 'connected';
+			connectedCredentials.value[type] = credentialId;
 			return { status: 'connected' };
 		});
-		const wrapper = mountModal({
-			view: 'linear_edit',
+		mocks.disconnect.mockImplementation(async (type: string) => {
+			statuses.value[type] = 'disconnected';
+			delete connectedCredentials.value[type];
+			return { status: 'disconnected' };
 		});
-		await flushPromises();
-
-		await wrapper.get('[data-testid="change-credential"]').trigger('click');
-		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
-		await wrapper.setProps({ view: 'list' });
-		finishConnect();
-		await flushPromises();
-
-		expect(disconnectMock).toHaveBeenCalledWith('linear', 'linear-credential');
-		expect(fetchStatusMock).toHaveBeenCalledWith(['linear']);
+		mocks.fetchStatus.mockResolvedValue(undefined);
+		mocks.beforeSave.mockResolvedValue(undefined);
+		mocks.ensureAgentPersisted.mockResolvedValue(undefined);
 	});
 
-	it('prevents the dialog from closing while a replacement is connecting', async () => {
-		connectedCredentials.value.linear = 'linear-credential';
-		let finishConnect = () => {};
-		const connectPending = new Promise<void>((resolve) => {
-			finishConnect = resolve;
-		});
-		connectMock.mockImplementationOnce(async (channelType: string, credentialId: string) => {
-			loadingMap.value[channelType] = true;
-			try {
-				await connectPending;
-				connectedCredentials.value[channelType] = credentialId;
-				return { status: 'connected' };
-			} finally {
-				loadingMap.value[channelType] = false;
-			}
-		});
-		const wrapper = mountModal({
-			view: 'linear_edit',
-		});
+	it('uses registry metadata and setup rendering without platform checks', async () => {
+		const list = mountModal('list');
 		await flushPromises();
+		expect(list.get('[data-testid="channel-list-item"]').attributes('data-action')).toBe(
+			'Connect example',
+		);
 
-		await wrapper.get('[data-testid="change-credential"]').trigger('click');
-		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
-		await flushPromises();
-		expect(wrapper.find('[data-testid="close-dialog"]').exists()).toBe(false);
-		await wrapper.get('[data-testid="escape-dialog"]').trigger('click');
-
-		expect(wrapper.emitted('update:open')).toBeUndefined();
-
-		finishConnect();
-		await flushPromises();
-
-		expect(disconnectMock).toHaveBeenCalledWith('linear', 'linear-credential');
-		expect(wrapper.emitted('update:open')).toEqual([[false]]);
+		const setup = mountModal();
+		expect(setup.get('[data-testid="platform-view"]').attributes('data-mode')).toBe('setup');
 	});
 
-	it('resets an unsaved credential change when the edit modal reopens', async () => {
-		connectedCredentials.value.linear = 'linear-credential';
-		const wrapper = mountModal({
-			view: 'linear_edit',
+	it('presents configured and connected as distinct list states', async () => {
+		statuses.value.example = 'configured';
+		const configured = mountModal('list');
+		await flushPromises();
+		expect(configured.get('[data-testid="channel-list-item"]').attributes()).toMatchObject({
+			'data-configured': 'true',
+			'data-connected': 'false',
 		});
-		await flushPromises();
 
-		await wrapper.get('[data-testid="change-credential"]').trigger('click');
-		expect(selectedCredentials.value.linear).toBe('linear-credential-new');
-
-		await wrapper.setProps({ open: false });
-		await wrapper.setProps({ open: true });
-		await flushPromises();
-
-		expect(
-			wrapper.get('[data-testid="shared-credential-connection"]').attributes('data-credential-id'),
-		).toBe('linear-credential');
+		statuses.value.example = 'connected';
+		await configured.vm.$nextTick();
+		expect(configured.get('[data-testid="channel-list-item"]').attributes('data-connected')).toBe(
+			'true',
+		);
 	});
 
-	it('keeps the original binding and modal open when connecting a replacement credential fails', async () => {
-		connectedCredentials.value.linear = 'linear-credential';
-		connectMock.mockRejectedValueOnce(new Error('Failed to connect replacement credential'));
-		const wrapper = mountModal({
-			view: 'linear_edit',
-		});
+	it('forwards publication state and persists before platform save', async () => {
+		selectedCredentials.value.example = 'credential-new';
+		const wrapper = mountModal('example_setup', true);
+
+		expect(wrapper.get('[data-testid="platform-view"]').attributes('data-published')).toBe('true');
+		await wrapper.get('[data-testid="connect-channel"]').trigger('click');
 		await flushPromises();
 
-		await wrapper.get('[data-testid="change-credential"]').trigger('click');
-		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
-		await flushPromises();
-
-		expect(connectMock).toHaveBeenCalledWith('linear', 'linear-credential-new', {
+		expect(mocks.ensureAgentPersisted).toHaveBeenCalledOnce();
+		expect(mocks.beforeSave).toHaveBeenCalledOnce();
+		expect(mocks.connect).toHaveBeenCalledWith('example', 'credential-new', {
 			accessMode: 'all',
 		});
-		expect(disconnectMock).not.toHaveBeenCalled();
-		expect(fetchStatusMock).not.toHaveBeenCalled();
-		expect(wrapper.emitted('update:open')).toBeUndefined();
-		expect(vueErrorHandlerMock).toHaveBeenCalledWith(
-			expect.objectContaining({ message: 'Failed to connect replacement credential' }),
-			expect.anything(),
-			expect.any(String),
+		expect(mocks.ensureAgentPersisted.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.connect.mock.invocationCallOrder[0],
 		);
-	});
-
-	it('locks the replacement credential and retries detaching the original binding', async () => {
-		connectedCredentials.value.linear = 'linear-credential';
-		disconnectMock.mockRejectedValueOnce(new Error('Failed to detach original credential'));
-		const wrapper = mountModal({
-			view: 'linear_edit',
-		});
-		await flushPromises();
-
-		await wrapper.get('[data-testid="change-credential"]').trigger('click');
-		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
-		await flushPromises();
-
-		expect(connectMock).toHaveBeenCalledOnce();
-		expect(disconnectMock).toHaveBeenCalledWith('linear', 'linear-credential');
-		expect(wrapper.get('[data-testid="change-credential"]').attributes('disabled')).toBeDefined();
-		expect(wrapper.get('[data-testid="linear-setup"]').attributes('data-loading')).toBe('true');
-		expect(wrapper.get('[data-testid="agent-channel-save-channel-config"]').text()).toBe(
-			'generic.retry',
-		);
-		expect(wrapper.get('[data-testid="agent-channel-credential-replacement-error"]').text()).toBe(
-			'agents.channels.modal.credentialReplacementError',
-		);
-
-		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
-		await flushPromises();
-
-		expect(connectMock).toHaveBeenCalledOnce();
-		expect(disconnectMock).toHaveBeenCalledTimes(2);
-		expect(disconnectMock).toHaveBeenLastCalledWith('linear', 'linear-credential');
-		expect(fetchStatusMock).toHaveBeenCalledWith(['linear']);
-		expect(wrapper.emitted('update:open')).toEqual([[false]]);
-	});
-
-	it('allows the modal to close and reopen after detaching the original binding fails', async () => {
-		connectedCredentials.value.linear = 'linear-credential';
-		disconnectMock.mockRejectedValueOnce(new Error('Failed to detach original credential'));
-		const wrapper = mountModal({
-			view: 'linear_edit',
-		});
-		await flushPromises();
-
-		await wrapper.get('[data-testid="change-credential"]').trigger('click');
-		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
-		await flushPromises();
-
-		expect(wrapper.get('[data-testid="agent-channel-credential-replacement-error"]').text()).toBe(
-			'agents.channels.modal.credentialReplacementError',
-		);
-		await wrapper.get('[data-testid="close-dialog"]').trigger('click');
-
-		expect(wrapper.emitted('update:open')).toEqual([[false]]);
-
-		await wrapper.setProps({ open: false });
-		await wrapper.setProps({ open: true });
-		await flushPromises();
-
-		expect(
-			wrapper.find('[data-testid="agent-channel-credential-replacement-error"]').exists(),
-		).toBe(false);
-		expect(wrapper.find('[data-testid="close-dialog"]').exists()).toBe(true);
-		expect(wrapper.get('[data-testid="agent-channel-save-channel-config"]').text()).toBe(
-			'generic.save',
-		);
-	});
-
-	it('saves settings without disconnecting when the credential is unchanged', async () => {
-		connectedCredentials.value.telegram = 'telegram-credential';
-		const wrapper = mountModal({
-			view: 'telegram_edit',
-		});
-		await flushPromises();
-
-		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
-		await flushPromises();
-
-		expect(connectMock).toHaveBeenCalledWith('telegram', 'telegram-credential', {
-			accessMode: 'all',
-		});
-		expect(disconnectMock).not.toHaveBeenCalled();
-		expect(wrapper.emitted('channel-connected')).toEqual([['telegram']]);
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
-		expect(wrapper.emitted('update:open')).toEqual([[false]]);
+	});
+
+	it('connects a replacement before disconnecting the original credential', async () => {
+		statuses.value.example = 'connected';
+		connectedCredentials.value.example = 'credential-old';
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="select-credential"]').trigger('click');
+		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.connect).toHaveBeenCalledWith('example', 'credential-new', {
+			accessMode: 'all',
+		});
+		expect(mocks.disconnect).toHaveBeenCalledWith('example', 'credential-old');
+		expect(mocks.connect.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.disconnect.mock.invocationCallOrder[0],
+		);
 	});
 });

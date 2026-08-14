@@ -1,3 +1,4 @@
+import type { InstanceAiCredits } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { isQuotaExhaustedError } from '@n8n/instance-ai';
 
@@ -26,6 +27,24 @@ describe('getUserFacingErrorMessage', () => {
 		expect(getUserFacingErrorMessage(new Error('kaboom'))).toBe(
 			'Something went wrong before I could finish that response. Please try again.',
 		);
+	});
+
+	it('maps a dropped provider connection to a retryable message, not the generic one', () => {
+		const error = Object.assign(new TypeError('terminated'), {
+			cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+		});
+		const message = getUserFacingErrorMessage(error);
+		expect(message).toContain('connection to the AI provider dropped');
+		expect(message).toContain('try again');
+	});
+
+	it('prefers the out-of-credits message when a quota failure carries a transport cause', () => {
+		const masked = Object.assign(new TypeError('terminated'), {
+			cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+		});
+		const message = getUserFacingErrorMessage(new QuotaExhaustedStreamError(masked));
+		expect(message.toLowerCase()).toContain('credits');
+		expect(message).not.toContain('connection to the AI provider dropped');
 	});
 
 	it('maps a quota-exhausted error (by code) to a clear out-of-credits message', () => {
@@ -84,9 +103,7 @@ describe('reclassifyMaskedStreamFailure', () => {
 	const user = { id: 'user-1' } as User;
 	const context = { threadId: 'thread-1', runId: 'run-1' };
 
-	function createService(
-		getCredits: () => Promise<{ creditsQuota: number; creditsClaimed: number }>,
-	): ReclassifyInternals {
+	function createService(getCredits: () => Promise<InstanceAiCredits>): ReclassifyInternals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as ReclassifyInternals;
 		service.modelService = { getCredits: vi.fn(getCredits) };
 		service.logger = { debug: vi.fn(), info: vi.fn() };
@@ -107,6 +124,36 @@ describe('reclassifyMaskedStreamFailure', () => {
 
 	it('keeps the original error when credits remain', async () => {
 		const service = createService(async () => ({ creditsQuota: 100, creditsClaimed: 40 }));
+		const masked = new TypeError('terminated');
+
+		await expect(service.reclassifyMaskedStreamFailure(masked, user, context)).resolves.toBe(
+			masked,
+		);
+	});
+
+	// The activation lock refuses use while the quota still has credits, so the numbers alone
+	// wouldn't explain the failure.
+	it('substitutes a quota-exhausted error when the proxy reports the pool locked', async () => {
+		const service = createService(async () => ({
+			creditsQuota: 100,
+			creditsClaimed: 40,
+			quotaLocked: true,
+		}));
+		const masked = createNoOutputGeneratedError();
+
+		const resolved = await service.reclassifyMaskedStreamFailure(masked, user, context);
+
+		expect(resolved).toBeInstanceOf(QuotaExhaustedStreamError);
+	});
+
+	// The lock is read from the proxy, never inferred from n8n's own trigger state: a lock call
+	// that failed leaves the pool open, and an unrelated stream death must not become a paywall.
+	it('keeps the original error when the proxy reports the pool unlocked', async () => {
+		const service = createService(async () => ({
+			creditsQuota: 100,
+			creditsClaimed: 40,
+			quotaLocked: false,
+		}));
 		const masked = new TypeError('terminated');
 
 		await expect(service.reclassifyMaskedStreamFailure(masked, user, context)).resolves.toBe(

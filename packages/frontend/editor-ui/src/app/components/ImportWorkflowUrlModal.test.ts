@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { useUIStore } from '@/app/stores/ui.store';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { IMPORT_WORKFLOW_URL_MODAL_KEY } from '@/app/constants';
+import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
 
 const ModalStub = {
@@ -18,12 +19,13 @@ const ModalStub = {
 };
 
 const initialState = {
-	modalsById: {
-		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
-			open: true,
+	[STORES.UI]: {
+		modalStateById: {
+			[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
+				open: true,
+			},
 		},
 	},
-	modalStack: [IMPORT_WORKFLOW_URL_MODAL_KEY],
 };
 
 const global = {
