@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type { GlobalConfig } from '@n8n/config';
 import type { CredentialsEntity, SettingsRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -8,7 +9,15 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { AiService } from '@/services/ai.service';
 
-import { BUILDER_NOT_CONFIGURED_CODE } from '@n8n/api-types';
+import { BUILDER_NOT_CONFIGURED_CODE, MOONSHOTAI_KIMI_K3_MODEL_ID } from '@n8n/api-types';
+
+vi.mock('@ai-sdk/openai-compatible', () => ({
+	createOpenAICompatible: (opts: { name: string }) => (model: string) => ({
+		provider: opts.name,
+		modelId: model,
+		specificationVersion: 'v3',
+	}),
+}));
 
 import { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
 import { BuilderNotConfiguredError } from '../errors';
@@ -35,6 +44,9 @@ describe('AgentsBuilderSettingsService', () => {
 	const logger = mock<Logger>();
 	const settingsRepository = mock<SettingsRepository>();
 	const aiService = mock<AiService>();
+	const globalConfig = mock<GlobalConfig>({
+		instanceAi: { model: '' },
+	} as Partial<GlobalConfig>);
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const outboundHttp = mock<OutboundHttp>();
@@ -48,10 +60,12 @@ describe('AgentsBuilderSettingsService', () => {
 		const transport = mock<HttpTransport>();
 		transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 		outboundHttp.transport.mockReturnValue(transport);
+		globalConfig.instanceAi.model = '';
 		service = new AgentsBuilderSettingsService(
 			logger,
 			settingsRepository,
 			aiService,
+			globalConfig,
 			credentialsService,
 			credentialsFinderService,
 			outboundHttp,
@@ -114,6 +128,47 @@ describe('AgentsBuilderSettingsService', () => {
 				{ id: 'user-1' },
 				{ userMessageId: expect.any(String) },
 			);
+		});
+
+		it('mode=default + proxy enabled + Kimi env → Kimi proxy LanguageModel', async () => {
+			mockPersistedSettings({ mode: 'default' });
+			globalConfig.instanceAi.model = MOONSHOTAI_KIMI_K3_MODEL_ID;
+			const proxyToken = makeJwt(Math.floor(Date.now() / 1000) + 600);
+			const getBuilderApiProxyToken = vi
+				.fn()
+				.mockResolvedValue({ accessToken: proxyToken, tokenType: 'Bearer' });
+			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.getClient.mockResolvedValue({
+				getApiProxyBaseUrl: () => 'https://proxy.example/api',
+				getBuilderApiProxyToken,
+			} as never);
+
+			const result = await service.resolveModelConfig(user);
+
+			expect(result.isProxied).toBe(true);
+			expect(result.config).toMatchObject({
+				provider: 'moonshotai',
+				modelId: 'kimi-k3',
+			});
+			expect(result.tracingProxyConfig?.apiUrl).toBe('https://proxy.example/api/langsmith');
+		});
+
+		it('mode=default + proxy enabled + near-miss Kimi env → Anthropic default model', async () => {
+			mockPersistedSettings({ mode: 'default' });
+			globalConfig.instanceAi.model = 'moonshotai/kimi-k2';
+			const proxyToken = makeJwt(Math.floor(Date.now() / 1000) + 600);
+			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.getClient.mockResolvedValue({
+				getApiProxyBaseUrl: () => 'https://proxy.example/api',
+				getBuilderApiProxyToken: vi
+					.fn()
+					.mockResolvedValue({ accessToken: proxyToken, tokenType: 'Bearer' }),
+			} as never);
+
+			const result = await service.resolveModelConfig(user);
+
+			expect(result.isProxied).toBe(true);
+			expect(result.config).toMatchObject({ modelId: 'claude-sonnet-4-6' });
 		});
 
 		it('mode=default + proxy disabled + Instance AI env set → returns Instance AI model config', async () => {

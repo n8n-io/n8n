@@ -40,6 +40,7 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	deepseek: apiKeyCreds,
 	cohere: apiKeyCreds,
 	mistral: apiKeyCreds,
+	moonshotai: apiKeyCreds,
 	vercel: apiKeyCreds,
 	openrouter: apiKeyCreds,
 	nvidia: apiKeyCreds,

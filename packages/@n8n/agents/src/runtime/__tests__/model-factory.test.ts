@@ -397,6 +397,19 @@ describe('createModel', () => {
 			expect(model.supportsStructuredOutputs).toBeUndefined();
 		});
 
+		it('should enable usage and structured outputs for moonshotai', () => {
+			const model = createModel({
+				id: 'moonshotai/kimi-k3',
+				apiKey: 'ms-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('moonshotai');
+			expect(model.modelId).toBe('kimi-k3');
+			expect(model.apiKey).toBe('ms-test');
+			expect(model.baseURL).toBe('https://api.moonshot.ai/v1');
+			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
+		});
+
 		it('should have undefined supportsStructuredOutputs for custom when unset', () => {
 			const model = createModel({
 				id: 'custom/Kimi-K3',

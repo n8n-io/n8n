@@ -14,7 +14,11 @@ import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
+import {
+	resolveAIAPromptCaching,
+	resolveAIAReasoning,
+	tokenUsageToBuilderUsageItems,
+} from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -270,12 +274,15 @@ export class AgentsBuilderService {
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
-			.promptCaching({ anthropic: { ttl: '5m' } })
 			.instructions(finalInstructions)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
 			.configuration({ maxIterations: 30 });
+		const promptCaching = resolveAIAPromptCaching(modelConfig);
+		if (promptCaching) {
+			builder.promptCaching(promptCaching);
+		}
 
 		if (session.telemetry) builder.telemetry(session.telemetry);
 		if (session.memoryTaskObserver) builder.memoryTaskObserver(session.memoryTaskObserver);
@@ -291,7 +298,7 @@ export class AgentsBuilderService {
 			}),
 		);
 
-		builder.reasoning('medium');
+		builder.reasoning(resolveAIAReasoning(modelConfig));
 
 		return builder;
 	}

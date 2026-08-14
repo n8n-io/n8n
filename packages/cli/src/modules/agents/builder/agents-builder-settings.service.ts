@@ -3,16 +3,18 @@ import {
 	AGENT_BUILDER_DEFAULT_MODEL,
 	agentBuilderAdminSettingsSchema,
 	buildProxyHeaders,
+	isMoonshotaiKimiK3ModelId,
 	type AgentBuilderAdminSettings,
 	type AgentBuilderAdminSettingsResponse,
 	type AgentBuilderAdminSettingsUpdateRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION } from '@/constants';
@@ -21,7 +23,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { createProxyLanguageModel } from '@/utils/ai-proxy-language-model';
 
 import { BuilderNotConfiguredError } from './errors';
 import {
@@ -89,6 +91,7 @@ export class AgentsBuilderSettingsService {
 		private readonly logger: Logger,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly aiService: AiService,
+		private readonly globalConfig: GlobalConfig,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly outboundHttp: OutboundHttp,
@@ -161,7 +164,9 @@ export class AgentsBuilderSettingsService {
 
 		if (settings.mode === 'custom') {
 			const fromCredential = await this.tryResolveCustomCredential(settings);
-			if (fromCredential) return { config: fromCredential, isProxied: false };
+			if (fromCredential) {
+				return { config: fromCredential, isProxied: false };
+			}
 			this.logger.warn(
 				'Agent builder custom credential could not be resolved; falling back to default',
 				{ credentialId: settings.credentialId },
@@ -218,54 +223,42 @@ export class AgentsBuilderSettingsService {
 	}
 
 	/**
-	 * Build a native Anthropic `LanguageModel` pointed at the proxy. Auth
-	 * headers are injected via a `fetch` wrapper backed by `ProxyTokenManager`
-	 * so each request gets a fresh-or-cached token.
+	 * Build a LanguageModel pointed at the proxy. Auth headers are injected via
+	 * a `fetch` wrapper backed by `ProxyTokenManager` so each request gets a
+	 * fresh-or-cached token.
 	 */
 	private async resolveProxyModel(user: User): Promise<ResolvedBuilderModelConfig> {
 		const client = await this.aiService.getClient();
 		const proxyBaseUrl = client.getApiProxyBaseUrl().replace(/\/$/, '');
-		const baseURL = proxyBaseUrl + '/anthropic/v1';
+		const configuredModelId = this.globalConfig.instanceAi.model.trim();
+		const isExactKimi = isMoonshotaiKimiK3ModelId(configuredModelId);
+		const modelId = isExactKimi ? configuredModelId : AGENT_BUILDER_DEFAULT_MODEL;
 
 		const tokenManager = new ProxyTokenManager(async () => {
 			return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
 		});
-		const proxyHeaders = buildProxyHeaders({
-			feature: 'agent-builder',
+		const proxyHeaders = {
+			feature: 'agent-builder' as const,
 			n8nVersion: N8N_VERSION,
-		});
+		};
 
-		const { createAnthropic } = await import('@ai-sdk/anthropic');
-		const proxyFetch = createAiProxyFetch(this.outboundHttp);
-
-		const provider = createAnthropic({
-			baseURL,
-			apiKey: 'proxy-managed',
-			fetch: async (input, init) => {
-				const headers = new Headers(init?.headers);
-				const auth = await tokenManager.getAuthHeaders();
-				for (const [k, v] of Object.entries(auth)) {
-					headers.set(k, v);
-				}
-				for (const [k, v] of Object.entries(proxyHeaders)) {
-					headers.set(k, v);
-				}
-				return await proxyFetch(input, { ...init, headers });
-			},
+		const model = await createProxyLanguageModel({
+			proxyBaseUrl,
+			modelId,
+			tokenManager,
+			feature: proxyHeaders.feature,
+			n8nVersion: proxyHeaders.n8nVersion,
+			outboundHttp: this.outboundHttp,
 		});
-		const model = provider(AGENT_BUILDER_DEFAULT_MODEL);
-		// `LanguageModel` from the AI SDK is structurally compatible with ModelConfig.
-		if (!model) {
-			throw new UnexpectedError('Failed to instantiate Anthropic proxy model');
-		}
+		const tracingHeaders = buildProxyHeaders(proxyHeaders);
 		return {
-			config: model as ModelConfig,
+			config: model,
 			isProxied: true,
 			tracingProxyConfig: {
 				apiUrl: proxyBaseUrl + '/langsmith',
 				getAuthHeaders: async () => ({
 					...(await tokenManager.getAuthHeaders()),
-					...proxyHeaders,
+					...tracingHeaders,
 				}),
 			},
 		};

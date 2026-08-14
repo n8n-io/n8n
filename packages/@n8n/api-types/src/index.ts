@@ -682,4 +682,10 @@ export {
 	type N8nProxyFeature,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export {
+	MOONSHOTAI_KIMI_K3_MODEL_ID,
+	MOONSHOTAI_KIMI_K3_MODEL_NAME,
+	MOONSHOTAI_KIMI_K3_PROVIDER,
+	isMoonshotaiKimiK3ModelId,
+} from './constants/instance-ai-models';
 export { BLOCK_ACCESS_ASSIGNMENT } from './constants/role-mapping';

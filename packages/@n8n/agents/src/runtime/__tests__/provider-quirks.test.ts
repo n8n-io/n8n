@@ -207,12 +207,26 @@ describe('thinkingToProviderOptions', () => {
 			{},
 		);
 	});
+
+	it('moonshotai: maps reasoningEffort to providerOptions.moonshotai', () => {
+		expect(
+			getProviderQuirks('moonshotai').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'low',
+				},
+				'moonshotai/kimi-k3',
+			),
+		).toEqual({
+			moonshotai: { reasoningEffort: 'low' },
+		});
+	});
 });
 
 describe('resolveDefaultMaxOutputTokens', () => {
 	it.each([
 		'custom/accounts/fireworks/models/kimi-k3',
 		'openrouter/moonshotai/kimi-k3',
+		'moonshotai/kimi-k3',
 		'custom/Kimi-K3',
 	] as const)('raises the output cap to the Kimi K3 default for %s', (modelId) => {
 		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS);
