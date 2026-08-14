@@ -13,6 +13,8 @@ packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
   s_57c3811f2e5b52::t_ea4ab6aa31368b 49
   s_57c3811f2e5b52::t_17015a1651ae95 168-172
   s_57c3811f2e5b52::t_d23414f2419c78 87
+  h_5d40c27a8fdfd1 50-57,116
+  s_57c3811f2e5b52::t_4d2c8b690f654e 86
 packages/cli/test/integration/services/role.service.test.ts
   s_57c3811f2e5b52::t_c11b6808b2f184 1122,1128-1129,1135
   s_57c3811f2e5b52::t_e34e1f3e8da3c5 1208,1214
