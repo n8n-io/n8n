@@ -5,6 +5,7 @@ export type * from './push';
 export type * from './scaling';
 export * from './frontend-settings';
 export type * from './user';
+export type * from './consent';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
@@ -213,9 +214,11 @@ export {
 	dataTableNameSchema,
 } from './schemas/data-table.schema';
 
-export type {
-	DataTableFilter,
-	DataTableFilterConditionType,
+export {
+	type DataTableFilter,
+	type DataTableFilterConditionType,
+	FilterConditionSchema,
+	dataTableFilterTypeSchema,
 } from './schemas/data-table-filter.schema';
 
 export type {
@@ -676,9 +679,18 @@ export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.s
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,
+	X_N8N_RUN_ID_HEADER,
+	X_N8N_THREAD_ID_HEADER,
 	N8N_PROXY_FEATURES,
 	buildProxyHeaders,
 	type N8nProxyFeature,
+	type ProxyContext,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export {
+	MOONSHOTAI_KIMI_K3_MODEL_ID,
+	MOONSHOTAI_KIMI_K3_MODEL_NAME,
+	MOONSHOTAI_KIMI_K3_PROVIDER,
+	isMoonshotaiKimiK3ModelId,
+} from './constants/instance-ai-models';
 export { BLOCK_ACCESS_ASSIGNMENT } from './constants/role-mapping';

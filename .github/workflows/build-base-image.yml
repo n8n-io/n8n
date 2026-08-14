@@ -26,11 +26,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Node 26 requires alpine 3.23 on DHI (3.22 pairing isn't published).
-        # While we're on alpine 3.22 awaiting NODE-4184 (graphicsmagick → sharp
-        # migration that unblocks 3.23), Node 26 base builds can't succeed.
-        # Restore '26' to this matrix once 3.23 is back.
-        node_version: ['22', '24.18.1']
+        # One entry per published Node version: `node_version` is the
+        # `n8nio/base:<node_version>` tag, `dhi_ref` the DHI base it builds on,
+        # pinned to a multi-arch index digest. Bump tag and digest together
+        # when updating.
+        include:
+          - node_version: '22'
+            dhi_ref: dhi.io/node:22.23.2-alpine3.24-dev@sha256:a6ac21cfbc4bb746c1cfc6cf1501ec13c961ae71558ff2ac7e021caaaf91a224
+          - node_version: '24.18.1'
+            dhi_ref: dhi.io/node:24.18.1-alpine3.24-dev@sha256:074b5aa92e1ce74cd575214211bbcb8d1550710aec59558da734a67d84d31679
+          - node_version: '26.5.1'
+            dhi_ref: dhi.io/node:26.5.1-alpine3.24-dev@sha256:c4062f85acd1ca91ffb7d15048dcc5f15a922d630e65eb3c3c0dcdcef6ea36d8
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -63,7 +69,7 @@ jobs:
           context: .
           file: ./docker/images/n8n-base/Dockerfile
           build-args: |
-            NODE_VERSION=${{ matrix.node_version }}
+            DHI_REF=${{ matrix.dhi_ref }}
           platforms: linux/amd64,linux/arm64
           provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}

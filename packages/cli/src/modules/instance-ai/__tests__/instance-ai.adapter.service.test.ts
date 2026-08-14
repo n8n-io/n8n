@@ -1235,7 +1235,7 @@ import { UserError, UnexpectedError } from 'n8n-workflow';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
@@ -1259,7 +1259,7 @@ function createNodeAdapterServiceForTests(
 	nodes: Array<Record<string, unknown>>,
 	options?: {
 		nodeCatalogService?: Mocked<NodeCatalogService>;
-		loadNodesAndCredentials?: { addPostProcessor?: Mock };
+		loadNodesAndCredentials?: Record<string, unknown>;
 	},
 ) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1304,7 +1304,7 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
@@ -1335,7 +1335,14 @@ function createNodeAdapterServiceForTests(
 		expiresAt: Date.now() + 60_000,
 	};
 
-	return { service, nodeService: service.createContext(mockUser).nodeService, nodeCatalogService };
+	const context = service.createContext(mockUser);
+
+	return {
+		service,
+		nodeService: context.nodeService,
+		credentialService: context.credentialService,
+		nodeCatalogService,
+	};
 }
 
 function createNodeAdapterForTests(
@@ -1627,10 +1634,8 @@ function createDataTableAdapterForTests(overrides?: {
 			.mockResolvedValue({ id: 'dt-1', name: 'Orders', projectId: 'team-project-id' }),
 	};
 
-	const mockSourceControlPreferencesService = {
-		getPreferences: vi.fn().mockReturnValue({
-			branchReadOnly: overrides?.branchReadOnly ?? false,
-		}),
+	const mockInstanceWriteAccess = {
+		isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
 	};
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1665,7 +1670,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
-		mockSourceControlPreferencesService as unknown as SourceControlPreferencesService,
+		mockInstanceWriteAccess as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
@@ -1692,7 +1697,7 @@ function createDataTableAdapterForTests(overrides?: {
 		mockProjectRepository,
 		mockDataTableService,
 		mockDataTableRepository,
-		mockSourceControlPreferencesService,
+		mockInstanceWriteAccess,
 		mockUser,
 	};
 }
@@ -1979,10 +1984,8 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi
-				.fn()
-				.mockReturnValue({ branchReadOnly: overrides?.branchReadOnly ?? false }),
-		} as unknown as SourceControlPreferencesService,
+			isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
+		} as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		mockWorkflowHistoryService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -2813,8 +2816,8 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
-		} as unknown as SourceControlPreferencesService,
+			isReadOnly: vi.fn().mockReturnValue(false),
+		} as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
@@ -3075,7 +3078,7 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
@@ -3579,7 +3582,7 @@ function createAdapterWithGatewayMock(
 		typeof InstanceAiAdapterService
 	>[14];
 	args[21] = {
-		getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+		isReadOnly: vi.fn().mockReturnValue(false),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
 	if (overrides?.settingsService) {
 		args[22] = overrides.settingsService as unknown as ConstructorParameters<
@@ -4238,5 +4241,51 @@ describe('createContext — run model wiring', () => {
 		const service = createAdapterWithGatewayMock(vi.fn());
 
 		expect(service.createContext(mockUser).modelId).toBeUndefined();
+	});
+});
+
+describe('createCredentialAdapter', () => {
+	describe('isTestable', () => {
+		// A versioned node whose `testedBy` sits only on the versions named in `testedByOn`.
+		const loaderWithTestedByOn = (testedByOn: number[]) => {
+			const descriptionFor = (version: number) => ({
+				description: {
+					credentials: [
+						{
+							name: 'kafka',
+							...(testedByOn.includes(version) ? { testedBy: 'kafkaConnectionTest' } : {}),
+						},
+					],
+				},
+			});
+
+			return {
+				// No class-level `test`, so resolution falls through to the nodes.
+				getCredential: () => ({ type: { name: 'kafka' } }),
+				knownCredentials: { kafka: { supportedNodes: ['kafka'] } },
+				getNode: () => ({
+					type: { nodeVersions: { 1: descriptionFor(1), 2: descriptionFor(2) } },
+				}),
+			};
+		};
+
+		it('finds a test declared only on an older node version', async () => {
+			// Regression guard: reading a single version reported Kafka as untestable once v2
+			// registered without `testedBy`, which silently disabled its connection test.
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loaderWithTestedByOn([1]),
+			});
+
+			expect(credentialService.isTestable).toBeDefined();
+			await expect(credentialService.isTestable!('kafka')).resolves.toBe(true);
+		});
+
+		it('is false when no registered version declares a test', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loaderWithTestedByOn([]),
+			});
+
+			await expect(credentialService.isTestable!('kafka')).resolves.toBe(false);
+		});
 	});
 });
