@@ -187,7 +187,12 @@ function redactDeepValue(
 		return { value: text, matches };
 	}
 
-	if (depth >= MAX_DEEP_DEPTH) return { value, matches: [] };
+	if (depth >= MAX_DEEP_DEPTH) {
+		if (opts.redactSensitiveKeys && value !== null && typeof value === 'object') {
+			return { value: opts.placeholder ?? DEFAULT_PLACEHOLDER, matches: [{ category: 'secret' }] };
+		}
+		return { value, matches: [] };
+	}
 
 	if (Array.isArray(value)) {
 		const matches: Array<{ category: RedactionCategory }> = [];

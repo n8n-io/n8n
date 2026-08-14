@@ -77,6 +77,21 @@ function makeExecution(overrides: Partial<AgentExecution> = {}): AgentExecution 
 					privateKey: 'first-value',
 					private_key: 'second-value',
 					'private-key': 'third-value',
+					level1: {
+						level2: {
+							level3: {
+								level4: {
+									level5: {
+										level6: {
+											level7: {
+												level8: { password: 'deep-boundary-secret' },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				output: { result: 'found' },
 				startTime: Date.parse('2026-08-14T09:00:00.300Z'),
@@ -255,6 +270,7 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(JSON.stringify(firstRuns)).not.toContain('first-value');
 		expect(JSON.stringify(firstRuns)).not.toContain('second-value');
 		expect(JSON.stringify(firstRuns)).not.toContain('third-value');
+		expect(JSON.stringify(firstRuns)).not.toContain('deep-boundary-secret');
 		expect(JSON.stringify(firstRuns)).toContain('[REDACTED]');
 		expect(firstRuns[1].inputs.attachments).toEqual([
 			{ id: 'attachment-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 42 },
