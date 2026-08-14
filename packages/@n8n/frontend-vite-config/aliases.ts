@@ -1,10 +1,7 @@
 import { resolve } from 'node:path';
 import type { Alias } from 'vite';
 
-import {
-	frontendModuleAliases,
-	frontendSourceAliases,
-} from '@n8n/frontend-vite-config/source-packages';
+import { frontendModuleAliases, frontendSourceAliases } from '#source-packages';
 
 /**
  * Workspace-resolution exceptions: packages reached *transitively*, so they are not declared

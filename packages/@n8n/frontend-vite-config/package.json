@@ -13,9 +13,11 @@
   },
   "main": "index.ts",
   "exports": {
-    ".": "./index.ts",
-    "./aliases": "./aliases.ts",
-    "./source-packages": "./source-packages.ts"
+    ".": "./index.ts"
+  },
+  "imports": {
+    "#aliases": "./aliases.ts",
+    "#source-packages": "./source-packages.ts"
   },
   "scripts": {
     "clean": "rimraf .turbo",
