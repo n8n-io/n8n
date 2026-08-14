@@ -64,10 +64,7 @@ export class AgentConfigService {
 	) {}
 
 	/**
-	 * Get the JSON config for an agent. All refs are bare. Task, skill, and
-	 * custom tool definition bodies live in their own stores. The frontend
-	 * inlines them at export time (see `buildExportedAgentJson`), and the write
-	 * path accepts them back inline on import.
+	 * Get the JSON config for an agent. All refs are bare.
 	 */
 	async getConfig(agentId: string, projectId: string): Promise<AgentJsonConfig> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);

@@ -8,8 +8,7 @@ import type {
 /**
  * Build the self-contained agent JSON for export. The function inlines the
  * definition body of each task, skill, and custom tool ref from data that the
- * builder already loaded. Workflow export expands tag refs client-side in the
- * same way. The server stores and serves only bare refs. The import path
+ * builder already loaded. The import path
  * recreates the definitions from these inline bodies.
  */
 export function buildExportedAgentJson(
