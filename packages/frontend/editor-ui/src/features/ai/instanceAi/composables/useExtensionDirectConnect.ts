@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref, type Ref } from 'vue';
+import { ref, type Ref } from 'vue';
 
 export const DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS = 60_000;
 
@@ -40,86 +40,64 @@ async function sendToExtension(
 	});
 }
 
+async function timeout(ms: number): Promise<undefined> {
+	return await new Promise((resolve) => setTimeout(() => resolve(undefined), ms));
+}
+
 /**
  * Direct Browser Use connect flow: asks the installed extension (via
  * `externally_connectable` messaging) to show its connect confirmation in an
- * extension-owned popup, so the user only confirms once. Falls back to
- * `unsupported` when the extension is missing, outdated, or the page can't
- * message it — callers keep the link-based flow for that case.
+ * extension-owned popup, so the user only confirms once. `unsupported` means
+ * the extension did not open the popup — callers show the link-based flow.
  */
 export function useExtensionDirectConnect() {
 	const status: Ref<DirectConnectStatus> = ref('idle');
-	let confirmationTimer: ReturnType<typeof setTimeout> | undefined;
+	let attemptId = 0;
 
-	function clearConfirmationTimer(): void {
-		if (confirmationTimer) {
-			clearTimeout(confirmationTimer);
-			confirmationTimer = undefined;
-		}
-	}
-
-	/**
-	 * Request a connection for the given extension connect URL
-	 * (`chrome-extension://<id>/connect.html?mcpRelayUrl=…`). Returns true when
-	 * the extension accepted the request and we are waiting for the user to
-	 * confirm in the extension popup.
-	 */
-	async function attempt(connectUrl: string): Promise<boolean> {
-		clearConfirmationTimer();
+	async function attempt(connectUrl: string): Promise<void> {
+		const id = ++attemptId;
 
 		const runtime = getExtensionRuntime();
-		if (!runtime) {
-			status.value = 'unsupported';
-			return false;
-		}
-
-		let extensionId: string;
-		let relayUrl: string | null;
+		let extensionId = '';
+		let relayUrl: string | null = null;
 		try {
 			const parsed = new URL(connectUrl);
 			extensionId = parsed.hostname;
 			relayUrl = parsed.searchParams.get('mcpRelayUrl');
-		} catch {
+		} catch {}
+		if (!runtime || !extensionId || !relayUrl) {
 			status.value = 'unsupported';
-			return false;
-		}
-		if (!extensionId || !relayUrl) {
-			status.value = 'unsupported';
-			return false;
+			return;
 		}
 
-		// Ping failing means no listener (extension missing or outdated); a
-		// failure after a successful ping is a genuine connect error.
-		let pinged = false;
 		try {
-			const pong = await sendToExtension(runtime, extensionId, { type: 'ping' });
-			if (!isRecord(pong) || pong.pong !== true) {
-				status.value = 'unsupported';
-				return false;
-			}
-			pinged = true;
-
-			const response = await sendToExtension(runtime, extensionId, {
-				type: 'connect',
-				relayUrl,
-			});
+			const response = await sendToExtension(runtime, extensionId, { type: 'connect', relayUrl });
+			if (id !== attemptId) return;
 			if (!isRecord(response) || response.accepted !== true) {
-				status.value = 'failed';
-				return false;
+				status.value = 'unsupported';
+				return;
 			}
 		} catch {
-			status.value = pinged ? 'failed' : 'unsupported';
-			return false;
+			if (id !== attemptId) return;
+			status.value = 'unsupported';
+			return;
 		}
 
 		status.value = 'waiting';
-		confirmationTimer = setTimeout(() => {
-			status.value = 'failed';
-		}, DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS);
-		return true;
-	}
 
-	onBeforeUnmount(clearConfirmationTimer);
+		let connected = false;
+		try {
+			const result = await Promise.race([
+				sendToExtension(runtime, extensionId, { type: 'connectResult', relayUrl }),
+				timeout(DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS),
+			]);
+			connected = isRecord(result) && result.connected === true;
+		} catch {}
+		if (id !== attemptId) return;
+		if (!connected) {
+			status.value = 'failed';
+		}
+	}
 
 	return { status, attempt };
 }

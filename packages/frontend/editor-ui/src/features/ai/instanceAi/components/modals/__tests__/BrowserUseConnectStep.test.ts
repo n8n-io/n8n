@@ -41,11 +41,7 @@ function makeSettingsStore(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-/**
- * Stub the extension messaging API so the direct connect flow is available.
- * `connectResponse` is what the extension replies to the connect request.
- */
-function installExtensionMock(connectResponse: unknown): void {
+function installExtensionMock(responses: Record<string, unknown>): void {
 	const runtime = {
 		lastError: undefined as { message?: string } | undefined,
 		sendMessage: (
@@ -54,7 +50,7 @@ function installExtensionMock(connectResponse: unknown): void {
 			callback: (response: unknown) => void,
 		) => {
 			const type = (message as { type: string }).type;
-			callback(type === 'ping' ? { pong: true } : connectResponse);
+			if (type in responses) callback(responses[type]);
 		},
 	};
 	(globalThis as { chrome?: unknown }).chrome = { runtime };
@@ -80,8 +76,17 @@ describe('BrowserUseConnectStep', () => {
 		expect(queryByTestId('browser-use-direct-connect-waiting')).toBeNull();
 	});
 
-	it('waits for confirmation once the extension accepts the request', async () => {
-		installExtensionMock({ accepted: true });
+	it('shows the manual connect link when the extension does not accept the request', async () => {
+		installExtensionMock({ connect: { accepted: false } });
+		const { getByTestId, queryByTestId } = renderComponent();
+		await flushPromises();
+
+		expect(getByTestId('browser-use-open-connect-page')).toBeVisible();
+		expect(queryByTestId('browser-use-direct-connect-retry')).toBeNull();
+	});
+
+	it('waits for the connect result once the extension opened the popup', async () => {
+		installExtensionMock({ connect: { accepted: true } });
 		const { getByTestId, queryByTestId } = renderComponent();
 		await flushPromises();
 
@@ -90,9 +95,8 @@ describe('BrowserUseConnectStep', () => {
 		expect(telemetryMock.trackDirectConnectRequested).toHaveBeenCalledTimes(1);
 	});
 
-	it('offers a retry that falls back to opening the connect page', async () => {
-		installExtensionMock({ accepted: false, error: 'Too many connect requests.' });
-		const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+	it('offers a retry when the connect did not succeed', async () => {
+		installExtensionMock({ connect: { accepted: true }, connectResult: { connected: false } });
 		const { getByTestId } = renderComponent();
 		await flushPromises();
 
@@ -100,13 +104,18 @@ describe('BrowserUseConnectStep', () => {
 		await flushPromises();
 
 		expect(telemetryMock.trackDirectConnectRequested).toHaveBeenCalledTimes(2);
-		expect(openSpy).toHaveBeenCalledWith(
-			CONNECT_URL,
-			'n8n-browser-use-connect',
-			expect.any(String),
-		);
+	});
 
-		openSpy.mockRestore();
+	it('shows the manual connect link when the extension stops responding on retry', async () => {
+		installExtensionMock({ connect: { accepted: true }, connectResult: { connected: false } });
+		const { getByTestId } = renderComponent();
+		await flushPromises();
+
+		delete (globalThis as { chrome?: unknown }).chrome;
+		await fireEvent.click(getByTestId('browser-use-direct-connect-retry'));
+		await flushPromises();
+
+		expect(getByTestId('browser-use-open-connect-page')).toBeVisible();
 	});
 
 	it('tracks the manual connect link click', async () => {

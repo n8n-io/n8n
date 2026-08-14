@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { defineComponent } from 'vue';
-import { mount, type VueWrapper } from '@vue/test-utils';
 import {
 	useExtensionDirectConnect,
 	DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS,
@@ -19,129 +17,144 @@ const chromeMock: { runtime: { sendMessage: SendMessage; lastError?: { message?:
 	runtime: { sendMessage: vi.fn() },
 };
 
-function installChromeMock(): void {
-	(globalThis as { chrome?: unknown }).chrome = chromeMock;
-}
+const HOLD_RESPONSE = Symbol('hold');
+let heldCallbacks: Array<(response: unknown) => void> = [];
 
-function removeChromeMock(): void {
-	delete (globalThis as { chrome?: unknown }).chrome;
-}
-
-/** Respond per message type, as the extension background would. */
-function mockExtensionResponses(responses: Record<string, unknown>): void {
+function mockExtensionResponses(responses: Record<string, unknown | typeof HOLD_RESPONSE>): void {
 	chromeMock.runtime.lastError = undefined;
+	heldCallbacks = [];
 	chromeMock.runtime.sendMessage = vi.fn(
 		(_extensionId: string, message: unknown, callback: (response: unknown) => void) => {
 			const type = (message as { type: string }).type;
-			if (type in responses) {
-				callback(responses[type]);
-			} else {
+			if (!(type in responses)) {
 				chromeMock.runtime.lastError = { message: 'Receiving end does not exist.' };
 				callback(undefined);
+				return;
 			}
+			const value = responses[type];
+			if (value === HOLD_RESPONSE) {
+				heldCallbacks.push(callback);
+				return;
+			}
+			callback(value);
 		},
 	);
 }
 
-let wrappers: VueWrapper[] = [];
-
-function mountComposable(): ReturnType<typeof useExtensionDirectConnect> {
-	let result!: ReturnType<typeof useExtensionDirectConnect>;
-	const TestComponent = defineComponent({
-		setup() {
-			result = useExtensionDirectConnect();
-		},
-		template: '<div />',
-	});
-	wrappers.push(mount(TestComponent));
-	return result;
+async function settle(): Promise<void> {
+	await Promise.resolve();
+	await Promise.resolve();
+	await Promise.resolve();
 }
 
 beforeEach(() => {
 	vi.useFakeTimers();
-	installChromeMock();
-	mockExtensionResponses({ ping: { pong: true }, connect: { accepted: true } });
+	(globalThis as { chrome?: unknown }).chrome = chromeMock;
+	mockExtensionResponses({ connect: { accepted: true }, connectResult: HOLD_RESPONSE });
 });
 
 afterEach(() => {
-	for (const wrapper of wrappers) wrapper.unmount();
-	wrappers = [];
-	removeChromeMock();
+	delete (globalThis as { chrome?: unknown }).chrome;
 	vi.useRealTimers();
 });
 
 describe('useExtensionDirectConnect', () => {
 	it('is unsupported when the page has no extension messaging API', async () => {
-		removeChromeMock();
-		const { status, attempt } = mountComposable();
+		delete (globalThis as { chrome?: unknown }).chrome;
+		const { status, attempt } = useExtensionDirectConnect();
 
-		expect(await attempt(CONNECT_URL)).toBe(false);
+		await attempt(CONNECT_URL);
+
 		expect(status.value).toBe('unsupported');
 	});
 
-	it('is unsupported when the connect URL is malformed or lacks a relay URL', async () => {
-		const { status, attempt } = mountComposable();
+	it('is unsupported when the connect URL lacks a relay URL', async () => {
+		const { status, attempt } = useExtensionDirectConnect();
 
-		expect(await attempt('chrome-extension://testextensionid/connect.html')).toBe(false);
+		await attempt('chrome-extension://testextensionid/connect.html');
+
 		expect(status.value).toBe('unsupported');
 	});
 
-	it('is unsupported when the extension does not answer the ping', async () => {
+	it('is unsupported when the extension does not answer', async () => {
 		mockExtensionResponses({});
-		const { status, attempt } = mountComposable();
+		const { status, attempt } = useExtensionDirectConnect();
 
-		expect(await attempt(CONNECT_URL)).toBe(false);
+		await attempt(CONNECT_URL);
+
 		expect(status.value).toBe('unsupported');
 	});
 
-	it('waits for confirmation after the extension accepts the connect request', async () => {
-		const { status, attempt } = mountComposable();
+	it('is unsupported when the extension does not accept the request', async () => {
+		mockExtensionResponses({ connect: { accepted: false } });
+		const { status, attempt } = useExtensionDirectConnect();
 
-		expect(await attempt(CONNECT_URL)).toBe(true);
+		await attempt(CONNECT_URL);
+
+		expect(status.value).toBe('unsupported');
+	});
+
+	it('waits for the connect result after the extension opened the popup', async () => {
+		const { status, attempt } = useExtensionDirectConnect();
+
+		void attempt(CONNECT_URL);
+		await settle();
+
 		expect(status.value).toBe('waiting');
 		expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith(
 			'testextensionid',
-			{ type: 'connect', relayUrl: RELAY_URL },
+			{ type: 'connectResult', relayUrl: RELAY_URL },
 			expect.any(Function),
 		);
 	});
 
-	it('fails when the confirmation does not arrive in time', async () => {
-		const { status, attempt } = mountComposable();
-		await attempt(CONNECT_URL);
+	it('fails as soon as the extension reports an unsuccessful connect', async () => {
+		const { status, attempt } = useExtensionDirectConnect();
+		const pending = attempt(CONNECT_URL);
+		await settle();
+
+		heldCallbacks[0]({ connected: false });
+		await pending;
+
+		expect(status.value).toBe('failed');
+	});
+
+	it('stays waiting when the extension reports a successful connect', async () => {
+		const { status, attempt } = useExtensionDirectConnect();
+		const pending = attempt(CONNECT_URL);
+		await settle();
+
+		heldCallbacks[0]({ connected: true });
+		await pending;
+
+		expect(status.value).toBe('waiting');
+	});
+
+	it('fails when no connect result arrives in time', async () => {
+		const { status, attempt } = useExtensionDirectConnect();
+		void attempt(CONNECT_URL);
+		await settle();
 
 		vi.advanceTimersByTime(DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS);
+		await settle();
 
 		expect(status.value).toBe('failed');
 	});
 
-	it('fails when the extension rejects the connect request', async () => {
-		mockExtensionResponses({
-			ping: { pong: true },
-			connect: { accepted: false, error: 'Too many connect requests.' },
-		});
-		const { status, attempt } = mountComposable();
+	it('ignores a stale attempt resolving after a newer one started', async () => {
+		mockExtensionResponses({ connect: HOLD_RESPONSE, connectResult: HOLD_RESPONSE });
+		const { status, attempt } = useExtensionDirectConnect();
+		const first = attempt(CONNECT_URL);
+		await settle();
+		void attempt(CONNECT_URL);
+		await settle();
 
-		expect(await attempt(CONNECT_URL)).toBe(false);
-		expect(status.value).toBe('failed');
-	});
+		heldCallbacks[0]({ accepted: false });
+		await first;
+		expect(status.value).toBe('idle');
 
-	it('fails when messaging breaks after a successful ping', async () => {
-		mockExtensionResponses({ ping: { pong: true } });
-		const { status, attempt } = mountComposable();
-
-		expect(await attempt(CONNECT_URL)).toBe(false);
-		expect(status.value).toBe('failed');
-	});
-
-	it('stops the confirmation timeout when the component unmounts', async () => {
-		const { status, attempt } = mountComposable();
-		await attempt(CONNECT_URL);
-
-		for (const wrapper of wrappers) wrapper.unmount();
-		wrappers = [];
-		vi.advanceTimersByTime(DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS);
-
+		heldCallbacks[1]({ accepted: true });
+		await settle();
 		expect(status.value).toBe('waiting');
 	});
 });

@@ -7,7 +7,6 @@ import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.tel
 import { useExtensionDirectConnect } from '../../composables/useExtensionDirectConnect';
 
 const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
-const CONNECT_POPUP_FEATURES = 'popup,width=620,height=640';
 
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
@@ -37,8 +36,6 @@ async function refreshConnectUrl(): Promise<void> {
 	refreshTimer = setTimeout(() => void refreshConnectUrl(), delay);
 }
 
-// The parent only renders this component once the browser status is confirmed
-// disconnected, so requesting a connection right away is safe.
 onMounted(async () => {
 	await refreshConnectUrl();
 	if (!connectUrl.value) return;
@@ -50,10 +47,7 @@ async function retry(): Promise<void> {
 	if (!connectUrl.value) await refreshConnectUrl();
 	if (!connectUrl.value) return;
 	telemetry.trackDirectConnectRequested();
-	const accepted = await attempt(connectUrl.value);
-	if (!accepted) {
-		window.open(connectUrl.value, 'n8n-browser-use-connect', CONNECT_POPUP_FEATURES);
-	}
+	await attempt(connectUrl.value);
 }
 
 onBeforeUnmount(() => {
@@ -63,7 +57,6 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<!-- The step box and its spacing are owned by the parent, so this root only groups the content -->
 	<div :class="$style.passthrough">
 		<N8nText :bold="true" size="small">
 			{{ i18n.baseText('instanceAi.browserUse.step.connect.title') }}

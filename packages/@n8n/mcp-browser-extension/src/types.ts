@@ -77,20 +77,24 @@ export type ExtensionMessage =
 // External messages (web page → background, via externally_connectable)
 // ---------------------------------------------------------------------------
 
-export interface ExternalPingMessage {
-	type: 'ping';
-}
-
 export interface ExternalConnectMessage {
 	type: 'connect';
 	relayUrl: string;
 }
 
-export type ExternalMessage = ExternalPingMessage | ExternalConnectMessage;
+export interface ExternalConnectResultMessage {
+	type: 'connectResult';
+	relayUrl: string;
+}
+
+export type ExternalMessage = ExternalConnectMessage | ExternalConnectResultMessage;
 
 export interface ExternalConnectResponse {
 	accepted: boolean;
-	error?: string;
+}
+
+export interface ExternalConnectResultResponse {
+	connected: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -117,8 +121,9 @@ export type BackgroundPushMessage = RelayUrlReadyMessage | StatusChangedMessage;
 export function isExternalMessage(raw: unknown): raw is ExternalMessage {
 	if (raw === null || typeof raw !== 'object') return false;
 	const obj = raw as Record<string, unknown>;
-	if (obj.type === 'ping') return true;
-	return obj.type === 'connect' && typeof obj.relayUrl === 'string';
+	return (
+		(obj.type === 'connect' || obj.type === 'connectResult') && typeof obj.relayUrl === 'string'
+	);
 }
 
 export function isConnectResponse(raw: unknown): raw is ConnectResponse {

@@ -16,6 +16,7 @@ const EXT_ORIGIN = 'chrome-extension://testextensionid/';
 const CONNECT_URL = `${EXT_ORIGIN}connect.html`;
 
 const tabUpdatedListeners: TabUpdatedHandler[] = [];
+const tabRemovedListeners: Array<(tabId: number) => void> = [];
 const externalMessageListeners: ExternalMessageHandler[] = [];
 
 const chromeMock = {
@@ -33,7 +34,9 @@ const chromeMock = {
 		remove: vi.fn().mockResolvedValue(undefined),
 		reload: vi.fn().mockResolvedValue(undefined),
 		onCreated: { addListener: vi.fn() },
-		onRemoved: { addListener: vi.fn() },
+		onRemoved: {
+			addListener: vi.fn((fn: (tabId: number) => void) => tabRemovedListeners.push(fn)),
+		},
 		onUpdated: {
 			addListener: vi.fn((fn: TabUpdatedHandler) => tabUpdatedListeners.push(fn)),
 		},
@@ -74,14 +77,24 @@ function simulateTabUpdated(tabId: number, url: string): void {
 	for (const fn of tabUpdatedListeners) fn(tabId, { url } as chrome.tabs.TabChangeInfo);
 }
 
-/** Invoke the registered external-message listeners and collect the response. */
-async function simulateExternalMessage(message: unknown, origin: string): Promise<unknown> {
-	let response: unknown;
+/**
+ * Invoke the registered external-message listeners. Connect responses are held
+ * open until the flow settles, so the result is exposed as a getter that
+ * reflects late resolutions too.
+ */
+async function simulateExternalMessage(message: unknown, origin: string): Promise<() => unknown> {
+	const holder: { value?: unknown } = {};
 	for (const fn of externalMessageListeners) {
-		fn(message, { origin } as chrome.runtime.MessageSender, (r) => (response = r));
+		fn(message, { origin } as chrome.runtime.MessageSender, (r) => (holder.value = r));
 	}
 	await flush();
-	return response;
+	return () => holder.value;
+}
+
+/** Invoke the registered tab-removed listeners as Chrome would. */
+async function simulateTabRemoved(tabId: number): Promise<void> {
+	for (const fn of tabRemovedListeners) fn(tabId);
+	await flush();
 }
 
 /** Flush pending microtasks/macrotasks so the listener's async IIFE settles. */
@@ -175,6 +188,7 @@ describe('connect.html tab deduplication', () => {
 describe('external messages (direct connect flow)', () => {
 	const ALLOWED_ORIGIN = 'https://acme.app.n8n.cloud';
 	const RELAY_URL = 'wss://acme.app.n8n.cloud/browser-use/extension/abc?token=bu_x';
+	const POPUP_TAB_ID = 99;
 
 	// The throttle keys off Date.now(); advance it past the window before each
 	// test. Re-applied per test because the config restores mocks after each one.
@@ -183,6 +197,7 @@ describe('external messages (direct connect flow)', () => {
 		nowMs += 60_000;
 		vi.spyOn(Date, 'now').mockImplementation(() => nowMs);
 		chromeMock.tabs.query.mockResolvedValue([]);
+		chromeMock.windows.create.mockResolvedValue({ tabs: [{ id: POPUP_TAB_ID }] });
 		chromeMock.windows.getLastFocused.mockResolvedValue({
 			left: 0,
 			top: 0,
@@ -191,38 +206,37 @@ describe('external messages (direct connect flow)', () => {
 		});
 	});
 
-	it('responds to ping from an allowed origin', async () => {
-		const response = await simulateExternalMessage({ type: 'ping' }, ALLOWED_ORIGIN);
-		expect(response).toEqual({ pong: true });
-	});
-
 	it('ignores messages from disallowed origins', async () => {
-		const response = await simulateExternalMessage({ type: 'ping' }, 'https://evil.example.com');
-		expect(response).toBeUndefined();
+		const response = await simulateExternalMessage(
+			{ type: 'connect', relayUrl: RELAY_URL },
+			'https://evil.example.com',
+		);
+		expect(response()).toBeUndefined();
+		expect(chromeMock.windows.create).not.toHaveBeenCalled();
 	});
 
 	it('ignores malformed messages', async () => {
 		const response = await simulateExternalMessage({ type: 'connect' }, ALLOWED_ORIGIN);
-		expect(response).toBeUndefined();
+		expect(response()).toBeUndefined();
 		expect(chromeMock.windows.create).not.toHaveBeenCalled();
 	});
 
-	it('opens a centered popup window with the connect page when none is open', async () => {
+	it('opens a centered popup window and accepts the request', async () => {
 		const response = await simulateExternalMessage(
 			{ type: 'connect', relayUrl: RELAY_URL },
 			ALLOWED_ORIGIN,
 		);
 
-		expect(response).toEqual({ accepted: true });
 		expect(chromeMock.storage.session.set).toHaveBeenCalledWith({ pendingRelayUrl: RELAY_URL });
 		expect(chromeMock.windows.create).toHaveBeenCalledWith({
 			url: connectUrlWithRelay(RELAY_URL),
 			type: 'popup',
-			width: 420,
+			width: 620,
 			height: 640,
-			left: 750,
+			left: 650,
 			top: 220,
 		});
+		expect(response()).toEqual({ accepted: true });
 	});
 
 	it('reuses an already-open connect page instead of opening a new popup', async () => {
@@ -235,7 +249,6 @@ describe('external messages (direct connect flow)', () => {
 			ALLOWED_ORIGIN,
 		);
 
-		expect(response).toEqual({ accepted: true });
 		expect(chromeMock.windows.create).not.toHaveBeenCalled();
 		expect(chromeMock.tabs.update).toHaveBeenCalledWith(5, { active: true });
 		expect(chromeMock.windows.update).toHaveBeenCalledWith(50, { focused: true });
@@ -243,6 +256,7 @@ describe('external messages (direct connect flow)', () => {
 			type: 'relayUrlReady',
 			relayUrl: RELAY_URL,
 		});
+		expect(response()).toEqual({ accepted: true });
 	});
 
 	it('rejects a relay URL that is not a recognized n8n instance', async () => {
@@ -251,7 +265,7 @@ describe('external messages (direct connect flow)', () => {
 			ALLOWED_ORIGIN,
 		);
 
-		expect(response).toEqual({ accepted: false, error: 'Not a recognized n8n instance.' });
+		expect(response()).toEqual({ accepted: false });
 		expect(chromeMock.windows.create).not.toHaveBeenCalled();
 		expect(chromeMock.storage.session.set).not.toHaveBeenCalled();
 	});
@@ -267,8 +281,54 @@ describe('external messages (direct connect flow)', () => {
 			ALLOWED_ORIGIN,
 		);
 
-		expect(first).toEqual({ accepted: true });
-		expect(second).toEqual({ accepted: false, error: 'Too many connect requests.' });
+		expect(first()).toEqual({ accepted: true });
+		expect(second()).toEqual({ accepted: false });
 		expect(chromeMock.windows.create).toHaveBeenCalledTimes(1);
+	});
+
+	it('holds the connect result open until the connect page is closed', async () => {
+		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
+		const result = await simulateExternalMessage(
+			{ type: 'connectResult', relayUrl: RELAY_URL },
+			ALLOWED_ORIGIN,
+		);
+		expect(result()).toBeUndefined();
+
+		await simulateTabRemoved(POPUP_TAB_ID);
+
+		expect(result()).toEqual({ connected: false });
+	});
+
+	it('ignores unrelated tab closures while a flow is pending', async () => {
+		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
+		const result = await simulateExternalMessage(
+			{ type: 'connectResult', relayUrl: RELAY_URL },
+			ALLOWED_ORIGIN,
+		);
+
+		await simulateTabRemoved(123);
+
+		expect(result()).toBeUndefined();
+	});
+
+	it('answers a connect result for an unknown flow immediately', async () => {
+		const result = await simulateExternalMessage(
+			{ type: 'connectResult', relayUrl: 'wss://acme.app.n8n.cloud/other' },
+			ALLOWED_ORIGIN,
+		);
+
+		expect(result()).toEqual({ connected: false });
+	});
+
+	it('resolves a superseded flow when a newer connect request arrives', async () => {
+		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
+		const firstResult = await simulateExternalMessage(
+			{ type: 'connectResult', relayUrl: RELAY_URL },
+			ALLOWED_ORIGIN,
+		);
+		nowMs += 60_000;
+		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
+
+		expect(firstResult()).toEqual({ connected: false });
 	});
 });

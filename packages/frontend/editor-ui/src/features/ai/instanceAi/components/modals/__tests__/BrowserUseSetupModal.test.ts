@@ -45,11 +45,7 @@ function makeSettingsStore(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-/**
- * Stub the extension messaging API so the direct connect flow is available.
- * `connectResponse` is what the extension replies to the connect request.
- */
-function installExtensionMock(connectResponse: unknown): void {
+function installExtensionMock(responses: Record<string, unknown>): void {
 	const runtime = {
 		lastError: undefined as { message?: string } | undefined,
 		sendMessage: (
@@ -58,7 +54,7 @@ function installExtensionMock(connectResponse: unknown): void {
 			callback: (response: unknown) => void,
 		) => {
 			const type = (message as { type: string }).type;
-			callback(type === 'ping' ? { pong: true } : connectResponse);
+			if (type in responses) callback(responses[type]);
 		},
 	};
 	(globalThis as { chrome?: unknown }).chrome = { runtime };
@@ -128,7 +124,7 @@ describe('BrowserUseSetupModal', () => {
 	});
 
 	it('keeps the install step visible while the connect step waits for confirmation', async () => {
-		installExtensionMock({ accepted: true });
+		installExtensionMock({ connect: { accepted: true } });
 		const { getByTestId } = renderComponent();
 		await flushPromises();
 
@@ -138,7 +134,7 @@ describe('BrowserUseSetupModal', () => {
 	});
 
 	it('does not request a direct connection when already connected', async () => {
-		installExtensionMock({ accepted: true });
+		installExtensionMock({ connect: { accepted: true } });
 		settingsStoreMock.mockReturnValue(makeSettingsStore({ browserConnected: true }));
 		renderComponent();
 		await flushPromises();
@@ -147,7 +143,7 @@ describe('BrowserUseSetupModal', () => {
 	});
 
 	it('does not request a direct connection when the status fetch reveals a live session', async () => {
-		installExtensionMock({ accepted: true });
+		installExtensionMock({ connect: { accepted: true } });
 		// Store starts stale (disconnected); the status fetch corrects it. Requesting a
 		// connection here would make the extension drop the live session.
 		const store = reactive(makeSettingsStore());
@@ -214,7 +210,7 @@ describe('BrowserUseSetupModal', () => {
 		});
 
 		it('does not request a direct connection even when the extension is present', async () => {
-			installExtensionMock({ accepted: true });
+			installExtensionMock({ connect: { accepted: true } });
 			renderComponent();
 			await flushPromises();
 

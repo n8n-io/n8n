@@ -8,13 +8,19 @@
 import { createLogger } from './logger';
 import { isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
 import { RelayConnection, isEligibleTab } from './relayConnection';
-import type { ExtensionMessage, ExternalConnectResponse, TabManagementSettings } from './types';
+import type {
+	ExtensionMessage,
+	ExternalConnectResponse,
+	ExternalConnectResultResponse,
+	TabManagementSettings,
+} from './types';
 import { isExternalMessage } from './types';
 
 const log = createLogger('bg');
 
 interface ConnectionState {
 	relay: RelayConnection;
+	relayUrl: string;
 }
 
 let activeConnection: ConnectionState | null = null;
@@ -180,9 +186,8 @@ async function deliverRelayUrl(
 }
 
 // ---------------------------------------------------------------------------
-// External messages from n8n pages (externally_connectable) — direct connect
-// flow: the n8n UI requests a connection and the user confirms in an
-// extension-owned popup window the page cannot script.
+// External messages from n8n pages (externally_connectable) — the n8n UI
+// requests a connection and the user confirms in an extension-owned popup.
 // ---------------------------------------------------------------------------
 
 const EXTERNAL_CONNECT_THROTTLE_MS = 5000;
@@ -191,50 +196,77 @@ const CONNECT_POPUP_HEIGHT = 640;
 
 let lastExternalConnectAt = 0;
 
+interface PendingConnectFlow {
+	relayUrl: string;
+	tabId: number | null;
+	notify: ((response: ExternalConnectResultResponse) => void) | null;
+}
+
+let pendingConnectFlow: PendingConnectFlow | null = null;
+
+function settleConnectFlow(connected: boolean): void {
+	if (!pendingConnectFlow) return;
+	log.debug('settling connect flow:', pendingConnectFlow.relayUrl, 'connected:', connected);
+	try {
+		pendingConnectFlow.notify?.({ connected });
+	} finally {
+		pendingConnectFlow = null;
+	}
+}
+
 chrome.runtime.onMessageExternal.addListener(
 	(
 		message: unknown,
 		sender: chrome.runtime.MessageSender,
 		sendResponse: (response: unknown) => void,
 	) => {
-		if (!isExternalMessage(message)) return;
+		if (!isExternalMessage(message)) return false;
 		if (!isAllowedPageOrigin(sender.origin)) {
 			log.warn('ignoring external message from disallowed origin:', sender.origin);
-			return;
+			return false;
 		}
 		log.debug('external message received:', message.type, 'from', sender.origin);
 
-		if (message.type === 'ping') {
-			sendResponse({ pong: true });
-			return;
+		if (message.type === 'connect') {
+			void handleExternalConnect(message.relayUrl).then(sendResponse);
+			return true;
 		}
 
-		void handleExternalConnect(message.relayUrl).then(sendResponse);
-		return true; // keep message channel open for async response
+		if (activeConnection?.relayUrl === message.relayUrl) {
+			sendResponse({ connected: true });
+			return false;
+		}
+		if (pendingConnectFlow?.relayUrl === message.relayUrl) {
+			pendingConnectFlow.notify = sendResponse;
+			return true;
+		}
+		sendResponse({ connected: false });
+		return false;
 	},
 );
 
 async function handleExternalConnect(relayUrl: string): Promise<ExternalConnectResponse> {
 	if (!isAllowedRelayUrl(relayUrl)) {
 		log.warn('refusing external connect to disallowed relay:', relayUrl);
-		return { accepted: false, error: 'Not a recognized n8n instance.' };
+		return { accepted: false };
 	}
 
 	const now = Date.now();
 	if (now - lastExternalConnectAt < EXTERNAL_CONNECT_THROTTLE_MS) {
 		log.debug('throttled external connect request');
-		return { accepted: false, error: 'Too many connect requests.' };
+		return { accepted: false };
 	}
 	lastExternalConnectAt = now;
 
+	settleConnectFlow(false);
+
 	const existing = await deliverRelayUrl(relayUrl);
-	if (!existing) {
-		await openConnectPopup(relayUrl);
-	}
+	const tabId = existing?.id ?? (await openConnectPopup(relayUrl));
+	pendingConnectFlow = { relayUrl, tabId, notify: null };
 	return { accepted: true };
 }
 
-async function openConnectPopup(relayUrl: string): Promise<void> {
+async function openConnectPopup(relayUrl: string): Promise<number | null> {
 	const url = `${chrome.runtime.getURL(CONNECT_PAGE)}?mcpRelayUrl=${encodeURIComponent(relayUrl)}`;
 	let left: number | undefined;
 	let top: number | undefined;
@@ -249,7 +281,7 @@ async function openConnectPopup(relayUrl: string): Promise<void> {
 	} catch {
 		// No focused window — let Chrome pick the position
 	}
-	await chrome.windows.create({
+	const popup = await chrome.windows.create({
 		url,
 		type: 'popup',
 		width: CONNECT_POPUP_WIDTH,
@@ -257,6 +289,7 @@ async function openConnectPopup(relayUrl: string): Promise<void> {
 		left,
 		top,
 	});
+	return popup?.tabs?.[0]?.id ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -354,6 +387,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+	if (pendingConnectFlow?.tabId === tabId && !activeConnection) {
+		settleConnectFlow(false);
+	}
 	if (!activeConnection) return;
 	log.debug('tab removed:', tabId);
 	activeConnection.relay.removeTab(tabId);
@@ -412,7 +448,7 @@ async function connectToRelay(
 			throw error;
 		}
 
-		activeConnection = { relay };
+		activeConnection = { relay, relayUrl };
 
 		relay.onclose = () => {
 			log.debug('relay connection closed');
@@ -430,6 +466,7 @@ async function connectToRelay(
 		log.debug('connected, controlling', tabCount, 'tabs');
 		updateBadge(tabCount);
 		broadcastStatusChange();
+		settleConnectFlow(pendingConnectFlow?.relayUrl === relayUrl);
 		return { success: true };
 	} catch (error) {
 		log.error('connectToRelay failed:', error);
