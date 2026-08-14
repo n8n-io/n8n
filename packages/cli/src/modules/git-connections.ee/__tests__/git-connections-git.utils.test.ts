@@ -37,6 +37,8 @@ describe('git-connections-git.utils', () => {
 			expect(config).toEqual([
 				"credential.helper=!f() { echo username='testuser'; echo password='testpass'; }; f",
 				'credential.useHttpPath=true',
+				'http.lowSpeedLimit=1000',
+				'http.lowSpeedTime=30',
 			]);
 		});
 
@@ -70,6 +72,16 @@ describe('git-connections-git.utils', () => {
 
 			expect(config.some((entry) => entry.includes('proxy='))).toBe(false);
 		});
+
+		it('should bound stalled transfers with a low-speed limit', () => {
+			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
+				username: 'testuser',
+				password: 'testpass',
+			});
+
+			expect(config).toContain('http.lowSpeedLimit=1000');
+			expect(config).toContain('http.lowSpeedTime=30');
+		});
 	});
 
 	describe('buildSshCommand', () => {
@@ -80,7 +92,7 @@ describe('git-connections-git.utils', () => {
 			});
 
 			expect(command).toBe(
-				'ssh -o UserKnownHostsFile="/data/.ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "/data/.ssh/private-key"',
+				'ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile="/data/.ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "/data/.ssh/private-key"',
 			);
 		});
 
@@ -91,8 +103,19 @@ describe('git-connections-git.utils', () => {
 			});
 
 			expect(command).toBe(
-				'ssh -o UserKnownHostsFile="C:/n8n/.ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "C:/n8n/.ssh/private-key"',
+				'ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile="C:/n8n/.ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "C:/n8n/.ssh/private-key"',
 			);
+		});
+
+		it('should bound a stalled connection with connect and keepalive timeouts', () => {
+			const command = buildSshCommand({
+				privateKeyPath: '/data/.ssh/private-key',
+				knownHostsPath: '/data/.ssh/known_hosts',
+			});
+
+			expect(command).toContain('-o ConnectTimeout=30');
+			expect(command).toContain('-o ServerAliveInterval=15');
+			expect(command).toContain('-o ServerAliveCountMax=3');
 		});
 
 		it('should escape double quotes in paths to prevent command injection', () => {

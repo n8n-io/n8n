@@ -2,6 +2,14 @@ import type { GitKeyGeneratorType } from '@n8n/api-types';
 import { resolveProxyUrl } from '@n8n/backend-network';
 import { generateKeyPairSync } from 'node:crypto';
 
+import {
+	HTTP_LOW_SPEED_LIMIT_BYTES,
+	HTTP_LOW_SPEED_TIME_SECONDS,
+	SSH_CONNECT_TIMEOUT_SECONDS,
+	SSH_SERVER_ALIVE_COUNT_MAX,
+	SSH_SERVER_ALIVE_INTERVAL_SECONDS,
+} from './constants';
+
 /**
  * Pure, stateless helpers for constructing Git credential/SSH plumbing.
  * This module is the source of truth for git plumbing; source-control imports
@@ -27,7 +35,12 @@ export function buildHttpsGitConfig(
 	credentials: { username: string; password: string },
 ): string[] {
 	const helper = `!f() { echo username=${quoteShellArg(credentials.username)}; echo password=${quoteShellArg(credentials.password)}; }; f`;
-	const config = [`credential.helper=${helper}`, 'credential.useHttpPath=true'];
+	const config = [
+		`credential.helper=${helper}`,
+		'credential.useHttpPath=true',
+		`http.lowSpeedLimit=${HTTP_LOW_SPEED_LIMIT_BYTES}`,
+		`http.lowSpeedTime=${HTTP_LOW_SPEED_TIME_SECONDS}`,
+	];
 	// Git uses http.proxy for both HTTP and HTTPS URLs.
 	const proxyUrl = resolveProxyUrl(repositoryUrl);
 	if (proxyUrl) config.push(`http.proxy=${proxyUrl}`);
@@ -40,10 +53,13 @@ export function buildHttpsGitConfig(
  * double-quotes are escaped to prevent command injection.
  * StrictHostKeyChecking=accept-new accepts and pins the host key on first
  * connection, then verifies it on subsequent connections (MITM protection).
+ * ConnectTimeout and the ServerAlive options bound how long a stalled connection
+ * can hang before SSH gives up.
  */
 export function buildSshCommand(paths: { privateKeyPath: string; knownHostsPath: string }): string {
 	const escape = (value: string) => value.split(/[/\\]/).join('/').replace(/"/g, '\\"');
-	return `ssh -o UserKnownHostsFile="${escape(paths.knownHostsPath)}" -o StrictHostKeyChecking=accept-new -i "${escape(paths.privateKeyPath)}"`;
+	const timeouts = `-o ConnectTimeout=${SSH_CONNECT_TIMEOUT_SECONDS} -o ServerAliveInterval=${SSH_SERVER_ALIVE_INTERVAL_SECONDS} -o ServerAliveCountMax=${SSH_SERVER_ALIVE_COUNT_MAX}`;
+	return `ssh ${timeouts} -o UserKnownHostsFile="${escape(paths.knownHostsPath)}" -o StrictHostKeyChecking=accept-new -i "${escape(paths.privateKeyPath)}"`;
 }
 
 /**

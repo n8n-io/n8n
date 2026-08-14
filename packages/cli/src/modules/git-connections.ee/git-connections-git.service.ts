@@ -8,14 +8,13 @@ import type { SimpleGit, SimpleGitOptions } from 'simple-git';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import { GIT_COMMAND_STALL_TIMEOUT_MS, GIT_KEY_COMMENT } from './constants';
 import type { GitConnection } from './database/entities/git-connection.entity';
 import {
 	buildHttpsGitConfig,
 	buildSshCommand,
 	generateSshKeyPair,
 } from './git-connections-git.utils';
-
-const GIT_KEY_COMMENT = 'n8n git connection';
 
 type PlainCredentials =
 	| { type: 'ssh'; privateKey: string }
@@ -137,6 +136,9 @@ export class GitConnectionsGitService {
 					branchName,
 					'--single-branch',
 					'--no-tags',
+					// Emit progress so the stall-timeout backstop keeps resetting during a
+					// healthy transfer and only fires when the connection genuinely stalls.
+					'--progress',
 				]);
 				await rm(repositoryFolder, { recursive: true, force: true });
 				await rename(nextRepositoryFolder, repositoryFolder);
@@ -181,6 +183,7 @@ export class GitConnectionsGitService {
 			binary: 'git',
 			maxConcurrentProcesses: 1,
 			trimmed: false,
+			timeout: { block: GIT_COMMAND_STALL_TIMEOUT_MS },
 		};
 		const { simpleGit } = await import('simple-git');
 		let temporaryFolder: string | undefined;
