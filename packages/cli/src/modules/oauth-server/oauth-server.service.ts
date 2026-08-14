@@ -23,6 +23,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
+import { AuthService } from '@/auth/auth.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
@@ -33,7 +34,8 @@ import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
-import { OAuthSessionService } from './oauth-session.service';
+import { OAuthConsentService } from './oauth-consent.service';
+import { OAuthSessionPayload, OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
 
@@ -107,6 +109,8 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
+		private readonly authService: AuthService,
+		private readonly oauthConsentService: OAuthConsentService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -360,14 +364,23 @@ export class OAuthServerService implements OAuthServerProvider {
 			const supportedScopes = targetResource?.scopes ?? [];
 			const requestedScopes = params.scopes?.filter((scope) => supportedScopes.includes(scope));
 
-			this.oauthSessionService.createSession(res, {
+			const sessionPayload: OAuthSessionPayload = {
 				clientId: client.client_id,
 				redirectUri: params.redirectUri,
 				codeChallenge: params.codeChallenge,
 				state: params.state ?? null,
 				resource,
 				...(requestedScopes && requestedScopes.length > 0 && { requestedScopes }),
-			});
+			};
+
+			const autoApproval = await this.tryAutoApproveConsent(res, sessionPayload, client);
+
+			if (autoApproval) {
+				res.redirect(autoApproval.redirectUrl);
+				return;
+			}
+
+			this.oauthSessionService.createSession(res, sessionPayload);
 
 			res.redirect('/oauth/consent');
 		} catch (error) {
@@ -500,6 +513,35 @@ export class OAuthServerService implements OAuthServerProvider {
 
 	async verifyAccessToken(token: string): Promise<AuthInfo> {
 		return await this.tokenService.verifyAccessToken(token);
+	}
+
+	private async tryAutoApproveConsent(
+		res: Response,
+		sessionPayload: OAuthSessionPayload,
+		client: OAuthClientInformationFull,
+	): Promise<{ redirectUrl: string } | null> {
+		const req = res.req;
+		const cookie = this.authService.getCookieToken(req);
+		if (cookie) {
+			let user: User | undefined;
+
+			try {
+				user = await this.authService.authenticateUserByCookie(cookie);
+			} catch (error) {
+				this.logger.debug('Auto-approval failed: user not authenticated', {
+					clientId: client.client_id,
+				});
+			}
+
+			if (user) {
+				const reuseResult = await this.oauthConsentService.tryReuseConsent(user, sessionPayload);
+				if (reuseResult) {
+					return { redirectUrl: reuseResult.redirectUrl };
+				}
+			}
+		}
+
+		return null;
 	}
 
 	// Exact-match against a registered resource, as required by RFC 8707 §2.1.

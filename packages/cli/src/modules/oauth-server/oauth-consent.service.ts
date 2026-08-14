@@ -209,6 +209,16 @@ export class OAuthConsentService {
 
 		const grantedScopes = await this.resolveGrantedScopes(sessionPayload, scopes);
 
+		return await this.issueGrant(user, sessionPayload, grantedScopes);
+	}
+
+	private async issueGrant(
+		user: User,
+		sessionPayload: OAuthSessionPayload,
+		grantedScopes: string[],
+	): Promise<{ redirectUrl: string }> {
+		const issuer = this.urlService.getInstanceBaseUrl();
+
 		await this.userConsentRepository.upsert(
 			{
 				userId: user.id,
@@ -275,5 +285,37 @@ export class OAuthConsentService {
 		}
 
 		return scopes;
+	}
+
+	async tryReuseConsent(
+		user: User,
+		sessionPayload: OAuthSessionPayload,
+	): Promise<{ redirectUrl: string } | null> {
+		if (!sessionPayload.resource) return null;
+
+		const resource = await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource);
+		if (!resource?.isFirstParty) return null;
+
+		const consent = await this.userConsentRepository.findOne({
+			where: { clientId: sessionPayload.clientId, userId: user.id },
+		});
+
+		if (!consent) {
+			return null;
+		}
+
+		const grantable = this.grantableScopes(resource.scopes ?? [], sessionPayload.requestedScopes);
+		if (!grantable.every((scope) => consent.scope.includes(scope))) return null;
+
+		if (!(await resource.authorize(user))) {
+			this.logger.debug('Consent reuse skipped: user no longer authorized for resource', {
+				clientId: sessionPayload.clientId,
+				userId: user.id,
+				resourceUrl: sessionPayload.resource,
+			});
+			return null;
+		}
+
+		return await this.issueGrant(user, sessionPayload, grantable);
 	}
 }
