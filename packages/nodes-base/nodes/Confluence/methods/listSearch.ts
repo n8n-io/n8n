@@ -20,9 +20,8 @@ export async function searchSpaces(
 	const results: INodeListSearchItems[] = [];
 	let cursor = paginationToken;
 
-	// The v2 spaces list has no text-search parameter, so the typed filter is applied
-	// client-side; keep fetching pages until a match appears, so matches beyond the
-	// first page stay discoverable
+	// No server-side text filter on the v2 spaces list; fetch ahead so matches
+	// beyond the first page stay discoverable
 	for (let fetched = 0; fetched < MAX_FILTERED_SEARCH_PAGES; fetched++) {
 		const qs: IDataObject = { limit: SEARCH_PAGE_SIZE, sort: 'name', status: 'current' };
 		if (cursor !== undefined) qs.cursor = cursor;
@@ -43,6 +42,18 @@ export async function searchSpaces(
 	}
 
 	return { results, paginationToken: cursor };
+}
+
+export async function searchSpacesWithAll(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const search = await searchSpaces.call(this, filter, paginationToken);
+	if (paginationToken === undefined && (filter ?? '').trim() === '') {
+		search.results.unshift({ name: 'All Spaces', value: '' });
+	}
+	return search;
 }
 
 export async function getPages(

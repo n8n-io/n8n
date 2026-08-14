@@ -137,6 +137,17 @@ export const spaceRLC: INodeProperties = {
 	],
 };
 
+/** `spaceRLC` for operations where the space is optional: the list gets an
+ * "All Spaces" reset entry. */
+export const optionalSpaceRLC: INodeProperties = {
+	...spaceRLC,
+	modes: (spaceRLC.modes ?? []).map((mode) =>
+		mode.name === 'list'
+			? { ...mode, typeOptions: { ...mode.typeOptions, searchListMethod: 'searchSpacesWithAll' } }
+			: mode,
+	),
+};
+
 const spaceKeyCache = new Map<string, string>();
 
 export function clearSpaceKeyCache(): void {
