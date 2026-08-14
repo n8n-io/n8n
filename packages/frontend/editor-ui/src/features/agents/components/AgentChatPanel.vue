@@ -16,7 +16,11 @@ import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
-import type { AgentContinueLoadedEvent, AgentJsonConfig } from '../types';
+import type {
+	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
+	AgentJsonConfig,
+} from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { TOOL_CALL_STATE } from '../constants';
@@ -54,7 +58,7 @@ const emit = defineEmits<{
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
-	'send-to-assistant': [executionId?: string];
+	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
 }>();
 
 const locale = useI18n();
@@ -196,6 +200,17 @@ const hasOpenSuspension = computed(() =>
 		),
 	),
 );
+// Tools still pending/running after the stream ended (desync): the backend
+// finished but their terminal events never arrived. Surfacing Stop here lets
+// the user clear the stale pulsing state without reloading the chat.
+const hasInFlightToolCalls = computed(() =>
+	messages.value.some((message) =>
+		message.toolCalls?.some(
+			(toolCall) =>
+				toolCall.state === TOOL_CALL_STATE.PENDING || toolCall.state === TOOL_CALL_STATE.RUNNING,
+		),
+	),
+);
 const showSuspensionStopAlongsideSend = computed(
 	() => hasOpenInteractiveQuestion.value && !isStreaming.value && !isCancelling.value,
 );
@@ -204,7 +219,8 @@ const showStopAsPrimaryAction = computed(
 		isStreaming.value ||
 		isCancelling.value ||
 		hasOpenApproval.value ||
-		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
+		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value) ||
+		(!isStreaming.value && hasInFlightToolCalls.value),
 );
 
 const chatPlaceholder = computed(() => {

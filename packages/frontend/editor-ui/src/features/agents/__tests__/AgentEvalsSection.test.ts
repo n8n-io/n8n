@@ -17,6 +17,16 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	useI18n: () => ({ baseText: (key: string) => `mocked-${key}` }),
 }));
 
+vi.mock('../components/AgentEvalCasesCard.vue', () => ({
+	default: {
+		name: 'AgentEvalCasesCard',
+		props: ['dataset', 'disabled', 'canRun', 'generating'],
+		emits: ['regenerate'],
+		template: `<div data-testid="agent-evals-cases-card">{{ dataset.id }}
+			<button data-testid="stub-regenerate" @click="$emit('regenerate')" /></div>`,
+	},
+}));
+
 vi.mock('../components/AgentEvalResultsPanel.vue', () => ({
 	default: {
 		name: 'AgentEvalResultsPanel',
@@ -130,34 +140,40 @@ describe('AgentEvalsSection', () => {
 			expect(getByTestId('agent-eval-results-panel')).toHaveTextContent('run-7');
 		});
 
-		it('explains itself when a dataset exists but has never run', async () => {
+		// A dataset with no run shows its cases: reviewing and running a drafted set is
+		// the case list's, and running from here is what makes the results view
+		// reachable at all.
+		it('shows the drafted cases when a dataset exists but has never run', async () => {
 			const { getByTestId, queryByTestId } = await render({
 				datasets: [dataset('d1')],
 				latestRunId: null,
 			});
 
-			expect(getByTestId('agent-eval-no-runs')).toBeInTheDocument();
+			expect(getByTestId('agent-evals-cases-card')).toHaveTextContent('d1');
 			expect(queryByTestId('agent-evals-generate-button')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-eval-results-panel')).not.toBeInTheDocument();
 		});
 
-		// Without this the view is unreachable: `Re-run all` lives inside the results
-		// card, which only exists once a run does.
-		it('offers to run the cases when none has ever run', async () => {
-			const { getByTestId, store } = await render({ datasets: [dataset('d1')], latestRunId: null });
+		it("forwards the card's regenerate request to the host", async () => {
+			const { getByTestId, emitted } = await render({
+				datasets: [dataset('d1')],
+				latestRunId: null,
+			});
 
-			await userEvent.click(getByTestId('agent-eval-run-cases-button'));
+			await userEvent.click(getByTestId('stub-regenerate'));
 
-			expect(store.startRun).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'd1');
+			expect(emitted().generate).toBeTruthy();
 		});
 
-		it('does not offer to run for a user who cannot edit the agent', async () => {
-			const { getByTestId } = await render(
-				{ datasets: [dataset('d1')], latestRunId: null },
-				{ disabled: true },
-			);
+		// A run exists, so the results take the slot the cases card would otherwise hold.
+		it('prefers the results panel once the dataset has a run', async () => {
+			const { getByTestId, queryByTestId } = await render({
+				datasets: [dataset('d1')],
+				latestRunId: 'run-7',
+			});
 
-			expect(getByTestId('agent-eval-run-cases-button')).toBeDisabled();
+			expect(getByTestId('agent-eval-results-panel')).toBeInTheDocument();
+			expect(queryByTestId('agent-evals-cases-card')).not.toBeInTheDocument();
 		});
 	});
 
