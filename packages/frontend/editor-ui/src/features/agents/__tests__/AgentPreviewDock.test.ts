@@ -5,13 +5,26 @@ import { mount, shallowMount } from '@vue/test-utils';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
-const { useKeybindingsMock } = vi.hoisted(() => ({
-	useKeybindingsMock: vi.fn(),
-}));
+const { routerResolve, useKeybindingsMock } = vi.hoisted(function createMocks() {
+	return {
+		routerResolve: vi.fn(function resolveRoute() {
+			return { href: '/resolved-preview' };
+		}),
+		useKeybindingsMock: vi.fn(),
+	};
+});
 
-vi.mock('@/app/composables/useKeybindings', () => ({
-	useKeybindings: useKeybindingsMock,
-}));
+vi.mock('@/app/composables/useKeybindings', function mockUseKeybindings() {
+	return { useKeybindings: useKeybindingsMock };
+});
+
+vi.mock('vue-router', function mockVueRouter() {
+	return {
+		useRouter: function useRouter() {
+			return { resolve: routerResolve };
+		},
+	};
+});
 
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	useAgentSessionLangSmithExport: () => ({
@@ -34,6 +47,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
 		template: '<div><slot name="trigger" /></div>',
+		emits: ['select'],
 	},
 	N8nIcon: {
 		name: 'N8nIcon',
@@ -100,6 +114,7 @@ function mountDock(
 
 describe('AgentPreviewDock', () => {
 	beforeEach(() => {
+		routerResolve.mockClear();
 		useKeybindingsMock.mockClear();
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
@@ -216,6 +231,24 @@ describe('AgentPreviewDock', () => {
 			placement: 'bottom',
 			shortcut: { metaKey: true, shiftKey: true, keys: [';'] },
 		});
+	});
+
+	it('opens the active session in a new tab', () => {
+		const open = vi.spyOn(window, 'open').mockImplementation(function openWindow() {
+			return null;
+		});
+		const wrapper = mountDock();
+		const layoutMenu = wrapper.findAllComponents({ name: 'N8nDropdownMenu' })[1];
+
+		layoutMenu?.vm.$emit('select', 'open-in-new-tab');
+
+		expect(routerResolve).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentPreviewView',
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+			query: { continueSessionId: 'thread-1' },
+		});
+		expect(open).toHaveBeenCalledExactlyOnceWith('/resolved-preview', '_blank', 'noopener');
+		open.mockRestore();
 	});
 
 	it('creates a new session from the registered keyboard shortcut', () => {

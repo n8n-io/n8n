@@ -11,14 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import {
-	N8nActionDropdown,
-	N8nButton,
-	N8nIcon,
-	N8nIconButton,
-	N8nTableBase,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase } from '@n8n/design-system';
 import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
@@ -224,14 +217,10 @@ async function loadMore() {
 						:key="thread.id"
 						:class="$style.clickableRow"
 						data-test-id="agent-session-list-item"
+						@click="onViewTrace({ agentId, threadId: thread.id })"
 					>
 						<td :class="$style.titleCell">
-							<button
-								type="button"
-								:class="$style.sessionOpen"
-								data-test-id="agent-session-open"
-								@click="onViewTrace({ agentId, threadId: thread.id })"
-							>
+							<button type="button" :class="$style.sessionOpen" data-test-id="agent-session-open">
 								<span :class="$style.sessionTitle" data-test-id="agent-session-title">
 									{{ threadTitleOf(thread) }}
 								</span>

@@ -1913,17 +1913,17 @@ function onSwitchAgent(nextAgentId: string) {
 	scrollbar-color: var(--border-color) transparent;
 
 	&.previewOpen {
-		padding-right: var(--agent-preview-chat-column-width, 25rem);
+		padding-right: var(--agent-preview-chat-column-width, 30rem);
 		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
 	}
 
-	&:has([data-preview-layout='floating']),
-	&:has([data-preview-layout='fullpage']) {
+	&.previewOpen:has([data-preview-layout='floating']),
+	&.previewOpen:has([data-preview-layout='fullpage']) {
 		padding-right: 0;
 		transition: none;
 	}
 
-	&:has([data-preview-layout='fullpage']) .editorColumn {
+	&.previewOpen:has([data-preview-layout='fullpage']) .editorColumn {
 		display: none;
 	}
 

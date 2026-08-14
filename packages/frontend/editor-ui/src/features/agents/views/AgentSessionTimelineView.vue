@@ -335,11 +335,13 @@ function viewPreviewTrace() {
 	transition: padding-right var(--duration--snappy) var(--easing--ease-out);
 
 	&.previewOpen {
-		padding-right: var(--agent-preview-chat-column-width, 25rem);
+		padding-right: var(--agent-preview-chat-column-width, 30rem);
 	}
 
-	&:has([data-preview-layout='floating']) {
+	&.previewOpen:has([data-preview-layout='floating']),
+	&.previewOpen:has([data-preview-layout='fullpage']) {
 		padding-right: 0;
+		transition: none;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

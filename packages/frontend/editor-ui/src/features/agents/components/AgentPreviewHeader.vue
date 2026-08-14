@@ -95,7 +95,7 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 								:aria-label="i18n.baseText('agentSessions.sessionName')"
 							>
 								<span :class="$style.sessionTitleLabel">{{
-									props.sessionTitle ?? 'New session'
+									props.sessionTitle || i18n.baseText('agents.builder.chat.newChat.label')
 								}}</span>
 								<N8nIcon icon="chevron-down" color="text-light" :size="12" />
 							</N8nButton>

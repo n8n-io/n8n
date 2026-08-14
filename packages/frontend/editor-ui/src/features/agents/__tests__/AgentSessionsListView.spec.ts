@@ -185,19 +185,21 @@ describe('AgentSessionsListView', () => {
 		documentRemoveEventListenerSpy.mockRestore();
 	});
 
-	it('opens the trace from a native title button while leaving the row non-interactive', async () => {
+	it('opens the trace from the row and keeps a native title button', async () => {
 		const wrapper = await mountView();
 		const row = wrapper.get('[data-test-id="agent-session-list-item"]');
+		const expectedRoute = {
+			name: 'AgentSessionDetailView',
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		};
 
 		expect(wrapper.find('[data-test-id="agent-session-new-chat"]').exists()).toBe(false);
 		expect(row.attributes('role')).toBeUndefined();
 		expect(row.attributes('tabindex')).toBeUndefined();
 
 		await row.trigger('click');
-		await row.trigger('keydown', { key: 'Enter' });
-		await row.trigger('keydown', { key: ' ' });
 
-		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
 
 		const traceButton = wrapper.get('[data-test-id="agent-session-open"]');
 
@@ -205,12 +207,10 @@ describe('AgentSessionsListView', () => {
 		expect(traceButton.attributes('type')).toBe('button');
 		expect(traceButton.text()).toBe('My session');
 
+		routerPush.mockClear();
 		await traceButton.trigger('click');
 
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
-			name: 'AgentSessionDetailView',
-			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-		});
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
 	});
 
 	it('opens the parent trace in the current tab by default', async () => {

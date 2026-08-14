@@ -81,6 +81,14 @@ describe('AgentPreviewHeader', function describeAgentPreviewHeader() {
 		expect(wrapper.text()).toContain('Customer question');
 	});
 
+	it('shows the new-session label when the session title is empty', async function testEmptyTitle() {
+		const wrapper = mountHeader();
+
+		await wrapper.setProps({ sessionTitle: '' });
+
+		expect(wrapper.text()).toContain('agents.builder.chat.newChat.label');
+	});
+
 	it('keeps the active session in the agent link', function testAgentLink() {
 		const wrapper = mountHeader();
 
