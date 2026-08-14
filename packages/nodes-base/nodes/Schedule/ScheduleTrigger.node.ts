@@ -449,9 +449,7 @@ export class ScheduleTrigger implements INodeType {
 				displayName: 'Missed Execution Grace Period (Seconds)',
 				name: 'misfireGraceSeconds',
 				type: 'number',
-				// A field left untouched is normalised back to this default and stored as
-				// nothing, so `0` doubles as the sentinel for using the instance setting.
-				default: 0,
+				default: 0, // `0` means "use the instance settings"
 				typeOptions: { minValue: 0, numberPrecision: 0 },
 				description:
 					'How late an execution may start before it counts as missed. Set to 0 to use the instance setting.',

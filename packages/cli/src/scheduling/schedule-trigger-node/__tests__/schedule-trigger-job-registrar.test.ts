@@ -55,15 +55,13 @@ const everyThreeWeeksMonday: Cron = {
 describe('ScheduleTriggerJobRegistrar', () => {
 	const jobProvisioner = mock<DurableJobProvisioner>();
 
-	/**
-	 * The grace period the last provisioning call carried, named so the tests
-	 * below do not depend on its position in the argument list. Throws when no
-	 * call was made, so an expected-`undefined` grace cannot pass vacuously.
-	 */
 	const lastProvisionedGrace = () => {
 		const lastCall = jobProvisioner.provision.mock.calls.at(-1);
 		if (lastCall === undefined) {
 			throw new Error('expected provision to have been called');
+		}
+		if (lastCall.length !== 7) {
+			throw new Error('provision was called with an unexpected arity; update this helper');
 		}
 		return lastCall[6];
 	};
@@ -657,6 +655,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				'a stored null, as empty as an absent parameter',
 				{ misfireGraceSeconds: null } as unknown as INodeParameters,
 			],
+			['a stored false, as empty as an absent parameter', { misfireGraceSeconds: false }],
 		])(
 			'provisions no misfire grace for %s, which stands for the instance value',
 			async (_label, parameters) => {
@@ -762,6 +761,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 					'a stored null, as empty as an absent parameter',
 					{ misfireGraceSeconds: null } as unknown as INodeParameters,
 				],
+				['a stored false, as empty as an absent parameter', { misfireGraceSeconds: false }],
 				['a usable misfire grace', { misfireGraceSeconds: 90 }],
 			])('does not warn for a node with %s', (_label, parameters) => {
 				const { registrar, scopedLogger } = makeRegistrarWatchingWarnings();
