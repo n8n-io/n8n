@@ -47,7 +47,7 @@ export class GitConnectionsService {
 		return this.toPublic(await this.getEntity(id));
 	}
 
-	async findPage(offset: number, limit: number) {
+	async list(offset: number, limit: number) {
 		const result = await this.repository.getManyAndCount({ skip: offset, take: limit });
 		return { ...result, data: result.data.map((connection) => this.toSummary(connection)) };
 	}
