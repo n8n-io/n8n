@@ -660,7 +660,15 @@ async function handleSetupTestTrigger(
 	const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
 		[testTriggerNode]: triggerTestResult,
 	});
-	applyCredentialHints(refreshedRequests, input.credentialHints);
+	// Re-derived from scratch, so it has to be partitioned again: this is the second path that
+	// builds the panel, and without it a trigger test mid-session puts back the cards state 1
+	// left out.
+	const { pending: refreshedPending } = partitionSkippedSetupRequests(
+		refreshedRequests,
+		input.workflowId,
+		getSkippedSetupSubjects(context),
+	);
+	applyCredentialHints(refreshedPending, input.credentialHints);
 
 	// Generate a new requestId so the frontend doesn't filter it
 	// as already-resolved from the previous suspend cycle
@@ -670,7 +678,7 @@ async function handleSetupTestTrigger(
 		requestId: state.currentRequestId,
 		message: 'Configure credentials for your workflow',
 		severity: 'info' as const,
-		setupRequests: refreshedRequests,
+		setupRequests: refreshedPending,
 		workflowId: input.workflowId,
 		...(input.projectId ? { projectId: input.projectId } : {}),
 	});

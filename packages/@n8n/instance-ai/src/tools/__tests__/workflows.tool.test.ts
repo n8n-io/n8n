@@ -1797,6 +1797,29 @@ describe('workflows tool', () => {
 				expect(result).not.toHaveProperty('skippedByUser');
 			});
 
+			it('keeps skipped cards out of the panel a trigger test rebuilds', async () => {
+				// The re-suspend re-derives the requests from scratch, so it has to partition again —
+				// otherwise testing a trigger mid-session puts back the card the user dismissed.
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest, sheetsRequest]);
+				(applyNodeChanges as Mock).mockResolvedValue({ applied: [], failed: [] });
+				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
+				(context.executionService.run as Mock).mockResolvedValue({ status: 'success' });
+				const suspend = vi.fn();
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					suspend,
+					resumeData: {
+						approved: true,
+						action: 'test-trigger',
+						testTriggerNode: 'Log to Sheet',
+					},
+				} as never);
+
+				expect(suspend).toHaveBeenCalledTimes(1);
+				expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [sheetsRequest] });
+			});
+
 			it('keeps another node Slack skip when only a parameter was completed', async () => {
 				// "Alert on Slack" was connected already and only needed a channel. Clearing the
 				// type-wide record here would re-open the card "Post to Slack" was skipped on.
