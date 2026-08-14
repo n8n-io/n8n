@@ -47,12 +47,13 @@ const toRolePublicDto = (role: RoleDTO & { roleType: PublicRoleNamespace }): Rol
 	updatedAt: role.updatedAt!.toISOString(),
 });
 
-const toRoleGetPublicDto = (role: RoleDTO & { roleType: PublicRoleNamespace }, withUsageCount: boolean): RoleGetPublicDto => ({
+const toRoleGetPublicDto = (
+	role: RoleDTO & { roleType: PublicRoleNamespace },
+	withUsageCount: boolean,
+): RoleGetPublicDto => ({
 	...toRolePublicDto(role),
 	licensed: role.licensed,
-	...(withUsageCount
-		? { usedByUsers: role.usedByUsers, usedByProjects: role.usedByProjects }
-		: {}),
+	...(withUsageCount ? { usedByUsers: role.usedByUsers, usedByProjects: role.usedByProjects } : {}),
 });
 
 @PublicApiController('/roles')
