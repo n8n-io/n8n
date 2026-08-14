@@ -181,13 +181,18 @@ export class AgentIntegrationManagementService {
 				{ user: options.user, modifiedBy: options.modifiedBy },
 			);
 		} catch (error) {
-			// Undo step 1. A channel this call created has nothing left to belong to;
-			// one it restarted has to go back to the entry the row still holds, rather
-			// than keep running settings that were never persisted. Subscriptions
-			// always stay — deletion is not recoverable.
+			// Undo step 1 on this main only. Nothing durable changed, so the cluster's
+			// view is still correct — broadcasting a disconnect would have every peer
+			// tear down a runtime that is still persisted and still healthy. Neither
+			// path touches thread subscriptions, which the row still justifies.
 			if (connected && add) {
-				await this.chatService.disconnectChannel(agent.id, add, { deleteSubscriptions: false });
-				if (wasLive) await this.restorePersistedRuntime(agent, persistedBefore);
+				if (wasLive && persistedBefore) {
+					// `connect` releases the existing key before rebuilding, so restoring
+					// both drops the failed attempt and puts the previous entry back.
+					await this.restorePersistedRuntime(agent, persistedBefore);
+				} else {
+					await this.chatService.disconnect(agent.id, add);
+				}
 			}
 			throw error;
 		}

@@ -153,11 +153,10 @@ describe('AgentIntegrationManagementService', () => {
 			);
 
 			expect(chatService.connect).toHaveBeenCalled();
-			// Thread subscriptions are never deleted on a rollback — that is not
-			// recoverable, and the row this call failed to change may still want them.
-			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration, {
-				deleteSubscriptions: false,
-			});
+			// Local teardown only: nothing durable changed, so a broadcast would have
+			// peers tear down runtimes that are still persisted and still healthy.
+			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, integration);
+			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});
 
@@ -176,14 +175,15 @@ describe('AgentIntegrationManagementService', () => {
 				'write failed',
 			);
 
-			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration, {
-				deleteSubscriptions: false,
-			});
+			// Restoring is enough on its own: `connect` releases the existing key
+			// before rebuilding. No broadcast, so peers keep their healthy runtimes.
 			expect(chatService.connect).toHaveBeenLastCalledWith(
 				agent.id,
 				persistedEntry,
 				agent.projectId,
 			);
+			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});
 
 		it('restores the previous runtime when the restart itself fails', async () => {
@@ -600,11 +600,11 @@ describe('AgentIntegrationManagementService', () => {
 				}),
 			).rejects.toThrow('write failed');
 
-			// Only the connection we just brought up is released; the old one stays.
-			expect(chatService.disconnectChannel).toHaveBeenCalledTimes(1);
-			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration, {
-				deleteSubscriptions: false,
-			});
+			// Only the connection we just brought up is released, locally, and the old
+			// one stays — on this main and on every peer.
+			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, integration);
+			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});
 	});
 });
