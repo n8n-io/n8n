@@ -55,6 +55,15 @@ export class TriggersAndPollers {
 	/** In-flight `poll()` calls per `workflowId:nodeId`, to detect overlapping ticks. */
 	private readonly inFlightPolls = new Map<string, number>();
 
+	/** Emits a tick, swallowing listener errors: a metrics sink must not fail a poll. */
+	private emitTick(tick: PollTickEventMap['poll-tick-completed']): void {
+		try {
+			this.events.emit('poll-tick-completed', tick);
+		} catch {
+			// Deliberately swallowed; see above.
+		}
+	}
+
 	/**
 	 * Runs the trigger() implementation for an active trigger or schedule trigger node.
 	 */
@@ -148,7 +157,7 @@ export class TriggersAndPollers {
 		const startedAt = Date.now();
 		try {
 			const result = await nodeType.poll.call(pollFunctions);
-			this.events.emit('poll-tick-completed', {
+			this.emitTick({
 				nodeType: node.type,
 				status: 'success',
 				durationMs: Date.now() - startedAt,
@@ -156,7 +165,7 @@ export class TriggersAndPollers {
 			});
 			return result;
 		} catch (error) {
-			this.events.emit('poll-tick-completed', {
+			this.emitTick({
 				nodeType: node.type,
 				status: 'error',
 				errorKind: classifyPollError(error),

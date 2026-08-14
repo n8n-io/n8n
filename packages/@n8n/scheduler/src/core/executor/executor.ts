@@ -294,8 +294,8 @@ export class Executor {
 				// A terminal write resolves 0 (it does not reject) when the row was
 				// reclaimed by the reaper after a lease overrun. The result is then no
 				// longer ours to record: report the fire as skipped, not as a state
-				// transition we did not make, and count no metric. Same on every
-				// terminal write below.
+				// transition we did not make, and count only the lease-lost metric,
+				// not a fire outcome. Same on every terminal write below.
 				const rowsAffected = await this.store.failTaskTerminal(claim, errorMessage);
 				if (rowsAffected > 0) {
 					this.hooks.onFire?.(task.taskType, 'failure');

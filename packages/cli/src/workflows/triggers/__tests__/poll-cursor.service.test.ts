@@ -412,6 +412,22 @@ describe('PollCursorService', () => {
 			expectSettledEvent('cursor_only', 'fence_rejected');
 		});
 
+		it('does not let a throwing event sink fail a commit', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
+			eventService.emit.mockImplementation(() => {
+				throw new Error('metrics sink failed');
+			});
+
+			await expect(
+				service.commitCursorOnly({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					cursor: { lastItemId: 'b' },
+				}),
+			).resolves.toBe(true);
+		});
+
 		it('emits a failure event when commitCursorOnly throws', async () => {
 			const service = buildService();
 			pollerStateRepository.advanceCursor.mockRejectedValue(new Error('write failed'));

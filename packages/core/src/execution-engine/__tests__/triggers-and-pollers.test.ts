@@ -250,6 +250,24 @@ describe('TriggersAndPollers', () => {
 			expect(ticks[2].overlapped).toBe(false);
 		});
 
+		it('does not let a throwing tick listener fail a successful poll', async () => {
+			pollers.events.on('poll-tick-completed', () => {
+				throw new Error('metrics sink failed');
+			});
+			pollFn.mockResolvedValue(null);
+
+			await expect(runPoll()).resolves.toBeNull();
+		});
+
+		it('does not let a throwing tick listener mask the poll error', async () => {
+			pollers.events.on('poll-tick-completed', () => {
+				throw new Error('metrics sink failed');
+			});
+			pollFn.mockRejectedValue(new Error('Poll function failed'));
+
+			await expect(runPoll()).rejects.toThrow('Poll function failed');
+		});
+
 		it('does not mark ticks of different nodes as overlapping', async () => {
 			let finishFirstPoll!: (value: null) => void;
 			pollFn
