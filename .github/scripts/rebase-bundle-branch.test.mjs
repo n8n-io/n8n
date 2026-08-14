@@ -75,6 +75,10 @@ test('a clean replay force-pushes with the pre-replay tip as the lease', () => {
 	const result = rebaseBundleBranch({ git, env, log: silent });
 
 	assert.deepEqual(result, { status: 'replayed' });
+	assert.deepEqual(
+		git.calls.find((a) => a[0] === 'checkout'),
+		['checkout', '--force', '-B', 'bundle/2.x', 'FETCH_HEAD'],
+	);
 	// Commits already on the base are dropped rather than stopping the replay.
 	assert.deepEqual(git.calls.find(isRebase), ['rebase', '--empty=drop', BASE]);
 	assert.deepEqual(git.calls.find(isPush), [
