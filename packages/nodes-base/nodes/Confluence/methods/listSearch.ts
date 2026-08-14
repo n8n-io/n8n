@@ -5,33 +5,44 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 
-import { extractNextCursor } from '../actions/common';
+import { extractNextCursor, resolveSpaceKey } from '../actions/common';
 import { confluenceApiRequest } from '../transport';
 
 const SEARCH_PAGE_SIZE = 50;
+const MAX_FILTERED_SEARCH_PAGES = 10;
 
 export async function searchSpaces(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const qs: IDataObject = { limit: SEARCH_PAGE_SIZE, sort: 'name', status: 'current' };
-	if (paginationToken !== undefined) qs.cursor = paginationToken;
-
-	const response = await confluenceApiRequest.call(this, 'GET', '/wiki/api/v2/spaces', {}, qs);
-
-	const entries = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 	const filterLower = (filter ?? '').trim().toLowerCase();
+	const results: INodeListSearchItems[] = [];
+	let cursor = paginationToken;
 
-	const results: INodeListSearchItems[] = entries
-		.filter((space) => space.id !== undefined && typeof space.name === 'string')
-		.filter((space) => filterLower === '' || String(space.name).toLowerCase().includes(filterLower))
-		.map((space) => {
+	// The v2 spaces list has no text-search parameter, so the typed filter is applied
+	// client-side; keep fetching pages until a match appears, so matches beyond the
+	// first page stay discoverable
+	for (let fetched = 0; fetched < MAX_FILTERED_SEARCH_PAGES; fetched++) {
+		const qs: IDataObject = { limit: SEARCH_PAGE_SIZE, sort: 'name', status: 'current' };
+		if (cursor !== undefined) qs.cursor = cursor;
+
+		const response = await confluenceApiRequest.call(this, 'GET', '/wiki/api/v2/spaces', {}, qs);
+		const entries = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
+
+		for (const space of entries) {
+			if (typeof space.id !== 'string' && typeof space.id !== 'number') continue;
+			if (typeof space.name !== 'string') continue;
+			if (filterLower !== '' && !space.name.toLowerCase().includes(filterLower)) continue;
 			const key = typeof space.key === 'string' && space.key !== '' ? ` (${space.key})` : '';
-			return { name: `${String(space.name)}${key}`, value: String(space.id) };
-		});
+			results.push({ name: `${space.name}${key}`, value: String(space.id) });
+		}
 
-	return { results, paginationToken: extractNextCursor(response) };
+		cursor = extractNextCursor(response);
+		if (cursor === undefined || filterLower === '' || results.length > 0) break;
+	}
+
+	return { results, paginationToken: cursor };
 }
 
 export async function getPages(
@@ -44,21 +55,15 @@ export async function getPages(
 	let spaceId = '';
 	try {
 		const raw = this.getCurrentNodeParameter('space', { extractValue: true });
-		spaceId = raw === undefined || raw === null ? '' : String(raw).trim();
+		spaceId = typeof raw === 'string' || typeof raw === 'number' ? String(raw).trim() : '';
 	} catch {
 		spaceId = '';
 	}
 	let spaceClause = '';
 	if (spaceId !== '') {
 		// CQL's space field matches by key, so the selected space ID is resolved first
-		const space = await confluenceApiRequest.call(
-			this,
-			'GET',
-			`/wiki/api/v2/spaces/${encodeURIComponent(spaceId)}`,
-		);
-		if (typeof space.key === 'string' && space.key !== '') {
-			spaceClause = ` AND space = "${space.key}"`;
-		}
+		const spaceKey = await resolveSpaceKey.call(this, spaceId);
+		if (spaceKey !== undefined) spaceClause = ` AND space = "${spaceKey}"`;
 	}
 
 	const escaped = (filter ?? '').replace(/(["\\])/g, '\\$1');
@@ -79,23 +84,33 @@ export async function getPages(
 	const base = typeof links?.base === 'string' ? links.base : '';
 	const entries = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 
-	const results: INodeListSearchItems[] = entries
-		.filter((entry) => (entry.content as IDataObject | undefined)?.id !== undefined)
-		.map((entry) => {
-			const content = entry.content as IDataObject;
-			const id = String(content.id);
-			const title = typeof content.title === 'string' && content.title !== '' ? content.title : id;
-			// The space name disambiguates same-titled pages; redundant once scoped to one space
-			const container = entry.resultGlobalContainer as IDataObject | undefined;
-			const space =
-				spaceId === '' && typeof container?.title === 'string' && container.title !== ''
-					? ` (${container.title})`
-					: '';
-			const webui = (content._links as IDataObject | undefined)?.webui;
-			const url = base !== '' && typeof webui === 'string' ? `${base}${webui}` : undefined;
-			return { name: `${title}${space}`, value: id, url };
-		});
+	const results: INodeListSearchItems[] = [];
+	for (const entry of entries) {
+		const content = entry.content as IDataObject | undefined;
+		if (content === undefined) continue;
+		if (typeof content.id !== 'string' && typeof content.id !== 'number') continue;
+		const id = String(content.id);
+		const title = typeof content.title === 'string' && content.title !== '' ? content.title : id;
+		// The space name disambiguates same-titled pages; redundant once scoped to one space
+		const container = entry.resultGlobalContainer as IDataObject | undefined;
+		const space =
+			spaceId === '' && typeof container?.title === 'string' && container.title !== ''
+				? ` (${container.title})`
+				: '';
+		const webui = (content._links as IDataObject | undefined)?.webui;
+		const url = base !== '' && typeof webui === 'string' ? `${base}${webui}` : undefined;
+		results.push({ name: `${title}${space}`, value: id, url });
+	}
 
-	const hasMore = typeof links?.next === 'string' && links.next !== '';
-	return { results, paginationToken: hasMore ? String(start + entries.length) : undefined };
+	const next = typeof links?.next === 'string' && links.next !== '' ? links.next : undefined;
+	if (next === undefined) return { results, paginationToken: undefined };
+
+	let nextStart: string | null = null;
+	try {
+		nextStart = new URL(next, 'https://api.atlassian.com').searchParams.get('start');
+	} catch {
+		nextStart = null;
+	}
+	// A page can come back empty while next is still set; never repeat the same offset
+	return { results, paginationToken: nextStart ?? String(start + Math.max(entries.length, 1)) };
 }

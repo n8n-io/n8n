@@ -1,6 +1,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeParameterResourceLocator,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -136,6 +137,29 @@ export const spaceRLC: INodeProperties = {
 	],
 };
 
+const spaceKeyCache = new Map<string, string>();
+
+export function clearSpaceKeyCache(): void {
+	spaceKeyCache.clear();
+}
+
+export async function resolveSpaceKey(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	spaceId: string,
+): Promise<string | undefined> {
+	const cached = spaceKeyCache.get(spaceId);
+	if (cached !== undefined) return cached;
+
+	const space = await confluenceApiRequest.call(
+		this,
+		'GET',
+		`/wiki/api/v2/spaces/${encodeURIComponent(spaceId)}`,
+	);
+	if (typeof space.key !== 'string' || space.key === '') return undefined;
+	spaceKeyCache.set(spaceId, space.key);
+	return space.key;
+}
+
 export function extractNextCursor(response: IDataObject): string | undefined {
 	const next = (response._links as IDataObject | undefined)?.next;
 	if (typeof next !== 'string' || next === '') return undefined;
@@ -144,6 +168,10 @@ export function extractNextCursor(response: IDataObject): string | undefined {
 	} catch {
 		return undefined;
 	}
+}
+
+function asString(value: unknown): string {
+	return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 }
 
 async function resolvePageIdByTitle(
@@ -170,7 +198,8 @@ async function resolvePageIdByTitle(
 		const candidates = results
 			.slice(0, 5)
 			.map(
-				(page) => `"${String(page.title)}" (space ${String(page.spaceId)}, ID ${String(page.id)})`,
+				(page) =>
+					`"${asString(page.title)}" (space ${asString(page.spaceId)}, ID ${asString(page.id)})`,
 			)
 			.join(', ');
 		throw new NodeOperationError(
@@ -179,7 +208,7 @@ async function resolvePageIdByTitle(
 			{ itemIndex },
 		);
 	}
-	return String(results[0].id);
+	return asString(results[0].id);
 }
 
 /** Resolves the shared Page parameter to a page ID, whatever the selected mode. */

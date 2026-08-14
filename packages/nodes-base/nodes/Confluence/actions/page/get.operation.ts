@@ -153,7 +153,8 @@ async function collectDescendantPageIds(
 				);
 				const records = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 				for (const record of records) {
-					const id = record.id === undefined ? '' : String(record.id);
+					const id =
+						typeof record.id === 'string' || typeof record.id === 'number' ? String(record.id) : '';
 					if (id === '' || seen.has(id)) continue;
 					seen.add(id);
 					if (record.type === 'page') pageIds.push(id);

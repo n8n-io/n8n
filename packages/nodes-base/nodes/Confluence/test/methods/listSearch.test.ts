@@ -1,6 +1,7 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
+import { clearSpaceKeyCache } from '../../actions/common';
 import { getPages, searchSpaces } from '../../methods/listSearch';
 import { confluenceApiRequest } from '../../transport';
 
@@ -15,6 +16,7 @@ describe('Confluence listSearch.getPages', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		clearSpaceKeyCache();
 		ctx = mockDeep<ILoadOptionsFunctions>();
 	});
 
@@ -77,6 +79,23 @@ describe('Confluence listSearch.getPages', () => {
 
 		expect(ctx.getCurrentNodeParameter).toHaveBeenCalledWith('space', { extractValue: true });
 		expect(result.results).toEqual([{ name: 'Project Plan', value: '123', url: undefined }]);
+
+		await getPages.call(ctx, 'plan');
+		const spaceLookups = apiRequest.mock.calls.filter(
+			([, endpoint]) => endpoint === '/wiki/api/v2/spaces/999',
+		);
+		expect(spaceLookups).toHaveLength(1);
+	});
+
+	it('advances the offset even when a page comes back empty with a next link', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [],
+			_links: { next: '/rest/api/search?cql=type%3Dpage' },
+		});
+
+		const result = await getPages.call(ctx, undefined, '50');
+
+		expect(result.paginationToken).toBe('51');
 	});
 
 	it('escapes quotes and backslashes in the CQL title filter', async () => {
@@ -157,6 +176,32 @@ describe('Confluence listSearch.searchSpaces', () => {
 		const result = await searchSpaces.call(ctx, 'doc');
 
 		expect(result.results).toEqual([{ name: 'Docs (DOCS)', value: '1' }]);
+	});
+
+	it('keeps fetching pages while a typed filter has no match yet', async () => {
+		apiRequest
+			.mockResolvedValueOnce({
+				results: [{ id: 1, name: 'Docs', key: 'DOCS' }],
+				_links: { next: '/wiki/api/v2/spaces?cursor=c2' },
+			})
+			.mockResolvedValueOnce({
+				results: [{ id: 3, name: 'Sales' }],
+			});
+
+		const result = await searchSpaces.call(ctx, 'sales');
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/wiki/api/v2/spaces',
+			{},
+			expect.objectContaining({ cursor: 'c2' }),
+		);
+		expect(result).toEqual({
+			results: [{ name: 'Sales', value: '3' }],
+			paginationToken: undefined,
+		});
 	});
 
 	it('resumes from the pagination cursor and returns the next one', async () => {
