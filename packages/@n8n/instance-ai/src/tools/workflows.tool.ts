@@ -687,23 +687,22 @@ async function reconcileSetupSkips(
 		workflowId: string;
 		requests: readonly SetupRequest[];
 		skippedNodeNames: readonly string[];
-		completedNodeNames: readonly string[];
+		/** The applied report — `credentialType` is set only where a credential was applied. */
+		completed: ReadonlyArray<{ nodeName: string; credentialType?: string }>;
 	},
 ): Promise<SetupRequest[]> {
 	const byNodeName = new Map(args.requests.map((request) => [request.node.name, request]));
-	const resolve = (names: readonly string[]): SetupRequest[] =>
-		names
-			.map((name) => byNodeName.get(name))
-			.filter((request): request is SetupRequest => request !== undefined);
 
-	const completed = resolve(args.completedNodeNames);
-	const completedSubjects = new Set(completedSetupSubjects(completed, args.workflowId));
+	const completedSubjects = new Set(completedSetupSubjects(args.completed, args.workflowId));
 	await forgetSkippedSetup(context, completedSubjects);
 
-	const newlySkipped = resolve(args.skippedNodeNames).filter(
-		(request) =>
-			request.needsAction && !completedSubjects.has(setupSkipSubject(request, args.workflowId)),
-	);
+	const newlySkipped = args.skippedNodeNames
+		.map((name) => byNodeName.get(name))
+		.filter((request): request is SetupRequest => request !== undefined)
+		.filter(
+			(request) =>
+				request.needsAction && !completedSubjects.has(setupSkipSubject(request, args.workflowId)),
+		);
 	await rememberSkippedSetup(context, newlySkipped, args.workflowId);
 
 	const skipped = getSkippedSetupSubjects(context);
@@ -767,7 +766,7 @@ async function handleSetupApply(
 			workflowId: input.workflowId,
 			requests: remainingRequests,
 			skippedNodeNames: resumeData.skippedNodes ?? [],
-			completedNodeNames: completedNodes.map((node) => node.nodeName),
+			completed: completedNodes,
 		});
 		const skippedSubjects = new Set(
 			skippedByUser.map((request) => setupSkipSubject(request, input.workflowId)),

@@ -1796,6 +1796,35 @@ describe('workflows tool', () => {
 				);
 				expect(result).not.toHaveProperty('skippedByUser');
 			});
+
+			it('keeps another node Slack skip when only a parameter was completed', async () => {
+				// "Alert on Slack" was connected already and only needed a channel. Clearing the
+				// type-wide record here would re-open the card "Post to Slack" was skipped on.
+				const alertParamRequest = {
+					node: { name: 'Alert on Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: false,
+				};
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest, alertParamRequest]);
+				(applyNodeChanges as Mock).mockResolvedValue({ applied: ['Alert on Slack'], failed: [] });
+				(buildCompletedReport as Mock).mockReturnValue([
+					{ nodeName: 'Alert on Slack', parametersSet: ['channel'] },
+				]);
+				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						nodeParameters: { 'Alert on Slack': { channel: '#general' } },
+					},
+				} as never);
+
+				expect(context.revokeSessionToolApproval).not.toHaveBeenCalledWith(
+					'workflows:setup-skip:cred:slackApi',
+				);
+			});
 		});
 	});
 

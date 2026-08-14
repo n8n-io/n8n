@@ -37,7 +37,7 @@ function isCredentialSkip(
 export function setupSkipSubject(request: SetupRequest, workflowId: string): string {
 	return isCredentialSkip(request)
 		? `cred:${request.credentialType}`
-		: `node:${workflowId}:${request.node.name}`;
+		: nodeSubject(request.node.name, workflowId);
 }
 
 /**
@@ -49,19 +49,8 @@ export function setupSkipReopenToken(request: SetupRequest): string {
 	return isCredentialSkip(request) ? request.credentialType : request.node.name;
 }
 
-/**
- * Every subject this request could have been recorded under, for clearing a skip.
- *
- * `setupSkipSubject` reads the node's *current* state, and configuring the credential is
- * exactly what changes it: the card that was recorded as `cred:slackApi` re-analyses as a
- * parameter card once a credential is attached. Clearing only the current subject would
- * therefore leave the original record in place — and quietly suppress the next node that
- * genuinely needs that credential.
- */
-function setupSkipForgetSubjects(request: SetupRequest, workflowId: string): string[] {
-	const subjects = [`node:${workflowId}:${request.node.name}`];
-	if (request.credentialType) subjects.push(`cred:${request.credentialType}`);
-	return subjects;
+function nodeSubject(nodeName: string, workflowId: string): string {
+	return `node:${workflowId}:${nodeName}`;
 }
 
 /** Skip subjects recorded earlier in this thread. */
@@ -126,28 +115,48 @@ export function resolveReopenTargets(
 	const unmatched: string[] = [];
 	for (const entry of requested) {
 		const wanted = entry.toLowerCase();
-		const matches = requests.filter(
-			(request) =>
-				request.credentialType?.toLowerCase() === wanted ||
-				request.node.name.toLowerCase() === wanted,
+		const byCredentialType = requests.filter(
+			(request) => request.credentialType?.toLowerCase() === wanted,
 		);
+		const byNodeName = requests.filter((request) => request.node.name.toLowerCase() === wanted);
+		const matches = byCredentialType.length > 0 ? byCredentialType : byNodeName;
 		if (matches.length === 0) {
 			unmatched.push(entry);
 			continue;
 		}
-		for (const match of matches) {
-			for (const subject of setupSkipForgetSubjects(match, workflowId)) subjects.add(subject);
+		// Clear what the user named, at the granularity they named it. "Connect Slack" also drops
+		// the type-wide record — otherwise a card re-keyed since the skip (a credential attached
+		// outside the panel) would stay hidden. Naming one node touches only that node, so it
+		// can't drag another node's declined credential back into the card.
+		if (byCredentialType.length > 0) {
+			subjects.add(`cred:${byCredentialType[0].credentialType}`);
 		}
+		for (const match of matches) subjects.add(setupSkipSubject(match, workflowId));
 	}
 	return { subjects: [...subjects], unmatched };
 }
 
-/** Subjects to clear for nodes the user just finished configuring. */
+/**
+ * Subjects to clear for the cards the user just finished configuring, keyed off what was
+ * actually applied rather than off the node's re-analysed state.
+ *
+ * `credentialType` is set only when a credential of that type was applied to that node, so
+ * that is the one case where a type-wide `cred:` record stops being a declined decision.
+ * A node that only completed a *parameter* clears its own record and nothing else — its
+ * credential was already connected, so it says nothing about a credential another node is
+ * still waiting on. Reading the post-apply state instead would conflate the two, because
+ * attaching a credential is exactly what re-keys a card from `cred:` to `node:`.
+ */
 export function completedSetupSubjects(
-	requests: readonly SetupRequest[],
+	completed: ReadonlyArray<{ nodeName: string; credentialType?: string }>,
 	workflowId: string,
 ): string[] {
-	return [...new Set(requests.flatMap((request) => setupSkipForgetSubjects(request, workflowId)))];
+	const subjects = new Set<string>();
+	for (const entry of completed) {
+		subjects.add(nodeSubject(entry.nodeName, workflowId));
+		if (entry.credentialType) subjects.add(`cred:${entry.credentialType}`);
+	}
+	return [...subjects];
 }
 
 export interface PartitionedSetupRequests {

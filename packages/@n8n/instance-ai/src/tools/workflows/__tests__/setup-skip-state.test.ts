@@ -157,12 +157,31 @@ describe('completedSetupSubjects', () => {
 		const context = createContext();
 		await rememberSkippedSetup(context, [credentialRequest('Post to Slack', 'slackApi')], WF);
 
-		// Post-apply the credential resolves, so the same card now re-analyses as a parameter
-		// card — the subject it was recorded under is no longer the one it computes.
+		// Post-apply the credential resolves, so the same card re-analyses as a parameter card —
+		// the subject it was recorded under is no longer the one it computes. Keying off what was
+		// applied instead of off the re-analysed state is what makes this land.
 		await forgetSkippedSetup(
 			context,
-			completedSetupSubjects([parameterRequest('Post to Slack', 'slackApi')], WF),
+			completedSetupSubjects([{ nodeName: 'Post to Slack', credentialType: 'slackApi' }], WF),
 		);
+
+		expect(getSkippedSetupSubjects(context).size).toBe(0);
+	});
+
+	it('keeps a type-wide skip when only a parameter was completed', async () => {
+		// "Alert on Slack" has a working credential and only needed a channel; that says nothing
+		// about the Slack credential "Post to Slack" is still waiting on.
+		const context = createContext(['workflows:setup-skip:cred:slackApi']);
+
+		await forgetSkippedSetup(context, completedSetupSubjects([{ nodeName: 'Alert on Slack' }], WF));
+
+		expect(getSkippedSetupSubjects(context).has('cred:slackApi')).toBe(true);
+	});
+
+	it('clears the completed node own record', async () => {
+		const context = createContext(['workflows:setup-skip:node:wf-1:Log to Sheet']);
+
+		await forgetSkippedSetup(context, completedSetupSubjects([{ nodeName: 'Log to Sheet' }], WF));
 
 		expect(getSkippedSetupSubjects(context).size).toBe(0);
 	});
@@ -188,10 +207,19 @@ describe('resolveReopenTargets', () => {
 		expect(unmatched).toEqual([]);
 	});
 
-	it('clears both subjects a matched card could have been recorded under', () => {
-		const { subjects } = resolveReopenTargets(requests, WF, ['Post to Slack']);
+	it('drops the type-wide record when the user names a credential type', () => {
+		// Also covers a card re-keyed since the skip — a credential attached outside the panel
+		// would otherwise leave the original `cred:` record hiding it.
+		const { subjects } = resolveReopenTargets(requests, WF, ['slackApi']);
 
-		expect(subjects).toEqual(expect.arrayContaining(['cred:slackApi', 'node:wf-1:Post to Slack']));
+		expect(subjects).toContain('cred:slackApi');
+	});
+
+	it('touches only the named node when the user names a node', () => {
+		// Reopening one node must not drag another node's declined credential back into the card.
+		const { subjects } = resolveReopenTargets(requests, WF, ['Log to Sheet']);
+
+		expect(subjects).toEqual(['node:wf-1:Log to Sheet']);
 	});
 
 	it('reports what it could not match instead of silently leaving the card closed', () => {
