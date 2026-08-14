@@ -137,6 +137,12 @@ const setupAction = z.object({
 		.describe(
 			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
 		),
+	includeAllNodes: z
+		.boolean()
+		.optional()
+		.describe(
+			'By default, setup after a build covers only the nodes that build changed. Set to true to cover every node in the workflow — ONLY when the user explicitly asked to set up the whole workflow or a node the last build did not touch.',
+		),
 });
 
 const validateAction = z.object({
@@ -756,6 +762,26 @@ async function handleSetupApply(
 	}
 }
 
+/**
+ * Node names the latest build for this workflow changed, read from the stored
+ * build outcome. Undefined when there is no build outcome in this thread (e.g.
+ * user-initiated setup) or the outcome predates change tracking — setup then
+ * covers the whole workflow.
+ */
+async function resolveSetupScopeNodeNames(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string[] | undefined> {
+	const workflowTaskService = context.workflowBuildContext?.workflowTaskService;
+	if (!workflowTaskService) return undefined;
+	try {
+		const outcome = await workflowTaskService.getLatestBuildOutcomeForWorkflow(workflowId);
+		return outcome?.changedNodeNames;
+	} catch {
+		return undefined;
+	}
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
@@ -773,11 +799,20 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+		const allSetupRequests = await analyzeWorkflow(context, input.workflowId);
+
+		// Setup after a build covers only the nodes that build changed —
+		// pre-existing, unrelated nodes must not surface in the setup card.
+		const scopeNodeNames = input.includeAllNodes
+			? undefined
+			: await resolveSetupScopeNodeNames(context, input.workflowId);
+		const setupRequests = scopeNodeNames
+			? allSetupRequests.filter((request) => scopeNodeNames.includes(request.node.name))
+			: allSetupRequests;
 
 		// Validated against the workflow's node URLs so a recipe can't set one of
 		// the workflow's own (action) endpoints as its probe testUrl.
-		const nodeUrls = setupRequests.map((request) => request.node.parameters?.url);
+		const nodeUrls = allSetupRequests.map((request) => request.node.parameters?.url);
 		const hintProblems = (input.credentialHints ?? []).flatMap((hint) =>
 			findSetupHintProblems(hint, { nodeUrls }).map((problem) =>
 				hint.nodeName ? `${hint.nodeName}: ${problem}` : problem,
@@ -818,6 +853,21 @@ async function handleSetup(
 		}
 
 		if (setupRequests.length === 0) {
+			const skippedNodeNames = scopeNodeNames
+				? allSetupRequests
+						.map((request) => request.node.name)
+						.filter((name) => !scopeNodeNames.includes(name))
+				: [];
+			if (skippedNodeNames.length > 0) {
+				return {
+					success: true,
+					reason:
+						`No nodes changed by the latest build require setup. Pre-existing node(s) ${skippedNodeNames
+							.map((name) => `"${name}"`)
+							.join(', ')} have pending setup, but this change did not touch them — ` +
+						'do not route the user to set them up now. Only if the user explicitly asks to set them up, call setup again with includeAllNodes: true.',
+				};
+			}
 			return { success: true, reason: 'No nodes require setup.' };
 		}
 

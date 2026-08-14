@@ -105,6 +105,29 @@ describe('schema-validator', () => {
 			expect(result.errors).toEqual([]);
 		});
 
+		it('flags an omitted discriminator with missingDiscriminator', () => {
+			// Telegram v1.2 has a resource/operation union with no default resolution,
+			// and editor-saved workflows omit default discriminators.
+			const result = validateNodeConfig('n8n-nodes-base.telegram', 1.2, {
+				parameters: { chatId: '123', text: 'hello' },
+			});
+			expect(result.valid).toBe(false);
+			expect(result.errors.length).toBeGreaterThan(0);
+			expect(result.errors[0].message).toContain('Missing discriminator');
+			expect(result.errors[0].missingDiscriminator).toBe(true);
+		});
+
+		it('does not flag a wrong discriminator value as missingDiscriminator', () => {
+			const result = validateNodeConfig('n8n-nodes-base.set', 3, {
+				parameters: {
+					mode: 'invalid-mode',
+					assignments: { assignments: [] },
+				},
+			});
+			expect(result.valid).toBe(false);
+			expect(result.errors[0].missingDiscriminator).toBeUndefined();
+		});
+
 		it('returns clear error when discriminator has wrong value', () => {
 			// Set v3 mode must be 'manual' or 'raw'
 			const result = validateNodeConfig('n8n-nodes-base.set', 3, {

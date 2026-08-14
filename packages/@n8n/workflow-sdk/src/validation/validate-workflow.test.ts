@@ -673,6 +673,29 @@ describe('Validation', () => {
 			expect(result.warnings.some((w) => w.code === 'INVALID_PARAMETER')).toBe(false);
 		});
 
+		it('should report an omitted discriminator as informational so it never blocks a build', () => {
+			// Editor-saved workflows strip default discriminators; a round-tripped
+			// untouched node must not fail the build on the omitted resource/operation.
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const telegramNode = node({
+				type: 'n8n-nodes-base.telegram',
+				version: 1.2,
+				config: {
+					name: 'Send Telegram',
+					parameters: { chatId: '123', text: 'hello' },
+				},
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).to(telegramNode);
+			const result = validateWorkflow(wf);
+
+			const discriminatorWarning = result.warnings.find(
+				(w) => w.code === 'INVALID_PARAMETER' && w.message.includes('Missing discriminator'),
+			);
+			expect(discriminatorWarning).toBeDefined();
+			expect(discriminatorWarning?.severity).toBe('informational');
+		});
+
 		it('should include node name in INVALID_PARAMETER warning', () => {
 			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
 			const setNode = node({
