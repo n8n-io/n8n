@@ -4,7 +4,7 @@ import {
 	RoleListPublicDto,
 	RoleListQueryPublicDto,
 	RolePublicDto,
-	UpdateRoleDto,
+	UpdateRolePublicDto,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -19,9 +19,9 @@ import {
 	Get,
 	Licensed,
 	Param,
-	Patch,
 	Post,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import { RoleNamespace, type Role as RoleDTO } from '@n8n/permissions';
@@ -143,12 +143,12 @@ export class RolesPublicController {
 		return toRolePublicDto({ ...role, roleType: createRole.roleType });
 	}
 
-	@Patch('/:slug')
+	@Put('/:slug')
 	@ApiKeyScope({ anyOf: ['role:manage', 'role:manageProject'] })
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	@ApiSummary('Update a custom role')
 	@ApiDescription(
-		"Updates a custom role's display name, description, or scopes. Omitted fields are left unchanged. System roles cannot be updated.",
+		"Replaces a custom role's display name, description, and scopes. System roles cannot be updated.",
 	)
 	@ApiTags(['Role'])
 	@ApiResponse(200, RolePublicDto)
@@ -157,7 +157,7 @@ export class RolesPublicController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('slug') slug: string,
-		@Body updateRole: UpdateRoleDto,
+		@Body updateRole: UpdateRolePublicDto,
 	): Promise<RolePublicDto> {
 		const role = await this.roleService.getRole(slug);
 		if (!isPublicRole(role)) {
@@ -167,7 +167,7 @@ export class RolesPublicController {
 
 		const result = await this.roleService.updateCustomRole({
 			slug,
-			newData: updateRole,
+			newRole: updateRole,
 			userId: req.user.id,
 		});
 

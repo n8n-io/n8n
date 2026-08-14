@@ -2,7 +2,7 @@ operationId: updateRole
 tags:
   - Role
 summary: Update a custom role
-description: Updates a custom role's display name, description, or scopes. Omitted fields are left unchanged. System roles cannot be updated.
+description: Replaces a custom role's display name, description, and scopes. System roles cannot be updated.
 x-required-scope: role:manage,role:manageProject
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -25,11 +25,16 @@ requestBody:
             maxLength: 100
           description:
             type: string
+            nullable: true
             maxLength: 500
           scopes:
             type: array
             items:
               type: string
+        required:
+          - displayName
+          - description
+          - scopes
 responses:
   '200':
     description: Operation successful.

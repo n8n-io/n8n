@@ -1040,7 +1040,7 @@ describe('RoleService', () => {
 			//
 			const result = await roleService.updateCustomRole({
 				slug: existingRole.slug,
-				newData: updateRoleDto,
+				newRole: updateRoleDto,
 				userId: 'test-user-id',
 			});
 
@@ -1083,7 +1083,7 @@ describe('RoleService', () => {
 			//
 			const result = await roleService.updateCustomRole({
 				slug: existingRole.slug,
-				newData: updateRoleDto,
+				newRole: updateRoleDto,
 				userId: 'test-user-id',
 			});
 
@@ -1122,14 +1122,14 @@ describe('RoleService', () => {
 			await expect(
 				roleService.updateCustomRole({
 					slug: systemRole.slug,
-					newData: updateRoleDto,
+					newRole: updateRoleDto,
 					userId: 'test-user-id',
 				}),
 			).rejects.toThrow(BadRequestError);
 			await expect(
 				roleService.updateCustomRole({
 					slug: systemRole.slug,
-					newData: updateRoleDto,
+					newRole: updateRoleDto,
 					userId: 'test-user-id',
 				}),
 			).rejects.toThrow('Cannot update system roles');
@@ -1154,7 +1154,7 @@ describe('RoleService', () => {
 			//
 			const result = await roleService.updateCustomRole({
 				slug: existingRole.slug,
-				newData: updateRoleDto,
+				newRole: updateRoleDto,
 				userId: 'test-user-id',
 			});
 
@@ -1183,7 +1183,7 @@ describe('RoleService', () => {
 			//
 			const result = await roleService.updateCustomRole({
 				slug: existingRole.slug,
-				newData: updateRoleDto,
+				newRole: updateRoleDto,
 				userId: 'test-user-id',
 			});
 
@@ -1208,7 +1208,7 @@ describe('RoleService', () => {
 			await expect(
 				roleService.updateCustomRole({
 					slug: nonExistentSlug,
-					newData: updateRoleDto,
+					newRole: updateRoleDto,
 					userId: 'test-user-id',
 				}),
 			).rejects.toThrow('Role not found');
@@ -1229,7 +1229,7 @@ describe('RoleService', () => {
 			await expect(
 				roleService.updateCustomRole({
 					slug: existingRole.slug,
-					newData: updateRoleDto,
+					newRole: updateRoleDto,
 					userId: 'test-user-id',
 				}),
 			).rejects.toThrow('The following scopes are invalid: invalid:scope');
@@ -1252,7 +1252,7 @@ describe('RoleService', () => {
 			await expect(
 				roleService.updateCustomRole({
 					slug: otherExistingRole.slug,
-					newData: updateRoleDto,
+					newRole: updateRoleDto,
 					userId: 'test-user-id',
 				}),
 			).rejects.toThrow(`A role with the name "${existingRole.displayName}" already exists`);

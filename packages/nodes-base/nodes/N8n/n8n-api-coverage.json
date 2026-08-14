@@ -14,7 +14,7 @@
 		"POST /roles": {
 			"status": "gap"
 		},
-		"PATCH /roles/{slug}": {
+		"PUT /roles/{slug}": {
 			"status": "gap"
 		},
 		"POST /role-mapping-rules": {

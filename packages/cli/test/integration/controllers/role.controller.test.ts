@@ -998,7 +998,7 @@ describe('RoleController', () => {
 			expect(response.body).toEqual({ data: mockUpdatedRole });
 			expect(roleService.updateCustomRole).toHaveBeenCalledWith({
 				slug: roleSlug,
-				newData: updateRoleDto,
+				newRole: updateRoleDto,
 				userId: expect.any(String),
 			});
 		});
@@ -1035,7 +1035,7 @@ describe('RoleController', () => {
 			expect(response.body).toEqual({ data: mockUpdatedRole });
 			expect(roleService.updateCustomRole).toHaveBeenCalledWith({
 				slug: roleSlug,
-				newData: updateRoleDto,
+				newRole: updateRoleDto,
 				userId: expect.any(String),
 			});
 		});

@@ -102,7 +102,7 @@ describe('RoleService custom role scope whitelist', () => {
 			await expect(
 				roleService.updateCustomRole({
 					slug: 'project:custom-abc123',
-					newData: dto,
+					newRole: dto,
 					userId: 'user-id',
 				}),
 			).rejects.toThrow(BadRequestError);
@@ -115,7 +115,7 @@ describe('RoleService custom role scope whitelist', () => {
 			await expect(
 				roleService.updateCustomRole({
 					slug: 'project:custom-abc123',
-					newData: dto,
+					newRole: dto,
 					userId: 'user-id',
 				}),
 			).resolves.toBeDefined();

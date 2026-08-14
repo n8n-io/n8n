@@ -130,7 +130,7 @@ export class RoleController {
 		assertCanManageRoleType(req.user, role.roleType);
 		return await this.roleService.updateCustomRole({
 			slug,
-			newData: updateRole,
+			newRole: updateRole,
 			userId: req.user.id,
 		});
 	}

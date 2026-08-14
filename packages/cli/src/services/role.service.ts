@@ -3,7 +3,7 @@ import type {
 	RoleMembersResponse,
 	RoleProjectMembersResponse,
 } from '@n8n/api-types';
-import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import { CreateRoleDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
@@ -225,14 +225,15 @@ export class RoleService {
 
 	async updateCustomRole({
 		slug,
-		newData,
+		newRole,
 		userId,
 	}: {
 		slug: string;
-		newData: UpdateRoleDto;
+		// Optional fields keep this compatible with both the internal PATCH and public PUT endpoints.
+		newRole: { displayName?: string; description?: string | null; scopes?: string[] };
 		userId: string;
 	}) {
-		const { displayName, description, scopes: scopeSlugs } = newData;
+		const { displayName, description, scopes: scopeSlugs } = newRole;
 
 		const roleType = slug.startsWith('project:') ? 'project' : 'global';
 

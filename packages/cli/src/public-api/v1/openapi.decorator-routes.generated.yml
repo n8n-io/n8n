@@ -14,7 +14,7 @@ paths:
   /roles/{slug}:
     get:
       $ref: ./handlers/roles/spec/paths/getRole.generated.yml
-    patch:
+    put:
       $ref: ./handlers/roles/spec/paths/updateRole.generated.yml
   /tags:
     get:
