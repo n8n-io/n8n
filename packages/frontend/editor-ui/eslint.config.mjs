@@ -273,7 +273,9 @@ export default defineConfig(
 						"Modal keys do not live in the shell. Declare this key in its owning feature's constants file (src/features/<feature>/<feature>.constants.ts) and register the modal from that feature's modals.ts fragment — see src/features/core/auth/modals.ts. A modal the shell genuinely owns declares its key beside its fragment in src/app/modals.manifest.ts, not here. Only MODAL_CANCEL/MODAL_CONFIRM/MODAL_CLOSE stay: they are dialog result sentinels, not modal keys.",
 				},
 				{
-					selector: 'ExportNamedDeclaration[source]',
+					// Both forms: `export { X } from '...'` and a bare `export { X }` list.
+					// The latter has no `source`, so matching on that alone missed it.
+					selector: 'ExportNamedDeclaration[specifiers.length>0]',
 					message:
 						'Do not re-export a modal key through the shell — it keeps @/app/constants alive as an import path for a key the shell no longer owns, which is the reacquisition this ratchet exists to stop. Import it from its owning feature or package directly.',
 				},
@@ -282,15 +284,19 @@ export default defineConfig(
 	},
 	{
 		// Modal-key inversion ratchet, half 2 of 2 (CAT-3688): the shell's catalogue of
-		// modal runtime state. Scoped to the entries themselves so the declaration and
-		// each entry's nested state shape stay writable. Same staging as half 1.
+		// modal runtime state. Same staging as half 1.
+		//
+		// Matches the catalogue's *direct* members only, so each entry's nested state
+		// shape stays writable. Matching every member rather than `[computed=true]` is
+		// deliberate: a key written `sneakyModal:` or `'sneakyModal':` resolves and opens
+		// exactly like the computed form, so anything narrower is an open door.
 		files: ['src/app/stores/defaults/modals.ts'],
 		rules: {
 			'no-restricted-syntax': [
 				'warn',
 				{
 					selector:
-						"VariableDeclarator[id.name='SHELL_MODAL_INITIAL_STATE'] Property[computed=true]",
+						"VariableDeclarator[id.name='SHELL_MODAL_INITIAL_STATE'] > CallExpression > ObjectExpression > :matches(Property, SpreadElement)",
 					message:
 						"SHELL_MODAL_INITIAL_STATE only shrinks. Give the modal a ModalDefinition (component + initialState) in its feature's modals.ts fragment so it registers through modalRegistry and renders through DynamicModalLoader — see src/features/core/auth/modals.ts — and delete its <ModalRoot> from Modals.vue in the same change.",
 				},

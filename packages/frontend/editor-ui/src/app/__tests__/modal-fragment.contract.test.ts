@@ -40,8 +40,11 @@ describe('adding a modal through a fragment', () => {
 	});
 
 	const registerFixtureFragment = () => {
-		// The loop `registerEagerModals` runs over `modals.manifest.ts`, and the loop
-		// `registerModuleModals` runs over a descriptor's `modals`. Both reduce to this.
+		// Hand-rolled rather than calling `registerEagerModals`, so the fixture does not
+		// have to be reachable from `modals.manifest.ts` — see the note above on why it
+		// stays outside `src/features/`. The trade: this proves the registry contract a
+		// fragment relies on, not the real callers. Those are covered by
+		// `modals.manifest.test.ts` and `moduleInitializer/moduleInitializer.test.ts`.
 		EXAMPLE_FEATURE_MODALS.forEach((modal) => modalRegistry.register(modal));
 	};
 
