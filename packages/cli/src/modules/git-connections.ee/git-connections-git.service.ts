@@ -79,6 +79,12 @@ export class GitConnectionsGitService {
 			return;
 		}
 
+		// On Windows, git reads a drive-letter prefix (`C:\path`, `C:/path`) as a
+		// local filesystem path rather than a `host:path` remote, so it would clone
+		// off the host's disk. Reject it before the scp-like check treats the drive
+		// letter as a hostname.
+		if (/^[a-zA-Z]:/.test(repositoryUrl)) throw error;
+
 		// scp-like: [user@]host:path, host must not start with `-`.
 		const isScpLike = /^(?:[a-zA-Z0-9_.-]+@)?[a-zA-Z0-9._][a-zA-Z0-9._-]*:[^\s]+$/.test(
 			repositoryUrl,
