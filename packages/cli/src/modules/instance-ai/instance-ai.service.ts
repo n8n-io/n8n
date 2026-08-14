@@ -199,6 +199,7 @@ import {
 	type MessageTraceFinalization,
 	type OrchestratorResumeReason,
 } from './tracing';
+import { generateWorkflowOverviewTraced } from './workflow-overview-instrumentation';
 import {
 	parseWorkflowBuildOutcome,
 	WorkflowVerificationObligationService,
@@ -1265,7 +1266,10 @@ export class InstanceAiService {
 
 		// Sidecar: refresh the workflow overview panel from the new user message
 		// (T1). Runs outside the agent loop; never blocks or fails the run.
-		void this.refreshWorkflowOverview(user, threadId, runId, { latestUserMessage: message });
+		void this.refreshWorkflowOverview(user, threadId, runId, {
+			source: 't1-user-message',
+			latestUserMessage: message,
+		});
 
 		return runId;
 	}
@@ -4014,7 +4018,10 @@ export class InstanceAiService {
 					// Sidecar: a plan just went up for review (T3) — refresh the
 					// workflow overview panel grounded in the plan's task spec.
 					if (result.confirmationEvent.payload.inputType === 'plan-review') {
-						void this.refreshWorkflowOverview(user, threadId, runId, { includePlan: true });
+						void this.refreshWorkflowOverview(user, threadId, runId, {
+							source: 't3-plan-review',
+							includePlan: true,
+						});
 					}
 				}
 
@@ -5119,7 +5126,10 @@ export class InstanceAiService {
 		if (toolName === 'ask-user' && data.answers && data.answers.length > 0) {
 			const qaAnswers = mapQaAnswersForOverview(suspendPayload, data.answers);
 			if (qaAnswers.length > 0) {
-				void this.refreshWorkflowOverview(activeUser, threadId, runId, { qaAnswers });
+				void this.refreshWorkflowOverview(activeUser, threadId, runId, {
+					source: 't2-qa-answers',
+					qaAnswers,
+				});
 			}
 		}
 
@@ -5351,6 +5361,7 @@ export class InstanceAiService {
 					// the overview from the updated task spec.
 					if (result.confirmationEvent.payload.inputType === 'plan-review') {
 						void this.refreshWorkflowOverview(opts.user, opts.threadId, opts.runId, {
+							source: 't3-plan-review',
 							includePlan: true,
 						});
 					}
@@ -6481,6 +6492,21 @@ export class InstanceAiService {
 		this.workflowOverviewSidecarInstance ??= new WorkflowOverviewSidecar({
 			publish: (threadId, event) => this.eventBus.publish(threadId, event),
 			logger: this.logger,
+			// Generation delegate: wraps each real LLM call (post hash-dedupe) in a
+			// LangSmith internal-operation trace with token usage + a debug log.
+			generate: async (args, bundle, options) =>
+				await generateWorkflowOverviewTraced(
+					{
+						conversationKey: args.threadId,
+						userId: args.userId ?? '',
+						modelId: args.modelId,
+						source: args.source ?? 'sidecar',
+						proxyConfig: this.tracing.getTraceContextForContinuation(args.threadId)?.proxyConfig,
+						logger: this.logger,
+					},
+					bundle,
+					options,
+				),
 		});
 		return this.workflowOverviewSidecarInstance;
 	}
@@ -6496,10 +6522,11 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		extras: {
+			source: string;
 			latestUserMessage?: string;
 			qaAnswers?: Array<{ question: string; answer: string }>;
 			includePlan?: boolean;
-		} = {},
+		},
 	): Promise<void> {
 		try {
 			const modelId = await this.modelService.resolveOverviewModelConfig(user);
@@ -6532,6 +6559,8 @@ export class InstanceAiService {
 				runId,
 				agentId: orchestratorAgentId(runId),
 				modelId,
+				source: extras.source,
+				userId: user.id,
 				bundle: {
 					conversation,
 					...(extras.latestUserMessage ? { latestUserMessage: extras.latestUserMessage } : {}),

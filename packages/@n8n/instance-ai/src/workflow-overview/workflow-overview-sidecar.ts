@@ -8,6 +8,7 @@ import type { InstanceAiEvent, WorkflowOverview } from '@n8n/api-types';
 
 import {
 	generateWorkflowOverview,
+	type GenerateWorkflowOverviewOptions,
 	type WorkflowOverviewBundle,
 } from './workflow-overview-generator';
 import type { Logger } from '../logger';
@@ -20,6 +21,10 @@ export interface WorkflowOverviewRefreshArgs {
 	/** Root (orchestrator) agent id of that run. */
 	agentId: string;
 	modelId: ModelConfig;
+	/** Trigger provenance for tracing/cost attribution (e.g. 't1-user-message'). */
+	source?: string;
+	/** User the refresh runs for — tracing metadata only. */
+	userId?: string;
 	/** Bundle WITHOUT previousOverview — the sidecar injects its own last-published state. */
 	bundle: Omit<WorkflowOverviewBundle, 'previousOverview'>;
 }
@@ -34,8 +39,16 @@ interface ThreadOverviewState {
 interface WorkflowOverviewSidecarDeps {
 	publish: (threadId: string, event: InstanceAiEvent) => void;
 	logger: Logger;
-	/** Injectable for tests; defaults to the real generator. */
-	generate?: typeof generateWorkflowOverview;
+	/**
+	 * Generation delegate — receives the full refresh args so hosts can wrap
+	 * the call with tracing/usage instrumentation. Defaults to the plain
+	 * generator; injectable for tests.
+	 */
+	generate?: (
+		args: WorkflowOverviewRefreshArgs,
+		bundle: WorkflowOverviewBundle,
+		options: GenerateWorkflowOverviewOptions,
+	) => Promise<WorkflowOverview | null>;
 }
 
 function serializeOverview(overview: WorkflowOverview): string {
@@ -90,7 +103,13 @@ export class WorkflowOverviewSidecar {
 		state: ThreadOverviewState,
 		initial: WorkflowOverviewRefreshArgs,
 	): Promise<void> {
-		const generate = this.deps.generate ?? generateWorkflowOverview;
+		const generate =
+			this.deps.generate ??
+			(async (
+				generateArgs: WorkflowOverviewRefreshArgs,
+				generateBundle: WorkflowOverviewBundle,
+				options: GenerateWorkflowOverviewOptions,
+			) => await generateWorkflowOverview(generateArgs.modelId, generateBundle, options));
 		let args: WorkflowOverviewRefreshArgs | undefined = initial;
 
 		while (args) {
@@ -104,7 +123,7 @@ export class WorkflowOverviewSidecar {
 			if (bundleHash !== state.lastBundleHash) {
 				state.lastBundleHash = bundleHash;
 				const { threadId } = args;
-				const overview = await generate(args.modelId, bundle, {
+				const overview = await generate(args, bundle, {
 					onFailure: (reason, detail) => {
 						this.deps.logger.debug('Workflow overview generation yielded no result', {
 							threadId,

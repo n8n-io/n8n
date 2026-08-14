@@ -380,7 +380,11 @@ export type WorkflowOverviewSidecar = WorkflowOverviewSidecarMod.WorkflowOvervie
 export const WorkflowOverviewSidecar: typeof WorkflowOverviewSidecarMod.WorkflowOverviewSidecar =
 	lazyClass(() => loadWorkflowOverviewSidecar().WorkflowOverviewSidecar);
 export type { WorkflowOverviewRefreshArgs } from './workflow-overview/workflow-overview-sidecar';
-export type { WorkflowOverviewBundle } from './workflow-overview/workflow-overview-generator';
+export type {
+	GenerateWorkflowOverviewOptions,
+	WorkflowOverviewBundle,
+	WorkflowOverviewUsage,
+} from './workflow-overview/workflow-overview-generator';
 export const generateWorkflowOverview: typeof WorkflowOverviewGeneratorMod.generateWorkflowOverview =
 	lazyFunction(() => loadWorkflowOverviewGenerator().generateWorkflowOverview);
 export const summarizeWorkflowStructure: typeof SummarizeWorkflowMod.summarizeWorkflowStructure =

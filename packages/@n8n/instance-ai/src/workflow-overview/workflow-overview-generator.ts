@@ -4,11 +4,18 @@
  * loop as a small one-shot structured LLM call (mirrors memory/title-utils).
  * Fails soft — any error returns null and the panel simply doesn't refresh.
  */
-import { createModel } from '@n8n/agents';
+import { createModel, type BuiltTelemetry, type Telemetry } from '@n8n/agents';
 import type { WorkflowOverview } from '@n8n/api-types';
 import { z } from 'zod';
 
 import type { ModelConfig } from '../types';
+
+/** Token usage of one overview generation call. */
+export interface WorkflowOverviewUsage {
+	inputTokens?: number;
+	outputTokens?: number;
+	totalTokens?: number;
+}
 
 /** Everything the generator may ground the overview in, best evidence last. */
 export interface WorkflowOverviewBundle {
@@ -64,7 +71,6 @@ const generationSchema = z.object({
 const SHARED_RULES = [
 	'- steps: exactly one plain sentence; never mention n8n node names or technical jargon.',
 	'- results: concrete user-visible outcomes, never vague ("a notification" is too vague; "a Slack message in #support with the ticket summary" is right).',
-	"- Stability: given <previous-overview>, keep each pane's wording UNCHANGED unless newer evidence contradicts or fills it.",
 	'- Never answer the user or produce anything except the JSON object.',
 ];
 
@@ -83,15 +89,20 @@ const PLAN_INSTRUCTIONS = [
 	'- One short sentence per pane, written in the language the user writes in.',
 	'- Plan tense ("Will post a summary to Slack", "Runs daily at 8:00").',
 	'- Use "" for a pane the conversation has not determined yet. Never invent details.',
+	// Plan-mode only: prevents rephrasing churn across conversation turns.
+	// Workflow mode deliberately re-derives from structure instead (see below).
+	"- Stability: given <previous-overview>, keep each pane's wording UNCHANGED unless newer evidence contradicts or fills it.",
 	...SHARED_RULES,
 	'- skip=true when the conversation is not about building/editing one workflow, when it coordinates multiple workflows, or when no pane would change. With skip=true set every pane to "".',
 ].join('\n');
 
 const WORKFLOW_INSTRUCTIONS = [
 	'You produce a compact three-pane "Workflow overview" (Triggers / Steps / Results) for an EXISTING saved n8n workflow.',
-	"The <built-workflow> section contains the workflow's actual structure — it is the source of truth; any conversation context is secondary.",
+	"The <built-workflow> section contains the workflow's actual structure — it is the SOLE source of truth; any conversation context is secondary.",
 	'',
 	'Rules:',
+	'- Re-derive every pane from the current structure on every call. A <previous-overview>, when present, is only a phrasing and language reference — never keep a pane the structure no longer supports: added or removed triggers, changed schedules, and changed destinations must always be reflected.',
+	'- triggers: account for ALL trigger nodes present (e.g. "Runs every day at 9:00, or manually on demand").',
 	"- One short sentence per pane, in the same language as the workflow's node names and text where evident, otherwise English.",
 	'- Present tense, describing what the workflow does ("Runs every Monday at 9:00", "Posts a summary to Slack").',
 	'- Use "" for a pane the workflow structure genuinely does not determine. Never invent details.',
@@ -160,6 +171,38 @@ export interface GenerateWorkflowOverviewOptions {
 		reason: 'generation_error' | 'invalid_output' | 'model_skipped' | 'empty_output',
 		detail?: string,
 	) => void;
+	/** Token usage of the LLM call — fires on success AND on skip/invalid outputs (tokens were spent either way). */
+	onUsage?: (usage: WorkflowOverviewUsage) => void;
+	/** LangSmith telemetry for the underlying SDK call, same contract as agents runtime calls. */
+	telemetry?: BuiltTelemetry | Telemetry;
+}
+
+async function resolveBuiltTelemetry(
+	telemetry: BuiltTelemetry | Telemetry | undefined,
+): Promise<BuiltTelemetry | undefined> {
+	if (!telemetry) return undefined;
+	return 'build' in telemetry ? await telemetry.build() : telemetry;
+}
+
+/**
+ * Map BuiltTelemetry to the AI SDK's `telemetry` option. Mirrors the
+ * runtime-internal `buildAiSdkTelemetry` in @n8n/agents — `runtime/` is
+ * deliberately not exported from that package, so the small mapping is
+ * duplicated here instead of widening its public surface.
+ */
+function toSdkTelemetry(telemetry: BuiltTelemetry | undefined) {
+	if (!telemetry?.enabled) return {};
+	const integrations =
+		telemetry.resolveIntegrations?.(telemetry.metadata) ?? telemetry.integrations;
+	return {
+		telemetry: {
+			isEnabled: true,
+			functionId: telemetry.functionId ?? 'instance-ai.workflow-overview',
+			recordInputs: telemetry.recordInputs,
+			recordOutputs: telemetry.recordOutputs,
+			integrations: integrations.length > 0 ? integrations : undefined,
+		},
+	};
 }
 
 /**
@@ -175,11 +218,18 @@ export async function generateWorkflowOverview(
 	try {
 		const { generateObject } = await import('ai');
 		const model = createModel(modelId);
+		const telemetry = await resolveBuiltTelemetry(options?.telemetry);
 		const result = await generateObject({
 			model,
 			schema: generationSchema,
 			instructions: bundle.subject === 'workflow' ? WORKFLOW_INSTRUCTIONS : PLAN_INSTRUCTIONS,
 			messages: [{ role: 'user', content: renderBundle(bundle) }],
+			...toSdkTelemetry(telemetry),
+		});
+		options?.onUsage?.({
+			inputTokens: result.usage.inputTokens,
+			outputTokens: result.usage.outputTokens,
+			totalTokens: result.usage.totalTokens,
 		});
 
 		const parsed = generationSchema.safeParse(result.object);

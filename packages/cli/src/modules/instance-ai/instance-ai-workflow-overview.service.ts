@@ -3,13 +3,14 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { generateWorkflowOverview, summarizeWorkflowStructure } from '@n8n/instance-ai';
+import { summarizeWorkflowStructure } from '@n8n/instance-ai';
 import type { WorkflowAiOverview } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { InstanceAiModelService } from './instance-ai-model.service';
+import { generateWorkflowOverviewTraced } from './workflow-overview-instrumentation';
 
 /**
  * On-demand AI overviews for existing workflows (PoC): generates the
@@ -62,8 +63,15 @@ export class InstanceAiWorkflowOverviewService {
 		const previous = workflow.meta?.aiOverview;
 
 		let failureReason: string | undefined;
-		const overview = await generateWorkflowOverview(
-			modelId,
+		const overview = await generateWorkflowOverviewTraced(
+			{
+				// No thread exists for on-demand generations — group traces by workflow.
+				conversationKey: `workflow-overview:${workflowId}`,
+				userId: user.id,
+				modelId,
+				source: 'on-demand',
+				logger: this.logger,
+			},
 			{
 				subject: 'workflow',
 				conversation: [],

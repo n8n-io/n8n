@@ -2040,7 +2040,9 @@ export async function createInternalOperationTraceContext(
 
 	try {
 		return await withProxyHeaders(options.proxyConfig, createInternalRuns);
-	} catch {
+	} catch (error) {
+		// Init failures are non-fatal (the operation runs untraced) but must stay visible.
+		console.warn('[instance-ai] internal-operation trace init failed', error);
 		return undefined;
 	}
 }
