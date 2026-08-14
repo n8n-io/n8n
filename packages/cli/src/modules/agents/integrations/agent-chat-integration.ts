@@ -24,6 +24,7 @@ import type {
 export interface AgentChatIntegrationContext {
 	agentId: string;
 	projectId: string;
+	integration: AgentIntegrationConfig;
 	credentialId: string;
 	credential: Record<string, unknown>;
 	/** Whether this connection may receive events from the external platform. */
@@ -102,6 +103,7 @@ export interface BridgeMessageContextParams {
 	chat: ChatInstance;
 	thread: Thread<unknown, unknown>;
 	message: Message<unknown>;
+	integration: AgentIntegrationConfig;
 	logger: Logger;
 	agentId: string;
 	statusRetry?: AbortController;
@@ -319,7 +321,10 @@ export abstract class AgentChatIntegration {
 	 * Prepare a thread created or selected by an outbound send. Platforms can
 	 * use this to receive follow-up messages in that thread.
 	 */
-	prepareSentThread?(thread: Thread<unknown, unknown>): Promise<void>;
+	prepareSentThread?(
+		thread: Thread<unknown, unknown>,
+		integration: AgentIntegrationConfig,
+	): Promise<void>;
 
 	/**
 	 * Optional hook run on EVERY main once the connection is live, regardless

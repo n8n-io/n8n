@@ -12,8 +12,9 @@ const emit = defineEmits<{
 }>();
 
 const loading = computed(() => props.loading || props.runtime.loading.value);
+const currentSettings = computed(() => props.savedSettings);
 
-defineExpose({ validationError: null, loading });
+defineExpose({ currentSettings, validationError: null, loading });
 </script>
 
 <template>

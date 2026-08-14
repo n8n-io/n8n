@@ -15,6 +15,7 @@ const emit = defineEmits<{
 }>();
 
 const manualRef = ref<AgentChannelViewExpose>();
+const currentSettings = computed(() => manualRef.value?.currentSettings);
 const validationError = computed(() => manualRef.value?.validationError ?? null);
 const loading = computed(() => props.loading || props.runtime.loading.value);
 
@@ -26,7 +27,7 @@ async function setupApp(token: string) {
 	return await props.runtime.setupApp(token, () => emit('connected'));
 }
 
-defineExpose({ validationError, loading });
+defineExpose({ currentSettings, validationError, loading });
 </script>
 
 <template>
