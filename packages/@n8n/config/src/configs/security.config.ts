@@ -83,6 +83,8 @@ export class SecurityConfig {
 	 * Write `<nonce>` where the per-request nonce should go to keep n8n's own scripts working,
 	 * e.g. `script-src <nonce> 'strict-dynamic'`.
 	 *
+	 * Set to `default` to enforce n8n's own policy without transcribing it.
+	 *
 	 * Empty by default: n8n enforces nothing until a policy is set here. See
 	 * `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` for the policy it reports on.
 	 */
@@ -94,7 +96,8 @@ export class SecurityConfig {
 	 * `N8N_CONTENT_SECURITY_POLICY` accepts. Violations are reported but nothing is blocked, so an
 	 * instance can be watched before a policy is enforced.
 	 *
-	 * Defaults to n8n's Level 3 policy. Set to `{}` to send no report-only header at all.
+	 * Defaults to n8n's Level 3 policy. Set to `default` for that policy explicitly, or to `{}` to
+	 * send no report-only header at all.
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
 	contentSecurityPolicyReportOnly: string = DEFAULT_CONTENT_SECURITY_POLICY;

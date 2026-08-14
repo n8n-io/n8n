@@ -3,7 +3,11 @@ import { mock } from 'vitest-mock-extended';
 
 import { DEFAULT_CONTENT_SECURITY_POLICY } from '@n8n/config';
 
+import type { ContentSecurityPolicies } from '../content-security-policy';
 import {
+	DEFAULT_POLICY_KEYWORD,
+	NO_POLICY_KEYWORD,
+	NONCE_PLACEHOLDER,
 	parseContentSecurityPolicy,
 	renderContentSecurityPolicy,
 	resolveContentSecurityPolicies,
@@ -75,29 +79,115 @@ describe('resolveContentSecurityPolicies', () => {
 	const resolve = (policy: string, reportOnly: string) =>
 		resolveContentSecurityPolicies(policy, reportOnly, logger);
 
-	const DEFAULTS = { policy: '{}', reportOnly: DEFAULT_CONTENT_SECURITY_POLICY };
+	/** What each variable holds when the operator has not set it. */
+	const UNSET_POLICY = '{}';
+	const UNSET_REPORT_ONLY = DEFAULT_CONTENT_SECURITY_POLICY;
 
-	describe('with neither var set', () => {
-		it('should report on the default policy and enforce nothing', () => {
-			expect(resolve(DEFAULTS.policy, DEFAULTS.reportOnly)).toEqual({
-				enforced: undefined,
-				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
-			});
+	const A = "script-src <nonce> 'strict-dynamic' 'unsafe-eval'";
+	const B = "script-src <nonce> 'strict-dynamic'";
+
+	describe('the documented configuration matrix', () => {
+		type Row = [
+			name: string,
+			policy: string,
+			reportOnly: string,
+			expected: ContentSecurityPolicies,
+		];
+
+		const rows: Row[] = [
+			[
+				'neither set: report on the default policy, enforce nothing',
+				UNSET_POLICY,
+				UNSET_REPORT_ONLY,
+				{ enforced: undefined, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY },
+			],
+			[
+				'report-only set: report on that policy, enforce nothing',
+				UNSET_POLICY,
+				B,
+				{ enforced: undefined, reportOnly: B },
+			],
+			[
+				'policy set: enforce it, keep reporting on the default',
+				A,
+				UNSET_REPORT_ONLY,
+				{ enforced: A, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY },
+			],
+			['both set: enforce one, report on the other', A, B, { enforced: A, reportOnly: B }],
+			[
+				'policy set, reporting off: enforce only',
+				A,
+				NO_POLICY_KEYWORD,
+				{ enforced: A, reportOnly: undefined },
+			],
+			[
+				'both off: no CSP headers at all',
+				UNSET_POLICY,
+				NO_POLICY_KEYWORD,
+				{ enforced: undefined, reportOnly: undefined },
+			],
+			[
+				'keyword to enforce the default policy',
+				DEFAULT_POLICY_KEYWORD,
+				NO_POLICY_KEYWORD,
+				{ enforced: DEFAULT_CONTENT_SECURITY_POLICY, reportOnly: undefined },
+			],
+			[
+				'keyword in both: enforce and report on the default policy',
+				DEFAULT_POLICY_KEYWORD,
+				DEFAULT_POLICY_KEYWORD,
+				{
+					enforced: DEFAULT_CONTENT_SECURITY_POLICY,
+					reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+				},
+			],
+			[
+				'keyword enforced, stricter candidate reported',
+				DEFAULT_POLICY_KEYWORD,
+				B,
+				{ enforced: DEFAULT_CONTENT_SECURITY_POLICY, reportOnly: B },
+			],
+			[
+				'legacy `true`: the configured policy stays report-only',
+				A,
+				'true',
+				{ enforced: undefined, reportOnly: A },
+			],
+			[
+				'legacy `false`: the configured policy is enforced',
+				A,
+				'false',
+				{ enforced: A, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY },
+			],
+		];
+
+		test.each(rows)('%s', (_name, policy, reportOnly, expected) => {
+			expect(resolve(policy, reportOnly)).toEqual(expected);
 		});
 	});
 
-	describe('with a policy to enforce', () => {
-		it('should enforce it and keep reporting on the default', () => {
-			expect(resolve('script-src <nonce>', DEFAULTS.reportOnly)).toEqual({
-				enforced: 'script-src <nonce>',
-				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
-			});
+	describe('the default-policy keyword', () => {
+		it.each(['default', 'DEFAULT', ' Default '])('should accept "%s"', (value) => {
+			expect(resolve(value, NO_POLICY_KEYWORD).enforced).toBe(DEFAULT_CONTENT_SECURITY_POLICY);
 		});
 
-		it('should enforce one policy while reporting on another', () => {
-			expect(resolve('script-src <nonce>', "script-src <nonce> 'strict-dynamic'")).toEqual({
-				enforced: 'script-src <nonce>',
-				reportOnly: "script-src <nonce> 'strict-dynamic'",
+		it('should resolve to a policy carrying the nonce placeholder', () => {
+			expect(resolve(DEFAULT_POLICY_KEYWORD, NO_POLICY_KEYWORD).enforced).toContain(
+				NONCE_PLACEHOLDER,
+			);
+		});
+
+		it('should not warn - it is a supported value, not a fallback', () => {
+			resolve(DEFAULT_POLICY_KEYWORD, DEFAULT_POLICY_KEYWORD);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('switching a header off', () => {
+		it.each(['{}', '', '   '])('should send no report-only header for "%s"', (value) => {
+			expect(resolve(UNSET_POLICY, value)).toEqual({
+				enforced: undefined,
+				reportOnly: undefined,
 			});
 		});
 	});
@@ -109,39 +199,23 @@ describe('resolveContentSecurityPolicies', () => {
 		const policy = 'frame-ancestors http://localhost:3000';
 
 		it('should enforce exactly the configured directives', () => {
-			expect(resolve(helmetJson, DEFAULTS.reportOnly).enforced).toBe(policy);
+			expect(resolve(helmetJson, UNSET_REPORT_ONLY).enforced).toBe(policy);
 		});
 
 		it('should report on exactly the configured directives', () => {
-			expect(resolve(DEFAULTS.policy, helmetJson).reportOnly).toBe(policy);
+			expect(resolve(UNSET_POLICY, helmetJson).reportOnly).toBe(policy);
 		});
 
 		it('should not add the default policy or a nonce to it', () => {
-			const { enforced } = resolve(helmetJson, DEFAULTS.reportOnly);
+			const { enforced } = resolve(helmetJson, UNSET_REPORT_ONLY);
 			expect(enforced).not.toContain('nonce');
 			expect(enforced).not.toContain('script-src');
 		});
 	});
 
-	describe('switching a header off', () => {
-		it.each(['{}', '', '   '])('should send no report-only header for "%s"', (value) => {
-			expect(resolve(DEFAULTS.policy, value)).toEqual({
-				enforced: undefined,
-				reportOnly: undefined,
-			});
-		});
-
-		it('should still enforce a policy when reporting is off', () => {
-			expect(resolve('script-src <nonce>', '{}')).toEqual({
-				enforced: 'script-src <nonce>',
-				reportOnly: undefined,
-			});
-		});
-	});
-
 	describe('with an unusable value', () => {
 		it('should fall back to the default policy for the report-only header', () => {
-			expect(resolve(DEFAULTS.policy, '{"nope":')).toEqual({
+			expect(resolve(UNSET_POLICY, '{"nope":')).toEqual({
 				enforced: undefined,
 				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
 			});
@@ -151,41 +225,33 @@ describe('resolveContentSecurityPolicies', () => {
 		});
 
 		it('should enforce nothing rather than guess at a policy to enforce', () => {
-			expect(resolve('{"nope":', DEFAULTS.reportOnly)).toEqual({
+			expect(resolve('{"nope":', UNSET_REPORT_ONLY)).toEqual({
 				enforced: undefined,
 				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
 			});
 		});
 	});
 
-	// The variable was a boolean from 1.100 until it took a policy, so instances in the
-	// wild set it that way. These cases pin the compatibility path.
 	describe('with the report-only var set to a legacy boolean', () => {
-		it.each(['true', 'TRUE', '1'])('should keep the policy report-only for "%s"', (value) => {
-			expect(resolve('script-src <nonce>', value)).toEqual({
-				enforced: undefined,
-				reportOnly: 'script-src <nonce>',
-			});
+		it.each(['true', 'TRUE', '1'])('should warn for "%s"', (value) => {
+			resolve(A, value);
 			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('is deprecated'));
 		});
 
-		it.each(['false', 'FALSE', '0'])('should keep enforcing the policy for "%s"', (value) => {
-			expect(resolve('script-src <nonce>', value)).toEqual({
-				enforced: 'script-src <nonce>',
-				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
-			});
+		it.each(['false', 'FALSE', '0'])('should warn for "%s"', (value) => {
+			resolve(A, value);
 			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('is deprecated'));
 		});
 
 		it('should report on the default policy when no policy is configured', () => {
-			expect(resolve('{}', 'true')).toEqual({
+			expect(resolve(UNSET_POLICY, 'true')).toEqual({
 				enforced: undefined,
 				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
 			});
 		});
 
 		it('should never read a boolean as a policy', () => {
-			const { enforced, reportOnly } = resolve('{}', 'true');
+			const { enforced, reportOnly } = resolve(UNSET_POLICY, 'true');
 			expect(enforced).not.toBe('true');
 			expect(reportOnly).not.toBe('true');
 		});

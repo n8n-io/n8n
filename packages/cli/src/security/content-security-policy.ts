@@ -13,6 +13,15 @@ export const NONCE_PLACEHOLDER = '<nonce>';
  */
 export const HTML_NONCE_PLACEHOLDER = '{{CSP_NONCE}}';
 
+/**
+ * Value either policy variable accepts to mean n8n's own policy, so an instance can
+ * enforce it without transcribing it - and keep following it as n8n changes it.
+ */
+export const DEFAULT_POLICY_KEYWORD = 'default';
+
+/** Value either policy variable accepts to mean "send no such header". */
+export const NO_POLICY_KEYWORD = '{}';
+
 export type ContentSecurityPolicies = {
 	/** Policy for the `Content-Security-Policy` header, or `undefined` to not send it. */
 	enforced?: string;
@@ -102,7 +111,8 @@ export const resolveContentSecurityPolicies = (
 	 */
 	const resolve = (rawValue: string, envVarName: string, fallback?: string) => {
 		const value = rawValue?.trim() ?? '';
-		if (value === '' || value === '{}') return undefined;
+		if (value === '' || value === NO_POLICY_KEYWORD) return undefined;
+		if (value.toLowerCase() === DEFAULT_POLICY_KEYWORD) return DEFAULT_CONTENT_SECURITY_POLICY;
 		return parseContentSecurityPolicy(value, envVarName, logger) ?? fallback;
 	};
 
