@@ -164,7 +164,8 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 .sessionTitle {
 	transform: translateY(1px);
 	min-width: 0;
-	max-width: var(--spacing--4xl);
+	max-width: 40rem;
+	padding-inline: var(--spacing--2xs);
 }
 .sessionTitleLabel,
 .sessionDropdownName {

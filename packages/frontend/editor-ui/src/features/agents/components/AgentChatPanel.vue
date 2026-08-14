@@ -381,7 +381,7 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" />
+		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :agent-config="agentConfig" />
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
@@ -400,6 +400,7 @@ onBeforeUnmount(() => {
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
 				:is-streaming="showStopAsPrimaryAction"
+				show-voice
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="
