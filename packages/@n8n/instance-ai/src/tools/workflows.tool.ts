@@ -19,11 +19,13 @@ import {
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
 import {
+	completedSetupSubjects,
 	describeSkippedSetup,
 	forgetSkippedSetup,
 	getSkippedSetupSubjects,
 	partitionSkippedSetupRequests,
 	rememberSkippedSetup,
+	resolveReopenTargets,
 	setupSkipSubject,
 	SKIPPED_SETUP_GUIDANCE,
 } from './workflows/setup-skip-state';
@@ -151,7 +153,7 @@ const setupAction = z.object({
 		.array(z.string())
 		.optional()
 		.describe(
-			'Credential types (or node names) the user has just explicitly asked to configure after skipping them earlier — e.g. ["slackApi"] for "connect Slack now". Anything the user skipped and did not ask about stays out of the card; without this, setup reports skipped credentials instead of re-opening them.',
+			'Credential types (or node names) the user has just explicitly asked to configure after skipping them earlier — e.g. ["slackApi"] for "connect Slack now". Use the `reopenWith` value setup reported for that card. Anything the user skipped and did not ask about stays out of the card; without this, setup reports skipped credentials instead of re-opening them. An entry matching nothing in the workflow comes back as `unknown_reopen_target` with the list to choose from.',
 		),
 });
 
@@ -675,25 +677,6 @@ async function handleSetupTestTrigger(
 }
 
 /**
- * Map what the caller named (`["slackApi"]`, `["Post to Slack"]`) onto skip subjects.
- * Accepts either spelling and ignores case, because the model is relaying the user's words
- * and a near-miss should not silently leave the card closed.
- */
-function resolveReopenSubjects(
-	requests: readonly SetupRequest[],
-	requested: readonly string[],
-): string[] {
-	const wanted = new Set(requested.map((entry) => entry.toLowerCase()));
-	return requests
-		.filter(
-			(request) =>
-				wanted.has(setupSkipSubject(request).toLowerCase()) ||
-				wanted.has(request.node.name.toLowerCase()),
-		)
-		.map(setupSkipSubject);
-}
-
-/**
  * Fold the panel's skip decisions into the thread's skip memory and return the requests
  * that are now suppressed. Anything just configured wins over a skip of the same subject:
  * two nodes can share a credential type, and a configured credential isn't a declined one.
@@ -701,29 +684,31 @@ function resolveReopenSubjects(
 async function reconcileSetupSkips(
 	context: InstanceAiContext,
 	args: {
+		workflowId: string;
 		requests: readonly SetupRequest[];
 		skippedNodeNames: readonly string[];
 		completedNodeNames: readonly string[];
 	},
 ): Promise<SetupRequest[]> {
 	const byNodeName = new Map(args.requests.map((request) => [request.node.name, request]));
-	const completedSubjects = new Set(
-		args.completedNodeNames
+	const resolve = (names: readonly string[]): SetupRequest[] =>
+		names
 			.map((name) => byNodeName.get(name))
-			.filter((request): request is SetupRequest => request !== undefined)
-			.map(setupSkipSubject),
-	);
+			.filter((request): request is SetupRequest => request !== undefined);
+
+	const completed = resolve(args.completedNodeNames);
+	const completedSubjects = new Set(completedSetupSubjects(completed, args.workflowId));
 	await forgetSkippedSetup(context, completedSubjects);
 
-	const newlySkipped = args.skippedNodeNames
-		.map((name) => byNodeName.get(name))
-		.filter((request): request is SetupRequest => request !== undefined)
-		.filter((request) => request.needsAction && !completedSubjects.has(setupSkipSubject(request)));
-	await rememberSkippedSetup(context, newlySkipped);
+	const newlySkipped = resolve(args.skippedNodeNames).filter(
+		(request) =>
+			request.needsAction && !completedSubjects.has(setupSkipSubject(request, args.workflowId)),
+	);
+	await rememberSkippedSetup(context, newlySkipped, args.workflowId);
 
 	const skipped = getSkippedSetupSubjects(context);
 	return args.requests.filter(
-		(request) => request.needsAction && skipped.has(setupSkipSubject(request)),
+		(request) => request.needsAction && skipped.has(setupSkipSubject(request, args.workflowId)),
 	);
 }
 
@@ -779,13 +764,16 @@ async function handleSetupApply(
 		// the rest of the thread, and drop the record for anything just configured — a
 		// credential type that now has a working credential is no longer a declined decision.
 		const skippedByUser = await reconcileSetupSkips(context, {
+			workflowId: input.workflowId,
 			requests: remainingRequests,
 			skippedNodeNames: resumeData.skippedNodes ?? [],
 			completedNodeNames: completedNodes.map((node) => node.nodeName),
 		});
-		const skippedSubjects = new Set(skippedByUser.map(setupSkipSubject));
+		const skippedSubjects = new Set(
+			skippedByUser.map((request) => setupSkipSubject(request, input.workflowId)),
+		);
 		const pendingRequests = remainingRequests.filter(
-			(r) => r.needsAction && !skippedSubjects.has(setupSkipSubject(r)),
+			(r) => r.needsAction && !skippedSubjects.has(setupSkipSubject(r, input.workflowId)),
 		);
 
 		// Detect credentials that were applied but failed testing.
@@ -872,15 +860,20 @@ async function handleSetup(
 		// The user asked to come back to something they skipped, so that decision no longer
 		// holds — drop it before partitioning so the card renders again. Scoped to what they
 		// named: anything else they skipped stays skipped.
+		let unmatchedReopen: string[] = [];
 		if (input.reopenSkipped && input.reopenSkipped.length > 0) {
-			await forgetSkippedSetup(
-				context,
-				resolveReopenSubjects(analyzedRequests, input.reopenSkipped),
+			const { subjects, unmatched } = resolveReopenTargets(
+				analyzedRequests,
+				input.workflowId,
+				input.reopenSkipped,
 			);
+			await forgetSkippedSetup(context, subjects);
+			unmatchedReopen = unmatched;
 		}
 
 		const { pending: setupRequests, skippedByUser } = partitionSkippedSetupRequests(
 			analyzedRequests,
+			input.workflowId,
 			getSkippedSetupSubjects(context),
 		);
 
@@ -927,6 +920,19 @@ async function handleSetup(
 		}
 
 		if (setupRequests.length === 0) {
+			// The card stays closed and the caller asked for something that isn't here: without
+			// this the guidance below tells it to wait for the user to ask — which the user just
+			// did — and the request the model relayed disappears silently.
+			if (unmatchedReopen.length > 0) {
+				return {
+					error: 'unknown_reopen_target',
+					message:
+						`Nothing in this workflow matches ${unmatchedReopen.map((entry) => `"${entry}"`).join(', ')}. ` +
+						'Pass a `reopenWith` value from the list below, or tell the user that what they named is not part of this workflow.',
+					unmatchedReopen,
+					reopenable: describeSkippedSetup(skippedByUser),
+				};
+			}
 			if (skippedByUser.length > 0) {
 				return {
 					success: true,
@@ -963,7 +969,7 @@ async function handleSetup(
 		const dismissed = (await analyzeWorkflow(context, input.workflowId)).filter(
 			(request) => request.needsAction,
 		);
-		await rememberSkippedSetup(context, dismissed);
+		await rememberSkippedSetup(context, dismissed, input.workflowId);
 		return {
 			success: true,
 			deferred: true,

@@ -848,7 +848,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					// A credential the user skipped earlier in this thread must not re-arm the
 					// setup follow-up on this build — see setup-skip-state.
 					const { pending: pendingSetupRequests, skippedByUser: skippedSetupRequests } =
-						partitionSkippedSetupRequests(setupRequests, getSkippedSetupSubjects(context));
+						partitionSkippedSetupRequests(
+							setupRequests,
+							saved.id,
+							getSkippedSetupSubjects(context),
+						);
 					const workflowNeedsSetup = pendingSetupRequests.some((request) => request.needsAction);
 					const onlySkippedSetupRemains =
 						!workflowNeedsSetup && skippedSetupRequests.some((request) => request.needsAction);

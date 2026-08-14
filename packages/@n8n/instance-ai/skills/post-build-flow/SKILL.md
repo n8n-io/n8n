@@ -173,6 +173,13 @@ do the Slack setup", or picking it out of an offer you made — call
 asked for so the rest stays skipped. A generic "yes" to an unrelated question is
 not an ask.
 
+Pass the `reopenWith` value the tool reported for that card, not the user's
+wording — a credential type for a credential card, a node name for one that was
+only missing a parameter. If nothing matches, setup answers with
+`unknown_reopen_target` and the list you can choose from; pick from it or tell
+the user what they named isn't part of this workflow. Don't fall back to
+re-offering, the user already asked.
+
 ## Publishing and testing
 
 **Publishing is never required for testing.** Both `executions(action="run")` and
