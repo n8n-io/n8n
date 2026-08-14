@@ -238,6 +238,10 @@ export interface AgentChatMessagesResponse {
 	openSuspensions: AgentBuilderOpenSuspension[];
 }
 
+export interface AgentSessionLangSmithExportResponse {
+	traceId: string;
+}
+
 /**
  * Internal integration type for the in-app chat channel. Injected per-run for
  * `/chat` executions — never persisted in an agent's `integrations` array.

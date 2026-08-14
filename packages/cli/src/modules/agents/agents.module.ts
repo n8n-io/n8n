@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -155,6 +155,7 @@ export class AgentsModule implements ModuleInterface {
 
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const globalConfig = Container.get(GlobalConfig);
 		const { AiService } = await import('@/services/ai.service.js');
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const aiService = Container.get(AiService);
@@ -164,6 +165,8 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
+			langsmithDebugExportEnabled:
+				config.langsmithDebugExportEnabled && globalConfig.diagnostics.enabled && proxyEnabled,
 		};
 	}
 

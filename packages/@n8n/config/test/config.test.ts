@@ -683,6 +683,7 @@ describe('GlobalConfig', () => {
 			tracingEnabled: true,
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
+			langsmithDebugExportEnabled: false,
 			modules: [],
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
@@ -727,6 +728,15 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.tracingRecordOutputs).toBe(false);
+	});
+
+	it('should parse N8N_AGENTS_LANGSMITH_DEBUG_EXPORT_ENABLED from env variables', () => {
+		process.env = {
+			N8N_AGENTS_LANGSMITH_DEBUG_EXPORT_ENABLED: 'true',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.langsmithDebugExportEnabled).toBe(true);
 	});
 
 	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {
