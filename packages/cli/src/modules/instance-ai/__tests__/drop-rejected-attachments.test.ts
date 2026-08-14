@@ -85,13 +85,13 @@ describe('dropRejectedAttachmentsFromHistory', () => {
 			saveMessages: vi.fn().mockResolvedValue(undefined),
 		};
 
-		const removed = await dropRejectedAttachmentsFromHistory(
+		const outcome = await dropRejectedAttachmentsFromHistory(
 			memory,
 			{ threadId: 't1', resourceId: 'u1' },
 			logger,
 		);
 
-		expect(removed).toBe(1);
+		expect(outcome).toBe('removed');
 		expect(memory.saveMessages).toHaveBeenCalledWith({
 			threadId: 't1',
 			resourceId: 'u1',
@@ -110,13 +110,15 @@ describe('dropRejectedAttachmentsFromHistory', () => {
 			saveMessages: vi.fn().mockResolvedValue(undefined),
 		};
 
-		const removed = await dropRejectedAttachmentsFromHistory(
+		const outcome = await dropRejectedAttachmentsFromHistory(
 			memory,
 			{ threadId: 't1', resourceId: 'u1' },
 			logger,
 		);
 
-		expect(removed).toBe(0);
+		// Distinct from a failed write: nothing was there to remove, so callers must not
+		// tell the user their attachment could not be removed.
+		expect(outcome).toBe('no-attachments');
 		expect(memory.saveMessages).not.toHaveBeenCalled();
 	});
 
@@ -128,6 +130,23 @@ describe('dropRejectedAttachmentsFromHistory', () => {
 
 		await expect(
 			dropRejectedAttachmentsFromHistory(memory, { threadId: 't1', resourceId: 'u1' }, logger),
-		).resolves.toBe(0);
+		).resolves.toBe('failed');
+	});
+});
+
+describe('dropRejectedAttachmentsFromHistory outcomes', () => {
+	const logger = mock<Logger>();
+
+	// The three outcomes drive different user-facing copy, so they must not collapse:
+	// "nothing to remove" is silence, "failed" tells the user to start a new chat.
+	it('separates a failed write from having nothing to remove', async () => {
+		const failing = {
+			getMessages: vi.fn().mockResolvedValue([userMessage('m1', [textPart, filePart])]),
+			saveMessages: vi.fn().mockRejectedValue(new Error('db down')),
+		};
+
+		await expect(
+			dropRejectedAttachmentsFromHistory(failing, { threadId: 't1', resourceId: 'u1' }, logger),
+		).resolves.toBe('failed');
 	});
 });

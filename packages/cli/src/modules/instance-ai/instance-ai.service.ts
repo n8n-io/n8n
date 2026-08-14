@@ -1078,6 +1078,24 @@ export class InstanceAiService {
 	 * trade: the user is told, and re-attaching costs one message. Leaving it risks
 	 * a conversation that can never recover.
 	 */
+	/**
+	 * Translate a cleanup outcome into the `attachmentRemoved` hint the message
+	 * formatter takes. `undefined` means "say nothing about attachments" — a thread
+	 * that held none must not be told its attachment could not be removed.
+	 */
+	private async dropTurnAttachments(args: {
+		threadId: string;
+		resourceId: string;
+	}): Promise<boolean | undefined> {
+		const outcome = await dropRejectedAttachmentsFromHistory(
+			this.agentMemory,
+			{ threadId: args.threadId, resourceId: args.resourceId },
+			this.logger,
+		);
+		if (outcome === 'no-attachments') return undefined;
+		return outcome === 'removed';
+	}
+
 	private shouldDropTurnAttachments(args: {
 		/**
 		 * Whether this turn introduced files. Unknown on a resumed run — it replays
@@ -4154,11 +4172,7 @@ export class InstanceAiService {
 				turnHadAttachments: turnHadFileAttachments,
 				producedNoOutput: result.status === 'errored' && outputText.length === 0,
 			})
-				? (await dropRejectedAttachmentsFromHistory(
-						this.agentMemory,
-						{ threadId, resourceId: user.id },
-						this.logger,
-					)) > 0
+				? await this.dropTurnAttachments({ threadId, resourceId: user.id })
 				: undefined;
 			const userFacingErrorMessage =
 				result.status === 'errored'
@@ -4304,11 +4318,7 @@ export class InstanceAiService {
 				turnHadAttachments: turnHadFileAttachments,
 				producedNoOutput: true,
 			})
-				? (await dropRejectedAttachmentsFromHistory(
-						this.agentMemory,
-						{ threadId, resourceId: user.id },
-						this.logger,
-					)) > 0
+				? await this.dropTurnAttachments({ threadId, resourceId: user.id })
 				: undefined;
 			const errorMessage = getErrorMessage(terminalError);
 			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError, undefined, {
@@ -5248,6 +5258,13 @@ export class InstanceAiService {
 		let resumeClaimed = false;
 		let resumeTraceRegistered = false;
 		let errorReporterExecutionToken: symbol | undefined;
+		/**
+		 * Set once the model run has yielded output. The catch below also wraps
+		 * post-result finalization, so without this a finalization failure after a
+		 * perfectly good turn would be read as "the run produced nothing" and would
+		 * strip that turn's attachments out of history.
+		 */
+		let resumedRunProducedOutput = false;
 		const onResumeClaimed = async () => {
 			if (resumeClaimed) return;
 			resumeClaimed = true;
@@ -5474,6 +5491,7 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			resumedRunProducedOutput = outputText.length > 0;
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 			const terminalError =
 				result.status === 'errored'
@@ -5503,11 +5521,10 @@ export class InstanceAiService {
 				turnHadAttachments: true,
 				producedNoOutput: result.status === 'errored' && outputText.length === 0,
 			})
-				? (await dropRejectedAttachmentsFromHistory(
-						this.agentMemory,
-						{ threadId: opts.threadId, resourceId: opts.user.id },
-						this.logger,
-					)) > 0
+				? await this.dropTurnAttachments({
+						threadId: opts.threadId,
+						resourceId: opts.user.id,
+					})
 				: undefined;
 			const userFacingErrorMessage =
 				result.status === 'errored'
@@ -5656,16 +5673,17 @@ export class InstanceAiService {
 			});
 			// Same reasoning as the resumed errored-result path above: a suspended
 			// file-bearing turn replays its attachments, so a thrown refusal here would
-			// leave them in history too.
+			// leave them in history too. Gated on the run having produced nothing,
+			// because this catch also covers post-result finalization — a failure there
+			// follows a good turn whose attachments must be left alone.
 			const attachmentRemoved = this.shouldDropTurnAttachments({
 				turnHadAttachments: true,
-				producedNoOutput: true,
+				producedNoOutput: !resumedRunProducedOutput,
 			})
-				? (await dropRejectedAttachmentsFromHistory(
-						this.agentMemory,
-						{ threadId: opts.threadId, resourceId: opts.user.id },
-						this.logger,
-					)) > 0
+				? await this.dropTurnAttachments({
+						threadId: opts.threadId,
+						resourceId: opts.user.id,
+					})
 				: undefined;
 			const errorMessage = getErrorMessage(terminalError);
 			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError, undefined, {

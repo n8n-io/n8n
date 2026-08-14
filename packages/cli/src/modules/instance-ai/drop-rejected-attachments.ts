@@ -54,13 +54,19 @@ interface AttachmentHistoryStore {
 }
 
 /**
- * Strip inline attachments from a thread's history after the provider refused
- * one, so the next message starts from a payload it will accept.
+ * Outcome of a cleanup attempt. Deliberately three-valued: "nothing to remove" and
+ * "the write failed" both left history unchanged, but only the latter means the
+ * thread is still poisoned — so only the latter should send the user elsewhere.
+ */
+export type AttachmentCleanupOutcome = 'no-attachments' | 'removed' | 'failed';
+
+/**
+ * Strip inline attachments from a thread's history after a turn that carried files
+ * failed, so the next message starts from a payload the provider will accept.
  *
  * Every file part in the thread is dropped rather than just the newest: the
- * provider's 400 doesn't say which attachment it choked on, and leaving a
- * candidate behind leaves the thread broken. Returns the number of messages
- * rewritten.
+ * provider's refusal does not say which attachment it choked on, and leaving a
+ * candidate behind leaves the thread broken.
  *
  * Never throws — this runs inside a run's terminal-error path, where surfacing a
  * recovery failure would replace the error the user actually needs to see.
@@ -69,10 +75,10 @@ export async function dropRejectedAttachmentsFromHistory(
 	memory: AttachmentHistoryStore,
 	args: { threadId: string; resourceId: string },
 	logger: Logger,
-): Promise<number> {
+): Promise<AttachmentCleanupOutcome> {
 	try {
 		const sanitized = stripFileAttachmentParts(await memory.getMessages(args.threadId));
-		if (sanitized.length === 0) return 0;
+		if (sanitized.length === 0) return 'no-attachments';
 
 		await memory.saveMessages({
 			threadId: args.threadId,
@@ -84,12 +90,12 @@ export async function dropRejectedAttachmentsFromHistory(
 			threadId: args.threadId,
 			messageCount: sanitized.length,
 		});
-		return sanitized.length;
+		return 'removed';
 	} catch (error) {
 		logger.warn('Failed to drop rejected attachments from Instance AI thread history', {
 			threadId: args.threadId,
 			error: error instanceof Error ? error.message : String(error),
 		});
-		return 0;
+		return 'failed';
 	}
 }
