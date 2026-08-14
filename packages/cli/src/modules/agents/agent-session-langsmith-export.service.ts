@@ -1,4 +1,4 @@
-import { redactText, SUPPORTED_PII_CATEGORIES } from '@n8n/agents';
+import { redactDeep, redactText, SUPPORTED_PII_CATEGORIES } from '@n8n/agents';
 import type { AgentSessionLangSmithExportResponse } from '@n8n/api-types';
 import { buildProxyHeaders } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -9,7 +9,6 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Client } from 'langsmith';
 import { nanoid } from 'nanoid';
-import { createHash } from 'node:crypto';
 import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION } from '@/constants';
@@ -28,10 +27,12 @@ import { AgentExecutionThreadRepository } from './repositories/agent-execution-t
 
 const LANGSMITH_PROJECT = 'n8n-user-agents-debug';
 const EXPORT_NAMESPACE = uuidv5('n8n-agent-session-langsmith-export', uuidv5.URL);
-const SENSITIVE_KEY_PATTERN =
-	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
-const REDACTED = '[REDACTED]';
-const CIRCULAR = '[Circular]';
+const REDACTION_OPTIONS = {
+	secrets: true,
+	detect: SUPPORTED_PII_CATEGORIES,
+	preserveUrlStructure: true,
+	redactSensitiveKeys: true,
+};
 
 type LangSmithRun = Parameters<Client['createRun']>[0];
 type DottedOrderConverter = (
@@ -87,11 +88,8 @@ export class AgentSessionLangSmithExportService {
 			input.agentId,
 			new Set(),
 		);
-		const snapshotHash = createHash('sha256')
-			.update(canonicalSerialize(toSnapshot(tree)))
-			.digest('hex');
-		const traceId = uuidv5(snapshotHash, EXPORT_NAMESPACE);
 		const draft = buildSessionRun(tree, `sessions/${tree.thread.id}`);
+		const traceId = uuidv5(canonicalSerialize(draft), EXPORT_NAMESPACE);
 		const { convertToDottedOrderFormat } = await import('langsmith/run_trees');
 		const runs = materializeRuns(draft, traceId, convertToDottedOrderFormat);
 
@@ -200,11 +198,7 @@ export class AgentSessionLangSmithExportService {
 	}
 }
 
-function buildSessionRun(
-	session: LoadedSession,
-	path: string,
-	unmatchedParentLink = false,
-): DraftRun {
+function buildSessionRun(session: LoadedSession, path: string): DraftRun {
 	const matchedChildren = new Set<string>();
 	const childSessions = new Map(session.children.map((child) => [child.thread.id, child]));
 	const executionRuns = session.executions.map((execution) =>
@@ -212,7 +206,7 @@ function buildSessionRun(
 	);
 	const unmatchedChildren = session.children
 		.filter((child) => !matchedChildren.has(child.thread.id))
-		.map((child) => buildSessionRun(child, `${path}/children/${child.thread.id}`, true));
+		.map((child) => buildSessionRun(child, `${path}/children/${child.thread.id}`));
 	const startTime =
 		session.executions[0]?.startedAt?.getTime() ??
 		session.executions[0]?.createdAt.getTime() ??
@@ -251,7 +245,6 @@ function buildSessionRun(
 			totalCompletionTokens: session.thread.totalCompletionTokens,
 			totalCost: session.thread.totalCost,
 			totalDuration: session.thread.totalDuration,
-			...(unmatchedParentLink ? { unmatchedParentLink: true } : {}),
 		},
 		children: [...executionRuns, ...unmatchedChildren],
 	};
@@ -452,127 +445,20 @@ function materializeRuns(
 }
 
 function sanitizeRecord(value: Record<string, unknown>): Record<string, unknown> {
-	const sanitized = sanitizeValue(value, undefined, new WeakSet());
+	const sanitized = redactDeep(value, REDACTION_OPTIONS).value;
 	return isRecord(sanitized) ? sanitized : {};
 }
 
-function sanitizeValue(
-	value: unknown,
-	key: string | undefined,
-	ancestors: WeakSet<object>,
-): unknown {
-	if (key && SENSITIVE_KEY_PATTERN.test(key)) return REDACTED;
-	if (typeof value === 'string') return scrubText(value);
-	if (value === null || typeof value === 'boolean' || typeof value === 'number') return value;
-	if (value instanceof Date) return scrubText(value.toISOString());
-	if (Array.isArray(value)) {
-		if (ancestors.has(value)) return CIRCULAR;
-		ancestors.add(value);
-		const result = value.map((item) => sanitizeValue(item, key, ancestors));
-		ancestors.delete(value);
-		return result;
-	}
-	if (isRecord(value)) {
-		if (ancestors.has(value)) return CIRCULAR;
-		ancestors.add(value);
-		const result: Record<string, unknown> = {};
-		for (const [entryKey, entryValue] of Object.entries(value)) {
-			result[entryKey] = sanitizeValue(entryValue, entryKey, ancestors);
-		}
-		ancestors.delete(value);
-		return result;
-	}
-	if (value === undefined) return undefined;
-	return scrubText(String(value));
-}
-
 function scrubText(value: string): string {
-	return redactText(value, {
-		secrets: true,
-		detect: SUPPORTED_PII_CATEGORIES,
-		preserveUrlStructure: true,
-	}).text;
+	return redactText(value, REDACTION_OPTIONS).text;
 }
 
-function toSnapshot(session: LoadedSession): Record<string, unknown> {
-	return {
-		thread: {
-			id: session.thread.id,
-			agentId: session.thread.agentId,
-			agentName: session.thread.agentName,
-			title: session.thread.title,
-			emoji: session.thread.emoji,
-			parentThreadId: session.thread.parentThreadId,
-			parentAgentId: session.thread.parentAgentId,
-			projectId: session.thread.projectId,
-			taskId: session.thread.taskId,
-			taskVersionId: session.thread.taskVersionId,
-			sessionNumber: session.thread.sessionNumber,
-			totalPromptTokens: session.thread.totalPromptTokens,
-			totalCompletionTokens: session.thread.totalCompletionTokens,
-			totalCost: session.thread.totalCost,
-			totalDuration: session.thread.totalDuration,
-			createdAt: session.thread.createdAt,
-			updatedAt: session.thread.updatedAt,
-		},
-		executions: session.executions.map((execution) => ({
-			id: execution.id,
-			threadId: execution.threadId,
-			status: execution.status,
-			startedAt: execution.startedAt,
-			stoppedAt: execution.stoppedAt,
-			duration: execution.duration,
-			userMessage: execution.userMessage,
-			attachments: execution.attachments,
-			model: execution.model,
-			promptTokens: execution.promptTokens,
-			completionTokens: execution.completionTokens,
-			totalTokens: execution.totalTokens,
-			cost: execution.cost,
-			timeline: execution.timeline,
-			error: execution.error,
-			hitlStatus: execution.hitlStatus,
-			source: execution.source,
-			storedAt: execution.storedAt,
-			createdAt: execution.createdAt,
-			updatedAt: execution.updatedAt,
-		})),
-		children: session.children.map(toSnapshot),
-	};
-}
-
-function canonicalSerialize(value: unknown): string {
-	return JSON.stringify(canonicalize(value, new WeakSet()));
-}
-
-function canonicalize(value: unknown, ancestors: WeakSet<object>): unknown {
-	if (value instanceof Date) return value.toISOString();
-	if (value === undefined) return null;
-	if (
-		value === null ||
-		typeof value === 'string' ||
-		typeof value === 'boolean' ||
-		typeof value === 'number'
-	) {
-		return value;
-	}
-	if (typeof value === 'bigint') return value.toString();
-	if (Array.isArray(value)) {
-		if (ancestors.has(value)) return CIRCULAR;
-		ancestors.add(value);
-		const result = value.map((item) => canonicalize(item, ancestors));
-		ancestors.delete(value);
-		return result;
-	}
-	if (isRecord(value)) {
-		if (ancestors.has(value)) return CIRCULAR;
-		ancestors.add(value);
-		const result: Record<string, unknown> = {};
-		for (const key of Object.keys(value).sort()) {
-			result[key] = canonicalize(value[key], ancestors);
-		}
-		ancestors.delete(value);
-		return result;
-	}
-	return String(value);
+function canonicalSerialize(value: DraftRun): string {
+	return (
+		JSON.stringify(value, (_key, item: unknown) =>
+			isRecord(item)
+				? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b)))
+				: item,
+		) ?? '{}'
+	);
 }

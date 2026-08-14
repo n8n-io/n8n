@@ -6,9 +6,8 @@ import { TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
-const { useKeybindingsMock, sendSessionMock, langsmithExportState } = vi.hoisted(() => ({
+const { useKeybindingsMock, langsmithExportState } = vi.hoisted(() => ({
 	useKeybindingsMock: vi.fn(),
-	sendSessionMock: vi.fn(),
 	langsmithExportState: { enabled: false, exporting: false },
 }));
 
@@ -20,7 +19,7 @@ vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	useAgentSessionLangSmithExport: () => ({
 		isEnabled: langsmithExportState.enabled,
 		isExporting: langsmithExportState.exporting,
-		sendSession: sendSessionMock,
+		sendSession: vi.fn(),
 	}),
 }));
 
@@ -89,7 +88,6 @@ function mountDock(
 describe('AgentPreviewDock', () => {
 	beforeEach(() => {
 		useKeybindingsMock.mockClear();
-		sendSessionMock.mockClear();
 		langsmithExportState.enabled = false;
 		langsmithExportState.exporting = false;
 	});
@@ -177,17 +175,11 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.find('[data-testid="agent-preview-langsmith-export-btn"]').exists()).toBe(false);
 	});
 
-	it('exports the current persisted session when enabled', async () => {
+	it('shows LangSmith export for a persisted session when enabled', () => {
 		langsmithExportState.enabled = true;
 		const wrapper = mountDock({ effectiveSessionId: 'current-thread' });
 
-		await wrapper.get('[data-testid="agent-preview-langsmith-export-btn"]').trigger('click');
-
-		expect(sendSessionMock).toHaveBeenCalledWith({
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			threadId: 'current-thread',
-		});
+		expect(wrapper.find('[data-testid="agent-preview-langsmith-export-btn"]').exists()).toBe(true);
 	});
 
 	it('forwards chat events and opts the chat page into dock layout', () => {

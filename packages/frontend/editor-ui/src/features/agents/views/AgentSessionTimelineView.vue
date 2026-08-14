@@ -144,15 +144,6 @@ function onPanelLoaded(detail: ThreadDetail | null) {
 	executions.value = detail?.executions ?? [];
 }
 
-function exportSession() {
-	if (!hasLoadedThread.value) return;
-	void sendSession({
-		projectId: projectId.value,
-		agentId: agentId.value,
-		threadId: threadId.value,
-	});
-}
-
 // Keep the header's session-picker dropdown populated. The panel loads the
 // thread detail; the thread list is a header concern, so it's fetched here.
 watch([projectId, agentId], () => void sessionsStore.fetchThreads(projectId.value, agentId.value), {
@@ -222,7 +213,7 @@ function onSessionSelect(nextThreadId: string) {
 			:langsmith-export-loading="isExporting"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
-			@langsmith-export="exportSession"
+			@langsmith-export="sendSession({ projectId, agentId, threadId })"
 			@close="closeTimeline"
 		/>
 

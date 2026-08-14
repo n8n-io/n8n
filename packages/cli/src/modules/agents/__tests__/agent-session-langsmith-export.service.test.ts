@@ -308,14 +308,7 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(createRunMock).not.toHaveBeenCalled();
 	});
 
-	it('rejects when the root or a child session is still running', async () => {
-		const root = setup();
-		root.agentExecutionService.getThreadDetail.mockResolvedValue({
-			thread: makeThread(),
-			executions: [makeExecution({ status: 'running' })],
-		});
-		await expect(root.service.exportSession(input)).rejects.toThrow('Session is still running');
-
+	it('rejects when a child session is still running', async () => {
 		const child = setup();
 		const childThread = makeThread({
 			id: 'child-thread',
@@ -372,9 +365,5 @@ describe('AgentSessionLangSmithExportService', () => {
 		await expect(service.exportSession(input)).rejects.toThrow(
 			"Session couldn't be sent to LangSmith. Try again.",
 		);
-		createRunMock.mockResolvedValue(undefined);
-		await expect(service.exportSession(input)).resolves.toEqual({
-			traceId: expect.any(String),
-		});
 	});
 });

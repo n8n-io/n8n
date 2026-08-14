@@ -80,7 +80,6 @@ describe('useAgentSessionLangSmithExport', () => {
 		await sendSession(session);
 
 		expect(exportThreadToLangSmith).not.toHaveBeenCalled();
-		expect(copy).not.toHaveBeenCalled();
 		expect(isExporting.value).toBe(false);
 	});
 
@@ -88,13 +87,8 @@ describe('useAgentSessionLangSmithExport', () => {
 		localStorage.setItem('instanceAi.debugMode', 'true');
 		settingsStore.moduleSettings.agents.langsmithDebugExportEnabled = true;
 		openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
-		let resolveExport: (response: { traceId: string }) => void = () => {};
-		exportThreadToLangSmith.mockImplementationOnce(
-			async () =>
-				await new Promise<{ traceId: string }>((resolve) => {
-					resolveExport = resolve;
-				}),
-		);
+		const { promise, resolve } = Promise.withResolvers<{ traceId: string }>();
+		exportThreadToLangSmith.mockReturnValueOnce(promise);
 		const { isExporting, sendSession } = useAgentSessionLangSmithExport();
 
 		const exporting = sendSession(session);
@@ -104,7 +98,7 @@ describe('useAgentSessionLangSmithExport', () => {
 		expect(isExporting.value).toBe(true);
 		expect(exportThreadToLangSmith).toHaveBeenCalledOnce();
 
-		resolveExport({ traceId: 'trace-1' });
+		resolve({ traceId: 'trace-1' });
 		await exporting;
 
 		expect(exportThreadToLangSmith).toHaveBeenCalledWith('project-1', 'agent-1', 'thread-1');

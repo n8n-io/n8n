@@ -45,6 +45,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['items', 'maxHeight', 'extraPopperClass'],
 		emits: ['select'],
 	},
+	TOOLTIP_DELAY_MS: 500,
 }));
 
 type DropdownStubWrapper = VueWrapper<{
@@ -63,7 +64,9 @@ const breadcrumbItems = [
 ];
 
 describe('AgentSessionTimelineHeader', () => {
-	function mountHeader(overrides: Partial<{ showMetrics: boolean }> = {}) {
+	function mountHeader(
+		overrides: Partial<{ showMetrics: boolean; showLangsmithExport: boolean }> = {},
+	) {
 		return mount(AgentSessionTimelineHeader, {
 			props: {
 				breadcrumbItems,
@@ -82,7 +85,7 @@ describe('AgentSessionTimelineHeader', () => {
 				totalTokens: 1234,
 				totalCost: 0.1234,
 				durationLabel: '1.2s',
-				showLangsmithExport: false,
+				showLangsmithExport: overrides.showLangsmithExport ?? false,
 				langsmithExportLoading: false,
 			},
 		});
@@ -109,7 +112,7 @@ describe('AgentSessionTimelineHeader', () => {
 	});
 
 	it('emits timeline header actions', async () => {
-		const wrapper = mountHeader();
+		const wrapper = mountHeader({ showLangsmithExport: true });
 		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' }) as BreadcrumbsStubWrapper;
 		const sessionPicker = wrapper.findComponent(
 			'[data-testid="session-header-switcher"]',
@@ -117,10 +120,12 @@ describe('AgentSessionTimelineHeader', () => {
 
 		breadcrumbs.vm.$emit('itemSelected', { id: 'project-1' });
 		sessionPicker.vm.$emit('select', 'thread-1');
+		await wrapper.find('[data-testid="agent-session-langsmith-export"]').trigger('click');
 		await wrapper.find('[data-testid="agent-session-timeline-close"]').trigger('click');
 
 		expect(wrapper.emitted('breadcrumb-select')).toEqual([[{ id: 'project-1' }]]);
 		expect(wrapper.emitted('session-select')).toEqual([['thread-1']]);
+		expect(wrapper.emitted('langsmith-export')).toEqual([[]]);
 		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 
