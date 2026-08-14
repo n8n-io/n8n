@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -93,6 +93,7 @@ describe('HookContext', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials =
 				await hookContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
@@ -133,7 +134,7 @@ describe('HookContext', () => {
 				activation,
 			);
 
-			expect(() => hookContextWithoutWebhookData.getWebhookName()).toThrow(ApplicationError);
+			expect(() => hookContextWithoutWebhookData.getWebhookName()).toThrow(UnexpectedError);
 		});
 	});
 

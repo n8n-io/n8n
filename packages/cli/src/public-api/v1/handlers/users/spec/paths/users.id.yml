@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getUser
+  x-required-scope: user:read
   x-eov-operation-handler: v1/handlers/users/users.handler.ee
   tags:
     - User
@@ -19,6 +20,7 @@ get:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 delete:
   x-eov-operation-id: deleteUser
+  x-required-scope: user:delete
   x-eov-operation-handler: v1/handlers/users/users.handler.ee
   tags:
     - User

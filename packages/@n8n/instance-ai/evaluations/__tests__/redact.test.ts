@@ -1,4 +1,10 @@
-import { redactSecrets, stringifyError, truncate } from '../harness/redact';
+import {
+	redactSecrets,
+	redactSecretsInText,
+	redactSecretsInTextDeep,
+	stringifyError,
+	truncate,
+} from '../harness/redact';
 
 describe('redactSecrets', () => {
 	it('redacts values under secret-shaped keys', () => {
@@ -78,6 +84,125 @@ describe('redactSecrets', () => {
 	});
 });
 
+describe('redactSecretsInText', () => {
+	it('masks an Authorization credential while keeping the scheme and message', () => {
+		const out = redactSecretsInText('Request failed: Authorization: Bearer sk-abc.def123 (401)');
+		expect(out).not.toContain('sk-abc.def123');
+		expect(out).toContain('Authorization: Bearer [REDACTED]');
+		expect(out).toContain('Request failed:');
+		expect(out).toContain('(401)');
+	});
+
+	it('masks a standalone Bearer/Basic credential', () => {
+		expect(redactSecretsInText('header was Bearer eyJ0eXAiOiJ.payload')).toBe(
+			'header was Bearer [REDACTED]',
+		);
+		expect(redactSecretsInText('got Basic dXNlcjpwYXNz back')).toBe('got Basic [REDACTED] back');
+	});
+
+	it('masks secret-shaped key/value pairs in query strings and JSON', () => {
+		expect(redactSecretsInText('GET https://api.x.com/v1?api_key=secret123&page=2')).toBe(
+			'GET https://api.x.com/v1?api_key=[REDACTED]&page=2',
+		);
+		expect(redactSecretsInText('body {"token":"abc","ok":true}')).toBe(
+			'body {"token":"[REDACTED]","ok":true}',
+		);
+		expect(redactSecretsInText('password: hunter2')).toBe('password: [REDACTED]');
+	});
+
+	it('masks bare well-known credential formats with no surrounding key', () => {
+		// OpenAI/Anthropic-style
+		expect(redactSecretsInText('the run used sk-abc123DEF456ghi789jkl012 for calls')).toBe(
+			'the run used [REDACTED] for calls',
+		);
+		expect(redactSecretsInText('key sk-ant-api03-Zm9vYmFyYmF6cXV4 set')).toBe('key [REDACTED] set');
+		// Slack bot/user/app tokens
+		expect(redactSecretsInText('posted with xoxb-1234567890-abcdefghijkl')).toBe(
+			'posted with [REDACTED]',
+		);
+		// Slack app-level tokens use the xapp- prefix, not xox?-
+		expect(redactSecretsInText('socket mode via xapp-1-A012-3456-abcdef')).toBe(
+			'socket mode via [REDACTED]',
+		);
+		// GitHub tokens (classic + fine-grained prefixes)
+		expect(redactSecretsInText('cloned using ghp_ABCdef123456789012345678901234567890')).toBe(
+			'cloned using [REDACTED]',
+		);
+		// AWS access key id
+		expect(redactSecretsInText('signed as AKIAIOSFODNN7EXAMPLE today')).toBe(
+			'signed as [REDACTED] today',
+		);
+	});
+
+	it('leaves lookalike prose untouched (short or non-token shapes)', () => {
+		expect(redactSecretsInText('we use sk-learn for clustering')).toBe(
+			'we use sk-learn for clustering',
+		);
+		expect(redactSecretsInText('the xoxo sign-off stays')).toBe('the xoxo sign-off stays');
+		expect(redactSecretsInText('AKIA is an AWS prefix')).toBe('AKIA is an AWS prefix');
+	});
+
+	it('leaves secret words used as prose untouched (no separator → no match)', () => {
+		expect(redactSecretsInText('Invalid token format in the request')).toBe(
+			'Invalid token format in the request',
+		);
+		expect(redactSecretsInText('the secret sauce was missing')).toBe(
+			'the secret sauce was missing',
+		);
+	});
+});
+
+describe('redactSecretsInTextDeep', () => {
+	it('scrubs inline tokens in string leaves of nested objects and arrays', () => {
+		const input = {
+			log: 'Request failed: Authorization: Bearer sk-abc.def (401)',
+			nested: { note: 'retry with api_key=sk-inline-1' },
+			list: ['header was Bearer eyJ0eXAi.payload', 'plain entry'],
+		};
+
+		expect(redactSecretsInTextDeep(input)).toEqual({
+			log: 'Request failed: Authorization: Bearer [REDACTED] (401)',
+			nested: { note: 'retry with api_key=[REDACTED]' },
+			list: ['header was Bearer [REDACTED]', 'plain entry'],
+		});
+	});
+
+	it('passes non-string primitives, null, and undefined through unchanged', () => {
+		expect(redactSecretsInTextDeep(42)).toBe(42);
+		expect(redactSecretsInTextDeep(true)).toBe(true);
+		expect(redactSecretsInTextDeep(null)).toBeNull();
+		expect(redactSecretsInTextDeep(undefined)).toBeUndefined();
+	});
+
+	it('leaves benign strings untouched', () => {
+		expect(redactSecretsInTextDeep({ msg: 'Invalid token format in the request' })).toEqual({
+			msg: 'Invalid token format in the request',
+		});
+	});
+
+	it('does not mutate the original object', () => {
+		const original = { note: 'api_key=sk-real' };
+		redactSecretsInTextDeep(original);
+		expect(original.note).toBe('api_key=sk-real');
+	});
+
+	it('caps recursion depth so deeply nested input cannot blow the stack', () => {
+		let nested: unknown = { note: 'api_key=sk-leaf' };
+		for (let i = 0; i < 12; i += 1) {
+			nested = { wrap: nested };
+		}
+		expect(() => redactSecretsInTextDeep(nested)).not.toThrow();
+	});
+
+	it('leaves class instances untouched (only walks plain objects)', () => {
+		class WithText {
+			constructor(public note: string) {}
+		}
+		const instance = new WithText('api_key=sk-keep');
+		expect(redactSecretsInTextDeep(instance)).toBe(instance);
+	});
+});
+
 describe('truncate', () => {
 	it('passes short values through after redaction', () => {
 		expect(truncate({ name: 'a', token: 't' }, 200)).toEqual({ name: 'a', token: '[REDACTED]' });
@@ -135,5 +260,76 @@ describe('stringifyError', () => {
 		const big = { msg: 'a'.repeat(500) };
 		const out = stringifyError(big, 50);
 		expect(out.length).toBe(50);
+	});
+});
+
+describe('redactSecrets — credential setup hints', () => {
+	it('traverses hints with content masking instead of key redaction', () => {
+		const input = {
+			credentialHints: [
+				{
+					template: { headers: { Authorization: 'Key {{api_key}}' } },
+					placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+					testUrl: 'https://fal.run/v1/models',
+				},
+			],
+		};
+
+		// Key-based redaction would blank `Authorization`/`api_key`; hint
+		// traversal keeps the secret-free recipe readable for the eval judge.
+		expect(redactSecrets(input)).toEqual(input);
+	});
+
+	it('still masks inline secrets inside hint strings', () => {
+		const input = {
+			setupHint: {
+				template: { headers: { Authorization: 'Bearer sk-live-abcdef123456' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+			},
+		};
+
+		const result = redactSecrets(input) as {
+			setupHint: { template: { headers: { Authorization: string } } };
+		};
+		expect(result.setupHint.template.headers.Authorization).not.toContain('sk-live-abcdef123456');
+	});
+
+	it('redacts a bare literal under a secret-shaped header key', () => {
+		const input = {
+			setupHint: {
+				// malformed recipe: a literal key where a {{marker}} belongs. The value
+				// deliberately matches no known token format (no sk-/xox/ghp prefix), so
+				// only the key-context branch can catch it.
+				template: { headers: { 'X-Api-Key': 'zTr4bQ9wXkPd2f' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+			},
+		};
+
+		const result = redactSecrets(input) as {
+			setupHint: { template: { headers: Record<string, string> } };
+		};
+		expect(result.setupHint.template.headers['X-Api-Key']).toBe('[REDACTED]');
+	});
+
+	it('redacts the whole value when a literal sits next to a valid marker', () => {
+		const input = {
+			setupHint: {
+				template: { headers: { Authorization: 'Key zTr4bQ9wXkPd2f {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+			},
+		};
+
+		const result = redactSecrets(input) as {
+			setupHint: { template: { headers: { Authorization: string } } };
+		};
+		expect(result.setupHint.template.headers.Authorization).toBe('[REDACTED]');
+	});
+
+	it('keeps a marker under a secret-shaped header key readable', () => {
+		const input = {
+			setupHint: { template: { headers: { 'X-Api-Key': '{{access_key}}' } } },
+		};
+
+		expect(redactSecrets(input)).toEqual(input);
 	});
 });

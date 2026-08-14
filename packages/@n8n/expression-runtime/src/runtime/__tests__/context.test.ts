@@ -24,7 +24,6 @@ describe('buildContext proxy', () => {
 		const ctx = buildContext({
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
-			callFunctionAtPath: makeRef(() => undefined),
 			callHost: makeRef(() => undefined),
 		});
 
@@ -37,7 +36,6 @@ describe('buildContext proxy', () => {
 		const ctx = buildContext({
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
-			callFunctionAtPath: makeRef(() => undefined),
 			callHost: makeRef(() => undefined),
 		});
 
@@ -54,7 +52,6 @@ describe('buildContext proxy', () => {
 		const ctx = buildContext({
 			getValueAtPath,
 			getArrayElement: makeRef(() => undefined),
-			callFunctionAtPath: makeRef(() => undefined),
 			callHost: makeRef(() => undefined),
 		});
 

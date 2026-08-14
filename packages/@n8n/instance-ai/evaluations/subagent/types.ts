@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Types for the isolated sub-agent evaluation harness
+// Types for the workflow-build eval harness
 // ---------------------------------------------------------------------------
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -16,49 +16,40 @@ export interface Feedback {
 }
 
 /**
- * A single sub-agent test case.
- * Describes the prompt and configuration for an isolated sub-agent run.
+ * A single workflow-build eval case.
  */
-export interface SubAgentTestCase {
+export interface WorkflowBuildEvalCase {
 	/** Unique test case identifier */
 	id: string;
-	/** The prompt / task description sent to the sub-agent */
+	/** The prompt / task description sent to Instance AI */
 	prompt: string;
-	/** Sub-agent type. Determines system prompt and default tools. Defaults to 'builder'. */
-	subagent?: string;
-	/** Optional system prompt override. Defaults to the sub-agent type's built-in prompt. */
-	systemPrompt?: string;
-	/** Tool names to give the sub-agent. Defaults to the sub-agent type's default set if omitted. */
-	tools?: string[];
 	/** Model ID override for this test case. Overrides the runner config modelId. */
 	modelId?: string;
-	/** Max agent steps before timeout. Defaults to 40 (see `SubAgentEvalService.DEFAULT_MAX_STEPS`). */
-	maxSteps?: number;
 	/** Per-test-case annotations forwarded to binary checks. */
 	annotations?: Record<string, unknown>;
 }
 
 /**
- * Workflow captured from a stubbed workflowService.createFromWorkflowJSON call.
+ * Workflow produced by the orchestrator build path.
  */
 export interface CapturedWorkflow {
-	/** The WorkflowJSON the agent produced (parsed from TypeScript SDK code) */
+	/** The WorkflowJSON the agent produced */
 	json: WorkflowJSON;
-	/** Whether the build-workflow tool reported success */
+	/** Whether the submit-workflow tool reported success */
 	success: boolean;
-	/** Errors reported by the build-workflow tool */
+	/** Errors reported by the submit-workflow tool */
 	errors?: string[];
 }
 
 /**
- * Result of running a single sub-agent test case.
+ * Result of running a single workflow-build eval case.
  */
-export interface SubAgentResult {
+export interface WorkflowBuildEvalResult {
 	/** The test case that was run */
-	testCase: SubAgentTestCase;
+	testCase: WorkflowBuildEvalCase;
 	/** The agent's final text output */
 	text: string;
-	/** Workflows captured from build-workflow tool calls */
+	/** Workflows captured from submit-workflow tool calls */
 	capturedWorkflows: CapturedWorkflow[];
 	/** Evaluation feedback (binary checks on captured workflows, etc.) */
 	feedback: Feedback[];
@@ -69,15 +60,13 @@ export interface SubAgentResult {
 }
 
 /**
- * Configuration for the sub-agent runner.
+ * Configuration for the workflow-build eval runner.
  */
-export interface SubAgentRunnerConfig {
+export interface WorkflowBuildEvalConfig {
 	/** Optional model override. When unset, the server resolves the model from its own settings. */
 	modelId?: string;
-	/** Timeout per test case in milliseconds. Defaults to 120_000. */
+	/** Timeout per test case in milliseconds. Defaults to 900_000. */
 	timeoutMs?: number;
-	/** Max agent steps. Overridden by test case if set. Defaults to 40 (see `SubAgentEvalService.DEFAULT_MAX_STEPS`). */
-	maxSteps?: number;
 	/** Whether to print verbose output */
 	verbose?: boolean;
 }

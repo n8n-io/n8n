@@ -1,11 +1,10 @@
 import { test, expect, instanceAiTestConfig, SKIP_PROXY_SETUP_ANNOTATION } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 test.describe(
 	'Instance AI chat basics @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test(
@@ -44,7 +43,7 @@ test.describe(
 
 			await n8n.instanceAi.sendMessage('Remember this persistence message');
 			await n8n.instanceAi.waitForResponseComplete(120_000);
-			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
+			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
 
 			await n8n.page.reload();
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 30_000 });

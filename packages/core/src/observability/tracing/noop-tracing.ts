@@ -62,4 +62,11 @@ export class NoopTracing implements Tracer {
 	async startSpan<T>(_options: StartSpanOpts, spanCb: (span: Span) => Promise<T>): Promise<T> {
 		return await spanCb(this.emptySpan);
 	}
+
+	async startNewTraceSpan<T>(
+		options: StartSpanOpts,
+		spanCb: (span: Span) => Promise<T>,
+	): Promise<T> {
+		return await this.startSpan(options, spanCb);
+	}
 }

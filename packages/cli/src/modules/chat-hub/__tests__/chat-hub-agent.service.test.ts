@@ -1,27 +1,27 @@
+import type { ChatHubAgentKnowledgeItem } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import type { ChatHubAgent } from '../chat-hub-agent.entity';
 import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
 import { ChatHubAgentService } from '../chat-hub-agent.service';
-import type { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
 import type { ChatHubExecutionService } from '../chat-hub-execution.service';
-import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { ChatHubToolService } from '../chat-hub-tool.service';
 import type { ChatHubWorkflowService } from '../chat-hub-workflow.service';
-import type { ChatHubAgentKnowledgeItem } from '@n8n/api-types';
-import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
+import type { ChatHubAttachmentService } from '../chat-hub.attachment.service';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { SemanticSearchOptions } from '../chat-hub.types';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-const mockGetBase = jest.fn();
-jest.mock('@/workflow-execute-additional-data', () => ({
+const mockGetBase = vi.fn();
+vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: (...args: unknown[]) => mockGetBase(...args),
 }));
 
@@ -84,7 +84,7 @@ describe('ChatHubAgentService', () => {
 	let service: ChatHubAgentService;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnValue(logger);
 
 		service = new ChatHubAgentService(
@@ -499,7 +499,7 @@ describe('ChatHubAgentService', () => {
 				executionData: {} as IRunExecutionData,
 			});
 
-			const mockTransaction = jest.fn(
+			const mockTransaction = vi.fn(
 				async (cb: (trx: never) => Promise<unknown>) => await cb(mock()),
 			);
 

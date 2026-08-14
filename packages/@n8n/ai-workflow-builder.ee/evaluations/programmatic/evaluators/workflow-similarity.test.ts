@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types';
 
@@ -8,25 +9,25 @@ import {
 } from './workflow-similarity';
 
 // Mock node modules before any imports
-jest.mock('node:child_process', () => ({
-	execFile: jest.fn(),
+vi.mock('node:child_process', () => ({
+	execFile: vi.fn(),
 }));
 
-// Create the mock inside the factory - must use var for proper hoisting with jest.mock
+// Create the mock inside the factory - must use var for proper hoisting with vi.mock
 // eslint-disable-next-line no-var
-var mockExecFileAsync: jest.Mock;
+var mockExecFileAsync: Mock;
 
-jest.mock('node:util', () => {
-	const mockFn = jest.fn();
+vi.mock('node:util', () => {
+	const mockFn = vi.fn();
 	// Store reference so tests can access it
 	mockExecFileAsync = mockFn;
 
 	return {
-		promisify: jest.fn(() => mockFn),
+		promisify: vi.fn(() => mockFn),
 	};
 });
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 describe('evaluateWorkflowSimilarity', () => {
 	const generatedWorkflow = mock<SimpleWorkflow>({
@@ -68,7 +69,7 @@ describe('evaluateWorkflowSimilarity', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('successful evaluation', () => {

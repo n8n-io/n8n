@@ -1,0 +1,19 @@
+{
+    "type": "object",
+    "properties": {
+        "containerId": {
+            "type": "string"
+        },
+        "executionTime": {
+            "type": "integer"
+        },
+        "exitCode": {
+            "type": "integer"
+        },
+        "resultObject": {},
+        "output": {
+            "type": ["string", "null"]
+        }
+    },
+    "version": 1
+}

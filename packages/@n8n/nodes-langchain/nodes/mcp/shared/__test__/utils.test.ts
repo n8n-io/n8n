@@ -2,13 +2,20 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { proxyFetch } from '@n8n/ai-utilities';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import { createResultError, createResultOk } from '@n8n/utils/result';
+import type { IExecuteFunctions, INode, NodeEgressFilter } from 'n8n-workflow';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 import { expect } from 'vitest';
 
 import type { McpAuthenticationOption } from '../types';
-import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../utils';
+import {
+	connectMcpClient,
+	connectMcpClientForCredential,
+	getAuthHeaders,
+	mapToNodeOperationError,
+	tryRefreshOAuth2Token,
+} from '../utils';
 
 vi.mock('@modelcontextprotocol/sdk/client/index.js');
 vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
@@ -16,7 +23,7 @@ vi.mock('@modelcontextprotocol/sdk/client/sse.js');
 vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
 	return {
-		...actual,
+		...(actual as Record<string, unknown>),
 		proxyFetch: vi.fn(),
 	};
 });
@@ -24,6 +31,10 @@ vi.mock('@n8n/ai-utilities', async () => {
 const MockedClient = Client as MockedClass<typeof Client>;
 
 describe('utils', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	describe('tryRefreshOAuth2Token', () => {
 		it('should refresh an OAuth2 token without headers', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
@@ -98,6 +109,147 @@ describe('utils', () => {
 				headers: { Authorization: 'Bearer access-token' },
 				credentials,
 			});
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+		});
+
+		it('should not send an undefined bearer token when mcpOAuth2Api token data is empty', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				accessTokenUrl: 'https://auth.example.com/token',
+				grantType: 'clientCredentials',
+				authentication: 'header',
+				useDynamicClientRegistration: false,
+				resourceUrl: 'https://mcp.example.com/',
+				oauthTokenData: {},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			expect(result).toEqual({ credentials });
+			expect(result.headers?.Authorization).not.toBe('Bearer undefined');
+		});
+
+		it('should not set headers when mcpOAuth2Api token data is undefined', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				accessTokenUrl: 'https://auth.example.com/token',
+				grantType: 'clientCredentials',
+				authentication: 'header',
+				useDynamicClientRegistration: false,
+				resourceUrl: 'https://mcp.example.com/',
+				oauthTokenData: undefined,
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			expect(result).toEqual({ credentials });
+			expect(result.headers).toBeUndefined();
+		});
+
+		it('should ignore a provider expiry field when the internal expiry is unknown', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				oauthTokenData: {
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+					expires_at: '1700000060',
+				},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer access-token' },
+				credentials,
+			});
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+		});
+
+		it('should not proactively refresh legacy credentials without an absolute expiry', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				oauthTokenData: {
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+					expires_in: '3600',
+				},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+		});
+
+		it('should refresh mcpOAuth2Api credentials before the access token expires', async () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				oauthTokenData: {
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+					n8n_expires_at: String(now + 60_000),
+				},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+				access_token: 'new-access-token',
+			});
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer new-access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
+		});
+
+		it('should not refresh mcpOAuth2Api credentials when the access token is still valid', async () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				oauthTokenData: {
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+					n8n_expires_at: String(now + 10 * 60_000),
+				},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+		});
+
+		it('should not immediately refresh a short-lived token', async () => {
+			const now = 1_700_000_000_000;
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				oauthTokenData: {
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+					expires_in: '60',
+					n8n_expires_at: String(now + 60_000),
+				},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
 		});
 
 		it('should return the headers and credentials for headerAuth', async () => {
@@ -184,6 +336,7 @@ describe('utils', () => {
 	describe('connectMcpClient', () => {
 		const mockClient = {
 			connect: vi.fn(),
+			close: vi.fn(),
 		};
 
 		const mockedProxyFetch = proxyFetch as MockedFunction<typeof proxyFetch>;
@@ -191,6 +344,8 @@ describe('utils', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
 			vi.restoreAllMocks();
+			mockClient.close = vi.fn();
+			mockClient.close.mockResolvedValue(undefined);
 
 			MockedClient.mockImplementation(function () {
 				return mockClient as unknown as Client;
@@ -201,6 +356,31 @@ describe('utils', () => {
 			['httpStreamable', StreamableHTTPClientTransport],
 			['sse', SSEClientTransport],
 		] as const)('%s transport', (transport, TransportClass) => {
+			it('should return cancelled without creating a transport when signal is already aborted', async () => {
+				const abort = new AbortController();
+				abort.abort();
+				const addEventListener = vi.spyOn(abort.signal, 'addEventListener');
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('cancelled');
+					expect(result.error.error.message).toBe('Execution was cancelled');
+				}
+				expect(TransportClass).not.toHaveBeenCalled();
+				expect(mockClient.connect).not.toHaveBeenCalled();
+				expect(addEventListener).toHaveBeenCalledWith('abort', expect.any(Function), {
+					once: true,
+				});
+			});
+
 			it('should connect successfully and pass a custom fetch', async () => {
 				mockClient.connect.mockResolvedValue(undefined);
 
@@ -216,6 +396,95 @@ describe('utils', () => {
 
 				const [, opts] = (TransportClass as Mock).mock.calls[0];
 				expect(opts.fetch).toBeTypeOf('function');
+			});
+
+			it('should connect successfully without a signal and not pass requestInit', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+				});
+
+				expect(result.ok).toBe(true);
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				expect(opts).not.toHaveProperty('requestInit');
+			});
+
+			it('should pass the abort signal in requestInit when a signal is provided', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				const abort = new AbortController();
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(true);
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				expect(opts.requestInit).toEqual({ signal: abort.signal });
+			});
+
+			it('should attach a once abort listener that closes the client and swallows close rejection', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				mockClient.close.mockRejectedValueOnce(new Error('close failed'));
+				const abort = new AbortController();
+				const addEventListener = vi.spyOn(abort.signal, 'addEventListener');
+
+				// Save a reference to the original close mock before it gets wrapped
+				const closeSpy = mockClient.close;
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(true);
+				expect(addEventListener).toHaveBeenCalledWith('abort', expect.any(Function), {
+					once: true,
+				});
+
+				// Trigger the abort; the listener will call client.close (the wrapper)
+				expect(() => abort.abort()).not.toThrow();
+				await Promise.resolve();
+
+				// The original close function should have been called exactly once
+				expect(closeSpy).toHaveBeenCalledTimes(1);
+			});
+
+			it('should remove the abort listener on normal close, preventing double-close on later abort', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				const abort = new AbortController();
+
+				// Save a reference to the original close mock before it gets wrapped
+				const closeSpy = mockClient.close;
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(true);
+				if (result.ok) {
+					// Normal close – triggers the wrapper, which removes the listener and calls originalClose
+					await result.result.close();
+				}
+				abort.abort(); // listener already removed, should not call close again
+				await Promise.resolve();
+
+				// Original close called exactly once (not twice)
+				expect(closeSpy).toHaveBeenCalledTimes(1);
 			});
 
 			it('should return auth error on 401 during connect', async () => {
@@ -237,6 +506,106 @@ describe('utils', () => {
 
 			it('should return connection error on non-auth failure', async () => {
 				mockClient.connect.mockRejectedValueOnce(new Error('Connection refused'));
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('connection');
+				}
+			});
+
+			it('should remove the abort listener when connect fails with an auth error', async () => {
+				mockClient.connect.mockRejectedValueOnce(new Error('Request failed with status 401'));
+				const abort = new AbortController();
+				const removeEventListener = vi.spyOn(abort.signal, 'removeEventListener');
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('auth');
+				}
+				expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function));
+			});
+
+			it('should remove the abort listener when connect fails with a connection error', async () => {
+				mockClient.connect.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+				const abort = new AbortController();
+				const removeEventListener = vi.spyOn(abort.signal, 'removeEventListener');
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('connection');
+				}
+				expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function));
+			});
+
+			it('should return cancelled when connect throws AbortError with a signal', async () => {
+				const abortError = new Error('The operation was aborted');
+				abortError.name = 'AbortError';
+				mockClient.connect.mockRejectedValueOnce(abortError);
+				const abort = new AbortController();
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('cancelled');
+					expect(result.error.error).toBe(abortError);
+				}
+			});
+
+			it('should return cancelled when the signal is aborted while connect fails', async () => {
+				const abort = new AbortController();
+				mockClient.connect.mockImplementationOnce(async () => {
+					abort.abort();
+					throw new Error('connect failed after cancellation');
+				});
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('cancelled');
+				}
+			});
+
+			it('should return connection when connect throws AbortError without a signal', async () => {
+				const abortError = new Error('The operation was aborted');
+				abortError.name = 'AbortError';
+				mockClient.connect.mockRejectedValueOnce(abortError);
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
@@ -410,6 +779,80 @@ describe('utils', () => {
 				expect(result.ok).toBe(true);
 				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 			});
+
+			it('should block requests to a target rejected by the instance egress filter', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+
+				const secureLookup = vi.fn();
+				const egressFilter: NodeEgressFilter = {
+					validateUrl: vi.fn().mockResolvedValue(createResultError(new Error('Egress blocked'))),
+					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
+				};
+
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.getNode.mockReturnValue({ type: 'test-client', typeVersion: 1 } as unknown as INode);
+				ctx.helpers.getSecureEgressFilter.mockReturnValue(egressFilter);
+
+				const result = await connectMcpClientForCredential(ctx, {
+					authentication: 'none',
+					serverTransport: transport,
+					endpointUrl: 'https://blocked.example.com/',
+					surface: 'MCP Client Tool',
+				});
+
+				expect(result.ok).toBe(true);
+
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+
+				// The egress filter must reject the target before any request is sent.
+				await expect(opts.fetch('https://blocked.example.com/', {})).rejects.toThrow(
+					'Egress blocked',
+				);
+				expect(egressFilter.validateUrl).toHaveBeenCalledWith('https://blocked.example.com/');
+				expect(mockedProxyFetch).not.toHaveBeenCalled();
+			});
+
+			it('should allow requests to a target accepted by the instance egress filter', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+
+				const secureLookup = vi.fn();
+				const egressFilter: NodeEgressFilter = {
+					validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
+				};
+
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.getNode.mockReturnValue({ type: 'test-client', typeVersion: 1 } as unknown as INode);
+				ctx.helpers.getSecureEgressFilter.mockReturnValue(egressFilter);
+
+				const result = await connectMcpClientForCredential(ctx, {
+					authentication: 'none',
+					serverTransport: transport,
+					endpointUrl: 'https://mcp.example.com/',
+					surface: 'MCP Client Tool',
+				});
+
+				expect(result.ok).toBe(true);
+
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://mcp.example.com/', {});
+
+				expect(egressFilter.validateUrl).toHaveBeenCalledWith('https://mcp.example.com/');
+				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
+			});
+		});
+	});
+
+	describe('mapToNodeOperationError', () => {
+		it('should map cancelled connection errors to an execution cancellation message', () => {
+			const node = mockDeep<INode>();
+			const error = new Error('abort');
+
+			const result = mapToNodeOperationError(node, { type: 'cancelled', error });
+
+			expect(result.message).toBe('Execution was cancelled');
 		});
 	});
 });

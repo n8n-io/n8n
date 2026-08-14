@@ -19,6 +19,7 @@ export async function bracketAccessCompletions(
 ): Promise<CompletionResult | null> {
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
+	if (!workflowDocumentId) return null;
 	const word = context.matchBefore(/\$[\S\s]*\[.*/);
 
 	if (!word) return null;

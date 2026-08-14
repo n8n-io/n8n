@@ -8,9 +8,13 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
+		// Manual Trigger -> `Error` Code node (disabled) -> `Code`. Toggling the `Error`
+		// node decides whether a run fails, so no test here depends on the network.
+		const FAILING_WORKFLOW = 'Test_workflow_4_executions_view.json';
+		const FAILING_WORKFLOW_TRIGGER = "On clicking 'execute'";
+
 		// Constants to avoid magic strings
 		const URLS = {
-			FAILING: 'https://foo.bar',
 			SUCCESS: 'https://postman-echo.com/get?foo1=bar1&foo2=bar2',
 		};
 
@@ -23,12 +27,11 @@ test.describe(
 
 		test.beforeEach(async ({ n8n }) => {
 			await n8n.api.enableFeature('debugInEditor');
-			await n8n.goHome();
 		});
 
 		// Helper function to create basic workflow
-		async function createBasicWorkflow(n8n: n8nPage, url = URLS.FAILING) {
-			await n8n.navigate.toWorkflow('new');
+		async function createBasicWorkflow(n8n: n8nPage, url: string) {
+			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('HTTP Request');
 			await n8n.ndv.fillParameterInput('URL', url);
@@ -36,34 +39,57 @@ test.describe(
 			await n8n.ndv.close();
 		}
 
-		// Helper function to import execution for debugging
-		async function importExecutionForDebugging(n8n: n8nPage) {
+		// Helper function to import the last failed execution for debugging
+		async function importLastExecutionForDebugging(n8n: n8nPage) {
 			await n8n.canvas.clickExecutionsTab();
+			// Select the execution explicitly - the view only auto-selects one if the list
+			// is already populated when its first fetch resolves, and never retries.
+			await expect(n8n.executions.getFailedExecutionItems().first()).toBeVisible();
+			await n8n.executions.clickLastExecutionItem();
 			await n8n.executions.clickDebugInEditorButton();
-			await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.EXECUTION_IMPORTED);
+			// Wait on the navigation itself rather than asserting on the URL later: the
+			// import pins the trigger's data, and the autosave that follows ~1.5s after
+			// routes straight back out of /debug.
+			await n8n.page.waitForURL(/\/debug/);
+			// The route change lands before the import fetches the execution, so give the
+			// toast the same headroom the runs get: CI runs one n8n instance for as many
+			// workers as there are cores.
+			await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.EXECUTION_IMPORTED, {
+				timeout: 10_000,
+			});
 		}
 
 		test('should enter debug mode for failed executions', async ({ n8n }) => {
-			await createBasicWorkflow(n8n, URLS.FAILING);
-			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
-				NOTIFICATIONS.PROBLEM_IN_NODE,
-			);
-			await importExecutionForDebugging(n8n);
-			expect(n8n.page.url()).toContain('/debug');
-		});
+			await n8n.start.fromImportedWorkflow(FAILING_WORKFLOW);
+			await n8n.canvas.toggleNodeEnabled('Error');
+			await expect(n8n.canvas.disabledNodes()).toHaveCount(0);
 
-		test('should exit debug mode after successful execution', async ({ n8n }) => {
-			await createBasicWorkflow(n8n, URLS.FAILING);
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				NOTIFICATIONS.PROBLEM_IN_NODE,
 				{ timeout: 10_000 },
 			);
-			await importExecutionForDebugging(n8n);
+			await importLastExecutionForDebugging(n8n);
+			// The execution's data is now pinned onto the editor's canvas. Asserted on the
+			// badge rather than a one-shot read of every pinned name: the autosave that
+			// follows the import re-renders the canvas, so a snapshot taken mid-render can
+			// miss the node that was just pinned.
+			await expect(n8n.canvas.getNodePinnedStatusIndicator(FAILING_WORKFLOW_TRIGGER)).toBeVisible();
+		});
 
-			await n8n.canvas.openNode('HTTP Request');
-			await n8n.ndv.fillParameterInput('URL', URLS.SUCCESS);
+		test('should exit debug mode after successful execution', async ({ n8n }) => {
+			await n8n.start.fromImportedWorkflow(FAILING_WORKFLOW);
+			await n8n.canvas.toggleNodeEnabled('Error');
+			await expect(n8n.canvas.disabledNodes()).toHaveCount(0);
+
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				NOTIFICATIONS.PROBLEM_IN_NODE,
+				{ timeout: 10_000 },
+			);
+			await importLastExecutionForDebugging(n8n);
+
+			// Disable the failing node again so the next run succeeds
+			await n8n.canvas.toggleNodeEnabled('Error');
 			await n8n.canvas.waitForSaveWorkflowCompleted();
-			await n8n.ndv.close();
 
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL, {
 				timeout: 10_000,
@@ -73,10 +99,15 @@ test.describe(
 
 		test('should handle pinned data conflicts during execution import', async ({ n8n }) => {
 			await createBasicWorkflow(n8n, URLS.SUCCESS);
-			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL);
+			// Generous timeouts: these runs wait on a real request to an external host
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL, {
+				timeout: 10_000,
+			});
 			await n8n.canvasComposer.pinNodeData('HTTP Request');
 
-			await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL, {
+				timeout: 10_000,
+			});
 
 			// Go to executions and try to copy execution to editor
 			await n8n.canvas.clickExecutionsTab();

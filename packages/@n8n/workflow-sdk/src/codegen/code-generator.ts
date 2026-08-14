@@ -1446,6 +1446,29 @@ export function generateCode(
 		}
 	}
 
+	// Emit node group definitions. Members are referenced by node variable (the declared
+	// `const`), so a workflow → code → build round-trip preserves groups.
+	if (json.nodeGroups && json.nodeGroups.length > 0) {
+		const idToNodeName = new Map<string, string>();
+		for (const node of json.nodes) {
+			if (node.name !== undefined) idToNodeName.set(node.id, node.name);
+		}
+		for (const group of json.nodeGroups) {
+			const memberVars = group.nodeIds.flatMap((id) => {
+				const nodeName = idToNodeName.get(id);
+				return nodeName !== undefined ? [getVarName(nodeName, ctx)] : [];
+			});
+
+			const options = group.description
+				? `, { description: '${escapeString(group.description)}' }`
+				: '';
+
+			workflowCalls.push(
+				`  .group('${escapeString(group.name)}', [${memberVars.join(', ')}]${options})`,
+			);
+		}
+	}
+
 	// Add workflow calls and return statement
 	lines.push('');
 

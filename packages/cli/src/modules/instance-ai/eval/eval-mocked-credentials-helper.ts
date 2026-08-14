@@ -31,6 +31,10 @@ export const EVAL_PROVIDER_URL_FIELD: Record<string, { field: string; pathPrefix
 	openAiApi: { field: 'url', pathPrefix: '/v1' },
 };
 
+function getCredentialId(nodeCredentials: INodeCredentialsDetails): string | undefined {
+	return nodeCredentials.id ? nodeCredentials.id : undefined;
+}
+
 /** CredentialsHelper proxy for eval: tolerates missing credentials and (optionally) rewrites vendor URLs to the wire server. */
 export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 	readonly mockedCredentials: InstanceAiEvalMockedCredential[] = [];
@@ -38,8 +42,8 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 
 	constructor(
 		private readonly inner: ICredentialsHelper,
-		private readonly serverUrl?: string,
-		private readonly logger?: Logger,
+		private readonly serverUrl: string | undefined,
+		private readonly logger: Logger,
 		private readonly subNodeToRoot?: ReadonlyMap<string, string>,
 	) {
 		super();
@@ -104,6 +108,21 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		// Id-less refs make the inner helper throw UnexpectedError (not CredentialNotFoundError),
+		// which the catch below won't handle — synthesize a mock here instead of delegating.
+		if (!nodeCredentials.id) {
+			this.mockedCredentials.push({
+				nodeName: executeData?.node?.name ?? 'unknown',
+				credentialType: type,
+				credentialId: undefined,
+			});
+			const synthesized = {
+				...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
+				[MOCK_MARKER]: true,
+			} as ICredentialDataDecryptedObject;
+			return this.applyServerUrlRewrite(synthesized, type, nodeCredentials, executeData);
+		}
+
 		let credentials: ICredentialDataDecryptedObject;
 		try {
 			credentials = await this.inner.getDecrypted(
@@ -118,28 +137,13 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		} catch (error) {
 			if (!(error instanceof CredentialNotFoundError)) throw error;
 
+			// id present but absent from the DB — a bare marker stub is enough; URL rewrite still runs below.
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
 				credentialType: type,
-				credentialId: nodeCredentials.id ?? undefined,
+				credentialId: getCredentialId(nodeCredentials),
 			});
-
-			// When called with no credential id (eval-mode bypass for nodes
-			// with no credentials of any type configured), schema-synthesize
-			// so the wire-server URL rewrite below has a real `url` field to
-			// augment. Otherwise vendor SDK traffic would escape to the real
-			// provider with placeholder values and 401 at the wire layer.
-			// `buildEvalMockCredentials` is typed `Record<string, unknown>` —
-			// schema defaults can be richer than `CredentialInformation`, but
-			// at runtime emits only JSON-shaped values, which is what the
-			// rewrite path consumes.
-			credentials =
-				nodeCredentials.id === null
-					? ({
-							...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
-							[MOCK_MARKER]: true,
-						} as ICredentialDataDecryptedObject)
-					: { [MOCK_MARKER]: true };
+			credentials = { [MOCK_MARKER]: true };
 		}
 
 		return this.applyServerUrlRewrite(credentials, type, nodeCredentials, executeData);
@@ -156,7 +160,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		if (!mapping) {
 			// No rewrite mapping — vendor SDK will hit its default URL. Refused upfront
 			// by assertUnpinCompatibility for LLM sub-nodes; this branch is for non-LLM HTTP creds.
-			this.logger?.warn(
+			this.logger.warn(
 				`[EvalMock] No URL rewrite mapping for credential type "${type}" — ` +
 					`vendor traffic from "${executeData?.node?.name ?? 'unknown'}" will hit the real provider.`,
 			);
@@ -170,7 +174,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		if (subNodeName && !rootName && this.subNodeToRoot) {
 			// Sub-node not in routing map — unexpected topology; wire server's
 			// unrouted-/v1 handler will surface this loudly too.
-			this.logger?.warn(
+			this.logger.warn(
 				`[EvalMock] No vendor LLM routing entry for sub-node "${subNodeName}" — ` +
 					'wire-server attribution will be unrouted. Check buildVendorLlmRouting coverage.',
 			);
@@ -179,7 +183,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		this.rewrittenCredentials.push({
 			nodeName: subNodeName ?? 'unknown',
 			credentialType: type,
-			credentialId: nodeCredentials.id ?? undefined,
+			credentialId: getCredentialId(nodeCredentials),
 			field,
 		});
 
@@ -214,5 +218,9 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 
 	getCredentialsProperties(type: string): INodeProperties[] {
 		return this.inner.getCredentialsProperties(type);
+	}
+
+	isCredentialUsableByNode(credentialType: string, nodeType: string): boolean {
+		return this.inner.isCredentialUsableByNode(credentialType, nodeType);
 	}
 }

@@ -82,7 +82,11 @@ export async function execute(
 			((this.getNodeParameter('options.params', index, {}) as IDataObject)
 				.values as ExecuteOpBindParam[]) || [];
 		if (parameterIDataObjectList.length) {
-			const { updatedQuery, bindParameters } = getBindParameters(query, parameterIDataObjectList);
+			const { updatedQuery, bindParameters } = getBindParameters(
+				query,
+				parameterIDataObjectList,
+				nodeOptions,
+			);
 			query = updatedQuery;
 			values = bindParameters;
 		}

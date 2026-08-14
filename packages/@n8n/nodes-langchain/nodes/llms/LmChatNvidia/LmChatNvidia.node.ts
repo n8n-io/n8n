@@ -16,12 +16,18 @@ import {
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
-const NEMOTRON_FALLBACK_MODELS = [
-	'nvidia/llama-3.3-nemotron-super-49b-v1',
-	'nvidia/llama-3.1-nemotron-70b-instruct',
+// Allow-list of supported Nemotron chat models. The selector fetches the live
+// catalog from the API and reduces it to these ids; if the fetch fails, this
+// same list is shown as the static fallback.
+const NEMOTRON_SUPPORTED_MODELS = [
 	'nvidia/llama-3.1-nemotron-nano-8b-v1',
-	'nvidia/nemotron-4-340b-instruct',
-	'nvidia/nemotron-mini-4b-instruct',
+	'nvidia/llama-3.3-nemotron-super-49b-v1',
+	'nvidia/llama-3.3-nemotron-super-49b-v1.5',
+	'nvidia/nemotron-3-nano-30b-a3b',
+	'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
+	'nvidia/nemotron-3-super-120b-a12b',
+	'nvidia/nemotron-nano-12b-v2-vl',
+	'nvidia/nvidia-nemotron-nano-9b-v2',
 ];
 
 export class LmChatNvidia implements INodeType {
@@ -103,7 +109,7 @@ export class LmChatNvidia implements INodeType {
 									{
 										type: 'filter',
 										properties: {
-											pass: '={{ /nemotron/i.test($responseItem.id) }}',
+											pass: `={{ ${JSON.stringify(NEMOTRON_SUPPORTED_MODELS)}.includes($responseItem.id) }}`,
 										},
 									},
 									{
@@ -131,7 +137,7 @@ export class LmChatNvidia implements INodeType {
 					},
 				},
 				default: 'nvidia/llama-3.3-nemotron-super-49b-v1',
-				options: NEMOTRON_FALLBACK_MODELS.map((id) => ({ name: id, value: id })),
+				options: NEMOTRON_SUPPORTED_MODELS.map((id) => ({ name: id, value: id })),
 			},
 			{
 				displayName: 'Options',

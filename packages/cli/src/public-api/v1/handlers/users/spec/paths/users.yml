@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getUsers
+  x-required-scope: user:list
   x-eov-operation-handler: v1/handlers/users/users.handler.ee
   tags:
     - User
@@ -29,6 +30,7 @@ get:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 post:
   x-eov-operation-id: createUser
+  x-required-scope: user:create
   x-eov-operation-handler: v1/handlers/users/users.handler.ee
   tags:
     - User

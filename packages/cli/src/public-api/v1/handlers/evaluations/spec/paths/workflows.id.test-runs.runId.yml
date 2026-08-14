@@ -1,0 +1,24 @@
+get:
+  x-eov-operation-id: getTestRun
+  x-required-scope: testRun:read
+  x-eov-operation-handler: v1/handlers/evaluations/evaluations.handler
+  tags:
+    - Evaluation
+  summary: Retrieve a test run
+  description: Retrieve a single evaluation test run of a workflow, including its aggregated metrics and final result.
+  parameters:
+    - $ref: '../schemas/parameters/testRunWorkflowId.yml'
+    - $ref: '../schemas/parameters/testRunId.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/testRunSummary.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

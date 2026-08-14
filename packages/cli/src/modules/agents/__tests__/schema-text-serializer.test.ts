@@ -1,4 +1,6 @@
+import { McpServerConfigSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
 
@@ -307,6 +309,24 @@ describe('nested objects', () => {
 // ---------------------------------------------------------------------------
 
 describe('union types', () => {
+	it('renders scalar anyOf unions inline instead of a discriminated object block', () => {
+		const output = field('authentication', {
+			anyOf: [
+				{
+					type: 'string',
+					enum: ['none', 'bearerAuth', 'headerAuth', 'multipleHeadersAuth', 'mcpOAuth2Api'],
+				},
+				{ type: 'string', pattern: 'McpOAuth2Api$' },
+			],
+			default: 'none',
+		});
+
+		expect(output).toBe(
+			'  authentication?: "none" | "bearerAuth" | "headerAuth" | "multipleHeadersAuth" | "mcpOAuth2Api" | string [pattern: McpOAuth2Api$] (default: "none")',
+		);
+		expect(output).not.toContain('one of <discriminated');
+	});
+
 	it('detects a discriminator field and labels branches by its const value', () => {
 		const output = field(
 			'action',
@@ -448,6 +468,25 @@ describe('union types', () => {
 		expect(output).toContain('discriminated by "kind"');
 		expect(output).toContain('kind = "start"');
 		expect(output).toContain('kind = "stop"');
+	});
+});
+
+describe('mcp server schema regression', () => {
+	it('renders authentication and discriminated unions with descriptions', () => {
+		const schema = zodToJsonSchema(McpServerConfigSchema) as JSONSchema7;
+		const output = jsonSchemaToCompactText(schema);
+
+		expect(output).toContain(
+			'authentication?: "none" | "bearerAuth" | "headerAuth" | "multipleHeadersAuth" | "mcpOAuth2Api" | string [pattern: McpOAuth2Api$] (default: "none")',
+		);
+		expect(output).toContain(
+			'toolFilter?: one of <discriminated by "mode"> — Restricts which tools are surfaced. Tools matched by original un-prefixed name',
+		);
+		expect(output).toContain(
+			'approval?: one of <discriminated by "mode"> — Human-in-the-loop approval. Absent = no approval required',
+		);
+		expect(output).not.toContain('authentication?: one of <discriminated by "type">');
+		expect(output).not.toContain('| ?: {  }');
 	});
 });
 

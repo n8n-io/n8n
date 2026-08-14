@@ -1,16 +1,6 @@
 import { AgentIntegrationSchema } from '../agent-integration.schema';
 
 describe('AgentIntegrationSchema', () => {
-	it('accepts a schedule integration', () => {
-		const result = AgentIntegrationSchema.safeParse({
-			type: 'schedule',
-			active: true,
-			cronExpression: '0 9 * * *',
-			wakeUpPrompt: 'Daily standup ping',
-		});
-		expect(result.success).toBe(true);
-	});
-
 	it('accepts a telegram integration with credential id', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'telegram',
@@ -28,23 +18,6 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects a schedule integration missing cronExpression', () => {
-		const result = AgentIntegrationSchema.safeParse({
-			type: 'schedule',
-			active: true,
-			wakeUpPrompt: 'hello',
-		});
-		expect(result.success).toBe(false);
-	});
-
-	it('rejects a chat integration with the reserved type "schedule"', () => {
-		const result = AgentIntegrationSchema.safeParse({
-			type: 'schedule',
-			credentialId: 'cred-123',
-		});
-		expect(result.success).toBe(false);
-	});
-
 	it('rejects Telegram private settings without allowed users', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'telegram',
@@ -54,23 +27,11 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('rejects a schedule integration with extra fields', () => {
+	it('rejects the removed schedule integration type', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'schedule',
 			active: true,
 			cronExpression: '0 9 * * *',
-			wakeUpPrompt: 'go',
-			extra: 'nope',
-		});
-		expect(result.success).toBe(false);
-	});
-
-	it('rejects an empty cronExpression', () => {
-		const result = AgentIntegrationSchema.safeParse({
-			type: 'schedule',
-			active: false,
-			cronExpression: '',
-			wakeUpPrompt: 'go',
 		});
 		expect(result.success).toBe(false);
 	});

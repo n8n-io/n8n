@@ -3,7 +3,7 @@ import type { Embeddings } from '@langchain/core/embeddings';
 import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weaviate';
 import { WeaviateStore } from '@langchain/weaviate';
 import {
-	ApplicationError,
+	UnexpectedError,
 	type IDataObject,
 	type INodeProperties,
 	type INodePropertyCollection,
@@ -41,7 +41,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		const baseCandidate = await ctor.fromExistingIndex(embeddings, args);
 
 		if (!(baseCandidate instanceof ExtendedWeaviateVectorStore)) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'Weaviate store factory did not return an ExtendedWeaviateVectorStore instance',
 			);
 		}
@@ -79,7 +79,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 			return content.map((doc) => {
 				const { score, ...metadata } = doc.metadata;
 				if (typeof score !== 'number') {
-					throw new ApplicationError(`Unexpected score type: ${typeof score}`);
+					throw new UnexpectedError(`Unexpected score type: ${typeof score}`);
 				}
 				return [
 					new Document({

@@ -3,10 +3,9 @@
  *
  * The protocol is injected into every sub-agent. If a future copy edit
  * accidentally tells sub-agents "ask the user to fill the form" instead of
- * letting browser-credential-setup do its discovery work, those sub-agents
- * will silently stop reaching for browser tools. These asserts pin the
- * surviving guardrails (we keep the secret-handling rule) without acquiring
- * new ones that suppress active discovery.
+ * using the dedicated credential setup flows, those sub-agents will silently
+ * stop preserving secret handling. These asserts pin the surviving guardrails
+ * without acquiring new ones that suppress active discovery.
  */
 
 import { SUB_AGENT_PROTOCOL, buildSubAgentPrompt } from '../sub-agent-factory';
@@ -15,14 +14,13 @@ describe('SUB_AGENT_PROTOCOL — browser-tool discovery preservation', () => {
 	it('keeps the secret-handling guardrail (route through credential setup, not chat)', () => {
 		expect(SUB_AGENT_PROTOCOL).toContain('Never ask the user to paste passwords');
 		expect(SUB_AGENT_PROTOCOL).toContain(
-			'credential setup, browser credential setup, or existing credential selection',
+			'credential setup or Computer Use browser credential capture',
 		);
 	});
 
 	it('does not blanket-instruct sub-agents to ask the user to fill the credential form', () => {
-		// The orchestrator routes credential setup through `browser-credential-setup`,
-		// which actively navigates and identifies where the values live. A protocol-level
-		// "ask the user to fill the form" instruction would short-circuit that discovery.
+		// A protocol-level "ask the user to fill the form" instruction would
+		// short-circuit credential setup and secret capture flows.
 		expect(SUB_AGENT_PROTOCOL).not.toMatch(/ask the user to fill (in )?the (credential )?form/i);
 		expect(SUB_AGENT_PROTOCOL).not.toMatch(/tell the user to enter (their )?credentials/i);
 	});
@@ -39,11 +37,11 @@ describe('SUB_AGENT_PROTOCOL — browser-tool discovery preservation', () => {
 describe('buildSubAgentPrompt', () => {
 	it('embeds the role and task instructions in the assembled prompt', () => {
 		const prompt = buildSubAgentPrompt(
-			'browser-credential-setup',
+			'credential-helper',
 			'Help the user set up a Slack credential.',
 		);
 
-		expect(prompt).toContain('browser-credential-setup');
+		expect(prompt).toContain('credential-helper');
 		expect(prompt).toContain('Help the user set up a Slack credential.');
 	});
 

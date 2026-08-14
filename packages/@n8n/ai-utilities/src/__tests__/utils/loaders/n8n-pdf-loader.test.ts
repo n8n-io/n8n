@@ -2,15 +2,15 @@ import { LoggerProxy } from 'n8n-workflow';
 
 import { N8nPdfLoader } from 'src/utils/loaders/n8n-pdf-loader';
 
-const mockGetText = jest.fn();
-const mockGetInfo = jest.fn();
-const mockDestroy = jest.fn();
-const mockConstructor = jest.fn();
-const mockLoggerDebug = jest.fn();
+const mockGetText = vi.fn();
+const mockGetInfo = vi.fn();
+const mockDestroy = vi.fn();
+const mockConstructor = vi.fn();
+const mockLoggerDebug = vi.fn();
 
-jest.mock('pdf-parse', () => ({
+vi.mock('pdf-parse', () => ({
 	__esModule: true,
-	PDFParse: jest.fn().mockImplementation((options: unknown) => {
+	PDFParse: vi.fn(function (options: unknown) {
 		mockConstructor(options);
 		return {
 			getText: mockGetText,
@@ -22,9 +22,9 @@ jest.mock('pdf-parse', () => ({
 
 LoggerProxy.init({
 	debug: mockLoggerDebug,
-	info: jest.fn(),
-	warn: jest.fn(),
-	error: jest.fn(),
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
 });
 
 function makeBlob(content = 'fake-pdf-bytes'): Blob {
@@ -223,6 +223,37 @@ describe('N8nPdfLoader', () => {
 		expect(docs[0].metadata).toMatchObject({
 			source: 'blob',
 			blobType: 'application/pdf',
+		});
+	});
+
+	// `pdf-parse` v2 is backed by pdfjs-dist, which references the `DOMMatrix`
+	// global. Node.js does not provide it, so the loader must polyfill it before
+	// parsing — otherwise pdfjs throws "DOMMatrix is not defined" on PDFs that
+	// exercise that code path.
+	describe('DOMMatrix polyfill', () => {
+		const hadDomMatrix = 'DOMMatrix' in globalThis;
+		const originalDomMatrix: unknown = Reflect.get(globalThis, 'DOMMatrix');
+
+		afterAll(() => {
+			if (hadDomMatrix) {
+				Reflect.set(globalThis, 'DOMMatrix', originalDomMatrix);
+			} else {
+				Reflect.deleteProperty(globalThis, 'DOMMatrix');
+			}
+		});
+
+		it('defines a usable DOMMatrix global before parsing when one is absent', async () => {
+			Reflect.deleteProperty(globalThis, 'DOMMatrix');
+			mockGetText.mockResolvedValue({
+				pages: [{ num: 1, text: 'page' }],
+				text: 'page',
+				total: 1,
+			});
+
+			const loader = new N8nPdfLoader(makeBlob());
+			await loader.load();
+
+			expect(typeof Reflect.get(globalThis, 'DOMMatrix')).toBe('function');
 		});
 	});
 });

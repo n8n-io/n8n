@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: unarchiveWorkflow
+  x-required-scope: workflow:delete
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow

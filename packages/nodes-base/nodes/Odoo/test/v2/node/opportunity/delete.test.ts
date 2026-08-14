@@ -1,13 +1,14 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { OdooV2 } from '../../../../v2/OdooV2.node';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import * as transport from '../../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../../v2/transport', () => ({
-	odooApiRequest: jest.fn(),
+vi.mock('../../../../v2/transport', () => ({
+	odooApiRequest: vi.fn(),
 }));
 
 const OPPORTUNITY_ID = 42;
@@ -20,15 +21,15 @@ describe('OdooV2 — opportunity:delete', () => {
 		node = new OdooV2(versionDescription);
 		exec = mock<IExecuteFunctions>();
 		exec.helpers = {
-			constructExecutionMetaData: jest.fn((data) => data),
-			returnJsonArray: jest.fn((data) =>
+			constructExecutionMetaData: vi.fn((data) => data),
+			returnJsonArray: vi.fn((data) =>
 				(Array.isArray(data) ? data : [data]).map((j) => ({ json: j })),
 			),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const setupParams = (overrides: Record<string, unknown> = {}) => {
@@ -46,7 +47,7 @@ describe('OdooV2 — opportunity:delete', () => {
 
 	it('deletes an opportunity and returns id + deleted flag', async () => {
 		setupParams();
-		(transport.odooApiRequest as jest.Mock).mockResolvedValue(true);
+		(transport.odooApiRequest as Mock).mockResolvedValue(true);
 
 		const result = await node.execute.call(exec);
 
@@ -59,7 +60,7 @@ describe('OdooV2 — opportunity:delete', () => {
 	it('returns error item and continues when continueOnFail is true', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(true);
-		(transport.odooApiRequest as jest.Mock).mockRejectedValue(new Error('Delete failed'));
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Delete failed'));
 
 		const result = await node.execute.call(exec);
 
@@ -69,7 +70,7 @@ describe('OdooV2 — opportunity:delete', () => {
 	it('rethrows the error when continueOnFail is false', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(false);
-		(transport.odooApiRequest as jest.Mock).mockRejectedValue(new Error('Delete failed'));
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Delete failed'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Delete failed');
 	});

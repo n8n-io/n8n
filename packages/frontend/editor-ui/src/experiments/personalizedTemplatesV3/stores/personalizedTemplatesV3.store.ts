@@ -1,8 +1,9 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { PERSONALIZED_TEMPLATES_V3, TELEMETRY_EVENTS, VIEWS } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/app/constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';
@@ -117,7 +118,7 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 
 		const variant = posthogStore.getVariant(PERSONALIZED_TEMPLATES_V3.name);
 		if (variant) {
-			telemetry.track(TELEMETRY_EVENTS.IS_PART_OF_EXPERIMENT, {
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT, {
 				name: PERSONALIZED_TEMPLATES_V3.name,
 				variant,
 			});

@@ -7,11 +7,12 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command';
-
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 
+import { BaseCommand } from '../base-command';
+
 import '../../zod-alias-support';
+import { EventService } from '@/events/event.service';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Export all workflows').optional(),
@@ -170,6 +171,16 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 				this.logger.info(fileContents);
 			}
 		}
+
+		const selector = flags.all ? 'all' : flags.id ? 'id' : 'projectId';
+
+		Container.get(EventService).emit('server-cli-export', {
+			selector,
+			published: flags.published ?? false,
+			separate: flags.separate ?? false,
+			backup: flags.backup ?? false,
+			workflowCount: workflowsToExport.length,
+		});
 	}
 
 	async catch(error: Error) {

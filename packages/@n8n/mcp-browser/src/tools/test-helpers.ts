@@ -35,44 +35,44 @@ export const TOOL_CONTEXT: ToolContext = { dir: '/test' };
 export function createMockAdapter() {
 	return {
 		// Session
-		launch: jest.fn().mockResolvedValue(undefined),
-		close: jest.fn().mockResolvedValue(undefined),
+		launch: vi.fn().mockResolvedValue(undefined),
+		close: vi.fn().mockResolvedValue(undefined),
 
 		// Tab management
-		newPage: jest.fn().mockResolvedValue({ id: 'page2', title: 'New Page', url: 'about:blank' }),
-		closePage: jest.fn().mockResolvedValue(undefined),
-		focusPage: jest.fn().mockResolvedValue(undefined),
-		listPages: jest
+		newPage: vi.fn().mockResolvedValue({ id: 'page2', title: 'New Page', url: 'about:blank' }),
+		closePage: vi.fn().mockResolvedValue(undefined),
+		focusPage: vi.fn().mockResolvedValue(undefined),
+		listPages: vi
 			.fn()
 			.mockResolvedValue([{ id: 'page1', title: 'Test Page', url: 'http://test.com' }]),
-		listTabs: jest
+		listTabs: vi
 			.fn()
 			.mockResolvedValue([{ id: 'page1', title: 'Test Page', url: 'http://test.com' }]),
-		listTabSessionIds: jest.fn().mockReturnValue(['page1']),
-		listTabIds: jest.fn().mockResolvedValue(['page1']),
+		listTabSessionIds: vi.fn().mockReturnValue(['page1']),
+		listTabIds: vi.fn().mockResolvedValue(['page1']),
 
 		// Navigation
-		navigate: jest
+		navigate: vi
 			.fn()
 			.mockResolvedValue({ title: 'Test Page', url: 'http://test.com', status: 200 }),
-		back: jest.fn().mockResolvedValue({ title: 'Previous', url: 'http://test.com/prev' }),
-		forward: jest.fn().mockResolvedValue({ title: 'Next', url: 'http://test.com/next' }),
-		reload: jest.fn().mockResolvedValue({ title: 'Reloaded', url: 'http://test.com' }),
+		back: vi.fn().mockResolvedValue({ title: 'Previous', url: 'http://test.com/prev' }),
+		forward: vi.fn().mockResolvedValue({ title: 'Next', url: 'http://test.com/next' }),
+		reload: vi.fn().mockResolvedValue({ title: 'Reloaded', url: 'http://test.com' }),
 
 		// Interaction
-		click: jest.fn().mockResolvedValue(undefined),
-		type: jest.fn().mockResolvedValue(undefined),
-		select: jest.fn().mockResolvedValue(['option1']),
-		hover: jest.fn().mockResolvedValue(undefined),
-		press: jest.fn().mockResolvedValue(undefined),
-		drag: jest.fn().mockResolvedValue(undefined),
-		scroll: jest.fn().mockResolvedValue(undefined),
-		upload: jest.fn().mockResolvedValue(undefined),
-		dialog: jest.fn().mockResolvedValue('alert'),
+		click: vi.fn().mockResolvedValue(undefined),
+		type: vi.fn().mockResolvedValue(undefined),
+		select: vi.fn().mockResolvedValue(['option1']),
+		hover: vi.fn().mockResolvedValue(undefined),
+		press: vi.fn().mockResolvedValue(undefined),
+		drag: vi.fn().mockResolvedValue(undefined),
+		scroll: vi.fn().mockResolvedValue(undefined),
+		upload: vi.fn().mockResolvedValue(undefined),
+		dialog: vi.fn().mockResolvedValue('alert'),
 
 		// Inspection
-		snapshot: jest.fn().mockResolvedValue({ tree: '', refCount: 0 }),
-		probePageHtml: jest.fn().mockResolvedValue({
+		snapshot: vi.fn().mockResolvedValue({ tree: '', refCount: 0 }),
+		probePageHtml: vi.fn().mockResolvedValue({
 			ok: true,
 			root: {
 				kind: 'document',
@@ -82,38 +82,38 @@ export function createMockAdapter() {
 				errors: [],
 			},
 		}),
-		screenshot: jest.fn().mockResolvedValue('base64imagedata'),
-		getContent: jest.fn().mockResolvedValue({
+		screenshot: vi.fn().mockResolvedValue('base64imagedata'),
+		getContent: vi.fn().mockResolvedValue({
 			html: '<html><body><p>Hello world</p></body></html>',
 			url: 'http://test.com',
 		}),
-		evaluate: jest.fn().mockResolvedValue(42),
-		getConsole: jest.fn().mockResolvedValue([]),
-		pdf: jest.fn().mockResolvedValue({ data: 'base64pdf', pages: 1 }),
-		getNetwork: jest.fn().mockResolvedValue([]),
-		getText: jest.fn().mockResolvedValue('Hello'),
+		evaluate: vi.fn().mockResolvedValue(42),
+		getConsole: vi.fn().mockResolvedValue([]),
+		pdf: vi.fn().mockResolvedValue({ data: 'base64pdf', pages: 1 }),
+		getNetwork: vi.fn().mockResolvedValue([]),
+		getText: vi.fn().mockResolvedValue('Hello'),
 
 		// Wait
-		wait: jest.fn().mockResolvedValue(100),
+		wait: vi.fn().mockResolvedValue(100),
 
 		// State
-		getCookies: jest.fn().mockResolvedValue([]),
-		setCookies: jest.fn().mockResolvedValue(undefined),
-		clearCookies: jest.fn().mockResolvedValue(undefined),
-		getStorage: jest.fn().mockResolvedValue({}),
-		setStorage: jest.fn().mockResolvedValue(undefined),
-		clearStorage: jest.fn().mockResolvedValue(undefined),
+		getCookies: vi.fn().mockResolvedValue([]),
+		setCookies: vi.fn().mockResolvedValue(undefined),
+		clearCookies: vi.fn().mockResolvedValue(undefined),
+		getStorage: vi.fn().mockResolvedValue({}),
+		setStorage: vi.fn().mockResolvedValue(undefined),
+		clearStorage: vi.fn().mockResolvedValue(undefined),
 
 		// Credential helpers
-		getElementValue: jest.fn().mockResolvedValue(''),
+		getElementValue: vi.fn().mockResolvedValue(''),
 
 		// URL lookup
-		getPageUrl: jest.fn().mockReturnValue('http://test.com'),
+		getPageUrl: vi.fn().mockReturnValue('http://test.com'),
 
 		// Enrichment
-		getModalStates: jest.fn().mockReturnValue([]),
-		getConsoleSummary: jest.fn().mockReturnValue({ errors: 0, warnings: 0 }),
-		waitForCompletion: jest
+		getModalStates: vi.fn().mockReturnValue([]),
+		getConsoleSummary: vi.fn().mockReturnValue({ errors: 0, warnings: 0 }),
+		waitForCompletion: vi
 			.fn()
 			.mockImplementation(async (_pageId: string, fn: () => Promise<unknown>) => await fn()),
 	};
@@ -135,12 +135,12 @@ export function createMockConnection(adapter?: MockAdapter) {
 	};
 
 	const connection = {
-		getConnection: jest.fn().mockReturnValue(state),
-		connect: jest.fn().mockResolvedValue({
+		getConnection: vi.fn().mockReturnValue(state),
+		connect: vi.fn().mockResolvedValue({
 			browser: 'chrome',
 			pages: [{ id: 'page1', title: 'Test Page', url: 'http://test.com' }],
 		}),
-		disconnect: jest.fn().mockResolvedValue(undefined),
+		disconnect: vi.fn().mockResolvedValue(undefined),
 		isConnected: true,
 	} as unknown as BrowserConnection;
 

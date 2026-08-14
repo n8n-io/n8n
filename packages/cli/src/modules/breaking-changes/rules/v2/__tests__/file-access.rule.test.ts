@@ -6,7 +6,7 @@ describe('FileAccessRule', () => {
 	let rule: FileAccessRule;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		rule = new FileAccessRule();
 	});
 

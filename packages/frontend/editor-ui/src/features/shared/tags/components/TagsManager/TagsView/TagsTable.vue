@@ -221,6 +221,7 @@ onMounted(() => {
 					</div>
 					<div v-else-if="!scope.row.disable" :class="[$style.ops, $style.main]">
 						<N8nIconButton
+							v-if="scope.row.canUpdate"
 							:title="i18n.baseText('tagsTable.editTag')"
 							icon="pen"
 							data-test-id="edit-tag-button"

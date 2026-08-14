@@ -40,7 +40,7 @@ n8n community nodes are distributed as pre-built npm packages. Unlike regular np
   "name": "n8n-nodes-example",
   "scripts": {
     "build": "tsc",
-    "test": "jest"
+    "test": "vitest run"
   }
 }
 ```

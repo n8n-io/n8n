@@ -2,7 +2,7 @@ import type { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -19,7 +19,7 @@ describe('WorkflowHistoryController', () => {
 	const mockUser = mock<User>({ id: 'user123' });
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getVersionsByIds', () => {

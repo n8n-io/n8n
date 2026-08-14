@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import {
@@ -12,23 +12,24 @@ import {
 } from '../../../v2/methods/listSearch';
 import * as transport from '../../../v2/transport';
 import * as utils from '../../../v2/helpers/utils';
+import type { Mocked } from 'vitest';
 
-jest.mock('../../../v2/transport');
-jest.mock('../../../v2/helpers/utils');
+vi.mock('../../../v2/transport');
+vi.mock('../../../v2/helpers/utils');
 
-const mockTransport = transport as jest.Mocked<typeof transport>;
-const mockUtils = utils as jest.Mocked<typeof utils>;
+const mockTransport = transport as Mocked<typeof transport>;
+const mockUtils = utils as Mocked<typeof utils>;
 
 describe('MicrosoftOutlookV2 - listSearch methods', () => {
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('searchContacts', () => {
@@ -48,6 +49,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/contacts',
+				0,
 				undefined,
 				{
 					$select: 'id,displayName',
@@ -75,6 +77,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/contacts',
+				0,
 				undefined,
 				{
 					$select: 'id,displayName',
@@ -101,6 +104,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'',
+				0,
 				undefined,
 				undefined,
 				paginationToken,
@@ -124,6 +128,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/calendars',
+				0,
 				undefined,
 				{
 					$select: 'id,name',
@@ -160,6 +165,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/messages',
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview,webLink',
@@ -198,6 +204,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/messages',
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview,webLink',
@@ -247,6 +254,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/messages',
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview,webLink',
@@ -284,6 +292,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/messages',
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview,webLink',
@@ -326,6 +335,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				`/calendars/${calendarId}/events`,
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview',
@@ -364,6 +374,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				`/calendars/${calendarId}/events`,
+				0,
 				undefined,
 				{
 					$select: 'id,subject,bodyPreview',
@@ -400,12 +411,13 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'/mailFolders',
+				0,
 				undefined,
 				{
 					$top: 100,
 				},
 			);
-			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse.value, true);
+			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse.value, 0, true);
 			expect(result).toEqual({
 				results: [
 					{
@@ -505,6 +517,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				`/messages/${messageId}/attachments`,
+				0,
 				undefined,
 				{
 					$select: 'id,name',
@@ -536,6 +549,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
 				'',
+				0,
 				undefined,
 				undefined,
 				paginationToken,

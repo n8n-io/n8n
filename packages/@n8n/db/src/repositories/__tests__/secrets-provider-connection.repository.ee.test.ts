@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import random from 'lodash/random';
+import { mock } from 'vitest-mock-extended';
 
 import { SecretsProviderConnection } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -24,7 +24,7 @@ describe('SecretsProviderConnectionRepository', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('findAll', () => {

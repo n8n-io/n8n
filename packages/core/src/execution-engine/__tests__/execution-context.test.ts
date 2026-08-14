@@ -187,7 +187,7 @@ describe('establishExecutionContext', () => {
 			const context = runExecutionData.executionData!.runtimeData;
 
 			// Verify context has only basic properties (no start-node-specific extraction)
-			expect(Object.keys(context!)).toEqual(['version', 'establishedAt', 'source', 'redaction']);
+			expect(Object.keys(context!)).toEqual(['version', 'establishedAt', 'source']);
 			expect(typeof context!.version).toBe('number');
 			expect(typeof context!.establishedAt).toBe('number');
 			expect(context!.source).toBe('manual');
@@ -244,13 +244,7 @@ describe('establishExecutionContext', () => {
 			const context = runExecutionData.executionData!.runtimeData;
 
 			// Verify context has only expected properties
-			expect(Object.keys(context!)).toEqual([
-				'version',
-				'establishedAt',
-				'source',
-				'redaction',
-				'triggerNode',
-			]);
+			expect(Object.keys(context!)).toEqual(['version', 'establishedAt', 'source', 'triggerNode']);
 			expect(typeof context!.version).toBe('number');
 			expect(typeof context!.establishedAt).toBe('number');
 			expect(context!.source).toBe('manual');
@@ -736,6 +730,98 @@ describe('establishExecutionContext', () => {
 		});
 	});
 
+	describe('sub-workflow re-runs global context hooks against the inherited context', () => {
+		let mockExecutionContextService: ReturnType<typeof mock<ExecutionContextService>>;
+
+		const buildSubWorkflowRunData = (withStartItem = true) =>
+			createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: withStartItem
+						? [
+								{
+									node: mock<INode>({
+										name: 'Execute Workflow Trigger',
+										type: 'n8n-nodes-base.executeWorkflowTrigger',
+									}),
+									data: { main: [[{ json: { fromParent: true } }]] },
+									source: null,
+								},
+							]
+						: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+				parentExecution: {
+					executionId: 'parent-execution-id',
+					workflowId: 'parent-workflow-id',
+					executionContext: {
+						version: 1,
+						establishedAt: 1000,
+						source: 'manual',
+						redaction: { version: 2, production: false, manual: false },
+					},
+				},
+			});
+
+		beforeEach(() => {
+			mockExecutionContextService = mock<ExecutionContextService>();
+			Container.set(ExecutionContextService, mockExecutionContextService);
+		});
+
+		afterEach(() => {
+			Container.reset();
+		});
+
+		it('passes the inherited context to augmentSubExecutionContext and assigns its result', async () => {
+			const runExecutionData = buildSubWorkflowRunData();
+			const rederived: IExecutionContext = {
+				version: 1,
+				establishedAt: 2000,
+				source: 'integrated',
+				parentExecutionId: 'parent-execution-id',
+				redaction: { version: 2, production: true, manual: true, source: 'workflow' },
+			};
+			mockExecutionContextService.augmentSubExecutionContext.mockResolvedValue(rederived);
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'integrated',
+			);
+
+			expect(mockExecutionContextService.augmentSubExecutionContext).toHaveBeenCalledWith(
+				mockWorkflow,
+				runExecutionData.executionData!.nodeExecutionStack[0],
+				expect.objectContaining({
+					parentExecutionId: 'parent-execution-id',
+					redaction: { version: 2, production: false, manual: false },
+				}),
+			);
+			expect(runExecutionData.executionData!.runtimeData).toBe(rederived);
+		});
+
+		it('skips augmentation when the child sub-execution has no start item', async () => {
+			const runExecutionData = buildSubWorkflowRunData(false);
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'integrated',
+			);
+
+			expect(mockExecutionContextService.augmentSubExecutionContext).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.parentExecutionId).toBe(
+				'parent-execution-id',
+			);
+		});
+	});
+
 	describe('error workflow context inheritance', () => {
 		it('should inherit context from start item metadata', async () => {
 			const parentContext: IExecutionContext = {
@@ -1043,143 +1129,8 @@ describe('establishExecutionContext', () => {
 		});
 	});
 
-	describe('redaction policy capture', () => {
-		it('should default redaction policy to none when workflow has no setting', async () => {
-			const workflowWithoutRedaction = mock<Workflow>({
-				id: 'test-workflow-id',
-				settings: { redactionPolicy: undefined },
-			});
-			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
-			const runExecutionData = createRunExecutionData({
-				startData: {},
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [{ node: startNode, data: { main: [[{ json: {} }]] }, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			});
-
-			await establishExecutionContext(
-				workflowWithoutRedaction,
-				runExecutionData,
-				mockAdditionalData,
-				mockMode,
-			);
-
-			const context = runExecutionData.executionData!.runtimeData!;
-			expect(context.redaction).toEqual({ version: 1, policy: 'none' });
-		});
-
-		it('should capture redaction policy "all" from workflow settings', async () => {
-			const workflowWithRedaction = mock<Workflow>({
-				id: 'test-workflow-id',
-				settings: { redactionPolicy: 'all' },
-			});
-			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
-			const runExecutionData = createRunExecutionData({
-				startData: {},
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [{ node: startNode, data: { main: [[{ json: {} }]] }, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			});
-
-			await establishExecutionContext(
-				workflowWithRedaction,
-				runExecutionData,
-				mockAdditionalData,
-				mockMode,
-			);
-
-			const context = runExecutionData.executionData!.runtimeData!;
-			expect(context.redaction).toEqual({ version: 1, policy: 'all' });
-		});
-
-		it('should capture redaction policy "non-manual" from workflow settings', async () => {
-			const workflowWithRedaction = mock<Workflow>({
-				id: 'test-workflow-id',
-				settings: { redactionPolicy: 'non-manual' },
-			});
-			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
-			const runExecutionData = createRunExecutionData({
-				startData: {},
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [{ node: startNode, data: { main: [[{ json: {} }]] }, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			});
-
-			await establishExecutionContext(
-				workflowWithRedaction,
-				runExecutionData,
-				mockAdditionalData,
-				mockMode,
-			);
-
-			const context = runExecutionData.executionData!.runtimeData!;
-			expect(context.redaction).toEqual({ version: 1, policy: 'non-manual' });
-		});
-
-		it('should use child workflow redaction policy over parent in sub-workflows', async () => {
-			const parentContext: IExecutionContext = {
-				version: 1,
-				establishedAt: 1000000000,
-				source: 'manual',
-				credentials: 'parent-credentials',
-				redaction: { version: 1, policy: 'all' },
-			};
-
-			const childWorkflow = mock<Workflow>({
-				id: 'child-workflow-id',
-				settings: { redactionPolicy: 'non-manual' },
-			});
-
-			const parentExecution: RelatedExecution = {
-				executionId: 'parent-execution-id',
-				workflowId: 'parent-workflow-id',
-				executionContext: parentContext,
-			};
-
-			const runExecutionData = createRunExecutionData({
-				startData: {},
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-				parentExecution,
-			});
-
-			await establishExecutionContext(
-				childWorkflow,
-				runExecutionData,
-				mockAdditionalData,
-				'trigger',
-			);
-
-			const context = runExecutionData.executionData!.runtimeData!;
-
-			// Child workflow's redaction policy should take precedence
-			expect(context.redaction).toEqual({ version: 1, policy: 'non-manual' });
-			// But parent credentials should still be inherited
-			expect(context.credentials).toBe('parent-credentials');
-		});
-
-		it('should preserve existing redaction setting on webhook resume', async () => {
+	describe('redaction policy on resume', () => {
+		it('should preserve an existing V1 redaction setting on webhook resume', async () => {
 			const existingContext: IExecutionContext = {
 				version: 1,
 				establishedAt: 1234567890,
@@ -1202,10 +1153,39 @@ describe('establishExecutionContext', () => {
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'manual');
 
-			// Context should remain unchanged
 			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
 				version: 1,
 				policy: 'all',
+			});
+		});
+
+		it('should preserve an existing V2 redaction setting on webhook resume', async () => {
+			const existingContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1234567890,
+				source: 'webhook',
+				redaction: { version: 2, production: true, manual: false },
+			};
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					runtimeData: existingContext,
+				},
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'manual');
+
+			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
+				version: 2,
+				production: true,
+				manual: false,
 			});
 		});
 	});
@@ -1285,29 +1265,24 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
 		});
 
-		it('should NOT inject credentials for webhook mode even when ciphertext is present', async () => {
-			const runExecutionData = buildRunDataWithManualTrigger();
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				encryptedRunnerIdentity: 'encrypted-credential-blob',
-			});
+		// The identity channel is not manual-only: identity-bearing triggers (Form, MCP)
+		// run in webhook/trigger mode and must resolve the submitter's credentials too.
+		it.each(['webhook', 'trigger'] as const)(
+			'should inject credentials for %s mode when ciphertext is present',
+			async (mode) => {
+				const runExecutionData = buildRunDataWithManualTrigger();
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					encryptedRunnerIdentity: 'encrypted-credential-blob',
+				});
 
-			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'webhook');
+				await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, mode);
 
-			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
-			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
-		});
-
-		it('should NOT inject credentials for trigger mode even when ciphertext is present', async () => {
-			const runExecutionData = buildRunDataWithManualTrigger();
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				encryptedRunnerIdentity: 'encrypted-credential-blob',
-			});
-
-			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'trigger');
-
-			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
-			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
-		});
+				expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+				expect(runExecutionData.executionData!.runtimeData!.credentials).toBe(
+					'encrypted-credential-blob',
+				);
+			},
+		);
 
 		it('should not overwrite existing runtimeData when it is already established', async () => {
 			const runExecutionData = buildRunDataWithManualTrigger();

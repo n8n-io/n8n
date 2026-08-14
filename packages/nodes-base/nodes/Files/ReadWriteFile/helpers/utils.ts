@@ -35,8 +35,8 @@ export function errorMapper(
 }
 
 export function escapeSpecialCharacters(str: string) {
-	// Escape parentheses
-	str = str.replace(/[()]/g, '\\$&');
+	// Escape parentheses and square brackets (glob metacharacters)
+	str = str.replace(/[()[\]]/g, '\\$&');
 
 	return str;
 }

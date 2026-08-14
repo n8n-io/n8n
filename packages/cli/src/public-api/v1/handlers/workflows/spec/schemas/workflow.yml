@@ -17,6 +17,12 @@ properties:
     type: string
     description: Description of the workflow
     example: My workflow description
+  parentFolderId:
+    type: string
+    nullable: true
+    writeOnly: true
+    description: ID of the folder to move the workflow into. Pass null to move it to the project root; omit to leave its current folder unchanged.
+    example: X8ovzm8lTQjcXRZQ
   active:
     type: boolean
     readOnly: true
@@ -46,6 +52,11 @@ properties:
   connections:
     type: object
     example: { Jira: { main: [[{ node: 'Jira', type: 'main', index: 0 }]] } }
+  nodeGroups:
+    type: array
+    description: Visual groupings of nodes shown as frames on the canvas
+    items:
+      $ref: './workflowNodeGroup.yml'
   settings:
     $ref: './workflowSettings.yml'
   staticData:

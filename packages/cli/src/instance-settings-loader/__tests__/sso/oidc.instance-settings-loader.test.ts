@@ -1,13 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { SettingsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { OidcInstanceSettingsLoader } from '../../loaders/sso/oidc.instance-settings-loader';
 
 describe('OidcInstanceSettingsLoader', () => {
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const settingsRepository = mock<SettingsRepository>();
 	const cipher = mock<Cipher>();
 
@@ -18,6 +18,8 @@ describe('OidcInstanceSettingsLoader', () => {
 		oidcLoginEnabled: false,
 		oidcPrompt: 'select_account',
 		oidcAcrValues: '',
+		oidcAdditionalScopes: '',
+		oidcRpInitiatedLogoutEnabled: false,
 	};
 
 	const validConfig: Partial<InstanceSettingsLoaderConfig> = {
@@ -37,7 +39,7 @@ describe('OidcInstanceSettingsLoader', () => {
 		JSON.parse((settingsRepository.upsert.mock.calls[0][0] as { value: string }).value);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnThis();
 		cipher.encryptV2.mockImplementation(async (v: string) => `encrypted:${v}`);
 	});
@@ -81,6 +83,20 @@ describe('OidcInstanceSettingsLoader', () => {
 
 			const parsed = getUpsertedValue();
 			expect(parsed.authenticationContextClassReference).toEqual(['mfa', 'phrh']);
+		});
+
+		it('should persist additionalScopes and rpInitiatedLogoutEnabled', async () => {
+			const loader = createLoader({
+				...validConfig,
+				oidcAdditionalScopes: 'offline_access',
+				oidcRpInitiatedLogoutEnabled: true,
+			});
+
+			await loader.apply();
+
+			const parsed = getUpsertedValue();
+			expect(parsed.additionalScopes).toBe('offline_access');
+			expect(parsed.rpInitiatedLogoutEnabled).toBe(true);
 		});
 	});
 

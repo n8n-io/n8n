@@ -71,7 +71,7 @@ describe('passwordSchema with N8N_PASSWORD_MIN_LENGTH', () => {
 
 	const importFreshSchema = async () => {
 		vi.resetModules();
-		return await import('../password.schema');
+		return await import('../password.schema.js');
 	};
 
 	test('should use custom min length from env var', async () => {

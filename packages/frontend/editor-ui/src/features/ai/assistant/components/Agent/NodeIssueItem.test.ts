@@ -8,6 +8,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 vi.mock('@/app/components/NodeIcon.vue', () => ({
 	default: {
@@ -28,7 +30,9 @@ describe('NodeIssueItem', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
-		ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = useWorkflowsStore();
+		workflowsStore.setWorkflowId('test-workflow-id');
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 		ndvStore.setActiveNodeName = vi.fn();
 	});
 

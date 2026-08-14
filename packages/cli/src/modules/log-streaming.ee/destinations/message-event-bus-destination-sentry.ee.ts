@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 import * as Sentry from '@sentry/node';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {

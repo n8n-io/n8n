@@ -1,4 +1,4 @@
-import type { CronContext, Workflow } from 'n8n-workflow';
+import type { Workflow } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -23,17 +23,17 @@ describe('getSchedulingFunctions', () => {
 	});
 
 	describe('registerCron', () => {
-		it('should invoke scheduledTaskManager.registerCron', () => {
-			const ctx: CronContext = {
-				nodeId: 'test-node-id',
+		it('should invoke scheduledTaskManager.register', () => {
+			const ctx = {
+				group: { type: 'workflow', id: 'test-workflow' },
+				targetId: 'test-node-id',
 				expression: cronExpression,
-				workflowId: 'test-workflow',
 				timezone: 'Europe/Berlin',
 			};
 
 			schedulingFunctions.registerCron({ expression: cronExpression }, onTick);
 
-			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(ctx, onTick);
+			expect(scheduledTaskManager.register).toHaveBeenCalledWith(ctx, onTick);
 		});
 
 		it('should forward the scheduledT Date to the user-provided onTick', () => {
@@ -41,9 +41,9 @@ describe('getSchedulingFunctions', () => {
 			schedulingFunctions.registerCron({ expression: cronExpression }, userOnTick);
 
 			// Capture the onTick that getSchedulingFunctions passed down to
-			// scheduledTaskManager.registerCron, then invoke it with a Date to
+			// scheduledTaskManager.register, then invoke it with a Date to
 			// confirm the Date flows through unchanged.
-			const forwardedOnTick = (scheduledTaskManager.registerCron as Mock).mock.calls.at(-1)![1];
+			const forwardedOnTick = (scheduledTaskManager.register as Mock).mock.calls.at(-1)![1];
 			const scheduledT = new Date('2024-01-01T00:01:00.000Z');
 			forwardedOnTick(scheduledT);
 

@@ -2,13 +2,13 @@ import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import nock from 'nock';
 
-import { createUserShell } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils/';
-
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/interfaces';
 import { License } from '@/license';
+
+import { createUserShell } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 let owner: User;
 let member: User;
@@ -71,7 +71,7 @@ describe('POST /license/activate', () => {
 	});
 
 	test('errors out properly', async () => {
-		License.prototype.activate = jest.fn().mockImplementation(() => {
+		License.prototype.activate = vi.fn().mockImplementation(() => {
 			throw new Error('some fake error');
 		});
 
@@ -95,8 +95,8 @@ describe('POST /license/renew', () => {
 	});
 
 	test('errors out properly', async () => {
-		License.prototype.getPlanName = jest.fn().mockReturnValue('Enterprise');
-		License.prototype.renew = jest.fn().mockImplementation(() => {
+		License.prototype.getPlanName = vi.fn().mockReturnValue('Enterprise');
+		License.prototype.renew = vi.fn().mockImplementation(() => {
 			throw new Error(GENERIC_ERROR_MESSAGE);
 		});
 

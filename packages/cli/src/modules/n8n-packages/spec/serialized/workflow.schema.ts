@@ -4,15 +4,18 @@ import { z } from 'zod';
 // validate the envelope and treat `parameters` as opaque — schema-validating
 // parameters per node type would be impossibly maintenance-heavy.
 const credentialReferenceSchema = z.object({
-	id: z.string(),
+	id: z.string().nullable(),
 	name: z.string(),
+	__aiGatewayManaged: z.boolean().optional(),
 });
 
 const nodeSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	type: z.string().min(1),
-	typeVersion: z.number(),
+	// `finite()`: JSON like `1e999` parses to Infinity, which would serialize to
+	// `null` in a missing-node-type issue and break the OpenAPI number contract.
+	typeVersion: z.number().finite(),
 	position: z.tuple([z.number(), z.number()]),
 	parameters: z.record(z.unknown()),
 	credentials: z.record(credentialReferenceSchema).optional(),
@@ -46,8 +49,9 @@ export const serializedWorkflowSchema = z.object({
 	settings: z.record(z.unknown()).optional(),
 	versionId: z.string(),
 	parentFolderId: z.string().nullable(),
-	active: z.boolean(),
+	isPublished: z.boolean(),
 	isArchived: z.boolean(),
+	tagIds: z.array(z.string().min(1)).optional(),
 });
 
 export type SerializedWorkflow = z.infer<typeof serializedWorkflowSchema>;

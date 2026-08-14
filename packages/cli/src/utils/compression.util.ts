@@ -1,3 +1,5 @@
+import { safeJoinPath } from '@n8n/backend-common';
+import * as fflate from 'fflate';
 import { createWriteStream, mkdirSync } from 'fs';
 import type { FileHandle } from 'fs/promises';
 import { open, readFile, readdir, mkdir } from 'fs/promises';
@@ -5,8 +7,6 @@ import * as path from 'path';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { createInflateRaw } from 'zlib';
-import { safeJoinPath } from '@n8n/backend-common';
-import * as fflate from 'fflate';
 
 // Reuse the same compression levels as the Compression node
 const ALREADY_COMPRESSED = [

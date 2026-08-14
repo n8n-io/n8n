@@ -24,6 +24,7 @@ import { objectRetriever, sqlite } from '../utils/transformers';
 
 @Entity()
 export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
+	// TODO: Add XSS check
 	@Index({ unique: true })
 	@Length(1, 128, {
 		message: 'Workflow name must be $constraint1 to $constraint2 characters long.',
@@ -128,9 +129,8 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	testRuns: TestRun[];
 
 	/**
-	 * Workflow id from the source package when this workflow was imported.
-	 * Null for workflows created directly. Used by import to detect re-imports
-	 * of the same source workflow on the target instance.
+	 * Optional lineage id used by package import to match re-imports when it
+	 * differs from this workflow's local id.
 	 */
 	@Index()
 	@Column({ type: 'varchar', nullable: true })

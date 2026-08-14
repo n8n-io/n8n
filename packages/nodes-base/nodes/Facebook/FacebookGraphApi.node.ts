@@ -488,8 +488,9 @@ export class FacebookGraphApi implements INodeType {
 					response = await this.helpers.request(requestOptions);
 				}
 			} catch (error) {
+				const apiError = new NodeApiError(this.getNode(), error as JsonObject);
 				if (!this.continueOnFail()) {
-					throw new NodeApiError(this.getNode(), error as JsonObject);
+					throw apiError;
 				}
 
 				let errorItem;
@@ -507,23 +508,36 @@ export class FacebookGraphApi implements INodeType {
 					// Unknown Graph API response, we'll dump everything in the response item
 					errorItem = error;
 				}
-				returnItems.push({ json: { ...errorItem } });
+				// Attach the error and pairedItem so the engine can route this item to
+				// the error output when "Continue (using error output)" is selected.
+				returnItems.push({
+					json: { ...errorItem },
+					error: apiError,
+					pairedItem: { item: itemIndex },
+				});
 
 				continue;
 			}
 
 			if (typeof response === 'string') {
+				const invalidJsonError = new NodeOperationError(
+					this.getNode(),
+					'Response body is not valid JSON.',
+					{ itemIndex },
+				);
 				if (!this.continueOnFail()) {
-					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.', {
-						itemIndex,
-					});
+					throw invalidJsonError;
 				}
 
-				returnItems.push({ json: { message: response } });
+				returnItems.push({
+					json: { message: response },
+					error: invalidJsonError,
+					pairedItem: { item: itemIndex },
+				});
 				continue;
 			}
 
-			returnItems.push({ json: response });
+			returnItems.push({ json: response, pairedItem: { item: itemIndex } });
 		}
 
 		return [returnItems];

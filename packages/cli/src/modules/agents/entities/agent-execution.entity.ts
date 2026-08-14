@@ -1,10 +1,15 @@
-import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
+import {
+	DateTimeColumn,
+	JsonColumn,
+	type ExecutionDataStorageLocation,
+	WithTimestampsAndStringId,
+} from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import { AgentExecutionThread } from './agent-execution-thread.entity';
-import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
+import type { TimelineEvent } from '../execution-recorder';
 
-export type AgentExecutionStatus = 'success' | 'error';
+export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
 /**
@@ -20,12 +25,16 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
  */
 @Entity({ name: 'agent_execution' })
 @Index(['threadId', 'createdAt'])
+@Index(['status'], { where: '"status" = \'running\'' })
 export class AgentExecution extends WithTimestampsAndStringId {
 	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
 	thread: AgentExecutionThread;
 
-	@Column({ type: 'varchar', length: 36 })
+	// Thread ids are scoped with prefixes/user ids on some surfaces (e.g.
+	// `test-<agentId>:<userId>`), so they exceed a bare uuid — widened to 128 in
+	// AddSubAgentLinkageToAgentExecutionThreads1784000000022.
+	@Column({ type: 'varchar', length: 128 })
 	threadId: string;
 
 	@Column({ type: 'varchar', length: 16 })
@@ -41,15 +50,18 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'int', default: 0 })
 	duration: number;
 
-	/**
-	 * Cleaned user input. Empty for resumed runs (HITL continuations) where
-	 * the user input belongs to an earlier suspended run in the same thread.
-	 */
-	@Column({ type: 'text' })
-	userMessage: string;
+	/** Cleaned user input. Null for resumed runs where the input belongs to an earlier run. */
+	@Column({ type: 'text', nullable: true })
+	userMessage: string | null;
 
-	@Column({ type: 'text' })
-	assistantResponse: string;
+	/** Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService. */
+	@JsonColumn({ nullable: true })
+	attachments: Array<{
+		id: string;
+		fileName: string;
+		mimeType: string;
+		sizeBytes: number;
+	}> | null;
 
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	model: string | null;
@@ -67,9 +79,6 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	cost: number | null;
 
 	@JsonColumn({ nullable: true })
-	toolCalls: RecordedToolCall[] | null;
-
-	@JsonColumn({ nullable: true })
 	timeline: TimelineEvent[] | null;
 
 	@Column({ type: 'text', nullable: true })
@@ -81,4 +90,8 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	/** Where the run originated, e.g. 'chat', 'slack'. */
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	source: string | null;
+
+	/** Where the timeline payload is stored: 'db' (inline column), 'fs', 's3', or 'az'. */
+	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
+	storedAt: ExecutionDataStorageLocation;
 }

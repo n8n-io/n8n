@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getWorkflowVersion
+  x-required-scope: workflow:read
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow

@@ -1,3 +1,4 @@
+import type { AgentsPushMessage } from './agents';
 import type { BuilderCreditsPushMessage } from './builder-credits';
 import type { ChatHubPushMessage } from './chat-hub';
 import type { CollaborationPushMessage } from './collaboration';
@@ -8,8 +9,10 @@ import type { InstanceAiPushMessage } from './instance-ai';
 import type { WebhookPushMessage } from './webhook';
 import type { WorkerPushMessage } from './worker';
 import type { WorkflowPushMessage } from './workflow';
+import type { WorkflowReviewPushMessage } from './workflow-review';
 
 export type PushMessage =
+	| AgentsPushMessage
 	| ExecutionPushMessage
 	| WorkflowPushMessage
 	| HotReloadPushMessage
@@ -19,7 +22,8 @@ export type PushMessage =
 	| DebugPushMessage
 	| BuilderCreditsPushMessage
 	| ChatHubPushMessage
-	| InstanceAiPushMessage;
+	| InstanceAiPushMessage
+	| WorkflowReviewPushMessage;
 
 export type PushType = PushMessage['type'];
 

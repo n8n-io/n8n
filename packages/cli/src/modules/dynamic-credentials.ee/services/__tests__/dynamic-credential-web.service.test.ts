@@ -1,20 +1,23 @@
-import { mock } from 'jest-mock-extended';
 import type { Request } from 'express';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
 import type { AuthService } from '@/auth/auth.service';
+
 import { DynamicCredentialWebService } from '../dynamic-credential-web.service';
 
 describe('DynamicCredentialWebService', () => {
 	let service: DynamicCredentialWebService;
-	let mockAuthService: jest.Mocked<AuthService>;
+	let mockAuthService: Mocked<AuthService>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockAuthService = mock<AuthService>({
-			getCookieToken: jest.fn(),
-			getBrowserId: jest.fn(),
-			getMethod: jest.fn(),
-			getEndpoint: jest.fn(),
+			getCookieToken: vi.fn(),
+			getBrowserId: vi.fn(),
+			getMethod: vi.fn(),
+			getEndpoint: vi.fn(),
 		});
 
 		service = new DynamicCredentialWebService(mockAuthService);

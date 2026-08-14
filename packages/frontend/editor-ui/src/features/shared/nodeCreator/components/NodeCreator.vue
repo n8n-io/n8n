@@ -14,7 +14,7 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';
@@ -43,7 +43,7 @@ const bannersStore = useBannersStore();
 const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
 
-const { setActions, setMergeNodes } = useNodeCreatorStore();
+const { setActions, setMergeNodes, consumePendingInitialViewStack } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
 
 const state = reactive({
@@ -125,6 +125,7 @@ watch(
 	(isActive) => {
 		if (!isActive) {
 			resetViewStacks();
+			consumePendingInitialViewStack();
 		}
 	},
 );

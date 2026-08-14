@@ -22,8 +22,11 @@ export function createCopyFileTool(filesystem: WorkspaceFilesystem): BuiltTool {
 				success: z.boolean().describe('Whether the copy was successful'),
 			}),
 		)
-		.handler(async (input) => {
-			await filesystem.copyFile(input.src, input.dest, { overwrite: input.overwrite });
+		.handler(async (input, ctx) => {
+			await filesystem.copyFile(input.src, input.dest, {
+				overwrite: input.overwrite,
+				abortSignal: ctx.abortSignal,
+			});
 			return { success: true };
 		})
 		.build();

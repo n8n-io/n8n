@@ -6,27 +6,71 @@ import {
 	serializedWorkflowSchema,
 	type SerializedWorkflow,
 } from '../../spec/serialized/workflow.schema';
+import { definePackageSerializationPayload } from '../package-serialization.types';
+import { compareTagsByName } from '../tag/tag.types';
 
-/** Fields restored from package workflow.json; the target instance assigns the rest. */
+type WorkflowPackageKeyHandling = {
+	id: 'copy';
+	createdAt: 'exclude';
+	updatedAt: 'exclude';
+	name: 'copy';
+	description: 'exclude';
+	active: 'exclude';
+	isArchived: 'copy';
+	nodes: 'copy';
+	connections: 'copy';
+	settings: 'copy';
+	staticData: 'exclude';
+	meta: 'exclude';
+	nodeGroups: 'exclude';
+	tags: 'transform';
+	tagMappings: 'exclude';
+	shared: 'exclude';
+	pinData: 'exclude';
+	versionId: 'copy';
+	activeVersionId: 'transform';
+	activeVersion: 'exclude';
+	versionCounter: 'exclude';
+	triggerCount: 'exclude';
+	parentFolder: 'transform';
+	testRuns: 'exclude';
+	sourceWorkflowId: 'exclude';
+};
+
 type WorkflowPackageContent = Pick<
 	WorkflowEntity,
 	'name' | 'nodes' | 'connections' | 'isArchived' | 'settings'
 >;
 
+const serializePayload = definePackageSerializationPayload<
+	WorkflowEntity,
+	SerializedWorkflow,
+	WorkflowPackageKeyHandling
+>();
+
 @Service()
 export class WorkflowSerializer {
-	serialize(workflow: WorkflowEntity): SerializedWorkflow {
-		return serializedWorkflowSchema.parse({
-			id: workflow.id,
-			name: workflow.name,
-			nodes: workflow.nodes,
-			connections: workflow.connections,
-			settings: workflow.settings,
-			versionId: workflow.versionId,
-			parentFolderId: workflow.parentFolder?.id ?? null,
-			active: workflow.activeVersionId === workflow.versionId,
-			isArchived: workflow.isArchived,
-		});
+	serialize(workflow: WorkflowEntity, options: { includeTags: boolean }): SerializedWorkflow {
+		// Emitted even when empty: on import, a present `tagIds` (incl. `[]`) overwrites
+		// taggings to exactly that set, while an absent key leaves them untouched.
+		const tags = options.includeTags
+			? [...(workflow.tags ?? [])].sort(compareTagsByName)
+			: undefined;
+
+		return serializedWorkflowSchema.parse(
+			serializePayload({
+				id: workflow.id,
+				name: workflow.name,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				settings: workflow.settings ? { ...workflow.settings } : undefined,
+				versionId: workflow.versionId,
+				parentFolderId: workflow.parentFolder?.id ?? null,
+				isPublished: workflow.activeVersionId === workflow.versionId,
+				isArchived: workflow.isArchived,
+				...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
+			}),
+		);
 	}
 
 	/**
@@ -34,7 +78,7 @@ export class WorkflowSerializer {
 	 * the target instance.
 	 *
 	 * We drop anything the target owns — its id, versionId, where it lives,
-	 * whether it's active, timestamps — so the caller can set those fresh.
+	 * whether it's published, timestamps — so the caller can set those fresh.
 	 * The content of the workflow comes along, and we keep whichever
 	 * archived state the source had it in.
 	 */

@@ -1,18 +1,11 @@
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity } from '@n8n/db';
-import {
-	CredentialsRepository,
-	In,
-	ProjectRelationRepository,
-	SharedCredentials,
-	SharedCredentialsRepository,
-} from '@n8n/db';
+import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { hasGlobalScope } from '@n8n/permissions';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -20,10 +13,6 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { UserManagementMailer } from '@/user-management/email';
-import * as utils from '@/utils';
 
 import { toPublicApiCredentialResponse } from './credentials.mapper';
 import {
@@ -48,7 +37,6 @@ import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	apiKeyHasScopeWithGlobalScopeFallback,
-	isLicensed,
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
@@ -61,7 +49,6 @@ type CredentialsHandlers = {
 	createCredential: PublicAPIEndpoint<CredentialRequest.Create>;
 	updateCredential: PublicAPIEndpoint<CredentialRequest.Update>;
 	transferCredential: PublicAPIEndpoint<CredentialRequest.Transfer>;
-	shareCredential: PublicAPIEndpoint<CredentialRequest.Share>;
 	deleteCredential: PublicAPIEndpoint<CredentialRequest.Delete>;
 	getCredentialType: PublicAPIEndpoint<CredentialTypeRequest.Get>;
 };
@@ -81,6 +68,7 @@ const credentialsHandlers: CredentialsHandlers = {
 				select: ['id', 'name', 'type', 'createdAt', 'updatedAt'],
 				relations: ['shared', 'shared.project'],
 				order: { createdAt: 'DESC' },
+				where: { usageScope: 'project' },
 			});
 
 			const data = credentials.map((credential: CredentialsEntity) => {
@@ -174,6 +162,24 @@ const credentialsHandlers: CredentialsHandlers = {
 				}
 			}
 
+			if (
+				req.body.isResolvable !== undefined &&
+				req.body.isResolvable !== Boolean(existingCredential.isResolvable)
+			) {
+				const ownerSharing = existingCredential.shared?.find(
+					(sharing) => sharing.role === 'credential:owner',
+				);
+				if (req.body.isResolvable) {
+					Container.get(CredentialsService).ensureEndUserCredentialAllowedInProject(
+						ownerSharing?.project,
+					);
+				}
+				await Container.get(CredentialsService).ensureCanManageEndUserCredential(
+					req.user,
+					ownerSharing?.projectId,
+				);
+			}
+
 			try {
 				const updatedCredential = await updateCredential(existingCredential, req.user, req.body);
 
@@ -202,102 +208,6 @@ const credentialsHandlers: CredentialsHandlers = {
 			return res.status(204).send();
 		},
 	],
-	shareCredential: [
-		isLicensed('feat:sharing'),
-		projectScope('credential:read', 'credential'),
-		async (req, res) => {
-			const { id: credentialId } = req.params;
-			const { shareWithIds } = z.object({ shareWithIds: z.array(z.string()) }).parse(req.body);
-
-			const credential = await Container.get(CredentialsFinderService).findCredentialForUser(
-				credentialId,
-				req.user,
-				['credential:read'],
-			);
-			if (!credential) {
-				throw new NotFoundError('Credential not found');
-			}
-
-			const currentProjectIds = credential.shared
-				.filter((sc) => sc.role === 'credential:user')
-				.map((sc) => sc.projectId);
-
-			const toShare = utils.rightDiff([currentProjectIds, (id) => id], [shareWithIds, (id) => id]);
-			const toUnshare = utils.rightDiff(
-				[shareWithIds, (id) => id],
-				[currentProjectIds, (id) => id],
-			);
-
-			const apiKeyScopes = req.tokenGrant?.apiKeyScopes ?? [];
-
-			if (toShare.length > 0) {
-				if (!apiKeyScopes.includes('credential:share')) {
-					throw new ForbiddenError();
-				}
-				const canShare = await userHasScopes(req.user, ['credential:share'], false, {
-					credentialId,
-				});
-				if (!canShare) {
-					throw new ForbiddenError();
-				}
-			}
-
-			if (toUnshare.length > 0) {
-				if (!apiKeyScopes.includes('credential:unshare')) {
-					throw new ForbiddenError();
-				}
-				const canUnshare = await userHasScopes(req.user, ['credential:unshare'], false, {
-					credentialId,
-				});
-				if (!canUnshare) {
-					throw new ForbiddenError();
-				}
-			}
-
-			const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
-			let amountRemoved: number | null = null;
-			await sharedCredentialsRepository.manager.transaction(async (trx) => {
-				if (toUnshare.length > 0) {
-					const deleteResult = await trx.delete(SharedCredentials, {
-						credentialsId: credentialId,
-						projectId: In(toUnshare),
-					});
-					if (deleteResult.affected) {
-						amountRemoved = deleteResult.affected;
-					}
-				}
-				await Container.get(EnterpriseCredentialsService).shareWithProjects(
-					req.user,
-					credential.id,
-					toShare,
-					trx,
-				);
-			});
-
-			Container.get(EventService).emit('credentials-shared', {
-				user: req.user,
-				credentialType: credential.type,
-				credentialId: credential.id,
-				userIdSharer: req.user.id,
-				userIdsShareesAdded: toShare,
-				shareesRemoved: amountRemoved,
-			});
-
-			if (toShare.length > 0) {
-				const projectsRelations = await Container.get(ProjectRelationRepository).findBy({
-					projectId: In(toShare),
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-				});
-				await Container.get(UserManagementMailer).notifyCredentialsShared({
-					sharer: req.user,
-					newShareeIds: projectsRelations.map((pr) => pr.userId),
-					credentialsName: credential.name,
-				});
-			}
-
-			return res.status(204).send();
-		},
-	],
 	deleteCredential: [
 		publicApiScope('credential:delete'),
 		projectScope('credential:delete', 'credential'),
@@ -305,7 +215,7 @@ const credentialsHandlers: CredentialsHandlers = {
 			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
-			if (!['global:owner', 'global:admin'].includes(req.user.role.slug)) {
+			if (!hasGlobalScope(req.user, ['credential:read'])) {
 				const shared = await getSharedCredentials(req.user.id, credentialId);
 
 				if (shared?.role === 'credential:owner') {
@@ -317,6 +227,16 @@ const credentialsHandlers: CredentialsHandlers = {
 
 			if (!credential) {
 				throw new NotFoundError('Not Found');
+			}
+
+			if (credential.isResolvable) {
+				const owningProject = await Container.get(
+					SharedCredentialsRepository,
+				).findCredentialOwningProject(credentialId);
+				await Container.get(CredentialsService).ensureCanManageEndUserCredential(
+					req.user,
+					owningProject?.id,
+				);
 			}
 
 			await removeCredential(req.user, credential);

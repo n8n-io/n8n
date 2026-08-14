@@ -1,8 +1,10 @@
 import { Perplexity } from '../../Perplexity/Perplexity.node';
 import { description } from '../descriptions/chat/complete.operation';
+import type * as _importType0 from '../../Perplexity/GenericFunctions';
 
-jest.mock('../../Perplexity/GenericFunctions', () => ({
-	getAgentModels: jest.fn(),
+vi.mock('../../Perplexity/GenericFunctions', async () => ({
+	...(await vi.importActual<typeof _importType0>('../../Perplexity/GenericFunctions')),
+	getAgentModels: vi.fn(),
 }));
 
 describe('Perplexity Node', () => {

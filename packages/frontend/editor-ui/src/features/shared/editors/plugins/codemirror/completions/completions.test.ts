@@ -14,11 +14,12 @@ import {
 import { mockProxy } from './__tests__/mock';
 import type { CompletionSource, CompletionResult } from '@codemirror/autocomplete';
 import { CompletionContext } from '@codemirror/autocomplete';
+import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import { n8nLang } from '@/features/shared/editors/plugins/codemirror/n8nLang';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import {
@@ -44,11 +45,19 @@ export async function completions(docWithCursor: string, explicit = false) {
 
 	const doc = docWithCursor.slice(0, cursorPosition) + docWithCursor.slice(cursorPosition + 1);
 
-	const state = EditorState.create({
+	const initialState = EditorState.create({
 		doc,
 		selection: { anchor: cursorPosition },
 		extensions: [n8nLang(), WORKFLOW_DOCUMENT_FACET.of('test@latest')],
 	});
+
+	// `EditorState.create` only parses within a 20ms wall-clock budget, which a
+	// contended CI runner can starve, leaving a truncated tree with no language
+	// data so `languageDataAt` returns [] and completions silently come back
+	// empty. Fully parse and commit the tree into the language state field via
+	// an empty transaction so the lookup is deterministic regardless of load.
+	ensureSyntaxTree(initialState, initialState.doc.length, 1e9);
+	const state = initialState.update({}).state;
 
 	const context = new CompletionContext(state, cursorPosition, explicit);
 
@@ -399,7 +408,7 @@ describe('Resolution-based completions', () => {
 
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($input);
 
-			uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+			uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY] = { open: true };
 			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,
@@ -422,7 +431,7 @@ describe('Resolution-based completions', () => {
 
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($input);
 
-			uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+			uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY] = { open: true };
 			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,

@@ -1,7 +1,7 @@
 import merge from 'lodash/merge';
 import { type ChartOptions, type ScriptableContext } from 'chart.js';
 import { useCssVar } from '@vueuse/core';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 
 /**
  *

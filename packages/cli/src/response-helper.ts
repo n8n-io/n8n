@@ -1,10 +1,11 @@
 import { inDevelopment, Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
-import { ensureError, FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
@@ -92,8 +93,8 @@ export function sendErrorResponse(res: Response, error: Error) {
 	res.status(status).json(response);
 }
 
-export const isUniqueConstraintError = (error: Error) =>
-	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
+// Re-exported from `@n8n/db` so existing `@/response-helper` importers keep working.
+export { isUniqueConstraintError };
 
 export function reportError(error: Error, options?: ReportingOptions) {
 	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {

@@ -6,7 +6,9 @@ export type AgentConfigFingerprint = {
 	instructions: string;
 	tools: string[];
 	skills: string[];
+	tasks: string[];
 	triggers: string[];
+	vector_stores: string[];
 	memory: { enabled: boolean; storage: 'n8n' } | null;
 	model: string | null;
 	config_version: string;
@@ -42,6 +44,10 @@ export function skillIdentifiersFromConfig(config: AgentJsonConfig | null): stri
 		.sort();
 }
 
+export function taskIdentifiersFromConfig(config: AgentJsonConfig | null): string[] {
+	return Array.from(new Set((config?.tasks ?? []).map((ref) => ref.id).filter(Boolean))).sort();
+}
+
 export async function buildAgentConfigFingerprint(
 	config: AgentJsonConfig | null,
 	connectedTriggers: string[],
@@ -49,7 +55,11 @@ export async function buildAgentConfigFingerprint(
 	const instructions = config?.instructions ?? '';
 	const tools = toolIdentifiersFromConfig(config);
 	const skills = skillIdentifiersFromConfig(config);
+	const tasks = taskIdentifiersFromConfig(config);
 	const triggers = [...connectedTriggers].sort();
+	const vectorStores = (config?.vectorStores ?? [])
+		.map((store) => `${store.provider}:${store.name}`)
+		.sort();
 	const memory = config?.memory
 		? { enabled: config.memory.enabled, storage: config.memory.storage }
 		: null;
@@ -59,7 +69,9 @@ export async function buildAgentConfigFingerprint(
 		instructions,
 		tools,
 		skills,
+		tasks,
 		triggers,
+		vector_stores: vectorStores,
 		memory,
 		model,
 	});
@@ -69,7 +81,9 @@ export async function buildAgentConfigFingerprint(
 		instructions,
 		tools,
 		skills,
+		tasks,
 		triggers,
+		vector_stores: vectorStores,
 		memory,
 		model,
 		config_version: configVersion,

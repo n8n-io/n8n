@@ -14,6 +14,10 @@
 		{
 			"type": "trace.finalTextMatches",
 			"anyOf": ["extension|install|browser bridge|chrome"]
+		},
+		{
+			"type": "llm.taskCompleted",
+			"criteria": "This scenario tests whether the assistant is self-aware about its tool prerequisites — specifically that browser actions require the n8n AI Browser Bridge extension to be installed in the user's Chrome. The system prompt is supposed to convey this; the test fails until it does. PASS only when the assistant proactively informs the user that the n8n AI Browser Bridge extension must be installed (or that they need to set up Computer Use / browser tooling) before any browser action can take place. The mention should be specific enough that a user could act on it (e.g. names the extension, points to the install flow, or links to Computer Use setup). FAIL when the assistant simply offers to navigate / open GitHub as if browser tools are automatically available, addresses only the login-credentials concern (2FA, passwords) without mentioning the extension prerequisite, or talks generically about 'browsers' without naming the prerequisite. Note: in eval environments the extension IS in fact installed, so the test cannot be validated by environmental failure — judge purely on whether the assistant's text shows awareness of the prerequisite."
 		}
 	],
 	"tags": ["meta", "regression", "requires:no-browser-extension"]

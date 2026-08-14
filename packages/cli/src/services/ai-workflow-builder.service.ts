@@ -1,13 +1,17 @@
-import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
-import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
+import {
+	AiWorkflowBuilderService,
+	createPassthroughSsrfGuard,
+	ChatPayload,
+} from '@n8n/ai-workflow-builder';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
 import { InstanceSettings } from 'n8n-core';
-import * as path from 'path';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -15,6 +19,7 @@ import type {
 	IUser,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
+import * as path from 'path';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
@@ -24,6 +29,7 @@ import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { getBase } from '@/workflow-execute-additional-data';
 
 /**
@@ -49,6 +55,9 @@ export class WorkflowBuilderService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly sessionRepository: WorkflowBuilderSessionRepository,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		// Register a post-processor to update node types when they change.
 		// This ensures newly installed/updated/uninstalled community packages are recognized
@@ -148,6 +157,18 @@ export class WorkflowBuilderService {
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 
+		// web_fetch SSRF protection is gated on the global configuration.
+		const webFetchSsrfGuard = this.ssrfConfig.enabled
+			? this.ssrfProtectionService
+			: createPassthroughSsrfGuard();
+
+		// The destination is a fixed, trusted AI provider endpoint, never a user-
+		// or LLM-controlled URL, so SSRF stays disabled. (web_fetch, which does
+		// fetch arbitrary URLs, is guarded separately.) Sharing `createAiProxyFetch`
+		// also applies the long AI timeout so workflow generation is not cut off at
+		// undici's 5-minute default.
+		const modelFetch = createAiProxyFetch(this.outboundHttp);
+
 		this.service = new AiWorkflowBuilderService(
 			nodeTypeDescriptions,
 			this.sessionRepository,
@@ -160,6 +181,8 @@ export class WorkflowBuilderService {
 			onTelemetryEvent,
 			this.resolveBuiltinNodeDefinitionDirs(),
 			resourceLocatorCallbackFactory,
+			webFetchSsrfGuard,
+			modelFetch,
 		);
 
 		return this.service;
@@ -167,7 +190,7 @@ export class WorkflowBuilderService {
 
 	private resolveBuiltinNodeDefinitionDirs(): string[] {
 		const dirs: string[] = [];
-		for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
+		for (const packageId of BUILTIN_NODES_PACKAGES) {
 			try {
 				const packageJsonPath = require.resolve(`${packageId}/package.json`);
 				const distDir = path.dirname(packageJsonPath);
@@ -187,9 +210,9 @@ export class WorkflowBuilderService {
 		yield* service.chat(payload, user, abortSignal);
 	}
 
-	async getSessions(workflowId: string | undefined, user: IUser) {
+	async getSessions(workflowId: string | undefined, user: IUser, isCodeBuilder?: boolean) {
 		const service = await this.getService();
-		const sessions = await service.getSessions(workflowId, user);
+		const sessions = await service.getSessions(workflowId, user, isCodeBuilder);
 		return sessions;
 	}
 

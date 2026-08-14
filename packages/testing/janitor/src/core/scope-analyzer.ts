@@ -1,16 +1,14 @@
 /**
  * Filters CHANGED_FILES to a single package and detects config-file bailouts.
  * Output is a shell sentinel (SKIP / RUN_FULL / file list). The actual
- * import-graph walk is the runner's job (jest --findRelatedTests / vitest
- * related).
+ * import-graph walk is the runner's job (vitest related).
  */
 
 import { existsSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 
+import { matchesGlobalTrigger } from './global-triggers.js';
 import { toPosix } from './path-utils.js';
-
-export type Runner = 'jest' | 'vitest';
 
 // Bailout patterns are centralised here (vs the original DEVP-194 spec's
 // per-package `n8nTestChanged.inPackageBailouts` field) because the n8n
@@ -24,12 +22,6 @@ const COMMON_BAILOUT = [
 	/^\.swcrc$/,
 	/^babel\.config\.[cm]?[jt]s$/,
 ];
-const JEST_BAILOUT = [
-	...COMMON_BAILOUT,
-	/^jest\.config\.[cm]?[jt]s$/,
-	/(?:^|\/)(?:jest|test)\.setup\.[cm]?[jt]s$/,
-	/(?:^|\/)__tests__\/setup\.[cm]?[jt]s$/,
-];
 // Frontend packages use vite.config.* for the vitest config too (vitest reads
 // vite.config). Setup files live at src/__tests__/setup.ts per the shared
 // @n8n/vitest-config convention.
@@ -42,11 +34,19 @@ const VITEST_BAILOUT = [
 ];
 
 export interface ComputeScopeOptions {
-	runner: Runner;
 	packageDir: string;
 	rootDir: string;
 	/** `null` = no signal → RUN_FULL (local dev with unset env). */
 	changedFiles: string[] | null;
+	/** This package's name (from its package.json). Needed to check membership
+	 *  in `affectedPackages`. */
+	packageName?: string;
+	/** Packages affected by the change — the owner of each changed file plus its
+	 *  transitive dependents (from `affectedPackages()`). When this package has
+	 *  no in-package changes but appears here, an upstream workspace dependency
+	 *  changed and we must run the full suite (a scoped `vitest related` run
+	 *  can't see the cross-package change). `null`/undefined = no signal. */
+	affectedPackages?: string[] | null;
 }
 
 export type ScopeResult =
@@ -59,6 +59,16 @@ export function computeScope(options: ComputeScopeOptions): ScopeResult {
 		return { kind: 'full', reason: 'No CHANGED_FILES signal (local dev)' };
 	}
 
+	// Workspace-wide triggers (lockfile, root manifest, universal sinks like
+	// @n8n/db / workflow / core) force RUN_FULL regardless of which package we
+	// are scoping. The dep-graph in affected-packages lists the package as
+	// affected, but the in-package filter below would otherwise SKIP it because
+	// the trigger file lives outside the package — a silent false green.
+	const globalTrigger = options.changedFiles.find(matchesGlobalTrigger);
+	if (globalTrigger) {
+		return { kind: 'full', reason: 'Global trigger changed', trigger: globalTrigger };
+	}
+
 	const absolute = isAbsolute(options.packageDir)
 		? options.packageDir
 		: resolve(options.rootDir, options.packageDir);
@@ -69,9 +79,20 @@ export function computeScope(options: ComputeScopeOptions): ScopeResult {
 	const inPackage = options.changedFiles.filter(
 		(f) => f === pkgPrefix || f.startsWith(pkgPrefixSlash),
 	);
-	if (inPackage.length === 0) return { kind: 'skip', reason: 'No changed files in package' };
+	if (inPackage.length === 0) {
+		// No files changed inside this package, but the dep-graph flags it as
+		// affected → an upstream workspace dependency changed. `vitest related`
+		// on this package's own test files can't see that, so run the full suite.
+		if (options.packageName && options.affectedPackages?.includes(options.packageName)) {
+			return {
+				kind: 'full',
+				reason: 'Affected by an upstream workspace change (no in-package changes)',
+			};
+		}
+		return { kind: 'skip', reason: 'No changed files in package' };
+	}
 
-	const bailout = options.runner === 'jest' ? JEST_BAILOUT : VITEST_BAILOUT;
+	const bailout = VITEST_BAILOUT;
 	for (const file of inPackage) {
 		const relInPkg = file.slice(pkgPrefixSlash.length);
 		if (bailout.some((p) => p.test(relInPkg))) {

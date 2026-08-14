@@ -300,9 +300,26 @@ export async function execute(
 	const newColumns = new Set<string>();
 
 	const columnsToMatchOn: string[] =
-		nodeVersion < 4
-			? [this.getNodeParameter('columnToMatchOn', 0) as string]
-			: (this.getNodeParameter('columns.matchingColumns', 0) as string[]);
+		nodeVersion < 4 ? [this.getNodeParameter('columnToMatchOn', 0) as string] : [];
+	if (nodeVersion >= 4) {
+		// Use a fallback so the missing update key gets an operation-specific error.
+		const matchingColumns = this.getNodeParameter(
+			'columns.matchingColumns',
+			0,
+			[] as string[],
+		) as string[];
+		if (!Array.isArray(matchingColumns) || matchingColumns.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'`columns.matchingColumns` is required for the Update Row operation',
+				{
+					description:
+						'Set `columns.matchingColumns` to a non-empty `string[]` of header names that uniquely identify the row to update (e.g. `["id"]` or `["email"]`).',
+				},
+			);
+		}
+		columnsToMatchOn.push(...matchingColumns);
+	}
 
 	const dataMode =
 		nodeVersion < 4

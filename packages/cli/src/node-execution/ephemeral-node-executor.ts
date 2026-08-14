@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Tool } from '@langchain/core/tools';
+import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
 import { ExecuteContext, StructuredToolkit, SupplyDataContext } from 'n8n-core';
 import type {
 	CloseFunction,
@@ -11,6 +11,7 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	ITaskDataConnections,
+	IWorkflowExecuteAdditionalData,
 	NodeOutput,
 } from 'n8n-workflow';
 import {
@@ -19,14 +20,19 @@ import {
 	UserError,
 	AI_VENDOR_NODE_TYPES,
 	createEmptyRunExecutionData,
+	DATA_TABLE_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
-	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';
 import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
+
+import {
+	isUnsupportedEphemeralNodeOperation,
+	unsupportedEphemeralNodeOperationMessage,
+} from './node-tool-operation-support';
 
 /** Minimal tool shape for constructing an in-memory single-node execution. */
 export type EphemeralWorkflowToolLike = {
@@ -35,6 +41,10 @@ export type EphemeralWorkflowToolLike = {
 	nodeTypeVersion: number;
 	nodeParameters: INodeParameters;
 	credentials?: Record<string, INodeCredentialsDetails> | null;
+	/** Ephemeral node name override (defaults to 'Target Node'). */
+	nodeName?: string;
+	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
+	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 };
 
 export interface InlineNodeExecutionRequest {
@@ -49,6 +59,10 @@ export interface InlineNodeExecutionRequest {
 	credentialDetails?: Record<string, INodeCredentialsDetails>;
 	inputData: INodeExecutionData[];
 	projectId: string;
+	/** Ephemeral node name override (defaults to 'Target Node'). */
+	nodeName?: string;
+	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
+	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 }
 
 export interface NodeExecutionResult {
@@ -57,16 +71,40 @@ export interface NodeExecutionResult {
 	error?: string;
 }
 
-// send and wait requires persistent workflows to handle the wait logic
-const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
+/**
+ * Node types that must never run as an agent tool, regardless of RBAC —
+ * they grant command execution or arbitrary file-system access, which is a
+ * different trust tier than "call an API with a shared credential". This is
+ * a defense-in-depth backstop applied to every execution path (chat,
+ * published integrations, tasks, workflows), independent of the per-user
+ * access checks applied when building the tool list.
+ */
+export const AGENT_TOOL_NODE_DENYLIST = new Set<string>([
+	'n8n-nodes-base.executeCommand',
+	'n8n-nodes-base.ssh',
+	'n8n-nodes-base.readWriteFile',
+]);
+
+/**
+ * The node-types resolver may hand us the `*Tool` variant of a node
+ * (e.g. `executeCommand` -> `executeCommandTool`, see `resolveToolNodeType`
+ * in `node-tool-factory.ts`). Strip that suffix before checking the denylist
+ * so both the base and tool-wrapped forms are caught.
+ */
+function stripAgentToolSuffix(nodeType: string): string {
+	return nodeType.endsWith('Tool') ? nodeType.slice(0, -'Tool'.length) : nodeType;
+}
 
 /**
  * Vendor-API nodes the agent runtime can execute even though they aren't
  * marked `usableAsTool`. They expose the full provider API (image generation,
  * audio, files, embeddings, etc.) — not just chat completion — and are
  * designed to back LangChain agents rather than be called as agent tools, so
- * they ship without the flag. Surfacing them here lets the agent builder use
- * e.g. OpenAI image generation as a tool.
+ * they ship without the flag. This is a backward-compatibility allowance:
+ * agents that already have a provider node attached keep executing. Discovery
+ * deliberately excludes provider nodes via
+ * `AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES`, so no new agent can pick
+ * one up.
  *
  * Scope this list to *provider* nodes only. Don't add the agent node itself,
  * the LM Chat sub-models (`lmChatOpenAi`, etc.), or generic LangChain helpers
@@ -167,6 +205,13 @@ export class EphemeralNodeExecutor {
 		const verified: Record<string, INodeCredentialsDetails> = {};
 
 		for (const [credType, d] of Object.entries(details)) {
+			// Managed credentials have no stored row — the gateway mints them per
+			// execution (CredentialsHelper.getDecrypted) — so skip the project lookup.
+			if (d.__aiGatewayManaged) {
+				verified[credType] = { id: null, name: d.name, __aiGatewayManaged: true };
+				continue;
+			}
+
 			if (!d.id) {
 				throw new UserError(
 					`Credential reference for "${credType}" is missing an id (required for execution).`,
@@ -212,6 +257,12 @@ export class EphemeralNodeExecutor {
 		typeVersion: number,
 		nodeParameters: INodeParameters,
 	): void {
+		if (AGENT_TOOL_NODE_DENYLIST.has(stripAgentToolSuffix(nodeType))) {
+			throw new UserError('Node type is not permitted for agent tool execution', {
+				extra: { nodeType },
+			});
+		}
+
 		const resolved = this.nodeTypes.getByNameAndVersion(nodeType, typeVersion);
 
 		if (!isUsableAsAgentTool(resolved.description) && !isAgentProviderNode(nodeType)) {
@@ -224,8 +275,8 @@ export class EphemeralNodeExecutor {
 
 		const operation = nodeParameters.operation;
 
-		if (operation && typeof operation === 'string' && OPERATION_BLACKLIST.includes(operation)) {
-			throw new UserError(`The "${operation}" is not supported for agent tool execution.`, {
+		if (isUnsupportedEphemeralNodeOperation(operation)) {
+			throw new UserError(unsupportedEphemeralNodeOperationMessage(operation), {
 				extra: { nodeType, operation },
 			});
 		}
@@ -243,7 +294,7 @@ export class EphemeralNodeExecutor {
 	) {
 		const node: INode = {
 			id: uuid(),
-			name: 'Target Node',
+			name: tool.nodeName ?? 'Target Node',
 			type: tool.nodeType,
 			typeVersion: tool.nodeTypeVersion,
 			position: [0, 0],
@@ -257,6 +308,11 @@ export class EphemeralNodeExecutor {
 			nodeTypes: this.nodeTypes,
 		});
 		const additionalData = await getBase({ projectId: tool.projectId });
+		if (tool.nodeType === DATA_TABLE_TOOL_NODE_TYPE) {
+			// Data Table uses separate project authorization and an ephemeral workflow has no owner fallback.
+			additionalData.dataTableProjectId = tool.projectId;
+		}
+		tool.configureAdditionalData?.(additionalData);
 		const runExecutionData = createEmptyRunExecutionData();
 		const inputData: ITaskDataConnections = { main: [inputItems] };
 		const executeData: IExecuteData = { node, data: inputData, source: null };
@@ -331,9 +387,9 @@ export class EphemeralNodeExecutor {
 		// Validation failures (unknown node type, trigger nodes, blacklisted
 		// operations like send-and-wait) need to surface to the agent as a
 		// tool error rather than crashing silently. Returning the standard
-		// `{ status: 'error', error }` shape lets `run_node_tool` translate
-		// it into a tool-result the LLM sees AND lets the ExecutionRecorder
-		// record it as a failed tool call in the session timeline.
+		// `{ status: 'error', error }` shape lets node tools surface the error
+		// to the LLM and lets the ExecutionRecorder record it as a failed tool
+		// call in the session timeline.
 		try {
 			this.validateNodeForExecution(
 				request.nodeType,
@@ -375,6 +431,8 @@ export class EphemeralNodeExecutor {
 			nodeTypeVersion: request.nodeTypeVersion,
 			nodeParameters: request.nodeParameters,
 			credentials: mergedCredentials,
+			nodeName: request.nodeName,
+			configureAdditionalData: request.configureAdditionalData,
 		};
 
 		// Native tool nodes (toolWikipedia, toolCalculator, etc.) expose their real
@@ -404,7 +462,7 @@ export class EphemeralNodeExecutor {
 	private async withSupplyDataTool<T>(
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
-		onTool: (response: Tool | StructuredToolkit) => Promise<T> | T,
+		onTool: (response: LangChainToolType | StructuredToolkit) => Promise<T> | T,
 	): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
 		const parts = await this.buildEphemeralContextParts(tool, inputItems);
 		const closeFunctions: CloseFunction[] = [];
@@ -424,24 +482,30 @@ export class EphemeralNodeExecutor {
 		);
 
 		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
-		if (typeof nodeType.supplyData !== 'function') {
+		const supplyData = nodeType.supplyData;
+		if (typeof supplyData !== 'function') {
 			return { ok: false, error: 'Node does not implement supplyData' };
 		}
 
 		try {
-			const supplyDataResult = await nodeType.supplyData.call(context, 0);
-			const response = supplyDataResult.response as Tool | StructuredToolkit | undefined;
+			return await withExpressionIsolate(parts.workflow, async () => {
+				const supplyDataResult = await supplyData.call(context, 0);
+				const response = supplyDataResult.response as
+					| LangChainToolType
+					| StructuredToolkit
+					| undefined;
 
-			if (response instanceof StructuredToolkit) {
-				return { ok: true, value: await onTool(response) };
-			}
-			if (response && typeof response.invoke === 'function') {
-				return { ok: true, value: await onTool(response) };
-			}
-			return {
-				ok: false,
-				error: `Node "${tool.nodeType}" did not return a valid LangChain tool or toolkit`,
-			};
+				if (response instanceof StructuredToolkit) {
+					return { ok: true, value: await onTool(response) };
+				}
+				if (response && typeof response.invoke === 'function') {
+					return { ok: true, value: await onTool(response) };
+				}
+				return {
+					ok: false,
+					error: `Node "${tool.nodeType}" did not return a valid LangChain tool or toolkit`,
+				};
+			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return { ok: false, error: message };
@@ -522,6 +586,7 @@ export class EphemeralNodeExecutor {
 			// through to its `{ input: string }` default; proper per-method
 			// introspection ships with multi-tool expansion.
 			if (response instanceof StructuredToolkit) return null;
+			if (response instanceof LangChainTool) return null;
 			const maybeSchema = (response as unknown as { schema?: unknown }).schema;
 			return maybeSchema ?? null;
 		});

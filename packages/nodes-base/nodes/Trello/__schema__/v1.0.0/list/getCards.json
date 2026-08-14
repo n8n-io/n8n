@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "agent": {
+            "type": "null"
+        },
         "badges": {
             "type": "object",
             "properties": {
@@ -90,11 +93,20 @@
                 "brightness": {
                     "type": "string"
                 },
+                "color": {
+                    "type": "null"
+                },
+                "idPlugin": {
+                    "type": "null"
+                },
                 "idUploadedBackground": {
                     "type": "null"
                 },
                 "size": {
                     "type": "string"
+                },
+                "yPosition": {
+                    "type": "number"
                 }
             }
         },
@@ -203,5 +215,5 @@
             "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }

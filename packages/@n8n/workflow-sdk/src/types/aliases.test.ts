@@ -17,13 +17,13 @@ describe('Type Aliases', () => {
 				id: 'test',
 				name: 'Test',
 				config: {},
-				then: jest.fn(),
-				to: jest.fn(),
-				input: jest.fn(),
-				output: jest.fn(),
-				onError: jest.fn(),
+				then: vi.fn(),
+				to: vi.fn(),
+				input: vi.fn(),
+				output: vi.fn(),
+				onError: vi.fn(),
 				getConnections: () => [],
-				update: jest.fn(),
+				update: vi.fn(),
 			} as unknown as AnyNode;
 
 			expect(node.type).toBe('n8n-nodes-base.set');

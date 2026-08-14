@@ -27,6 +27,7 @@ import {
 	type WorkflowDocumentNodesDeps,
 } from './useWorkflowDocumentNodes';
 import { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
+import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 const getNodeType = vi.fn().mockReturnValue(null);
 const communityNodeType = vi.fn().mockReturnValue(undefined);
@@ -46,7 +47,6 @@ function createDeps(overrides: Partial<WorkflowDocumentNodesDeps> = {}): Workflo
 		getNodeType: vi.fn().mockReturnValue(null),
 		assignNodeId: vi.fn().mockReturnValue(''),
 		syncWorkflowObject: vi.fn(),
-		unpinNodeData: vi.fn(),
 		nodeMetadata: useWorkflowDocumentNodeMetadata(),
 		workflowObject: ref(
 			mock<Workflow>({ getNode: () => null }),
@@ -64,6 +64,19 @@ describe('useWorkflowDocumentNodes', () => {
 	});
 
 	describe('round-trip: setNodes → read', () => {
+		it('preserves a center-aligned v2 agent position', () => {
+			const agent = createNode({
+				position: [112, 105],
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+			});
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+
+			workflowDocumentNodes.setNodes([agent]);
+
+			expect(workflowDocumentNodes.getNodeById(agent.id)?.position).toEqual([112, 105]);
+		});
+
 		it('nodes set via setNodes are readable via allNodes', () => {
 			const nodeA = createNode({ name: 'A' });
 			const nodeB = createNode({ name: 'B' });
@@ -588,32 +601,9 @@ describe('useWorkflowDocumentNodes', () => {
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});
 
-		it('removeNode calls unpinNodeData', () => {
-			const node = createNode({ name: 'Target' });
-
-			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
-			workflowDocumentNodes.setNodes([node]);
-			workflowDocumentNodes.removeNode(node);
-
-			expect(deps.unpinNodeData).toHaveBeenCalledWith('Target');
-		});
-
-		it('removeNodeById calls unpinNodeData', () => {
-			const node = createNode({ name: 'Target' });
-
-			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
-			workflowDocumentNodes.setNodes([node]);
-			workflowDocumentNodes.removeNodeById(node.id);
-
-			expect(deps.unpinNodeData).toHaveBeenCalledWith('Target');
-		});
-
-		it('removeNodeById does not call unpinNodeData when node not found', () => {
-			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
-			workflowDocumentNodes.removeNodeById('nonexistent');
-
-			expect(deps.unpinNodeData).not.toHaveBeenCalled();
-		});
+		// Orphan-pin-cleanup coverage (previously a direct dep of useWorkflowDocumentNodes
+		// via `unpinNodeData`) now lives in useWorkflowDocumentPinData.test.ts —
+		// pinData subscribes to onNodesChange and handles DELETE itself.
 
 		it('removeNodeById uses empty name when node not found', () => {
 			const hookSpy = vi.fn();

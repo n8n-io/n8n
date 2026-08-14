@@ -6,6 +6,9 @@ export const SENSITIVE_TESTID_PATTERN =
 export const SENSITIVE_ARIA_LABEL_PATTERN =
 	/(api[-_\s]?key|secret[-_\s]?key|access[-_\s]?token|auth[-_\s]?token|client[-_\s]?secret|password|credential)/i;
 
+export const SENSITIVE_FIELD_LABEL_PATTERN =
+	/(secret|password|passcode|passphrase|token|api[-_\s]?key|access[-_\s]?key|private[-_\s]?key|credential)/i;
+
 export const ARIA_PASSWORD_LABEL_PATTERN =
 	/(password|passcode|secret|api[-_\s]?key|token|credential)/i;
 
@@ -49,6 +52,34 @@ export function elementLabel(el: Element, doc: Document): string {
 		.join(' ');
 }
 
+export function getLabelTextByControlIdMap(doc: Document): Map<string, string> {
+	const byId = new Map<string, string>();
+	for (const label of Array.from(doc.querySelectorAll('label[for]'))) {
+		const target = label.getAttribute('for');
+		const text = label.textContent?.trim();
+		if (!target || !text) continue;
+		const existing = byId.get(target);
+		byId.set(target, existing ? `${existing} ${text}` : text);
+	}
+	return byId;
+}
+
+export function getAssociatedLabelText(
+	el: Element,
+	doc: Document,
+	labelsByControlIdMap: Map<string, string>,
+): string {
+	const parts = [elementLabel(el, doc)];
+	const id = el.getAttribute('id');
+	if (id) parts.push(labelsByControlIdMap.get(id) ?? '');
+	const wrapping = el.closest('label');
+	if (wrapping) parts.push(wrapping.textContent ?? '');
+	return parts
+		.map((part) => part.trim())
+		.filter(Boolean)
+		.join(' ');
+}
+
 export function elementText(el: Element): string {
 	const parts: string[] = [];
 	for (const node of Array.from(el.childNodes)) {
@@ -79,6 +110,20 @@ export function isSensitiveInput(el: Element): el is HTMLInputElement | HTMLText
 		(!!testId && SENSITIVE_TESTID_PATTERN.test(testId)) ||
 		(readOnly && noSpell && value.length >= 20)
 	);
+}
+
+export function sensitiveInputValues(el: Element): string[] {
+	const values: string[] = [];
+	const value = (el.getAttribute('value') ?? el.textContent)?.trim() ?? '';
+	if (value) values.push(value);
+	for (const attr of Array.from(el.attributes)) {
+		if (!attr.name.startsWith('data-') || !SENSITIVE_TESTID_PATTERN.test(attr.name)) continue;
+		const candidate = attr.value.trim();
+		if (candidate.length >= 16 && !/\s/.test(candidate) && !values.includes(candidate)) {
+			values.push(candidate);
+		}
+	}
+	return values;
 }
 
 export function hasButtonMatching(scope: Element, pattern: RegExp): boolean {

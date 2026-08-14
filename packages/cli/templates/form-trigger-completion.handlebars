@@ -201,15 +201,15 @@
 		};
 
 		document.addEventListener('DOMContentLoaded', function () {
-			const binary = "{{{responseBinary}}}"
+			const binaries = "{{{responseBinary}}}"
 				?	JSON.parse(decodeURIComponent("{{{responseBinary}}}"))
-				: '';
+				: [];
 
-			const byteArray = binary.data.type === 'Buffer'
-				? new Uint8Array(binary.data.data)
-				: Uint8Array.from(binary.data, c => c.charCodeAt(0));
+			for (const binary of binaries) {
+				const byteArray = binary.data.type === 'Buffer'
+					? new Uint8Array(binary.data.data)
+					: Uint8Array.from(binary.data, c => c.charCodeAt(0));
 
-			if (binary) {
 				const blob = new Blob(
 					[byteArray],
 					{ type: binary.type }

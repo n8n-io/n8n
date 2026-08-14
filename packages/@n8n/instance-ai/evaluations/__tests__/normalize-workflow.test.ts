@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 // `SimpleWorkflow` (the return type of `normalizeWorkflow`) is imported from
 // `ai-workflow-builder.ee` via deep relative paths into source files that use
 // a `@/*` path alias. That alias collides with instance-ai's own `@/*` mapping

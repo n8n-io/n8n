@@ -1,19 +1,25 @@
+import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
 import { ApiKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TokenExpiredError } from 'jsonwebtoken';
+
+import { isApiKeyAuthEnabled } from '@/public-api';
 
 import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
 import { JwtService } from './jwt.service';
 import { API_KEY_AUDIENCE, API_KEY_ISSUER, PREFIX_LEGACY_API_KEY } from './public-api-key.service';
 
 const API_KEY_HEADER = 'x-n8n-api-key';
+const LAST_USED_AT_THROTTLE_MS = 1 * Time.minutes.toMilliseconds;
 
 @Service()
 export class ApiKeyAuthStrategy implements AuthStrategy {
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
+		private readonly logger: Logger,
 	) {}
 
 	async buildTokenGrant(
@@ -56,6 +62,8 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 			}
 		}
 
+		this.touchLastUsedAt(apiKeyRecord.id, apiKeyRecord.lastUsedAt);
+
 		return {
 			scopes: apiKeyRecord.user.role.scopes.map((s) => s.slug),
 			subject: apiKeyRecord.user,
@@ -63,7 +71,23 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 		};
 	}
 
+	private touchLastUsedAt(apiKeyId: string, previous: Date | null) {
+		const previousMs = previous?.getTime() ?? 0;
+		if (Date.now() - previousMs < LAST_USED_AT_THROTTLE_MS) return;
+
+		// Best-effort: never block auth if the write fails, but log so we don't hide bugs.
+		void this.apiKeyRepository
+			.update({ id: apiKeyId }, { lastUsedAt: new Date() })
+			.catch((error) => {
+				this.logger.warn('Failed to update lastUsedAt on API key', { apiKeyId, error });
+			});
+	}
+
 	async authenticate(req: AuthenticatedRequest): Promise<boolean | null> {
+		// Abstain when API-key auth is disabled so other strategies (e.g. session
+		// cookie) can still authenticate the request.
+		if (!isApiKeyAuthEnabled()) return null;
+
 		const providedApiKey = req.headers[API_KEY_HEADER];
 
 		if (typeof providedApiKey !== 'string' || !providedApiKey) return null;

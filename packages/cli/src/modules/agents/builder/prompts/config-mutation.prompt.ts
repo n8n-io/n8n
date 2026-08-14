@@ -11,14 +11,12 @@ Use this after deciding a config change is needed and before calling
 
 ### Workflow
 
-1. Call \`read_config\` immediately before every \`write_config\` or \`patch_config\`.
-2. Use only the \`config\` and \`configHash\` returned by that same \`read_config\`.
-3. For \`write_config\`, send the complete config JSON string plus \`baseConfigHash\`.
-4. For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
-5. Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
-6. On \`stage: "stale"\`, retry once from the returned \`config\` and \`configHash\`.
-7. On parse, patch, or schema errors, fix the payload, call \`read_config\`
-   again, and retry from the fresh \`configHash\`.
+Follow Config Freshness for authoritative reads, hashes, and stale recovery.
+- For \`write_config\`, send the complete config JSON string plus \`baseConfigHash\`.
+- For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
+- Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
+- On parse, patch, or schema errors, fix the payload, call \`read_config\`
+  again, and retry from the fresh \`configHash\`.
 
 ### Rules
 
@@ -29,24 +27,25 @@ ${getSchemaReferenceSection()}
 - Follow the Config schema reference exactly; do not invent top-level fields.
 - Keep each feature in the schema path where it belongs.
 - Preserve unrelated existing config unless the user asked to change it.
-- Never write placeholder instructions.
-- Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
+- Never write placeholder instructions, tool descriptions, or skill descriptions.
+- Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\` or \`ask_credential\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
 
 ### Recipes
 
-#### Create Or Replace A Fresh Runnable Agent
+#### Create A Fresh Agent Draft
 
-- Requires \`name\`, \`model\`, \`credential\`, and \`instructions\`.
+- Requires \`name\` and \`instructions\`.
+- Use the model and credential from \`resolve_llm\` when resolved; while LLM
+  setup is pending, write \`model: ""\` and omit \`credential\`.
 - Keep \`tools\` and \`skills\` arrays if present.
 
 Good minimal shape:
 \`\`\`json
 {
   "name": "Support assistant",
-  "model": "openrouter/openai/gpt-5.5",
-  "credential": "<main-llm-credential-id>",
+  "model": "",
   "instructions": "Help the user with support questions.",
   "tools": [],
   "skills": []
@@ -66,16 +65,44 @@ Use \`patch_config\` with:
 - If \`skills\` is missing, add \`/skills\` with an array.
 - Ref shape: \`{ "type": "skill", "id": "<returned-id>" }\`.
 
+#### Remove An Existing Chat Integration
+
+- Chat-channel removal is a config edit, not a \`configure_channel\` action.
+- Call \`read_config\` first and inspect \`config.integrations\`.
+- If you know the exact array index to remove, prefer:
+\`\`\`json
+[{ "op": "remove", "path": "/integrations/1" }]
+\`\`\`
+- If replacing the whole list is clearer, replace \`/integrations\` with the
+  filtered array of surviving entries.
+- Omitting \`integrations\` preserves existing channels. To remove one, send an
+  explicit \`remove\` op or an explicit filtered \`integrations\` array.
+
 #### Configure Native Provider Features
 
-- Thinking lives under \`config.thinking\`.
-- The write path fills native provider tool defaults. Do not invent provider tool keys.
+- Reasoning effort lives under \`config.reasoning\` (\`low\`, \`medium\`, or \`high\`).
+- Prompt caching follows Agent Config Rules above; the write path enforces it
+  automatically.
+- Web search lives under \`config.webSearch\`.
+- Only OpenAI and Anthropic models support native web search. For those models, set
+  \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the
+  user asks to disable web search. Omitting \`provider\` also means native.
+- For every other provider, never use \`provider: "native"\` or omit
+  \`provider\` for enabled web search.
+- For Brave or SearXNG search, call \`ask_credential\`, then set
+  \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`.
+- Brave and SearXNG remain fallback tools even when the model provider also supports native search.
+- When patching only \`/model\` and \`/credential\`, do not patch
+  \`/config/webSearch\` if the existing provider is \`"brave"\` or \`"searxng"\`
+  unless the user explicitly asked to change the web-search method.
+- Never write \`{ "enabled": true }\` alone for fallback search.
+- The write path fills native provider tool defaults only for native search. Do not invent provider tool keys.
 
 #### Configure Fallback Services
 
-- Services that require credentials must call \`ask_credential\` first.
-- Persist only the credential id returned by \`ask_credential\`.
+- Services that require credentials must call \`ask_credential\` first and persist only its returned credential id.
 - If credential selection is skipped, do not enable the feature unless it supports missing credentials.
+- For fallback web search, use exact credential type names: \`braveSearchApi\` for \`provider: "brave"\`, and \`searXngApi\` for \`provider: "searxng"\`.
 
 #### Add Node Or Workflow Tools
 
@@ -87,7 +114,7 @@ Use \`patch_config\` with:
 
 Bad: inventing top-level fields
 \`\`\`json
-{ "temperature": 0.7 }
+{ "webSearch": { "enabled": true } }
 \`\`\`
 
 Bad: provider namespace as provider tool
@@ -102,7 +129,7 @@ Bad: copying credential IDs from \`list_credentials\`
 
 Bad: replacing \`config\` while dropping unrelated settings
 \`\`\`json
-{ "config": { "thinking": { "provider": "anthropic", "budgetTokens": 1024 } } }
+{ "config": { "webSearch": { "enabled": true } } }
 \`\`\`
 
 ### Gotchas
@@ -110,18 +137,22 @@ Bad: replacing \`config\` while dropping unrelated settings
 - \`write_config\` replaces the full config; include every field that should survive.
 - \`patch_config\` cannot create a config when none exists; use \`write_config\` first.
 - \`/array/-\` appends to an array; \`/array/0\` inserts before the current first item.
-- Empty, placeholder, or guessed \`instructions\` are rejected; ask for details instead.
+- Removing an integration means deleting its entry from \`integrations[]\`; do
+  not call \`configure_channel\` for removal.
+- Model-only changes must preserve existing Brave or SearXNG \`config.webSearch\`.
+- Empty or placeholder \`instructions\` values are rejected; derive real instructions from the stated goal instead.
 
 ### Verify
 
 - The final payload validates against the Config schema reference.
 - Existing unrelated config, tools, skills, integrations, and memory remain present unless intentionally changed.
+- Existing Brave or SearXNG web search remains present on model-only changes.
 - Credential fields use ids returned by the correct interactive credential tools.
 - Provider tool keys are valid and match the selected model provider.
 
 ### Error Recovery
 
-- \`stage: "stale"\`: retry once from the returned \`config\` and \`configHash\`.
+- \`stage: "stale"\`: follow Config Freshness.
 - \`stage: "parse"\`: fix JSON syntax, then call \`read_config\` before retrying.
 - \`stage: "patch"\`: fix JSON Pointer paths or operation shape, then call \`read_config\` before retrying.
 - \`stage: "schema"\`: compare the payload against the Config schema reference, then call \`read_config\` before retrying.

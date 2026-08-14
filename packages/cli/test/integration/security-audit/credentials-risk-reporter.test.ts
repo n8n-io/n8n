@@ -8,8 +8,8 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { CREDENTIALS_REPORT } from '@/security-audit/constants';
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
@@ -250,6 +250,59 @@ test('should not report credentials in recently executed workflow', async () => 
 		execution: savedExecution,
 		data: '[]',
 		workflowData: workflow,
+	});
+
+	const testAudit = await securityAuditService.run(['credentials']);
+
+	expect(testAudit).toBeEmptyArray();
+});
+
+test('should detect recent execution from the execution row alone, without its data', async () => {
+	const credentialDetails = {
+		id: generateNanoId(),
+		name: 'My Slack Credential',
+		data: 'U2FsdGVkX18WjITBG4IDqrGB1xE/uzVNjtwDAG3lP7E=',
+		type: 'slackApi',
+	};
+
+	const credential = await Container.get(CredentialsRepository).save(credentialDetails);
+
+	const workflowDetails = {
+		name: 'My Test Workflow',
+		connections: {},
+		nodeTypes: {},
+		nodes: [
+			{
+				id: uuid(),
+				name: 'My Node',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				credentials: {
+					slackApi: {
+						id: credential.id,
+						name: credential.name,
+					},
+				},
+				parameters: {},
+			},
+		],
+	};
+
+	const workflow = await createActiveWorkflow(workflowDetails);
+
+	const date = new Date();
+	date.setDate(date.getDate() - securityConfig.daysAbandonedWorkflow + 1);
+
+	await Container.get(ExecutionRepository).save({
+		finished: true,
+		mode: 'manual',
+		createdAt: date,
+		startedAt: date,
+		stoppedAt: date,
+		workflowId: workflow.id,
+		waitTill: null,
+		status: 'success',
 	});
 
 	const testAudit = await securityAuditService.run(['credentials']);

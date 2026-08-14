@@ -54,9 +54,10 @@ describe('ensureType', () => {
 
 	it('throws error for invalid conversion to number', () => {
 		const value = 'invalid';
-		expect(() => ensureType('number', value, 'myParam')).toThrowError(
-			new ExpressionError("Parameter 'myParam' must be a number, but we got 'invalid'"),
-		);
+		const execution = () => ensureType('number', value, 'myParam');
+
+		expect(execution).toThrow(ExpressionError);
+		expect(execution).toThrow("Parameter 'myParam' must be a number, but we got 'invalid'");
 	});
 
 	it('parses valid JSON string to object if toType is object', () => {
@@ -68,9 +69,10 @@ describe('ensureType', () => {
 
 	it('throws error for invalid JSON string to object conversion', () => {
 		const value = 'invalid_json';
-		expect(() => ensureType('object', value, 'myParam')).toThrowError(
-			"Parameter 'myParam' could not be parsed",
-		);
+		const execution = () => ensureType('object', value, 'myParam');
+
+		expect(execution).toThrow(ExpressionError);
+		expect(execution).toThrow("Parameter 'myParam' could not be parsed");
 	});
 
 	it('throws error for non-array value if toType is array', () => {

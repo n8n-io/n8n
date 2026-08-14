@@ -8,7 +8,7 @@ import WorkerJobAccordion from './WorkerJobAccordion.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.vue';
 import WorkerChartsAccordion from './WorkerChartsAccordion.vue';
 import WorkerMemoryMonitorAccordion from './WorkerMemoryMonitorAccordion.vue';
-import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
+import { sortByProperty } from '@n8n/utils/sort/sort-by-property';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nCard, N8nHeading, N8nText } from '@n8n/design-system';

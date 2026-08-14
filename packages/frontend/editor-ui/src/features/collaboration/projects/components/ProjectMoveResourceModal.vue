@@ -2,8 +2,8 @@
 import Modal from '@/app/components/Modal.vue';
 import ProjectMoveResourceModalCredentialsList from './ProjectMoveResourceModalCredentialsList.vue';
 import ProjectSharing from './ProjectSharing.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useMoveResourceToProjectToast } from '../composables/useMoveResourceToProjectToast';
 import type {
 	ICredentialsResponse,
@@ -12,6 +12,7 @@ import type {
 import type { IWorkflowDb } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { useProjectsStore } from '../projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -55,6 +56,7 @@ const projectsStore = useProjectsStore();
 const searchFn = useAvailableProjectSearch();
 const workflowsListStore = useWorkflowsListStore();
 const credentialsStore = useCredentialsStore();
+const privateCredentials = usePrivateCredentials();
 const telemetry = useTelemetry();
 const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 
@@ -91,11 +93,26 @@ const homeProjectName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
 );
 
-const projectFilterFn = (p: ProjectListItem): boolean =>
-	!p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
-
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
+
+// What the credential is — the backend rejects the move on `isResolvable` alone,
+// so the destination filter must not depend on module/license state.
+const isEndUserCredential = computed(
+	() =>
+		props.data.resourceType === ResourceType.Credential &&
+		(props.data.resource as ICredentialsResponse).isResolvable === true,
+);
+// What we surface about it — gated on the module being enabled.
+const isResolvableCredential = computed(
+	() => privateCredentials.isEnabled.value && isEndUserCredential.value,
+);
+
+const projectFilterFn = (p: ProjectListItem): boolean => {
+	// End-user credentials can't move into personal projects
+	if (isEndUserCredential.value && p.type === ProjectTypes.Personal) return false;
+	return !p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
+};
 const targetProjectName = computed(() => {
 	return getTruncatedProjectName(selectedProject.value?.name);
 });
@@ -324,6 +341,14 @@ onMounted(async () => {
 						</I18nT>
 					</N8nCallout>
 				</N8nText>
+				<N8nCallout
+					v-if="isResolvableCredential"
+					theme="warning"
+					:class="$style.textBlock"
+					data-test-id="project-move-resource-modal-resolvable-warning"
+				>
+					{{ i18n.baseText('projects.move.resource.modal.message.resolvableConnections') }}
+				</N8nCallout>
 			</div>
 		</template>
 		<template #footer>

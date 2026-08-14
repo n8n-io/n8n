@@ -25,6 +25,7 @@ async function main(): Promise<void> {
 	const context: CodeHealthContext = {
 		rootDir,
 		changedFiles: parseChangedFiles(process.env.CODE_HEALTH_CHANGED_FILES),
+		addedFiles: parseChangedFiles(process.env.CODE_HEALTH_ADDED_FILES),
 	};
 
 	const runner = createDefaultRunner();

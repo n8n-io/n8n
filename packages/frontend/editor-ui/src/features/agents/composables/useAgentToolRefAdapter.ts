@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { INode, INodeCredentials, INodeTypeDescription } from 'n8n-workflow';
 
 import type { IWorkflowDb } from '@/Interface';
-import type { AgentJsonToolRef, NodeToolConfig } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef, NodeToolConfig } from '../types';
 
 /**
  * Two-way adapter between the agent's persisted tool shape (`AgentJsonToolRef`
@@ -26,8 +26,8 @@ function pickLatestVersion(version: number | number[]): number {
 }
 
 /**
- * Convert the config's strict credential map (`{ id: string; name: string }`)
- * to `INodeCredentials` (`id: string | null`) for rendering.
+ * Convert the config's credential map to `INodeCredentials` for rendering,
+ * carrying the n8n Connect managed marker through.
  */
 function toINodeCredentials(
 	credentials: NodeToolConfig['credentials'],
@@ -35,14 +35,17 @@ function toINodeCredentials(
 	if (!credentials) return undefined;
 	const out: INodeCredentials = {};
 	for (const [credType, value] of Object.entries(credentials)) {
-		out[credType] = { id: value.id, name: value.name };
+		out[credType] =
+			'__aiGatewayManaged' in value
+				? { id: null, name: value.name, __aiGatewayManaged: true }
+				: { id: value.id, name: value.name };
 	}
 	return out;
 }
 
 /**
- * Convert `INodeCredentials` (id nullable) back to the config shape
- * (id required). Drops entries whose credential is not yet persisted.
+ * Convert `INodeCredentials` back to the config shape. Drops entries whose
+ * credential is not yet persisted (null id), except n8n Connect managed slots.
  */
 function toConfigCredentials(
 	credentials: INodeCredentials | undefined,
@@ -50,6 +53,10 @@ function toConfigCredentials(
 	if (!credentials) return undefined;
 	const out: NonNullable<NodeToolConfig['credentials']> = {};
 	for (const [credType, value] of Object.entries(credentials)) {
+		if (value.__aiGatewayManaged) {
+			out[credType] = { id: null, name: value.name, __aiGatewayManaged: true };
+			continue;
+		}
 		if (value.id === null) continue;
 		out[credType] = { id: value.id, name: value.name };
 	}
@@ -114,15 +121,15 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 
 /**
  * Build a new `AgentJsonToolRef` of type `workflow` from the user's chosen
- * workflow. Persists the workflow's **name** (not id) on `ref.workflow`
- * because the backend's `buildWorkflowTool` looks workflows up by name scoped
- * to the project — see `cli/src/modules/agents/tools/workflow-tool-factory.ts`.
+ * workflow. The id is the stable lookup key; the name remains display data and
+ * the fallback for legacy refs.
  */
 export function workflowToNewToolRef(
 	workflow: IWorkflowDb,
 ): Extract<AgentJsonToolRef, { type: 'workflow' }> {
 	return {
 		type: 'workflow',
+		workflowId: workflow.id,
 		workflow: workflow.name,
 		name: workflow.name,
 		description: workflow.description ?? '',
@@ -145,10 +152,23 @@ export function getExistingToolNames(
 		.map((t) => (t as Extract<AgentJsonToolRef, { type: 'workflow' | 'node' }>).name!);
 }
 
+export function getExistingMcpServerNames(
+	mcpServers: AgentJsonMcpServerConfig[],
+	exclude?: AgentJsonMcpServerConfig,
+): string[] {
+	return mcpServers.filter((s) => s.name !== exclude?.name && Boolean(s.name)).map((s) => s.name);
+}
+
 /** Merge edits from the workflow config form back into the ref. */
 export function updateWorkflowToolRef(
 	original: AgentJsonToolRef,
-	edits: { name: string; description: string; allOutputs: boolean },
+	edits: {
+		name: string;
+		description: string;
+		allOutputs: boolean;
+		workflow: string;
+		workflowId?: string;
+	},
 ): AgentJsonToolRef {
 	if (original.type !== 'workflow') return original;
 	return {
@@ -156,5 +176,7 @@ export function updateWorkflowToolRef(
 		name: edits.name,
 		description: edits.description,
 		allOutputs: edits.allOutputs,
+		workflow: edits.workflow,
+		...(edits.workflowId !== undefined ? { workflowId: edits.workflowId } : {}),
 	};
 }

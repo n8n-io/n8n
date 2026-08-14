@@ -1,7 +1,6 @@
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
@@ -61,6 +60,7 @@ const userProperties = [
 	'createdAt',
 	'updatedAt',
 	'isPending',
+	'mfaEnabled',
 ];
 function pickUserSelectableProperties(user: User, options?: { includeRole: boolean }) {
 	return pick(user, userProperties.concat(options?.includeRole ? ['role'] : []));

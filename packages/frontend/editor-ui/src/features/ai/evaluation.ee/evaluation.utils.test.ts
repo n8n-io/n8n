@@ -2,10 +2,15 @@ import { describe, it, expect } from 'vitest';
 import {
 	applyCachedSortOrder,
 	applyCachedVisibility,
+	averageNormalizedScore,
+	buildScoreShapedMetricGroups,
 	computeDelta,
 	computeDurationMs,
+	countSettledRuns,
+	extractAnswerText,
 	formatDeltaPercent,
 	formatDuration,
+	formatMetricAverage,
 	formatMetricLabel,
 	formatMetricPercent,
 	formatMetricRawScore,
@@ -14,6 +19,7 @@ import {
 	getDefaultOrderedColumns,
 	getDeltaTone,
 	getMetricCategory,
+	getMetricDescriptionKey,
 	getTestCasesColumns,
 	getTestTableHeaders,
 	getUserDefinedMetricNames,
@@ -1286,6 +1292,49 @@ describe('utils', () => {
 				expect(formatMetricPercent(0.5, { category: 'custom' })).toBe('50%');
 			});
 		});
+
+		describe('with a resolved scale (from the run config snapshot)', () => {
+			it('renders a custom 1–5 judge metric as 100%, not its raw 5', () => {
+				// The bug: a custom-named judge metric is category 'custom', so the
+				// heuristic returned the raw "5%". The resolved scale corrects it.
+				expect(
+					formatMetricPercent(5, { key: 'Tone Match', category: 'custom', scale: 'oneToFive' }),
+				).toBe('100%');
+				expect(formatMetricPercent(4, { category: 'custom', scale: 'oneToFive' })).toBe('80%');
+			});
+			it('clamps boolean-scale values to a percent', () => {
+				expect(formatMetricPercent(1, { scale: 'boolean' })).toBe('100%');
+				expect(formatMetricPercent(0.75, { scale: 'boolean' })).toBe('75%');
+			});
+			it('passes unit-scale 0–1 values through', () => {
+				expect(formatMetricPercent(0.9, { scale: 'unit' })).toBe('90%');
+			});
+			it('shows a dash when the value is out of range for the scale', () => {
+				expect(formatMetricPercent(6, { scale: 'oneToFive' })).toBe('–');
+			});
+			it('lets the scale override the category heuristic', () => {
+				// category 'aiBased' alone would divide by 5; the unit scale wins.
+				expect(formatMetricPercent(0.9, { category: 'aiBased', scale: 'unit' })).toBe('90%');
+			});
+		});
+	});
+
+	describe('formatMetricAverage', () => {
+		it('returns the "X / 5" average form for AI-based metrics', () => {
+			expect(formatMetricAverage(5, { category: 'aiBased' })).toBe('5 / 5');
+			expect(formatMetricAverage(4.2, { category: 'aiBased' })).toBe('4.2 / 5');
+			expect(formatMetricAverage(1, { category: 'aiBased' })).toBe('1 / 5');
+		});
+		it('returns the 0-1 average to two decimals for normalized metrics', () => {
+			expect(formatMetricAverage(0.75, { category: 'categorization' })).toBe('0.75');
+			expect(formatMetricAverage(1, { category: 'toolsUsed' })).toBe('1.00');
+			expect(formatMetricAverage(0, { category: 'toolsUsed' })).toBe('0.00');
+			expect(formatMetricAverage(0.5, { category: 'custom' })).toBe('0.50');
+		});
+		it('returns a dash for missing or NaN values', () => {
+			expect(formatMetricAverage(undefined, { category: 'aiBased' })).toBe('–');
+			expect(formatMetricAverage(NaN, { category: 'categorization' })).toBe('–');
+		});
 	});
 
 	describe('formatMetricRawScore', () => {
@@ -1308,6 +1357,12 @@ describe('utils', () => {
 		it('returns empty for missing or NaN', () => {
 			expect(formatMetricRawScore(undefined, { category: 'aiBased' })).toBe('');
 			expect(formatMetricRawScore(NaN, { category: 'aiBased' })).toBe('');
+		});
+		it('uses the resolved scale over the category for the x/5 form', () => {
+			// custom category + oneToFive scale → shows "5/5" (heuristic would hide it).
+			expect(formatMetricRawScore(5, { category: 'custom', scale: 'oneToFive' })).toBe('5/5');
+			// unit scale on an aiBased category → not a /5 metric, so empty.
+			expect(formatMetricRawScore(0.5, { category: 'aiBased', scale: 'unit' })).toBe('');
 		});
 	});
 
@@ -1332,6 +1387,11 @@ describe('utils', () => {
 			expect(formatMetricRawScoreSum([], { category: 'aiBased' })).toBe('');
 			expect(formatMetricRawScoreSum([undefined, NaN], { category: 'aiBased' })).toBe('');
 		});
+		it('uses the resolved scale over the category for the totals', () => {
+			expect(formatMetricRawScoreSum([4, 5, 4], { category: 'custom', scale: 'oneToFive' })).toBe(
+				'13/15',
+			);
+		});
 	});
 
 	describe('formatDeltaPercent', () => {
@@ -1350,6 +1410,13 @@ describe('utils', () => {
 			});
 			it('-2 (5→3) reads as -40%', () => {
 				expect(formatDeltaPercent(-2, { category: 'aiBased' })).toBe('-40%');
+			});
+		});
+
+		describe('with a resolved scale', () => {
+			it('scales a 1–5 delta by the scale, not the category', () => {
+				// custom category would treat +1 as +100%; the oneToFive scale → +20%.
+				expect(formatDeltaPercent(1, { category: 'custom', scale: 'oneToFive' })).toBe('+20%');
 			});
 		});
 	});
@@ -1428,6 +1495,171 @@ describe('utils', () => {
 			expect(getMetricCategory('customMetrics')).toBe('custom');
 			expect(getMetricCategory(undefined)).toBe('custom');
 			expect(getMetricCategory('madeUpType')).toBe('custom');
+		});
+	});
+
+	describe('getMetricDescriptionKey', () => {
+		it('returns an i18n key for each built-in metric', () => {
+			expect(getMetricDescriptionKey('correctness')).toBe(
+				'evaluation.metric.description.correctness',
+			);
+			expect(getMetricDescriptionKey('helpfulness')).toBe(
+				'evaluation.metric.description.helpfulness',
+			);
+			expect(getMetricDescriptionKey('stringSimilarity')).toBe(
+				'evaluation.metric.description.stringSimilarity',
+			);
+			expect(getMetricDescriptionKey('categorization')).toBe(
+				'evaluation.metric.description.categorization',
+			);
+			expect(getMetricDescriptionKey('toolsUsed')).toBe('evaluation.metric.description.toolsUsed');
+		});
+		it('returns null for custom/unknown metrics', () => {
+			expect(getMetricDescriptionKey('myCustomMetric')).toBeNull();
+			expect(getMetricDescriptionKey(undefined)).toBeNull();
+		});
+	});
+
+	describe('extractAnswerText', () => {
+		it('returns null as empty string', () => {
+			expect(extractAnswerText(null)).toBe('');
+		});
+		it('returns undefined as empty string', () => {
+			expect(extractAnswerText(undefined)).toBe('');
+		});
+		it('converts a number primitive to a string', () => {
+			expect(extractAnswerText(42)).toBe('42');
+		});
+		it('passes a string primitive through unchanged', () => {
+			expect(extractAnswerText('hi')).toBe('hi');
+		});
+		it('extracts the output field when present', () => {
+			expect(extractAnswerText({ output: 'Paris' })).toBe('Paris');
+		});
+		it('falls back to text when output is absent', () => {
+			expect(extractAnswerText({ text: 'x' })).toBe('x');
+		});
+		it('falls back to response when output and text are absent', () => {
+			expect(extractAnswerText({ response: 'y' })).toBe('y');
+		});
+		it('JSON.stringifies a preferred field that is itself an object', () => {
+			expect(extractAnswerText({ output: { a: 1 } })).toBe('{"a":1}');
+		});
+		it('uses the single key value when no preferred field exists', () => {
+			expect(extractAnswerText({ answer: 'z' })).toBe('z');
+		});
+		it('JSON.stringifies the whole object for multi-key non-preferred objects', () => {
+			expect(extractAnswerText({ a: 1, b: 2 })).toBe(JSON.stringify({ a: 1, b: 2 }));
+		});
+		it('JSON.stringifies a single-key value that is itself an object', () => {
+			expect(extractAnswerText({ nested: { x: 1 } })).toBe('{"x":1}');
+		});
+	});
+
+	describe('buildScoreShapedMetricGroups', () => {
+		it('keeps a custom-named 1–5 metric when a scale map marks it oneToFive', () => {
+			// Without the scale map, a value of 5 on a metric not named
+			// correctness/helpfulness falls to the unit branch → 5 ∉ [0,1] → dropped,
+			// so the metric never appears. The scale map fixes that.
+			const runs = [
+				{ metrics: { 'Markdown Formatting': 5 } },
+				{ metrics: { 'Markdown Formatting': 4 } },
+			];
+
+			const withoutScale = buildScoreShapedMetricGroups(runs);
+			expect(withoutScale).toEqual([]);
+
+			const withScale = buildScoreShapedMetricGroups(runs, { 'Markdown Formatting': 'oneToFive' });
+			expect(withScale).toEqual([{ key: 'Markdown Formatting', values: [1, 0.8] }]);
+		});
+
+		it('normalizes boolean-scale metrics and excludes reserved operational metrics', () => {
+			const runs = [
+				{ metrics: { 'Passes Schema': 1, totalTokens: 1200 } },
+				{ metrics: { 'Passes Schema': 0, totalTokens: 900 } },
+			];
+
+			const groups = buildScoreShapedMetricGroups(runs, { 'Passes Schema': 'boolean' });
+
+			expect(groups).toEqual([{ key: 'Passes Schema', values: [1, 0] }]);
+		});
+
+		it('falls back to name-based scaling when no map is provided', () => {
+			const runs = [{ metrics: { correctness: 5, accuracy: 0.9 } }];
+
+			const groups = buildScoreShapedMetricGroups(runs);
+
+			expect(groups).toEqual([
+				{ key: 'correctness', values: [1] },
+				{ key: 'accuracy', values: [0.9] },
+			]);
+		});
+
+		it('normalizes each run on its own metricScales', () => {
+			// Same metric name, different per-run scale (e.g. its type changed between
+			// runs): each run must normalize on its own snapshot scale.
+			const runs = [
+				{ metrics: { Quality: 5 }, metricScales: { Quality: 'oneToFive' as const } },
+				{ metrics: { Quality: 0.8 }, metricScales: { Quality: 'unit' as const } },
+			];
+
+			expect(buildScoreShapedMetricGroups(runs)).toEqual([{ key: 'Quality', values: [1, 0.8] }]);
+		});
+
+		it("prefers a run's own scale over the default map", () => {
+			const runs = [
+				{ metrics: { Quality: 5 }, metricScales: { Quality: 'oneToFive' as const } },
+				{ metrics: { Quality: 5 }, metricScales: { Quality: 'oneToFive' as const } },
+			];
+
+			// The default map says unit (which would drop 5 as > 1), but each run's own
+			// oneToFive wins.
+			expect(buildScoreShapedMetricGroups(runs, { Quality: 'unit' })).toEqual([
+				{ key: 'Quality', values: [1, 1] },
+			]);
+		});
+	});
+
+	describe('averageNormalizedScore', () => {
+		it('averages using the per-metric scale map', () => {
+			// 5/5 (oneToFive) = 1 and 0.75 (boolean) → mean 0.875.
+			expect(
+				averageNormalizedScore(
+					{ 'Markdown Formatting': 5, 'Passes Schema': 0.75 },
+					{ 'Markdown Formatting': 'oneToFive', 'Passes Schema': 'boolean' },
+				),
+			).toBeCloseTo(0.875);
+		});
+
+		it('drops a custom 1–5 metric without a scale map (name-based fallback)', () => {
+			// 5 is out of [0,1] on the unit fallback → no qualifying score → null.
+			expect(averageNormalizedScore({ 'Markdown Formatting': 5 })).toBeNull();
+		});
+
+		it('preserves name-based behavior for preset judge metrics', () => {
+			expect(averageNormalizedScore({ correctness: 4 })).toBeCloseTo(0.8);
+		});
+	});
+
+	describe('countSettledRuns', () => {
+		it('counts only runs that have left the queued/executing states', () => {
+			expect(
+				countSettledRuns([
+					{ status: 'completed' },
+					{ status: 'error' },
+					{ status: 'cancelled' },
+					{ status: 'running' },
+					{ status: 'new' },
+				]),
+			).toBe(3);
+		});
+
+		it('returns 0 while every run is still in flight', () => {
+			expect(countSettledRuns([{ status: 'new' }, { status: 'running' }])).toBe(0);
+		});
+
+		it('returns 0 for an empty run set', () => {
+			expect(countSettledRuns([])).toBe(0);
 		});
 	});
 });

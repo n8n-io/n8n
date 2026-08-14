@@ -183,7 +183,19 @@ async function fetchFlagMap(flag) {
 	process.stderr.write(`  ${flag}:`);
 	while (url) {
 		process.stderr.write(` p${page}`);
-		const data = await fetchJson(url);
+		let data;
+		try {
+			data = await fetchJson(url);
+		} catch (error) {
+			// A flag that was never uploaded (e.g. a per-layer flag since folded
+			// into nightly-full) 404s. Treat as "no data" rather than failing the
+			// whole gap report — the other flags still produce a useful analysis.
+			if (String(error).includes('HTTP 404')) {
+				process.stderr.write(' → flag not found (skipped)\n');
+				return map;
+			}
+			throw error;
+		}
 		for (const f of data.files ?? []) {
 			const t = f.totals ?? {};
 			const lines = Number(t.lines) || 0;

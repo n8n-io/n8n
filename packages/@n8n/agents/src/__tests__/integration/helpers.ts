@@ -9,19 +9,22 @@ import {
 	type StreamChunk,
 	type AgentMessage,
 } from '../../index';
-import { InMemoryMemory } from '../../runtime/memory-store';
+import { InMemoryMemory } from '../../runtime/memory/memory-store';
 
 export type { StreamChunk };
 
 /**
- * Returns `describe` or `describe.skip` depending on whether the provider API keys are set.
+ * Returns `describe` or `describe.skip` depending on whether the provider API
+ * keys are set.  In CI (replay) mode tests always run — cassettes substitute
+ * for real credentials.
  */
 export function describeIf(...providers: Array<'anthropic' | 'openai'>) {
 	const hasAllKeys = providers.every((provider) => {
 		const envVar = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
 		return Boolean(process.env[envVar]);
 	});
-	return hasAllKeys ? _describe : _describe.skip;
+	const isReplayMode = Boolean(process.env.CI);
+	return hasAllKeys || isReplayMode ? _describe : _describe.skip;
 }
 
 /**
@@ -414,6 +417,55 @@ export const collectTextDeltas = (chunks: StreamChunk[]): string => {
 		.map((c) => c.delta)
 		.join('');
 };
+
+/**
+ * Create an agent with a tool that suspends twice before completing.
+ * The handler uses a closure counter to track invocations:
+ *   call 1 (no resumeData) → suspend with step 1
+ *   call 2 (first resume)  → suspend with step 2
+ *   call 3 (second resume) → complete
+ *
+ * Returns the agent and a `handlerCalls` accessor for assertions.
+ */
+export function createAgentWithDoubleSuspendTool(provider: 'anthropic' | 'openai'): {
+	agent: Agent;
+	handlerCalls: () => number;
+} {
+	let calls = 0;
+
+	const deployTool = new Tool('deploy_app')
+		.description('Deploy an application. Requires two rounds of confirmation before proceeding.')
+		.input(z.object({ app: z.string().describe('Application name to deploy') }))
+		.output(z.object({ deployed: z.boolean(), app: z.string(), steps: z.number() }))
+		.suspend(z.object({ step: z.number(), message: z.string() }))
+		.resume(z.object({ confirmed: z.boolean() }))
+		.handler(async ({ app }, ctx) => {
+			calls++;
+			if (!ctx.resumeData) {
+				return await ctx.suspend({ step: 1, message: `Confirm deployment of "${app}"?` });
+			}
+			if (!ctx.resumeData.confirmed) {
+				return { deployed: false, app, steps: calls };
+			}
+			if (calls <= 2) {
+				return await ctx.suspend({
+					step: 2,
+					message: `Final confirmation: deploy "${app}" to production?`,
+				});
+			}
+			return { deployed: true, app, steps: calls };
+		});
+
+	const agent = new Agent('test-double-suspend-agent')
+		.model(getModel(provider))
+		.instructions(
+			'You are a deployment manager. When asked to deploy, use the deploy_app tool. Be concise.',
+		)
+		.tool(deployTool)
+		.checkpoint('memory');
+
+	return { agent, handlerCalls: () => calls };
+}
 
 export function createInMemoryAgentMemory(): {
 	memory: InMemoryMemory;

@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -25,7 +25,7 @@ const installedPackage = (packageName: string, installedVersion: string) =>
 	}) as unknown as InstalledPackages;
 
 describe('CommunityPackagesInstanceSettingsLoader', () => {
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const communityPackagesService = mock<CommunityPackagesService>();
 	const communityNodeTypesService = mock<CommunityNodeTypesService>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -57,7 +57,7 @@ describe('CommunityPackagesInstanceSettingsLoader', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnThis();
 		communityPackagesService.parseNpmPackageName.mockImplementation((name?: string) => ({
 			packageName: name ?? '',

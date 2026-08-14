@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick } from 'vue';
-import { N8nPromptInput, N8nIconButton, N8nIcon, N8nPopover, N8nTooltip } from '@n8n/design-system';
+import { N8nChatInput, N8nIconButton, N8nIcon, N8nPopover, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useNodeMention } from '../../composables/useNodeMention';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
@@ -60,7 +60,7 @@ const {
 	handleRemove,
 } = useFocusedNodesChipUI();
 
-const inputRef = ref<InstanceType<typeof N8nPromptInput> | null>(null);
+const inputRef = ref<InstanceType<typeof N8nChatInput> | null>(null);
 const textValue = ref(props.modelValue);
 
 watch(
@@ -175,7 +175,7 @@ defineExpose({
 
 <template>
 	<div :class="$style.wrapper">
-		<N8nPromptInput
+		<N8nChatInput
 			ref="inputRef"
 			v-model="textValue"
 			:placeholder="placeholder"
@@ -195,7 +195,7 @@ defineExpose({
 			@stop="onStop"
 			@upgrade-click="onUpgradeClick"
 		>
-			<template v-if="isFeatureEnabled && hasConfirmedNodes" #inline-chips>
+			<template v-if="isFeatureEnabled && hasConfirmedNodes" #leading>
 				<!-- All nodes confirmed: single "All nodes" chip -->
 				<span v-if="allNodesConfirmed" :class="$style.bundledConfirmedChip">
 					<span :class="$style.bundledIconWrapper">
@@ -262,9 +262,11 @@ defineExpose({
 				</template>
 			</template>
 
-			<!-- Extra actions: parent slot content + mention button -->
-			<template v-if="isFeatureEnabled || $slots['extra-actions']" #extra-actions>
-				<slot name="extra-actions" />
+			<!-- Left actions: parent slot content + mention button -->
+			<template v-if="isFeatureEnabled || $slots['left-actions'] || $slots.actions" #left-actions>
+				<slot name="left-actions">
+					<slot name="actions" />
+				</slot>
 				<N8nIconButton
 					v-if="isFeatureEnabled"
 					icon="at-sign"
@@ -277,8 +279,12 @@ defineExpose({
 				/>
 			</template>
 
-			<!-- Unconfirmed chips - in bottom actions row (only when feature enabled) -->
-			<template v-if="isFeatureEnabled && hasUnconfirmedNodes" #bottom-actions-chips>
+			<template v-if="$slots['right-actions']" #right-actions>
+				<slot name="right-actions" />
+			</template>
+
+			<!-- Unconfirmed chips - in trailing row (only when feature enabled) -->
+			<template v-if="isFeatureEnabled && hasUnconfirmedNodes" #trailing>
 				<!-- All nodes unconfirmed: single "All nodes" chip -->
 				<N8nTooltip
 					v-if="allNodesUnconfirmed"
@@ -324,7 +330,7 @@ defineExpose({
 					</N8nTooltip>
 				</template>
 			</template>
-		</N8nPromptInput>
+		</N8nChatInput>
 
 		<NodeMentionDropdown
 			v-if="isFeatureEnabled && showDropdown"

@@ -8,8 +8,8 @@ import { LmChatGoogleVertex } from '../LmChatGoogleVertex.node';
 
 vi.mock('@langchain/google-vertexai');
 vi.mock('@n8n/ai-utilities');
-vi.mock('n8n-nodes-base/dist/utils/utilities', () => ({
-	formatPrivateKey: vi.fn().mockImplementation((key: string) => key),
+vi.mock('@n8n/utils/format-pem-block', () => ({
+	formatPemBlock: vi.fn().mockImplementation((key: string) => key),
 }));
 
 const MockedChatVertexAI = vi.mocked(ChatVertexAI);
@@ -98,6 +98,63 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			});
 		});
 
+		it('uses the node-level location override, with no endpoint override for global', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-3.1-flash-lite';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'location') return 'global';
+				if (paramName === 'options') return {};
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatVertexAI.mock.calls[0][0];
+			expect(callArgs?.location).toBe('global');
+			expect(callArgs).not.toHaveProperty('endpoint');
+		});
+
+		it('routes the EU multi-region location through the .rep. data-residency endpoint', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-3.1-flash-lite';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'location') return 'eu';
+				if (paramName === 'options') return {};
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatVertexAI.mock.calls[0][0];
+			expect(callArgs?.location).toBe('eu');
+			expect(callArgs?.endpoint).toBe('aiplatform.eu.rep.googleapis.com');
+		});
+
+		it('falls back to the credential region when no location override is set', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-2.5-flash';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'location') return '';
+				if (paramName === 'options') return {};
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatVertexAI.mock.calls[0][0];
+			expect(callArgs?.location).toBe('us-central1');
+			expect(callArgs).not.toHaveProperty('endpoint');
+		});
+
 		it('should include thinkingBudget in model config when specified', async () => {
 			const mockContext = setupMockContext();
 			const expectedThinkingBudget = 1024;
@@ -142,6 +199,83 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 					onFailedAttempt: expect.any(Function),
 				}),
 			);
+		});
+	});
+
+	describe('supplyData - failed attempt error handling', () => {
+		const getCustomErrorHandler = async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-3.1-flash-lite';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'options') return {};
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+
+			return mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0][1]!;
+		};
+
+		it('should map 403 to a friendly unauthorized error', async () => {
+			const handler = await getCustomErrorHandler();
+
+			expect(() => handler({ response: { status: 403 } })).toThrowError(
+				'Unauthorized for this project',
+			);
+		});
+
+		it('should surface the Google error detail on 400', async () => {
+			const handler = await getCustomErrorHandler();
+			const error = {
+				message: 'Google request failed with status code 400',
+				response: {
+					status: 400,
+					data: { error: { message: 'Function call is missing a thought_signature' } },
+				},
+			};
+
+			try {
+				handler(error);
+				expect.unreachable('handler should throw');
+			} catch (e) {
+				expect(e).toMatchObject({
+					message: 'Bad request - please check your parameters',
+					description: 'Function call is missing a thought_signature',
+				});
+			}
+		});
+
+		it('should fall back to the raw error message on 400 when no Google detail is found', async () => {
+			const handler = await getCustomErrorHandler();
+			const error = {
+				message: 'Request had invalid authentication scopes',
+				response: { status: 400 },
+			};
+
+			try {
+				handler(error);
+				expect.unreachable('handler should throw');
+			} catch (e) {
+				expect(e).toMatchObject({
+					message: 'Bad request - please check your parameters',
+					description: 'Request had invalid authentication scopes',
+				});
+			}
+		});
+
+		it('should rethrow the original error for unmapped statuses', async () => {
+			const handler = await getCustomErrorHandler();
+			const error = { message: 'boom', response: { status: 500 } };
+
+			try {
+				handler(error);
+				expect.unreachable('handler should throw');
+			} catch (e) {
+				expect(e).toBe(error);
+			}
 		});
 	});
 });

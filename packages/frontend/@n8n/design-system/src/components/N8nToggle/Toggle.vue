@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { Toggle, ToggleGroupItem, type AcceptableValue } from 'reka-ui';
+import { Toggle as TogglePrimitive, ToggleGroupItem, type AcceptableValue } from 'reka-ui';
 import { computed, ref, useAttrs, useCssModule } from 'vue';
-
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import type { IconSize } from '../../types';
 import type { ButtonProps } from '../../types/button';
 import { cn } from '../../utils/cn';
 import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
 export interface ToggleProps extends Pick<ButtonProps, 'variant' | 'size' | 'disabled' | 'class'> {
@@ -59,6 +58,7 @@ const classes = computed(() =>
 		props.class,
 	),
 );
+
 const uncontrolledPressed = ref(props.modelValue ?? false);
 
 const pressed = computed({
@@ -88,7 +88,7 @@ const pressed = computed({
 			</span>
 		</ToggleGroupItem>
 
-		<Toggle
+		<TogglePrimitive
 			v-else
 			v-bind="attrs"
 			v-model="pressed"
@@ -103,7 +103,7 @@ const pressed = computed({
 				<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
 				<slot />
 			</span>
-		</Toggle>
+		</TogglePrimitive>
 	</N8nTooltip>
 </template>
 
@@ -161,7 +161,7 @@ const pressed = computed({
 	}
 
 	&:active,
-	&[data-state='on'] {
+	&[aria-pressed='true'] {
 		background-color: var(--button--color--background-active);
 		box-shadow:
 			inset var(--button--border--shadow--active),

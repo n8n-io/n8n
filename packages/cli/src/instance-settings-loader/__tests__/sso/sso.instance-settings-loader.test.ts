@@ -1,22 +1,22 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { OidcInstanceSettingsLoader } from '../../loaders/sso/oidc.instance-settings-loader';
 import type { ProvisioningInstanceSettingsLoader } from '../../loaders/sso/provisioning.instance-settings-loader';
 import type { SamlInstanceSettingsLoader } from '../../loaders/sso/saml.instance-settings-loader';
 import { SsoInstanceSettingsLoader } from '../../loaders/sso/sso.instance-settings-loader';
 
-const mockSetCurrentAuthenticationMethod = jest.fn();
-const mockGetCurrentAuthenticationMethod = jest.fn().mockReturnValue('email');
-jest.mock('@/sso.ee/sso-helpers', () => ({
+const mockSetCurrentAuthenticationMethod = vi.fn();
+const mockGetCurrentAuthenticationMethod = vi.fn().mockReturnValue('email');
+vi.mock('@/sso.ee/sso-helpers', () => ({
 	setCurrentAuthenticationMethod: (...args: unknown[]) =>
 		mockSetCurrentAuthenticationMethod(...args),
 	getCurrentAuthenticationMethod: () => mockGetCurrentAuthenticationMethod(),
 }));
 
 describe('SsoInstanceSettingsLoader', () => {
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const samlLoader = mock<SamlInstanceSettingsLoader>();
 	const oidcLoader = mock<OidcInstanceSettingsLoader>();
 	const provisioningLoader = mock<ProvisioningInstanceSettingsLoader>();
@@ -39,7 +39,7 @@ describe('SsoInstanceSettingsLoader', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnThis();
 		mockGetCurrentAuthenticationMethod.mockReturnValue('email');
 	});

@@ -27,6 +27,7 @@ export const configSchema = z.object({
 	defaultBrowser: browserNameSchema.default('chrome'),
 	browsers: z.record(browserNameSchema, browserOverrideSchema).default({}),
 	adapter: z.enum(['playwright', 'agent-browser']).default('agent-browser'),
+	mode: z.enum(['local', 'remote']).default('local'),
 });
 
 export type Config = z.input<typeof configSchema>;
@@ -41,6 +42,7 @@ export interface ResolvedConfig {
 	defaultBrowser: BrowserName;
 	browsers: Map<BrowserName, ResolvedBrowserInfo>;
 	adapter: 'playwright' | 'agent-browser';
+	mode: 'local' | 'remote';
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +67,7 @@ export interface Adapter {
 	listTabs(): Promise<PageInfo[]>;
 	listTabIds(): Promise<string[]>;
 	listTabSessionIds(): Promise<string[]>;
-	newPage(url?: string): Promise<PageInfo>;
+	newPage(url?: string, waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'): Promise<PageInfo>;
 	closePage(pageId: string): Promise<void>;
 	focusPage(pageId: string): Promise<void>;
 	// Navigation
@@ -74,8 +76,14 @@ export interface Adapter {
 		url: string,
 		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
 	): Promise<NavigateResult>;
-	back(pageId: string): Promise<NavigateResult>;
-	forward(pageId: string): Promise<NavigateResult>;
+	back(
+		pageId: string,
+		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<NavigateResult>;
+	forward(
+		pageId: string,
+		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<NavigateResult>;
 	reload(
 		pageId: string,
 		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',

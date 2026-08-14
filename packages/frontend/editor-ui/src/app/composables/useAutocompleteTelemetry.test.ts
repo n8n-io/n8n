@@ -10,15 +10,18 @@ import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 const trackSpy = vi.fn();
 const setAutocompleteOnboardedSpy = vi.fn();
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
 }));
 
+const mockNdvStoreValue = {
+	activeNode: { type: 'n8n-nodes-base.test' },
+	setAutocompleteOnboarded: setAutocompleteOnboardedSpy,
+};
+
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn(() => ({
-		activeNode: { type: 'n8n-nodes-base.test' },
-		setAutocompleteOnboarded: setAutocompleteOnboardedSpy,
-	})),
+	useNDVStore: vi.fn(() => mockNdvStoreValue),
+	injectNDVStore: vi.fn(() => ({ value: mockNdvStoreValue })),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({

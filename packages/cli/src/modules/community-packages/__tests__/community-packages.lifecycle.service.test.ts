@@ -1,7 +1,7 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
@@ -14,13 +14,14 @@ import type { CommunityPackagesService } from '../community-packages.service';
 import type { InstalledPackages } from '../installed-packages.entity';
 import { executeNpmCommand } from '../npm-utils';
 
-jest.mock('../npm-utils', () => ({
-	...jest.requireActual('../npm-utils'),
-	executeNpmCommand: jest.fn(),
-	isNpmExecErrorWithStdout: jest.requireActual('../npm-utils').isNpmExecErrorWithStdout,
+vi.mock('../npm-utils', async () => ({
+	...(await vi.importActual<typeof import('../npm-utils')>('../npm-utils')),
+	executeNpmCommand: vi.fn(),
+	isNpmExecErrorWithStdout: (await vi.importActual<typeof import('../npm-utils')>('../npm-utils'))
+		.isNpmExecErrorWithStdout,
 }));
 
-const mockedExecuteNpmCommand = jest.mocked(executeNpmCommand);
+const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 
 describe('CommunityPackagesLifecycleService', () => {
 	const logger = mock<Logger>();
@@ -60,7 +61,7 @@ describe('CommunityPackagesLifecycleService', () => {
 		});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('install', () => {

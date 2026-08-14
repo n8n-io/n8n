@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { getAwsCredentials } from '../../GenericFunctions';
 import { BASE_URL } from '../helpers/constants';
 
 const errorMapping: IDataObject = {
@@ -33,9 +34,11 @@ export async function awsApiRequest(
 	}
 
 	try {
+		const { credentialsType } = await getAwsCredentials(this);
+
 		const response = (await this.helpers.requestWithAuthentication.call(
 			this,
-			'aws',
+			credentialsType,
 			requestOptions,
 		)) as IDataObject;
 

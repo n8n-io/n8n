@@ -11,6 +11,7 @@ describe('Test PipedriveV2, deal => update', () => {
 		.patch('/deals/10', {
 			title: 'Updated Deal',
 			value: 7500,
+			owner_id: 25455458,
 			expected_close_date: '2026-04-13',
 		})
 		.reply(200, {

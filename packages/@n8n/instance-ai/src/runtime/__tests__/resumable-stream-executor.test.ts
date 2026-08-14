@@ -1,19 +1,21 @@
+import type { InstanceAiEvent } from '@n8n/api-types';
+
 import type { SuspensionInfo } from '../../utils/stream-helpers';
 import { executeResumableStream, normalizeStreamSource } from '../resumable-stream-executor';
 
 function createEventBus() {
 	return {
-		publish: jest.fn(),
-		subscribe: jest.fn(),
-		getEventsAfter: jest.fn(),
-		getNextEventId: jest.fn(),
-		getEventsForRun: jest.fn().mockReturnValue([]),
-		getEventsForRuns: jest.fn().mockReturnValue([]),
+		publish: vi.fn(),
+		subscribe: vi.fn(),
+		getEventsAfter: vi.fn(),
+		getNextEventId: vi.fn(),
+		getEventsForRun: vi.fn().mockReturnValue([]),
+		getEventsForRuns: vi.fn().mockReturnValue([]),
 	};
 }
 
 function createLogger() {
-	return { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 }
 
 async function* fromChunks(chunks: unknown[]) {
@@ -92,7 +94,7 @@ describe('normalizeStreamSource', () => {
 					},
 				},
 			]),
-			getState: jest.fn(),
+			getState: vi.fn(),
 		});
 
 		expect(source.runId).toBe('agent-run-1');
@@ -139,6 +141,7 @@ describe('executeResumableStream', () => {
 					toolCallId: 'tool-call-1',
 					requestId: 'request-1',
 					toolName: 'ask-user',
+					suspendPayload: { requestId: 'request-1', message: 'Need approval' },
 				},
 			}),
 		);
@@ -155,11 +158,12 @@ describe('executeResumableStream', () => {
 	});
 
 	it('returns errored status when stream contains an error chunk', async () => {
+		const error = new Error('Not Found');
 		const result = await executeResumableStream({
 			agent: {},
 			stream: {
 				runId: 'agent-run-1',
-				fullStream: fromChunks([textChunk('Working...'), errorChunk(new Error('Not Found'))]),
+				fullStream: fromChunks([textChunk('Working...'), errorChunk(error)]),
 			},
 			context: {
 				threadId: 'thread-1',
@@ -174,10 +178,85 @@ describe('executeResumableStream', () => {
 
 		expect(result.status).toBe('errored');
 		expect(result.agentRunId).toBe('agent-run-1');
+		expect(result.error).toBe(error);
+	});
+
+	it('publishes only the quota error when a follow-on error chunk arrives', async () => {
+		const eventBus = createEventBus();
+		const quotaError = Object.assign(new Error('Have reached end of quota'), {
+			statusCode: 403,
+			errorCode: 'quota_exhausted',
+		});
+		const followOn = new Error('No output generated. Check the stream for errors.');
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([errorChunk(quotaError), errorChunk(followOn)]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		const errorEvents = eventBus.publish.mock.calls
+			.map(([, event]) => event as InstanceAiEvent)
+			.filter((event) => event.type === 'error');
+
+		expect(errorEvents).toHaveLength(1);
+		expect(errorEvents[0].payload).toMatchObject({ code: 'quota_exhausted' });
+		// The swallowed follow-on chunk must not overwrite result.error, or telemetry
+		// would log the generic "No output generated" while the user saw the quota error.
+		expect(result.error).toBe(quotaError);
+	});
+
+	it('captures terminal usage on an aborted run so cancelled runs are billed', async () => {
+		const controller = new AbortController();
+
+		// Yield a text chunk, abort mid-stream (as a user "stop" does), then let
+		// the agent emit its terminal finish chunk carrying the run's usage.
+		async function* abortingStream() {
+			await Promise.resolve();
+			yield textChunk('partial');
+			controller.abort();
+			yield {
+				type: 'finish',
+				finishReason: 'error',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+			};
+		}
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: { runId: 'agent-run-1', fullStream: abortingStream() },
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus: createEventBus(),
+				signal: controller.signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(result.status).toBe('cancelled');
+		expect(result.usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+		});
 	});
 
 	it('reports liveness activity for each consumed chunk', async () => {
-		const onActivity = jest.fn();
+		const onActivity = vi.fn();
 
 		await executeResumableStream({
 			agent: {},
@@ -233,9 +312,7 @@ describe('executeResumableStream', () => {
 			control: { mode: 'manual' },
 		});
 
-		const publishedEvents = eventBus.publish.mock.calls.map(
-			([, event]: [string, PublishedEvent]) => event,
-		);
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
 		const firstText = publishedEvents.find((event) => event.payload?.text === 'First');
 		const toolCall = publishedEvents.find((event) => event.type === 'tool-call');
 		const firstStepContinuation = publishedEvents.find((event) => event.payload?.text === ' step');
@@ -247,13 +324,151 @@ describe('executeResumableStream', () => {
 		expect(secondText?.responseId).toBe('agent-run-1:step:2');
 	});
 
+	it('mints a synthetic per-segment responseId when the provider supplies none', async () => {
+		const eventBus = createEventBus();
+
+		// No start-step chunks at all; some providers never emit them. Deltas
+		// must still carry a responseId (segment identity keys the run reducer's
+		// block replace semantics), one per contiguous delta run.
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					textChunk('First'),
+					textChunk(' segment'),
+					{
+						type: 'tool-call',
+						toolCallId: 'tool-call-1',
+						toolName: 'test-tool',
+						input: {},
+					},
+					textChunk('Second segment'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
+		// The output redactor may merge contiguous deltas, so match by prefix.
+		const first = publishedEvents.find((event) => event.payload?.text?.startsWith('First'));
+		const toolCall = publishedEvents.find((event) => event.type === 'tool-call');
+		const second = publishedEvents.find((event) => event.payload?.text === 'Second segment');
+
+		expect(first?.responseId).toBeDefined();
+		// Sticky for the whole segment (the closing structural fact inherits it,
+		// mirroring provider-supplied step ids)...
+		expect(toolCall?.responseId).toBe(first?.responseId);
+		// ...and rolled after it, so two segments never share an id.
+		expect(second?.responseId).toBeDefined();
+		expect(second?.responseId).not.toBe(first?.responseId);
+	});
+
+	it('rolls the synthetic responseId at a finish-step boundary that maps to no event', async () => {
+		const eventBus = createEventBus();
+
+		// finish-step publishes nothing, but it still separates two segments; a
+		// sticky synthetic id across it would let the reducer's id-keyed replace
+		// pair blocks from different steps.
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					textChunk('First step text'),
+					{ type: 'finish-step' },
+					textChunk('Second step text'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
+		// The output redactor may merge contiguous deltas, so match by prefix.
+		const first = publishedEvents.find((event) => event.payload?.text?.startsWith('First'));
+		const second = publishedEvents.find((event) => event.payload?.text?.startsWith('Second'));
+
+		expect(first?.responseId).toBeDefined();
+		expect(second?.responseId).toBeDefined();
+		expect(second?.responseId).not.toBe(first?.responseId);
+	});
+
+	it('stops consuming after a requested handoff while publishing the current tool result', async () => {
+		const eventBus = createEventBus();
+		let shouldStop = false;
+		eventBus.publish.mockImplementation((_: string, event: PublishedEvent) => {
+			if (event.type === 'tool-result') {
+				shouldStop = true;
+			}
+		});
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					{
+						type: 'tool-call',
+						toolCallId: 'tool-call-1',
+						toolName: 'create-tasks',
+						input: {},
+					},
+					{
+						type: 'tool-result',
+						toolCallId: 'tool-call-1',
+						output: { result: 'Plan approved. Started 1 task.', taskCount: 1 },
+					},
+					textChunk('This inline continuation should not be published.'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+				stopSignal: () => (shouldStop ? { reason: 'planned-tasks-scheduled' } : undefined),
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
+
+		expect(result.status).toBe('completed');
+		expect(result.stopReason).toBe('planned-tasks-scheduled');
+		expect(publishedEvents.some((event) => event.type === 'tool-call')).toBe(true);
+		expect(publishedEvents.some((event) => event.type === 'tool-result')).toBe(true);
+		expect(
+			publishedEvents.some(
+				(event) => event.payload?.text === 'This inline continuation should not be published.',
+			),
+		).toBe(false);
+	});
+
 	it('auto-resumes suspended streams and passes drained corrections to resume data', async () => {
 		const eventBus = createEventBus();
-		const resume = jest.fn().mockResolvedValue({
+		const resume = vi.fn().mockResolvedValue({
 			runId: 'agent-run-2',
 			stream: readableFromChunks([textChunk('Done.')]),
 		});
-		const waitForConfirmation = jest.fn().mockResolvedValue({ approved: true });
+		const waitForConfirmation = vi.fn().mockResolvedValue({ approved: true });
 		let hasDrainedCorrection = false;
 
 		const result = await executeResumableStream({
@@ -310,13 +525,16 @@ describe('executeResumableStream', () => {
 			'thread-1',
 			expect.objectContaining({
 				type: 'text-delta',
+				// Correction lines are their own segments: each carries a unique
+				// synthetic responseId so the reducer never merges them.
+				responseId: expect.stringContaining(':correction:') as string,
 				payload: { text: '\n[USER CORRECTION]: Prefer Slack instead of email\n' },
 			}),
 		);
 	});
 
 	it('passes resume options from the control hook', async () => {
-		const resume = jest.fn().mockResolvedValue({
+		const resume = vi.fn().mockResolvedValue({
 			runId: 'agent-run-2',
 			stream: readableFromChunks([textChunk('Done.')]),
 		});
@@ -364,11 +582,11 @@ describe('executeResumableStream', () => {
 		const finishGate = createDeferred<undefined>();
 		const approval = createDeferred<Record<string, unknown>>();
 		const waitStarted = createDeferred<undefined>();
-		const resume = jest.fn().mockResolvedValue({
+		const resume = vi.fn().mockResolvedValue({
 			runId: 'agent-run-2',
 			stream: readableFromChunks([textChunk('Done.')]),
 		});
-		const waitForConfirmation = jest.fn().mockImplementation(async () => {
+		const waitForConfirmation = vi.fn().mockImplementation(async () => {
 			waitStarted.resolve(undefined);
 			return await approval.promise;
 		});
@@ -428,12 +646,12 @@ describe('executeResumableStream', () => {
 
 	it('surfaces only the first actionable suspension in a drain', async () => {
 		const eventBus = createEventBus();
-		const resume = jest.fn().mockResolvedValue({
+		const resume = vi.fn().mockResolvedValue({
 			runId: 'agent-run-2',
 			stream: readableFromChunks([textChunk('Done.')]),
 		});
-		const waitForConfirmation = jest.fn().mockResolvedValue({ approved: true });
-		const onSuspension = jest.fn((_: SuspensionInfo) => undefined);
+		const waitForConfirmation = vi.fn().mockResolvedValue({ approved: true });
+		const onSuspension = vi.fn((_: SuspensionInfo) => undefined);
 
 		await executeResumableStream({
 			agent: { resume },
@@ -479,6 +697,7 @@ describe('executeResumableStream', () => {
 			requestId: 'request-1',
 			toolCallId: 'tool-call-1',
 			toolName: 'pause-for-user',
+			suspendPayload: { requestId: 'request-1', message: 'First confirmation' },
 		});
 		expect(waitForConfirmation).toHaveBeenCalledTimes(1);
 		expect(waitForConfirmation).toHaveBeenCalledWith('request-1');

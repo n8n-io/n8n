@@ -383,7 +383,7 @@ The runtime **can only**:
 - Test observability emission
 - Test error handling
 
-**Integration Tests** (jest in workflow package):
+**Integration Tests** (vitest in workflow package):
 - Test full stack with real isolated-vm
 - Test concurrent evaluations
 - Test with real workflow data

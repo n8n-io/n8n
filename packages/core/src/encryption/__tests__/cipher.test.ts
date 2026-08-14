@@ -10,6 +10,17 @@ describe('Cipher', () => {
 	mockInstance(InstanceSettings, { encryptionKey: 'test_key' });
 	const cipher = Container.get(Cipher);
 
+	// Decrypts CBC ciphertext with the given key, normalizing a padding-validation
+	// throw into a sentinel. Used to assert wrong-key decryption never recovers the
+	// original plaintext without relying on the flaky ~255/256 chance that CBC throws.
+	const decryptWithCbcKey = (ciphertext: string, key: string): string => {
+		try {
+			return cipher.decryptWithKey(ciphertext, key, 'aes-256-cbc');
+		} catch {
+			return '\0__decryption-threw__';
+		}
+	};
+
 	describe('encrypt', () => {
 		it('should encrypt strings', () => {
 			const encrypted = cipher.encrypt('random-string');
@@ -52,9 +63,12 @@ describe('Cipher', () => {
 			expect(cipher.decryptWithKey(encrypted, 'test_key', 'aes-256-cbc')).toEqual('random-string');
 		});
 
-		it('should fail to decrypt with a non-instance key', () => {
+		it('should not recover the plaintext with a non-instance key', () => {
 			const encrypted = cipher.encryptWithInstanceKey('random-string');
-			expect(() => cipher.decryptWithKey(encrypted, 'some-other-key', 'aes-256-cbc')).toThrow();
+			// Unauthenticated CBC cannot reliably detect a wrong key: decryption
+			// either throws on padding validation or yields garbage, but it must
+			// never return the original plaintext.
+			expect(decryptWithCbcKey(encrypted, 'some-other-key')).not.toEqual('random-string');
 		});
 	});
 
@@ -85,9 +99,12 @@ describe('Cipher', () => {
 			expect(first).not.toEqual(second);
 		});
 
-		it('should fail to decrypt with a different key', () => {
+		it('should not recover the plaintext with a different key', () => {
 			const encrypted = cipher.encryptWithKey('random-string', 'key-a', 'aes-256-cbc');
-			expect(() => cipher.decryptWithKey(encrypted, 'key-b', 'aes-256-cbc')).toThrow();
+			// Unauthenticated CBC cannot reliably detect a wrong key: decryption
+			// either throws on padding validation or yields garbage, but it must
+			// never return the original plaintext.
+			expect(decryptWithCbcKey(encrypted, 'key-b')).not.toEqual('random-string');
 		});
 
 		it('should be interoperable with legacy encrypt when given the same key', () => {

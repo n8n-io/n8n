@@ -1,9 +1,8 @@
-import { ApplicationError } from '@n8n/errors';
 import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { UnexpectedError } from './errors';
+import { UnexpectedError, UserError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
@@ -240,7 +239,7 @@ export class Expression {
 	}
 
 	/**
-	 * Initialize the VM evaluator (if feature flag is enabled).
+	 * Initialize the VM evaluator (no-op when the legacy engine is selected).
 	 * Should be called once during application startup.
 	 * Only available in Node.js environments (not in browser).
 	 */
@@ -280,12 +279,29 @@ export class Expression {
 		}
 	}
 
-	async acquireIsolate(): Promise<void> {
-		if (Expression.vmEvaluator) await Expression.vmEvaluator.acquire(this);
+	/** Returns whether an isolate was newly acquired; `false` means this caller already held one and must not release it. */
+	async acquireIsolate(): Promise<boolean> {
+		if (Expression.vmEvaluator) return await Expression.vmEvaluator.acquire(this);
+		return false;
 	}
 
 	async releaseIsolate(): Promise<void> {
 		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
+	}
+
+	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		const acquired = await this.acquireIsolate();
+		try {
+			return await fn();
+		} finally {
+			if (acquired) {
+				try {
+					await this.releaseIsolate();
+				} catch (error) {
+					LoggerProxy.error('Failed to release expression isolate', { error });
+				}
+			}
+		}
 	}
 
 	/**
@@ -374,10 +390,23 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		data.__lookupGetter__ = undefined;
-		data.__lookupSetter__ = undefined;
-		data.__defineGetter__ = undefined;
-		data.__defineSetter__ = undefined;
+		// These four names are inherited from `Object.prototype`. In the secure-mode
+		// task-runner sandbox `Object.prototype` is frozen, so plain assignment walks
+		// the prototype chain to the now read-only inherited property and throws in
+		// strict mode. Define them as own properties to overwrite them safely.
+		for (const key of [
+			'__lookupGetter__',
+			'__lookupSetter__',
+			'__defineGetter__',
+			'__defineSetter__',
+		]) {
+			Object.defineProperty(data, key, {
+				value: undefined,
+				writable: true,
+				enumerable: true,
+				configurable: true,
+			});
+		}
 
 		// Deprecated
 		data.escape = {};
@@ -475,7 +504,7 @@ export class Expression {
 	 */
 	convertObjectValueToString(value: object): string {
 		if (value instanceof DateTime && value.invalidReason !== null) {
-			throw new ApplicationError('invalid DateTime');
+			throw new UserError('invalid DateTime');
 		}
 
 		if (value === null) {
@@ -551,14 +580,14 @@ export class Expression {
 
 		// Expression extensions — only attached for the legacy engine.
 		//
-		// In the VM engine, every host function reachable from `data` becomes
-		// a callable target the isolate can reach via `callFunctionAtPath`.
-		// To minimise that surface we keep the VM-path data object as small as
-		// possible and let the in-isolate runtime resolve helpers itself
-		// (see packages/@n8n/expression-runtime/src/runtime/context.ts, where
-		// Tournament's polyfill rewrites bare `extend(...)` calls to the
-		// in-isolate copy on `target.extend`). Setting them on `data` in VM
-		// mode would be dead code AND an unnecessary host-callable.
+		// In the VM engine, function-typed bindings on `data` are
+		// structurally unreachable: the bridge's `getValueAtPath` returns
+		// `undefined` for any function-typed value, and the in-isolate
+		// runtime resolves helpers itself via Tournament's polyfill
+		// (see packages/@n8n/expression-runtime/src/runtime/context.ts,
+		// where bare `extend(...)` calls bind to the in-isolate copy on
+		// `target.extend`). Setting them on `data` in VM mode would be
+		// dead code.
 		if (!usingVm) {
 			data.extend = extend;
 			data.extendOptional = extendOptional;
@@ -597,9 +626,9 @@ export class Expression {
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
-				throw new ApplicationError('this is a DateTime, please access its methods');
+				throw new UserError('this is a DateTime, please access its methods');
 
-			throw new ApplicationError('this is a function, please add ()');
+			throw new UserError('this is a function, please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -616,7 +645,7 @@ export class Expression {
 		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
 			if (!Expression.vmEvaluator) {
 				throw new UnexpectedError(
-					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initExpressionEngine() during application startup.',
+					'The VM expression engine has not been initialized. Call Expression.initExpressionEngine() during application startup.',
 				);
 			}
 
@@ -636,14 +665,14 @@ export class Expression {
 		} catch (error) {
 			if (isExpressionError(error)) throw error;
 
-			if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
+			if (isSyntaxError(error)) throw new UserError('invalid syntax');
 
 			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
 				if (!match?.groups?.msg) return null;
 
-				throw new ApplicationError(match.groups.msg);
+				throw new UserError(match.groups.msg);
 			}
 		}
 

@@ -1,10 +1,11 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { logAiEvent } from '../../../../log-ai-event';
 import type { VectorStoreNodeConstructorArgs } from '../../types';
@@ -12,20 +13,22 @@ import { isUpdateSupported } from '../../utils';
 import { handleUpdateOperation } from '../updateOperation';
 
 // Mock dependencies
-jest.mock('../../utils', () => ({
-	isUpdateSupported: jest.fn(),
+vi.mock('../../utils', () => ({
+	isUpdateSupported: vi.fn(),
 }));
 
-jest.mock('../../../../log-ai-event', () => ({
-	logAiEvent: jest.fn(),
+vi.mock('../../../../log-ai-event', () => ({
+	logAiEvent: vi.fn(),
 }));
 
-jest.mock('../../../../n8n-json-loader', () => ({
-	N8nJsonLoader: jest.fn().mockImplementation(() => ({})),
+vi.mock('../../../../n8n-json-loader', () => ({
+	N8nJsonLoader: vi.fn(function () {
+		return {};
+	}),
 }));
 
-jest.mock('../../../processDocuments', () => ({
-	processDocument: jest.fn().mockImplementation((_documentInput, _itemData, itemIndex) => {
+vi.mock('../../../processDocuments', () => ({
+	processDocument: vi.fn().mockImplementation((_documentInput, _itemData, itemIndex) => {
 		const mockProcessed = [
 			{
 				pageContent: `updated content ${itemIndex}`,
@@ -59,7 +62,7 @@ describe('handleUpdateOperation', () => {
 
 	beforeEach(() => {
 		// Mock isUpdateSupported to return true by default
-		(isUpdateSupported as jest.Mock).mockReturnValue(true);
+		(isUpdateSupported as Mock).mockReturnValue(true);
 
 		// Mock input items
 		mockInputItems = [{ json: { text: 'test document 1' } }, { json: { text: 'test document 2' } }];
@@ -92,19 +95,19 @@ describe('handleUpdateOperation', () => {
 				operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool', 'update'],
 			},
 			sharedFields: [],
-			getVectorStoreClient: jest.fn().mockResolvedValue(mockVectorStore),
-			populateVectorStore: jest.fn().mockResolvedValue(undefined),
-			releaseVectorStoreClient: jest.fn(),
+			getVectorStoreClient: vi.fn().mockResolvedValue(mockVectorStore),
+			populateVectorStore: vi.fn().mockResolvedValue(undefined),
+			releaseVectorStoreClient: vi.fn(),
 		};
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should throw error if update is not supported', async () => {
 		// Mock isUpdateSupported to return false
-		(isUpdateSupported as jest.Mock).mockReturnValue(false);
+		(isUpdateSupported as Mock).mockReturnValue(false);
 
 		await expect(handleUpdateOperation(mockContext, mockArgs, mockEmbeddings)).rejects.toThrow(
 			NodeOperationError,

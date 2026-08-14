@@ -1,5 +1,3 @@
-import { EventEmitter } from 'node:events';
-import { nanoid } from 'nanoid';
 import type {
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -7,6 +5,8 @@ import type {
 	InstanceAiGatewayCapabilities,
 	ToolCategory,
 } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
+import { EventEmitter } from 'node:events';
 
 const REQUEST_TIMEOUT_MS = 60_000; // 1 minute — tool calls like browser automation and shell execution can be long-running
 
@@ -67,6 +67,8 @@ export class LocalGateway {
 
 	private _availableTools: McpTool[] = [];
 
+	private _excludedToolCategories: ReadonlySet<string> = new Set();
+
 	get isConnected(): boolean {
 		return this._connected;
 	}
@@ -79,13 +81,24 @@ export class LocalGateway {
 		return this._rootPath;
 	}
 
-	/** The MCP tools advertised by the client on connect. */
+	/** Restrict which tool categories are exposed to the agent. Pass an empty set to expose all. */
+	setExcludedToolCategories(categories: string[]): void {
+		this._excludedToolCategories = new Set(categories);
+	}
+
+	private isExcluded(tool: McpTool): boolean {
+		const category = tool.annotations?.category;
+		return category !== undefined && this._excludedToolCategories.has(category);
+	}
+
+	/** The MCP tools advertised by the client on connect, minus excluded categories. */
 	getAvailableTools(): McpTool[] {
-		return this._availableTools;
+		return this._availableTools.filter((t) => !this.isExcluded(t));
 	}
 
 	/** Return tools that belong to the given category (based on annotations.category). */
 	getToolsByCategory(category: string): McpTool[] {
+		if (this._excludedToolCategories.has(category)) return [];
 		return this._availableTools.filter((t) => t.annotations?.category === category);
 	}
 
@@ -164,28 +177,89 @@ export class LocalGateway {
 			connectedAt: this._connectedAt,
 			directory: this._rootPath,
 			hostIdentifier: this._hostIdentifier,
-			toolCategories: this._toolCategories,
+			toolCategories: this._toolCategories.filter(
+				(category) => !this._excludedToolCategories.has(category.name),
+			),
 		};
 	}
 
 	/**
 	 * Dispatch an MCP tool call to the remote client and await its result.
-	 * Throws if not connected or if the request times out.
+	 * Throws if not connected, if the request times out, or if aborted.
 	 */
-	async callTool(toolCall: McpToolCallRequest): Promise<McpToolCallResult> {
+	async callTool(
+		toolCall: McpToolCallRequest,
+		options?: { abortSignal?: AbortSignal },
+	): Promise<McpToolCallResult> {
 		if (!this._connected) {
 			throw new Error('Local gateway is not connected');
+		}
+
+		const tool = this._availableTools.find((t) => t.name === toolCall.name);
+		if (tool && this.isExcluded(tool)) {
+			return {
+				content: [{ type: 'text', text: `Unknown tool: ${toolCall.name}` }],
+				isError: true,
+			};
+		}
+
+		const abortSignal = options?.abortSignal;
+		if (abortSignal?.aborted) {
+			const error = new Error(
+				typeof abortSignal.reason === 'string' ? abortSignal.reason : 'This operation was aborted',
+			);
+			error.name = 'AbortError';
+			throw error;
 		}
 
 		const requestId = `gw_${nanoid()}`;
 
 		return await new Promise<McpToolCallResult>((resolve, reject) => {
-			const timer = setTimeout(() => {
+			let settled = false;
+
+			const settle = (action: () => void) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				abortSignal?.removeEventListener('abort', onAbort);
 				this.pendingRequests.delete(requestId);
-				reject(new Error(`Local gateway request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+				action();
+			};
+
+			const onAbort = () => {
+				settle(() => {
+					const error = new Error(
+						typeof abortSignal?.reason === 'string'
+							? abortSignal.reason
+							: 'This operation was aborted',
+					);
+					error.name = 'AbortError';
+					reject(error);
+				});
+			};
+
+			const timer = setTimeout(() => {
+				settle(() => {
+					reject(new Error(`Local gateway request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+				});
 			}, REQUEST_TIMEOUT_MS);
 
-			this.pendingRequests.set(requestId, { resolve, reject, timer, toolCall });
+			abortSignal?.addEventListener('abort', onAbort, { once: true });
+
+			this.pendingRequests.set(requestId, {
+				resolve: (result) => {
+					settle(() => {
+						resolve(result);
+					});
+				},
+				reject: (error) => {
+					settle(() => {
+						reject(error);
+					});
+				},
+				timer,
+				toolCall,
+			});
 
 			this.emitter.emit('filesystem-request', {
 				type: 'filesystem-request',

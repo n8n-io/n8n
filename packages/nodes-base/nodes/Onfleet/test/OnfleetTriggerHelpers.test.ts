@@ -17,15 +17,15 @@ describe('OnfleetTriggerHelpers', () => {
 	let mockWebhookFunctions: any;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWebhookFunctions = {
-			getCredentials: jest.fn(),
-			getRequestObject: jest.fn(),
+			getCredentials: vi.fn(),
+			getRequestObject: vi.fn(),
 		};
 
 		mockWebhookFunctions.getRequestObject.mockReturnValue({
-			header: jest.fn().mockImplementation((header: string) => {
+			header: vi.fn().mockImplementation((header: string) => {
 				if (header === 'x-onfleet-signature') return validSignature;
 				return undefined;
 			}),
@@ -70,7 +70,7 @@ describe('OnfleetTriggerHelpers', () => {
 			});
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header: string) => {
+				header: vi.fn().mockImplementation((header: string) => {
 					if (header === 'x-onfleet-signature') return 'f'.repeat(128);
 					return undefined;
 				}),
@@ -88,7 +88,7 @@ describe('OnfleetTriggerHelpers', () => {
 			});
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(undefined),
+				header: vi.fn().mockReturnValue(undefined),
 				rawBody: Buffer.from(testBody),
 			});
 
@@ -103,7 +103,7 @@ describe('OnfleetTriggerHelpers', () => {
 			});
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(validSignature),
+				header: vi.fn().mockReturnValue(validSignature),
 				rawBody: undefined,
 			});
 

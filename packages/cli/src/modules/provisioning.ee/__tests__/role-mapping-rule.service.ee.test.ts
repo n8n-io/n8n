@@ -1,9 +1,12 @@
-import { mock } from 'jest-mock-extended';
+import { QueryFailedError } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
+import type { UserLike } from '@/events/maps/relay.event-map';
 import type {
 	Project,
 	ProjectRepository,
@@ -16,12 +19,16 @@ import type {
 const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();
 const roleRepository = mock<RoleRepository>();
 const projectRepository = mock<ProjectRepository>();
+const eventService = mock<EventService>();
 
 const service = new RoleMappingRuleService(
 	roleMappingRuleRepository,
 	roleRepository,
 	projectRepository,
+	eventService,
 );
+
+const testUser: UserLike = { id: 'user-1', email: 'user@example.com' };
 
 const globalRole: Role = {
 	slug: 'global:member',
@@ -52,15 +59,15 @@ const projectRole: Role = {
 };
 
 describe('RoleMappingRuleService', () => {
-	const defaultUpdateSpy = jest.fn().mockResolvedValue(undefined);
-	const defaultTransactionSpy = jest
+	const defaultUpdateSpy = vi.fn().mockResolvedValue(undefined);
+	const defaultTransactionSpy = vi
 		.fn()
 		.mockImplementation(async (cb: (tx: { update: typeof defaultUpdateSpy }) => Promise<void>) => {
 			await cb({ update: defaultUpdateSpy });
 		});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		roleMappingRuleRepository.findOne.mockResolvedValue(null);
 		// normalizeOrderForType calls find after every mutation; default to empty
 		// so existing tests hit the early-exit path and require no transaction mock.
@@ -77,34 +84,43 @@ describe('RoleMappingRuleService', () => {
 	describe('create', () => {
 		it('should reject project type without projectIds', async () => {
 			await expect(
-				service.create({
-					expression: 'true',
-					role: 'project:editor',
-					type: 'project',
-					order: 0,
-				}),
+				service.create(
+					{
+						expression: 'true',
+						role: 'project:editor',
+						type: 'project',
+						order: 0,
+					},
+					testUser,
+				),
 			).rejects.toThrow(BadRequestError);
 
 			await expect(
-				service.create({
-					expression: 'true',
-					role: 'project:editor',
-					type: 'project',
-					order: 0,
-					projectIds: [],
-				}),
+				service.create(
+					{
+						expression: 'true',
+						role: 'project:editor',
+						type: 'project',
+						order: 0,
+						projectIds: [],
+					},
+					testUser,
+				),
 			).rejects.toThrow(BadRequestError);
 		});
 
 		it('should reject instance type with non-empty projectIds', async () => {
 			await expect(
-				service.create({
-					expression: 'true',
-					role: 'global:member',
-					type: 'instance',
-					order: 0,
-					projectIds: ['proj-1'],
-				}),
+				service.create(
+					{
+						expression: 'true',
+						role: 'global:member',
+						type: 'instance',
+						order: 0,
+						projectIds: ['proj-1'],
+					},
+					testUser,
+				),
 			).rejects.toThrow(BadRequestError);
 		});
 
@@ -112,12 +128,15 @@ describe('RoleMappingRuleService', () => {
 			roleRepository.findOne.mockResolvedValue(null);
 
 			await expect(
-				service.create({
-					expression: 'true',
-					role: 'global:missing',
-					type: 'instance',
-					order: 0,
-				}),
+				service.create(
+					{
+						expression: 'true',
+						role: 'global:missing',
+						type: 'instance',
+						order: 0,
+					},
+					testUser,
+				),
 			).rejects.toThrow(NotFoundError);
 		});
 
@@ -125,12 +144,15 @@ describe('RoleMappingRuleService', () => {
 			roleRepository.findOne.mockResolvedValue(projectRole);
 
 			await expect(
-				service.create({
-					expression: 'true',
-					role: 'project:editor',
-					type: 'instance',
-					order: 0,
-				}),
+				service.create(
+					{
+						expression: 'true',
+						role: 'project:editor',
+						type: 'instance',
+						order: 0,
+					},
+					testUser,
+				),
 			).rejects.toThrow(BadRequestError);
 		});
 
@@ -138,13 +160,16 @@ describe('RoleMappingRuleService', () => {
 			roleRepository.findOne.mockResolvedValue(globalRole);
 
 			await expect(
-				service.create({
-					expression: 'true',
-					role: 'global:member',
-					type: 'project',
-					order: 0,
-					projectIds: ['p1'],
-				}),
+				service.create(
+					{
+						expression: 'true',
+						role: 'global:member',
+						type: 'project',
+						order: 0,
+						projectIds: ['p1'],
+					},
+					testUser,
+				),
 			).rejects.toThrow(BadRequestError);
 		});
 
@@ -153,13 +178,16 @@ describe('RoleMappingRuleService', () => {
 			projectRepository.findBy.mockResolvedValue([{ id: 'p1' } as Project]);
 
 			await expect(
-				service.create({
-					expression: 'true',
-					role: 'project:editor',
-					type: 'project',
-					order: 0,
-					projectIds: ['p1', 'p2'],
-				}),
+				service.create(
+					{
+						expression: 'true',
+						role: 'project:editor',
+						type: 'project',
+						order: 0,
+						projectIds: ['p1', 'p2'],
+					},
+					testUser,
+				),
 			).rejects.toThrow(BadRequestError);
 		});
 
@@ -190,12 +218,15 @@ describe('RoleMappingRuleService', () => {
 
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(loadedRule);
 
-			const result = await service.create({
-				expression: savedRule.expression,
-				role: globalRole.slug,
-				type: 'instance',
-				order: 2,
-			});
+			const result = await service.create(
+				{
+					expression: savedRule.expression,
+					role: globalRole.slug,
+					type: 'instance',
+					order: 2,
+				},
+				testUser,
+			);
 
 			expect(result).toEqual({
 				id: savedRule.id,
@@ -210,6 +241,13 @@ describe('RoleMappingRuleService', () => {
 
 			expect(roleMappingRuleRepository.save).toHaveBeenCalledTimes(1);
 			expect(projectRepository.findBy).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-created', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: savedRule.id,
+				ruleType: 'instance',
+				expression: savedRule.expression,
+				role: globalRole.slug,
+			});
 		});
 
 		it('should create a project rule linked to projects', async () => {
@@ -236,13 +274,16 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
 
 			const projectIds = [projA.id, projB.id];
-			const result = await service.create({
-				expression: 'true',
-				role: projectRole.slug,
-				type: 'project',
-				order: 1,
-				projectIds,
-			});
+			const result = await service.create(
+				{
+					expression: 'true',
+					role: projectRole.slug,
+					type: 'project',
+					order: 1,
+					projectIds,
+				},
+				testUser,
+			);
 
 			expect(result.projectIds).toEqual(expect.arrayContaining(projectIds));
 			expect(result.projectIds).toHaveLength(2);
@@ -272,13 +313,16 @@ describe('RoleMappingRuleService', () => {
 			} as unknown as RoleMappingRule);
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
 
-			const result = await service.create({
-				expression: 'true',
-				role: projectRole.slug,
-				type: 'project',
-				order: 1,
-				projectIds: [projA.id, projA.id],
-			});
+			const result = await service.create(
+				{
+					expression: 'true',
+					role: projectRole.slug,
+					type: 'project',
+					order: 1,
+					projectIds: [projA.id, projA.id],
+				},
+				testUser,
+			);
 
 			expect(result.projectIds).toEqual([projA.id]);
 			expect(projectRepository.findBy).toHaveBeenCalledTimes(1);
@@ -308,11 +352,14 @@ describe('RoleMappingRuleService', () => {
 			}));
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
 
-			await service.create({
-				expression: 'claims.c',
-				role: globalRole.slug,
-				type: 'instance',
-			});
+			await service.create(
+				{
+					expression: 'claims.c',
+					role: globalRole.slug,
+					type: 'instance',
+				},
+				testUser,
+			);
 
 			// applyOrder should renumber [rule-a, rule-b, rule-c] to [0, 1, 2]
 			expect(defaultUpdateSpy).toHaveBeenCalledWith(
@@ -356,12 +403,15 @@ describe('RoleMappingRuleService', () => {
 			}));
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
 
-			await service.create({
-				expression: 'claims.new',
-				role: globalRole.slug,
-				type: 'instance',
-				order: 0,
-			});
+			await service.create(
+				{
+					expression: 'claims.new',
+					role: globalRole.slug,
+					type: 'instance',
+					order: 0,
+				},
+				testUser,
+			);
 
 			// applyOrder should renumber [rule-new, rule-a, rule-b] to [0, 1, 2]
 			expect(defaultUpdateSpy).toHaveBeenCalledWith(
@@ -377,6 +427,63 @@ describe('RoleMappingRuleService', () => {
 			expect(defaultUpdateSpy).toHaveBeenCalledWith(
 				expect.anything(),
 				{ id: 'rule-b' },
+				{ order: 2 },
+			);
+		});
+
+		it('should retry create after a concurrent temporary order conflict', async () => {
+			roleRepository.findOne.mockResolvedValue(globalRole);
+
+			roleMappingRuleRepository.find
+				.mockResolvedValueOnce([{ id: 'rule-a', order: 0 } as RoleMappingRule])
+				.mockResolvedValueOnce([
+					{ id: 'rule-a', order: 0 } as RoleMappingRule,
+					{ id: 'rule-concurrent', order: 1 } as RoleMappingRule,
+				]);
+
+			const duplicateOrderError = new QueryFailedError(
+				'insert',
+				[],
+				Object.assign(new Error('duplicate key value violates unique constraint'), {
+					code: '23505',
+				}),
+			);
+
+			const savedRule = {
+				id: 'rule-new',
+				expression: 'claims.new',
+				role: globalRole,
+				type: 'instance',
+				order: 2,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.save
+				.mockRejectedValueOnce(duplicateOrderError)
+				.mockResolvedValueOnce(savedRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
+
+			await service.create(
+				{
+					expression: 'claims.new',
+					role: globalRole.slug,
+					type: 'instance',
+				},
+				testUser,
+			);
+
+			expect(roleMappingRuleRepository.find).toHaveBeenCalledTimes(2);
+			expect(roleMappingRuleRepository.save).toHaveBeenCalledTimes(2);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-concurrent' },
+				{ order: 1 },
+			);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-new' },
 				{ order: 2 },
 			);
 		});
@@ -404,12 +511,15 @@ describe('RoleMappingRuleService', () => {
 			}));
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
 
-			await service.create({
-				expression: 'claims.new',
-				role: globalRole.slug,
-				type: 'instance',
-				order: 999,
-			});
+			await service.create(
+				{
+					expression: 'claims.new',
+					role: globalRole.slug,
+					type: 'instance',
+					order: 999,
+				},
+				testUser,
+			);
 
 			// Clamped to end: [rule-a, rule-new] → orders [0, 1]
 			expect(defaultUpdateSpy).toHaveBeenCalledWith(
@@ -657,9 +767,9 @@ describe('RoleMappingRuleService', () => {
 		});
 
 		it('should use the transactional repository when an EntityManager is provided', async () => {
-			const txRepoDelete = jest.fn().mockResolvedValue({ affected: 2, raw: {} });
+			const txRepoDelete = vi.fn().mockResolvedValue({ affected: 2, raw: {} });
 			const txRepository = { delete: txRepoDelete };
-			const getRepository = jest.fn().mockReturnValue(txRepository);
+			const getRepository = vi.fn().mockReturnValue(txRepository);
 			const tx = { getRepository } as unknown as Parameters<typeof service.deleteAllOfType>[1];
 
 			const count = await service.deleteAllOfType('instance', tx);
@@ -688,8 +798,8 @@ describe('RoleMappingRuleService', () => {
 	});
 
 	describe('move', () => {
-		const updateSpy = jest.fn().mockResolvedValue(undefined);
-		const transactionSpy = jest.fn().mockImplementation(async (cb) => {
+		const updateSpy = vi.fn().mockResolvedValue(undefined);
+		const transactionSpy = vi.fn().mockImplementation(async (cb) => {
 			await cb({ update: updateSpy });
 		});
 
@@ -771,8 +881,8 @@ describe('RoleMappingRuleService', () => {
 		const makeRule = (id: string, order: number, type = 'instance') =>
 			({ id, order, type }) as unknown as RoleMappingRule;
 
-		const updateSpy = jest.fn().mockResolvedValue(undefined);
-		const transactionSpy = jest.fn();
+		const updateSpy = vi.fn().mockResolvedValue(undefined);
+		const transactionSpy = vi.fn();
 
 		beforeEach(() => {
 			updateSpy.mockClear();
@@ -781,7 +891,7 @@ describe('RoleMappingRuleService', () => {
 					await cb({ update: updateSpy });
 				},
 			);
-			// jest-mock-extended creates a Proxy; assigning manager directly
+			// vitest-mock-extended creates a Proxy; assigning manager directly
 			// is the reliable way to inject the transaction mock.
 			(roleMappingRuleRepository as unknown as Record<string, unknown>).manager = {
 				transaction: transactionSpy,

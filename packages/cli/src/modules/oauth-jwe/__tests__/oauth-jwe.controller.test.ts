@@ -2,8 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import type { JWK } from 'jose';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthlessRequest } from '@/requests';
 
@@ -29,7 +29,7 @@ describe('OAuthJweController', () => {
 	let res: ReturnType<typeof mock<Response>>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		req = mock<AuthlessRequest>();
 		res = mock<Response>();
 		res.setHeader.mockReturnThis();

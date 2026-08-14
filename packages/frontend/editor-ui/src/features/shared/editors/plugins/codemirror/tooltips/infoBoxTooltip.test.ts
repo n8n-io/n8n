@@ -58,11 +58,9 @@ describe('Infobox tooltips', () => {
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
 		});
 
-		test('should show a tooltip for: {{ $max(1,2,3,|) }}', async () => {
+		test('should NOT show a tooltip for: {{ $max(1, 2|) }} (caret inside a non-empty arg)', async () => {
 			const tooltips = await cursorTooltips('{{ $max(1, 2|) }}');
-			expect(tooltips.length).toBe(1);
-			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('$max(...numbers)');
-			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
+			expect(tooltips.length).toBe(0);
 		});
 
 		test('should NOT show a tooltip for: {{ $json.str|.includes("test") }}', async () => {
@@ -78,12 +76,10 @@ describe('Infobox tooltips', () => {
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
 		});
 
-		test('should show a tooltip for: {{ $json.str.includes("tes|t") }}', async () => {
+		test('should NOT show a tooltip for: {{ $json.str.includes("tes|t") }} (caret inside a non-empty arg)', async () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue('a string');
 			const tooltips = await cursorTooltips('{{ $json.str.includes("tes|t") }}');
-			expect(tooltips.length).toBe(1);
-			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('includes(searchString, start?)');
-			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
+			expect(tooltips.length).toBe(0);
 		});
 
 		test('should show a tooltip for: {{ $json.str.includes("test",|) }}', async () => {
@@ -92,6 +88,33 @@ describe('Infobox tooltips', () => {
 			expect(tooltips.length).toBe(1);
 			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('includes(searchString, start?)');
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(1);
+		});
+
+		test('should show a tooltip for an empty slot after a comma: {{ $max(1,|) }}', async () => {
+			const tooltips = await cursorTooltips('{{ $max(1,|) }}');
+			expect(tooltips.length).toBe(1);
+			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('$max(...numbers)');
+		});
+
+		test('should NOT show a tooltip while typing a value: {{ $max(1|) }}', async () => {
+			const tooltips = await cursorTooltips('{{ $max(1|) }}');
+			expect(tooltips.length).toBe(0);
+		});
+
+		test('should NOT show a tooltip before an existing value: {{ $max(|1) }}', async () => {
+			const tooltips = await cursorTooltips('{{ $max(|1) }}');
+			expect(tooltips.length).toBe(0);
+		});
+
+		test('should show a tooltip for a whitespace-only slot: {{ $max( | ) }}', async () => {
+			const tooltips = await cursorTooltips('{{ $max( | ) }}');
+			expect(tooltips.length).toBe(1);
+			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('$max(...numbers)');
+		});
+
+		test('should NOT show the outer tooltip inside a nested arrow body: {{ $input.all().map(e => { return e.j|son }) }}', async () => {
+			const tooltips = await cursorTooltips('{{ $input.all().map(e => { return e.j|son }) }}');
+			expect(tooltips.length).toBe(0);
 		});
 	});
 
@@ -154,7 +177,7 @@ async function setupEditorWithCursor(docWithCursor: string) {
 	const state = EditorState.create({
 		doc,
 		selection: { anchor: cursorPosition },
-		extensions: [n8nLang(), infoBoxTooltips()],
+		extensions: [n8nLang(), infoBoxTooltips(), WORKFLOW_DOCUMENT_FACET.of('test@latest')],
 	});
 	const view = new EditorView({ parent: document.createElement('div'), state });
 	editors.push(view);

@@ -147,4 +147,53 @@ describe('Webhook Helper Functions', () => {
 			expect(expression.getSimpleParameterValue).toHaveBeenCalled();
 		});
 	});
+
+	describe('getNodeWebhookUrl for MCP nodes', () => {
+		const mcpBaseUrl = 'http://localhost:5678/mcp';
+		const mcpTestBaseUrl = 'http://localhost:5678/mcp-test';
+		const additionalData = mock<IWorkflowExecuteAdditionalData>({
+			webhookBaseUrl: 'http://localhost:5678/webhook',
+			webhookTestBaseUrl: 'http://localhost:5678/webhook-test',
+			mcpBaseUrl,
+			mcpTestBaseUrl,
+		});
+
+		test.each([
+			{
+				description: 'uses the dedicated MCP base URL for production',
+				isTest: false,
+				expected: `${mcpBaseUrl}/workflow-id/test-node/mcp`,
+			},
+			{
+				description: 'uses the dedicated MCP test base URL for test',
+				isTest: true,
+				expected: `${mcpTestBaseUrl}/workflow-id/test-node/mcp`,
+			},
+		])('$description', ({ isTest, expected }) => {
+			node.webhookId = undefined;
+			const webhookDescription = mock<IWebhookDescription>({
+				name: 'default',
+				isFullPath: false,
+				nodeType: 'mcp',
+				path: 'mcp',
+			});
+			nodeType.description.webhooks = [webhookDescription];
+			nodeTypes.getByNameAndVersion.mockReturnValueOnce(nodeType);
+			expression.getSimpleParameterValue.mockImplementation((_node, parameterValue) =>
+				parameterValue === 'mcp' ? 'mcp' : parameterValue,
+			);
+
+			const result = getNodeWebhookUrl(
+				'default',
+				workflow,
+				node,
+				additionalData,
+				'manual',
+				{},
+				isTest,
+			);
+
+			expect(result).toEqual(expected);
+		});
+	});
 });

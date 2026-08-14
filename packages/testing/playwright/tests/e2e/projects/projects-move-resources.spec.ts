@@ -104,8 +104,8 @@ test.describe(
 			await n8n.credentials.cards.getCardAction('move').click();
 			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
 
-			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(6);
+			await n8n.resourceMoveModal.openProjectSelect();
+			await expect(n8n.resourceMoveModal.getProjectOptions()).toHaveCount(6);
 			await n8n.resourceMoveModal.selectProjectOption('Project 2');
 			await n8n.resourceMoveModal.clickMoveCredentialButton();
 
@@ -121,8 +121,8 @@ test.describe(
 			await n8n.credentials.cards.getCardAction('move').click();
 			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
 
-			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(6);
+			await n8n.resourceMoveModal.openProjectSelect();
+			await expect(n8n.resourceMoveModal.getProjectOptions()).toHaveCount(6);
 			await n8n.resourceMoveModal.selectProjectOption(INSTANCE_ADMIN_CREDENTIALS.email);
 			await n8n.resourceMoveModal.clickMoveCredentialButton();
 
@@ -138,8 +138,8 @@ test.describe(
 			await n8n.credentials.cards.getCardAction('move').click();
 			await expect(n8n.resourceMoveModal.getMoveCredentialButton()).toBeDisabled();
 
-			await n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(6);
+			await n8n.resourceMoveModal.openProjectSelect();
+			await expect(n8n.resourceMoveModal.getProjectOptions()).toHaveCount(6);
 			await n8n.resourceMoveModal.selectProjectOption(INSTANCE_OWNER_CREDENTIALS.email);
 			await n8n.resourceMoveModal.clickMoveCredentialButton();
 

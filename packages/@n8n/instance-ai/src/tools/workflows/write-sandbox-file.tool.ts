@@ -7,11 +7,11 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import path from 'node:path';
 import { z } from 'zod';
 
 import { writeFileViaSandbox, type SandboxWorkspace } from '../../workspace/sandbox-fs';
-import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
 export const writeSandboxFileInputSchema = z.object({
 	filePath: z
@@ -34,7 +34,7 @@ export function createWriteSandboxFileTool(workspace: SandboxWorkspace) {
 				error: z.string().optional(),
 			}),
 		)
-		.handler(async ({ filePath, content }: z.infer<typeof writeSandboxFileInputSchema>) => {
+		.handler(async ({ filePath, content }: z.infer<typeof writeSandboxFileInputSchema>, ctx) => {
 			try {
 				const root = await getWorkspaceRoot(workspace);
 
@@ -51,7 +51,9 @@ export function createWriteSandboxFileTool(workspace: SandboxWorkspace) {
 					};
 				}
 
-				await writeFileViaSandbox(workspace, normalized, content);
+				await writeFileViaSandbox(workspace, normalized, content, {
+					abortSignal: ctx.abortSignal,
+				});
 				return { success: true, path: normalized };
 			} catch (error) {
 				return {

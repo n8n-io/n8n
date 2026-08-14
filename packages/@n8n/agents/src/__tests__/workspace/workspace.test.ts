@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import type { WorkspaceFilesystem, WorkspaceSandbox } from '../../workspace/types';
 import { Workspace } from '../../workspace/workspace';
 
@@ -7,17 +9,17 @@ function makeFakeFilesystem(overrides: Partial<WorkspaceFilesystem> = {}): Works
 		name: 'TestFS',
 		provider: 'test',
 		status: 'pending',
-		readFile: jest.fn(),
-		writeFile: jest.fn(),
-		appendFile: jest.fn(),
-		deleteFile: jest.fn(),
-		copyFile: jest.fn(),
-		moveFile: jest.fn(),
-		mkdir: jest.fn(),
-		rmdir: jest.fn(),
-		readdir: jest.fn(),
-		exists: jest.fn(),
-		stat: jest.fn(),
+		readFile: vi.fn(),
+		writeFile: vi.fn(),
+		appendFile: vi.fn(),
+		deleteFile: vi.fn(),
+		copyFile: vi.fn(),
+		moveFile: vi.fn(),
+		mkdir: vi.fn(),
+		rmdir: vi.fn(),
+		readdir: vi.fn(),
+		exists: vi.fn(),
+		stat: vi.fn(),
 		...overrides,
 	};
 }
@@ -87,13 +89,13 @@ describe('Workspace', () => {
 		it('calls filesystem._init then sandbox._start', async () => {
 			const order: string[] = [];
 			const fs = makeFakeFilesystem({
-				_init: jest.fn(async () => {
+				_init: vi.fn(async () => {
 					await Promise.resolve();
 					order.push('fs-init');
 				}),
 			});
 			const sb = makeFakeSandbox({
-				_start: jest.fn(async () => {
+				_start: vi.fn(async () => {
 					await Promise.resolve();
 					order.push('sb-start');
 				}),
@@ -114,7 +116,7 @@ describe('Workspace', () => {
 
 		it('initializes only filesystem when no sandbox', async () => {
 			const fs = makeFakeFilesystem({
-				_init: jest.fn().mockResolvedValue(undefined),
+				_init: vi.fn().mockResolvedValue(undefined),
 			});
 			const ws = new Workspace({ filesystem: fs });
 
@@ -126,7 +128,7 @@ describe('Workspace', () => {
 
 		it('starts only sandbox when no filesystem', async () => {
 			const sb = makeFakeSandbox({
-				_start: jest.fn().mockResolvedValue(undefined),
+				_start: vi.fn().mockResolvedValue(undefined),
 			});
 			const ws = new Workspace({ sandbox: sb });
 
@@ -138,11 +140,11 @@ describe('Workspace', () => {
 
 		it('destroys filesystem and sets error status when sandbox start fails', async () => {
 			const fs = makeFakeFilesystem({
-				_init: jest.fn().mockResolvedValue(undefined),
-				_destroy: jest.fn().mockResolvedValue(undefined),
+				_init: vi.fn().mockResolvedValue(undefined),
+				_destroy: vi.fn().mockResolvedValue(undefined),
 			});
 			const sb = makeFakeSandbox({
-				_start: jest.fn().mockRejectedValue(new Error('sandbox start failed')),
+				_start: vi.fn().mockRejectedValue(new Error('sandbox start failed')),
 			});
 			const ws = new Workspace({ filesystem: fs, sandbox: sb });
 
@@ -155,12 +157,12 @@ describe('Workspace', () => {
 
 		it('is idempotent when already ready', async () => {
 			const fs = makeFakeFilesystem({
-				_init: jest.fn().mockResolvedValue(undefined),
+				_init: vi.fn().mockResolvedValue(undefined),
 			});
 			const ws = new Workspace({ filesystem: fs });
 
 			await ws.init();
-			(fs._init as jest.Mock).mockClear();
+			(fs._init as Mock).mockClear();
 
 			await ws.init();
 
@@ -170,7 +172,7 @@ describe('Workspace', () => {
 		it('deduplicates concurrent init calls', async () => {
 			let resolveInit: () => void;
 			const fs = makeFakeFilesystem({
-				_init: jest.fn(
+				_init: vi.fn(
 					async () =>
 						await new Promise<void>((r) => {
 							resolveInit = r;
@@ -194,13 +196,13 @@ describe('Workspace', () => {
 		it('calls sandbox._destroy then filesystem._destroy', async () => {
 			const order: string[] = [];
 			const fs = makeFakeFilesystem({
-				_destroy: jest.fn(async () => {
+				_destroy: vi.fn(async () => {
 					await Promise.resolve();
 					order.push('fs-destroy');
 				}),
 			});
 			const sb = makeFakeSandbox({
-				_destroy: jest.fn(async () => {
+				_destroy: vi.fn(async () => {
 					await Promise.resolve();
 					order.push('sb-destroy');
 				}),
@@ -221,10 +223,10 @@ describe('Workspace', () => {
 
 		it('transitions to error when sandbox destroy throws', async () => {
 			const fs = makeFakeFilesystem({
-				_destroy: jest.fn().mockResolvedValue(undefined),
+				_destroy: vi.fn().mockResolvedValue(undefined),
 			});
 			const sb = makeFakeSandbox({
-				_destroy: jest.fn().mockRejectedValue(new Error('sandbox boom')),
+				_destroy: vi.fn().mockRejectedValue(new Error('sandbox boom')),
 			});
 			const ws = new Workspace({ filesystem: fs, sandbox: sb });
 
@@ -285,7 +287,7 @@ describe('Workspace', () => {
 
 		it('returns execute_command tool when sandbox has executeCommand', () => {
 			const sb = makeFakeSandbox({
-				executeCommand: jest.fn(),
+				executeCommand: vi.fn(),
 			});
 			const ws = new Workspace({ sandbox: sb });
 

@@ -8,7 +8,7 @@ import {
 	MCP_CLIENT_TOOL_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '../src/constants';
-import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
+import { ExpressionError, NodeApiError, UnexpectedError } from '../src/errors';
 import type {
 	IConnections,
 	INode,
@@ -1356,7 +1356,7 @@ describe('generateNodesGraph', () => {
 		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }], connections: {} });
 
 		vi.mocked(nodeHelpers.getNodeParameters).mockImplementationOnce(() => {
-			throw new ApplicationError('Could not find property option');
+			throw new UnexpectedError('Could not find property option');
 		});
 
 		expect(() => generateNodesGraph(workflow, nodeTypes)).not.toThrow();
@@ -2022,6 +2022,54 @@ describe('generateNodesGraph', () => {
 			nameIndices: { 'MCP Client Tool Node': '0' },
 			webhookNodeNames: [],
 			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	describe('MCP server domain telemetry', () => {
+		// captures registrable domain only, never the full URL
+		test.each([
+			{
+				name: 'v1 sseEndpoint',
+				typeVersion: 1,
+				parameters: { authentication: 'bearerAuth', sseEndpoint: 'https://my-mcp.example.com/sse' },
+				expected: 'example.com',
+			},
+			{
+				name: 'v1.1 endpointUrl',
+				typeVersion: 1.1,
+				parameters: { authentication: 'none', endpointUrl: 'https://sub.example.org/mcp' },
+				expected: 'example.org',
+			},
+			{
+				name: 'no server URL configured',
+				typeVersion: 1,
+				parameters: { authentication: 'none' },
+				expected: undefined,
+			},
+			{
+				name: 'URL is an expression',
+				typeVersion: 1.1,
+				parameters: { authentication: 'none', endpointUrl: '=https://{{ $json.host }}/mcp' },
+				expected: undefined,
+			},
+		])('should capture $expected for $name', ({ typeVersion, parameters, expected }) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters,
+						id: 'mcp-client-tool-node-id',
+						name: 'MCP Client Tool Node',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						typeVersion,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const nodeItem = generateNodesGraph(workflow, nodeTypes).nodeGraph.nodes['0'];
+			expect(nodeItem.mcp_server_domain_base).toBe(expected);
 		});
 	});
 

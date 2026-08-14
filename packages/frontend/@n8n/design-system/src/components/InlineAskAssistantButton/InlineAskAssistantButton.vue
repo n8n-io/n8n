@@ -11,6 +11,8 @@ interface Props {
 	size?: 'small' | 'medium';
 	static?: boolean;
 	asked?: boolean;
+	/** Overrides the default "n8n AI" label (e.g. "Ask AI Assistant"). */
+	label?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -56,7 +58,7 @@ const onClick = () => {
 		<div :style="{ padding: sizes[size].padding }">
 			<AssistantIcon :size="size" :class="$style.icon" :theme="asked ? 'disabled' : 'default'" />
 			<span v-if="asked">{{ t('inlineAskAssistantButton.asked') }}</span>
-			<AssistantText v-else :size="size" :text="t('askAssistantButton.askAssistant')" />
+			<AssistantText v-else :size="size" :text="label ?? t('askAssistantButton.askAssistant')" />
 		</div>
 	</button>
 </template>

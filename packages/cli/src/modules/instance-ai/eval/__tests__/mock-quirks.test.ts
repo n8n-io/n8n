@@ -1,4 +1,10 @@
-import { findMockQuirks, MOCK_QUIRKS, quirkMatches, type MockQuirk } from '../mock-quirks';
+import {
+	findMockQuirks,
+	hostnameMatchesPattern,
+	MOCK_QUIRKS,
+	quirkMatches,
+	type MockQuirk,
+} from '../mock-quirks';
 
 describe('quirkMatches', () => {
 	const serviceWide: MockQuirk = {
@@ -58,13 +64,185 @@ describe('findMockQuirks (real registry)', () => {
 	});
 
 	it('returns empty array for services with no quirks registered', () => {
-		expect(findMockQuirks('Slack', 'POST', '/chat.postMessage')).toEqual([]);
 		expect(findMockQuirks('GitHub', 'GET', '/repos/owner/name/issues')).toEqual([]);
+		expect(findMockQuirks('Stripe', 'POST', '/v1/charges')).toEqual([]);
+	});
+
+	it('returns Anthropic guidance requiring content-block arrays for /v1/messages', () => {
+		const guidance = findMockQuirks('Anthropic', 'POST', '/v1/messages');
+		expect(guidance.length).toBeGreaterThan(0);
+		const text = guidance.join('\n');
+		expect(text).toMatch(/content.*MUST be an ARRAY/i);
+		expect(text).toMatch(/NEVER a plain string/i);
+	});
+
+	describe('binary / file quirks', () => {
+		it('returns Telegram guidance that documents both bot-API and file-CDN shapes', () => {
+			const guidance = findMockQuirks('Telegram', 'GET', '/bot123/getFile');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/\/bot\{token\}/);
+			expect(guidance.join('\n')).toMatch(/\/file\/bot/);
+			expect(guidance.join('\n')).toMatch(/\.ogg/);
+		});
+
+		it('returns Openai guidance that mentions transcriptions and image generations', () => {
+			const guidance = findMockQuirks('Openai', 'POST', '/v1/audio/transcriptions');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/transcriptions/);
+			expect(guidance.join('\n')).toMatch(/images\/generations/);
+		});
+
+		it('requires b64_json (never url) for the gpt-image-1 family on image generations', () => {
+			// gpt-image-1 / gpt-image-1-mini always return b64_json and never a url;
+			// the mock must not default them to a url response.
+			const guidance = findMockQuirks('Openai', 'POST', '/v1/images/generations').join('\n');
+			expect(guidance).toMatch(/gpt-image-1/);
+			expect(guidance).toMatch(/b64_json/);
+			// The gpt-image-1 rule must be stated as always-b64_json, not gated on response_format.
+			expect(guidance).toMatch(/gpt-image-1[\s\S]*b64_json/);
+		});
+
+		it('steers image generations to a JSON envelope with a data array, never raw binary', () => {
+			// The endpoint returns JSON with a `data` ARRAY of image objects — the mock
+			// must not return a binary/Buffer response (crashes the node with "data is not iterable").
+			const guidance = findMockQuirks('Openai', 'POST', '/v1/images/generations').join('\n');
+			expect(guidance).toMatch(/never.*binary|not.*binary|NEVER a binary/i);
+			expect(guidance).toMatch(/array/i);
+		});
+
+		it('returns Googleapis guidance that names alt=media as the binary marker', () => {
+			const guidance = findMockQuirks('Googleapis', 'GET', '/drive/v3/files/abc');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/alt=media/);
+		});
+
+		it('returns Slack guidance that steers AWAY from binary for files endpoints', () => {
+			const guidance = findMockQuirks('Slack', 'POST', '/api/files.upload');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/NEVER pick `type: "binary"`/);
+		});
+
+		it('returns Slack guidance that disambiguates singular `file` vs plural `files[]` per endpoint', () => {
+			const guidance = findMockQuirks('Slack', 'POST', '/api/files.completeUploadExternal');
+			const joined = guidance.join('\n');
+			// completeUploadExternal returns the plural array — the Slack v2.4 node reads files[0].
+			expect(joined).toMatch(/files\.completeUploadExternal[\s\S]*plural `files` array/);
+			// files.info / files.upload use the singular envelope.
+			expect(joined).toMatch(/files\.info[\s\S]*singular/);
+		});
+
+		it('returns S3 guidance distinguishing GetObject from PutObject', () => {
+			const guidance = findMockQuirks('S3', 'GET', '/some-key.pdf');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/GetObject/);
+			expect(guidance.join('\n')).toMatch(/PutObject/);
+		});
+
+		it('returns Slack guidance for files.slack.com despite the service name resolving to "Files"', () => {
+			// `files.slack.com` is the destination of the three-step upload PUT.
+			// Service extraction yields "Files" (first label of the hostname);
+			// the hostname pattern must rescue the match.
+			const guidance = findMockQuirks('Files', 'PUT', '/upload/v1/abc123', 'files.slack.com');
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/NEVER pick `type: "binary"`/);
+		});
+
+		it('returns S3 guidance for virtual-hosted bucket URLs (`<bucket>.s3.amazonaws.com`)', () => {
+			const guidance = findMockQuirks(
+				'My-bucket',
+				'GET',
+				'/some-key.pdf',
+				'my-bucket.s3.amazonaws.com',
+			);
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/GetObject/);
+		});
+
+		it('returns S3 guidance for regional bucket URLs (`<bucket>.s3.<region>.amazonaws.com`)', () => {
+			const guidance = findMockQuirks(
+				'My-bucket',
+				'GET',
+				'/file.png',
+				'my-bucket.s3.us-east-1.amazonaws.com',
+			);
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/GetObject/);
+		});
+
+		it('still returns no guidance when neither service nor hostname matches', () => {
+			expect(findMockQuirks('Files', 'PUT', '/x', 'files.example.com')).toEqual([]);
+			expect(findMockQuirks('My-bucket', 'GET', '/x', 'my-bucket.example.com')).toEqual([]);
+		});
+	});
+
+	describe('provider-shape quirks (TRUST-309)', () => {
+		it('returns Reddit guidance describing the { json: { data } } write envelope', () => {
+			// Authenticated Reddit resolves the service name to "Oauth" (oauth.reddit.com) —
+			// the hostname pattern must rescue the match.
+			const guidance = findMockQuirks('Oauth', 'POST', '/api/submit', 'oauth.reddit.com');
+			expect(guidance.length).toBeGreaterThan(0);
+			const joined = guidance.join('\n');
+			expect(joined).toMatch(/json/);
+			expect(joined).toMatch(/data/);
+			expect(joined).toMatch(/things/);
+		});
+
+		it('returns HubSpot guidance requiring vid + isNew on contacts/v1 upsert', () => {
+			const guidance = findMockQuirks(
+				'Hubapi',
+				'POST',
+				'/contacts/v1/contact/createOrUpdate/email/jane@example.com',
+				'api.hubapi.com',
+			);
+			expect(guidance.length).toBeGreaterThan(0);
+			const joined = guidance.join('\n');
+			expect(joined).toMatch(/vid/);
+			expect(joined).toMatch(/isNew/);
+		});
+
+		it('returns Google Docs guidance requiring a replies array on batchUpdate', () => {
+			const guidance = findMockQuirks(
+				'Docs',
+				'POST',
+				'/v1/documents/abc123:batchUpdate',
+				'docs.googleapis.com',
+			);
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/replies/);
+		});
 	});
 
 	it('is case-sensitive on service name (extractServiceName produces capitalized form)', () => {
 		expect(findMockQuirks('notion', 'POST', '/v1/pages')).toEqual([]);
 		expect(findMockQuirks('NOTION', 'POST', '/v1/pages')).toEqual([]);
+	});
+});
+
+describe('hostnameMatchesPattern', () => {
+	it('matches exact hostnames', () => {
+		expect(hostnameMatchesPattern('s3.amazonaws.com', 's3.amazonaws.com')).toBe(true);
+		expect(hostnameMatchesPattern('s3.amazonaws.com', 's3.us-east-1.amazonaws.com')).toBe(false);
+	});
+
+	it('treats `*` as a single DNS label wildcard (no dots)', () => {
+		expect(hostnameMatchesPattern('*.slack.com', 'files.slack.com')).toBe(true);
+		expect(hostnameMatchesPattern('*.slack.com', 'api.slack.com')).toBe(true);
+		expect(hostnameMatchesPattern('*.slack.com', 'slack.com')).toBe(false);
+		expect(hostnameMatchesPattern('*.slack.com', 'a.b.slack.com')).toBe(false);
+	});
+
+	it('supports multiple wildcards in one pattern', () => {
+		expect(
+			hostnameMatchesPattern('*.s3.*.amazonaws.com', 'my-bucket.s3.us-east-1.amazonaws.com'),
+		).toBe(true);
+		expect(hostnameMatchesPattern('*.s3.*.amazonaws.com', 'my-bucket.s3.amazonaws.com')).toBe(
+			false,
+		);
+	});
+
+	it('escapes regex metachars in literal parts of the pattern', () => {
+		expect(hostnameMatchesPattern('host-1.example.com', 'host-1.example.com')).toBe(true);
+		expect(hostnameMatchesPattern('host-1.example.com', 'hostX1.example.com')).toBe(false);
 	});
 });
 

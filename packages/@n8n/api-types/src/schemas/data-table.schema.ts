@@ -1,16 +1,10 @@
 import { z } from 'zod';
 
 import type { ListDataTableQueryDto } from '../dto';
-import { xssCheck } from '../utils/xss-check';
 
 export const insertRowReturnType = z.union([z.literal('all'), z.literal('count'), z.literal('id')]);
 
-export const dataTableNameSchema = z
-	.string()
-	.trim()
-	.min(1)
-	.max(128)
-	.refine(xssCheck, { message: 'Potentially malicious string' });
+export const dataTableNameSchema = z.string().trim().min(1).max(128);
 export const dataTableIdSchema = z
 	.string()
 	.max(36)

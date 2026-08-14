@@ -17,7 +17,7 @@ describe('title generation integration', () => {
 	});
 
 	it('auto-generates a thread title after generate() on a new thread', async () => {
-		const memory = new Memory().storage(memoryCtx.memory).lastMessages(10).titleGeneration(true);
+		const memory = new Memory().storage(memoryCtx.memory).titleGeneration(true);
 
 		const agent = new Agent('title-gen-test')
 			.model(getModel('anthropic'))
@@ -47,7 +47,7 @@ describe('title generation integration', () => {
 	});
 
 	it('auto-generates a thread title after stream() on a new thread', async () => {
-		const memory = new Memory().storage(memoryCtx.memory).lastMessages(10).titleGeneration(true);
+		const memory = new Memory().storage(memoryCtx.memory).titleGeneration(true);
 
 		const agent = new Agent('title-gen-stream-test')
 			.model(getModel('anthropic'))
@@ -76,7 +76,7 @@ describe('title generation integration', () => {
 	});
 
 	it('does not generate a title when titleGeneration is not configured', async () => {
-		const memory = new Memory().storage(memoryCtx.memory).lastMessages(10);
+		const memory = new Memory().storage(memoryCtx.memory);
 
 		const agent = new Agent('no-title-gen-test')
 			.model(getModel('anthropic'))
@@ -106,7 +106,7 @@ describe('title generation integration', () => {
 			metadata: { custom: 'data' },
 		});
 
-		const memory = new Memory().storage(memoryCtx.memory).lastMessages(10).titleGeneration(true);
+		const memory = new Memory().storage(memoryCtx.memory).titleGeneration(true);
 
 		const agent = new Agent('title-no-overwrite-test')
 			.model(getModel('anthropic'))
@@ -126,7 +126,7 @@ describe('title generation integration', () => {
 	});
 
 	it('accepts a custom model for title generation', async () => {
-		const memory = new Memory().storage(memoryCtx.memory).lastMessages(10).titleGeneration({
+		const memory = new Memory().storage(memoryCtx.memory).titleGeneration({
 			model: 'anthropic/claude-haiku-4-5',
 		});
 

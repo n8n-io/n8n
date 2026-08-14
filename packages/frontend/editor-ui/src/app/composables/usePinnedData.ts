@@ -1,4 +1,4 @@
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import type { IDataObject, INodeExecutionData, IPinData } from 'n8n-workflow';
 import {
@@ -15,7 +15,6 @@ import {
 	PIN_DATA_NODE_TYPES_DENYLIST,
 } from '@/app/constants';
 import { stringSizeInBytes, toMegaBytes } from '@/app/utils/typesUtils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	injectWorkflowDocumentStore,
@@ -24,7 +23,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -56,7 +55,6 @@ export function usePinnedData(
 	} = {},
 ) {
 	const rootStore = useRootStore();
-	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const toast = useToast();
@@ -235,7 +233,7 @@ export function usePinnedData(
 			data_size: stringSizeInBytes(data.value),
 			view: displayMode,
 			run_index: runIndex,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			node_id: targetNode?.id,
 		};
 

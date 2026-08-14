@@ -1,4 +1,5 @@
-import { render } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import { render, waitFor } from '@testing-library/vue';
 
 import N8nActionDropdown from './ActionDropdown.vue';
 
@@ -103,6 +104,60 @@ describe('components', () => {
 
 			// The component template has: @click.stop="item.disabled && $emit('badge-click', item.id)"
 			// This ensures badge-click only emits for disabled items
+		});
+
+		it('should mark destructive items with the destructive class', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [
+						{ id: 'edit', label: 'Edit' },
+						{ id: 'delete', label: 'Delete', variant: 'destructive' as const },
+					],
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			await waitFor(() => {
+				const deleteItem = document.querySelector('[data-test-id="action-delete"]');
+				expect(deleteItem?.className).toContain('destructive');
+
+				const editItem = document.querySelector('[data-test-id="action-edit"]');
+				expect(editItem?.className).not.toContain('destructive');
+			});
+		});
+
+		it('should render footer content', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [{ id: 'item1', label: 'Action 1' }],
+				},
+				slots: {
+					footer: '<div>Footer content</div>',
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			await waitFor(() => {
+				expect(wrapper.getByText('Footer content')).toBeInTheDocument();
+			});
+		});
+
+		it('should forward width to the dropdown menu', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [{ id: 'item1', label: 'Action 1' }],
+					width: '13rem',
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			await waitFor(() => {
+				const menu = document.querySelector<HTMLElement>('[role="menu"]');
+				expect(menu?.style.getPropertyValue('--n8n--dropdown-menu-width')).toBe('13rem');
+			});
 		});
 	});
 });

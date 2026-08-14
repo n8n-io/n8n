@@ -1,6 +1,6 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] = `
+exports[`createVectorStoreNode > retrieve mode > supplies vector store as data 1`] = `
 {
   "builderHint": {
     "extraTypeDefContent": [
@@ -276,7 +276,7 @@ const store = vectorStore({
 				return inputs
 			})($parameter)
 		}}",
-  "name": "mockConstructor",
+  "name": "Mock",
   "outputs": "={{
 			((parameters) => {
 				const mode = parameters?.mode ?? 'retrieve';

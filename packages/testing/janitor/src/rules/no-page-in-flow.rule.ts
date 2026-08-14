@@ -1,7 +1,8 @@
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
-import { BaseRule } from './base-rule.js';
-import { getConfig } from '../config.js';
+import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
 import { LOCATOR_METHODS } from '../utils/ast-helpers.js';
 
@@ -28,7 +29,7 @@ import { LOCATOR_METHODS } from '../utils/ast-helpers.js';
  * This is stricter than selector-purity, which allows page-level methods
  * like keyboard, evaluate, etc. in both composables and tests.
  */
-export class NoPageInFlowRule extends BaseRule {
+export class NoPageInFlowRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'no-page-in-flow';
 	readonly name = 'No Page In Flow';
 	readonly severity = 'warning' as const;
@@ -42,7 +43,15 @@ export class NoPageInFlowRule extends BaseRule {
 		return getConfig().patterns.flows;
 	}
 
-	analyze(_project: Project, files: SourceFile[]): Violation[] {
+	protected projectConfig(): AstProjectConfig {
+		return { packages: ['.'], spec: { globs: this.getTargetGlobs() } };
+	}
+
+	analyze(context: { rootDir: string }): Violation[] {
+		return this.projects(context).flatMap(({ project }) => this.analyzeProject(project));
+	}
+
+	analyzeProject(project: Project, files: SourceFile[] = project.getSourceFiles()): Violation[] {
 		const violations: Violation[] = [];
 		const config = getConfig();
 		const fixtureName = config.fixtureObjectName;
@@ -61,7 +70,7 @@ export class NoPageInFlowRule extends BaseRule {
 
 				if (match) {
 					// Check if this matches any allow patterns
-					if (this.isAllowed(text)) {
+					if (ruleAllows(this.id, text)) {
 						continue;
 					}
 
@@ -77,7 +86,7 @@ export class NoPageInFlowRule extends BaseRule {
 					const methodName = match[1];
 
 					violations.push(
-						this.createViolation(
+						this.fileViolation(
 							file,
 							startLine,
 							startColumn,

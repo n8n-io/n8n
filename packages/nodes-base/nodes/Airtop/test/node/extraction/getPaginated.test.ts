@@ -26,11 +26,11 @@ const mockResponse = {
 const mockJsonSchema =
 	'{"type":"object","properties":{"title":{"type":"string"},"price":{"type":"string"}}}';
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async (method: string, endpoint: string) => {
+		apiRequest: vi.fn(async (method: string, endpoint: string) => {
 			// For paginated extraction requests
 			if (endpoint.includes('/paginated-extraction')) {
 				return mockResponse;
@@ -46,24 +46,26 @@ jest.mock('../../../transport', () => {
 	};
 });
 
-jest.mock('../../../GenericFunctions', () => {
-	const originalModule = jest.requireActual<typeof GenericFunctions>('../../../GenericFunctions');
+vi.mock('../../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof GenericFunctions>(
+		'../../../GenericFunctions',
+	);
 	return {
 		...originalModule,
-		createSessionAndWindow: jest.fn().mockImplementation(async () => {
+		createSessionAndWindow: vi.fn().mockImplementation(async () => {
 			return {
 				sessionId: 'new-session-123',
 				windowId: 'new-window-123',
 			};
 		}),
-		shouldCreateNewSession: jest.fn().mockImplementation(function (
+		shouldCreateNewSession: vi.fn().mockImplementation(function (
 			this: IExecuteFunctions,
 			index: number,
 		) {
 			const sessionMode = this.getNodeParameter('sessionMode', index) as string;
 			return sessionMode === 'new';
 		}),
-		validateAirtopApiResponse: jest.fn(),
+		validateAirtopApiResponse: vi.fn(),
 	};
 });
 
@@ -74,12 +76,10 @@ describe('Test Airtop, getPaginated operation', () => {
 
 	afterAll(() => {
 		nock.restore();
-		jest.unmock('../../../transport');
-		jest.unmock('../../../GenericFunctions');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should extract data with minimal parameters', async () => {

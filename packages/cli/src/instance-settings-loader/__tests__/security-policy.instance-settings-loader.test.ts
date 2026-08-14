@@ -1,10 +1,10 @@
-import { mock } from 'jest-mock-extended';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
+import { mock } from 'vitest-mock-extended';
 
 import type { MfaService } from '@/mfa/mfa.service';
 import type { SecuritySettingsService } from '@/services/security-settings.service';
@@ -12,7 +12,7 @@ import type { SecuritySettingsService } from '@/services/security-settings.servi
 import { SecurityPolicyInstanceSettingsLoader } from '../loaders/security-policy.instance-settings-loader';
 
 describe('SecurityPolicyInstanceSettingsLoader', () => {
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const mfaService = mock<MfaService>();
 	const securitySettingsService = mock<SecuritySettingsService>();
 
@@ -34,7 +34,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnThis();
 	});
 

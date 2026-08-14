@@ -6,17 +6,18 @@ import { mockedStore } from '@/__tests__/utils';
 import { nextTick } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import userEvent from '@testing-library/user-event';
 
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),
 }));
 
 const mockShowToast = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showToast: mockShowToast }),
 }));
 
@@ -58,7 +59,7 @@ describe('ImportCurlModal', () => {
 
 	it('should show empty input when no curl command exists for active node', async () => {
 		const uiStore = mockedStore(useUIStore);
-		uiStore.modalsById = {
+		uiStore.modalStateById = {
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: true,
 				data: {
@@ -69,7 +70,7 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 		ndvStore.activeNode = testNode;
 
 		const { getByTestId } = renderModal();
@@ -81,7 +82,7 @@ describe('ImportCurlModal', () => {
 
 	it('should show curl command for active node', async () => {
 		const uiStore = mockedStore(useUIStore);
-		uiStore.modalsById = {
+		uiStore.modalStateById = {
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: true,
 				data: {
@@ -93,7 +94,7 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 		ndvStore.activeNode = testNode;
 
 		const { getByTestId } = renderModal();
@@ -105,7 +106,7 @@ describe('ImportCurlModal', () => {
 
 	it('should set the input value when the import button is clicked', async () => {
 		const uiStore = mockedStore(useUIStore);
-		uiStore.modalsById = {
+		uiStore.modalStateById = {
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: true,
 				data: {
@@ -116,7 +117,7 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 		ndvStore.activeNode = testNode;
 
 		const { getByTestId } = renderModal();
@@ -126,15 +127,22 @@ describe('ImportCurlModal', () => {
 		await userEvent.type(input, 'curl -X GET https://api.example.com/data');
 		const button = getByTestId('import-curl-modal-button');
 		await userEvent.click(button);
-		expect(uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands).toEqual({
-			'node-1': 'curl -X GET https://api.example.com/data',
-			'node-2': 'curl -X POST https://api.example.com/submit',
+		// Asserted on the write, not on the read: what the store resolves is derived,
+		// so a component must ask it to store the merged map rather than mutate it.
+		expect(uiStore.setModalData).toHaveBeenCalledWith({
+			name: IMPORT_CURL_MODAL_KEY,
+			data: {
+				curlCommands: {
+					'node-1': 'curl -X GET https://api.example.com/data',
+					'node-2': 'curl -X POST https://api.example.com/submit',
+				},
+			},
 		});
 	});
 
 	it('should override the input value when the import button is clicked', async () => {
 		const uiStore = mockedStore(useUIStore);
-		uiStore.modalsById = {
+		uiStore.modalStateById = {
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: true,
 				data: {
@@ -145,7 +153,7 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 		ndvStore.activeNode = testNode;
 
 		const { getByTestId } = renderModal();
@@ -156,8 +164,9 @@ describe('ImportCurlModal', () => {
 		await userEvent.type(input, 'curl -X GET https://api.example.com/other');
 		const button = getByTestId('import-curl-modal-button');
 		await userEvent.click(button);
-		expect(uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands).toEqual({
-			'node-1': 'curl -X GET https://api.example.com/other',
+		expect(uiStore.setModalData).toHaveBeenCalledWith({
+			name: IMPORT_CURL_MODAL_KEY,
+			data: { curlCommands: { 'node-1': 'curl -X GET https://api.example.com/other' } },
 		});
 	});
 
@@ -167,14 +176,14 @@ describe('ImportCurlModal', () => {
 		});
 
 		const uiStore = mockedStore(useUIStore);
-		uiStore.modalsById = {
+		uiStore.modalStateById = {
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: true,
 				data: { curlCommands: {} },
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 		ndvStore.activeNode = testNode;
 
 		const { getByTestId } = renderModal();

@@ -1,21 +1,22 @@
 import { readFileSync, existsSync } from 'fs';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
 
 // We need to mock the fs module before importing the module under test
-jest.mock('fs', () => ({
-	readFileSync: jest.fn(),
-	existsSync: jest.fn(),
+vi.mock('fs', () => ({
+	readFileSync: vi.fn(),
+	existsSync: vi.fn(),
 }));
 
-const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
-const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
+const mockedReadFileSync = readFileSync as MockedFunction<typeof readFileSync>;
+const mockedExistsSync = existsSync as MockedFunction<typeof existsSync>;
 
 // Import after mocking
 import { loadNodesFromFile } from './load-nodes';
 
 describe('loadNodesFromFile', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Default: legacy path exists
 		mockedExistsSync.mockImplementation((path) => {
 			return String(path).endsWith('nodes.json');

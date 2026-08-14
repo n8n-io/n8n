@@ -1,5 +1,6 @@
-import { mock } from 'jest-mock-extended';
 import type { IDataObject } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
 import type { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import { ExternalSecretsService } from '../external-secrets.service.ee';
 import type { RedactionService } from '../redaction.service.ee';
@@ -30,7 +31,7 @@ describe('ExternalSecretsService', () => {
 				},
 			];
 
-			mockRedactionService.redact = jest.fn().mockReturnValue(redactedData);
+			mockRedactionService.redact = vi.fn().mockReturnValue(redactedData);
 
 			const result = service.redact(data, provider);
 
@@ -45,7 +46,7 @@ describe('ExternalSecretsService', () => {
 			const savedData: IDataObject = { secret: 'password' };
 			const unredactedData: IDataObject = { secret: 'password' };
 
-			mockRedactionService.unredact = jest.fn().mockReturnValue(unredactedData);
+			mockRedactionService.unredact = vi.fn().mockReturnValue(unredactedData);
 
 			const result = service.unredact(redactedData, savedData);
 

@@ -9,7 +9,7 @@ describe('Test S3 V1 Node', () => {
 		const now = 1683028800000;
 
 		beforeAll(async () => {
-			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
+			vi.useFakeTimers({ now });
 
 			mock = nock('https://bucket.s3.eu-central-1.amazonaws.com');
 		});

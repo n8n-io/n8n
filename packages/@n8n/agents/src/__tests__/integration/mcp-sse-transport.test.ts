@@ -6,7 +6,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startSseServer, TINY_PNG, type TestServer } from './mcp-server-helpers';
-import { McpConnection } from '../../runtime/mcp-connection';
+import { McpConnection } from '../../runtime/mcp/mcp-connection';
 import type { ContentFile, ContentText, Message } from '../../types/sdk/message';
 import { isZodSchema } from '../../utils/zod';
 

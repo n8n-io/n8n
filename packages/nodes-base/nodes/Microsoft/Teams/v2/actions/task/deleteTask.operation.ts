@@ -2,7 +2,7 @@ import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { microsoftApiRequest } from '../../transport';
+import { buildTeamsPath, microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -29,15 +29,10 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	//https://docs.microsoft.com/en-us/graph/api/plannertask-delete?view=graph-rest-1.0&tabs=http
 
 	const taskId = this.getNodeParameter('taskId', i) as string;
-	const task = await microsoftApiRequest.call(this, 'GET', `/v1.0/planner/tasks/${taskId}`);
-	await microsoftApiRequest.call(
-		this,
-		'DELETE',
-		`/v1.0/planner/tasks/${taskId}`,
-		{},
-		{},
-		undefined,
-		{ 'If-Match': task['@odata.etag'] },
-	);
+	const taskPath = buildTeamsPath.call(this, ['/v1.0/planner/tasks/', { id: taskId }]);
+	const task = await microsoftApiRequest.call(this, 'GET', taskPath);
+	await microsoftApiRequest.call(this, 'DELETE', taskPath, {}, {}, undefined, {
+		'If-Match': task['@odata.etag'],
+	});
 	return { success: true };
 }

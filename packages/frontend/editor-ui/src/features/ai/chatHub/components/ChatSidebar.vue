@@ -6,7 +6,11 @@ import { VIEWS } from '@/app/constants';
 import { type IMenuItem, N8nResizeWrapper } from '@n8n/design-system';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { useKeybindings } from '@/app/composables/useKeybindings';
-import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import {
+	MAX_SIDEBAR_WIDTH,
+	MIN_SIDEBAR_WIDTH,
+	useSidebarLayout,
+} from '@/app/composables/useSidebarLayout';
 import { N8nScrollArea } from '@n8n/design-system';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
@@ -76,8 +80,8 @@ const onLogout = () => {
 		:width="sidebarWidth"
 		:style="isCollapsed ? {} : { width: `${sidebarWidth}px` }"
 		:supported-directions="['right']"
-		:min-width="200"
-		:max-width="500"
+		:min-width="MIN_SIDEBAR_WIDTH"
+		:max-width="MAX_SIDEBAR_WIDTH"
 		:grid-size="8"
 		@resizestart="onResizeStart"
 		@resize="onResize"

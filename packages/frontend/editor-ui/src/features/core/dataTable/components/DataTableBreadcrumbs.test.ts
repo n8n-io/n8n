@@ -25,7 +25,7 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => mockToast,
 }));
 
@@ -61,6 +61,7 @@ const mockDataTable: DataTable = {
 		updatedAt: '2023-01-01T00:00:00.000Z',
 		relations: [],
 		scopes: [],
+		rolesManaged: false,
 	},
 };
 

@@ -178,6 +178,21 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "i am a test".toSentenceCase() }}')).toEqual('I am a test');
 		});
 
+		test('.toSentenceCase should not drop trailing text that has no letters', () => {
+			expect(evaluate('={{ "hello world. 123".toSentenceCase() }}')).toEqual('Hello world. 123');
+			expect(evaluate('={{ "end with punc. 42!".toSentenceCase() }}')).toEqual(
+				'End with punc. 42!',
+			);
+			expect(evaluate('={{ "growth is high. 50%".toSentenceCase() }}')).toEqual(
+				'Growth is high. 50%',
+			);
+		});
+
+		test('.toSentenceCase should return letter-free input unchanged', () => {
+			expect(evaluate('={{ "42".toSentenceCase() }}')).toEqual('42');
+			expect(evaluate('={{ "".toSentenceCase() }}')).toEqual('');
+		});
+
 		test('.extractUrl should work on a string', () => {
 			expect(
 				evaluate(

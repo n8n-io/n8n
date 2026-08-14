@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ChatHubConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	ChatHubExecutionStore,
@@ -40,8 +40,8 @@ describe('ChatHubExecutionStore', () => {
 	const redisClientService = mock<RedisClientService>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.useFakeTimers();
+		vi.clearAllMocks();
+		vi.useFakeTimers();
 
 		Object.defineProperty(instanceSettings, 'isMultiMain', { value: false, configurable: true });
 		executionsConfig.mode = 'regular';
@@ -50,7 +50,7 @@ describe('ChatHubExecutionStore', () => {
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	describe('in-memory mode (single-main)', () => {
@@ -87,7 +87,7 @@ describe('ChatHubExecutionStore', () => {
 				await store.register(context);
 
 				// Fast-forward 1 hour (N8N_CHAT_HUB_EXECUTION_CONTEXT_TTL)
-				jest.advanceTimersByTime(60 * 60 * 1000);
+				vi.advanceTimersByTime(60 * 60 * 1000);
 
 				const retrieved = await store.get(EXECUTION_ID);
 				expect(retrieved).toBeNull();
@@ -137,20 +137,20 @@ describe('ChatHubExecutionStore', () => {
 				await store.register(context);
 
 				// Fast-forward 30 minutes
-				jest.advanceTimersByTime(30 * 60 * 1000);
+				vi.advanceTimersByTime(30 * 60 * 1000);
 
 				// Update should reset the timer
 				await store.update(EXECUTION_ID, { awaitingResume: true });
 
 				// Fast-forward another 30 minutes (total 60 minutes from start)
-				jest.advanceTimersByTime(30 * 60 * 1000);
+				vi.advanceTimersByTime(30 * 60 * 1000);
 
 				// Should still exist because timer was reset
 				const retrieved = await store.get(EXECUTION_ID);
 				expect(retrieved).not.toBeNull();
 
 				// Fast-forward another 30 minutes (60 minutes from update)
-				jest.advanceTimersByTime(30 * 60 * 1000);
+				vi.advanceTimersByTime(30 * 60 * 1000);
 
 				// Now should be cleaned up
 				const afterCleanup = await store.get(EXECUTION_ID);
@@ -176,7 +176,7 @@ describe('ChatHubExecutionStore', () => {
 				await store.remove(EXECUTION_ID);
 
 				// Fast-forward past TTL - should not cause issues
-				jest.advanceTimersByTime(2 * 60 * 60 * 1000);
+				vi.advanceTimersByTime(2 * 60 * 60 * 1000);
 
 				// Should still be null (not error from orphaned timer)
 				const result = await store.get(EXECUTION_ID);
@@ -198,7 +198,7 @@ describe('ChatHubExecutionStore', () => {
 				expect(await store.get(EXECUTION_ID)).not.toBeNull();
 
 				// Fast-forward 1 hour (N8N_CHAT_HUB_EXECUTION_CONTEXT_TTL)
-				jest.advanceTimersByTime(60 * 60 * 1000);
+				vi.advanceTimersByTime(60 * 60 * 1000);
 
 				// Should be cleaned up
 				const result = await store.get(EXECUTION_ID);
@@ -210,14 +210,14 @@ describe('ChatHubExecutionStore', () => {
 				await store.register(context1);
 
 				// Fast-forward 30 minutes
-				jest.advanceTimersByTime(30 * 60 * 1000);
+				vi.advanceTimersByTime(30 * 60 * 1000);
 
 				// Register again - should reset timer
 				const context2 = createContext({ messageId: 'updated-message' });
 				await store.register(context2);
 
 				// Fast-forward another 30 minutes (total 60 minutes from first registration)
-				jest.advanceTimersByTime(30 * 60 * 1000);
+				vi.advanceTimersByTime(30 * 60 * 1000);
 
 				// Should still exist because timer was reset
 				const retrieved = await store.get(EXECUTION_ID);
@@ -225,7 +225,7 @@ describe('ChatHubExecutionStore', () => {
 				expect(retrieved?.messageId).toBe('updated-message');
 
 				// Fast-forward another 30 minutes (60 minutes from second registration)
-				jest.advanceTimersByTime(30 * 60 * 1000);
+				vi.advanceTimersByTime(30 * 60 * 1000);
 
 				// Now should be cleaned up
 				const afterCleanup = await store.get(EXECUTION_ID);
@@ -253,7 +253,7 @@ describe('ChatHubExecutionStore', () => {
 				store.shutdown();
 
 				// Fast-forward - should not cause issues with orphaned timers
-				jest.advanceTimersByTime(2 * 60 * 60 * 1000);
+				vi.advanceTimersByTime(2 * 60 * 60 * 1000);
 			});
 		});
 
@@ -290,10 +290,10 @@ describe('ChatHubExecutionStore', () => {
 
 	describe('Redis mode (multi-main)', () => {
 		const mockRedisClient = {
-			get: jest.fn(),
-			set: jest.fn(),
-			del: jest.fn(),
-			disconnect: jest.fn(),
+			get: vi.fn(),
+			set: vi.fn(),
+			del: vi.fn(),
+			disconnect: vi.fn(),
 		};
 
 		beforeEach(() => {
@@ -302,7 +302,7 @@ describe('ChatHubExecutionStore', () => {
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should create Redis client in multi-main mode', () => {
@@ -584,7 +584,7 @@ describe('ChatHubExecutionStore', () => {
 			executionsConfig.mode = 'regular';
 
 			redisClientService.createClient.mockReturnValue({
-				disconnect: jest.fn(),
+				disconnect: vi.fn(),
 			} as never);
 
 			const store = new ChatHubExecutionStore(
@@ -606,7 +606,7 @@ describe('ChatHubExecutionStore', () => {
 			executionsConfig.mode = 'queue';
 
 			redisClientService.createClient.mockReturnValue({
-				disconnect: jest.fn(),
+				disconnect: vi.fn(),
 			} as never);
 
 			const store = new ChatHubExecutionStore(

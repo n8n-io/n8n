@@ -3,13 +3,14 @@ import type { IWebhookFunctions } from 'n8n-workflow';
 import { AwsSnsTrigger } from '../AwsSnsTrigger.node';
 import { verifySignature } from '../AwsSnsTriggerHelpers';
 import { awsApiRequestSOAP } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('../AwsSnsTriggerHelpers', () => ({
-	verifySignature: jest.fn(),
+vi.mock('../AwsSnsTriggerHelpers', () => ({
+	verifySignature: vi.fn(),
 }));
 
-jest.mock('../GenericFunctions', () => ({
-	awsApiRequestSOAP: jest.fn(),
+vi.mock('../GenericFunctions', () => ({
+	awsApiRequestSOAP: vi.fn(),
 }));
 
 const topicArn = 'arn:aws:sns:us-east-1:123456789012:MyTopic';
@@ -27,11 +28,11 @@ describe('AwsSnsTrigger', () => {
 			'https://sns.us-east-1.amazonaws.com/SimpleNotificationService-1234567890abcdef1234567890abcdef.pem',
 	};
 
-	const verifySignatureMock = verifySignature as jest.Mock;
-	const awsApiRequestSOAPMock = awsApiRequestSOAP as jest.Mock;
+	const verifySignatureMock = verifySignature as Mock;
+	const awsApiRequestSOAPMock = awsApiRequestSOAP as Mock;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		verifySignatureMock.mockResolvedValue(true);
 		awsApiRequestSOAPMock.mockResolvedValue({});
 	});
@@ -102,17 +103,17 @@ describe('AwsSnsTrigger', () => {
 
 function createWebhookFunctions(body: object) {
 	const response = {
-		status: jest.fn().mockReturnThis(),
-		send: jest.fn().mockReturnThis(),
-		end: jest.fn(),
+		status: vi.fn().mockReturnThis(),
+		send: vi.fn().mockReturnThis(),
+		end: vi.fn(),
 	};
-	const returnJsonArray = jest.fn((data) => [{ json: data }]);
+	const returnJsonArray = vi.fn((data) => [{ json: data }]);
 	const webhookFunctions = {
-		getRequestObject: jest.fn().mockReturnValue({
+		getRequestObject: vi.fn().mockReturnValue({
 			rawBody: Buffer.from(JSON.stringify(body)),
 		}),
-		getNodeParameter: jest.fn().mockReturnValue(topicArn),
-		getResponseObject: jest.fn().mockReturnValue(response),
+		getNodeParameter: vi.fn().mockReturnValue(topicArn),
+		getResponseObject: vi.fn().mockReturnValue(response),
 		helpers: {
 			returnJsonArray,
 		},

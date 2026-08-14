@@ -42,7 +42,7 @@ describe('createBinaryChecksEvaluator', () => {
 	});
 
 	it('warns but continues when some check names are unrecognized', async () => {
-		const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const evaluator = createBinaryChecksEvaluator({
 			nodeTypes: mockNodeTypes,
 			checks: ['has_nodes', 'nonexistent'],

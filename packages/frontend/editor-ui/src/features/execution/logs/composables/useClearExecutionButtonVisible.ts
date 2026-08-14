@@ -1,17 +1,17 @@
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 export function useClearExecutionButtonVisible() {
 	const route = useRoute();
 	const sourceControlStore = useSourceControlStore();
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
-	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+	const workflowExecutionData = computed(() => workflowExecutionStateStore.value.activeExecution);
+	const isWorkflowRunning = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 	const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 	const nodeTypesStore = useNodeTypesStore();
 	const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);

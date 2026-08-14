@@ -17,10 +17,13 @@ vi.mock('@/app/composables/useAutocompleteTelemetry', () => ({
 	useAutocompleteTelemetry: vi.fn(),
 }));
 
+const mockNdvStoreValue = {
+	activeNode: { type: 'n8n-nodes-base.test' },
+};
+
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn(() => ({
-		activeNode: { type: 'n8n-nodes-base.test' },
-	})),
+	useNDVStore: vi.fn(() => mockNdvStoreValue),
+	injectNDVStore: vi.fn(() => ({ value: mockNdvStoreValue })),
 }));
 
 vi.mock(import('../plugins/codemirror/completions/utils'), async (importOriginal) => {
@@ -134,6 +137,31 @@ describe('useExpressionEditor', () => {
 					kind: 'plaintext',
 					plaintext: ' after',
 					to: 36,
+				},
+			]);
+		});
+	});
+
+	test('surfaces deprecated $getPairedItem as an error segment', async () => {
+		mockResolveExpression();
+
+		const {
+			expressionEditor: { segments },
+		} = await renderExpressionEditor({
+			editorValue: '{{ $getPairedItem }}',
+			extensions: [n8nLang()],
+		});
+
+		await waitFor(() => {
+			expect(toValue(segments.resolvable)).toEqual([
+				{
+					error: expect.any(Error),
+					from: 0,
+					kind: 'resolvable',
+					resolvable: '{{ $getPairedItem }}',
+					resolved: '[$getPairedItem is deprecated and will be removed]',
+					state: 'invalid',
+					to: 20,
 				},
 			]);
 		});
@@ -447,6 +475,75 @@ describe('useExpressionEditor', () => {
 				secretsData,
 			);
 			expect(resolveExpressionMock).not.toHaveBeenCalled();
+		});
+
+		test('should defer previewing transformed external secrets until execution', async () => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['cred']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[evaluated during execution]',
+						state: 'pending',
+					}),
+				]);
+			});
+		});
+
+		test('should keep unknown external secret references invalid', async () => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['name-with-typo']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[secret not found]',
+						state: 'invalid',
+					}),
+				]);
+			});
+		});
+
+		test('should leave secret previews to the credential modal', async () => {
+			mockResolveExpression();
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['cred']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[undefined]',
+						state: 'invalid',
+					}),
+				]);
+			});
 		});
 	});
 });

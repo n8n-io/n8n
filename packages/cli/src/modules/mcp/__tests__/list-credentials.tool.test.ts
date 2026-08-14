@@ -1,8 +1,12 @@
+import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 
 import { createListCredentialsTool, listCredentials } from '../tools/list-credentials.tool';
@@ -29,18 +33,48 @@ describe('list-credentials MCP tool', () => {
 	const createMocks = (credentials: EnrichedCredential[] | Error = []) => {
 		const getMany =
 			credentials instanceof Error
-				? jest.fn().mockRejectedValue(credentials)
-				: jest.fn().mockResolvedValue(credentials);
+				? vi.fn().mockRejectedValue(credentials)
+				: vi.fn().mockResolvedValue(credentials);
 		const credentialsService = mockInstance(CredentialsService, { getMany });
-		const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		return { credentialsService, telemetry };
+	};
+
+	const makeAiGatewayMocks = (
+		opts: {
+			available?: boolean;
+			config?: Partial<AiGatewayConfigDto>;
+		} = {},
+	) => {
+		const aiGatewayService = mock<AiGatewayService>();
+		if (opts.available === false) {
+			aiGatewayService.isAvailable.mockResolvedValue({ available: false });
+		} else {
+			aiGatewayService.isAvailable.mockResolvedValue({
+				available: true,
+				config: {
+					nodes: ['@n8n/n8n-nodes-langchain.openAi'],
+					credentialTypes: ['openAiApi'],
+					providerConfig: {
+						openAiApi: {
+							gatewayPath: '/v1/gateway/openai/v1',
+							urlField: 'url',
+							apiKeyField: 'apiKey',
+						},
+					},
+					...opts.config,
+				} as AiGatewayConfigDto,
+			});
+		}
+		return { aiGatewayService };
 	};
 
 	describe('smoke tests', () => {
 		test('creates the tool correctly', () => {
 			const { credentialsService, telemetry } = createMocks();
+			const { aiGatewayService } = makeAiGatewayMocks();
 
-			const tool = createListCredentialsTool(user, credentialsService, telemetry);
+			const tool = createListCredentialsTool(user, credentialsService, telemetry, aiGatewayService);
 
 			expect(tool.name).toBe('list_credentials');
 			expect(tool.config.description).toEqual(expect.any(String));
@@ -101,7 +135,7 @@ describe('list-credentials MCP tool', () => {
 				],
 			});
 
-			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg).toMatchObject({
 				includeScopes: true,
 				includeData: false,
@@ -121,7 +155,7 @@ describe('list-credentials MCP tool', () => {
 				onlySharedWithMe: true,
 			});
 
-			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg).toMatchObject({
 				listQueryOptions: {
 					take: 200,
@@ -159,7 +193,7 @@ describe('list-credentials MCP tool', () => {
 
 			await listCredentials(user, credentialsService, { onlySharedWithMe: true });
 
-			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg).toMatchObject({
 				onlySharedWithMe: true,
 				includeGlobal: false,
@@ -171,7 +205,7 @@ describe('list-credentials MCP tool', () => {
 
 			await listCredentials(user, credentialsService, { limit: 0 });
 
-			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.listQueryOptions.take).toBe(1);
 		});
 
@@ -180,14 +214,15 @@ describe('list-credentials MCP tool', () => {
 
 			await listCredentials(user, credentialsService, {});
 
-			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.listQueryOptions.filter).toBeUndefined();
 		});
 
 		test('tracks telemetry on success', async () => {
 			const { credentialsService, telemetry } = createMocks([buildCredential()]);
 
-			const tool = createListCredentialsTool(user, credentialsService, telemetry);
+			const { aiGatewayService } = makeAiGatewayMocks({ available: false });
+			const tool = createListCredentialsTool(user, credentialsService, telemetry, aiGatewayService);
 			await tool.handler(
 				{
 					limit: undefined as unknown as number,
@@ -212,7 +247,8 @@ describe('list-credentials MCP tool', () => {
 		test('returns isError and tracks failure when service throws', async () => {
 			const { credentialsService, telemetry } = createMocks(new Error('DB exploded'));
 
-			const tool = createListCredentialsTool(user, credentialsService, telemetry);
+			const { aiGatewayService } = makeAiGatewayMocks({ available: false });
+			const tool = createListCredentialsTool(user, credentialsService, telemetry, aiGatewayService);
 			const result = await tool.handler(
 				{
 					limit: undefined as unknown as number,
@@ -237,6 +273,47 @@ describe('list-credentials MCP tool', () => {
 					results: { success: false, error: 'DB exploded' },
 				}),
 			);
+		});
+
+		describe('n8nConnect block', () => {
+			async function callHandler(opts: { available?: boolean } = {}) {
+				const { credentialsService, telemetry } = createMocks([buildCredential()]);
+				const { aiGatewayService } = makeAiGatewayMocks(opts);
+				const tool = createListCredentialsTool(
+					user,
+					credentialsService,
+					telemetry,
+					aiGatewayService,
+				);
+				const result = await tool.handler(
+					{
+						limit: undefined as unknown as number,
+						query: undefined as unknown as string,
+						type: undefined as unknown as string,
+						projectId: undefined as unknown as string,
+						onlySharedWithMe: undefined as unknown as boolean,
+					},
+					{} as never,
+				);
+				return result.structuredContent as {
+					data: unknown[];
+					count: number;
+					n8nConnect?: { credentialTypes: string[]; nodes: string[] };
+				};
+			}
+
+			test('includes n8nConnect block when gateway is available', async () => {
+				const structured = await callHandler({ available: true });
+				expect(structured.n8nConnect).toEqual({
+					credentialTypes: ['openAiApi'],
+					nodes: ['@n8n/n8n-nodes-langchain.openAi'],
+				});
+			});
+
+			test('omits n8nConnect block when unavailable', async () => {
+				const structured = await callHandler({ available: false });
+				expect(structured.n8nConnect).toBeUndefined();
+			});
 		});
 	});
 });

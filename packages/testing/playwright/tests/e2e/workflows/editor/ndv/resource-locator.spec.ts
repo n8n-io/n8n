@@ -1,5 +1,6 @@
 import { E2E_TEST_NODE_NAME } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
+import { MessageBox } from '../../../../../pages/components/messageBoxLocators';
 
 const NO_CREDENTIALS_MESSAGE = 'Add your credential';
 const INVALID_CREDENTIALS_MESSAGE = 'Check your credential';
@@ -12,7 +13,10 @@ test.describe(
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
+			// Each test gets its own project so credentials created in one test
+			// (e.g. the unconnected OAuth credential below) cannot auto-attach to
+			// nodes in concurrently running tests of this file.
+			await n8n.start.fromNewProjectBlankCanvas();
 		});
 
 		test('should render both RLC components in google sheets', async ({ n8n }) => {
@@ -87,7 +91,7 @@ test.describe(
 
 			await n8n.canvas.credentialModal.close();
 			// Close warning modal about not connecting the OAuth credentials
-			const closeButton = n8n.page.locator('.el-message-box').locator('button:has-text("Close")');
+			const closeButton = new MessageBox(n8n.page).buttonByText('Close');
 			await closeButton.click();
 
 			await n8n.ndv.getResourceLocatorInput('documentId').click();
@@ -125,10 +129,14 @@ test.describe(
 
 			await n8n.ndv.getResourceLocatorInput('rlc').click();
 
-			await expect(n8n.ndv.getResourceLocatorItems().first()).toBeVisible();
-			const visiblePopper = n8n.ndv.getVisiblePopper();
-			await expect(visiblePopper).toHaveCount(1);
-			await expect(visiblePopper.getByTestId('rlc-item')).toHaveCount(5);
+			// A page of list options is 5 items. The dropdown auto-fetches a second
+			// page when the first one doesn't fill the viewport, so assert a full
+			// first page is visible rather than an exact total count. Assert a
+			// popper is present (not an exact count) — unrelated tooltips (e.g. the
+			// error tooltip induced below) also match the visible-popper selector,
+			// so requiring exactly one is flaky.
+			await expect(n8n.ndv.getVisiblePopper().first()).toBeVisible();
+			await expect(n8n.ndv.getResourceLocatorItems().nth(4)).toBeVisible();
 
 			await n8n.ndv.setInvalidExpression({ fieldName: 'fieldId' });
 
@@ -139,10 +147,8 @@ test.describe(
 
 			await n8n.ndv.getResourceLocatorInput('rlc').click();
 
-			await expect(n8n.ndv.getResourceLocatorItems().first()).toBeVisible();
-			const visiblePopperAfter = n8n.ndv.getVisiblePopper();
-			await expect(visiblePopperAfter).toHaveCount(1);
-			await expect(visiblePopperAfter.getByTestId('rlc-item')).toHaveCount(5);
+			await expect(n8n.ndv.getVisiblePopper().first()).toBeVisible();
+			await expect(n8n.ndv.getResourceLocatorItems().nth(4)).toBeVisible();
 		});
 	},
 );
