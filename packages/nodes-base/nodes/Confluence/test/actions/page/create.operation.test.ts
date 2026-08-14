@@ -1,9 +1,9 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { execute } from '../../../actions/page/create.operation';
 import { confluenceApiRequest } from '../../../transport';
-import { mockExecuteCtx } from '../../shared';
+import { mockExecuteCtx, testNode } from '../../shared';
 
 vi.mock('../../../transport', async (importOriginal) => ({
 	...(await importOriginal<object>()),
@@ -102,6 +102,41 @@ describe('page:create', () => {
 
 		await expect(execute.call(ctx, 0)).rejects.toThrow('Title is required');
 		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	// Atlassian masks the failing restriction step behind a bare 404; the node
+	// replaces it with guidance only when Private was the requested option
+	it('maps a 404 with Private on to an actionable error', async () => {
+		apiRequest.mockRejectedValue(
+			new NodeApiError(testNode, { message: 'not found' }, { httpCode: '404' }),
+		);
+		const ctx = mockExecuteCtx({ ...baseParams, options: { private: true } });
+
+		const error = await execute
+			.call(ctx, 0)
+			.then(() => null)
+			.catch((thrown: NodeOperationError) => thrown);
+
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(error?.message).toBe('Could not create the page as private');
+		expect(error?.description).toContain('Add/Delete restrictions');
+	});
+
+	it.each([
+		[
+			'a 404 without Private',
+			{},
+			new NodeApiError(testNode, { message: 'x' }, { httpCode: '404' }),
+		],
+		[
+			'a non-404 with Private on',
+			{ private: true },
+			new NodeApiError(testNode, { message: 'x' }, { httpCode: '400' }),
+		],
+	])('passes %s through unchanged', async (_name, options, thrown) => {
+		apiRequest.mockRejectedValue(thrown);
+
+		await expect(execute.call(mockExecuteCtx({ ...baseParams, options }), 0)).rejects.toBe(thrown);
 	});
 
 	it('treats an empty By URL parent as "no parent" instead of failing extraction', async () => {

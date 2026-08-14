@@ -4,7 +4,7 @@ import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { bodyProperties, readBodyEnvelope } from './bodyEnvelope';
 import { pageRLC, spaceRLC } from '../common';
@@ -66,7 +66,7 @@ export const description: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether only the creating user can view and edit the page. The creator is the connected account.',
+					'Whether only the creating user can view and edit the page. The creator is the connected account, which needs permission to restrict content in the space.',
 			},
 			{
 				displayName: 'Root Level',
@@ -132,5 +132,18 @@ export async function execute(
 	if (options.private) qs.private = true;
 	if (options.rootLevel) qs['root-level'] = true;
 
-	return await confluenceApiRequest.call(this, 'POST', '/wiki/api/v2/pages', body, qs);
+	try {
+		return await confluenceApiRequest.call(this, 'POST', '/wiki/api/v2/pages', body, qs);
+	} catch (error) {
+		// Private creation applies a content restriction under the hood, and Atlassian
+		// masks the failing permission/scope check as 404 on this endpoint
+		if (options.private && error instanceof NodeApiError && error.httpCode === '404') {
+			throw new NodeOperationError(this.getNode(), 'Could not create the page as private', {
+				itemIndex,
+				description:
+					'Atlassian reports this as "not found", but it usually means the restriction step was refused: the connected user needs the "Add/Delete restrictions" permission in the space, and the credential\'s OAuth app must allow the content-restriction scopes. Try again without the Private option, or check the space permissions.',
+			});
+		}
+		throw error;
+	}
 }
