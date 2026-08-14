@@ -572,12 +572,13 @@ body:has([data-testid='agent-channel-modal'])
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	gap: var(--spacing--2xs);
 	height: var(--height--md);
 }
 
 .footerActions {
 	display: flex;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 }
 
 :global(.channel-view-fade-enter-active) {
