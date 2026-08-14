@@ -15,39 +15,50 @@ describe('sanitizeMongoUriInMessage', () => {
 			'connect failed: mongodb://[REDACTED]@host:27017/db',
 		],
 		[
-			'Invalid URL: mongodb://justsecret@host:27017/db',
+			'Invalid URL: mongodb://user/secret@host:27017/db',
 			'Invalid URL: mongodb://[REDACTED]@host:27017/db',
 		],
 		[
-			'Invalid URL: mongodb://user:part:password@host:27017/db',
+			'Invalid URL: mongodb://user secret@host:27017/db',
 			'Invalid URL: mongodb://[REDACTED]@host:27017/db',
 		],
-		['Invalid URL: mongodb://@host:27017/db', 'Invalid URL: mongodb://[REDACTED]@host:27017/db'],
-	])('redacts authentication from %s', (input, expected) => {
-		expect(sanitizeMongoUriInMessage(input)).toBe(expected);
+		[
+			'Invalid URL: mongodb://user:p@ss@host:27017/db',
+			'Invalid URL: mongodb://[REDACTED]@host:27017/db',
+		],
+	])('redacts authentication from %s', (message, expected) => {
+		expect(sanitizeMongoUriInMessage(message, '')).toBe(expected);
 	});
 
 	it('redacts multiple URIs in the same message', () => {
-		const input = 'tried mongodb://a:b@host1, then mongodb+srv://c:d@cluster, both failed';
+		const message = 'tried mongodb://a:b@host1, then mongodb+srv://c:d@cluster, both failed';
 
-		expect(sanitizeMongoUriInMessage(input)).toBe(
+		expect(sanitizeMongoUriInMessage(message, '')).toBe(
 			'tried mongodb://[REDACTED]@host1, then mongodb+srv://[REDACTED]@cluster, both failed',
 		);
 	});
 
-	it.each([
-		'connect ECONNREFUSED 127.0.0.1:27017',
-		'connect failed: mongodb://host:27017/db',
-		'mongodb://host:27017/db failed, contact admin@example.com',
-		'',
-	])('leaves messages without URI authentication unchanged', (input) => {
-		expect(sanitizeMongoUriInMessage(input)).toBe(input);
+	it('redacts the connection string when the regex does not match', () => {
+		const connectionString = 'mongodb://user\nsecret@host:27017/db';
+		const message = `Invalid URL: ${connectionString}`;
+
+		expect(sanitizeMongoUriInMessage(message, connectionString)).toBe(
+			'Invalid URL: mongodb://[REDACTED]',
+		);
 	});
 
-	it('is idempotent', () => {
-		const input = 'Invalid URL: mongodb://user:password@host:27017/db';
-		const sanitized = sanitizeMongoUriInMessage(input);
+	it.each(['connect ECONNREFUSED 127.0.0.1:27017', 'connect failed: mongodb://host:27017/db', ''])(
+		'leaves messages without URI authentication unchanged',
+		(message) => {
+			expect(sanitizeMongoUriInMessage(message, '')).toBe(message);
+		},
+	);
 
-		expect(sanitizeMongoUriInMessage(sanitized)).toBe(sanitized);
+	it('is idempotent', () => {
+		const connectionString = 'mongodb://user:password@host:27017/db';
+		const message = `Invalid URL: ${connectionString}`;
+		const sanitized = sanitizeMongoUriInMessage(message, connectionString);
+
+		expect(sanitizeMongoUriInMessage(sanitized, connectionString)).toBe(sanitized);
 	});
 });

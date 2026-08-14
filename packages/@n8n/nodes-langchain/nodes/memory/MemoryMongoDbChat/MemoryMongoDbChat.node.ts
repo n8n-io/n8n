@@ -20,8 +20,14 @@ import {
 	scopedSessionHint,
 } from '../descriptions';
 
-export function sanitizeMongoUriInMessage(message: string): string {
-	return message.replace(/mongodb(\+srv)?:\/\/[^\s/@]*@/gi, 'mongodb$1://[REDACTED]@');
+export function sanitizeMongoUriInMessage(message: string, connectionString: string): string {
+	const sanitizedMessage = message.replace(
+		/mongodb(\+srv)?:\/\/(?:(?!mongodb(?:\+srv)?:\/\/)[^\r\n])*@/gi,
+		'mongodb$1://[REDACTED]@',
+	);
+	if (sanitizedMessage !== message || !connectionString) return sanitizedMessage;
+
+	return message.replaceAll(connectionString, '[REDACTED]');
 }
 
 export class MemoryMongoDbChat implements INodeType {
@@ -133,13 +139,13 @@ export class MemoryMongoDbChat implements INodeType {
 			);
 		}
 
-		const client = new MongoClient(connectionString, {
-			minPoolSize: 0,
-			maxPoolSize: 1,
-			maxIdleTimeMS: 30000,
-		});
-
+		let client: MongoClient | undefined;
 		try {
+			client = new MongoClient(connectionString, {
+				minPoolSize: 0,
+				maxPoolSize: 1,
+				maxIdleTimeMS: 30000,
+			});
 			await client.connect();
 
 			const db = client.db(dbName);
@@ -159,8 +165,9 @@ export class MemoryMongoDbChat implements INodeType {
 				k: this.getNodeParameter('contextWindowLength', itemIndex, 5) as number,
 			});
 
+			const connectedClient = client;
 			async function closeFunction() {
-				await client.close();
+				await connectedClient.close();
 			}
 
 			return {
@@ -168,11 +175,11 @@ export class MemoryMongoDbChat implements INodeType {
 				response: logWrapper(memory, this),
 			};
 		} catch (error) {
-			void client.close();
+			void client?.close().catch(() => {});
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new NodeOperationError(
 				this.getNode(),
-				`MongoDB connection error: ${sanitizeMongoUriInMessage(errorMessage)}`,
+				`MongoDB connection error: ${sanitizeMongoUriInMessage(errorMessage, connectionString)}`,
 			);
 		}
 	}
