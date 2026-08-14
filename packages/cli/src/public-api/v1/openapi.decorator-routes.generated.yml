@@ -3,6 +3,24 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /git-connections:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/create.generated.yml
+    get:
+      $ref: ./handlers/git-connections/spec/paths/list.generated.yml
+  /git-connections/{id}:
+    get:
+      $ref: ./handlers/git-connections/spec/paths/get.generated.yml
+    put:
+      $ref: ./handlers/git-connections/spec/paths/update.generated.yml
+    delete:
+      $ref: ./handlers/git-connections/spec/paths/delete.generated.yml
+  /git-connections/{id}/connect:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/connect.generated.yml
+  /git-connections/{id}/disconnect:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/disconnect.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
