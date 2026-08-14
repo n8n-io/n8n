@@ -8,7 +8,6 @@ import {
 	N8nDialogTitle,
 	N8nIcon,
 	N8nIconButton,
-	N8nText,
 	updatedIconSet,
 	type IconName,
 } from '@n8n/design-system';
@@ -77,17 +76,11 @@ const {
 const currentView = ref<ChannelView>(props.view);
 const viewSession = ref(0);
 const credentialIdAtEditOpen = ref('');
-const pendingCredentialReplacement = ref<{
-	channelType: string;
-	originalCredentialId: string;
-	replacementCredentialId: string;
-} | null>(null);
 const pendingDisconnect = ref<{
 	channelType: string;
 	credentialId: string;
 	closeAfter: boolean;
 } | null>(null);
-const credentialReplacementError = ref(false);
 
 function channelTypeFromView(view: ChannelView): string | null {
 	if (view === 'list') return null;
@@ -198,15 +191,8 @@ const disconnectConfirmationLoading = computed(() => {
 	return pending ? isLoading(pending.channelType) : false;
 });
 
-const hasPendingCredentialReplacement = computed(() => pendingCredentialReplacement.value !== null);
-const isCredentialReplacementInProgress = computed(
-	() => hasPendingCredentialReplacement.value && !credentialReplacementError.value,
-);
 const headerContentDisabled = computed(
-	() =>
-		isCredentialReplacementInProgress.value ||
-		currentRuntime.value.loading.value ||
-		channelViewLoading.value,
+	() => currentRuntime.value.loading.value || channelViewLoading.value,
 );
 const headerContentComponent = computed(() => {
 	if (isSetupMode.value) {
@@ -219,19 +205,10 @@ const headerContentComponent = computed(() => {
 });
 const canClose = computed(
 	() =>
-		!isCredentialReplacementInProgress.value &&
 		!channelViewLoading.value &&
 		!(selectedChannelType.value ? isLoading(selectedChannelType.value) : false),
 );
-
-function clearFailedCredentialReplacement() {
-	if (!credentialReplacementError.value) return;
-	pendingCredentialReplacement.value = null;
-	credentialReplacementError.value = false;
-}
-
 function prepareChannelEdit(channelType: string | null) {
-	credentialReplacementError.value = false;
 	captureConnectedCredential(channelType);
 	if (!channelType) return;
 	clearIntegrationError(channelType);
@@ -243,8 +220,6 @@ function prepareChannelEdit(channelType: string | null) {
 watch(
 	() => props.view,
 	(newView) => {
-		if (isCredentialReplacementInProgress.value) return;
-		clearFailedCredentialReplacement();
 		currentView.value = newView;
 		prepareChannelEdit(newView.endsWith('_edit') ? channelTypeFromView(newView) : null);
 	},
@@ -321,13 +296,11 @@ function goToEdit(channelType: string) {
 
 function goBackToList() {
 	if (
-		isCredentialReplacementInProgress.value ||
 		channelViewLoading.value ||
 		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false)
 	) {
 		return;
 	}
-	clearFailedCredentialReplacement();
 	captureConnectedCredential(null);
 	currentView.value = 'list';
 }
@@ -337,39 +310,19 @@ function handleListDisconnect(channelType: string) {
 }
 
 function closeModal() {
-	if (
-		isCredentialReplacementInProgress.value ||
-		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false)
-	) {
-		return;
-	}
+	if (selectedChannelType.value ? isLoading(selectedChannelType.value) : false) return;
 	emit('update:open', false);
 }
 
 function handleModalOpenUpdate(isOpen: boolean) {
 	if (
 		!isOpen &&
-		(isCredentialReplacementInProgress.value ||
-			channelViewLoading.value ||
+		(channelViewLoading.value ||
 			(selectedChannelType.value ? isLoading(selectedChannelType.value) : false))
 	) {
 		return;
 	}
 	emit('update:open', isOpen);
-}
-
-async function finishCredentialReplacement(
-	pendingReplacement: NonNullable<typeof pendingCredentialReplacement.value>,
-) {
-	credentialReplacementError.value = false;
-	try {
-		await disconnect(pendingReplacement.channelType, pendingReplacement.originalCredentialId);
-		await fetchStatus([pendingReplacement.channelType]);
-		pendingCredentialReplacement.value = null;
-	} catch (error) {
-		credentialReplacementError.value = true;
-		throw error;
-	}
 }
 
 async function saveChannelConfig() {
@@ -379,31 +332,20 @@ async function saveChannelConfig() {
 	if (channelViewRef.value?.validationError) return;
 	await props.ensureAgentPersisted?.();
 	await channelViewRef.value?.beforeSave?.();
-	const pendingReplacement = pendingCredentialReplacement.value;
-	if (pendingReplacement?.channelType === channelType) {
-		selectedCredentials.value[channelType] = pendingReplacement.replacementCredentialId;
-		await finishCredentialReplacement(pendingReplacement);
-		emit('channel-connected', channelType);
-		emit('agent-changed');
-		closeModal();
-		return;
-	}
+
+	// Swapping the credential of a configured channel is one request: the
+	// backend brings the new channel up, swaps both entries in a single write,
+	// and only then releases the old one.
 	const credentialIdToReplace =
 		isEditMode.value &&
 		credentialIdAtEditOpen.value &&
 		credentialIdAtEditOpen.value !== credentialId
 			? credentialIdAtEditOpen.value
-			: null;
+			: undefined;
 
-	await connect(channelType, credentialId, channelViewRef.value?.currentSettings);
-	if (credentialIdToReplace) {
-		pendingCredentialReplacement.value = {
-			channelType,
-			originalCredentialId: credentialIdToReplace,
-			replacementCredentialId: credentialId,
-		};
-		await finishCredentialReplacement(pendingCredentialReplacement.value);
-	}
+	await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
+		...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
+	});
 	emit('channel-connected', channelType);
 	emit('agent-changed');
 	closeModal();
@@ -469,7 +411,7 @@ async function disconnectChannel(
 }
 
 function requestDisconnect(channelType: string, credentialId: string, closeAfter: boolean) {
-	if (hasPendingCredentialReplacement.value || isLoading(channelType)) return;
+	if (isLoading(channelType)) return;
 	const platform = getAgentChannelPlatform(channelType);
 	if (
 		platform.shouldConfirmDisconnect?.(runtimeFor(channelType), credentialId, {
@@ -522,7 +464,6 @@ watch(
 			void loadChannelState();
 			currentView.value = props.view;
 		} else {
-			clearFailedCredentialReplacement();
 			captureConnectedCredential(null);
 		}
 	},
@@ -563,7 +504,6 @@ watch(
 						icon-size="medium"
 						icon="arrow-left"
 						:disabled="
-							isCredentialReplacementInProgress ||
 							channelViewLoading ||
 							(selectedChannelType ? isLoading(selectedChannelType) : false)
 						"
@@ -653,21 +593,12 @@ watch(
 						:agent-id="agentId"
 						:force-new-credential="false"
 						:simple-setup="simpleSetup"
-						:credential-replacement-pending="hasPendingCredentialReplacement"
 						:runtime="currentRuntime"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
 						@connected="handlePlatformConnected"
 					/>
-					<N8nText
-						v-if="isEditMode && credentialReplacementError"
-						:class="$style.errorText"
-						size="small"
-						data-testid="agent-channel-credential-replacement-error"
-					>
-						{{ i18n.baseText('agents.channels.modal.credentialReplacementError') }}
-					</N8nText>
 				</div>
 			</Transition>
 		</div>
@@ -679,10 +610,7 @@ watch(
 						variant="ghost"
 						size="medium"
 						:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
-						:disabled="
-							hasPendingCredentialReplacement ||
-							(selectedChannelType ? isLoading(selectedChannelType) : true)
-						"
+						:disabled="selectedChannelType ? isLoading(selectedChannelType) : true"
 						data-testid="agent-channel-remove-channel"
 						@click="removeCurrentChannel"
 					>
@@ -693,7 +621,6 @@ watch(
 							variant="outline"
 							size="medium"
 							:disabled="
-								isCredentialReplacementInProgress ||
 								channelViewLoading ||
 								(selectedChannelType ? isLoading(selectedChannelType) : false)
 							"
@@ -715,9 +642,7 @@ watch(
 							data-testid="agent-channel-save-channel-config"
 							@click="saveChannelConfig"
 						>
-							{{
-								i18n.baseText(hasPendingCredentialReplacement ? 'generic.retry' : 'generic.save')
-							}}
+							{{ i18n.baseText('generic.save') }}
 						</N8nButton>
 					</div>
 				</div>
@@ -826,16 +751,13 @@ body:has([data-testid='agent-channel-modal'])
 	justify-content: space-between;
 	align-items: center;
 	width: 100%;
+	gap: var(--spacing--2xs);
 	height: var(--height--md);
 }
 
 .footerActions {
 	display: flex;
-	gap: var(--spacing--xs);
-}
-
-.errorText {
-	color: var(--text-color--danger);
+	gap: var(--spacing--2xs);
 }
 
 :global(.channel-view-fade-enter-active) {

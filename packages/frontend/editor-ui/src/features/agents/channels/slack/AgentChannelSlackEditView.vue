@@ -43,11 +43,10 @@ defineExpose({ validationError, loading, beforeSave });
 			:credentials="credentials"
 			:credential-permissions="credentialPermissions"
 			:credentials-loading="credentialsLoading"
-			:disabled="credentialReplacementPending || loading"
+			:disabled="loading"
 			:loading="loading"
 			:error-message="errorMessage"
 			:error-is-conflict="errorIsConflict"
-			:show-edit-button="!credentialReplacementPending"
 			@create="emit('create')"
 			@edit="emit('edit')"
 		/>
@@ -58,7 +57,7 @@ defineExpose({ validationError, loading, beforeSave });
 			:loading="runtime.settingsLoading.value"
 			:error="runtime.settingsError.value"
 			:save-error="runtime.settingsSaveError.value"
-			:disabled="credentialReplacementPending || loading"
+			:disabled="loading"
 		/>
 	</div>
 </template>

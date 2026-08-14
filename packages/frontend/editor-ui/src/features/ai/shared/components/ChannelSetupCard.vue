@@ -332,7 +332,6 @@ watch(
 				:agent-id="agentId"
 				:force-new-credential="true"
 				:simple-setup="true"
-				:credential-replacement-pending="false"
 				:runtime="currentRuntime"
 				@create="createCredential"
 				@edit="editCredential"

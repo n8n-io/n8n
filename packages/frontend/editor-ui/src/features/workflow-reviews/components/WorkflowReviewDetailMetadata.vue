@@ -5,7 +5,7 @@ import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { VIEWS } from '@/app/constants';
-import { formatUserDisplayName } from '../formatUserDisplayName';
+import { formatUserDisplayName } from '../workflowReviews.utils';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
 const props = defineProps<{

@@ -1278,7 +1278,7 @@ describe('InstanceAiThreadView', () => {
 		);
 	});
 
-	it('detaches dismissed new-agent context without closing its preview', async () => {
+	it('detaches dismissed saved-agent context without closing its preview', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
 		thread.producedArtifacts = new Map([
@@ -1288,22 +1288,21 @@ describe('InstanceAiThreadView', () => {
 					type: 'agent',
 					id: 'agent-1',
 					projectId: 'project-1',
-					name: 'New Agent',
-					pending: true,
+					name: 'Support Agent',
 				},
 			],
 		]) as typeof thread.producedArtifacts;
 		stashPendingAgentAttachment('thread-1', {
 			type: 'agent',
 			id: 'agent-1',
-			name: 'New Agent',
+			name: 'Support Agent',
 			projectId: 'project-1',
-			pending: true,
 		});
 
 		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		const preview = await findByTestId('instance-ai-agent-preview-stub');
 
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Support Agent');
 		await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
 
 		expect(getPendingAgentAttachment('thread-1')).toBeNull();

@@ -40,7 +40,6 @@ describe('AgentChannelSlackEditView', () => {
 				agentId: 'agent-1',
 				forceNewCredential: false,
 				simpleSetup: false,
-				credentialReplacementPending: false,
 				runtime,
 			},
 			global: {

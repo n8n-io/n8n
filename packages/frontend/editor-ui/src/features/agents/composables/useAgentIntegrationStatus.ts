@@ -8,7 +8,12 @@ import type {
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { connectIntegration, disconnectIntegration, getIntegrationStatus } from './useAgentApi';
+import {
+	connectIntegration,
+	disconnectIntegration,
+	getIntegrationStatus,
+	type ConnectIntegrationOptions,
+} from './useAgentApi';
 
 type ConfirmedStatus = AgentIntegrationStatusResponse['status'];
 type Status = ConfirmedStatus | 'unknown';
@@ -118,6 +123,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		type: string,
 		credId: string,
 		settings?: AgentIntegrationSettings,
+		options?: ConnectIntegrationOptions,
 	): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> {
 		state.loadingMap.value[type] = true;
 		state.errorMessages.value[type] = '';
@@ -130,6 +136,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				type,
 				credId,
 				settings,
+				options,
 			);
 			// Reflect the change in the shared reactive state immediately so the
 			// other consumer re-renders without waiting for a round-trip refetch.

@@ -61,7 +61,6 @@ export interface AgentChannelViewProps {
 	agentId: string;
 	forceNewCredential: boolean;
 	simpleSetup: boolean;
-	credentialReplacementPending: boolean;
 	runtime: AgentChannelRuntime;
 }
 

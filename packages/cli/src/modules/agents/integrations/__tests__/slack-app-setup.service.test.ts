@@ -12,11 +12,8 @@ import type { CacheService } from '@/services/cache/cache.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
-import { AgentIntegrationManagementService } from '../../agent-integration-management.service';
-import type { AgentIntegrationPersistenceService } from '../../agent-integration-persistence.service';
+import type { AgentIntegrationManagementService } from '../../agent-integration-management.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
-import type { AgentChatIntegration, ChatIntegrationRegistry } from '../agent-chat-integration';
-import type { ChatIntegrationService } from '../chat-integration.service';
 import {
 	SlackManagedSetupService,
 	type DeleteManagedSlackAppOptions,
@@ -100,11 +97,7 @@ describe('Slack setup services', () => {
 	let userRepository: Mocked<UserRepository>;
 	let projectService: Mocked<ProjectService>;
 	let agentRepository: Mocked<AgentRepository>;
-	let agentIntegrationPersistenceService: Mocked<
-		Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>
-	>;
-	let chatIntegrationService: Mocked<ChatIntegrationService>;
-	let integrationManagementService: AgentIntegrationManagementService;
+	let integrationManagementService: Mocked<AgentIntegrationManagementService>;
 	let service: {
 		createApp: SlackManualSetupService['createApp'];
 		getManualManifest: (
@@ -173,27 +166,11 @@ describe('Slack setup services', () => {
 		projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 		agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
-		agentIntegrationPersistenceService =
-			mock<Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>>();
-		chatIntegrationService = mock<ChatIntegrationService>();
-		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
-		chatIntegrationRegistry.require.mockReturnValue(
-			mock<AgentChatIntegration>({
-				type: 'slack',
-				displayLabel: 'Slack',
-				credentialTypes: ['slackApi'],
-			}),
-		);
-		integrationManagementService = new AgentIntegrationManagementService(
-			agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
-			credentialsService,
-			chatIntegrationService,
-			chatIntegrationRegistry,
-		);
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{ id: 'cred-slack', type: 'slackApi' },
-			{ id: 'bot-credential', type: 'slackApi' },
-		] as never);
+		integrationManagementService = mock<AgentIntegrationManagementService>();
+		integrationManagementService.connect.mockImplementation(async ({ agent, integration }) => ({
+			integration: integration as never,
+			savedAgent: agent,
+		}));
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://hooks.example/');
 		urlService.getInstanceBaseUrl.mockReturnValue('https://hooks.example');
@@ -356,7 +333,7 @@ describe('Slack setup services', () => {
 			redirectUrl: callbackUrl,
 		});
 		expect(credentialsService.createManagedCredential).not.toHaveBeenCalled();
-		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+		expect(integrationManagementService.connect).not.toHaveBeenCalled();
 	});
 
 	it('returns the manual Slack app manifest without OAuth redirect URLs', async () => {
@@ -394,7 +371,6 @@ describe('Slack setup services', () => {
 		);
 		userRepository.findOne.mockResolvedValue(user);
 		credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-slack' } as never);
-		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(agent as never);
 
 		const { installUrl } = await service.createApp({
 			projectId: 'project-1',
@@ -451,31 +427,11 @@ describe('Slack setup services', () => {
 			user,
 		);
 		const integration = { type: 'slack', credentialId: 'cred-slack' };
-		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
-			'agent-1',
-			integration,
-			'project-1',
-		);
-		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
+		expect(integrationManagementService.connect).toHaveBeenCalledWith({
 			agent,
+			user,
 			integration,
-			{
-				user,
-				modifiedBy: 'user',
-				broadcast: false,
-			},
-		);
-		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
-			'agent-1',
-			integration,
-			'connect',
-		);
-		expect(
-			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
-		).toBeLessThan(chatIntegrationService.connect.mock.invocationCallOrder[0]);
-		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
-			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
-		);
+		});
 		expect(cacheService.take).toHaveBeenCalledWith(`agents:slack-app-setup:${state}`);
 		expect(cipher.decryptV2).toHaveBeenCalledWith(encryptedSession);
 		await expect(
@@ -510,9 +466,8 @@ describe('Slack setup services', () => {
 		requestMock.mockResolvedValueOnce(slackOAuthResponse());
 		userRepository.findOne.mockResolvedValue(user);
 		credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-slack' } as never);
-		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(agent as never);
 		const connectError = new Error('Slack connect failed');
-		chatIntegrationService.connect.mockRejectedValue(connectError);
+		integrationManagementService.connect.mockRejectedValue(connectError);
 
 		await expect(
 			service.completeInstall({
@@ -523,29 +478,17 @@ describe('Slack setup services', () => {
 			}),
 		).rejects.toBe(connectError);
 
-		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
+		expect(integrationManagementService.connect).toHaveBeenCalledWith({
 			agent,
-			{ type: 'slack', credentialId: 'cred-slack' },
-			{ user, modifiedBy: 'user', broadcast: false },
-		);
-		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
-			'agent-1',
-			{ type: 'slack', credentialId: 'cred-slack' },
-			'project-1',
-		);
-		expect(
-			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
-		).toBeLessThan(chatIntegrationService.connect.mock.invocationCallOrder[0]);
-		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
+			user,
+			integration: { type: 'slack', credentialId: 'cred-slack' },
+		});
 	});
 
 	it('saves without connecting or broadcasting for an unpublished agent', async () => {
 		agentRepository.findByIdAndProjectId
 			.mockResolvedValueOnce(agent as never)
 			.mockResolvedValueOnce(unpublishedAgent as never);
-		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
-			unpublishedAgent as never,
-		);
 		requestMock.mockResolvedValueOnce(slackAppCreatedResponse()).mockResolvedValueOnce(
 			slackResponse({
 				ok: true,
@@ -573,17 +516,11 @@ describe('Slack setup services', () => {
 		});
 
 		const integration = { type: 'slack', credentialId: 'cred-slack' };
-		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
-			unpublishedAgent,
+		expect(integrationManagementService.connect).toHaveBeenCalledWith({
+			agent: unpublishedAgent,
+			user,
 			integration,
-			{
-				user,
-				modifiedBy: 'user',
-				broadcast: false,
-			},
-		);
-		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
-		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
+		});
 	});
 
 	it('rejects a callback state that does not belong to the requested project and agent', async () => {
@@ -606,7 +543,7 @@ describe('Slack setup services', () => {
 			}),
 		).rejects.toThrow(BadRequestError);
 		expect(credentialsService.createManagedCredential).not.toHaveBeenCalled();
-		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+		expect(integrationManagementService.connect).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -851,7 +788,6 @@ describe('Slack setup services', () => {
 		credentialsService.createManagedCredential.mockResolvedValue({
 			id: 'bot-credential',
 		} as never);
-		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(agent as never);
 
 		await expect(
 			service.installManagedApp({
@@ -1149,7 +1085,6 @@ describe('Slack setup services', () => {
 		credentialsService.createManagedCredential.mockResolvedValue({
 			id: 'bot-credential',
 		} as never);
-		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(agent as never);
 
 		const result = await service.installManagedApp({
 			projectId: 'project-1',
