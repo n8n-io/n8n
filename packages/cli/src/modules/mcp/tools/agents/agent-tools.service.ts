@@ -327,6 +327,13 @@ const updateIntegrationInput = {
 		.record(z.unknown())
 		.optional()
 		.describe('Integration settings; required for Telegram connect operations'),
+	replacesCredentialId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'On connect, the credential of the same type this one takes over from. Swaps both in one operation instead of a separate disconnect',
+		),
 } satisfies z.ZodRawShape;
 
 const callAgentRequestSchema = z.discriminatedUnion('type', [
@@ -1669,6 +1676,9 @@ export class McpAgentToolsService {
 			agent,
 			user,
 			integration: candidate,
+			...(input.replacesCredentialId
+				? { replaces: { type: input.type, credentialId: input.replacesCredentialId } }
+				: {}),
 			modifiedBy: 'mcp',
 		});
 		const result = {
