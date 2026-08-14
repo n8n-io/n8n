@@ -1,0 +1,30 @@
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_87d0d386cddbf0::t_76f0b99b3b8bec 2052
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_87d0d386cddbf0::t_03d69e9db84efb 147
+  s_87d0d386cddbf0::t_06ae4e23d26548 144,148-150,166
+  s_87d0d386cddbf0::t_e9dc6f34f8b00d 170-187
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-requests-query.dto.ts
+  s_87d0d386cddbf0::t_eeead68a632750 46-49
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_87d0d386cddbf0::t_873d1cf10f1fef 709,711-713,727-730
+  s_87d0d386cddbf0::t_9dbafcd2216c6b 586-587
+  s_87d0d386cddbf0::t_cd3ccb3d198c5b 759-760
+  s_87d0d386cddbf0::t_8ea825810f5595 708,710,714-726
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b86431a8571880cd73174d6d14b210c94addd46",
+  "prompts": {},
+  "sessions": {
+    "s_87d0d386cddbf0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "477e4ced-99a0-4f07-8ef3-d54970a69d80",
+        "model": "grok-4.6"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/src/workflows/triggers/__tests__/poll-cursor.service.test.ts
+  s_85b9113f460a8f::t_f79e7274454a26 397-412
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_85b9113f460a8f::t_2e9af8cc0b6d0f 297-298
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_85b9113f460a8f::t_bf025f4998a7b8 38-46
+packages/core/src/execution-engine/triggers-and-pollers.ts
+  s_85b9113f460a8f::t_51168823c6b2b7 160,168
+  s_85b9113f460a8f::t_3ac65e54b70bca 58-66
+packages/core/src/execution-engine/__tests__/triggers-and-pollers.test.ts
+  s_85b9113f460a8f::t_418a9d3e4b2daa 253-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3c76f45f315d469475081647bcb52310b0e50021",
+  "prompts": {},
+  "sessions": {
+    "s_85b9113f460a8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "879d118d-83b1-4a18-9601-732af07e677b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

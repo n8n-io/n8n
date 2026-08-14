@@ -1,0 +1,31 @@
+packages/cli/test/migration/1786526297066-add-project-manage-users-scope-to-api-keys.test.ts
+  s_fc648e0ad4d8c3::t_2996ed275565a5 88-90,92-93,102,112-114,116-117,126,132-134,136-137,146,152-155,162
+  s_fc648e0ad4d8c3::t_92d96d1cf420d0 10
+packages/@n8n/db/src/migrations/common/1786526297066-AddProjectManageUsersScopeToCustomRoles.ts
+  s_fc648e0ad4d8c3::t_e31ae6d1b515b5 1-21,26-84,86,88-109
+  s_fc648e0ad4d8c3::t_961c75d4b8228d 22-25
+  s_fc648e0ad4d8c3::t_c2f4233014207a 85,87
+packages/cli/test/migration/1786526297066-add-project-manage-users-scope-to-custom-roles.test.ts
+  s_fc648e0ad4d8c3::t_ae0b4bbb7ec979 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "56bc382ad41059f258db7ed298b6931ab6b14b96",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fc648e0ad4d8c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fc0394ae-5de5-466d-853c-f5203b1b0a25",
+        "model": "grok-4.6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
