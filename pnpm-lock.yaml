@@ -403,8 +403,8 @@ catalogs:
       specifier: 0.6.3
       version: 0.6.3
     isolated-vm:
-      specifier: ^6.1.2
-      version: 6.1.2
+      specifier: ^7.0.0
+      version: 7.0.1
     js-base64:
       specifier: 3.7.8
       version: 3.7.8
@@ -2475,7 +2475,7 @@ importers:
         version: link:../tournament
       isolated-vm:
         specifier: 'catalog:'
-        version: 6.1.2
+        version: 7.0.1
       jmespath:
         specifier: 0.16.0
         version: 0.16.0
@@ -4401,7 +4401,7 @@ importers:
         version: 3.6.13
       isolated-vm:
         specifier: 'catalog:'
-        version: 6.1.2
+        version: 7.0.1
       jose:
         specifier: ^6.2.2
         version: 6.2.2
@@ -6467,7 +6467,7 @@ importers:
         version: 2.1.15
       isolated-vm:
         specifier: 'catalog:'
-        version: 6.1.2
+        version: 7.0.1
       js-nacl:
         specifier: 1.4.0
         version: 1.4.0
@@ -17688,9 +17688,9 @@ packages:
     resolution: {integrity: sha512-7c7mBznZu2ktfvyT582E2msM+Udc1EjOyhVRE/0ZsjD9LBtWSm23h3PtiRh2a35XoUsTQQjJXaJzuLjXsOdFDg==}
     engines: {node: '>=6.0'}
 
-  isolated-vm@6.1.2:
-    resolution: {integrity: sha512-GGfsHqtlZiiurZaxB/3kY7LLAXR3sgzDul0fom4cSyBjx6ZbjpTrFWiH3z/nUfLJGJ8PIq9LQmQFiAxu24+I7A==}
-    engines: {node: '>=22.0.0'}
+  isolated-vm@7.0.1:
+    resolution: {integrity: sha512-nBCQ1hXEaYKYJ79wwfhaF44ITOJC30Hw0wPEsFeNsdD3hdeKK7FW1SGMQYBUA+qasvkqdOazI+iBuq0lcbN/aw==}
+    engines: {node: '>=24.0.0'}
 
   isomorphic-timers-promises@1.0.1:
     resolution: {integrity: sha512-u4sej9B1LPSxTGKB/HiuzvEQnXH0ECYkSVQU39koSwmFAxhlEAFl9RdTvLv4TOTQUgBS5O3O5fwUxk6byBZ+IQ==}
@@ -36433,7 +36433,7 @@ snapshots:
 
   iso-639-1@2.1.15: {}
 
-  isolated-vm@6.1.2:
+  isolated-vm@7.0.1:
     dependencies:
       node-gyp-build: 4.8.4
 

@@ -12,10 +12,11 @@ import { useToast } from '@n8n/composables/useToast';
 import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
 import type { WorkflowReviewDetailTab } from '../components/WorkflowReviewDetailTabs.vue';
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
+import type { ReviewInboxSidebarSection } from '../components/WorkflowReviewRequestsSidebar.vue';
 import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import { useReviewActivityStore } from '../reviewActivity.store';
-import { useReviewInboxStore } from '../reviewInbox.store';
+import { useReviewInboxStore, type ReviewInboxSectionKey } from '../reviewInbox.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
 const store = useReviewInboxStore();
@@ -25,18 +26,34 @@ const activityStore = useReviewActivityStore();
 const {
 	probeSettled,
 	showSidebar,
-	items,
 	activeTab,
 	detail,
 	detailLoading,
 	detailNotFound,
-	loading,
-	loadingMore,
-	hasMore,
 	isEmpty,
 	openCount,
 	closedCount,
 } = storeToRefs(store);
+
+// `storeToRefs` does not reach into the nested `sections` object; Pinia already
+// unwraps the slice refs, so read them through the store.
+function toSidebarSection(key: ReviewInboxSectionKey): ReviewInboxSidebarSection {
+	const slice = store.sections[key];
+	return {
+		key,
+		items: slice.items,
+		loading: slice.loading,
+		loadingMore: slice.loadingMore,
+		hasMore: slice.hasMore,
+		error: slice.error,
+	};
+}
+
+const sidebarSections = computed<ReviewInboxSidebarSection[]>(() =>
+	activeTab.value === 'closed'
+		? [toSidebarSection('closed')]
+		: [toSidebarSection('waiting'), toSidebarSection('authored')],
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -55,8 +72,8 @@ function stateFromQuery(value: unknown): WorkflowReviewRequestState {
 // Hydrate the tab before probing so the first list fetch uses the URL state.
 store.activeTab = stateFromQuery(route.query[REVIEW_INBOX_QUERY_PARAM.state]);
 
-const selectedListItem = computed(
-	() => items.value.find((item) => item.id === selectedReviewId.value) ?? null,
+const selectedListItem = computed(() =>
+	selectedReviewId.value ? store.findItemById(selectedReviewId.value) : null,
 );
 const selectedItem = computed(() => detail.value ?? selectedListItem.value);
 
@@ -126,11 +143,19 @@ function onDetailTabChange(tab: WorkflowReviewDetailTab) {
 	void router.replace({ query });
 }
 
-async function onLoadMore() {
+async function onLoadMore(section: ReviewInboxSectionKey) {
 	try {
-		await store.loadMore();
+		await store.loadMore(section);
 	} catch (error) {
-		await handleListError(error);
+		handleListError(error);
+	}
+}
+
+async function onRetrySection(section: ReviewInboxSectionKey) {
+	try {
+		await store.retry(section);
+	} catch (error) {
+		handleListError(error);
 	}
 }
 
@@ -189,7 +214,7 @@ async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
 		// re-fails.
 		try {
 			await Promise.all([
-				store.fetchList({ reset: true }),
+				store.fetchActiveTab(),
 				selectedReviewId.value ? store.fetchDetail(selectedReviewId.value) : undefined,
 			]);
 		} catch (refetchError) {
@@ -221,19 +246,16 @@ onUnmounted(() => {
 		<div :class="$style.content">
 			<WorkflowReviewRequestsSidebar
 				v-if="showSidebar"
-				:items="items"
+				:sections="sidebarSections"
 				:active-tab="activeTab"
 				:open-count="openCount"
 				:closed-count="closedCount"
 				:selected-id="selectedReviewId"
-				:loading="loading"
-				:loading-more="loadingMore"
-				:has-more="hasMore"
-				:is-empty="isEmpty"
 				@select="onSelect"
 				@clear="onClearSelection"
 				@update:active-tab="onActiveTabChange"
 				@load-more="onLoadMore"
+				@retry="onRetrySection"
 			/>
 
 			<div :class="$style.main">

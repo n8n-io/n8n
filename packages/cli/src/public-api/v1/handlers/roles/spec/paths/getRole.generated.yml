@@ -1,0 +1,80 @@
+operationId: getRole
+tags:
+  - Role
+summary: Retrieve a role
+description: Returns a single role with its scopes. Set `withUsageCount` to include how many users and projects use the role.
+x-required-scope: role:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: slug
+    in: path
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
+    required: false
+    name: withUsageCount
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            slug:
+              type: string
+            displayName:
+              type: string
+            description:
+              type: string
+              nullable: true
+            systemRole:
+              type: boolean
+            roleType:
+              type: string
+              enum:
+                - project
+                - global
+            scopes:
+              type: array
+              items:
+                type: string
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            licensed:
+              type: boolean
+            usedByUsers:
+              type: number
+            usedByProjects:
+              type: number
+          required:
+            - slug
+            - displayName
+            - description
+            - systemRole
+            - roleType
+            - scopes
+            - createdAt
+            - updatedAt
+            - licensed
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

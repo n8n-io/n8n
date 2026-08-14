@@ -9,6 +9,7 @@ import {
 	buildWorkflowInputSchema,
 	createBuildWorkflowTool,
 } from '../build-workflow.tool';
+import { buildCredentialMap, resolveCredentials } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
 import { analyzeWorkflow } from '../setup-workflow.service';
 import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
@@ -1310,6 +1311,88 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(outcome?.simulationFixtures).toEqual({ 'Get Berlin Weather': rainyOutput });
 		expect(outcome?.verificationPinData).toBeUndefined();
+	});
+
+	it('warns when a chat-model node uses a provider without a stored credential while another LLM credential exists', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				name: 'Generated workflow',
+				nodes: [
+					{
+						id: 'model-1',
+						name: 'OpenAI Chat Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		vi.mocked(buildCredentialMap).mockResolvedValueOnce(
+			new Map([
+				['googlePalmApi', [{ id: 'g1', name: 'Google Gemini account', type: 'googlePalmApi' }]],
+			]),
+		);
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result.success).toBe(true);
+		const warningText = (result.warnings ?? []).join('\n');
+		expect(warningText).toContain('[chat_model_provider_mismatch]');
+		expect(warningText).toContain('"Google Gemini account" (googlePalmApi, id: g1)');
+	});
+
+	it('does not warn about the provider when the resolver attached the n8n Connect managed credential', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				name: 'Generated workflow',
+				nodes: [
+					{
+						id: 'model-1',
+						name: 'OpenAI Chat Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		vi.mocked(buildCredentialMap).mockResolvedValueOnce(
+			new Map([
+				['googlePalmApi', [{ id: 'g1', name: 'Google Gemini account', type: 'googlePalmApi' }]],
+			]),
+		);
+		vi.mocked(resolveCredentials).mockResolvedValueOnce({
+			mockedNodeNames: ['OpenAI Chat Model'],
+			mockedCredentialTypes: [],
+			mockedCredentialsByNode: {},
+			resolvedCredentialsByNode: {
+				'OpenAI Chat Model': [
+					{ type: 'openAiApi', id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+				],
+			},
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result.success).toBe(true);
+		expect((result.warnings ?? []).join('\n')).not.toContain('chat_model_provider_mismatch');
 	});
 
 	it('returns source file metadata on validation failures', async () => {
