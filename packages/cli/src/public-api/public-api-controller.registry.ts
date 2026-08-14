@@ -1,3 +1,4 @@
+import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decorators';
@@ -5,8 +6,10 @@ import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import {
 	apiKeyScopesSatisfy,
@@ -103,6 +106,10 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createAccessScopeMiddleware(route.accessScope));
 			}
 
+			if (route.licenseFeature) {
+				middlewares.push(this.createLicenseMiddleware(route.licenseFeature));
+			}
+
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
 
 			const finalHandler: RequestHandler = async (req, res, next) => {
@@ -157,6 +164,17 @@ export class PublicApiControllerRegistry {
 
 			if (!tokenGrant || !apiKeyScopesSatisfy(tokenGrant.apiKeyScopes, requirement)) {
 				res.status(403).json({ message: 'Forbidden' });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
+		return (_req, res, next) => {
+			if (!Container.get(License).isLicensed(feature)) {
+				res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
 				return;
 			}
 

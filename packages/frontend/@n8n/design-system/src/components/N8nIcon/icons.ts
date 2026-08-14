@@ -166,6 +166,7 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideListOrdered from '~icons/lucide/list-ordered';
 import IconLucideListPlus from '~icons/lucide/list-plus';
 import IconLucideListTree from '~icons/lucide/list-tree';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
@@ -254,6 +255,7 @@ import IconLucideTrendingDown from '~icons/lucide/trending-down';
 import IconLucideTrendingUp from '~icons/lucide/trending-up';
 import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideType from '~icons/lucide/type';
+import IconLucideUnderline from '~icons/lucide/underline';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUngroup from '~icons/lucide/ungroup';
 import IconLucideUnlink from '~icons/lucide/unlink';
@@ -271,6 +273,7 @@ import IconLucideVault from '~icons/lucide/vault';
 import IconLucideVideo from '~icons/lucide/video';
 import IconLucideVolume2 from '~icons/lucide/volume-2';
 import IconLucideVolumeX from '~icons/lucide/volume-x';
+import IconLucideWallet from '~icons/lucide/wallet';
 import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
 import IconLucideWorkflow from '~icons/lucide/workflow';
@@ -669,6 +672,7 @@ export const updatedIconSet = {
 	'list-checks': IconLucideListChecks,
 	'list-plus': IconLucideListPlus,
 	'list-tree': IconLucideListTree,
+	'list-ordered': IconLucideListOrdered,
 	lock: IconLucideLock,
 	'log-in': IconLucideLogIn,
 	'log-out': IconLucideLogOut,
@@ -768,6 +772,7 @@ export const updatedIconSet = {
 	video: IconLucideVideo,
 	'volume-2': IconLucideVolume2,
 	'volume-x': IconLucideVolumeX,
+	wallet: IconLucideWallet,
 	'wand-sparkles': IconLucideWandSparkles,
 	waypoints: IconLucideWaypoints,
 	workflow: IconLucideWorkflow,
@@ -781,6 +786,7 @@ export const updatedIconSet = {
 	'loader-circle': IconLucideLoaderCircle,
 	quote: IconLucideQuote,
 	'quick-connect': IconLucideFlame,
+	underline: IconLucideUnderline,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward

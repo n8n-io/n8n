@@ -128,6 +128,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'dataTable:writeColumn',
 	'role:manage',
 	'role:read',
+	'role:list',
 	'mcp:manage',
 	'mcp:oauth',
 	'mcpApiKey:create',

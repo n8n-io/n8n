@@ -250,6 +250,23 @@ export default defineConfig(
 		},
 	},
 	{
+		files: ['src/features/agents/**/*.ts', 'src/features/agents/**/*.vue'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['**/ndv/runData/components/RunData.vue'],
+							message:
+								'Use StandaloneRunData inside StandaloneRunDataHost so scoped providers and cleanup are owned consistently.',
+						},
+					],
+				},
+			],
+		},
+	},
+	{
 		files: [
 			'src/**/*.test.ts',
 			'src/**/test/**/*.ts',

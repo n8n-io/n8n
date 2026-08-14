@@ -36,15 +36,26 @@ describe('fromStepInputs', () => {
 		expect(fromStepInputs([null])).toEqual([[]]);
 	});
 
+	it('wraps a bare object slot as a single item (trigger payload shape)', () => {
+		expect(fromStepInputs([{ name: 'ada' }])).toEqual([[{ json: { name: 'ada' } }]]);
+	});
+
 	it('yields an empty item list for a slot not carrying items', () => {
-		// e.g. the trigger's raw payload rides in slot 0 as a bare object
 		expect(fromStepInputs(['nope'])).toEqual([[]]);
 	});
 });
 
 describe('toStepOutputs', () => {
+	it('collapses a zero-item slot to null (v1: branch not taken)', () => {
+		expect(toStepOutputs([[{ json: { x: 1 } }], []])).toEqual([[{ json: { x: 1 } }], null]);
+	});
+
+	it('collapses a lone empty slot', () => {
+		expect(toStepOutputs([[]])).toEqual([null]);
+	});
+
 	it('survives a JSON round-trip', () => {
-		const outputs: INodeExecutionData[][] = [[{ json: { x: 1 } }], []];
+		const outputs: INodeExecutionData[][] = [[{ json: { x: 1 } }], [{ json: { y: 2 } }]];
 		const payload = toStepOutputs(outputs);
 		expect(payload).toEqual(outputs);
 

@@ -110,7 +110,7 @@ const handleClick = (event: MouseEvent) => {
 		</Transition>
 
 		<div :class="$style['button-inner']">
-			<slot name="icon" v-if="!loading">
+			<slot v-if="!loading" name="icon">
 				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
 			</slot>
 

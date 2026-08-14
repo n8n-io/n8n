@@ -187,7 +187,6 @@ These only run if specific files changed:
 | Event                      | Workflow                    | Condition                                            |
 |----------------------------|-----------------------------|------------------------------------------------------|
 | Review approved            | `release-chromatic.yml` | + design files changed                               |
-| Comment with `@claude`     | `util-claude.yml`           | mention in any comment                               |
 | Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
 
 **Why Instance AI evals fire once per PR state-change, not per push:** the
@@ -210,7 +209,7 @@ the lab bench.** The gate deliberately exposes only PR re-runs. Anything that
 isn't PR gating — baselines, model experiments, arbitrary branch runs — goes
 through `test-evals-instance-ai.yml`'s own dispatch form ("Instance AI
 Evals: Experiments"): full knob set (branch, filter, tier, suite,
-iterations, experiment-name, model), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
+iterations, experiment-name, model, model-url, model-key, reasoning-effort, supports-structured-outputs), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
 model-comparison arms), and SHA-keyed docker cache hits on master. Evals never
 run on fork PRs: the event trigger gates on `head.repo.fork`, and the `pr`
 re-run path refuses fork PRs in `resolve` (dispatched runs carry secrets).
@@ -248,25 +247,7 @@ parallelism). See the `--build-via-mcp` section in
 
 | Workflow                  | Purpose                                                 |
 |---------------------------|---------------------------------------------------------|
-| `util-claude-task.yml`    | Run Claude Code to complete a task and create a PR      |
 | `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
-
-#### Claude Task Runner (`util-claude-task.yml`)
-
-Runs Claude Code to complete a task, then creates a PR with the changes. Use for well-specced tasks or simple fixes. Can be triggered via GitHub UI or API.
-
-Claude reads templates from `.github/claude-templates/` for task-specific guidance. Add new templates as needed for recurring task types.
-
-**Inputs:**
-- `task` - Description of what Claude should do
-- `user_token` - GitHub PAT (PR will be authored by the token owner)
-
-**Token requirements** (fine-grained PAT):
-- Repository: `n8n-io/n8n`
-- Contents: `Read and write`
-- Pull requests: `Read and write`
-
-**Governance:** If you provide your personal PAT, you cannot approve the resulting PR. For automated/bot use cases (e.g., dependabot-style updates via n8n workflows), an app token can be used instead.
 
 ---
 
@@ -401,7 +382,8 @@ Push to master/1.x
 
 | Schedule (UTC)            | Workflow                          | Purpose                  |
 |---------------------------|-----------------------------------|--------------------------|
-| Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private, refresh bundle branches |
+| Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private  |
+| Every 6h :00              | `sec-rebase-bundle-branches.yml`  | Replay `bundle/*` onto their base |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
@@ -425,13 +407,22 @@ During the v3 release window, `master` carries normal feature work (behind opt-i
 flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
 syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
 clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
-exactly the tree a merge of `3.x` and `master` produces, and marker-free. On a real conflict
-`3.x` is left untouched and a draft PR carrying the conflict markers (labeled
-`automation:v3-sync`) is opened on `sync/master-to-3x`, requesting the breaking-commit authors
-as reviewers via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further
-syncs until it is resolved and merged normally.
+exactly the tree a merge of `3.x` and `master` produces, and marker-free. Conflicts confined
+to mechanical, tool-generated files (the pnpm lockfile, bot-maintained data files — see
+`MECHANICAL_PATHS` in `sync-master-to-3x.mjs`) are auto-resolved during the replay; the tree
+check then applies to every path except those files. On a real code conflict `3.x` is left
+untouched and a draft PR carrying the conflict markers (labeled `automation:v3-sync`, with
+mechanical files pre-resolved) is opened on `sync/master-to-3x`, requesting the
+breaking-commit authors as reviewers via `sync-conflict-owners.mjs`, posting to
+`#alerts-v3-sync` and pausing further syncs until it is resolved and merged normally.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
-by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
+by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`. On Mondays it also
+retags that run's n8n + runners manifests as a release candidate (by digest on GHCR, so
+the RC is exactly what was built), giving a self-consistent set to trial. Any manual run
+can promote too via the `force_rc` dispatch input, several times a day: each publish
+claims the next free `v3-rc-<date>.N` as its immutable tag and moves the floating `v3-rc`
+and `v3-rc-<date>` onto it. The counter is derived by probing the registry, and the job
+is serialized on a `v3-rc-tagging` concurrency group so two runs can't claim one number.
 
 See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
@@ -511,6 +502,19 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|---------------------------|
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
+| `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+
+### Branch Replay Scripts
+
+Both keep a long-lived branch that is "base + its own commits" in sync by rebasing those
+commits onto the base and force-pushing, sharing the merge-tree content guard that makes the
+rewrite safe.
+
+| Script                     | Purpose                                                              | Called By                          |
+|----------------------------|----------------------------------------------------------------------|------------------------------------|
+| `branch-replay.mjs`        | Shared primitives: merge-tree, tree guard, marker scan               | the two scripts below              |
+| `sync-master-to-3x.mjs`    | master → `3.x`; auto-resolves mechanical files, opens a conflict PR   | `util-sync-master-to-3x.yml`       |
+| `rebase-bundle-branch.mjs` | base → `bundle/*` in n8n-private; fail-loud, never resolves conflicts | `sec-rebase-bundle-branches.yml`   |
 
 ### Slack Scripts
 
@@ -707,14 +711,30 @@ mirroring public `master` and `1.x` into private with `reset --hard` +
 commits when judging "ahead". Fixes are never committed to private `master`/`1.x`
 directly: `ci-restrict-private-merges.yml` requires PRs into them to come from the
 long-lived integration branches `bundle/2.x` and `bundle/1.x` (a `bundle/2.x` merge is
-backported to `bundle/1.x` by `util-backport-bundle.yml`). The sync creates those
-branches if missing and then **merges `master` into `bundle/2.x` and `1.x` into
-`bundle/1.x`** so they don't drift; on a conflict it aborts the merge, leaves the branch
-untouched, and emits a warning annotation while **keeping the run green** — the other
-bundle branch still syncs, and a human resolves the conflict by hand. Once a bundle
-branch is merged into private `master`/`1.x` as a `chore: Bundle/*` PR,
-`sec-publish-fix.yml` / `sec-publish-fix-1x.yml` cherry-pick that merge commit onto a
-fresh branch in the public repo and open the PR there.
+backported to `bundle/1.x` by `util-backport-bundle.yml`). Once a bundle branch is merged
+into private `master`/`1.x` as a `chore: Bundle/*` PR, `sec-publish-fix.yml` /
+`sec-publish-fix-1x.yml` cherry-pick that commit onto a fresh branch in the public repo and
+open the PR there. That PR **must stay a single-parent squash** — the publish step is a bare
+`git cherry-pick` of `HEAD`, which aborts on a merge commit.
+
+`sec-rebase-bundle-branches.yml` keeps those branches current, every 6 hours plus whenever a
+PR is merged into one (and on `workflow_dispatch`). It **replays** the bundle-only commits
+onto the base with `git rebase` and force-pushes, via
+[`scripts/rebase-bundle-branch.mjs`](scripts/rebase-bundle-branch.mjs) — so a clean run
+adds **no commit at all** and `base..bundle` stays a readable list of the fixes not yet
+published. Rebasing is safe here precisely because a bundle ships as one squashed,
+deliberately obfuscated commit: SHAs and dates on these branches carry no meaning downstream,
+and the `n8n-assistant` app is a bypass actor on the `bundle/*` ruleset's `non_fast_forward`
+rule. Every push is verified to carry exactly the tree a merge of the two sides would produce
+(`git merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing. Fixes
+already published come back through the base and are dropped by `--empty=drop`.
+
+There is **one job per bundle branch**. A conflict is detected from the merge tree before the
+working tree is touched, so the branch is left exactly as it was, that job **fails** (no more
+green runs hiding a stalled branch) and `#alerts-security` gets a run link — while the other
+branch still syncs. Recovery is deliberate: rebase the branch onto its base locally, resolve,
+force-push, then re-run the workflow. The replay never resolves a conflict itself, unlike
+`util-sync-master-to-3x.yml`.
 
 See **[`../AGENTS.md`](../AGENTS.md)** ("Security Fix Hygiene") for the naming rules that
 keep the vulnerability out of public branch names, commits, and test descriptions.
@@ -772,7 +792,7 @@ Adding a new channel requires inviting the bot first; the first run otherwise fa
 | Cloud/CDN           | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`             |
 | GitHub Automation   | `N8N_ASSISTANT_APP_ID`, `N8N_ASSISTANT_PRIVATE_KEY`         |
 | Benchmarking        | `BENCHMARK_ARM_*`, `N8N_BENCHMARK_LICENSE_CERT`             |
-| AI/Evals            | `ANTHROPIC_API_KEY`, `EVALS_LANGSMITH_*`                    |
+| AI/Evals            | `EVALS_ANTHROPIC_KEY`, `EVALS_OPENAI_KEY`, `EVALS_OPENROUTER_KEY`, `EVALS_XAI_KEY`, `EVALS_BASETEN_KEY`, `EVALS_FIREWORKS_KEY`, `EVALS_TOGETHER_KEY`, `EVALS_DATABRICKS_KEY`, `EVALS_MODAL_KEY`, `EVALS_LYCEUM_KEY`, `EVALS_AZURE_FOUNDRY_KEY`, `EVALS_VERTEX_KEY`, `EVALS_VERTEX_PROJECT_ID`, `EVALS_VERTEX_LOCATION`, `EVALS_LANGSMITH_*` |
 
 ### Scoping
 

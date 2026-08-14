@@ -17,6 +17,7 @@ export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
 export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
+export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */
@@ -27,6 +28,16 @@ export const ADVANCED_SECTION_KEY = '__advanced';
 export const CONFIG_JSON_SECTION_KEY = '__config_json';
 /** Synthetic tree key for the agent executions tab. */
 export const EXECUTIONS_SECTION_KEY = '__executions';
+
+/**
+ * Rows read in one page of an agent's eval cases. Set to the row route's own ceiling
+ * (`MAX_ITEMS_PER_PAGE`), which is the most this view can read without paging — so a
+ * dataset is fully editable up to that size. Generation caps a dataset at 20, but
+ * cases can also be added by hand or by attaching a table, and a row past this page
+ * would otherwise be invisible *and* uneditable while still counting toward the run.
+ * The card says so explicitly when the server's total exceeds what it loaded.
+ */
+export const AGENT_EVAL_CASES_PAGE_SIZE = 250;
 
 export {
 	CHAT_MESSAGE_STATUS,

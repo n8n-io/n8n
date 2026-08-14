@@ -2,12 +2,11 @@
 import { Toggle as TogglePrimitive, ToggleGroupItem, type AcceptableValue } from 'reka-ui';
 import { computed, ref, useAttrs, useCssModule } from 'vue';
 
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 import type { IconSize } from '../../types';
 import type { ButtonProps } from '../../types/button';
 import { cn } from '../../utils/cn';
 import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
 export interface ToggleProps extends Pick<ButtonProps, 'variant' | 'size' | 'disabled' | 'class'> {
@@ -162,7 +161,7 @@ const pressed = computed({
 	}
 
 	&:active,
-	&[data-state='on'] {
+	&[aria-pressed='true'] {
 		background-color: var(--button--color--background-active);
 		box-shadow:
 			inset var(--button--border--shadow--active),

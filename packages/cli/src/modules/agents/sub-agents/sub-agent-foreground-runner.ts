@@ -31,6 +31,7 @@ import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
@@ -46,6 +47,8 @@ export interface SubAgentForegroundRunContext {
 	 * while the parent is being tested in the builder preview.
 	 */
 	runType: AgentRunTelemetryType;
+	/** Workflow execution classification inherited from the parent runtime. */
+	workflowToolExecutionMode?: WorkflowToolExecutionMode;
 	executionCounter?: AgentExecutionCounter;
 	/** Parent run's abort signal — cancelling the parent cancels this child. */
 	abortSignal?: AbortSignal;
@@ -179,6 +182,7 @@ export class SubAgentForegroundRunner {
 			skills: runtimeSource.skills,
 			runtimeProfile: 'sub-agent',
 			runType: context.runType,
+			workflowToolExecutionMode: context.workflowToolExecutionMode,
 			parentAgentIdForDelegation: context.parentAgentId,
 			user: context.user,
 			instrumentation: context.instrumentation,

@@ -3,6 +3,8 @@ import type { JSONSchema7 } from 'json-schema';
 import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
 
+import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
+import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
@@ -13,6 +15,7 @@ import type { StreamChunk } from '../../types/sdk/agent';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { Workspace, createWorkspaceTools } from '../../workspace';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentEventBus } from '../state/event-bus';
@@ -691,6 +694,77 @@ describe('AgentRuntime — execution counters', () => {
 });
 
 // ---------------------------------------------------------------------------
+// empty stop turn retry
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — empty stop turn retry', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	/** A `stop` turn with no output at all — the provider stall the loop retries. */
+	function makeGenerateEmpty() {
+		return {
+			finishReason: 'stop',
+			usage: { inputTokens: 10, outputTokens: 0, totalTokens: 10 },
+			response: { messages: [] },
+			toolCalls: [],
+		};
+	}
+
+	it('retries an empty stop turn and keeps the retry output', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateEmpty())
+			.mockResolvedValueOnce(makeGenerateSuccess('Recovered'));
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('hi');
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+		const assistantText = result.messages
+			.flatMap((m) => ('content' in m && Array.isArray(m.content) ? m.content : []))
+			.find((c) => c.type === 'text');
+		expect(assistantText).toMatchObject({ text: 'Recovered' });
+	});
+
+	it('bills usage from discarded empty attempts', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateEmpty())
+			.mockResolvedValueOnce(makeGenerateSuccess('Recovered'));
+		const counter = makeExecutionCounter();
+
+		const { runtime } = createRuntime();
+		await runtime.generate('hi', { executionCounter: counter });
+
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(10);
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
+	});
+
+	it('accepts the empty turn once the retry budget is exhausted', async () => {
+		generateText.mockResolvedValue(makeGenerateEmpty());
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('hi');
+
+		// 1 initial call + 2 retries
+		expect(generateText).toHaveBeenCalledTimes(3);
+		expect(result.finishReason).toBe('stop');
+		expect(result.error).toBeUndefined();
+	});
+
+	it('does not retry a whitespace-free stop turn with text', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+
+		const { runtime } = createRuntime();
+		await runtime.generate('hi');
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // generate() — graceful error contract
 // ---------------------------------------------------------------------------
 
@@ -1210,6 +1284,91 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			totalTokens: 15,
 		});
 		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('bills a discarded empty stop attempt when aborted during the retry', async () => {
+		const { runtime } = createRuntime();
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		streamText
+			// Empty stop turn — usage must be published before the retry starts.
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('stop'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
+				response: Promise.resolve({ messages: [] }),
+				toolCalls: Promise.resolve([]),
+			})
+			// Retry starts a new raw-usage reader; abort mid-retry must still bill
+			// the discarded empty attempt via the usage already reported to the sink.
+			.mockReturnValueOnce({
+				stream: (function* () {
+					controller.abort();
+					yield* makeChunkStream([]);
+				})(),
+				finishReason: silentReject(abortError),
+				usage: silentReject(abortError),
+				response: silentReject(abortError),
+				toolCalls: silentReject(abortError),
+			});
+
+		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 0,
+			totalTokens: 10,
+		});
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('bills a discarded empty stop attempt when the retry fails with a non-abort error', async () => {
+		const { runtime } = createRuntime();
+		const streamError = new Error('stream broke');
+
+		streamText
+			// Empty stop turn — its usage is reported to the sink before the retry.
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('stop'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
+				response: Promise.resolve({ messages: [] }),
+				toolCalls: Promise.resolve([]),
+			})
+			// Retry fails outright; the error finish chunk must still carry the
+			// discarded empty attempt's usage.
+			.mockReturnValueOnce({
+				stream: makeErrorStream(streamError),
+				finishReason: silentReject(streamError),
+				usage: silentReject(streamError),
+				response: silentReject(streamError),
+				toolCalls: silentReject(streamError),
+			});
+
+		const { stream } = await runtime.stream('hello');
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish'; finishReason: string })
+			| undefined;
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(finish?.finishReason).toBe('error');
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 0,
+			totalTokens: 10,
+		});
+		expect(runtime.getState().status).toBe('failed');
 	});
 
 	it('recovers usage from the raw provider stream when aborted before the model finishes', async () => {
@@ -3973,6 +4132,67 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 
 		await runtime.generate('go');
 		expect(handlerFn).not.toHaveBeenCalled();
+	});
+
+	it('rejects unknown keys against a closed JSON Schema', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: {
+				type: 'object',
+				additionalProperties: false,
+				properties: { query: { type: 'string' } },
+			},
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-1', 'json_tool', { query: 'cats', extra: true }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		await runtime.generate('go');
+		expect(handlerFn).not.toHaveBeenCalled();
+	});
+
+	it('names the tool schema as the defect when it cannot be compiled', async () => {
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: { type: 'objct' } as unknown as JSONSchema7,
+			handler: async () => await Promise.resolve({ ok: true }),
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', { query: 'cats' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state === 'rejected' && call.error).toContain(
+			'input schema that could not be compiled',
+		);
 	});
 });
 
@@ -7568,5 +7788,329 @@ describe('AgentRuntime — oversized tool results', () => {
 		expect(envelope.head).toContain('MESSAGE_HEAD');
 		expect(envelope.tail).toContain('MESSAGE_TAIL');
 		expect(fileBlock).toMatchObject({ type: 'file', mediaType: 'text/plain', data: fileData });
+	});
+
+	describe('Workspace-backed oversized tool results', () => {
+		type OffloadedEnvelope = {
+			_offloaded: true;
+			path: string;
+			originalCharCount: number;
+			estimatedTokenCount: number;
+			requiredAction: {
+				toolName: 'workspace_read_tool_result';
+				input: { path: string; view: 'describe' };
+			};
+		};
+
+		function parseOffloadedEnvelope(value: string | undefined): OffloadedEnvelope {
+			try {
+				return JSON.parse(value ?? '') as OffloadedEnvelope;
+			} catch {
+				throw new Error('Expected a valid offloaded result envelope');
+			}
+		}
+
+		function modelToolResults(): unknown[] {
+			const call = generateText.mock.calls[1][0] as {
+				messages: Array<{
+					role: string;
+					content: Array<{ type: string; output?: { type: string; value: unknown } }>;
+				}>;
+			};
+			return call.messages
+				.filter((message) => message.role === 'tool')
+				.flatMap((message) => message.content)
+				.filter((part) => part.type === 'tool-result')
+				.map((part) => part.output?.value);
+		}
+
+		function createWorkspaceAgent(filesystem: InMemoryFilesystem, tools: BuiltTool[]) {
+			return new Agent('workspace-result-test')
+				.model('openai/gpt-4o-mini')
+				.instructions('Test')
+				.tool(tools)
+				.toolCallConcurrency(Infinity)
+				.workspace(new Workspace({ filesystem }));
+		}
+
+		it('stores complete concurrent transformed results without changing raw outputs', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const transformedOutputs = {
+				first: { value: `FIRST${'a '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}` },
+				second: { value: `SECOND${'b '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}` },
+			};
+			const tools = (Object.keys(transformedOutputs) as Array<keyof typeof transformedOutputs>).map(
+				(name): BuiltTool => ({
+					name,
+					description: name,
+					inputSchema: z.object({}),
+					handler: async () => await Promise.resolve({ raw: name }),
+					toModelOutput: () => transformedOutputs[name],
+				}),
+			);
+			const agent = createWorkspaceAgent(filesystem, tools);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([
+						{ toolCallId: 'tc/first', toolName: 'first', args: {} },
+						{ toolCallId: 'tc/second', toolName: 'second', args: {} },
+					]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			const result = await agent.generate('run', {
+				persistence: { threadId: 'slack:C123:123.456', resourceId: 'user-1' },
+			});
+			const envelopes = modelToolResults() as OffloadedEnvelope[];
+
+			expect(envelopes).toHaveLength(2);
+			expect(new Set(envelopes.map(({ path }) => path)).size).toBe(2);
+			expect(envelopes.every(({ _offloaded }) => _offloaded)).toBe(true);
+			expect(envelopes.map(({ requiredAction }) => requiredAction)).toEqual(
+				envelopes.map(({ path }) => ({
+					toolName: 'workspace_read_tool_result',
+					input: { path, view: 'describe' },
+				})),
+			);
+			await expect(filesystem.readFile(envelopes[0].path, { encoding: 'utf8' })).resolves.toBe(
+				JSON.stringify(transformedOutputs.first),
+			);
+			await expect(filesystem.readFile(envelopes[1].path, { encoding: 'utf8' })).resolves.toBe(
+				JSON.stringify(transformedOutputs.second),
+			);
+			expect(result.toolCalls?.map(({ output }) => output)).toEqual([
+				{ raw: 'first' },
+				{ raw: 'second' },
+			]);
+
+			const reader = createWorkspaceTools({ filesystem }).find(
+				(tool) => tool.name === 'workspace_read_tool_result',
+			);
+			if (!reader?.handler) throw new Error('Expected workspace_read_tool_result');
+			await expect(reader.handler(envelopes[0].requiredAction.input, {} as never)).resolves.toEqual(
+				{
+					view: 'describe',
+					pointer: '',
+					type: 'object',
+					childCount: 1,
+				},
+			);
+		});
+
+		it('stores oversized errors without changing the rejected tool-call state', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const tool: BuiltTool = {
+				name: 'large_error',
+				description: 'large error',
+				inputSchema: z.object({}),
+				handler: () => {
+					throw new Error(`ERROR_HEAD${'e '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}`);
+				},
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-error', toolName: tool.name, args: {} }]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			const result = await agent.generate('run', {
+				persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+			});
+			const toolCall = result.messages
+				.flatMap((message) => ('content' in message ? message.content : []))
+				.find(
+					(content): content is ContentToolCall =>
+						content.type === 'tool-call' && content.toolCallId === 'tc-error',
+				);
+			const envelope = parseOffloadedEnvelope(
+				toolCall?.state === 'rejected' ? toolCall.error : undefined,
+			);
+
+			expect(toolCall?.state).toBe('rejected');
+			expect(envelope._offloaded).toBe(true);
+			expect(envelope.requiredAction).toEqual({
+				toolName: 'workspace_read_tool_result',
+				input: { path: envelope.path, view: 'describe' },
+			});
+			await expect(filesystem.readFile(envelope.path, { encoding: 'utf8' })).resolves.toContain(
+				'ERROR_HEAD',
+			);
+		});
+
+		it('stores oversized custom-message text while preserving file content', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const fileData = Buffer.from('file').toString('base64');
+			const messageText = `MESSAGE${'m '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}`;
+			const tool: BuiltTool = {
+				name: 'large_message',
+				description: 'large message',
+				inputSchema: z.object({}),
+				handler: async () => await Promise.resolve({ ok: true }),
+				toMessage: async () =>
+					await Promise.resolve({
+						role: 'assistant',
+						content: [
+							{ type: 'text', text: messageText },
+							{ type: 'file', mediaType: 'text/plain', data: fileData },
+						],
+					}),
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-message', toolName: tool.name, args: {} }]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			const result = await agent.generate('run', {
+				persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+			});
+			const message = result.messages.find(
+				(candidate) =>
+					'content' in candidate &&
+					candidate.content.some((content) => content.type === 'file' && content.data === fileData),
+			);
+			const text =
+				message && 'content' in message
+					? message.content.find((content) => content.type === 'text')?.text
+					: undefined;
+			const envelope = parseOffloadedEnvelope(text);
+
+			expect(envelope._offloaded).toBe(true);
+			expect(envelope.requiredAction).toEqual({
+				toolName: 'workspace_read_tool_result',
+				input: { path: envelope.path, view: 'describe' },
+			});
+			expect(message && 'content' in message ? message.content : []).toContainEqual({
+				type: 'file',
+				mediaType: 'text/plain',
+				data: fileData,
+			});
+			await expect(filesystem.readFile(envelope.path, { encoding: 'utf8' })).resolves.toBe(
+				JSON.stringify([{ type: 'text', text: messageText }]),
+			);
+		});
+
+		it('falls back to bounded truncation when storing the result fails', async () => {
+			const filesystem = new InMemoryFilesystem();
+			vi.spyOn(filesystem, 'writeFile').mockRejectedValue(new Error('storage unavailable'));
+			const tool: BuiltTool = {
+				name: 'large_result',
+				description: 'large result',
+				inputSchema: z.object({}),
+				handler: async () =>
+					await Promise.resolve({
+						value: `HEAD${'x '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}TAIL`,
+					}),
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-large', toolName: tool.name, args: {} }]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			await agent.generate('run');
+
+			expect(modelToolResults()[0]).toMatchObject({ _truncated: true });
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// model stream stall handling
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — model stream stall handling', () => {
+	beforeEach(() => {
+		streamText.mockReset();
+	});
+
+	/**
+	 * streamText response that emits `chunks` then goes silent — a dead
+	 * connection. Always leads with the SDK's synthetic `start` lifecycle chunk,
+	 * which arrives before any provider byte and must not count as content.
+	 */
+	function makeStalledStream(chunks: Array<Record<string, unknown>> = []) {
+		chunks = [{ type: 'start' }, ...chunks];
+		return {
+			stream: (async function* () {
+				for (const c of chunks) yield await Promise.resolve(c);
+				await new Promise(() => {});
+			})(),
+			finishReason: new Promise(() => {}),
+			usage: new Promise(() => {}),
+			response: new Promise(() => {}),
+			toolCalls: new Promise(() => {}),
+		};
+	}
+
+	it('silently retries a turn that stalls before any content and completes', async () => {
+		streamText
+			.mockReturnValueOnce(makeStalledStream())
+			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish'; finishReason: string })
+			| undefined;
+		expect(finish?.finishReason).toBe('stop');
+		const text = chunks
+			.filter(
+				(c): c is StreamChunk & { type: 'text-delta'; delta: string } => c.type === 'text-delta',
+			)
+			.map((c) => c.delta)
+			.join('');
+		expect(text).toBe('Recovered');
+		expect(runtime.getState().status).toBe('success');
+	});
+
+	it('fails without retry when the stalled turn already streamed content', async () => {
+		streamText
+			.mockReturnValueOnce(
+				makeStalledStream([{ type: 'text-delta', id: 'text-1', text: 'partial' }]),
+			)
+			// A wrongly-taken retry completes loudly instead of hanging the test.
+			.mockReturnValue(makeStreamSuccess('should-not-run'));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error'; error: unknown })
+			| undefined;
+		expect(String(errorChunk?.error)).toContain('stalled');
+		expect(runtime.getState().status).toBe('failed');
+	});
+
+	it('surfaces the stall error when the retry stalls too', async () => {
+		streamText.mockReturnValueOnce(makeStalledStream()).mockReturnValueOnce(makeStalledStream());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error'; error: unknown })
+			| undefined;
+		expect(String(errorChunk?.error)).toContain('stalled');
+		expect(runtime.getState().status).toBe('failed');
 	});
 });

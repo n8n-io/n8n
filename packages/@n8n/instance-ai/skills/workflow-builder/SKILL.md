@@ -70,6 +70,13 @@ For repairs, prefer editing the workspace file directly with file tools
 (`workspace_str_replace_file`) and calling `build-workflow` again with the same
 `filePath`.
 
+When a repair adds a node into an existing chain (an ensure-the-target-exists
+step, a dedupe, a notification), check what the downstream node reads before
+wiring it in-line — workflow rule 7 applies: an inserted write/create node
+replaces the payload flowing into the next node with its own API response.
+Branch it in parallel, reorder it upstream of the data producer, or make the
+downstream node reference the data node explicitly.
+
 ## Escalation
 
 If the service or workflow shape is clear, never stop before the first
@@ -115,15 +122,19 @@ setup steps or node semantics from memory when those sources can answer.
 1. **Knowledge base** — consult before
    building. Read the relevant `.md` guides and templates for each technique
    the request involves. Skip only for trivial mechanical edits you have
-   already reviewed in this thread.
-   - `knowledge-base/index.json` — catalog of technique guides
-     (`knowledge-base/best-practices/index.json`; read the linked `.md` files)
-     and orchestration reference docs (`knowledge-base/reference/index.json`)
-   - `knowledge-base/templates/` — curated SDK workflow examples: use
-     `workspace_execute_command` with `rg` or `find` to locate matches, then
-     read only the relevant `.ts` files — never load `templates/index.json`
-     wholesale
-   - `node-types/index.txt` — searchable catalog of available n8n nodes
+   already reviewed in this thread. The knowledge base lives at the workspace
+   root (NOT inside this skill's directory) — all paths below are
+   workspace-root-relative:
+   - `${N8N_WORKSPACE_DIR}/knowledge-base/index.json` — catalog of technique
+     guides (`${N8N_WORKSPACE_DIR}/knowledge-base/best-practices/index.json`;
+     read the linked `.md` files) and orchestration reference docs
+     (`${N8N_WORKSPACE_DIR}/knowledge-base/reference/index.json`)
+   - `${N8N_WORKSPACE_DIR}/knowledge-base/templates/` — curated SDK workflow
+     examples: use `workspace_execute_command` with `rg` or `find` to locate
+     matches, then read only the relevant `.ts` files —
+     never load `templates/index.json` wholesale
+   - `${N8N_WORKSPACE_DIR}/node-types/index.txt` — searchable catalog of
+     available n8n nodes
 2. **Runtime skills** — when another skill matches (e.g. `data-table-manager`,
    `debugging-executions`, `post-build-flow`), `load_skill` and follow it
    instead of improvising.
@@ -135,14 +146,19 @@ setup steps or node semantics from memory when those sources can answer.
 
 For workflows with multiple external systems, multiple requested effects,
 digests or reports, non-trivial branching, or Code nodes, read
-`knowledge-base/reference/workflow-builder-guardrails.md` before writing code.
-Use it as the build checklist for source preservation, fan-out/fan-in,
-effect-specific gating, and list itemization.
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-builder-guardrails.md`
+before writing code. Use it as the build checklist for source preservation,
+fan-out/fan-in, effect-specific gating, and list itemization.
 
 When mapping downstream fields from an OpenAI node, read
-`knowledge-base/reference/open-ai-output-shape.md` (v2+ text/response uses
-`$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
-— not `$json.text`).
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/open-ai-output-shape.md`
+(v2+ text/response uses `$json.output[0].content[0].text`; v1 text/message
+uses `$json.message.content` — not `$json.text`; `json_object`/`json_schema`
+output is already a parsed object, never `JSON.parse` it). When mapping fields
+from an Anthropic node, read
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/anthropic-output-shape.md`
+(`$json.content` is an array of blocks — read text with
+`$json.content[0].text`, never treat `$json.content` as a string).
 
 ## Workflow-Level Error Workflows
 
@@ -467,12 +483,13 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing.
+- Avoid code node where possible, use n8n nodes that help do the same thing.
+  If it makes it simpler, go ahead and use code node.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms in a Code node or
   `expr()`. Full allowed/forbidden list:
-  `knowledge-base/reference/workflow-sdk-language.md`.
+  `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-sdk-language.md`.
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
@@ -556,6 +573,20 @@ import {
 } from '@n8n/workflow-sdk';
 ```
 
+## Node Groups
+
+Organise multi-stage workflows into named node groups — visual frames on the canvas — so the
+result is readable the first time the user sees it. Group each clear stage (ingest → transform
+→ deliver); small workflows don't need groups. Give every group a one-sentence
+`description` — groups are collapsed by default, so name + description is what the user sees
+first.
+
+`.group(name, members, { description })` on the workflow builder; members are the node handles.
+Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
+one connected section, AI sub-nodes stay with their Agent) before creating groups — an invalid
+group is rejected on save. When editing an existing workflow, keep existing `.group(...)` calls
+and their descriptions intact unless the change is about grouping.
+
 ## Workflow Rules
 
 Follow these rules strictly when generating workflows:
@@ -601,6 +632,15 @@ Follow these rules strictly when generating workflows:
    match time units broadly (day/days, week/weeks…), and give every classifier
    an explicit fallback bucket — a one-phrasing regex silently misroutes every
    other phrasing.
+7. Inserting a node into an existing connection A→B changes what B receives:
+   `$json` and auto-mapped fields in B now read the inserted node's output, not
+   A's. Write/create/send nodes output their **API response** (ids, metadata,
+   `ok` flags), never the data that flowed into them — so inserting one
+   in-line (e.g. an ensure-the-target-exists step before a write) silently
+   replaces the payload with metadata. Keep the data path intact instead:
+   branch the inserted node in parallel from the data producer, reorder it
+   upstream of the data producer, or have B reference `$('Data Node')`
+   explicitly.
 
 ## Tool Naming Rules
 

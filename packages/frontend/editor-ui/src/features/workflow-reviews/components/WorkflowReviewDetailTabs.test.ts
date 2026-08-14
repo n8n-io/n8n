@@ -16,6 +16,22 @@ vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 	},
 }));
 
+vi.mock('./WorkflowReviewActivityFeed.vue', () => ({
+	default: {
+		name: 'WorkflowReviewActivityFeed',
+		template: '<div data-test-id="workflow-review-activity-feed" />',
+	},
+}));
+
+vi.mock('./WorkflowReviewCommentComposer.vue', () => ({
+	default: {
+		name: 'WorkflowReviewCommentComposer',
+		props: ['canComment'],
+		template:
+			'<div data-test-id="workflow-review-comment-composer" :data-can-comment="canComment" />',
+	},
+}));
+
 vi.mock('./WorkflowReviewDetailMetadata.vue', () => ({
 	default: {
 		name: 'WorkflowReviewDetailMetadata',
@@ -62,6 +78,7 @@ function makeInboxItem(overrides: Partial<WorkflowReviewInboxItem> = {}): Workfl
 		workflowName: 'My workflow',
 		workflowVersionId: null,
 		requester: null,
+		authors: [],
 		reviewers: [],
 		decision: 'pending',
 		state: 'open',
@@ -93,6 +110,7 @@ function makeDetail(
 		workflows: [makeWorkflowDetail()],
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
+		viewerCanComment: true,
 		...overrides,
 	};
 }
@@ -102,7 +120,7 @@ describe('WorkflowReviewDetailTabs', () => {
 		createTestingPinia();
 	});
 
-	it('emits update:tab when a tab is selected', async () => {
+	it('lets the viewer switch between the Activity and Changes tabs', async () => {
 		const { getByText, emitted } = renderComponent({
 			props: { review: makeDetail(), tab: 'activity', deciding: false },
 		});
@@ -132,6 +150,71 @@ describe('WorkflowReviewDetailTabs', () => {
 			});
 
 			expect(getByTestId('workflow-review-no-description')).toBeInTheDocument();
+		});
+
+		it('renders the feed and the composer below the description', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					review: makeDetail({ description: 'Adds retry logic' }),
+					tab: 'activity',
+					deciding: false,
+				},
+			});
+
+			const panel = getByTestId('workflow-review-activity-panel');
+			const order = [
+				'workflow-review-description',
+				'workflow-review-activity-feed',
+				'workflow-review-comment-composer',
+			].map((testId) => {
+				const element = panel.querySelector(`[data-test-id="${testId}"]`);
+				if (!element) throw new Error(`${testId} is not in the activity panel`);
+				return element;
+			});
+
+			expect(order[0].compareDocumentPosition(order[1])).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+			expect(order[1].compareDocumentPosition(order[2])).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		});
+
+		it.each([
+			['lets a viewer who may comment use the composer', true],
+			['locks the composer for a viewer who may not', false],
+		])('%s', (_label, viewerCanComment) => {
+			const { getByTestId } = renderComponent({
+				props: { review: makeDetail({ viewerCanComment }), tab: 'activity', deciding: false },
+			});
+
+			expect(getByTestId('workflow-review-comment-composer')).toHaveAttribute(
+				'data-can-comment',
+				String(viewerCanComment),
+			);
+		});
+
+		it('defaults the composer to read-only on a review whose detail never loaded', () => {
+			const { getByTestId } = renderComponent({
+				props: { review: makeInboxItem(), tab: 'activity', deciding: false },
+			});
+
+			expect(getByTestId('workflow-review-comment-composer')).toHaveAttribute(
+				'data-can-comment',
+				'false',
+			);
+		});
+
+		it('still lets the viewer comment on a closed review', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					review: makeDetail({ state: 'closed', decision: 'approved' }),
+					tab: 'activity',
+					deciding: false,
+				},
+			});
+
+			expect(getByTestId('workflow-review-activity-feed')).toBeInTheDocument();
+			expect(getByTestId('workflow-review-comment-composer')).toHaveAttribute(
+				'data-can-comment',
+				'true',
+			);
 		});
 	});
 
@@ -270,7 +353,7 @@ describe('WorkflowReviewDetailTabs', () => {
 				props: {
 					review: makeDetail({
 						viewerCanDecide: false,
-						viewerDecisionIneligibilityReason: 'missing_publish_permission',
+						viewerDecisionIneligibilityReason: 'missing_reviewer_permission',
 					}),
 					tab: 'activity',
 					deciding: false,
