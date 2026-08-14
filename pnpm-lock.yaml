@@ -76,8 +76,8 @@ catalogs:
       specifier: 0.6.3
       version: 0.6.3
     isolated-vm:
-      specifier: ^6.1.2
-      version: 6.1.2
+      specifier: ^6.2.0
+      version: 6.2.0
     js-base64:
       specifier: 3.7.2
       version: 3.7.2
@@ -951,7 +951,7 @@ importers:
         version: 1.2.0
       isolated-vm:
         specifier: 'catalog:'
-        version: 6.1.2
+        version: 6.2.0
       jmespath:
         specifier: 0.16.0
         version: 0.16.0
@@ -12813,8 +12813,8 @@ packages:
     resolution: {integrity: sha512-7c7mBznZu2ktfvyT582E2msM+Udc1EjOyhVRE/0ZsjD9LBtWSm23h3PtiRh2a35XoUsTQQjJXaJzuLjXsOdFDg==}
     engines: {node: '>=6.0'}
 
-  isolated-vm@6.1.2:
-    resolution: {integrity: sha512-GGfsHqtlZiiurZaxB/3kY7LLAXR3sgzDul0fom4cSyBjx6ZbjpTrFWiH3z/nUfLJGJ8PIq9LQmQFiAxu24+I7A==}
+  isolated-vm@6.2.0:
+    resolution: {integrity: sha512-UuSlxSHWt2QuJ5WvBhzlIJx2VVZN/a44SqBbEZFKNdvuSyhOvhmyDo8SQ+njVbhnh/njoL/aW0bUTiFYlpweGQ==}
     engines: {node: '>=22.0.0'}
 
   isomorphic-timers-promises@1.0.1:
@@ -26420,6 +26420,16 @@ snapshots:
       - debug
       - supports-color
 
+  axios@1.18.0(debug@4.4.3):
+    dependencies:
+      follow-redirects: 1.16.0(debug@4.4.3)
+      form-data: 4.0.6
+      https-proxy-agent: 5.0.1
+      proxy-from-env: 2.1.0
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
   b4a@1.6.7: {}
 
   babel-jest@29.6.2(@babel/core@7.28.4):
@@ -29873,7 +29883,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.18.0(debug@4.4.1)
+      axios: 1.18.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3
       dotenv: 16.6.1
@@ -29883,7 +29893,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.18.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.18.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -30291,7 +30301,7 @@ snapshots:
 
   iso-639-1@2.1.15: {}
 
-  isolated-vm@6.1.2:
+  isolated-vm@6.2.0:
     dependencies:
       node-gyp-build: 4.8.4
 
@@ -34237,7 +34247,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.18.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.18.0):
     dependencies:
       axios: 1.18.0(debug@4.4.1)
 
