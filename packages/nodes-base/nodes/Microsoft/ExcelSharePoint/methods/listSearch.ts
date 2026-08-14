@@ -189,7 +189,7 @@ export async function getSheets(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const workbookRoot = await resolveWorkbookRoot.call(this);
+	const workbookRoot = await resolveWorkbookRoot.call(this, 0);
 
 	return await (listSearchPage<GraphWorksheet>).call(
 		this,
@@ -205,7 +205,7 @@ export async function getTables(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const workbookRoot = await resolveWorkbookRoot.call(this);
+	const workbookRoot = await resolveWorkbookRoot.call(this, 0);
 	const worksheetId = validatePathSegment(
 		this.getNode(),
 		'Sheet',

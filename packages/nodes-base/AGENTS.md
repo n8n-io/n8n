@@ -64,6 +64,7 @@ function resolveTarget(this: IExecuteFunctions, itemIndex = 0) { … }
 
 In load-options and list-search context pass a literal `0`: there
 `getNodeParameter`'s second argument is the fallback value, not an item index.
+The `n8n-local-rules/no-defaulted-item-index` lint rule enforces this.
 
 ## Versioning
 
