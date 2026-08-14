@@ -172,52 +172,59 @@ export async function ensureWebhookIds(
  * The SDK build rejects declared duplicates up front, but a WorkflowJSON source file
  * skips SDK validation entirely — this is the backstop for that path.
  *
- * The first node to claim an ID keeps it. Group membership is remapped positionally
- * rather than through a shared old-ID map, so nodes that arrived with the same ID do
- * not all end up pointing at one replacement.
+ * The first node to claim an ID keeps it; a node with a duplicate, blank or missing ID gets a
+ * fresh one. Group membership is then remapped by occurrence, so nodes that arrived sharing an
+ * ID do not collapse onto one replacement, and a blank ID — which no node retains — is rewritten
+ * rather than left dangling in the group.
  */
 export function ensureUniqueNodeIds(json: WorkflowJSON): void {
 	if (!json.nodes?.length) return;
 
 	const claimedIds = new Set<string>();
-	// Replacement IDs per previous ID, in node order — so the Nth surplus occurrence of an ID
-	// in a group's membership maps to the Nth node that was reassigned.
-	const replacementsByPreviousId = new Map<string, string[]>();
+	// Final ID of every node that started with one, in node order, keyed by that starting ID.
+	// A duplicated ID yields [kept, replacement, …]; a blank ID yields [replacement, …] because
+	// no node retains it. Recording the outcome for every node — rather than only the
+	// reassigned ones — means group membership is remapped by position with no special case
+	// for whether the original survived.
+	const finalIdsByOriginalId = new Map<string, string[]>();
+	let reassignedAny = false;
+
+	const recordOutcome = (originalId: string, finalId: string) => {
+		const outcomes = finalIdsByOriginalId.get(originalId);
+		if (outcomes) outcomes.push(finalId);
+		else finalIdsByOriginalId.set(originalId, [finalId]);
+	};
 
 	for (const node of json.nodes) {
+		// `undefined` cannot appear in a group's membership; a blank string can.
+		const originalId = typeof node.id === 'string' ? node.id : undefined;
+
 		if (node.id && !claimedIds.has(node.id)) {
 			claimedIds.add(node.id);
+			if (originalId !== undefined) recordOutcome(originalId, node.id);
 			continue;
 		}
 
-		const previousId = node.id;
 		let nextId = randomUUID();
 		while (claimedIds.has(nextId)) nextId = randomUUID();
 
 		claimedIds.add(nextId);
 		node.id = nextId;
-		if (previousId) {
-			const queued = replacementsByPreviousId.get(previousId);
-			if (queued) queued.push(nextId);
-			else replacementsByPreviousId.set(previousId, [nextId]);
-		}
+		reassignedAny = true;
+		if (originalId !== undefined) recordOutcome(originalId, nextId);
 	}
 
-	if (replacementsByPreviousId.size === 0) return;
+	if (!reassignedAny) return;
 
 	for (const group of json.nodeGroups ?? []) {
-		// The first occurrence keeps the original ID (that node kept it); each later occurrence
-		// takes the next replacement in node order. Counting occurrences rather than searching
-		// keeps three-or-more-way collisions in the same order as the nodes themselves.
 		const seenCounts = new Map<string, number>();
 		group.nodeIds = group.nodeIds.map((nodeId) => {
-			const replacements = replacementsByPreviousId.get(nodeId);
-			if (!replacements) return nodeId;
+			const outcomes = finalIdsByOriginalId.get(nodeId);
+			if (!outcomes) return nodeId;
 
 			const occurrence = seenCounts.get(nodeId) ?? 0;
 			seenCounts.set(nodeId, occurrence + 1);
-			// Occurrence 0 belongs to the node that kept the ID.
-			return occurrence === 0 ? nodeId : (replacements[occurrence - 1] ?? nodeId);
+			return outcomes[occurrence] ?? nodeId;
 		});
 	}
 }

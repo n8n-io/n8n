@@ -151,6 +151,38 @@ describe('ensureUniqueNodeIds', () => {
 		expect(new Set(workflow.nodeGroups?.[0]?.nodeIds)).toHaveProperty('size', 3);
 	});
 
+	/**
+	 * A blank id is reassigned like a duplicate, but nothing retains the original — so the
+	 * group's `''` entry has to be rewritten too, or the membership dangles.
+	 */
+	it('remaps group membership for a node whose id was blank', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Blank in group',
+			nodes: [node('', 'A'), node('b', 'B')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['', 'b'] }],
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		expect(workflow.nodeGroups?.[0]?.nodeIds).toEqual([workflow.nodes[0].id, 'b']);
+		expect(workflow.nodeGroups?.[0]?.nodeIds).not.toContain('');
+	});
+
+	it('remaps group membership for several nodes whose ids were blank', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Blanks in group',
+			nodes: [node('', 'A'), node('', 'B')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['', ''] }],
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		expect(workflow.nodeGroups?.[0]?.nodeIds).toEqual(workflow.nodes.map((n) => n.id));
+		expect(new Set(workflow.nodeGroups?.[0]?.nodeIds)).toHaveProperty('size', 2);
+	});
+
 	it('leaves group membership alone when nothing was reassigned', () => {
 		const workflow: WorkflowJSON = {
 			name: 'Unique in group',
