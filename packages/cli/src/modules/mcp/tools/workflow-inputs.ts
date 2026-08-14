@@ -23,17 +23,23 @@ export const webhookPayloadSchema = z
 	})
 	.describe('Input data for webhook-based workflows');
 
-export const chatWorkflowInputSchema = z.object({
-	chatInput: z.string().describe('Input for chat-based workflows'),
-});
+export const chatWorkflowInputSchema = z
+	.object({
+		chatInput: z.string().describe('Input for chat-based workflows'),
+	})
+	.strict();
 
-export const formWorkflowInputSchema = z.object({
-	formData: z.record(z.unknown()).describe('Input data for form-based workflows'),
-});
+export const formWorkflowInputSchema = z
+	.object({
+		formData: z.record(z.unknown()).describe('Input data for form-based workflows'),
+	})
+	.strict();
 
-export const webhookWorkflowInputSchema = z.object({
-	webhookData: webhookPayloadSchema,
-});
+export const webhookWorkflowInputSchema = z
+	.object({
+		webhookData: webhookPayloadSchema,
+	})
+	.strict();
 
 export const workflowInputsSchema = z.union([
 	chatWorkflowInputSchema,

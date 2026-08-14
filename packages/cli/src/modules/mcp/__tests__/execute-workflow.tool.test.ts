@@ -72,6 +72,15 @@ describe('execute-workflow MCP tool', () => {
 			expect(tool.config.inputSchema?.triggerNodeName.safeParse(undefined).success).toBe(true);
 			expect(tool.config.inputSchema?.inputs.safeParse({ chatInput: 'hi' }).success).toBe(true);
 			expect(tool.config.inputSchema?.inputs.safeParse({ type: 'chat' }).success).toBe(false);
+			expect(
+				tool.config.inputSchema?.inputs.safeParse({ type: 'chat', chatInput: 'hi' }).success,
+			).toBe(false);
+			expect(
+				tool.config.inputSchema?.inputs.safeParse({
+					chatInput: 'hi',
+					webhookData: { body: { x: 1 } },
+				}).success,
+			).toBe(false);
 			expect(tool.config.outputSchema).toBeDefined();
 			expect(typeof tool.handler).toBe('function');
 		});
