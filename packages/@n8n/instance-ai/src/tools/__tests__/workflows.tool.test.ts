@@ -1668,6 +1668,48 @@ describe('workflows tool', () => {
 				});
 			});
 
+			it('reports an unknown entry even when another one resolves', async () => {
+				// "connect Slack and Notion" with no Notion node: opening the Slack card and
+				// suspending would drop half of what the user asked for with nowhere to report it.
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest, sheetsRequest]);
+				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
+				const suspend = vi.fn();
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool(
+					tool,
+					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['slackApi', 'Notion'] },
+					{ suspend, resumeData: undefined } as never,
+				);
+
+				expect(suspend).not.toHaveBeenCalled();
+				expect(result).toMatchObject({
+					error: 'unknown_reopen_target',
+					unmatchedReopen: ['Notion'],
+				});
+				// Nothing is un-skipped until the whole request is valid, so the retry is clean.
+				expect(context.revokeSessionToolApproval).not.toHaveBeenCalled();
+			});
+
+			it('tells the caller to drop reopenSkipped when nothing is skipped', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest]);
+				const context = createGrantAwareContext();
+				const suspend = vi.fn();
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool(
+					tool,
+					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['Notion'] },
+					{ suspend, resumeData: undefined } as never,
+				);
+
+				expect(result).toMatchObject({ error: 'unknown_reopen_target', reopenable: [] });
+				expect(result).toHaveProperty(
+					'message',
+					expect.stringContaining('without `reopenSkipped`'),
+				);
+			});
+
 			it('keeps a skipped parameter card from silencing that credential elsewhere', async () => {
 				// The Sheets credential works; the user passed on filling in the document id. A new
 				// node that genuinely needs the Sheets credential must still be asked about.

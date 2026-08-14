@@ -860,15 +860,37 @@ async function handleSetup(
 		// The user asked to come back to something they skipped, so that decision no longer
 		// holds — drop it before partitioning so the card renders again. Scoped to what they
 		// named: anything else they skipped stays skipped.
-		let unmatchedReopen: string[] = [];
+		//
+		// Validated as a whole before anything is forgotten or opened, like the credential-hint
+		// and plain-auth checks below. Honouring the entries that resolve and opening the card
+		// anyway would drop the rest of what the user asked for with nothing to report it: the
+		// card suspends, so this is the last point where the caller can still be told.
 		if (input.reopenSkipped && input.reopenSkipped.length > 0) {
 			const { subjects, unmatched } = resolveReopenTargets(
 				analyzedRequests,
 				input.workflowId,
 				input.reopenSkipped,
 			);
+			if (unmatched.length > 0) {
+				const reopenable = describeSkippedSetup(
+					partitionSkippedSetupRequests(
+						analyzedRequests,
+						input.workflowId,
+						getSkippedSetupSubjects(context),
+					).skippedByUser,
+				);
+				const named = unmatched.map((entry) => `"${entry}"`).join(', ');
+				return {
+					error: 'unknown_reopen_target',
+					message:
+						reopenable.length > 0
+							? `Nothing in this workflow matches ${named}. Call setup again passing only \`reopenWith\` values from \`reopenable\`, and tell the user that what they named is not part of this workflow.`
+							: `Nothing in this workflow matches ${named}, and nothing in it is currently skipped. Call setup again without \`reopenSkipped\`.`,
+					unmatchedReopen: unmatched,
+					reopenable,
+				};
+			}
 			await forgetSkippedSetup(context, subjects);
-			unmatchedReopen = unmatched;
 		}
 
 		const { pending: setupRequests, skippedByUser } = partitionSkippedSetupRequests(
@@ -922,19 +944,6 @@ async function handleSetup(
 		}
 
 		if (setupRequests.length === 0) {
-			// The card stays closed and the caller asked for something that isn't here: without
-			// this the guidance below tells it to wait for the user to ask — which the user just
-			// did — and the request the model relayed disappears silently.
-			if (unmatchedReopen.length > 0) {
-				return {
-					error: 'unknown_reopen_target',
-					message:
-						`Nothing in this workflow matches ${unmatchedReopen.map((entry) => `"${entry}"`).join(', ')}. ` +
-						'Pass a `reopenWith` value from the list below, or tell the user that what they named is not part of this workflow.',
-					unmatchedReopen,
-					reopenable: describeSkippedSetup(skippedByUser),
-				};
-			}
 			if (skippedByUser.length > 0) {
 				return {
 					success: true,
