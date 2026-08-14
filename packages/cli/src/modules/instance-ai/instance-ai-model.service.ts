@@ -21,7 +21,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
  * indistinguishable in quality and much cheaper, and the sidecar runs on
  * every user turn.
  */
-const DEFAULT_ANTHROPIC_OVERVIEW_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_ANTHROPIC_OVERVIEW_MODEL = 'claude-haiku-4-5';
 
 /**
  * Resolves the language model the Instance AI agent runs against and reports
