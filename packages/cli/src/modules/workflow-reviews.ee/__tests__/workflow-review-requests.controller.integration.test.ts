@@ -2922,9 +2922,8 @@ describe('GET /workflow-review-requests/inbox', () => {
 			expect((await inbox(adminAgent, { category: 'waiting' })).ids).toEqual([otherReview.id]);
 		});
 
-		// R1/R2 (P1/P3): the inbox gates on read access to the covered workflow, so
-		// these fixtures link one the member genuinely cannot reach. See
-		// LIGO-949_review.md.
+		// The inbox checks access to the covered workflow, so link one the member
+		// really cannot reach. R1/R2 (P1/P3), see LIGO-949_review.md.
 		async function openUnreachableReview(createdById: string, title: string) {
 			const otherProject = await createTeamProject('Unreachable Project', owner);
 			const unreachableWorkflow = await createWorkflow({}, otherProject);
@@ -2959,8 +2958,8 @@ describe('GET /workflow-review-requests/inbox', () => {
 			expect((await inbox(memberAgent, {})).ids).toEqual([]);
 		});
 
-		// R1 (P1): a workflow-level sharee is in none of the review's projects, but
-		// still holds `workflow:read` on what it covers.
+		// Sharing a workflow grants read on it without joining any of the review's
+		// projects. R1 (P1), see LIGO-949_review.md.
 		test('shows a requester the review for a workflow shared only with them', async () => {
 			const sharedWorkflow = await createWorkflow({}, owner);
 			await shareWorkflowWithUsers(sharedWorkflow, [member]);
@@ -3027,8 +3026,8 @@ describe('GET /workflow-review-requests/inbox', () => {
 			expect(authoredPage.nextCursor).toBeNull();
 		});
 
-		// The category filter is independent of `state`, even though the editor only
-		// sends it for open reviews.
+		// The category filter ignores `state`, even though the editor sends it only
+		// for open reviews.
 		test('filters closed reviews by category too', async () => {
 			const closedMine = await openReviewBy(member.id, 'Closed mine', 'closed');
 			await openReviewBy(owner.id, 'Closed theirs', 'closed');
@@ -3353,9 +3352,9 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			expect(response.body.data.viewerDecisionIneligibilityReason).toBeNull();
 		});
 
-		// A viewer who is neither admin, author, nor reviewer cannot open a review at
-		// all, so `missing_reviewer_permission` is unreachable over HTTP. That branch
-		// is a default-deny in the eligibility service and is unit-tested there.
+		// Nobody is left who is neither admin, author, nor reviewer, so
+		// `missing_reviewer_permission` cannot happen over HTTP. The eligibility service
+		// unit tests cover that branch.
 
 		test('tells an assigned author why they cannot decide their own review', async () => {
 			const workflow = await createWorkflow({}, teamProject);

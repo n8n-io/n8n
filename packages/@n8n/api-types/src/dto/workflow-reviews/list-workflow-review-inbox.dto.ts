@@ -25,8 +25,8 @@ export const workflowReviewInboxCategorySchema = z.enum(['waiting', 'authored'])
 /**
  * Which group of reviews to return: `waiting` = the caller is an assigned
  * reviewer, or is not an author; `authored` = the caller authored it and is not
- * assigned to review it. Reviewer assignment wins when both apply, so a review
- * sits where the caller's pending action is.
+ * assigned to review it. Being a reviewer wins, so a review sits where the
+ * caller's pending action is.
  */
 export type WorkflowReviewInboxCategory = z.infer<typeof workflowReviewInboxCategorySchema>;
 
@@ -40,9 +40,8 @@ export class ListWorkflowReviewInboxQueryDto extends Z.class({
 	state: workflowReviewRequestStateSchema.optional(),
 	/**
 	 * Which group of reviews to return — see {@link WorkflowReviewInboxCategory}.
-	 * The caller counts as an author both as requester and by contributing a
-	 * version, since each writes a `workflow_review_request_authors` row. Every
-	 * visible review falls in exactly one group, so the two add up to the
+	 * Requesting a review and contributing a version both count as authoring it.
+	 * Every visible review falls in exactly one group, so the two add up to the
 	 * unfiltered list.
 	 *
 	 * Independent of `state`: it filters closed reviews the same way. The editor

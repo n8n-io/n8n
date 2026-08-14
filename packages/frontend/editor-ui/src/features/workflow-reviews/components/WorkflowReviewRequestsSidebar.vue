@@ -53,9 +53,8 @@ const usersStore = useUsersStore();
 const { isCollapsed, toggleSection } = useReviewInboxSectionCollapse();
 
 /**
- * Admins and owners see the whole instance backlog, and `waiting` is the
- * complement of `authored` rather than "assigned to me", so the possessive heading
- * would claim reviews are blocking on them.
+ * Admins see every review, including ones nobody assigned them, so "Waiting for
+ * your review" would wrongly claim they are blocking.
  */
 const usesImpersonalWaitingLabels = computed(() => usersStore.isAdminOrOwner);
 

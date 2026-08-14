@@ -163,8 +163,8 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			expect(getByTestId('workflow-review-section-empty')).toHaveTextContent('No closed reviews');
 		});
 
-		// R5 (P3): each section owns its own labelled listbox, so headers, retry and
-		// load-more buttons never sit inside one. See LIGO-949_review.md.
+		// R5 (P3): headers, retry and load-more are not valid listbox children, so each
+		// section labels its own listbox. See LIGO-949_review.md.
 		it('gives each section its own labelled listbox holding only options', () => {
 			const { container } = renderComponent({
 				props: openProps([{ items: [makeItem()] }, {}]),
@@ -195,8 +195,7 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			}
 		});
 
-		// Admins see the whole instance backlog, so `waiting` holds reviews nobody
-		// assigned them. The member wording is covered by the header-order test above.
+		// The member wording is already covered by the header-order test above.
 		it('drops the possessive waiting labels for an admin', () => {
 			mockedStore(useUsersStore).isAdminOrOwner = true;
 

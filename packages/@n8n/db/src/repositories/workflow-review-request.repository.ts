@@ -24,15 +24,13 @@ export type InboxCursor = {
 };
 
 /**
- * Splits the visible reviews into the two groups a caller can ask for. Reviewer
- * assignment wins when both roles apply, so a review always sits where the
- * caller's pending action is: `waiting` = assigned reviewer, or not an author at
- * all; `authored` = an author and not assigned to review it. Narrows the
- * visibility predicate, never widens it.
+ * Splits the visible reviews into the two groups a caller can ask for:
+ * `waiting` = assigned reviewer, or not an author; `authored` = an author who is
+ * not assigned to review it. Being a reviewer wins, so a review sits where the
+ * caller's pending action is. Only narrows what visibility already allowed.
  *
- * Authorship alone decides the split — the requester is always an author, since
- * `create` writes their author row in the same transaction and nothing removes
- * one. That keeps both predicates free of the nullable `createdById`.
+ * Authorship alone decides the split. The requester always has an author row, so
+ * neither group needs the nullable `createdById`.
  */
 export type InboxCategoryFilter = {
 	userId: string;
@@ -55,11 +53,10 @@ export type InboxVisibility =
 			/** Projects the caller administers: every review in them is visible. */
 			adminProjectIds: string[];
 			/**
-			 * Projects the caller reads workflows through — their personal project
-			 * (directly shared workflows land there) plus team projects granting
-			 * `workflow:read`. `null` means unrestricted: a global `workflow:read`
-			 * scope reads every project, and enumerating them all would bind one
-			 * parameter per project on every inbox query.
+			 * Projects the caller reads workflows through: their personal project,
+			 * where directly shared workflows land, plus team projects granting
+			 * `workflow:read`. `null` means every project — listing them all would
+			 * bind one parameter per project on every inbox query.
 			 */
 			readableProjectIds: string[] | null;
 			/** Workflow sharing roles that grant `workflow:read`. */
@@ -347,9 +344,8 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 
 	/**
 	 * Inbox visibility — see {@link InboxVisibility}. A review is visible when the
-	 * caller administers its project or participates in it (requester, co-author, or
-	 * assigned reviewer), *and* can still read one of the workflows it covers. No
-	 * participation and no admin projects means no rows.
+	 * caller administers its project or takes part in it, and can still read one of
+	 * the workflows it covers. Neither means no rows.
 	 */
 	private applyInboxVisibility(
 		queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>,
@@ -381,21 +377,16 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			'visibilityReviewer',
 			'involvedUserId',
 		);
-		// The requester needs no separate term: `create` writes their author row in the
-		// same transaction as the review, and nothing ever removes one.
+		// No separate term for the requester: they always have an author row.
 		clauses.push(`(EXISTS ${authorExists} OR EXISTS ${reviewerExists})`);
 
-		// An unrestricted caller reads every workflow, so the readability conjunct below
-		// would always hold — skip it rather than pay two correlated subqueries per row
-		// to compute `true`. Safe because the link table cascades on workflow delete, so
-		// a covered workflow always exists and always has an owner `shared_workflow` row.
+		// This caller reads every workflow, so the check below is always true. Skip it.
 		if (readableProjectIds === null) {
 			queryBuilder.andWhere(`(${clauses.join(' OR ')})`, parameters);
 			return;
 		}
 
-		// Readability is a conjunct, so a caller who can read nothing sees no reviews —
-		// admin projects included.
+		// A caller who can read no workflow sees no reviews, admins included.
 		if (readableProjectIds.length === 0 || readableWorkflowRoles.length === 0) {
 			queryBuilder.andWhere('1 = 0');
 			return;
@@ -404,8 +395,8 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 		parameters.readableProjectIds = readableProjectIds;
 		parameters.readableWorkflowRoles = readableWorkflowRoles;
 
-		// Gate on the covered workflows the caller can currently read rather than
-		// the review's stored project. Mirrors the detail read gate exactly
+		// Check the workflows the caller can read now, not the review's stored project,
+		// which goes stale. Same rule as the detail gate, so a listed row always opens.
 		const anyLinkExists = this.linkedWorkflowExistsSubquery(queryBuilder, 'visibilityAnyLink');
 		const readableLinkExists = this.readableLinkedWorkflowExistsSubquery(queryBuilder);
 
@@ -429,9 +420,8 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	}
 
 	/**
-	 * `EXISTS`-ready subquery: the caller can currently read one of the workflows the
-	 * `review` row covers, resolved through live `shared_workflow` rows. Only reached
-	 * for a project-restricted caller — an unrestricted one skips readability entirely.
+	 * `EXISTS`-ready subquery: the caller can read one of the workflows the `review`
+	 * row covers, looked up through current `shared_workflow` rows.
 	 */
 	private readableLinkedWorkflowExistsSubquery(
 		queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>,
@@ -471,10 +461,9 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	}
 
 	/**
-	 * Narrows the already-visible rows to one category — see
-	 * {@link InboxCategoryFilter} for the reviewer-wins rule. The two predicates
-	 * are exact complements, so every visible review lands in exactly one
-	 * category. Always `andWhere` — {@link applyInboxVisibility} runs first.
+	 * Narrows the visible rows to one category — see {@link InboxCategoryFilter}.
+	 * The two predicates are opposites, so every review lands in exactly one.
+	 * Always `andWhere`: {@link applyInboxVisibility} runs first.
 	 */
 	private applyCategoryFilter(
 		queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>,

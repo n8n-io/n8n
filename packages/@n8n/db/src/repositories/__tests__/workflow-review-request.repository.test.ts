@@ -470,8 +470,7 @@ describe('WorkflowReviewRequestRepository', () => {
 				limit: 15,
 			});
 
-			// Readability is now a conjunct, so an empty readable set means no rows at
-			// all — an admin who can read no workflow sees no reviews either.
+			// An admin who can read no workflow sees no reviews either.
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('1 = 0');
 		});
 
@@ -533,8 +532,8 @@ describe('WorkflowReviewRequestRepository', () => {
 				expect(reviewerSubQuery.andWhere).toHaveBeenCalledWith('reviewer.userId = :categoryUserId');
 			});
 
-			// Authorship alone decides the split: the requester always has an author row,
-			// so neither predicate touches the nullable `createdById`.
+			// The requester always has an author row, so neither predicate needs
+			// the nullable `createdById`.
 			it('matches a non-reviewing author for the authored section', async () => {
 				await repo.findManyForInbox({
 					visibility: allVisibility,

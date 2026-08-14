@@ -203,9 +203,9 @@ describe('Commenting on a review', () => {
 		expect(detail.body.data.viewerCanDecide).toBe(true);
 	});
 
-	// A reader who can neither approve nor comment cannot reach a review at all —
-	// every viewer is an admin, an author, or an assigned reviewer. The default-deny
-	// that would answer such a viewer is unit-tested in the eligibility service.
+	// Every viewer is an admin, an author, or an assigned reviewer, so a reader who
+	// cannot comment cannot reach a review either. The eligibility service unit tests
+	// cover what such a viewer would get.
 
 	test('hides the review from a requester who can no longer read the workflow under review', async () => {
 		const destinationProject = await createTeamProject('Out Of Reach', owner);

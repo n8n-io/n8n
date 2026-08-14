@@ -50,11 +50,11 @@ export class WorkflowReviewAccessService {
 	) {}
 
 	/**
-	 * Who may see which reviews: global admins/owners see everything, project admins
-	 * see everything in their projects (so the decide override never applies to a
-	 * review its holder cannot see), and everyone else sees only reviews they are
-	 * involved in — as author (the requester included) or assigned reviewer. Both
-	 * paths further require read access to one of the workflows the review covers.
+	 * Who may see which reviews. Global admins and owners see everything. Project
+	 * admins see everything in their projects, so the decide override never applies
+	 * to a review its holder cannot see. Everyone else sees only reviews they take
+	 * part in, as author or assigned reviewer. Either way they must still be able to
+	 * read one of the workflows the review covers.
 	 *
 	 * Built-in role slugs only, matching the eligibility service's admin override.
 	 */
@@ -81,9 +81,9 @@ export class WorkflowReviewAccessService {
 	}
 
 	/**
-	 * A custom global role granting `workflow:read` reads every project, so
-	 * return `null` (unrestricted) instead of enumerating every project on the
-	 * instance into an `IN (...)` list on every inbox query.
+	 * A custom global role with `workflow:read` reads every project. Return `null`
+	 * for those callers, so the inbox query does not bind one parameter per project
+	 * on the instance.
 	 */
 	private async resolveReadableProjectIds(user: User): Promise<string[] | null> {
 		if (hasGlobalScope(user, ['workflow:read'], { mode: 'allOf' })) {
@@ -123,9 +123,8 @@ export class WorkflowReviewAccessService {
 				request.id,
 			);
 		const readableWorkflowRows = await this.filterReadableWorkflowRows(user, workflowRows);
-		// Whoever reached this review has nothing to see once they can read none of the
-		// workflows it covers — requesters included: seeing a review requires still
-		// holding read on what it reviews.
+		// Nothing left to show once the caller can read none of the covered workflows.
+		// This applies to requesters too: seeing a review means reading what it covers.
 		if (workflowRows.length > 0 && readableWorkflowRows.length === 0) {
 			throw new NotFoundError('Could not find review request');
 		}
@@ -143,10 +142,10 @@ export class WorkflowReviewAccessService {
 	}
 
 	/**
-	 * Mirrors the SQL predicate in the repository's inbox visibility for one review:
-	 * project admin, or participant. The predicate's other half — read access to a
-	 * covered workflow — is enforced by {@link filterReadableWorkflowRows} in the
-	 * caller, so the two gates stay equivalent and a listed row never 404s on open.
+	 * Mirrors the repository's inbox visibility for one review: project admin, or
+	 * takes part in it. The other half of that rule, reading a covered workflow, is
+	 * checked by {@link filterReadableWorkflowRows} in the caller. Keeping both
+	 * halves is what stops a listed row from 404ing when opened.
 	 */
 	private async canAccessRequest(user: User, request: WorkflowReviewRequest): Promise<boolean> {
 		const visibility = await this.resolveInboxVisibility(user);
@@ -170,15 +169,13 @@ export class WorkflowReviewAccessService {
 	}
 
 	/**
-	 * A review's `projectId` is fixed at creation and nothing closes open reviews when a
-	 * workflow is transferred, so the stored project does not prove the caller may still
-	 * read a covered workflow. Re-check every row against the workflow's *current* owner
-	 * before returning its content.
+	 * A review's `projectId` is set once at creation and transferring a workflow does
+	 * not close the review, so the stored project proves nothing about current access.
+	 * Check every row against the workflow's owner today before returning its content.
 	 *
-	 * This applies to the requester too. They held publish rights when they opened the
-	 * review, but may have lost them since — and because the baseline is resolved at read
-	 * time, an exemption would leave them reading versions published after they lost
-	 * access.
+	 * Requesters are checked too. They could publish when they opened the review but
+	 * may have lost that since, and exempting them would let them read versions
+	 * published after they lost access.
 	 */
 	private async filterReadableWorkflowRows(
 		user: User,

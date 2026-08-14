@@ -67,8 +67,8 @@ describe('WorkflowReviewAccessService', () => {
 		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 		projectRepository.getPersonalProjectForUser.mockResolvedValue(null);
 		roleService.rolesWithScope.mockResolvedValue(['workflow:owner', 'workflow:editor']);
-		// `create` writes the requester's author row in the same transaction as the
-		// review, so the requester is an author and nobody else is unless a test says so.
+		// `create` always writes the requester's author row, so the requester is an
+		// author here and nobody else is unless a test says so.
 		authorRepository.isAuthor.mockImplementation(
 			async ({ userId }) => userId === reviewRequest().createdById,
 		);
@@ -159,8 +159,8 @@ describe('WorkflowReviewAccessService', () => {
 		});
 
 		it('lets the requester open a review whose workflow is only shared with them', async () => {
-			// A workflow-level share is in no project the review belongs to, yet
-			// `findWorkflowForUser` still resolves the workflow for them.
+			// A shared workflow sits in none of the review's projects, but
+			// `findWorkflowForUser` still finds it for them.
 			projectService.getProjectIdsWithScope.mockResolvedValue(['unrelated-proj']);
 			mockChildRow();
 
