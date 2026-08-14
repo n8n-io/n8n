@@ -19,9 +19,10 @@ const isGetNodeParameterCall = (node: TSESTree.CallExpression) =>
 	node.callee.property.type === TSESTree.AST_NODE_TYPES.Identifier &&
 	node.callee.property.name === 'getNodeParameter';
 
-/** `itemIndex ?? 0` / `itemIndex || 0` in the index position. */
+/** `itemIndex ?? 0` / `itemIndex || 0` in the index position, not `itemIndex && …`. */
 const isItemIndexFallback = (argument: TSESTree.Node) =>
 	argument.type === TSESTree.AST_NODE_TYPES.LogicalExpression &&
+	(argument.operator === '??' || argument.operator === '||') &&
 	argument.left.type === TSESTree.AST_NODE_TYPES.Identifier &&
 	argument.left.name === ITEM_INDEX;
 

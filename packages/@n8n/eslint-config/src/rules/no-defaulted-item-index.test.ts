@@ -35,6 +35,10 @@ ruleTester.run('no-defaulted-item-index', NoDefaultedItemIndexRule, {
 		{
 			code: 'function resolveTarget(this: IExecuteFunctions, { itemIndex }: { itemIndex: number }) { return this.getNodeParameter("target", itemIndex); }',
 		},
+		// `&&` is not a fallback: it cannot stand in for a missing index.
+		{
+			code: 'function resolveTarget(this: IExecuteFunctions, itemIndex: number) { return this.getNodeParameter("target", itemIndex && offset); }',
+		},
 	],
 	invalid: [
 		{
