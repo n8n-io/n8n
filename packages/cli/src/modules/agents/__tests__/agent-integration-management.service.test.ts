@@ -420,6 +420,38 @@ describe('AgentIntegrationManagementService', () => {
 			);
 		});
 
+		it('tears down the runtime when platform cleanup fails after durable removal', async () => {
+			const { service, persistenceService, chatService, implementation } = makeService();
+			const agent = makeAgent({ integrations: [integration] });
+			const cleanupError = new Error('Slack cleanup failed');
+			const removal = mock<Required<Pick<AgentChatIntegration, 'onRemove'>>>();
+			removal.onRemove.mockRejectedValue(cleanupError);
+			implementation.onRemove = removal.onRemove;
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				removed: integration,
+			});
+
+			await expect(
+				service.disconnect({
+					agent,
+					user: user as never,
+					type: integration.type,
+					credentialId: integration.credentialId,
+					deleteExternalResource: true,
+				}),
+			).rejects.toBe(cleanupError);
+
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(removal.onRemove),
+			);
+			expect(order(removal.onRemove)).toBeLessThan(
+				order(chatService.disconnectChannel),
+			);
+		});
+
 		it('removes persistence before tearing down the runtime channel', async () => {
 			const { service, persistenceService, chatService } = makeService();
 			const agent = makeAgent({ integrations: [integration] });

@@ -223,20 +223,24 @@ export class AgentIntegrationManagementService {
 		}
 
 		const isPublished = result.published ?? publishedBefore;
-		const warning =
-			result.removed && options.cleanupRemovedIntegration
-				? await this.registry.get(result.removed.type)?.onRemove?.({
-						agentId: agent.id,
-						projectId: agent.projectId,
-						credentialId: result.removed.credentialId,
-						user: options.user,
-						deleteExternalResource:
-							// if not published, by default delete the external resource
-							options.deleteExternalResource ?? !isPublished,
-					})
-				: undefined;
+		let warning: AgentIntegrationDisconnectWarning | undefined;
+		try {
+			warning =
+				result.removed && options.cleanupRemovedIntegration
+					? await this.registry.get(result.removed.type)?.onRemove?.({
+							agentId: agent.id,
+							projectId: agent.projectId,
+							credentialId: result.removed.credentialId,
+							user: options.user,
+							deleteExternalResource:
+								// if not published, by default delete the external resource
+								options.deleteExternalResource ?? !isPublished,
+						})
+					: undefined;
+		} finally {
+			if (remove) await this.releaseRemoved(agent, remove, result);
+		}
 
-		if (remove) await this.releaseRemoved(agent, remove, result);
 		if (connected && add) {
 			await this.chatService.broadcastIntegrationChange(agent.id, add, 'connect');
 		}
