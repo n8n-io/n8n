@@ -63,6 +63,12 @@ test.describe(
 				},
 			});
 
+			// End-user credentials can only live in team projects
+			await api.enableFeature('projectRole:admin');
+			await api.enableFeature('projectRole:editor');
+			await api.setMaxTeamProjectsQuota(-1);
+			const project = await api.projects.createProject('Dynamic Credentials');
+
 			// Create a properly-configured oAuth2Api credential pointing at Keycloak.
 			// The credential is resolvable — its tokens are stored per-user by the resolver.
 			const credential = await api.credentials.createCredential({
@@ -78,65 +84,69 @@ test.describe(
 					ignoreSSLIssues: true,
 				},
 				isResolvable: true,
+				projectId: project.id,
 			});
 
 			// Build a workflow: webhook trigger → HTTP Request (calls Keycloak userinfo with credential)
 			// The workflow is created BEFORE authorization so we can obtain the authorizationUrl
 			// from the execution-status endpoint (the real flow a marketplace user would follow).
 			const { workflowId, webhookPath, createdWorkflow } =
-				await api.workflows.createWorkflowFromDefinition({
-					name: `Dynamic Credential HTTP Webhook Workflow ${nanoid()}`,
-					nodes: [
-						{
-							id: nanoid(),
-							name: 'Webhook',
-							type: 'n8n-nodes-base.webhook',
-							typeVersion: 2,
-							position: [0, 0] as [number, number],
-							parameters: {
-								httpMethod: 'GET',
-								path: 'placeholder',
-								responseMode: 'onReceived', // Respond immediately; execution runs async
-								// Configure the execution context hook to extract the bearer token
-								// from the Authorization header. Without this, the dynamic credential
-								// resolver can't identify the user during execution.
-								executionsHooksVersion: 1,
-								contextEstablishmentHooks: {
-									hooks: [
-										{
-											hookName: 'BearerTokenExtractor',
-											isAllowedToFail: false,
-										},
-									],
+				await api.workflows.createWorkflowFromDefinition(
+					{
+						name: `Dynamic Credential HTTP Webhook Workflow ${nanoid()}`,
+						nodes: [
+							{
+								id: nanoid(),
+								name: 'Webhook',
+								type: 'n8n-nodes-base.webhook',
+								typeVersion: 2,
+								position: [0, 0] as [number, number],
+								parameters: {
+									httpMethod: 'GET',
+									path: 'placeholder',
+									responseMode: 'onReceived', // Respond immediately; execution runs async
+									// Configure the execution context hook to extract the bearer token
+									// from the Authorization header. Without this, the dynamic credential
+									// resolver can't identify the user during execution.
+									executionsHooksVersion: 1,
+									contextEstablishmentHooks: {
+										hooks: [
+											{
+												hookName: 'BearerTokenExtractor',
+												isAllowedToFail: false,
+											},
+										],
+									},
 								},
 							},
-						},
-						{
-							id: nanoid(),
-							name: 'HTTP Request',
-							type: 'n8n-nodes-base.httpRequest',
-							typeVersion: 4.2,
-							position: [200, 0] as [number, number],
-							parameters: {
-								// Keycloak userinfo endpoint — accepts Bearer tokens and returns user info (200)
-								url: `${internalBase}/protocol/openid-connect/userinfo`,
-								authentication: 'predefinedCredentialType',
-								nodeCredentialType: 'oAuth2Api',
+							{
+								id: nanoid(),
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4.2,
+								position: [200, 0] as [number, number],
+								parameters: {
+									// Keycloak userinfo endpoint — accepts Bearer tokens and returns user info (200)
+									url: `${internalBase}/protocol/openid-connect/userinfo`,
+									authentication: 'predefinedCredentialType',
+									nodeCredentialType: 'oAuth2Api',
+								},
+								credentials: {
+									oAuth2Api: { id: credential.id, name: credential.name },
+								},
 							},
-							credentials: {
-								oAuth2Api: { id: credential.id, name: credential.name },
+						],
+						connections: {
+							Webhook: {
+								main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
 							},
 						},
-					],
-					connections: {
-						Webhook: {
-							main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+						settings: {
+							credentialResolverId: resolver.id,
 						},
 					},
-					settings: {
-						credentialResolverId: resolver.id,
-					},
-				});
+					{ projectId: project.id },
+				);
 
 			// Obtain a Keycloak access token for the test user (ROPC — no browser needed).
 			// This token is used as the user identity throughout the flow.

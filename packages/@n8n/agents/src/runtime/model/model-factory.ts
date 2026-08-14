@@ -130,7 +130,7 @@ function buildOpenAiCompatible(
 	})(model);
 }
 
-type OpenAiCompatibleProviderId = 'nvidia';
+type OpenAiCompatibleProviderId = 'nvidia' | 'moonshotai';
 
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
 	name: P,
@@ -252,6 +252,10 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),
+	moonshotai: openAiCompatibleEntry('moonshotai', 'https://api.moonshot.ai/v1', {
+		includeUsage: true,
+		supportsStructuredOutputs: true,
+	}),
 	'azure-openai': {
 		build: (creds, model, fetch) => {
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
