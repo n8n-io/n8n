@@ -4,8 +4,8 @@ import { generateKeyPairSync } from 'node:crypto';
 
 /**
  * Pure, stateless helpers for constructing Git credential/SSH plumbing.
- * Shared between the git-connections and source-control modules so the
- * security-sensitive escaping and command construction lives in one place.
+ * This module is the source of truth for git plumbing; source-control imports
+ * from here as we incrementally consolidate git logic into git-connections.
  */
 
 /** Single-quote a value for safe inclusion in a POSIX shell command. */
@@ -13,9 +13,14 @@ const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;
 
 /**
  * Build the `config` entries for an HTTPS Git client: an inline credential
- * helper carrying the username/password, path-scoped so the credentials are
- * only used for the configured repository URL, plus an `http.proxy` entry when
- * a proxy is resolved for the repository URL.
+ * helper that supplies the username/password to Git, plus an `http.proxy`
+ * entry when a proxy is resolved for the repository URL.
+ *
+ * NOTE: the helper echoes the credentials for whatever host/path Git asks
+ * about — it is not restricted to `repositoryUrl`. `credential.useHttpPath=true`
+ * only widens the lookup key (host + path) Git uses when consulting the helper;
+ * it does not scope which requests receive the credentials. Isolation relies on
+ * each connection running Git in its own process with its own config.
  */
 export function buildHttpsGitConfig(
 	repositoryUrl: string,
