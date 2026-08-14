@@ -45,6 +45,13 @@ describe('N8nActionPill', () => {
 			expect(container).toMatchSnapshot();
 		});
 
+		it('renders info type correctly', () => {
+			const { container } = render(ActionPill, {
+				props: { text: 'n8n credits', type: 'info' },
+			});
+			expect(container).toMatchSnapshot();
+		});
+
 		it('renders small size correctly', () => {
 			const { container } = render(ActionPill, {
 				props: { text: 'Label', size: 'small' },

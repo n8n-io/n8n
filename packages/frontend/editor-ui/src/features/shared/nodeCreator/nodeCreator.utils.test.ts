@@ -811,7 +811,7 @@ describe('NodeCreator - utils', () => {
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
-			expect(result.properties.tag).toEqual({ text: 'n8n credits', pill: true });
+			expect(result.properties.tag).toEqual({ text: 'n8n credits', pill: true, type: 'info' });
 		});
 
 		it('should suppress Free credits badge when latest version is below the minimum', () => {

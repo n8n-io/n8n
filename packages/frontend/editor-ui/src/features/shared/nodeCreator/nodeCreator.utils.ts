@@ -474,10 +474,11 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 			text: i18n.baseText('generic.betaProper'),
 		};
 	} else if (isAiGatewayEligibleNode(element.properties.name)) {
-		element.properties.tag = {
-			text: i18n.baseText(useAiGatewayStore().creditsLabelKey),
-			pill: true,
-		};
+		const creditsLabelKey = useAiGatewayStore().creditsLabelKey;
+		element.properties.tag =
+			creditsLabelKey === 'generic.freeCredits'
+				? { text: i18n.baseText(creditsLabelKey), pill: true }
+				: { text: i18n.baseText(creditsLabelKey), pill: true, type: 'info' };
 	}
 
 	return element;
