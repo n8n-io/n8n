@@ -5,10 +5,10 @@
  * at toJSON({ tidyUp: true }). These tests pin the placement contract for that case.
  */
 
-import { DEFAULT_NODE_SIZE, STICKY_NODE_TYPE } from './constants';
-import { node, sticky, trigger } from './node-builders/node-builder';
 import type { NodeJSON, WorkflowJSON } from '../types/base';
 import { workflow } from '../workflow-builder';
+import { DEFAULT_NODE_SIZE, STICKY_NODE_TYPE } from './constants';
+import { node, sticky, trigger } from './node-builders/node-builder';
 
 interface Box {
 	x: number;
