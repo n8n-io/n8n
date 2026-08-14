@@ -76,6 +76,7 @@ import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
+import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
@@ -490,6 +491,14 @@ export class McpService {
 			this.telemetry,
 		);
 		registerIfAllowed(workflowVersionTool);
+
+		const workflowVersionsDiffTool = createGetWorkflowVersionsDiffTool(
+			user,
+			this.workflowFinderService,
+			this.workflowHistoryService,
+			this.telemetry,
+		);
+		registerIfAllowed(workflowVersionsDiffTool);
 
 		const publishWorkflowTool = createPublishWorkflowTool(
 			user,

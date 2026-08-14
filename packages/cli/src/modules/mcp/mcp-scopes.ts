@@ -16,6 +16,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_workflow_details',
 		'get_workflow_history',
 		'get_workflow_version',
+		'get_workflow_versions_diff',
 		// Read-only builder support tools
 		'search_nodes',
 		'get_node_types',

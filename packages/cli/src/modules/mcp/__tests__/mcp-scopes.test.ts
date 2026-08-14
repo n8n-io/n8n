@@ -211,6 +211,7 @@ describe('McpService scope enforcement', () => {
 				'get_workflow_details',
 				'get_workflow_history',
 				'get_workflow_version',
+				'get_workflow_versions_diff',
 			]),
 		);
 	});
