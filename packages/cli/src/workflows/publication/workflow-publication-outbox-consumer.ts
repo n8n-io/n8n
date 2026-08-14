@@ -185,7 +185,14 @@ export class WorkflowPublicationOutboxConsumer {
 		this.topUpWorkers();
 		const error = await this.awaitIdle();
 		if (error) {
-			throw new OperationalError('Workflow publication outbox drain failed', { cause: error });
+			// `level: 'warning'` makes the wrapper non-reportable (`shouldReport`
+			// false), so an awaiting caller's generic catch passing it to the
+			// ErrorReporter creates no second Sentry event — the pool's source
+			// report of the cause stays the single report of the failure.
+			throw new OperationalError('Workflow publication outbox drain failed', {
+				cause: error,
+				level: 'warning',
+			});
 		}
 	}
 

@@ -340,10 +340,13 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			// Awaiting callers (e.g. the reconciler) must still observe drain
 			// failures, or they would report success for records nobody claimed.
 			// The wrapper lets them fail their own operation; the underlying error
-			// is reported by the pool alone, exactly once.
+			// is reported by the pool alone, exactly once. `shouldReport: false`
+			// pins that a caller's generic catch reporting the wrapper creates no
+			// second Sentry event (the ErrorReporter drops non-reportable errors).
 			await expect(consumer.drainPending()).rejects.toMatchObject({
 				message: expect.stringContaining('drain failed'),
 				cause: error,
+				shouldReport: false,
 			});
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
 			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
