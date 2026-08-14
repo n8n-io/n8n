@@ -417,14 +417,18 @@ function withResolvedTimezone(schedule: Schedule, defaultTimezone: string): Sche
 }
 
 /**
- * Anything other than an explicit `coalesce` resolves to skipping, so an
+ * Any value other than an explicit policy resolves to skipping, so an
  * unrecognised value does not fail the activation. No `typeVersion` check is
  * needed: `Workflow`'s constructor drops a parameter its `displayOptions` hide,
  * so a node older than the option cannot arrive carrying it.
- * This mapping will be improvd in https://github.com/n8n-io/n8n/pull/35771
  */
 function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
-	return node.parameters?.misfirePolicy === 'coalesce'
-		? ScheduledJobMisfirePolicy.CoalesceOwner
-		: ScheduledJobMisfirePolicy.Skip;
+	switch (node.parameters?.misfirePolicy) {
+		case 'coalesce':
+			return ScheduledJobMisfirePolicy.Coalesce;
+		case 'coalesce_owner':
+			return ScheduledJobMisfirePolicy.CoalesceOwner;
+		default:
+			return ScheduledJobMisfirePolicy.Skip;
+	}
 }
