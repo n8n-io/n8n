@@ -65,6 +65,9 @@ const emit = defineEmits<{ remove: []; 'toggle-expand': [] }>();
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	// `overflow: hidden` clips to the line box, so an inherited tight line-height
+	// would cut off descenders (g, j). Set one with room for them.
+	line-height: var(--line-height--sm);
 }
 
 .iconBtn {
