@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 
-export const DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS = 60_000;
+export const DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS = 15_000;
 
 export type DirectConnectStatus = 'idle' | 'unsupported' | 'waiting' | 'failed';
 
