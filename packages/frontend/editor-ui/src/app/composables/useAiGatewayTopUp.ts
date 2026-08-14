@@ -9,7 +9,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 
 export type AiGatewayTopUpSource = 'settings_page' | 'credential_selector';
 
-export type AiGatewayTopUpVariant = 'member' | 'memberTrial' | 'ownerTrial';
+export type AiGatewayTopUpVariant = 'member' | 'memberTrial' | 'owner' | 'ownerTrial';
 
 export function useAiGatewayTopUp() {
 	const uiStore = useUIStore();
@@ -23,6 +23,7 @@ export function useAiGatewayTopUp() {
 	function resolveVariant(): AiGatewayTopUpVariant {
 		if (usersStore.isInstanceOwner && cloudPlanStore.userIsTrialing) return 'ownerTrial';
 		if (cloudPlanStore.userIsTrialing) return 'memberTrial';
+		if (usersStore.isInstanceOwner) return 'owner';
 		return 'member';
 	}
 
@@ -35,7 +36,7 @@ export function useAiGatewayTopUp() {
 			credential_type: options.credentialType,
 		});
 
-		if (!cloudPlanStore.userIsTrialing) {
+		if (cloudPlanStore.currentPlanData && !cloudPlanStore.userIsTrialing) {
 			try {
 				const didNavigate = await goToCloudDashboard({
 					redirectionPath: CLOUD_N8N_CONNECT_TOP_UP_PATH,

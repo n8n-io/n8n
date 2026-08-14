@@ -493,8 +493,8 @@ const TrialIntroModal = defineAsyncComponent(
 		</ModalRoot>
 
 		<ModalRoot :name="AI_GATEWAY_TOP_UP_MODAL_KEY">
-			<template #default="{ data }">
-				<AiGatewayTopUpModal :variant="data.variant as AiGatewayTopUpVariant" />
+			<template #default="{ data }: { data: { variant: AiGatewayTopUpVariant } }">
+				<AiGatewayTopUpModal :variant="data.variant" />
 			</template>
 		</ModalRoot>
 

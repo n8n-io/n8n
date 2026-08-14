@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { mockedStore } from '@/__tests__/utils';
+import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -26,6 +27,10 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	}),
 }));
 
+function setPaidPlan() {
+	mockedStore(useCloudPlanStore).currentPlanData = { userIsTrialing: false } as Cloud.PlanData;
+}
+
 describe('useAiGatewayTopUp', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -44,17 +49,26 @@ describe('useAiGatewayTopUp', () => {
 			source: 'credential_selector',
 			credential_type: 'openAiApi',
 		});
-		expect(goToCloudDashboardMock).toHaveBeenCalledWith({
-			redirectionPath: CLOUD_N8N_CONNECT_TOP_UP_PATH,
-			mode: 'open',
-		});
+		expect(goToCloudDashboardMock).not.toHaveBeenCalled();
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
 			data: { variant: 'member' },
 		});
 	});
 
+	it('does not send users to the Admin Panel when plan data has not loaded', async () => {
+		goToCloudDashboardMock.mockResolvedValue(true);
+		const uiStore = mockedStore(useUIStore);
+
+		const { openTopUp } = useAiGatewayTopUp();
+		await openTopUp({ source: 'settings_page' });
+
+		expect(goToCloudDashboardMock).not.toHaveBeenCalled();
+		expect(uiStore.openModalWithData).toHaveBeenCalled();
+	});
+
 	it('sends paid Cloud owners straight to the Cloud Admin Panel', async () => {
+		setPaidPlan();
 		goToCloudDashboardMock.mockResolvedValue(true);
 		const uiStore = mockedStore(useUIStore);
 
@@ -69,6 +83,7 @@ describe('useAiGatewayTopUp', () => {
 	});
 
 	it('reports the error when the Admin Panel link fails', async () => {
+		setPaidPlan();
 		goToCloudDashboardMock.mockRejectedValue(new Error('no auto-login code'));
 		const uiStore = mockedStore(useUIStore);
 
@@ -111,7 +126,7 @@ describe('useAiGatewayTopUp', () => {
 		expect(goToCloudDashboardMock).not.toHaveBeenCalled();
 	});
 
-	it('opens the contact-admin dialog for paid local owners', async () => {
+	it('opens the license dialog for paid local owners', async () => {
 		const usersStore = mockedStore(useUsersStore);
 		const uiStore = mockedStore(useUIStore);
 		usersStore.isInstanceOwner = true;
@@ -121,7 +136,7 @@ describe('useAiGatewayTopUp', () => {
 
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-			data: { variant: 'member' },
+			data: { variant: 'owner' },
 		});
 	});
 });

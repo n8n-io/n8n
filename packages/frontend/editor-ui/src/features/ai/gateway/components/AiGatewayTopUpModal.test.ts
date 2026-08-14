@@ -44,13 +44,6 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
-	default: {
-		props: ['credentialTypeName', 'size'],
-		template: '<span :data-test-id="`credential-icon-${credentialTypeName}`" />',
-	},
-}));
-
 const renderComponent = createComponentRenderer(AiGatewayTopUpModal);
 
 function renderModal({
@@ -143,6 +136,22 @@ describe('AiGatewayTopUpModal.vue', () => {
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
 	});
 
+	it('shows license copy and covered services for self-hosted owners', async () => {
+		const { uiStore } = renderModal({ variant: 'owner' });
+
+		expect(screen.getByText('Top up n8n credits')).toBeInTheDocument();
+		expect(screen.getByText(/come from your instance license/)).toBeInTheDocument();
+		expect(screen.getByTestId('ai-gateway-topup-services')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Contact admin' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Upgrade' })).not.toBeInTheDocument();
+
+		await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+		expect(uiStore.closeModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
+		expect(windowOpen).not.toHaveBeenCalled();
+		expect(mockGoToUpgrade).not.toHaveBeenCalled();
+	});
+
 	it('shows Upgrade copy and covered services for owners during trial', async () => {
 		renderModal({ variant: 'ownerTrial' });
 
@@ -176,8 +185,10 @@ describe('AiGatewayTopUpModal.vue', () => {
 	it('shows a logo for every featured partner, installed or not', () => {
 		renderModal({ variant: 'ownerTrial' });
 
-		expect(screen.getByTestId('credential-icon-openAiApi')).toBeInTheDocument();
 		for (const credentialType of [
+			'openAiApi',
+			'anthropicApi',
+			'googlePalmApi',
 			'firecrawlApi',
 			'browserbaseApi',
 			'braveSearchApi',

@@ -8,17 +8,31 @@ import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import AnthropicLogo from '../assets/service-icons/anthropic.svg?component';
 import BraveSearchLogo from '../assets/service-icons/brave-search.svg?component';
 import BrowserbaseLogo from '../assets/service-icons/browserbase.svg?component';
 import FirecrawlLogo from '../assets/service-icons/firecrawl.svg?component';
+import GeminiLogo from '../assets/service-icons/gemini.svg?component';
 import LlamaIndexLogo from '../assets/service-icons/llamaindex.svg?component';
+import OpenAiLogo from '../assets/service-icons/openai.svg?component';
 import PdfcoLogo from '../assets/service-icons/pdfco.svg?component';
 
 const FEATURED_SERVICES = [
-	{ credentialType: 'openAiApi', labelKey: 'aiGateway.topUp.modal.service.openAi' },
-	{ credentialType: 'anthropicApi', labelKey: 'aiGateway.topUp.modal.service.anthropic' },
-	{ credentialType: 'googlePalmApi', labelKey: 'aiGateway.topUp.modal.service.googleGemini' },
+	{
+		credentialType: 'openAiApi',
+		labelKey: 'aiGateway.topUp.modal.service.openAi',
+		logo: OpenAiLogo,
+	},
+	{
+		credentialType: 'anthropicApi',
+		labelKey: 'aiGateway.topUp.modal.service.anthropic',
+		logo: AnthropicLogo,
+	},
+	{
+		credentialType: 'googlePalmApi',
+		labelKey: 'aiGateway.topUp.modal.service.googleGemini',
+		logo: GeminiLogo,
+	},
 	{
 		credentialType: 'firecrawlApi',
 		labelKey: 'aiGateway.topUp.modal.service.firecrawl',
@@ -40,10 +54,10 @@ const FEATURED_SERVICES = [
 		labelKey: 'aiGateway.topUp.modal.service.llamaIndex',
 		logo: LlamaIndexLogo,
 	},
-] as const satisfies ReadonlyArray<{
+] satisfies ReadonlyArray<{
 	credentialType: string;
 	labelKey: BaseTextKey;
-	logo?: Component;
+	logo: Component;
 }>;
 
 const props = defineProps<{
@@ -57,21 +71,27 @@ const { goToUpgrade } = usePageRedirectionHelper();
 
 const isOpen = ref(true);
 const isOwnerTrial = computed(() => props.variant === 'ownerTrial');
+const showsServices = computed(() => props.variant === 'owner' || props.variant === 'ownerTrial');
 
 onMounted(async () => {
-	if (isOwnerTrial.value) return;
+	if (showsServices.value) return;
 
 	await usersStore.fetchUsers({ filter: { isOwner: true } });
 });
 
-const title = computed(() =>
-	isOwnerTrial.value
-		? i18n.baseText('aiGateway.topUp.modal.title.trial')
-		: i18n.baseText('aiGateway.topUp.modal.title.member'),
-);
+const title = computed(() => {
+	const keys = {
+		owner: 'aiGateway.topUp.modal.title.owner',
+		ownerTrial: 'aiGateway.topUp.modal.title.trial',
+		memberTrial: 'aiGateway.topUp.modal.title.member',
+		member: 'aiGateway.topUp.modal.title.member',
+	} as const satisfies Record<AiGatewayTopUpVariant, BaseTextKey>;
+	return i18n.baseText(keys[props.variant]);
+});
 
 const description = computed(() => {
 	const keys = {
+		owner: 'aiGateway.topUp.modal.description.owner',
 		ownerTrial: 'aiGateway.topUp.modal.description.trial',
 		memberTrial: 'aiGateway.topUp.modal.description.member.trial',
 		member: 'aiGateway.topUp.modal.description.member',
@@ -79,11 +99,11 @@ const description = computed(() => {
 	return i18n.baseText(keys[props.variant]);
 });
 
-const actionLabel = computed(() =>
-	isOwnerTrial.value
-		? i18n.baseText('generic.upgrade')
-		: i18n.baseText('aiGateway.topUp.modal.cta.contactAdmin'),
-);
+const actionLabel = computed(() => {
+	if (isOwnerTrial.value) return i18n.baseText('generic.upgrade');
+	if (props.variant === 'owner') return i18n.baseText('generic.close');
+	return i18n.baseText('aiGateway.topUp.modal.cta.contactAdmin');
+});
 
 function close(): void {
 	isOpen.value = false;
@@ -108,6 +128,11 @@ function ownerMailtoHref(): string {
 }
 
 async function onAction(): Promise<void> {
+	if (props.variant === 'owner') {
+		close();
+		return;
+	}
+
 	if (isOwnerTrial.value) {
 		close();
 		await goToUpgrade('ai-gateway-top-up', 'upgrade-ai-gateway-top-up');
@@ -131,7 +156,7 @@ async function onAction(): Promise<void> {
 		@update:open="onOpenChange"
 		@action="onAction"
 	>
-		<div v-if="isOwnerTrial" :class="$style.services" data-test-id="ai-gateway-topup-services">
+		<div v-if="showsServices" :class="$style.services" data-test-id="ai-gateway-topup-services">
 			<N8nText size="small" color="text-light">
 				{{ i18n.baseText('aiGateway.topUp.modal.servicesHint') }}
 			</N8nText>
@@ -145,11 +170,9 @@ async function onAction(): Promise<void> {
 					<span :class="$style.logo">
 						<component
 							:is="service.logo"
-							v-if="service.logo"
 							:class="$style.logoSvg"
 							:data-test-id="`service-logo-${service.credentialType}`"
 						/>
-						<CredentialIcon v-else :credential-type-name="service.credentialType" :size="18" />
 					</span>
 					<N8nText size="small" color="text-dark" :class="$style.serviceName">
 						{{ i18n.baseText(service.labelKey) }}
@@ -191,6 +214,7 @@ async function onAction(): Promise<void> {
 	flex: none;
 	width: 18px;
 	height: 18px;
+	color: var(--color--text);
 }
 
 .logoSvg {
