@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
+import WorkflowExtractionNameModal from '@/features/workflows/components/WorkflowExtractionNameModal.vue';
 import { WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { ExtractableSubgraphData } from 'n8n-workflow';
