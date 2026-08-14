@@ -135,6 +135,7 @@ describe('DataTableView', () => {
 		dataTableStore.dataTables = [TEST_DATA_TABLE];
 		dataTableStore.totalCount = 1;
 		dataTableStore.fetchDataTables = vi.fn().mockResolvedValue(undefined);
+		dataTableStore.canViewDataTables = true;
 
 		projectsStore.currentProjectId = '';
 		sourceControlStore.isProjectShared = vi.fn(() => false);
@@ -189,6 +190,18 @@ describe('DataTableView', () => {
 			await waitAllPromises();
 
 			expect(mockToast.showError).toHaveBeenCalledWith(error, 'Error loading data tables');
+		});
+
+		it('should skip the global fetch and show no error when the user lacks dataTable:list', async () => {
+			dataTableStore.canViewDataTables = false;
+
+			const { container } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(dataTableStore.fetchDataTables).not.toHaveBeenCalled();
+			expect(mockToast.showError).not.toHaveBeenCalled();
+			// The skipped fetch must still clear the loading state, or the skeleton spins forever.
+			expect(container.querySelector('.resource-list-loading')).not.toBeInTheDocument();
 		});
 	});
 

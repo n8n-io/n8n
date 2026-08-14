@@ -109,6 +109,12 @@ const delayedLoading = debounce(() => {
 
 const fetchDataTables = async () => {
 	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
+	// The global aggregate route (projectIdFilter === '') needs dataTable:list; skip it
+	// silently rather than surfacing a 403 toast for a role that legitimately lacks it.
+	if (projectIdFilter === '' && !dataTableStore.canViewDataTables) {
+		loading.value = false;
+		return;
+	}
 	try {
 		delayedLoading();
 		await dataTableStore.fetchDataTables(

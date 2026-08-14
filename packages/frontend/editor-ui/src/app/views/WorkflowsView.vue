@@ -784,7 +784,9 @@ const fetchEmptyStateData = async () => {
 		await Promise.all([
 			credentialsStore.fetchAllCredentials(),
 			variablesEnabled ? environmentsStore.fetchAllVariables() : Promise.resolve(),
-			dataTablesEnabled ? dataTableStore.fetchDataTables('', 1, 1) : Promise.resolve(),
+			dataTablesEnabled && dataTableStore.canViewDataTables
+				? dataTableStore.fetchDataTables('', 1, 1)
+				: Promise.resolve(),
 		]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching.emptyStateData'));
