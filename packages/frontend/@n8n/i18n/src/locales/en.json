@@ -8085,7 +8085,6 @@
 	"agents.channels.modal.configured": "Configured",
 	"agents.channels.modal.connected": "Connected",
 	"agents.channels.modal.removeChannel": "Remove channel",
-	"agents.channels.modal.credentialReplacementError": "Couldn't finish changing the credential. Try again.",
 	"nodeCreator.sectionNames.includedInN8n": "Included in n8n",
 	"contextMenu.nodeGroup": "group",
 	"contextMenu.group": "Group node | Group nodes",
