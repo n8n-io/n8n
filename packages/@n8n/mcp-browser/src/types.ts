@@ -76,8 +76,14 @@ export interface Adapter {
 		url: string,
 		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
 	): Promise<NavigateResult>;
-	back(pageId: string): Promise<NavigateResult>;
-	forward(pageId: string): Promise<NavigateResult>;
+	back(
+		pageId: string,
+		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<NavigateResult>;
+	forward(
+		pageId: string,
+		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<NavigateResult>;
 	reload(
 		pageId: string,
 		waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',

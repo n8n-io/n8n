@@ -308,13 +308,19 @@ export class AgentBrowserAdapter implements Adapter {
 		return { title: tab?.title ?? '', url: currentUrl, status: 200 };
 	}
 
-	async back(pageId: string): Promise<NavigateResult> {
+	async back(
+		pageId: string,
+		_waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<NavigateResult> {
 		await this.switchToTab(pageId);
 		await this.run(['back']);
 		return await this.navResult(pageId);
 	}
 
-	async forward(pageId: string): Promise<NavigateResult> {
+	async forward(
+		pageId: string,
+		_waitUntil?: 'load' | 'domcontentloaded' | 'networkidle',
+	): Promise<NavigateResult> {
 		await this.switchToTab(pageId);
 		await this.run(['forward']);
 		return await this.navResult(pageId);

@@ -12,11 +12,7 @@ export function createTabTools(connection: BrowserConnection): ToolDefinition[] 
 
 const tabOpenSchema = z.object({
 	url: z.string().optional().describe('URL to navigate to (default: about:blank)'),
-	// First navigation defaults to 'domcontentloaded': heavy SPA consoles often
-	// never fire 'load', so waiting for it there times out with nothing to show.
-	waitUntil: waitUntilField.describe(
-		'When to consider navigation done (default: "domcontentloaded")',
-	),
+	waitUntil: waitUntilField,
 });
 
 const tabOpenOutputSchema = withSnapshotEnvelope({
