@@ -167,6 +167,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
 
+	const isAiGatewayCloudUbbEnabled = computed(
+		() => settings.value.aiGateway?.cloudUbbEnabled ?? false,
+	);
+
 	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
@@ -204,9 +208,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
 	});
 
-	// Opt-in flag: enabled when the backend's Daytona sandbox env vars
-	// (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` + `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`)
-	// are set, OR the AI Assistant proxy is available.
+	// Opt-in flag controlled by the backend's N8N_AGENTS_AI_SANDBOX_ENABLED setting.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
 		() => isModuleActive('agents') && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
@@ -365,6 +367,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
+		rootStore.setPublicApiPath(
+			`${fetchedSettings.publicApi.path}/v${fetchedSettings.publicApi.latestVersion}`,
+		);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata ?? {});
@@ -498,6 +503,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
+		isAiGatewayCloudUbbEnabled,
 		aiGatewayBudget,
 		reset,
 		getTimezones,

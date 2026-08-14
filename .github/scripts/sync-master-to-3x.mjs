@@ -21,7 +21,9 @@
  *   2. The replay stalls, but 3.x's content still reconciles with master → an earlier
  *      conflict was resolved in a merge, which leaves no patch to replay. Replay again
  *      favouring the 3.x side (`-X theirs`), mirroring the side the resolved merge kept;
- *      the human's fix commit is in the queue and does the real work. Tree is then proven.
+ *      the human's fix commit is in the queue and does the real work. Stalls the strategy
+ *      option cannot settle (modify/delete — `-X` never resolves those) are resolved in
+ *      place toward the queue commit's side. Tree is then proven.
  *   3. master conflicts with 3.x, but ONLY on mechanical files — tool-generated content
  *      with a deterministic resolution (the pnpm lockfile, bot-maintained data files).
  *      These are resolved in place while the replay is stopped, exactly as a human
@@ -62,11 +64,23 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 
 import {
+	attempt,
+	assertNoMarkers,
+	assertTreeMatches,
+	isAncestor,
+	mergeTree,
+	runGit,
+} from './branch-replay.mjs';
+import {
 	conflictedFiles,
 	breakingShas,
 	resolveLogins,
 	buildOutputs,
 } from './sync-conflict-owners.mjs';
+
+// Re-exported so this module stays the single entry point for the master→3.x flow, tests
+// included. The implementations are branch-pair-agnostic and shared with the bundle replay.
+export { attempt, assertNoMarkers, assertTreeMatches, isAncestor, mergeTree };
 
 export const TARGET_BRANCH = '3.x';
 export const SYNC_BRANCH = 'sync/master-to-3x';
@@ -92,8 +106,8 @@ const BOT_NAME = 'n8n-assistant[bot]';
 const BOT_EMAIL = 'n8n-assistant[bot]@users.noreply.github.com';
 
 // Real command runners. Each takes an args array and returns trimmed stdout,
-// throwing on a non-zero exit (mirrors `set -e`). Injectable for tests.
-const runGit = (args, opts = {}) => execFileSync('git', args, { encoding: 'utf8', ...opts }).trim();
+// throwing on a non-zero exit (mirrors `set -e`). Injectable for tests. (`runGit` is
+// shared — see branch-replay.mjs.)
 const runGh = (args, opts = {}) => execFileSync('gh', args, { encoding: 'utf8', ...opts }).trim();
 const runPnpm = (args, opts = {}) =>
 	execFileSync('pnpm', args, { encoding: 'utf8', ...opts }).trim();
@@ -104,57 +118,10 @@ export function targetBranch(env = process.env) {
 	return env.SYNC_TARGET_BRANCH || TARGET_BRANCH;
 }
 
-// Run a command for its exit status: `{ ok, out }` instead of a throw. Used for the git
-// commands whose non-zero exit is an expected answer, not a failure. stderr is captured
-// rather than inherited, so an expected-to-fail probe doesn't spill into the run log.
-export function attempt(run, args, opts = {}) {
-	try {
-		return { ok: true, out: run(args, { stdio: ['ignore', 'pipe', 'pipe'], ...opts }) ?? '' };
-	} catch (error) {
-		const out = `${error.stdout ?? ''}\n${error.stderr ?? ''}`.trim();
-		return { ok: false, out };
-	}
-}
-
 // True when a previous conflict PR is still open — the halt gate.
 export function hasOpenConflictPr(gh, label = CONFLICT_LABEL) {
 	const out = gh(['pr', 'list', '--state', 'open', '--label', label, '--json', 'number']);
 	return JSON.parse(out || '[]').length > 0;
-}
-
-export function isAncestor(git, maybeAncestor, descendant) {
-	return attempt(git, ['merge-base', '--is-ancestor', maybeAncestor, descendant]).ok;
-}
-
-/**
- * The tree a merge of the two commits would produce — the definition of the content 3.x
- * should end up with, computed without touching the working tree.
- *
- * `ok: false` means the two sides genuinely conflict; `conflictedPaths` then names the
- * clashing files, and `tree` is still written (conflicted blobs carry their markers) —
- * it is the comparison baseline for the relaxed tree guard.
- */
-export function mergeTree(git, a, b) {
-	const res = attempt(git, ['merge-tree', '--write-tree', '--name-only', a, b]);
-	// Line 0 is the toplevel tree OID (written even on conflict); the lines up to the
-	// first blank line are the conflicted filenames (`--name-only`). Informational
-	// messages follow the blank line, but `attempt` folds stderr in too — filter both.
-	const lines = res.out.split('\n');
-	const tree = lines[0]?.trim() ?? '';
-	let conflictedPaths = [];
-	if (!res.ok) {
-		const blank = lines.indexOf('', 1);
-		const section = lines.slice(1, blank === -1 ? undefined : blank);
-		conflictedPaths = [
-			...new Set(section.filter((l) => l && !/^(CONFLICT|Auto-merging|warning)/.test(l))),
-		];
-	}
-	return {
-		ok: res.ok,
-		tree: res.ok || conflictedPaths.length ? tree : '',
-		conflictedPaths,
-		out: res.out,
-	};
 }
 
 // Split conflicted paths into mechanically-resolvable ones and real code conflicts.
@@ -196,10 +163,34 @@ export function resolveMechanicalPath({ git, pnpm, path, masterSha, log = consol
 }
 
 /**
+ * Resolve one stalled path by taking the side of the queue commit being replayed
+ * ("theirs" while a rebase is stopped). Exists for the stalls `-X theirs` cannot settle
+ * itself — modify/delete, which strategy options never resolve: when the queue commit
+ * deleted the file there is no stage 3, so the deletion wins. Only meaningful on the
+ * favoured replay passes, where the callers' tree guard proves the final content — a
+ * wrong pick here fails the run instead of pushing.
+ */
+export function resolveQueueSidePath({ git, path, log = console.log }) {
+	// `ls-files -u` lines are `<mode> <oid> <stage>\t<path>`; stage 3 is the queue side.
+	const stages = git(['ls-files', '-u', '--', path]);
+	const queueSideExists = stages.split('\n').some((line) => /^\S+ \S+ 3\t/.test(line));
+	if (queueSideExists) {
+		log(`Resolving ${path} with the replayed commit's version...`);
+		git(['checkout', '--theirs', '--', path]);
+		git(['add', '--', path]);
+	} else {
+		log(`Resolving ${path} with the replayed commit's deletion...`);
+		git(['rm', '--force', '--', path]);
+	}
+}
+
+/**
  * Replay the 3.x-only commits onto master, resolving stalls that involve ONLY mechanical
  * paths in place — folded into the stalled commit exactly as a human's `rebase --continue`
  * would, so no commit is added. Bails (leaving the rebase stopped, for the caller to
- * abort) as soon as a stall touches a real code path.
+ * abort) as soon as a stall touches a real code path — unless `favourQueue` is set, in
+ * which case code-path stalls are resolved with the queue commit's side too. That flag
+ * belongs only on the favoured (`-X theirs`) passes, whose tree guard proves the outcome.
  *
  * Merge commits in the range (breaking PR merges, past conflict-PR merges) are flattened;
  * commits already applied to master — or fully absorbed by a mechanical resolution — are
@@ -211,6 +202,7 @@ export function rebaseResolvingMechanical({
 	masterSha,
 	log = console.log,
 	extraArgs = [],
+	favourQueue = false,
 	maxStalls = 50,
 }) {
 	const resolved = new Set();
@@ -223,13 +215,16 @@ export function rebaseResolvingMechanical({
 		}
 		const { mechanical, code } = classifyPaths(conflictedFiles(git));
 		// No conflicted files means the rebase failed for some other reason — don't guess.
-		if (mechanical.length === 0 || code.length > 0) {
+		if (mechanical.length + code.length === 0 || (code.length > 0 && !favourQueue)) {
 			if (res.out) log(res.out);
 			return { ok: false, resolved: [...resolved], conflictedCode: code };
 		}
 		for (const path of mechanical) {
 			resolveMechanicalPath({ git, pnpm, path, masterSha, log });
 			resolved.add(path);
+		}
+		for (const path of code) {
+			resolveQueueSidePath({ git, path, log });
 		}
 		// The resolution may have absorbed the whole commit — skip it rather than
 		// letting `--continue` refuse an empty commit.
@@ -240,37 +235,39 @@ export function rebaseResolvingMechanical({
 }
 
 /**
- * The content guard for every push: whichever route produced HEAD, its tree must be exactly
- * what merging 3.x with master yields — except on `allowedPaths`, the mechanical files the
- * merge itself could not resolve (always derived from the merge-tree conflict list, never
- * from what the run happened to touch). With no `allowedPaths` this is exact equality.
+ * Fold any residual deviation between the replayed tip and the proven merge tree into the
+ * tip commit. `-X theirs` resolves overlapping hunks toward the queue side without
+ * stalling — silently dropping master-side changes (lockfile hunks are the usual case)
+ * that no fix commit in the queue reasserts. The merge tree is the definition of the
+ * correct content, so its blobs are taken verbatim. `excludePaths` names files the merge
+ * tree itself could not resolve (marker-carrying mechanical blobs), which get their own
+ * reconciliation. Never a commit of its own, and never a rewrite of a master commit.
  */
-export function assertTreeMatches(git, expectedTree, allowedPaths = []) {
-	const actual = git(['rev-parse', 'HEAD^{tree}']);
-	if (actual === expectedTree) return;
-	if (allowedPaths.length === 0) {
-		throw new Error(
-			`Replayed tree ${actual} does not match the merge tree ${expectedTree}; refusing to push.`,
-		);
+export function reconcileWithMergeTreeAtTip({
+	git,
+	mergedTree,
+	masterSha,
+	excludePaths = [],
+	log = console.log,
+}) {
+	if (git(['rev-parse', 'HEAD^{tree}']) === mergedTree) return [];
+	const out = git(['diff-tree', '-r', '--name-only', '--no-renames', mergedTree, 'HEAD']);
+	const excluded = new Set(excludePaths);
+	const paths = (out ? out.split('\n') : []).filter((p) => p && !excluded.has(p));
+	if (paths.length === 0) return [];
+	if (git(['rev-parse', 'HEAD']) === masterSha) {
+		throw new Error('Merge-tree reconciliation would amend a master commit; refusing.');
 	}
-	const out = git(['diff-tree', '-r', '--name-only', '--no-renames', expectedTree, actual]);
-	const allowed = new Set(allowedPaths);
-	const violations = (out ? out.split('\n') : []).filter((p) => p && !allowed.has(p));
-	if (violations.length > 0) {
-		throw new Error(
-			`Replayed tree deviates from the merge tree on non-mechanical paths:\n${violations.join('\n')}\nrefusing to push.`,
-		);
+	log(`Folding the merge tree's content for ${paths.join(', ')} into the tip commit.`);
+	for (const path of paths) {
+		if (attempt(git, ['cat-file', '-e', `${mergedTree}:${path}`]).ok) {
+			git(['checkout', mergedTree, '--', path]);
+		} else {
+			git(['rm', '--force', '--', path]); // the merge deleted it
+		}
 	}
-}
-
-// Conflict markers must never reach 3.x — nightly images build from it. git grep exits 0
-// with matches, 1 with none and >1 on error, so an error must not be read as "clean".
-export function assertNoMarkers(git, rev = 'HEAD') {
-	const found = attempt(git, ['grep', '-I', '-l', '-e', '^<<<<<<< ', '-e', '^>>>>>>> ', rev]);
-	if (found.ok)
-		throw new Error(`Refusing to continue: conflict markers present in ${rev}:\n${found.out}`);
-	if (found.out.includes('fatal:'))
-		throw new Error(`Could not scan ${rev} for conflict markers:\n${found.out}`);
+	git(['commit', '--amend', '--no-edit', '--no-verify']);
+	return paths;
 }
 
 /**
@@ -549,9 +546,19 @@ export async function sync({
 					masterSha,
 					log,
 					extraArgs: ['-X', 'theirs'],
+					favourQueue: true,
 				});
 			}
 			if (replay.ok) {
+				// The favoured retry may have drifted from the merge tree on cleanly-merging
+				// paths; fold those back before the mechanical files get their own treatment.
+				reconcileWithMergeTreeAtTip({
+					git,
+					mergedTree: merged.tree,
+					masterSha,
+					excludePaths: mechanical,
+					log,
+				});
 				if (mechanical.includes(LOCKFILE)) reconcileLockfileAtTip({ git, pnpm, masterSha, log });
 				assertTreeMatches(git, merged.tree, mechanical);
 				assertNoMarkers(git);
@@ -607,18 +614,31 @@ export async function sync({
 	// The content reconciles but the patches no longer apply on their own: an earlier
 	// conflict was resolved in a merge, and a merge resolution leaves no patch to replay.
 	// Replay favouring the 3.x side — the same side that resolved merge kept — and let the
-	// resolver's own fix commit, which is in the queue, do the real work. Mechanical stalls
-	// the strategy cannot settle (e.g. modify/delete) are resolved in place. Nothing is
-	// squashed; the tree guard below proves the outcome exactly, since the merge was clean.
+	// resolver's own fix commit, which is in the queue, do the real work. Stalls the
+	// strategy option cannot settle (modify/delete — `-X` never resolves those) are
+	// resolved in place toward the queue commit's side. Nothing is squashed; the tree
+	// guard below proves the outcome exactly, since the merge was clean.
 	git(['rebase', '--abort']);
 	log(`Patches no longer apply individually; replaying with ${target}'s side favoured.`);
-	if (!rebaseResolvingMechanical({ git, pnpm, masterSha, log, extraArgs: ['-X', 'theirs'] }).ok) {
+	const favoured = rebaseResolvingMechanical({
+		git,
+		pnpm,
+		masterSha,
+		log,
+		extraArgs: ['-X', 'theirs'],
+		favourQueue: true,
+	});
+	if (!favoured.ok) {
 		git(['rebase', '--abort']);
 		throw new Error(
 			`Could not replay ${target} onto master even with its own side favoured; needs a human.`,
 		);
 	}
 
+	// Favouring resolves overlapping hunks toward 3.x without stalling, which can drop
+	// master-side changes no fix commit reasserts; the merge was clean, so the merge tree
+	// is the correct content — fold any drift back into the tip.
+	reconcileWithMergeTreeAtTip({ git, mergedTree: merged.tree, masterSha, log });
 	assertTreeMatches(git, merged.tree);
 	assertNoMarkers(git);
 	pushReplay(preHead);

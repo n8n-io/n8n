@@ -9,7 +9,7 @@ import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
-import type { License } from '@/license';
+import { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -200,6 +200,9 @@ describe('FrontendService', () => {
 				enabled: false,
 			}),
 		);
+		// isApiKeyAuthEnabled() reads License via the container directly, so the
+		// constructor-injected mock above must also be registered here.
+		Container.set(License, license);
 
 		return {
 			service: new FrontendService(
@@ -234,6 +237,7 @@ describe('FrontendService', () => {
 		globalConfig.aiAssistant.baseUrl = '';
 		globalConfig.aiGateway.enabled = false;
 		licenseState.isAiGatewayLicensed.mockReturnValue(false);
+		licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -291,6 +295,18 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiGateway).toBeUndefined();
+		});
+
+		it('should enable Cloud UBB mode when the AI Gateway is also licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
 		});
 
 		it('should normalize configured postMessage origins', async () => {

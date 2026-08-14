@@ -88,9 +88,10 @@ export const registerModuleModals = () => {
 		module.modals?.forEach((modalDef) => {
 			modalRegistry.register(modalDef);
 		});
+		module.adHocModalKeyPrefixes?.forEach((prefix) => {
+			modalRegistry.declareAdHocKeyPrefix(prefix);
+		});
 	});
-	// Subscribe to modal registry changes
-	useUIStore().initializeModalsFromRegistry();
 };
 
 /**
