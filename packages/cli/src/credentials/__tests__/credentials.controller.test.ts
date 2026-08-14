@@ -77,6 +77,7 @@ describe('CredentialsController', () => {
 	let updateSpy: MockInstance;
 	let createUnmanagedCredentialSpy: MockInstance;
 	let ensureCanManageEndUserCredentialSpy: MockInstance;
+	let ensureEndUserCredentialAllowedInProjectSpy: MockInstance;
 	let findCredentialOwningProjectSpy: MockInstance;
 	let emitSpy: MockInstance;
 
@@ -114,6 +115,10 @@ describe('CredentialsController', () => {
 		ensureCanManageEndUserCredentialSpy = vi
 			.spyOn(credentialsService, 'ensureCanManageEndUserCredential')
 			.mockResolvedValue(undefined);
+		// stubbed by default: the project-type check needs real project data that unit tests don't wire up
+		ensureEndUserCredentialAllowedInProjectSpy = vi
+			.spyOn(credentialsService, 'ensureEndUserCredentialAllowedInProject')
+			.mockReturnValue(undefined);
 		// stubbed by default: backed by connectionStatusProxy, which unit tests don't wire up
 		vi.spyOn(credentialsService, 'populateConnectedByMe').mockResolvedValue(undefined);
 		findCredentialOwningProjectSpy = sharedCredentialsRepository.findCredentialOwningProject;
@@ -711,6 +716,8 @@ describe('CredentialsController', () => {
 
 			// ASSERT
 			expect(ensureCanManageEndUserCredentialSpy).toHaveBeenCalledTimes(1);
+			// switching to end-user must also clear the personal-project gate
+			expect(ensureEndUserCredentialAllowedInProjectSpy).toHaveBeenCalledTimes(1);
 			expect(updateSpy).toHaveBeenCalledWith(
 				credentialId,
 				expect.objectContaining({
@@ -719,6 +726,42 @@ describe('CredentialsController', () => {
 				expect.any(Object),
 				expect.any(Object),
 			);
+		});
+
+		it('should not apply the personal-project gate when switching back to fixed', async () => {
+			// ARRANGE
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					isResolvable: false,
+				},
+			} as unknown as CredentialRequest.Update;
+
+			const existingCredentialWithResolvable = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				existingCredentialWithResolvable,
+			);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(false));
+			updateSpy.mockResolvedValue({
+				...existingCredentialWithResolvable,
+				name: 'Updated Credential',
+				isResolvable: false,
+			});
+
+			// ACT
+			await credentialsController.updateCredentials(ownerReq);
+
+			// ASSERT
+			expect(ensureCanManageEndUserCredentialSpy).toHaveBeenCalledTimes(1);
+			expect(ensureEndUserCredentialAllowedInProjectSpy).not.toHaveBeenCalled();
 		});
 
 		it('should keep existing isResolvable value when not provided', async () => {
