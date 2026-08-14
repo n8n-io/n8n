@@ -151,6 +151,15 @@ export class AgentSessionLangSmithExportService {
 		if (detail.executions.some((execution) => execution.status === 'running')) {
 			throw new ConflictError('Session is still running');
 		}
+		if (
+			detail.executions.some(
+				(execution) => execution.storedAt !== 'db' && execution.timeline === null,
+			)
+		) {
+			throw new ServiceUnavailableError(
+				"Session couldn't be exported because some execution data is unavailable. Try again.",
+			);
+		}
 	}
 
 	private async createClient(user: User): Promise<Client> {

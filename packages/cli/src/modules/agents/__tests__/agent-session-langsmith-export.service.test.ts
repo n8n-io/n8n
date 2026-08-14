@@ -342,6 +342,21 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(createRunMock).not.toHaveBeenCalled();
 	});
 
+	it('rejects when blob-stored execution data is unavailable', async () => {
+		const { service, agentExecutionService } = setup();
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread: makeThread(),
+			executions: [makeExecution({ storedAt: 'fs', timeline: null })],
+		});
+
+		await expect(service.exportSession(input)).rejects.toMatchObject({
+			message:
+				"Session couldn't be exported because some execution data is unavailable. Try again.",
+			httpStatusCode: 503,
+		});
+		expect(createRunMock).not.toHaveBeenCalled();
+	});
+
 	it('rejects cyclic child links without submitting a run', async () => {
 		const { service, agentExecutionService, threadRepository } = setup();
 		const rootThread = makeThread({
