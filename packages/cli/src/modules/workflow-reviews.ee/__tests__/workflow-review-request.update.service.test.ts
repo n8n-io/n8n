@@ -16,6 +16,7 @@ import type {
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestWorkflowRepository,
+	WorkflowRepository,
 	Transaction,
 	OperationContext,
 } from '@n8n/db';
@@ -32,7 +33,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
@@ -57,7 +58,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
-	const decisionEligibilityService = mock<WorkflowReviewDecisionEligibilityService>();
+	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const roleService = mock<RoleService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
@@ -73,6 +74,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		workflowFinderService,
 		workflowHistoryService,
 		workflowHistoryRepository,
+		mock<WorkflowRepository>(),
 		sharedWorkflowRepository,
 		publishHistoryRepository,
 		requestRepository,
@@ -80,7 +82,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		authorRepository,
 		reviewerRepository,
 		userRepository,
-		decisionEligibilityService,
+		eligibilityService,
 		roleService,
 		dbLockService,
 		collaborationService,
@@ -92,6 +94,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			id: requestId,
 			state: 'open',
 			decision: 'pending',
+			description: null,
 			createdAt: new Date('2026-07-20T10:00:00.000Z'),
 			updatedAt: new Date('2026-07-20T11:00:00.000Z'),
 			...overrides,
@@ -356,6 +359,20 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			);
 		});
 
+		it('updates the review description in the same transaction as the re-pin', async () => {
+			mockSuccessfulUpdatePath();
+
+			await service.updateVersion(user, requestId, {
+				...dto,
+				description: '  Updated review context  ',
+			});
+
+			expect(requestRepository.saveRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ description: 'Updated review context' }),
+				ctx,
+			);
+		});
+
 		it('throws BadRequestError when the version was pruned before the naming write', async () => {
 			mockSuccessfulUpdatePath();
 			workflowHistoryRepository.updateVersionMetadata.mockResolvedValue(0);
@@ -437,6 +454,63 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			});
 
 			expect(workflowHistoryRepository.updateVersionMetadata).not.toHaveBeenCalled();
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+		});
+
+		it('updates the review description under the lock when the version is already pinned', async () => {
+			mockAlreadyPinned('Same name');
+			requestRepository.findById.mockResolvedValue(
+				openRequest({ description: 'Original review description' }),
+			);
+
+			await service.updateVersion(user, requestId, {
+				...dto,
+				workflowVersionName: 'Same name',
+				description: '  Updated review description  ',
+			});
+
+			expect(dbLockService.withLockContext).toHaveBeenCalledOnce();
+			expect(requestRepository.saveRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					description: 'Updated review description',
+					updatedById: user.id,
+				}),
+				ctx,
+			);
+			expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
+			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
+		});
+
+		it('clears the review description when an empty string is sent', async () => {
+			mockAlreadyPinned('Same name');
+			requestRepository.findById.mockResolvedValue(
+				openRequest({ description: 'Original review description' }),
+			);
+
+			await service.updateVersion(user, requestId, {
+				...dto,
+				workflowVersionName: 'Same name',
+				description: '   ',
+			});
+
+			expect(requestRepository.saveRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ description: null }),
+				ctx,
+			);
+		});
+
+		it('preserves the review description when it is omitted', async () => {
+			mockAlreadyPinned('Same name');
+			requestRepository.findById.mockResolvedValue(
+				openRequest({ description: 'Original review description' }),
+			);
+
+			await service.updateVersion(user, requestId, {
+				...dto,
+				workflowVersionName: 'Same name',
+			});
+
+			expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 

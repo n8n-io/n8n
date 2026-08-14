@@ -82,6 +82,10 @@ describe('getAllowedToolNames', () => {
 		expect(allowed).toContain('publish_agent');
 		expect(allowed).toContain('unpublish_agent');
 	});
+
+	it('grants only call_agent with agent:execute', () => {
+		expect(getAllowedToolNames(['agent:execute'])).toEqual(new Set(['call_agent']));
+	});
 });
 
 describe('McpService scope enforcement', () => {
@@ -207,6 +211,7 @@ describe('McpService scope enforcement', () => {
 				'get_workflow_details',
 				'get_workflow_history',
 				'get_workflow_version',
+				'get_workflow_versions_diff',
 			]),
 		);
 	});

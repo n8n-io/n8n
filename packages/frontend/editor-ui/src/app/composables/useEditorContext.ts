@@ -38,11 +38,13 @@ export function useEditorContext() {
 			case 'instanceAi':
 				// Mirrors useInstanceAiAvailable() (the feature-layer gate) with
 				// app-layer primitives so this base composable imports no feature:
-				// the module is active, an admin hasn't disabled it, and the user
-				// may message Instance AI.
+				// the module is active, enabled, ready (or admin-fixable), and the
+				// user may message Instance AI.
 				return (
 					settings.isModuleActive('instance-ai') &&
 					settings.moduleSettings['instance-ai']?.enabled !== false &&
+					(settings.moduleSettings['instance-ai']?.setupCompleted === true ||
+						hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } })) &&
 					hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } })
 				);
 		}

@@ -31,19 +31,31 @@ describe('fromStepInputs', () => {
 		expect(fromStepInputs([[{ json }]])).toEqual([[{ json: { json } }]]);
 	});
 
-	it('yields a single empty item list for non-array payloads', () => {
-		expect(fromStepInputs({})).toEqual([[]]);
-		expect(fromStepInputs(null)).toEqual([[]]);
+	it('yields an empty item list for a null (unfilled) slot', () => {
+		// v1 coerces inputs that never received data to [] — same rule here
+		expect(fromStepInputs([null])).toEqual([[]]);
 	});
 
-	it('yields an empty item list for non-array elements', () => {
+	it('wraps a bare object slot as a single item (trigger payload shape)', () => {
+		expect(fromStepInputs([{ name: 'ada' }])).toEqual([[{ json: { name: 'ada' } }]]);
+	});
+
+	it('yields an empty item list for a slot not carrying items', () => {
 		expect(fromStepInputs(['nope'])).toEqual([[]]);
 	});
 });
 
 describe('toStepOutputs', () => {
+	it('collapses a zero-item slot to null (v1: branch not taken)', () => {
+		expect(toStepOutputs([[{ json: { x: 1 } }], []])).toEqual([[{ json: { x: 1 } }], null]);
+	});
+
+	it('collapses a lone empty slot', () => {
+		expect(toStepOutputs([[]])).toEqual([null]);
+	});
+
 	it('survives a JSON round-trip', () => {
-		const outputs: INodeExecutionData[][] = [[{ json: { x: 1 } }], []];
+		const outputs: INodeExecutionData[][] = [[{ json: { x: 1 } }], [{ json: { y: 2 } }]];
 		const payload = toStepOutputs(outputs);
 		expect(payload).toEqual(outputs);
 

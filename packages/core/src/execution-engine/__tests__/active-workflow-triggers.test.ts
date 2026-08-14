@@ -71,6 +71,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		pollFunctions.__runPoll.mockImplementation(async (poll) => await poll());
 		workflow.id = workflowId;
 		scheduledTaskManager.getGroupIds.mockReturnValue([]);
 		scheduledTaskManager.getTargetIds.mockReturnValue([]);
@@ -84,7 +85,7 @@ describe('ActiveWorkflowTriggers', () => {
 			scheduledTaskManager,
 			triggersAndPollers,
 			errorReporter,
-			new PollTriggerExecutor(logger, triggersAndPollers, tracing),
+			new PollTriggerExecutor(logger, triggersAndPollers, tracing, errorReporter),
 		);
 	});
 
@@ -1315,7 +1316,7 @@ describe('ActiveWorkflowTriggers', () => {
 				realScheduledTaskManager,
 				triggersAndPollers,
 				errorReporter,
-				new PollTriggerExecutor(realLogger, triggersAndPollers, tracing),
+				new PollTriggerExecutor(realLogger, triggersAndPollers, tracing, errorReporter),
 			);
 		});
 
@@ -1500,7 +1501,7 @@ describe('ActiveWorkflowTriggers', () => {
 				scheduledTaskManager,
 				triggersAndPollers,
 				errorReporter,
-				new PollTriggerExecutor(logger, triggersAndPollers, tracing),
+				new PollTriggerExecutor(logger, triggersAndPollers, tracing, errorReporter),
 			);
 		};
 

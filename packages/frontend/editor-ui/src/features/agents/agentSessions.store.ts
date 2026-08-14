@@ -133,6 +133,15 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		return await getThreadDetailApi(rootStore.restApiContext, projectId, agentId, threadId);
 	}
 
+	function upsertThread(thread: AgentExecutionThread) {
+		const index = threads.value.findIndex(({ id }) => id === thread.id);
+		if (index === -1) {
+			threads.value.push(thread);
+			return;
+		}
+		threads.value.splice(index, 1, thread);
+	}
+
 	async function deleteThread(projectId: string, agentId: string, threadId: string) {
 		const rootStore = useRootStore();
 		await deleteThreadApi(rootStore.restApiContext, projectId, agentId, threadId);
@@ -184,6 +193,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		refreshThreads,
 		loadMore,
 		getThreadDetail,
+		upsertThread,
 		deleteThread,
 		startAutoRefresh,
 		stopAutoRefresh,

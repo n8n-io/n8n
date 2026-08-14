@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{

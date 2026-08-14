@@ -20,6 +20,7 @@ import type {
 	WorkflowReviewRequestForWorkflowRow,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
+	WorkflowRepository,
 	Transaction,
 	OperationContext,
 } from '@n8n/db';
@@ -36,10 +37,9 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
-
 const user = mock<User>({ id: 'user-1' });
 
 /** Build a real `User` with `isPending` computed, as TypeORM does after load. */
@@ -55,6 +55,7 @@ const dto: CreateWorkflowReviewRequestDto = {
 	workflows: [
 		{ workflowId: 'wf-1', workflowVersionId: 'ver-1', workflowVersionName: 'Release candidate' },
 	],
+	reviewerUserIds: ['user-2'],
 };
 
 describe('WorkflowReviewRequestService', () => {
@@ -62,6 +63,8 @@ describe('WorkflowReviewRequestService', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+	/** The `workflow_entity` repository. `workflowRepository` below is the review's link table. */
+	const workflowEntityRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
@@ -69,7 +72,7 @@ describe('WorkflowReviewRequestService', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
-	const decisionEligibilityService = mock<WorkflowReviewDecisionEligibilityService>();
+	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const roleService = mock<RoleService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
@@ -85,6 +88,7 @@ describe('WorkflowReviewRequestService', () => {
 		workflowFinderService,
 		workflowHistoryService,
 		workflowHistoryRepository,
+		workflowEntityRepository,
 		sharedWorkflowRepository,
 		publishHistoryRepository,
 		requestRepository,
@@ -92,7 +96,7 @@ describe('WorkflowReviewRequestService', () => {
 		authorRepository,
 		reviewerRepository,
 		userRepository,
-		decisionEligibilityService,
+		eligibilityService,
 		roleService,
 		dbLockService,
 		collaborationService,
@@ -111,11 +115,21 @@ describe('WorkflowReviewRequestService', () => {
 	});
 
 	describe('create', () => {
+		// A reviewer is mandatory, so every create path resolves the eligible set.
+		beforeEach(() => {
+			roleService.rolesWithScope.mockResolvedValue(['some-role']);
+			userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
+				loadedUser({ id: 'user-2', email: 'user-2@n8n.io' }),
+			]);
+		});
+
 		const mockSuccessfulCreatePath = () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				mock<WorkflowEntity>({ isArchived: false }),
 			);
 			workflowHistoryService.findVersion.mockResolvedValue(mock());
+			// The in-lock re-check reads archived state on the lock's own connection.
+			workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: false });
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
 				mock<Project>({ id: 'project-1' }),
 			);
@@ -144,6 +158,7 @@ describe('WorkflowReviewRequestService', () => {
 				mock<WorkflowEntity>({ isArchived: false }),
 			);
 			workflowHistoryService.findVersion.mockResolvedValue(mock());
+			workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: false });
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
 				mock<Project>({ id: 'project-1' }),
 			);
@@ -228,6 +243,7 @@ describe('WorkflowReviewRequestService', () => {
 				mock<WorkflowEntity>({ isArchived: false }),
 			);
 			workflowHistoryService.findVersion.mockResolvedValue(mock());
+			workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: false });
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
 				mock<Project>({ id: 'project-1' }),
 			);
@@ -242,6 +258,52 @@ describe('WorkflowReviewRequestService', () => {
 			expect(requestRepository.createRequest).not.toHaveBeenCalled();
 			expect(workflowRepository.createWorkflowRow).not.toHaveBeenCalled();
 			expect(authorRepository.addAuthor).not.toHaveBeenCalled();
+		});
+
+		it('rejects a workflow archived between the pre-lock check and the lock', async () => {
+			mockSuccessfulCreatePath();
+			workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: true });
+
+			await expect(service.create(user, dto)).rejects.toThrow(BadRequestError);
+
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
+			expect(requestRepository.createRequest).not.toHaveBeenCalled();
+			expect(workflowRepository.createWorkflowRow).not.toHaveBeenCalled();
+		});
+
+		it('rejects a workflow deleted between the pre-lock check and the lock', async () => {
+			mockSuccessfulCreatePath();
+			workflowEntityRepository.findArchivedState.mockResolvedValue(null);
+
+			await expect(service.create(user, dto)).rejects.toThrow(NotFoundError);
+
+			expect(requestRepository.createRequest).not.toHaveBeenCalled();
+			expect(workflowRepository.createWorkflowRow).not.toHaveBeenCalled();
+		});
+
+		// A read that checks out a second connection here deadlocks a single-connection pool.
+		it('runs both in-lock re-check reads on the lock transaction', async () => {
+			mockSuccessfulCreatePath();
+
+			await service.create(user, dto);
+
+			expect(workflowEntityRepository.findArchivedState).toHaveBeenCalledWith('wf-1', ctx);
+			expect(sharedWorkflowRepository.getWorkflowOwningProject).toHaveBeenLastCalledWith(
+				'wf-1',
+				ctx,
+			);
+		});
+
+		it('rejects a workflow moved to another project between the pre-lock check and the lock', async () => {
+			mockSuccessfulCreatePath();
+			sharedWorkflowRepository.getWorkflowOwningProject
+				.mockResolvedValueOnce(mock<Project>({ id: 'project-1' }))
+				.mockResolvedValueOnce(mock<Project>({ id: 'project-2' }));
+
+			await expect(service.create(user, dto)).rejects.toThrow(ConflictError);
+
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
+			expect(requestRepository.createRequest).not.toHaveBeenCalled();
 		});
 
 		describe('reviewer assignment', () => {
@@ -301,20 +363,21 @@ describe('WorkflowReviewRequestService', () => {
 				);
 			});
 
+			// The DTO rejects an empty list, but the service must not silently create a
+			// reviewerless review if it is ever called past that boundary.
 			it.each<[string, string[] | undefined]>([
 				['omitted', undefined],
 				['empty', []],
-			])(
-				'skips the eligibility lookup and the reviewer write when reviewers are %s',
-				async (_name, reviewerUserIds) => {
-					mockSuccessfulCreatePath();
+			])('rejects a create with %s reviewers', async (_name, reviewerUserIds) => {
+				mockSuccessfulCreatePath();
 
-					await service.create(user, { ...dto, reviewerUserIds });
+				await expect(
+					service.create(user, { ...dto, reviewerUserIds } as CreateWorkflowReviewRequestDto),
+				).rejects.toThrow(BadRequestError);
 
-					expect(userRepository.findEligibleByProjectOrGlobalRoles).not.toHaveBeenCalled();
-					expect(reviewerRepository.addReviewers).not.toHaveBeenCalled();
-				},
-			);
+				expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+				expect(reviewerRepository.addReviewers).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('pinned version naming', () => {
@@ -506,6 +569,7 @@ describe('WorkflowReviewRequestService', () => {
 			id: 'req-1',
 			state: 'open',
 			decision: 'pending',
+			description: null,
 			updatedById: 'user-2',
 			workflowVersionId: 'ver-1',
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
@@ -561,6 +625,7 @@ describe('WorkflowReviewRequestService', () => {
 					id: 'req-1',
 					state: 'open',
 					decision: 'changes_requested',
+					description: null,
 					workflowVersionId: 'ver-1',
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
@@ -636,7 +701,6 @@ describe('WorkflowReviewRequestService', () => {
 			});
 		});
 
-		// R1 (P3): enriching row by row made this list an N+1 — see LIGO-607_review.md
 		it('enriches many rows with one lookup per derived field', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 			requestRepository.findRequestsForWorkflow.mockResolvedValue([

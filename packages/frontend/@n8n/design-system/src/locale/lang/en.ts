@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { N8nLocale } from '@n8n/design-system/types';
+import type { N8nLocale } from '../../types';
 
 export default {
 	'generic.retry': 'Retry',
@@ -11,6 +11,8 @@ export default {
 	'nds.userInfo.you': '(you)',
 	'nds.userSelect.selectUser': 'Select User',
 	'nds.userSelect.noMatchingUsers': 'No matching users',
+	'nds.inputNumber.increase': 'Increase',
+	'nds.inputNumber.decrease': 'Decrease',
 	'notice.showMore': 'Show more',
 	'notice.showLess': 'Show less',
 	'formInput.validator.fieldRequired': 'This field is required',
@@ -196,7 +198,10 @@ export default {
 	'markdownEditor.bold': 'Bold',
 	'markdownEditor.italic': 'Italic',
 	'markdownEditor.strikethrough': 'Strikethrough',
+	'markdownEditor.underline': 'Underline',
+	'markdownEditor.link': 'Link',
 	'markdownEditor.bulletList': 'Bullet list',
+	'markdownEditor.orderedList': 'Ordered list',
 	'markdownEditor.taskList': 'Task list',
 	'markdownEditor.codeBlock': 'Code block',
 	'markdownEditor.blockquote': 'Blockquote',
@@ -208,6 +213,15 @@ export default {
 	'markdownEditor.heading3': 'Heading 3',
 	'markdownEditor.rawMarkdownView': 'Raw markdown',
 	'markdownEditor.formattedMarkdownView': 'Formatted view',
+	'markdownEditor.linkDialogTitle': 'Add link',
+	'markdownEditor.linkUrl': 'Link URL',
+	'markdownEditor.linkPlaceholder': 'https://example.com',
+	'markdownEditor.linkRequired': 'Enter a URL to add the link',
+	'markdownEditor.linkInvalid': 'Enter a valid URL, such as https://example.com',
+	'markdownEditor.addLink': 'Add link',
+	'markdownEditor.updateLink': 'Update link',
+	'markdownEditor.removeLink': 'Remove link',
+	'markdownEditor.cancel': 'Cancel',
 	'markdownEditor.slashCommandMenuLabel': 'Markdown commands',
 	'aiAssistant.textMessage.restoreVersion': 'Restore version',
 	'aiAssistant.versionCard.restoreModal.title': 'Restore to this version?',

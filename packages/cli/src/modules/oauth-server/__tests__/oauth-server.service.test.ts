@@ -5,10 +5,12 @@ import {
 import { Logger, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
@@ -22,6 +24,7 @@ import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
+import { OAuthConsentService } from '../oauth-consent.service';
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
 import { OAuthTokenService } from '../oauth-token.service';
@@ -39,6 +42,8 @@ let userConsentRepository: Mocked<UserConsentRepository>;
 let mailer: Mocked<UserManagementMailer>;
 let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
 let eventService: Mocked<EventService>;
+let authService: Mocked<AuthService>;
+let oauthConsentService: Mocked<OAuthConsentService>;
 
 // Shared, immutable across tests: the base URLs gate the first-party client_id guard.
 const urlServiceMock = mock<UrlService>();
@@ -56,6 +61,8 @@ describe('OAuthServerService', () => {
 		urlServiceMock.getTestWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
 		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
 		eventService = mock<EventService>();
+		authService = mockInstance(AuthService);
+		oauthConsentService = mockInstance(OAuthConsentService);
 
 		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
@@ -80,6 +87,8 @@ describe('OAuthServerService', () => {
 			mailer,
 			urlServiceMock,
 			eventService,
+			authService,
+			oauthConsentService,
 		);
 	});
 
@@ -185,6 +194,8 @@ describe('OAuthServerService', () => {
 					mailer,
 					urlServiceMock,
 					mock<EventService>(),
+					mock<AuthService>(),
+					mock<OAuthConsentService>(),
 				);
 			});
 
@@ -254,6 +265,8 @@ describe('OAuthServerService', () => {
 					mailer,
 					urlServiceMock,
 					mock<EventService>(),
+					mock<AuthService>(),
+					mock<OAuthConsentService>(),
 				);
 
 				const result = await svc.clientsStore.getClient('https://evil.example.com/form/abc');
@@ -402,6 +415,57 @@ describe('OAuthServerService', () => {
 				resource: 'https://n8n.example.com/mcp-server/http',
 			});
 			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+		});
+
+		describe('reusing a prior consent (auto-approval)', () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read write',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				state: 'state-xyz',
+				resource: new URL('https://n8n.example.com/mcp-server/http'),
+			};
+
+			beforeEach(() => {
+				getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+				authService.getCookieToken.mockReturnValue('valid-cookie');
+				authService.authenticateUserByCookie.mockResolvedValue(mock<User>({ id: 'user-1' }));
+			});
+
+			it('mints a code and skips the consent screen when a grant is reused', async () => {
+				const res = mock<Response>();
+				oauthConsentService.tryReuseConsent.mockResolvedValue({
+					redirectUrl: 'https://example.com/callback?code=reused&state=state-xyz',
+				});
+
+				await service.authorize(client, params, res);
+
+				expect(oauthConsentService.tryReuseConsent).toHaveBeenCalled();
+				expect(res.redirect).toHaveBeenCalledWith(
+					'https://example.com/callback?code=reused&state=state-xyz',
+				);
+				expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+			});
+
+			it('falls back to the consent screen when there is no reusable grant', async () => {
+				const res = mock<Response>();
+				oauthConsentService.tryReuseConsent.mockResolvedValue(null);
+
+				await service.authorize(client, params, res);
+
+				expect(oauthSessionService.createSession).toHaveBeenCalled();
+				expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+			});
 		});
 
 		it('should handle null state parameter', async () => {
@@ -849,6 +913,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlServiceMock,
 				eventService,
+				mock<AuthService>(),
+				mock<OAuthConsentService>(),
 			);
 
 			const client = {
@@ -1402,6 +1468,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlServiceMock,
 				mock<EventService>(),
+				mock<AuthService>(),
+				mock<OAuthConsentService>(),
 			);
 
 			expect(
@@ -1450,6 +1518,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlService,
 				mock<EventService>(),
+				mock<AuthService>(),
+				mock<OAuthConsentService>(),
 			);
 		};
 

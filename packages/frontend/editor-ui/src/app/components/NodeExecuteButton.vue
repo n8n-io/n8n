@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { ButtonSize, IUpdateInformation } from '@/Interface';
 import type { ButtonVariant } from '@n8n/design-system';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';

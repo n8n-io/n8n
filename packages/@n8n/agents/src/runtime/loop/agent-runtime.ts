@@ -7,10 +7,11 @@ import { incrementMessageCount, incrementTokenCountFromUsage } from './execution
 import { GenerateSink } from './generate-sink';
 import { hydrateFileParts } from './hydrate-file-parts';
 import type { RunOutputSink, RunServices } from './run-output-sink';
-import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
+import { RuntimeContextBuilder } from './runtime-context';
 import {
 	extractSettledToolCalls,
 	formatMcpConnectionNote,
+	isEmptyModelTurn,
 	makeErrorStream,
 	mergeUsage,
 	normalizeInput,
@@ -51,12 +52,15 @@ import type {
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
+import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
+import type { WorkspaceFilesystem } from '../../workspace';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import type { FetchFn } from '../model/model-factory';
+import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
@@ -90,6 +94,7 @@ export interface AgentRuntimeConfig {
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
+	workspaceFilesystem?: WorkspaceFilesystem;
 	toolSearch?: {
 		topK?: number;
 	};
@@ -135,6 +140,9 @@ export interface AgentRuntimeConfig {
 }
 
 const MAX_LOOP_ITERATIONS = 30;
+
+/** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
+const MAX_EMPTY_TURN_RETRIES = 2;
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -193,6 +201,7 @@ export class AgentRuntime {
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
+		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
@@ -206,12 +215,15 @@ export class AgentRuntime {
 			this.backgroundTasks,
 			this.eventBus,
 			this.telemetry,
+			tokenCounter,
 		);
 		this.toolExecutor = new ToolCallExecutor({
 			telemetry: this.telemetry,
 			eventBus: this.eventBus,
 			concurrency: config.toolCallConcurrency ?? 1,
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
+			tokenCounter,
+			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -861,7 +873,7 @@ export class AgentRuntime {
 				staticToolCacheName,
 			});
 
-			const turn = await sink.callModel({
+			const modelCallContext = {
 				model: staticLoopContext.model,
 				system,
 				messages: cached.messages,
@@ -871,8 +883,28 @@ export class AgentRuntime {
 				reasoning: staticLoopContext.reasoning,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
+				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
-			});
+			};
+			let turn = await sink.callModel(modelCallContext);
+
+			// Some providers occasionally return a `stop` turn with no output at
+			// all mid-task, which would silently end the run with work half-done.
+			// Retry the call a bounded number of times before accepting the empty
+			// turn; each discarded attempt still bills its usage.
+			for (
+				let emptyRetry = 0;
+				emptyRetry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn);
+				emptyRetry++
+			) {
+				totalUsage = mergeUsage(totalUsage, turn.usage);
+				incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
+				// Publish before the abort check so a cancel between the empty attempt
+				// and the retry still bills those tokens via getTerminalFinish().
+				sink.reportUsage(totalUsage);
+				this.assertNotAborted(abortScope);
+				turn = await sink.callModel(modelCallContext);
+			}
 
 			// Fold the just-finished turn's usage in before the abort check so a
 			// stop that lands right after the model call still bills its tokens.
@@ -989,7 +1021,7 @@ export class AgentRuntime {
 					sink,
 				);
 			},
-			getAbortFinish: () => sink?.getAbortFinish() ?? {},
+			getTerminalFinish: () => sink?.getTerminalFinish() ?? {},
 			// Durably save the turn-so-far when a streaming run is aborted, so a cancelled
 			// run still leaves its assistant work in memory. Fold in the text streamed for
 			// the in-flight turn first — its `newMessages` are only built once the stream

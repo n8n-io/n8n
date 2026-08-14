@@ -11,6 +11,7 @@ import type {
 	IExecutionBase,
 	IExecutionFlattedDb,
 	IExecutionResponse,
+	OperationContext,
 	UpdateExecutionConditions,
 } from '@n8n/db';
 import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
@@ -89,8 +90,11 @@ export class ExecutionPersistence {
 	 * Create an execution entity and persist its data to the configured storage.
 	 * - In `db` mode, we write both entity and data to the DB in a transaction.
 	 * - In blob modes (`fs`, `s3`, `az`), we write the entity to the DB and its data to the blob store.
+	 *
+	 * With a `ctx` carrying a transaction, this row commits together with everything
+	 * else in it; with none, it gets a transaction of its own.
 	 */
-	async create(payload: CreateExecutionPayload) {
+	async create(payload: CreateExecutionPayload, ctx: OperationContext = {}): Promise<string> {
 		const { data: rawData, workflowData, ...rest } = payload;
 		const { connections, nodes, name, settings, id, nodeGroups } = workflowData;
 		const workflowSnapshot: WorkflowSnapshot = {
@@ -107,7 +111,7 @@ export class ExecutionPersistence {
 
 		let reclaimedTombstone: DeletionTarget | null = null;
 		try {
-			const executionId = await this.executionRepository.manager.transaction(async (tx) => {
+			const executionId = await this.executionRepository.runInTransaction(ctx, async (tx) => {
 				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
@@ -407,6 +411,42 @@ export class ExecutionPersistence {
 			return await this.executionRepository.findMultipleExecutions(queryParams, options);
 		}
 
+		const { executions } = await this.readMultiple(queryParams, options);
+		return executions;
+	}
+
+	/**
+	 * Like {@link findMultipleExecutions}, but also returns the ids of executions whose data
+	 * bundle could not be read. The plain read drops those silently; callers that must act on
+	 * them (rather than skip them) use this.
+	 */
+	async findMultipleExecutionsWithUnreadable(
+		queryParams: FindManyOptions<ExecutionEntity>,
+	): Promise<{ executions: IExecutionResponse[]; unreadableIds: string[] }> {
+		const { executions, unreadableIds } = await this.readMultiple(queryParams, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		return { executions: executions as IExecutionResponse[], unreadableIds };
+	}
+
+	/**
+	 * Read entities together with their data bundles, reporting which entities had no readable
+	 * bundle. An id lands in `unreadableIds` only on permanent loss - a missing bundle or a
+	 * corrupt one - since transient store failures propagate as throws instead.
+	 */
+	private async readMultiple(
+		queryParams: FindManyOptions<ExecutionEntity>,
+		options: {
+			unflattenData?: boolean;
+			includeData?: boolean;
+			maxDataSizeBytes?: number;
+		},
+	): Promise<{
+		executions: IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
+		unreadableIds: string[];
+	}> {
 		queryParams.relations ??= [];
 		if (Array.isArray(queryParams.relations)) {
 			if (!queryParams.relations.includes('metadata')) queryParams.relations.push('metadata');
@@ -435,7 +475,7 @@ export class ExecutionPersistence {
 		}
 
 		const entities = await this.executionRepository.find(queryParams);
-		if (entities.length === 0) return [];
+		if (entities.length === 0) return { executions: [], unreadableIds: [] };
 
 		const assembledById = new Map<string, Awaited<ReturnType<typeof this.assembleExecution>>>();
 
@@ -503,12 +543,19 @@ export class ExecutionPersistence {
 			}),
 		);
 
-		return entities
-			.map((e) => assembledById.get(e.id))
-			.filter((e): e is NonNullable<typeof e> => e !== undefined) as
-			| IExecutionFlattedDb[]
-			| IExecutionResponse[]
-			| IExecutionBase[];
+		const executions: Array<Awaited<ReturnType<typeof this.assembleExecution>>> = [];
+		// An entity with no assembled result is one whose bundle was missing or corrupt.
+		const unreadableIds: string[] = [];
+		for (const entity of entities) {
+			const assembled = assembledById.get(entity.id);
+			if (assembled === undefined) unreadableIds.push(entity.id);
+			else executions.push(assembled);
+		}
+
+		return {
+			executions: executions as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[],
+			unreadableIds,
+		};
 	}
 
 	/** Find an execution scoped to accessible workflows, with unflattened data and annotation. */
@@ -521,43 +568,37 @@ export class ExecutionPersistence {
 		});
 	}
 
-	/** Find an execution scoped to shared workflows, with unflattened data and annotation (a display read). */
-	async findIfSharedUnflatten(
+	/**
+	 * Find one execution scoped to the given workflow IDs (display read).
+	 * Defaults: include data + annotation, unflattened.
+	 */
+	async findOneInWorkflows(
 		executionId: string,
-		sharedWorkflowIds: string[],
-		maxDataSizeBytes?: number,
-	) {
-		return await this.findSingleExecution(executionId, {
-			where: { workflowId: In(sharedWorkflowIds) },
-			includeData: true,
-			unflattenData: true,
-			includeAnnotation: true,
-			maxDataSizeBytes,
-		});
-	}
-
-	/** Find an execution scoped to the given workflows for the public API (a display read). */
-	async getExecutionInWorkflowsForPublicApi(
-		id: string,
 		workflowIds: string[],
-		includeData?: boolean,
-		maxDataSizeBytes?: number,
-	): Promise<IExecutionBase | undefined> {
-		return await this.findSingleExecution(id, {
+		options: {
+			includeData?: boolean;
+			includeAnnotation?: boolean;
+			maxDataSizeBytes?: number;
+		} = {},
+	): Promise<IExecutionResponse | IExecutionBase | undefined> {
+		const { includeData = true, includeAnnotation = true, maxDataSizeBytes } = options;
+
+		return await this.findSingleExecution(executionId, {
 			where: { workflowId: In(workflowIds) },
 			includeData,
 			unflattenData: true,
+			includeAnnotation,
 			maxDataSizeBytes,
 		});
 	}
 
-	/** Find executions scoped to the given workflows for the public API, with data per `storedAt`. */
-	async getExecutionsForPublicApi(
-		params: {
+	/** Find executions scoped to the given workflows, with data per `storedAt`. */
+	async findManyInWorkflows(
+		workflowIds: string[],
+		options: {
 			limit: number;
 			includeData?: boolean;
 			lastId?: string;
-			workflowIds?: string[];
 			status?: ExecutionStatus;
 			excludedExecutionsIds?: string[];
 		},
@@ -577,11 +618,11 @@ export class ExecutionPersistence {
 					'finished',
 					'status',
 				],
-				where: this.executionRepository.getFindExecutionsForPublicApiCondition(params),
+				where: this.executionRepository.getFindManyInWorkflowsCondition(workflowIds, options),
 				order: { id: 'DESC' },
-				take: params.limit,
+				take: options.limit,
 			},
-			{ includeData: params.includeData, unflattenData: true, maxDataSizeBytes },
+			{ includeData: options.includeData, unflattenData: true, maxDataSizeBytes },
 		);
 	}
 
