@@ -1,6 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { nextTick, ref, computed, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
@@ -395,6 +395,26 @@ async function renderView({
 	});
 	if (waitForAsyncSetup) await flushPromises();
 	return wrapper;
+}
+
+/**
+ * The view renders the editor column as soon as `initialize()` settles, including
+ * the path where the agent failed to load — and then drops `toggle-mcp-access`
+ * without a trace, because the handler bails on a null agent. Assert the agent is
+ * there first, so a mount problem reports itself instead of surfacing later as an
+ * autosave spy with zero calls.
+ */
+function expectMcpToggleIsAccepted(editorColumn: ReturnType<VueWrapper['findComponent']>) {
+	expect(editorColumn.props('agent')).toBeTruthy();
+}
+
+/**
+ * `agentAvailableInMcp` flips the moment the handler accepts the toggle, so it
+ * proves the autosave was queued — rather than trusting that one tick was enough
+ * before the assertion or the agent switch that flushes it.
+ */
+function expectMcpToggleWasRegistered(editorColumn: ReturnType<VueWrapper['findComponent']>) {
+	expect(editorColumn.props('agentAvailableInMcp')).toBe(true);
 }
 
 async function startArtifactPreviewSend(
@@ -1586,10 +1606,11 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 		vi.useFakeTimers();
 		try {
-			wrapper
-				.findComponent({ name: 'AgentBuilderEditorColumn' })
-				.vm.$emit('toggle-mcp-access', true);
+			const editorColumn = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			expectMcpToggleIsAccepted(editorColumn);
+			editorColumn.vm.$emit('toggle-mcp-access', true);
 			await nextTick();
+			expectMcpToggleWasRegistered(editorColumn);
 			await vi.advanceTimersByTimeAsync(500);
 			expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a2', true);
 		} finally {
@@ -2071,12 +2092,15 @@ describe('AgentBuilderView — three-column shell', () => {
 			unchangedIds: [],
 		});
 
+		// Fake timers hold the debounce open, so the agent switch below — not the
+		// timer — is what flushes the pending toggle.
 		vi.useFakeTimers();
 		try {
-			wrapper
-				.findComponent({ name: 'AgentBuilderEditorColumn' })
-				.vm.$emit('toggle-mcp-access', true);
+			const editorColumn = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			expectMcpToggleIsAccepted(editorColumn);
+			editorColumn.vm.$emit('toggle-mcp-access', true);
 			await nextTick();
+			expectMcpToggleWasRegistered(editorColumn);
 
 			await wrapper.setProps({ artifactAgentId: 'a2' });
 			await flushPromises();
