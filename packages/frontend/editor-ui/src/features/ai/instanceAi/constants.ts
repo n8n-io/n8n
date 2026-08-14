@@ -40,6 +40,9 @@ export const COMPUTER_USE_CONNECTION_TYPE = 'computer-use';
 export type BrowserUseConnectionType = typeof BROWSER_USE_CONNECTION_TYPE;
 export type ComputerUseConnectionType = typeof COMPUTER_USE_CONNECTION_TYPE;
 
+export const BROWSER_USE_EXTENSION_ID = 'cegmdpndekdfpnafgacidejijecomlhh';
+export const CHROME_EXTENSION_URL = `https://chromewebstore.google.com/detail/n8n-browser-use/${BROWSER_USE_EXTENSION_ID}`;
+
 const INSTANCE_AI_THREAD_SOURCE_SET: ReadonlySet<string> = new Set(INSTANCE_AI_THREAD_SOURCES);
 
 export function isInstanceAiThreadSource(value: unknown): value is InstanceAiThreadSource {

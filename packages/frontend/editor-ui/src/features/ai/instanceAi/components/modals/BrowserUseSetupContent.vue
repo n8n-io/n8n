@@ -1,12 +1,18 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useEventListener } from '@vueuse/core';
 import { N8nButton, N8nCallout, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { isBrowserUseSupportedForBrowser } from '@/experiments/instanceAiBrowserUse';
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
 
-import { CHROME_EXTENSION_URL } from './constants';
+import { CHROME_EXTENSION_URL } from '../../constants';
+import {
+	detectBrowserUseExtension,
+	type BrowserUseExtensionState,
+} from '../../utils/browserUseExtension';
 
 const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
 
@@ -24,11 +30,28 @@ const emit = defineEmits<{ close: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
+const { onDocumentVisible } = useDocumentVisibility();
 
 const isBrowserSupported = isBrowserUseSupportedForBrowser();
 const isConnected = computed(() => store.browserConnected);
 const connectUrl = ref<string | null>(null);
+const extensionState = ref<BrowserUseExtensionState>('unknown');
+const isExtensionMissing = computed(() => extensionState.value === 'not-installed');
+const isExtensionInstalled = computed(() => extensionState.value === 'installed');
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+let extensionProbeId = 0;
+
+async function refreshExtensionState(): Promise<void> {
+	if (!isBrowserSupported || store.browserConnected) return;
+
+	// Returning to the tab can fire both triggers below, so let the newest probe win rather
+	// than whichever settles last.
+	const probeId = ++extensionProbeId;
+	const state = await detectBrowserUseExtension();
+	if (probeId === extensionProbeId) {
+		extensionState.value = state;
+	}
+}
 
 function clearRefreshTimer(): void {
 	if (refreshTimer) {
@@ -57,7 +80,15 @@ onMounted(() => {
 	if (!store.browserConnected) {
 		void refreshConnectUrl();
 	}
+	void refreshExtensionState();
 });
+
+// Re-probe when the user returns from installing the extension. Coming back by tab switch
+// only fires `visibilitychange` — the window's focus can land in DevTools or another pane —
+// while coming back from a separate window only fires `focus`, so we listen for both.
+const reprobeExtension = () => void refreshExtensionState();
+onDocumentVisible(reprobeExtension);
+useEventListener(window, 'focus', reprobeExtension);
 
 onBeforeUnmount(() => {
 	clearRefreshTimer();
@@ -105,7 +136,7 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('instanceAi.browserUse.modal.description') }}
 			</N8nText>
 
-			<div :class="$style.step">
+			<div v-if="!isExtensionInstalled" :class="$style.step">
 				<N8nText :bold="true" size="small">
 					{{ i18n.baseText('instanceAi.browserUse.step.extension.title') }}
 				</N8nText>
@@ -116,7 +147,7 @@ onBeforeUnmount(() => {
 					:label="i18n.baseText('instanceAi.browserUse.step.extension.cta')"
 					:href="CHROME_EXTENSION_URL"
 					target="_blank"
-					variant="outline"
+					:variant="isExtensionMissing ? 'solid' : 'outline'"
 					size="medium"
 					icon="external-link"
 					data-test-id="browser-use-install-extension"
@@ -128,23 +159,33 @@ onBeforeUnmount(() => {
 				<N8nText :bold="true" size="small">
 					{{ i18n.baseText('instanceAi.browserUse.step.connect.title') }}
 				</N8nText>
-				<N8nText color="text-light" size="small">
-					{{ i18n.baseText('instanceAi.browserUse.step.connect.description') }}
+				<N8nText
+					v-if="isExtensionMissing"
+					color="text-light"
+					size="small"
+					data-test-id="browser-use-extension-missing-note"
+				>
+					{{ i18n.baseText('instanceAi.browserUse.step.connect.extensionMissing') }}
 				</N8nText>
-				<N8nButton
-					:label="i18n.baseText('instanceAi.browserUse.step.connect.cta')"
-					:href="connectUrl ?? undefined"
-					target="_blank"
-					variant="solid"
-					size="medium"
-					icon="external-link"
-					:disabled="!connectUrl"
-					data-test-id="browser-use-open-connect-page"
-					@click="telemetry.trackOpenExtensionClicked"
-				/>
+				<template v-else>
+					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('instanceAi.browserUse.step.connect.description') }}
+					</N8nText>
+					<N8nButton
+						:label="i18n.baseText('instanceAi.browserUse.step.connect.cta')"
+						:href="connectUrl ?? undefined"
+						target="_blank"
+						variant="solid"
+						size="medium"
+						icon="external-link"
+						:disabled="!connectUrl"
+						data-test-id="browser-use-open-connect-page"
+						@click="telemetry.trackOpenExtensionClicked"
+					/>
+				</template>
 			</div>
 
-			<div :class="$style.waitingRow">
+			<div v-if="!isExtensionMissing" :class="$style.waitingRow">
 				<N8nIcon icon="spinner" color="primary" spin size="small" />
 				<span>{{ i18n.baseText('instanceAi.browserUse.step.extension.waiting') }}</span>
 			</div>
