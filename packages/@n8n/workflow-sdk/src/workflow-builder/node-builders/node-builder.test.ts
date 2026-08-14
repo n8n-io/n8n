@@ -961,4 +961,179 @@ describe('Node Builder', () => {
 			}).not.toThrow();
 		});
 	});
+
+	/**
+	 * A node id is the stable identity that execution logs, poll cursors, dedupe state
+	 * and the version diff all key on, so an id declared in the source has to survive
+	 * the rebuild instead of being replaced by a fresh uuid.
+	 */
+	describe('source-declared node ids', () => {
+		it('node() should use the id declared in config', () => {
+			const n = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: 'saved-set' } });
+
+			expect(n.id).toBe('saved-set');
+		});
+
+		it('trigger() should use the id declared in config', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { id: 'saved-trigger' },
+			});
+
+			expect(t.id).toBe('saved-trigger');
+		});
+
+		it('ifElse() should use the id declared in config', () => {
+			const ifNode = ifElse({ version: 2.2, config: { id: 'saved-if' } });
+
+			expect(ifNode.id).toBe('saved-if');
+		});
+
+		it('switchCase() should use the id declared in config', () => {
+			const switchNode = switchCase({ version: 3.2, config: { id: 'saved-switch' } });
+
+			expect(switchNode.id).toBe('saved-switch');
+		});
+
+		it('merge() should use the id declared in config', () => {
+			const mergeNode = merge({ version: 3, config: { id: 'saved-merge' } });
+
+			expect(mergeNode.id).toBe('saved-merge');
+		});
+
+		it('sticky() should use the id declared in config', () => {
+			const s = sticky('## Notes', { id: 'saved-sticky' });
+
+			expect(s.id).toBe('saved-sticky');
+		});
+
+		it('splitInBatches() should use the id declared in config', () => {
+			const sib = splitInBatches({ version: 3, config: { id: 'saved-sib' } });
+
+			expect(sib.sibNode.id).toBe('saved-sib');
+		});
+
+		it('languageModel() should use the id declared in config', () => {
+			const model = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: { id: 'saved-model' },
+			});
+
+			expect(model.id).toBe('saved-model');
+		});
+
+		it('memory() should use the id declared in config', () => {
+			const mem = memory({
+				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+				version: 1.2,
+				config: { id: 'saved-memory' },
+			});
+
+			expect(mem.id).toBe('saved-memory');
+		});
+
+		it('tool() should use the id declared in config', () => {
+			const t = tool({
+				type: '@n8n/n8n-nodes-langchain.toolCode',
+				version: 1.1,
+				config: { id: 'saved-tool' },
+			});
+
+			expect(t.id).toBe('saved-tool');
+		});
+
+		it('should still auto-generate distinct ids when config declares none', () => {
+			const n1 = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+			const n2 = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+
+			expect(n1.id).toBeDefined();
+			expect(n2.id).toBeDefined();
+			expect(n1.id).not.toBe(n2.id);
+		});
+
+		it('should keep the declared id through update()', () => {
+			const n = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { id: 'saved-set', parameters: { a: 1 } },
+			});
+
+			expect(n.update({ parameters: { a: 2 } }).id).toBe('saved-set');
+		});
+
+		it('should keep a generated sticky id through update()', () => {
+			const s = sticky('## Before');
+
+			expect(s.update({ parameters: { content: '## After' } }).id).toBe(s.id);
+		});
+
+		it('should keep a generated splitInBatches id through update()', () => {
+			const sib = splitInBatches({ version: 3 });
+
+			expect(sib.sibNode.update({ parameters: { batchSize: 5 } }).id).toBe(sib.sibNode.id);
+		});
+
+		/**
+		 * `update()` must not be a back door to changing identity. The instance id is passed
+		 * positionally so it already wins, but the patch must not leave a different value in
+		 * `config.id` either — `regenerateNodeIds()` reads that as the author's declaration and
+		 * would adopt it on the next rebuild.
+		 */
+		it('should ignore an id in an update() patch', () => {
+			const n = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { id: 'declared', parameters: { a: 1 } },
+			});
+
+			const updated = n.update({ id: 'hijacked', parameters: { a: 2 } });
+
+			expect(updated.id).toBe('declared');
+			expect(updated.config.id).toBe('declared');
+		});
+
+		it('should not let an update() patch introduce an id where none was declared', () => {
+			const n = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+
+			const updated = n.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe(n.id);
+			expect(updated.config.id).toBeUndefined();
+		});
+
+		it('should ignore an id in a subnode update() patch', () => {
+			const model = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: { id: 'declared-model' },
+			});
+
+			const updated = model.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe('declared-model');
+			expect(updated.config.id).toBe('declared-model');
+		});
+
+		it('should ignore an id in a splitInBatches update() patch', () => {
+			const sib = splitInBatches({ version: 3, config: { id: 'declared-sib' } });
+
+			const updated = sib.sibNode.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe('declared-sib');
+			expect(updated.config.id).toBe('declared-sib');
+		});
+
+		/** A blank id is not a declaration — it would hand two nodes one empty identity. */
+		it('should treat a blank declared id as absent', () => {
+			const n1 = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: '' } });
+			const n2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: '   ' } });
+
+			expect(n1.id).not.toBe('');
+			expect(n1.config.id).toBeUndefined();
+			expect(n2.config.id).toBeUndefined();
+			expect(n1.id).not.toBe(n2.id);
+		});
+	});
 });
