@@ -78,10 +78,30 @@ export async function getPages(
 	}
 
 	const escaped = (filter ?? '').replace(/(["\\])/g, '\\$1');
+
+	// An exact-title page can be buried behind newer prefix matches, so page one
+	// fetches it separately and the prefix query excludes it
+	let exactEntries: IDataObject[] = [];
+	let base = '';
+	if (escaped !== '' && paginationToken === undefined) {
+		const exactResponse = await confluenceApiRequest.call(
+			this,
+			'GET',
+			'/wiki/rest/api/search',
+			{},
+			{ cql: `type=page${spaceClause} AND title = "${escaped}"`, limit: SEARCH_PAGE_SIZE },
+		);
+		exactEntries = Array.isArray(exactResponse.results)
+			? (exactResponse.results as IDataObject[])
+			: [];
+		const exactLinks = exactResponse._links as IDataObject | undefined;
+		if (typeof exactLinks?.base === 'string') base = exactLinks.base;
+	}
+
 	const cql =
 		escaped === ''
 			? `type=page${spaceClause} ORDER BY lastmodified DESC`
-			: `type=page${spaceClause} AND title ~ "${escaped}*" ORDER BY lastmodified DESC`;
+			: `type=page${spaceClause} AND title ~ "${escaped}*" AND title != "${escaped}" ORDER BY lastmodified DESC`;
 
 	const response = await confluenceApiRequest.call(
 		this,
@@ -92,15 +112,18 @@ export async function getPages(
 	);
 
 	const links = response._links as IDataObject | undefined;
-	const base = typeof links?.base === 'string' ? links.base : '';
+	if (typeof links?.base === 'string') base = links.base;
 	const entries = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 
 	const results: INodeListSearchItems[] = [];
-	for (const entry of entries) {
+	const seenIds = new Set<string>();
+	for (const entry of [...exactEntries, ...entries]) {
 		const content = entry.content as IDataObject | undefined;
 		if (content === undefined) continue;
 		if (typeof content.id !== 'string' && typeof content.id !== 'number') continue;
 		const id = String(content.id);
+		if (seenIds.has(id)) continue;
+		seenIds.add(id);
 		const title = typeof content.title === 'string' && content.title !== '' ? content.title : id;
 		// The space name disambiguates same-titled pages; redundant once scoped to one space
 		const container = entry.resultGlobalContainer as IDataObject | undefined;

@@ -70,8 +70,10 @@ describe('Confluence listSearch.getPages', () => {
 		apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
 			if (endpoint === '/wiki/api/v2/spaces/999') return { id: 999, key: 'DOCS' };
 			if (endpoint === '/wiki/rest/api/search') {
-				expect((qs as { cql: string }).cql).toBe(
-					'type=page AND space = "DOCS" AND title ~ "plan*" ORDER BY lastmodified DESC',
+				const cql = (qs as { cql: string }).cql;
+				if (cql === 'type=page AND space = "DOCS" AND title = "plan"') return { results: [] };
+				expect(cql).toBe(
+					'type=page AND space = "DOCS" AND title ~ "plan*" AND title != "plan" ORDER BY lastmodified DESC',
 				);
 				return {
 					results: [
@@ -140,7 +142,7 @@ describe('Confluence listSearch.getPages', () => {
 	});
 
 	it('escapes quotes and backslashes in the CQL title filter', async () => {
-		apiRequest.mockResolvedValueOnce({ results: [] });
+		apiRequest.mockResolvedValue({ results: [] });
 
 		await getPages.call(ctx, 'He said "hi" \\ back');
 
@@ -149,8 +151,53 @@ describe('Confluence listSearch.getPages', () => {
 			'/wiki/rest/api/search',
 			{},
 			expect.objectContaining({
-				cql: 'type=page AND title ~ "He said \\"hi\\" \\\\ back*" ORDER BY lastmodified DESC',
+				cql: 'type=page AND title = "He said \\"hi\\" \\\\ back"',
 			}),
+		);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/rest/api/search',
+			{},
+			expect.objectContaining({
+				cql: 'type=page AND title ~ "He said \\"hi\\" \\\\ back*" AND title != "He said \\"hi\\" \\\\ back" ORDER BY lastmodified DESC',
+			}),
+		);
+	});
+
+	it('puts the exact-title match ahead of prefix matches on the first page', async () => {
+		apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
+			if (endpoint !== '/wiki/rest/api/search') throw new Error(`unexpected endpoint ${endpoint}`);
+			const cql = (qs as { cql: string }).cql;
+			if (cql === 'type=page AND title = "Notes"') {
+				return { results: [{ content: { id: 1, title: 'Notes' } }] };
+			}
+			expect(cql).toBe(
+				'type=page AND title ~ "Notes*" AND title != "Notes" ORDER BY lastmodified DESC',
+			);
+			return {
+				results: [
+					{ content: { id: 2, title: 'Notes 2026' } },
+					{ content: { id: 1, title: 'Notes' } },
+				],
+			};
+		});
+
+		const result = await getPages.call(ctx, 'Notes');
+
+		expect(result.results.map((item) => item.value)).toEqual(['1', '2']);
+	});
+
+	it('skips the exact-title query on later pages', async () => {
+		apiRequest.mockResolvedValue({ results: [] });
+
+		await getPages.call(ctx, 'Notes', '50');
+
+		expect(apiRequest).toHaveBeenCalledTimes(1);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/rest/api/search',
+			{},
+			expect.objectContaining({ start: 50 }),
 		);
 	});
 
