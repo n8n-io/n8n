@@ -69,6 +69,29 @@ function rewriteComponentRefs(node: unknown, toRef: (componentName: string) => s
 	});
 }
 
+/**
+ * `z.custom` fields, such as `WorkflowPublicDto.settings`, become `nullable: true` with no `type`.
+ * The Ajv JSON schema validator rejects that pair once two routes share the schema, so
+ * express-openapi-validator cannot start. Removing the marker is safe, because a schema with no
+ * `type` already accepts null.
+ */
+function stripBareNullable(node: unknown): void {
+	if (Array.isArray(node)) {
+		node.forEach(stripBareNullable);
+		return;
+	}
+
+	if (node === null || typeof node !== 'object') {
+		return;
+	}
+
+	const record = node as Record<string, unknown>;
+	if (record.nullable === true && record.type === undefined) {
+		delete record.nullable;
+	}
+	Object.values(record).forEach(stripBareNullable);
+}
+
 interface OperationTarget {
 	outputPath: string;
 	pathKey: string;
@@ -88,6 +111,7 @@ export function buildArtifactsFromRegistry(
 		openapi: '3.0.0',
 		info: { title: 'throwaway', version: '0.0.0' },
 	});
+	stripBareNullable(document);
 
 	const artifacts: GeneratedArtifact[] = [];
 

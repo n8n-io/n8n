@@ -80,14 +80,10 @@ responses:
                   nodes: {}
                   connections: {}
                   nodeGroups: {}
-                  settings:
-                    nullable: true
-                  staticData:
-                    nullable: true
-                  pinData:
-                    nullable: true
-                  meta:
-                    nullable: true
+                  settings: {}
+                  staticData: {}
+                  pinData: {}
+                  meta: {}
                   tags:
                     type: array
                     items:
