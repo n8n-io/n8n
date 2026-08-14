@@ -48,6 +48,7 @@
 	"generic.back": "Back",
 	"generic.cancel": "Cancel",
 	"generic.connect": "Connect",
+	"generic.characterCount": "{count}/{max}",
 	"generic.save": "Save",
 	"generic.open": "Open",
 	"generic.openResource": "Open {resource}",

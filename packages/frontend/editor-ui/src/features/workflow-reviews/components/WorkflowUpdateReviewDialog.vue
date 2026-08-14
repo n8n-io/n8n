@@ -18,6 +18,7 @@ import { computed, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import { useToast } from '@n8n/composables/useToast';
+import CharacterCount from '@/app/components/CharacterCount.vue';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { useReviewVersionName } from '@/features/workflow-reviews/composables/useReviewVersionName';
@@ -294,6 +295,11 @@ const submit = async () => {
 					:maxlength="REVIEW_DESCRIPTION_MAX_LENGTH"
 					:disabled="isSubmitting"
 					data-test-id="workflow-update-review-description-input"
+				/>
+				<CharacterCount
+					:value="reviewDescription"
+					:max="REVIEW_DESCRIPTION_MAX_LENGTH"
+					data-test-id="workflow-update-review-description-character-count"
 				/>
 			</N8nInputLabel>
 			<N8nDialogFooter>

@@ -258,6 +258,9 @@ describe('WorkflowUpdateReviewDialog', () => {
 				'maxlength',
 				'512',
 			);
+			expect(getByTestId('workflow-update-review-description-character-count')).toHaveTextContent(
+				'27/512',
+			);
 		});
 
 		it('returns to the version step without losing the review description', async () => {
@@ -314,9 +317,12 @@ describe('WorkflowUpdateReviewDialog', () => {
 		});
 
 		it('sends an empty review description when the prefilled value is cleared', async () => {
-			const { getByTestId, goToStep2 } = await renderDialog();
+			const { getByTestId, queryByTestId, goToStep2 } = await renderDialog();
 			await goToStep2();
 			await userEvent.clear(getByTestId('workflow-update-review-description-input'));
+			expect(
+				queryByTestId('workflow-update-review-description-character-count'),
+			).not.toBeInTheDocument();
 
 			await userEvent.click(getByTestId('workflow-update-review-submit-button'));
 
