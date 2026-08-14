@@ -56,68 +56,39 @@ export async function searchSpacesWithAll(
 	return search;
 }
 
-export async function getPages(
+interface SearchPage {
+	entries: IDataObject[];
+	base: string;
+	next?: string;
+}
+
+const EMPTY_PAGE: SearchPage = { entries: [], base: '' };
+
+async function fetchSearchPage(
 	this: ILoadOptionsFunctions,
-	filter?: string,
-	paginationToken?: string,
-): Promise<INodeListSearchResult> {
-	const start = paginationToken === undefined ? 0 : Number(paginationToken);
+	cql: string,
+	start?: number,
+): Promise<SearchPage> {
+	const qs: IDataObject = { cql, limit: SEARCH_PAGE_SIZE };
+	if (start !== undefined) qs.start = start;
 
-	let spaceId = '';
-	try {
-		const raw = this.getCurrentNodeParameter('space', { extractValue: true });
-		spaceId = typeof raw === 'string' || typeof raw === 'number' ? String(raw).trim() : '';
-	} catch {
-		spaceId = '';
-	}
-	let spaceClause = '';
-	if (spaceId !== '') {
-		// CQL's space field matches by key, so the selected space ID is resolved first
-		const spaceKey = await resolveSpaceKey.call(this, spaceId);
-		if (spaceKey !== undefined) spaceClause = ` AND space = "${spaceKey}"`;
-	}
-
-	const escaped = (filter ?? '').replace(/(["\\])/g, '\\$1');
-
-	// An exact-title page can be buried behind newer prefix matches, so page one
-	// fetches it separately and the prefix query excludes it
-	let exactEntries: IDataObject[] = [];
-	let base = '';
-	if (escaped !== '' && paginationToken === undefined) {
-		const exactResponse = await confluenceApiRequest.call(
-			this,
-			'GET',
-			'/wiki/rest/api/search',
-			{},
-			{ cql: `type=page${spaceClause} AND title = "${escaped}"`, limit: SEARCH_PAGE_SIZE },
-		);
-		exactEntries = Array.isArray(exactResponse.results)
-			? (exactResponse.results as IDataObject[])
-			: [];
-		const exactLinks = exactResponse._links as IDataObject | undefined;
-		if (typeof exactLinks?.base === 'string') base = exactLinks.base;
-	}
-
-	const cql =
-		escaped === ''
-			? `type=page${spaceClause} ORDER BY lastmodified DESC`
-			: `type=page${spaceClause} AND title ~ "${escaped}*" AND title != "${escaped}" ORDER BY lastmodified DESC`;
-
-	const response = await confluenceApiRequest.call(
-		this,
-		'GET',
-		'/wiki/rest/api/search',
-		{},
-		{ cql, limit: SEARCH_PAGE_SIZE, start },
-	);
-
+	const response = await confluenceApiRequest.call(this, 'GET', '/wiki/rest/api/search', {}, qs);
 	const links = response._links as IDataObject | undefined;
-	if (typeof links?.base === 'string') base = links.base;
-	const entries = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
+	return {
+		entries: Array.isArray(response.results) ? (response.results as IDataObject[]) : [],
+		base: typeof links?.base === 'string' ? links.base : '',
+		next: typeof links?.next === 'string' && links.next !== '' ? links.next : undefined,
+	};
+}
 
+function toPageItems(
+	entries: IDataObject[],
+	base: string,
+	withSpaceLabel: boolean,
+): INodeListSearchItems[] {
 	const results: INodeListSearchItems[] = [];
 	const seenIds = new Set<string>();
-	for (const entry of [...exactEntries, ...entries]) {
+	for (const entry of entries) {
 		const content = entry.content as IDataObject | undefined;
 		if (content === undefined) continue;
 		if (typeof content.id !== 'string' && typeof content.id !== 'number') continue;
@@ -128,23 +99,77 @@ export async function getPages(
 		// The space name disambiguates same-titled pages; redundant once scoped to one space
 		const container = entry.resultGlobalContainer as IDataObject | undefined;
 		const space =
-			spaceId === '' && typeof container?.title === 'string' && container.title !== ''
+			withSpaceLabel && typeof container?.title === 'string' && container.title !== ''
 				? ` (${container.title})`
 				: '';
 		const webui = (content._links as IDataObject | undefined)?.webui;
 		const url = base !== '' && typeof webui === 'string' ? `${base}${webui}` : undefined;
 		results.push({ name: `${title}${space}`, value: id, url });
 	}
+	return results;
+}
 
-	const next = typeof links?.next === 'string' && links.next !== '' ? links.next : undefined;
-	if (next === undefined) return { results, paginationToken: undefined };
-
-	let nextStart: string | null = null;
+function nextStartToken(
+	next: string | undefined,
+	start: number,
+	count: number,
+): string | undefined {
+	if (next === undefined) return undefined;
+	let parsed: string | null = null;
 	try {
-		nextStart = new URL(next, 'https://api.atlassian.com').searchParams.get('start');
+		parsed = new URL(next, 'https://api.atlassian.com').searchParams.get('start');
 	} catch {
-		nextStart = null;
+		parsed = null;
 	}
 	// A page can come back empty while next is still set; never repeat the same offset
-	return { results, paginationToken: nextStart ?? String(start + Math.max(entries.length, 1)) };
+	return parsed ?? String(start + Math.max(count, 1));
+}
+
+function getScopedSpaceId(this: ILoadOptionsFunctions): string {
+	try {
+		const raw = this.getCurrentNodeParameter('space', { extractValue: true });
+		return typeof raw === 'string' || typeof raw === 'number' ? String(raw).trim() : '';
+	} catch {
+		return '';
+	}
+}
+
+export async function getPages(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const start = paginationToken === undefined ? 0 : Number(paginationToken);
+	const spaceId = getScopedSpaceId.call(this);
+
+	let spaceClause = '';
+	if (spaceId !== '') {
+		// CQL's space field matches by key, so the selected space ID is resolved first
+		const spaceKey = await resolveSpaceKey.call(this, spaceId);
+		if (spaceKey !== undefined) spaceClause = ` AND space = "${spaceKey}"`;
+	}
+
+	const escaped = (filter ?? '').replace(/(["\\])/g, '\\$1');
+	const cql =
+		escaped === ''
+			? `type=page${spaceClause} ORDER BY lastmodified DESC`
+			: `type=page${spaceClause} AND title ~ "${escaped}*" AND title != "${escaped}" ORDER BY lastmodified DESC`;
+
+	// An exact-title page can be buried behind newer prefix matches, so page one
+	// fetches it separately and the prefix query excludes it
+	const exact =
+		escaped !== '' && paginationToken === undefined
+			? await fetchSearchPage.call(this, `type=page${spaceClause} AND title = "${escaped}"`)
+			: EMPTY_PAGE;
+
+	const page = await fetchSearchPage.call(this, cql, start);
+
+	return {
+		results: toPageItems(
+			[...exact.entries, ...page.entries],
+			page.base || exact.base,
+			spaceId === '',
+		),
+		paginationToken: nextStartToken(page.next, start, page.entries.length),
+	};
 }
