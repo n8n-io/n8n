@@ -61,12 +61,13 @@ export class WorkflowReviewInboxService {
 	): Promise<ListWorkflowReviewInboxResponse> {
 		await this.featureGate.assertAvailable();
 
-		const projectIds = await this.accessService.resolveAccessibleProjectIds(user);
+		const visibility = await this.accessService.resolveInboxVisibility(user);
 		const { limit } = query;
 		const rows = await this.workflowReviewRequestRepository.findManyForInbox({
-			projectIds,
-			requesterId: user.id,
+			visibility,
 			state: query.state ?? 'open',
+			category:
+				query.category === undefined ? undefined : { userId: user.id, category: query.category },
 			limit: limit + 1,
 			cursor: query.cursor ? this.decodeInboxCursor(query.cursor) : undefined,
 		});
@@ -107,11 +108,8 @@ export class WorkflowReviewInboxService {
 	async getInboxSummaryForUser(user: User): Promise<GetWorkflowReviewInboxSummaryResponse> {
 		await this.featureGate.assertAvailable();
 
-		const projectIds = await this.accessService.resolveAccessibleProjectIds(user);
-		return await this.workflowReviewRequestRepository.countByStateForInbox({
-			projectIds,
-			requesterId: user.id,
-		});
+		const visibility = await this.accessService.resolveInboxVisibility(user);
+		return await this.workflowReviewRequestRepository.countByStateForInbox({ visibility });
 	}
 
 	async getDetail(

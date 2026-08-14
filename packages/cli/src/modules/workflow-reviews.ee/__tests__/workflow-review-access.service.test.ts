@@ -1,27 +1,30 @@
 import type {
+	Project,
+	ProjectRelationRepository,
+	ProjectRepository,
 	User,
 	WorkflowEntity,
 	WorkflowReviewRequest,
+	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
+	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { WorkflowReviewAccessService } from '../workflow-review-access.service';
+
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
+import type { RoleService } from '@/services/role.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
-import { WorkflowReviewAccessService } from '../workflow-review-access.service';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';
 
 const member = mock<User>({ id: 'user-1', role: { slug: 'global:member', scopes: [] } });
 const requester = mock<User>({ id: 'requester-1', role: { slug: 'global:member', scopes: [] } });
-const globalPublisher = mock<User>({
-	id: 'admin-1',
-	role: { slug: 'global:admin', scopes: [{ slug: 'workflow:publish' }] },
-});
+const globalAdmin = mock<User>({ id: 'admin-1', role: { slug: 'global:admin', scopes: [] } });
 
 function reviewRequest(overrides: Partial<WorkflowReviewRequest> = {}) {
 	return mock<WorkflowReviewRequest>({
@@ -35,14 +38,24 @@ function reviewRequest(overrides: Partial<WorkflowReviewRequest> = {}) {
 describe('WorkflowReviewAccessService', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const projectService = mock<ProjectService>();
+	const roleService = mock<RoleService>();
+	const projectRepository = mock<ProjectRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
+	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
+	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 
 	const service = new WorkflowReviewAccessService(
 		workflowFinderService,
 		projectService,
+		roleService,
+		projectRepository,
+		projectRelationRepository,
 		requestRepository,
 		workflowRepository,
+		authorRepository,
+		reviewerRepository,
 	);
 
 	beforeEach(() => {
@@ -50,12 +63,27 @@ describe('WorkflowReviewAccessService', () => {
 		requestRepository.findById.mockResolvedValue(reviewRequest());
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+		projectService.getProjectIdsWithScope.mockResolvedValue([]);
+		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+		projectRepository.getPersonalProjectForUser.mockResolvedValue(null);
+		roleService.rolesWithScope.mockResolvedValue(['workflow:owner', 'workflow:editor']);
+		// `create` always writes the requester's author row, so the requester is an
+		// author here and nobody else is unless a test says so.
+		authorRepository.isAuthor.mockImplementation(
+			async ({ userId }) => userId === reviewRequest().createdById,
+		);
+		reviewerRepository.isReviewer.mockResolvedValue(false);
 	});
 
 	function mockChildRow(pinnedVersionId: string | null = 'ver-pinned') {
 		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
 			{ workflowId, workflowName: 'My workflow', workflowVersionId: pinnedVersionId },
 		]);
+	}
+
+	/** The caller holds `workflow:read` in the review's project. */
+	function mockReadableReviewProject() {
+		projectService.getProjectIdsWithScope.mockResolvedValue(['proj-1']);
 	}
 
 	describe('who is allowed to open a review', () => {
@@ -67,8 +95,8 @@ describe('WorkflowReviewAccessService', () => {
 			);
 		});
 
-		it('hides a review from someone who cannot publish in its project, without revealing that it exists', async () => {
-			projectService.getProjectIdsWithScope.mockResolvedValue(['other-proj']);
+		it('hides a review from someone who is not involved in it, without revealing that it exists', async () => {
+			mockReadableReviewProject();
 
 			// Same error as a review that does not exist: existence must not leak
 			await expect(service.findReadableRequestOrFail(member, requestId)).rejects.toThrow(
@@ -81,52 +109,108 @@ describe('WorkflowReviewAccessService', () => {
 			expect(workflowRepository.findLinkedWorkflowDetailsByRequestId).not.toHaveBeenCalled();
 		});
 
-		it('lets someone who can publish in the review project open it', async () => {
-			projectService.getProjectIdsWithScope.mockResolvedValue(['proj-1']);
+		it('lets an assigned reviewer who can read in the review project open it', async () => {
+			mockReadableReviewProject();
+			reviewerRepository.isReviewer.mockResolvedValue(true);
 
 			const { request } = await service.findReadableRequestOrFail(member, requestId);
 
 			expect(request.id).toBe(requestId);
 		});
 
-		it('always lets the person who asked for the review open it', async () => {
+		it('lets a co-author who can read in the review project open it', async () => {
+			mockReadableReviewProject();
+			authorRepository.isAuthor.mockResolvedValue(true);
+
+			const { request } = await service.findReadableRequestOrFail(member, requestId);
+
+			expect(request.id).toBe(requestId);
+		});
+
+		it('lets the requester open it through the author row create wrote for them', async () => {
+			mockReadableReviewProject();
+
 			const { request } = await service.findReadableRequestOrFail(requester, requestId);
 
 			expect(request.id).toBe(requestId);
-			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+			expect(authorRepository.isAuthor).toHaveBeenCalledWith(
+				{ workflowReviewRequestId: requestId, userId: requester.id },
+				{},
+			);
 		});
 
-		it('lets someone who can publish anywhere on the instance open any review', async () => {
-			const { request } = await service.findReadableRequestOrFail(globalPublisher, requestId);
-
-			expect(request.id).toBe(requestId);
-			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
-		});
-
-		it('leaves out a workflow the person who asked for the review can no longer read', async () => {
+		it('hides a review from its requester once they lost read on the workflow it covers', async () => {
 			mockChildRow();
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
-			const result = await service.findReadableRequestOrFail(requester, requestId);
-
-			expect(result.request.id).toBe(requestId);
-			expect(result.readableWorkflowRows).toEqual([]);
-			// Eligibility still resolves against the pinned row, which they cannot read
-			expect(result.pinnedWorkflowId).toBe(workflowId);
-			expect(result.canReadPinnedWorkflow).toBe(false);
+			await expect(service.findReadableRequestOrFail(requester, requestId)).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 
-		it('hides the review when someone else can read none of the workflows it covers', async () => {
-			projectService.getProjectIdsWithScope.mockResolvedValue(['proj-1']);
+		it('hides a review from an assigned reviewer once they lost read on the workflow it covers', async () => {
 			mockChildRow();
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+			reviewerRepository.isReviewer.mockResolvedValue(true);
 
 			await expect(service.findReadableRequestOrFail(member, requestId)).rejects.toThrow(
 				NotFoundError,
 			);
 		});
 
+		it('lets the requester open a review whose workflow is only shared with them', async () => {
+			// A shared workflow sits in none of the review's projects, but
+			// `findWorkflowForUser` still finds it for them.
+			projectService.getProjectIdsWithScope.mockResolvedValue(['unrelated-proj']);
+			mockChildRow();
+
+			const { request } = await service.findReadableRequestOrFail(requester, requestId);
+
+			expect(request.id).toBe(requestId);
+		});
+
+		it('sees the review project through the personal project when it lives there', async () => {
+			requestRepository.findById.mockResolvedValue(reviewRequest({ projectId: 'personal-proj' }));
+			projectRepository.getPersonalProjectForUser.mockResolvedValue(
+				mock<Project>({ id: 'personal-proj' }),
+			);
+
+			const { request } = await service.findReadableRequestOrFail(requester, requestId);
+
+			expect(request.id).toBe(requestId);
+		});
+
+		it('lets a project admin open any review in their project without being involved', async () => {
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['proj-1']);
+
+			const { request } = await service.findReadableRequestOrFail(member, requestId);
+
+			expect(request.id).toBe(requestId);
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+				member.id,
+				['project:admin'],
+			);
+		});
+
+		it('lets a global admin open any review', async () => {
+			const { request } = await service.findReadableRequestOrFail(globalAdmin, requestId);
+
+			expect(request.id).toBe(requestId);
+			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+		});
+
+		it('hides the review from anyone who can read none of the workflows it covers, the requester included', async () => {
+			mockReadableReviewProject();
+			mockChildRow();
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(service.findReadableRequestOrFail(requester, requestId)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
 		it('treats the first covered workflow as the one under review', async () => {
+			mockReadableReviewProject();
 			mockChildRow();
 
 			const result = await service.findReadableRequestOrFail(requester, requestId);
@@ -143,7 +227,29 @@ describe('WorkflowReviewAccessService', () => {
 			);
 		});
 
+		it('leaves out an unreadable workflow while another one keeps the review open', async () => {
+			mockReadableReviewProject();
+			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
+				{ workflowId, workflowName: 'My workflow', workflowVersionId: 'ver-pinned' },
+				{ workflowId: 'wf-2', workflowName: 'Other workflow', workflowVersionId: 'ver-other' },
+			]);
+			workflowFinderService.findWorkflowForUser.mockImplementation(async (id) =>
+				id === 'wf-2' ? mock<WorkflowEntity>() : null,
+			);
+
+			const result = await service.findReadableRequestOrFail(requester, requestId);
+
+			expect(result.readableWorkflowRows).toEqual([
+				{ workflowId: 'wf-2', workflowName: 'Other workflow', workflowVersionId: 'ver-other' },
+			]);
+			// Eligibility still resolves against the pinned row, which they cannot read
+			expect(result.pinnedWorkflowId).toBe(workflowId);
+			expect(result.canReadPinnedWorkflow).toBe(false);
+		});
+
 		it('has no workflow under review once the review covers none', async () => {
+			mockReadableReviewProject();
+
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
 			expect(result.pinnedWorkflowId).toBeNull();
@@ -151,45 +257,61 @@ describe('WorkflowReviewAccessService', () => {
 		});
 	});
 
-	describe('which projects a viewer sees reviews from', () => {
-		it('limits a member to the projects where they may publish', async () => {
-			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['publish-proj']);
+	describe('resolveInboxVisibility', () => {
+		it('gives global admins and owners the whole inbox', async () => {
+			const owner = mock<User>({ role: { slug: 'global:owner', scopes: [] } });
 
-			expect(await service.resolveAccessibleProjectIds(member)).toEqual(['publish-proj']);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(member, [
-				'workflow:publish',
-			]);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledTimes(1);
-			// Requesters see their own reviews via the repository's requesterId filter,
-			// so no personal-project fallback is needed here.
-			expect(projectService.getPersonalProject).not.toHaveBeenCalled();
-		});
-
-		it('lets someone who can publish anywhere see reviews in every project', async () => {
-			const owner = mock<User>({
-				role: {
-					slug: 'global:owner',
-					scopes: [{ slug: 'workflow:publish' }],
-				},
-			});
-
-			expect(await service.resolveAccessibleProjectIds(owner)).toBeNull();
+			expect(await service.resolveInboxVisibility(globalAdmin)).toEqual({ scope: 'all' });
+			expect(await service.resolveInboxVisibility(owner)).toEqual({ scope: 'all' });
 			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
 		});
 
-		it('still checks project membership for a global role that cannot publish', async () => {
-			const admin = mock<User>({
-				role: {
-					slug: 'custom:global',
-					scopes: [{ slug: 'project:delete' }],
-				},
-			});
-			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['publish-proj']);
+		it('scopes a member to their admin projects plus involvement in readable projects', async () => {
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['admin-proj']);
+			projectService.getProjectIdsWithScope.mockResolvedValue(['read-proj']);
+			projectRepository.getPersonalProjectForUser.mockResolvedValue(
+				mock<Project>({ id: 'personal-proj' }),
+			);
+			roleService.rolesWithScope.mockResolvedValue(['workflow:owner', 'workflow:editor']);
 
-			expect(await service.resolveAccessibleProjectIds(admin)).toEqual(['publish-proj']);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(admin, [
-				'workflow:publish',
-			]);
+			expect(await service.resolveInboxVisibility(member)).toEqual({
+				scope: 'involved',
+				userId: member.id,
+				adminProjectIds: ['admin-proj'],
+				readableProjectIds: ['read-proj', 'personal-proj'],
+				readableWorkflowRoles: ['workflow:owner', 'workflow:editor'],
+			});
+			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(member, ['workflow:read']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('workflow', ['workflow:read']);
+		});
+
+		it('does not treat a custom global role as an admin', async () => {
+			const custom = mock<User>({
+				id: 'custom-1',
+				role: { slug: 'custom:global', scopes: [{ slug: 'workflow:read' }] },
+			});
+			projectService.getProjectIdsWithScope.mockResolvedValue(['read-proj']);
+
+			const visibility = await service.resolveInboxVisibility(custom);
+
+			expect(visibility).toMatchObject({ scope: 'involved', userId: custom.id });
+			expect(visibility).not.toEqual({ scope: 'all' });
+		});
+
+		// Enumerating every project on the instance would bind one parameter
+		// per project on every inbox query.
+		it('leaves readable projects unrestricted for a global workflow:read scope', async () => {
+			const custom = mock<User>({
+				id: 'custom-1',
+				role: { slug: 'custom:global', scopes: [{ slug: 'workflow:read' }] },
+			});
+
+			expect(await service.resolveInboxVisibility(custom)).toMatchObject({
+				scope: 'involved',
+				readableProjectIds: null,
+			});
+			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+			expect(projectRepository.getPersonalProjectForUser).not.toHaveBeenCalled();
 		});
 	});
 });

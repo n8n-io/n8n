@@ -3,6 +3,9 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { SharedWorkflow } from '../entities/shared-workflow';
+import { WorkflowReviewRequestAuthor } from '../entities/workflow-review-request-author.ee';
+import { WorkflowReviewRequestReviewer } from '../entities/workflow-review-request-reviewer.ee';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
 import {
 	WorkflowReviewRequest,
@@ -20,12 +23,51 @@ export type InboxCursor = {
 	id: string;
 };
 
+/**
+ * Splits the visible reviews into the two groups a caller can ask for:
+ * `waiting` = assigned reviewer, or not an author; `authored` = an author who is
+ * not assigned to review it. Being a reviewer wins, so a review sits where the
+ * caller's pending action is. Only narrows what visibility already allowed.
+ *
+ * Authorship alone decides the split. The requester always has an author row, so
+ * neither group needs the nullable `createdById`.
+ */
+export type InboxCategoryFilter = {
+	userId: string;
+	category: 'waiting' | 'authored';
+};
+
+/**
+ * Who may see which reviews in the inbox.
+ *
+ * `all` — every review (global admins/owners). `involved` — reviews in projects the
+ * caller administers, plus reviews they participate in (author or assigned
+ * reviewer; the requester is always an author) — in both cases only while they can
+ * still read one of the workflows the review covers.
+ */
+export type InboxVisibility =
+	| { scope: 'all' }
+	| {
+			scope: 'involved';
+			userId: string;
+			/** Projects the caller administers: every review in them is visible. */
+			adminProjectIds: string[];
+			/**
+			 * Projects the caller reads workflows through: their personal project,
+			 * where directly shared workflows land, plus team projects granting
+			 * `workflow:read`. `null` means every project — listing them all would
+			 * bind one parameter per project on every inbox query.
+			 */
+			readableProjectIds: string[] | null;
+			/** Workflow sharing roles that grant `workflow:read`. */
+			readableWorkflowRoles: string[];
+	  };
+
 export type FindManyForInboxOptions = {
-	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
-	projectIds: string[] | null;
-	/** Requesters always see the reviews they created, regardless of project scope. */
-	requesterId: string;
+	visibility: InboxVisibility;
 	state?: WorkflowReviewRequestState;
+	/** Omitted means no category filter. */
+	category?: InboxCategoryFilter;
 	limit: number;
 	cursor?: InboxCursor;
 };
@@ -42,10 +84,7 @@ export type WorkflowReviewRequestForWorkflowRow = Pick<
 };
 
 export type CountByStateForInboxOptions = {
-	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
-	projectIds: string[] | null;
-	/** Requesters always see the reviews they created, regardless of project scope. */
-	requesterId: string;
+	visibility: InboxVisibility;
 };
 
 export type InboxStateCounts = {
@@ -256,13 +295,17 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	}
 
 	async findManyForInbox(options: FindManyForInboxOptions): Promise<WorkflowReviewRequest[]> {
-		const { projectIds, requesterId, state, limit, cursor } = options;
+		const { visibility, state, category, limit, cursor } = options;
 
 		const queryBuilder = this.createQueryBuilder('review')
 			.orderBy('review.createdAt', 'DESC')
 			.addOrderBy('review.id', 'ASC');
 
-		this.applyInboxVisibility(queryBuilder, projectIds, requesterId);
+		this.applyInboxVisibility(queryBuilder, visibility);
+
+		if (category) {
+			this.applyCategoryFilter(queryBuilder, category);
+		}
 
 		if (state !== undefined) {
 			queryBuilder.andWhere('review.state = :state', { state });
@@ -281,14 +324,12 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	}
 
 	async countByStateForInbox(options: CountByStateForInboxOptions): Promise<InboxStateCounts> {
-		const { projectIds, requesterId } = options;
-
 		const queryBuilder = this.createQueryBuilder('review')
 			.select('review.state', 'state')
 			.addSelect('COUNT(*)', 'count')
 			.groupBy('review.state');
 
-		this.applyInboxVisibility(queryBuilder, projectIds, requesterId);
+		this.applyInboxVisibility(queryBuilder, options.visibility);
 
 		const rows = await queryBuilder.getRawMany<{
 			state: WorkflowReviewRequestState;
@@ -302,28 +343,154 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	}
 
 	/**
-	 * Inbox visibility: a review is visible if the caller is its requester OR it
-	 * belongs to a project the caller can publish to. `projectIds === null`
-	 * means global scope (no filter). An empty `projectIds` still matches the
-	 * caller's own requests.
+	 * Inbox visibility — see {@link InboxVisibility}. A review is visible when the
+	 * caller administers its project or takes part in it, and can still read one of
+	 * the workflows it covers. Neither means no rows.
 	 */
 	private applyInboxVisibility(
 		queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>,
-		projectIds: string[] | null,
-		requesterId: string,
+		visibility: InboxVisibility,
 	): void {
-		if (projectIds === null) {
+		if (visibility.scope === 'all') {
 			return;
 		}
 
-		if (projectIds.length === 0) {
-			queryBuilder.andWhere('review.createdById = :requesterId', { requesterId });
+		const { userId, adminProjectIds, readableProjectIds, readableWorkflowRoles } = visibility;
+
+		const parameters: Record<string, unknown> = { involvedUserId: userId };
+		const clauses: string[] = [];
+
+		if (adminProjectIds.length > 0) {
+			clauses.push('review.projectId IN (:...adminProjectIds)');
+			parameters.adminProjectIds = adminProjectIds;
+		}
+
+		const authorExists = this.participantExistsSubquery(
+			queryBuilder,
+			WorkflowReviewRequestAuthor,
+			'visibilityAuthor',
+			'involvedUserId',
+		);
+		const reviewerExists = this.participantExistsSubquery(
+			queryBuilder,
+			WorkflowReviewRequestReviewer,
+			'visibilityReviewer',
+			'involvedUserId',
+		);
+		// No separate term for the requester: they always have an author row.
+		clauses.push(`(EXISTS ${authorExists} OR EXISTS ${reviewerExists})`);
+
+		// This caller reads every workflow, so the check below is always true. Skip it.
+		if (readableProjectIds === null) {
+			queryBuilder.andWhere(`(${clauses.join(' OR ')})`, parameters);
 			return;
 		}
+
+		// A caller who can read no workflow sees no reviews, admins included.
+		if (readableProjectIds.length === 0 || readableWorkflowRoles.length === 0) {
+			queryBuilder.andWhere('1 = 0');
+			return;
+		}
+
+		parameters.readableProjectIds = readableProjectIds;
+		parameters.readableWorkflowRoles = readableWorkflowRoles;
+
+		// Check the workflows the caller can read now, not the review's stored project,
+		// which goes stale. Same rule as the detail gate, so a listed row always opens.
+		const anyLinkExists = this.linkedWorkflowExistsSubquery(queryBuilder, 'visibilityAnyLink');
+		const readableLinkExists = this.readableLinkedWorkflowExistsSubquery(queryBuilder);
 
 		queryBuilder.andWhere(
-			'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
-			{ projectIds, requesterId },
+			`(${clauses.join(' OR ')}) AND (NOT EXISTS ${anyLinkExists} OR EXISTS ${readableLinkExists})`,
+			parameters,
 		);
+	}
+
+	/** `EXISTS`-ready subquery: the current `review` row covers at least one workflow. */
+	private linkedWorkflowExistsSubquery(
+		queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>,
+		alias: string,
+	): string {
+		return queryBuilder
+			.subQuery()
+			.select('1')
+			.from(WorkflowReviewRequestWorkflow, alias)
+			.where(`${alias}.workflowReviewRequestId = review.id`)
+			.getQuery();
+	}
+
+	/**
+	 * `EXISTS`-ready subquery: the caller can read one of the workflows the `review`
+	 * row covers, looked up through current `shared_workflow` rows.
+	 */
+	private readableLinkedWorkflowExistsSubquery(
+		queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>,
+	): string {
+		return queryBuilder
+			.subQuery()
+			.select('1')
+			.from(SharedWorkflow, 'visibilityShared')
+			.innerJoin(
+				WorkflowReviewRequestWorkflow,
+				'visibilityLink',
+				'visibilityLink.workflowId = visibilityShared.workflowId',
+			)
+			.where('visibilityLink.workflowReviewRequestId = review.id')
+			.andWhere('visibilityShared.role IN (:...readableWorkflowRoles)')
+			.andWhere('visibilityShared.projectId IN (:...readableProjectIds)')
+			.getQuery();
+	}
+
+	/**
+	 * `EXISTS`-ready subquery probing a participant junction table (authors or
+	 * reviewers) for the current `review` row and the user bound to `userParameter`.
+	 */
+	private participantExistsSubquery(
+		queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>,
+		junctionEntity: typeof WorkflowReviewRequestAuthor | typeof WorkflowReviewRequestReviewer,
+		alias: string,
+		userParameter: string,
+	): string {
+		return queryBuilder
+			.subQuery()
+			.select('1')
+			.from(junctionEntity, alias)
+			.where(`${alias}.workflowReviewRequestId = review.id`)
+			.andWhere(`${alias}.userId = :${userParameter}`)
+			.getQuery();
+	}
+
+	/**
+	 * Narrows the visible rows to one category — see {@link InboxCategoryFilter}.
+	 * The two predicates are opposites, so every review lands in exactly one.
+	 * Always `andWhere`: {@link applyInboxVisibility} runs first.
+	 */
+	private applyCategoryFilter(
+		queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>,
+		{ userId, category }: InboxCategoryFilter,
+	): void {
+		const authorExists = this.participantExistsSubquery(
+			queryBuilder,
+			WorkflowReviewRequestAuthor,
+			'author',
+			'categoryUserId',
+		);
+		const reviewerExists = this.participantExistsSubquery(
+			queryBuilder,
+			WorkflowReviewRequestReviewer,
+			'reviewer',
+			'categoryUserId',
+		);
+
+		if (category === 'authored') {
+			queryBuilder.andWhere(`(EXISTS ${authorExists} AND NOT EXISTS ${reviewerExists})`, {
+				categoryUserId: userId,
+			});
+			return;
+		}
+
+		queryBuilder.andWhere(`(EXISTS ${reviewerExists} OR NOT EXISTS ${authorExists})`, {
+			categoryUserId: userId,
+		});
 	}
 }

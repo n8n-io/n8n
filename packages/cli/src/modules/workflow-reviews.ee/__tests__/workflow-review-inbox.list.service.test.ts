@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { LicenseState } from '@n8n/backend-common';
 import type {
+	InboxVisibility,
 	User,
 	UserRepository,
 	WorkflowPublishedVersionRepository,
@@ -60,13 +61,21 @@ describe('WorkflowReviewInboxService', () => {
 		);
 	});
 
+	const involvedVisibility: InboxVisibility = {
+		scope: 'involved',
+		userId: 'user-1',
+		adminProjectIds: [],
+		readableProjectIds: ['proj-1'],
+		readableWorkflowRoles: ['workflow:owner', 'workflow:editor'],
+	};
+
 	describe('listForInbox', () => {
-		function mockAccessibleProjects(projectIds: string[] = ['proj-1']) {
-			accessService.resolveAccessibleProjectIds.mockResolvedValueOnce(projectIds);
+		function mockVisibility(visibility: InboxVisibility = involvedVisibility) {
+			accessService.resolveInboxVisibility.mockResolvedValueOnce(visibility);
 		}
 
 		it('returns paginated data with hasMore and nextCursor', async () => {
-			mockAccessibleProjects();
+			mockVisibility();
 			const rows = [
 				mock<WorkflowReviewRequest>({
 					id: 'req-2',
@@ -95,8 +104,7 @@ describe('WorkflowReviewInboxService', () => {
 			const result = await service.listForInbox(user, { limit: 1 });
 
 			expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith({
-				projectIds: ['proj-1'],
-				requesterId: 'user-1',
+				visibility: involvedVisibility,
 				state: 'open',
 				limit: 2,
 				cursor: undefined,
@@ -116,7 +124,7 @@ describe('WorkflowReviewInboxService', () => {
 		});
 
 		it('decodes the incoming cursor into a keyset boundary', async () => {
-			mockAccessibleProjects();
+			mockVisibility();
 			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([]);
 			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 				new Map(),
@@ -133,12 +141,55 @@ describe('WorkflowReviewInboxService', () => {
 		});
 
 		it('rejects a malformed cursor', async () => {
-			mockAccessibleProjects();
+			mockVisibility();
 			const cursor = Buffer.from('not-a-valid-cursor', 'utf8').toString('base64url');
 
 			await expect(service.listForInbox(user, { limit: 15, cursor })).rejects.toThrow(
 				'Invalid pagination cursor',
 			);
+		});
+
+		describe('category', () => {
+			beforeEach(() => {
+				workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([]);
+				workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
+					new Map(),
+				);
+			});
+
+			it.each(['authored', 'waiting'] as const)(
+				'passes category %s through with the requesting user',
+				async (category) => {
+					mockVisibility();
+
+					await service.listForInbox(user, { limit: 15, category });
+
+					expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+						expect.objectContaining({ category: { userId: 'user-1', category } }),
+					);
+				},
+			);
+
+			it('derives the user from the request, never from the query', async () => {
+				mockVisibility();
+				const otherUser = mock<User>({ id: 'user-2', role: { slug: 'global:member', scopes: [] } });
+
+				await service.listForInbox(otherUser, { limit: 15, category: 'authored' });
+
+				expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+					expect.objectContaining({ category: { userId: 'user-2', category: 'authored' } }),
+				);
+			});
+
+			it('leaves the query unfiltered when the category is omitted', async () => {
+				mockVisibility();
+
+				await service.listForInbox(user, { limit: 15 });
+
+				expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+					expect.objectContaining({ category: undefined }),
+				);
+			});
 		});
 	});
 	describe('participants on inbox items', () => {
@@ -162,7 +213,7 @@ describe('WorkflowReviewInboxService', () => {
 		}
 
 		beforeEach(() => {
-			accessService.resolveAccessibleProjectIds.mockResolvedValue(['proj-1']);
+			accessService.resolveInboxVisibility.mockResolvedValue(involvedVisibility);
 			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([inboxRow]);
 			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 				new Map(),
