@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/playground/PlaygroundView.vue
+  s_1b7bef5402d60d::t_16f8e2ddeddedd 34-41,46,51,56
+  s_1b7bef5402d60d::t_f10e5a016e6576 1-15,17-33,42-45,47-50,52-55,57-238,240-368
+  s_1b7bef5402d60d::t_0c58cc90c0df2f 16,239
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/playground/fixtures/ops.json
+  s_1b7bef5402d60d::t_0b91a5fb4bb6fe 1,181
+  s_1b7bef5402d60d::t_0c58cc90c0df2f 2-180
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/playground/fixtures/interview.json
+  s_1b7bef5402d60d::t_c71c147f9100cd 1,139
+  s_1b7bef5402d60d::t_0c58cc90c0df2f 2-5,7,9-10,14-37,39,41-63,65-86,88-138
+  s_1b7bef5402d60d::t_2089359c00916f 6,8,11-13,38,40,64,87
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/playground/fixtures/leads.json
+  s_1b7bef5402d60d::t_044b6e5e591cbb 1,108
+  s_1b7bef5402d60d::t_0c58cc90c0df2f 2-107
+packages/frontend/editor-ui/src/app/router.ts
+  s_1b7bef5402d60d::t_5acbfe78d43e4a 173-184,209
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/README.md
+  s_1b7bef5402d60d::t_b2d4507f824322 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88346cd65cba6dd25f5283494bea930a8235327f",
+  "prompts": {},
+  "sessions": {
+    "s_1b7bef5402d60d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5796951a-ca14-40d1-85e7-edbe4b043439",
+        "model": "gpt-5.6-sol-medium"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}
