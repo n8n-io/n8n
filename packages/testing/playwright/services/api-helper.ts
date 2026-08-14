@@ -3,6 +3,7 @@ import type {
 	ClusterInfoResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiPermissions,
+	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
@@ -241,6 +242,31 @@ export class ApiHelpers {
 		return data.count;
 	}
 
+	async getPollerCursor(
+		workflowId: string,
+		nodeId: string,
+	): Promise<Record<string, unknown> | null> {
+		const response = await this.request.get('/rest/e2e/poller-state', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to get poller cursor: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as {
+			data: { cursor: Record<string, unknown> | null };
+		};
+		return data.cursor;
+	}
+
+	async clearWorkflowStaticData(workflowId: string): Promise<void> {
+		const response = await this.request.post('/rest/e2e/workflow-static-data/clear', {
+			data: { workflowId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to clear workflow static data: ${await response.text()}`);
+		}
+	}
+
 	async fireScheduledJobsNow(workflowId: string, nodeId: string): Promise<void> {
 		const response = await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
 			data: { workflowId, nodeId },
@@ -469,6 +495,15 @@ export class ApiHelpers {
 		const response = await this.request.put('/rest/instance-ai/settings', {
 			data: { permissions },
 		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	async updateInstanceAiSettings(settings: InstanceAiAdminSettingsUpdateRequest): Promise<void> {
+		const response = await this.request.put('/rest/instance-ai/settings', { data: settings });
 		if (!response.ok()) {
 			throw new TestError(
 				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,

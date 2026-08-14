@@ -12,8 +12,6 @@ describe('RoleController', () => {
 	const roleService = mock<RoleService>();
 	const controller = new RoleController(roleService, eventService);
 
-	// A user whose global role grants role:manage, so the controller's
-	// authorization guard short-circuits and these tests can focus on events.
 	const managerRequest = () =>
 		mock<AuthenticatedRequest>({
 			user: { id: '123', role: { scopes: [{ slug: 'role:manage' }] } },

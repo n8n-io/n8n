@@ -36,7 +36,7 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 	};
 }
 
-function record(graph: WorkflowGraph): ExecutionRecord {
+function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
 	return {
 		id: 'exec-1',
 		workflowId: 'wf-1',
@@ -44,6 +44,7 @@ function record(graph: WorkflowGraph): ExecutionRecord {
 		mode: 'production',
 		graph,
 		triggerPayload: null,
+		...overrides,
 	};
 }
 
@@ -57,7 +58,9 @@ describe('ExecutionStartHandler', () => {
 			edges: [{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 }],
 		};
 		const executionStore = makeExecutionStore({
-			loadExecution: vi.fn().mockResolvedValue(record(graph)),
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue(record(graph, { triggerPayload: { webhook: 'data' } })),
 		});
 		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
 		const stepStore = makeStepStore(createSteps);
@@ -67,15 +70,43 @@ describe('ExecutionStartHandler', () => {
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'queued', 'running');
-		// only the trigger's row — planning is the step:completed handler's job
+		// only the trigger's row — planning is the step:completed handler's job.
+		// Its payload rides along as output slot 0, read downstream like any
+		// other predecessor's outputs.
 		expect(createSteps).toHaveBeenCalledExactlyOnceWith([
-			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed' },
+			{
+				executionId: 'exec-1',
+				nodeId: 'trigger',
+				status: 'completed',
+				outputs: [{ webhook: 'data' }],
+			},
 		]);
 		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:completed',
 			executionId: 'exec-1',
 			stepId: 'step-trigger',
 		});
+	});
+
+	it('records an empty object in slot 0 when the trigger has no payload', async () => {
+		// The trigger fired — that is why the execution exists — so its output
+		// slot must count as data, or branching would treat it as never taken.
+		const graph: WorkflowGraph = {
+			nodes: [{ id: 'trigger', name: 'T', type: 'trigger' }],
+			edges: [],
+		};
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue(record(graph, { triggerPayload: null })),
+		});
+		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
+		const stepStore = makeStepStore(createSteps);
+		const handler = new ExecutionStartHandler(executionStore, stepStore, makeOrchestrationQueue());
+
+		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith([
+			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed', outputs: [{}] },
+		]);
 	});
 
 	it('is a no-op when the execution cannot be claimed (duplicate delivery)', async () => {

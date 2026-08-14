@@ -2193,7 +2193,7 @@ describe('credential-missing-mode: create-stub', () => {
 		const result = await importPackage({
 			user: owner,
 			credentialMissingMode: 'create-stub',
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 			packageBuffer: await buildImportPackageBuffer(
 				[
@@ -2263,7 +2263,7 @@ describe('Package import workflow publishing policy', () => {
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
-			workflowConflictPolicy: 'fail',
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			workflowPublishingPolicy,
 		});
 
@@ -2291,7 +2291,7 @@ describe('Package import workflow publishing policy', () => {
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
-			workflowConflictPolicy: 'fail',
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			workflowPublishingPolicy,
 		});
 
@@ -2320,7 +2320,7 @@ describe('Package import workflow publishing policy', () => {
 					isPublished: false,
 				}),
 			]),
-			workflowConflictPolicy: 'fail',
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
 		});
 
@@ -2362,7 +2362,7 @@ describe('Package import workflow publishing policy', () => {
 					],
 				}),
 			]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.UnpublishAll,
 		});
 
@@ -2397,7 +2397,7 @@ describe('Package import workflow publishing policy', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildImportPackageBuffer([baseWorkflow]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		});
 
@@ -2436,7 +2436,7 @@ describe('Package import workflow publishing policy', () => {
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		});
 
@@ -2453,6 +2453,93 @@ describe('Package import workflow publishing policy', () => {
 
 		// No (re)activation was triggered for the imported draft.
 		expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+	});
+
+	const webhookNodes = (id: string, path: string, httpMethod?: string) => [
+		{
+			id,
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			webhookId: id,
+			parameters: httpMethod ? { path, httpMethod } : { path },
+		},
+	];
+
+	it('"publish-all" publishes one of two workflows sharing a webhook path and reports the other as failed', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-webhook-a',
+					name: 'Webhook A',
+					isPublished: false,
+					nodes: webhookNodes('wh-a', '/test'),
+				}),
+				serializedWorkflow({
+					id: 'wf-webhook-b',
+					name: 'Webhook B',
+					isPublished: false,
+					nodes: webhookNodes('wh-b', '/test'),
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows).toHaveLength(2);
+		expect(
+			result.workflows.map(({ status, publishing, activeVersionId }) => ({
+				status,
+				publishing,
+				activeVersionId,
+			})),
+		).toEqual(
+			expect.arrayContaining([
+				{
+					status: 'created',
+					publishing: { state: 'published' },
+					activeVersionId: expect.any(String),
+				},
+				{
+					status: 'created',
+					publishing: { state: 'failed', error: 'There is a conflict with one of the webhooks.' },
+					activeVersionId: null,
+				},
+			]),
+		);
+	});
+
+	it('"publish-all" publishes both workflows when they share a webhook path under different methods', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-webhook-get',
+					name: 'Webhook GET',
+					isPublished: false,
+					nodes: webhookNodes('wh-get', '/test'),
+				}),
+				serializedWorkflow({
+					id: 'wf-webhook-post',
+					name: 'Webhook POST',
+					isPublished: false,
+					nodes: webhookNodes('wh-post', '/test', 'POST'),
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows.map(({ publishing }) => publishing)).toEqual([
+			{ state: 'published' },
+			{ state: 'published' },
+		]);
 	});
 });
 
@@ -2626,7 +2713,7 @@ describe('Package import missing node type mode', () => {
 		const result = await importPackage({
 			user: owner,
 			missingNodeTypeMode: 'import-anyway',
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 			packageBuffer: await buildImportPackageBuffer(
 				[

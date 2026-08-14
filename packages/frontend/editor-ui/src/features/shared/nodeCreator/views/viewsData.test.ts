@@ -132,6 +132,21 @@ describe('viewsData', () => {
 			expect(messageAgentItem).toBeUndefined();
 		});
 
+		test('should include the AI templates callout by default', () => {
+			const result = AIView([]);
+
+			expect(result.items.some((item) => item.key === 'ai_templates_root')).toBe(true);
+		});
+
+		test('should not include the AI templates callout in canvas-only mode', () => {
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isCanvasOnly', 'get').mockReturnValue(true);
+
+			const result = AIView([]);
+
+			expect(result.items.some((item) => item.key === 'ai_templates_root')).toBe(false);
+		});
+
 		test('should not mutate the shared template repository parameters', () => {
 			const templatesStore = useTemplatesStore();
 			const sharedParams = new URLSearchParams({ test: 'value' });

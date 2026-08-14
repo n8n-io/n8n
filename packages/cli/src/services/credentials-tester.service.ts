@@ -49,6 +49,17 @@ const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESP
  *  key was verified — some services answer 2xx regardless of the credential. */
 export const AUTH_PROBE_ACCEPTED_MESSAGE = 'The service accepted the credential.';
 
+/**
+ * The three-state auth-probe verdict: 'accepted' (the service took the
+ * credential), 'rejected' (explicit 401/403 auth rejection), 'unverified'
+ * (anything else proves nothing about the credential).
+ */
+export type CredentialAuthProbeOutcome = 'accepted' | 'rejected' | 'unverified';
+
+export type CredentialAuthProbeResult = INodeCredentialTestResult & {
+	outcome: CredentialAuthProbeOutcome;
+};
+
 const mockNodesData: INodeTypeData = {
 	mock: {
 		sourcePath: '',
@@ -238,7 +249,7 @@ export class CredentialsTester {
 		credentialsDecrypted: ICredentialsDecrypted,
 		targetUrl: string,
 		options: { acceptedStatusCodes?: number[] } = {},
-	): Promise<INodeCredentialTestResult> {
+	): Promise<CredentialAuthProbeResult> {
 		try {
 			await this.prepareCredentialsForTest(userId, credentialType, credentialsDecrypted);
 		} catch (error) {
@@ -246,10 +257,11 @@ export class CredentialsTester {
 			return {
 				status: 'Error',
 				message: error.message.toString(),
+				outcome: 'unverified',
 			};
 		}
 
-		return await this.runRequestTest(
+		const result = await this.runRequestTest(
 			userId,
 			credentialType,
 			credentialsDecrypted,
@@ -257,6 +269,9 @@ export class CredentialsTester {
 			'authProbe',
 			options.acceptedStatusCodes,
 		);
+		// Probe requests carry no test rules, so every reachable path stamps an
+		// outcome — the fallback makes the required field structural, not asserted.
+		return { ...result, outcome: result.outcome ?? 'unverified' };
 	}
 
 	async testCredentials(
@@ -338,7 +353,7 @@ export class CredentialsTester {
 			cause?: { response?: { status?: unknown }; code?: unknown };
 		},
 		acceptedStatusCodes?: number[],
-	): INodeCredentialTestResult {
+	): CredentialAuthProbeResult {
 		const statusCode =
 			Number(error.httpCode) ||
 			Number(error.context?.data?.status) ||
@@ -350,28 +365,31 @@ export class CredentialsTester {
 				return {
 					status: 'Error',
 					message: `The service rejected the credential (HTTP ${statusCode}). Check the key and try again.`,
+					outcome: 'rejected',
 				};
 			}
 			// The service is documented to answer this code to a valid GET — the
 			// probe can't tell valid from invalid here, so don't overclaim.
-			return { status: 'OK', message: AUTH_PROBE_ACCEPTED_MESSAGE };
+			return { status: 'OK', message: AUTH_PROBE_ACCEPTED_MESSAGE, outcome: 'accepted' };
 		}
 
 		if (statusCode) {
 			return {
 				status: 'Error',
 				message: `The test URL answered HTTP ${statusCode}, so the credential could not be verified. The test URL may be wrong — it must be a read-only endpoint that answers an authenticated GET.`,
+				outcome: 'unverified',
 			};
 		}
 
 		if (typeof error.message === 'string' && !error.cause?.code) {
-			return { status: 'Error', message: error.message };
+			return { status: 'Error', message: error.message, outcome: 'unverified' };
 		}
 
 		this.logger.debug('Credential auth probe inconclusive', error);
 		return {
 			status: 'Error',
 			message: 'Could not reach the test URL to verify the credential.',
+			outcome: 'unverified',
 		};
 	}
 
@@ -380,7 +398,8 @@ export class CredentialsTester {
 	 * engine. The `authProbe` verdict treats 401/403 as rejection, 2xx as
 	 * success, and everything else (wrong test URL, unreachable service) as
 	 * unverifiable — used for ad-hoc probes of generic credentials against a
-	 * known endpoint.
+	 * known endpoint. Only the rules-driven return paths skip the `outcome`
+	 * stamp; `probeCredentialAuth` defaults those to 'unverified'.
 	 */
 	// eslint-disable-next-line complexity
 	private async runRequestTest(
@@ -390,7 +409,7 @@ export class CredentialsTester {
 		credentialTestFunction: ICredentialTestRequestData,
 		verdict: 'default' | 'authProbe',
 		acceptedStatusCodes?: number[],
-	): Promise<INodeCredentialTestResult> {
+	): Promise<INodeCredentialTestResult & { outcome?: CredentialAuthProbeOutcome }> {
 		// TODO: Temp workflows get created at multiple locations (for example also LoadNodeParameterOptions),
 		//       check if some of them are identical enough that it can be combined
 
@@ -570,6 +589,7 @@ export class CredentialsTester {
 			return {
 				status: 'OK',
 				message: AUTH_PROBE_ACCEPTED_MESSAGE,
+				outcome: 'accepted',
 			};
 		}
 

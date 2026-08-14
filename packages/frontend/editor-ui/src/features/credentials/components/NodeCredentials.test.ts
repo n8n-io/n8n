@@ -22,6 +22,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { ChatHubToolContextKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
@@ -250,6 +252,20 @@ describe('NodeCredentials', () => {
 		await userEvent.click(credentialsSelect);
 
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+	});
+
+	it('replaces the type-derived field label when credentialsFieldLabel is set', () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent(
+			{ props: { credentialsFieldLabel: 'fal.ai API Key credentials' } },
+			{ merge: true },
+		);
+
+		expect(screen.getByTestId('credentials-label')).toHaveTextContent('fal.ai API Key credentials');
 	});
 
 	it('renders standalone when no active workflow document store is provided', () => {
@@ -2513,6 +2529,37 @@ describe('NodeCredentials', () => {
 
 			expect(screen.getByTestId('node-credential-private-connected-actions')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
+		});
+
+		it('names the provider account the connection authenticates as', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': {
+					...privateCredential,
+					connectedByMe: true,
+					connectedAccountIdentifier: 'jane@gmail.com',
+				},
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByTestId('node-credential-private-row')).toHaveTextContent(
+				'Connected as jane@gmail.com',
+			);
+		});
+
+		it('does not name the n8n account when the provider tells us no account', async () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.usersById = {
+				'user-1': { id: 'user-1', email: 'signed-in@n8n.io' } as IUser,
+			};
+			usersStore.currentUserId = 'user-1';
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: true },
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			const row = screen.getByTestId('node-credential-private-row');
+			expect(row).toHaveTextContent('Connected');
+			expect(row).not.toHaveTextContent('signed-in@n8n.io');
 		});
 
 		it('shows the Connect button when connectedByMe is false', async () => {

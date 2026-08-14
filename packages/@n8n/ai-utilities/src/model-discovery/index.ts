@@ -62,6 +62,7 @@ export {
 	listOpenAiModels,
 	shouldIncludeOpenAiModel,
 	OFFICIAL_OPENAI_HOSTNAMES,
+	isOpenAiCustomEndpoint,
 } from './providers/openai';
 export { listOpenRouterModels } from './providers/openrouter';
 export { listVercelModels } from './providers/vercel';
