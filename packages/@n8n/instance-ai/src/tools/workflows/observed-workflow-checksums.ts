@@ -18,9 +18,10 @@ const observedChecksumsSchema = z.record(z.string(), z.string());
  * Persisted on the thread, because every run builds a fresh context: a workflow
  * read in one turn is often only saved in a later one.
  */
-const runLocalChecksums = new WeakMap<InstanceAiContext, Map<string, string>>();
+/** `null` is a tombstone: observed in this run as having no checksum to pin to. */
+const runLocalChecksums = new WeakMap<InstanceAiContext, Map<string, string | null>>();
 
-function runLocalFor(context: InstanceAiContext): Map<string, string> {
+function runLocalFor(context: InstanceAiContext): Map<string, string | null> {
 	let checksums = runLocalChecksums.get(context);
 	if (!checksums) {
 		checksums = new Map();
@@ -53,20 +54,16 @@ async function readThreadChecksums(
 
 /**
  * Records the workflow state this conversation has seen — a read or its own
- * save. `undefined` clears the entry: with no checksum to pin to, an unguarded
- * save beats one guarded against a stale expectation.
+ * save. `undefined` clears the entry, and is remembered as a tombstone for the
+ * rest of the run: with no checksum to pin to, an unguarded save beats one
+ * guarded against an expectation we already know is stale.
  */
 export async function rememberObservedWorkflowChecksum(
 	context: InstanceAiContext,
 	workflowId: string,
 	checksum: string | undefined,
 ): Promise<void> {
-	const runLocal = runLocalFor(context);
-	if (checksum === undefined) {
-		runLocal.delete(workflowId);
-	} else {
-		runLocal.set(workflowId, checksum);
-	}
+	runLocalFor(context).set(workflowId, checksum ?? null);
 
 	if (!context.threadMemory || !context.threadId) return;
 
@@ -116,9 +113,12 @@ export async function getObservedWorkflowChecksum(
 	context: InstanceAiContext,
 	workflowId: string,
 ): Promise<string | undefined> {
+	// What this run observed wins: it is at least as fresh as the thread copy, and
+	// strictly fresher when the thread write failed. A later run starts with an
+	// empty run-local map and falls through to the thread.
+	const runLocal = runLocalFor(context);
+	if (runLocal.has(workflowId)) return runLocal.get(workflowId) ?? undefined;
+
 	const threadChecksums = await readThreadChecksums(context);
-	// Falling back to this run's copy only matters when the thread write failed:
-	// a cleared entry is dropped from both at once, and a later run starts with
-	// an empty run-local map.
-	return threadChecksums?.[workflowId] ?? runLocalFor(context).get(workflowId);
+	return threadChecksums?.[workflowId];
 }

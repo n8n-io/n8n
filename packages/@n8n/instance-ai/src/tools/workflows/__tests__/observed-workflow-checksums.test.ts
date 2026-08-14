@@ -97,6 +97,29 @@ describe('observed workflow checksums', () => {
 		await expect(getObservedWorkflowChecksum(context, 'wf-1')).resolves.toBe('checksum-1');
 	});
 
+	it('prefers what this run observed over a stale thread copy', async () => {
+		const threadMemory = createThreadMemory();
+		await rememberObservedWorkflowChecksum(createContextForRun(threadMemory), 'wf-1', 'checksum-1');
+
+		// A later run re-reads the workflow, but the thread write does not land.
+		const laterRun = createContextForRun(threadMemory);
+		threadMemory.patchThread.mockRejectedValue(new Error('thread store is down'));
+		await rememberObservedWorkflowChecksum(laterRun, 'wf-1', 'checksum-2');
+
+		await expect(getObservedWorkflowChecksum(laterRun, 'wf-1')).resolves.toBe('checksum-2');
+	});
+
+	it('does not fall back to a stale thread copy after a failed clear', async () => {
+		const threadMemory = createThreadMemory();
+		await rememberObservedWorkflowChecksum(createContextForRun(threadMemory), 'wf-1', 'checksum-1');
+
+		const laterRun = createContextForRun(threadMemory);
+		threadMemory.patchThread.mockRejectedValue(new Error('thread store is down'));
+		await rememberObservedWorkflowChecksum(laterRun, 'wf-1', undefined);
+
+		await expect(getObservedWorkflowChecksum(laterRun, 'wf-1')).resolves.toBeUndefined();
+	});
+
 	it('keeps the run-local checksum when persisting to the thread fails', async () => {
 		const threadMemory = createThreadMemory();
 		threadMemory.patchThread.mockRejectedValue(new Error('thread store is down'));
