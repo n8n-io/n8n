@@ -119,25 +119,37 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.createSteps('00000000-0000-7000-8000-000000000000', [])).toEqual([]);
 	});
 
-	it('TypeOrmStepStore.createSteps rejects outputs mismatched with status at runtime', async () => {
+	it.each([
+		{
+			violation: 'a transition-only status',
+			record: { nodeId: 'x', status: 'failed' },
+			message: 'transition method',
+		},
+		{
+			violation: 'outputs on a non-completed step',
+			record: { nodeId: 'x', status: 'queued', outputs: [{}] },
+			message: 'with outputs',
+		},
+		{
+			violation: 'a completed step without outputs',
+			record: { nodeId: 'x', status: 'completed' },
+			message: 'without a slot list',
+		},
+		{
+			violation: 'a completed step with null outputs',
+			record: { nodeId: 'x', status: 'completed', outputs: null },
+			message: 'without a slot list',
+		},
+	])('TypeOrmStepStore.createSteps rejects $violation at runtime', async ({ record, message }) => {
 		// the casts simulate a caller outside the type system
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 
-		const queuedWithOutputs = { nodeId: 'x', status: 'queued', outputs: [{}] };
 		await expect(
-			store.createSteps(executionId, [queuedWithOutputs as unknown as NewStepRecord]),
+			store.createSteps(executionId, [record as unknown as NewStepRecord]),
 		).rejects.toMatchObject({
 			name: 'UnexpectedError',
-			message: expect.stringContaining('with outputs') as string,
-		});
-
-		const completedWithoutOutputs = { nodeId: 'x', status: 'completed' };
-		await expect(
-			store.createSteps(executionId, [completedWithoutOutputs as unknown as NewStepRecord]),
-		).rejects.toMatchObject({
-			name: 'UnexpectedError',
-			message: expect.stringContaining('without outputs') as string,
+			message: expect.stringContaining(message) as string,
 		});
 	});
 
