@@ -100,7 +100,7 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 	INSTANCE_REFUSED_DURABLE_POLLERS: {
 		name: 'Instance refused durable pollers',
 		description:
-			'Boot or leader-takeover scan found active workflows whose published version has duplicate or missing trigger node ids. Durable poll cursors and durable-scheduler poll triggers were disabled instance-wide and the offending workflows poller_state rows were deleted.',
+			'Boot scan found active workflows whose published version has duplicate or missing trigger node ids. Durable poll cursors and durable-scheduler poll triggers were disabled instance-wide and the offending workflows poller_state rows were deleted.',
 		properties: z.object({
 			workflow_ids: z
 				.array(z.string())

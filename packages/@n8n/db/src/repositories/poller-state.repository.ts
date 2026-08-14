@@ -120,6 +120,11 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		});
 	}
 
+	/**
+	 * Removes all stored cursors of the given workflows. Used when durable
+	 * pollers are refused for the instance: with the gate closed, a node whose
+	 * row is gone falls back to its static-data cursor for good.
+	 */
 	async deleteWorkflowCursors(workflowIds: string[], ctx: OperationContext = {}) {
 		await this.managerFor(ctx).delete(PollerState, { workflowId: In(workflowIds) });
 	}

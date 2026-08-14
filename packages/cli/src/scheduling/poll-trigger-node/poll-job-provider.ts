@@ -3,9 +3,9 @@ import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { NoOpPollJobManager, PollJobManager } from 'n8n-core';
 
-import { PollTriggerJobRegistrar } from './poll-trigger-job-registrar';
-
 import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
+
+import { PollTriggerJobRegistrar } from './poll-trigger-job-registrar';
 
 /**
  * Decides, from config, which {@link PollJobManager} implementation activation
@@ -29,6 +29,8 @@ export class PollJobProvider {
 	init(): void {
 		const intercepting =
 			this.globalConfig.scheduler.enabled && this.workflowsConfig.useWorkflowPublicationService;
+		// Gate: job identity is `${workflowId}:${nodeId}`, so duplicate trigger node
+		// ids would collapse two nodes onto one job — independent of the cursor harm.
 		const active =
 			intercepting &&
 			this.globalConfig.scheduler.enabledForPollTriggers &&

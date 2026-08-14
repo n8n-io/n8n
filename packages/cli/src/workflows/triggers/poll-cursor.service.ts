@@ -21,6 +21,7 @@ export class PollCursorService {
 		private readonly durablePollerGateService: DurablePollerGateService,
 	) {}
 
+	/** Durable cursors require both the config flag and the boot-scan gate. */
 	get enabled(): boolean {
 		return this.pollerConfig.durableCursorsEnabled && this.durablePollerGateService.allowed;
 	}
