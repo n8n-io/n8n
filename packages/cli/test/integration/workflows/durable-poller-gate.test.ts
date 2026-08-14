@@ -113,6 +113,28 @@ describe('DurablePollerGateService (integration)', () => {
 		});
 	});
 
+	// Only n8n-nodes-base.scheduleTrigger is loaded in this suite, so the noOp
+	// node below makes the real NodeTypes throw UnrecognizedNodeTypeError — the
+	// uninstalled-community-node case. Startup must survive it.
+	test('refuses durable pollers without crashing when a workflow has an uninstalled node type', async () => {
+		await createPublishedWorkflow([
+			scheduleTrigger('Trigger A'),
+			{
+				id: uuid(),
+				name: 'NoOp',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		]);
+
+		const gate = buildGate();
+		await expect(gate.init()).resolves.not.toThrow();
+
+		expect(gate.allowed).toBe(false);
+	});
+
 	test('refuses durable pollers and deletes only the offender cursor rows', async () => {
 		const cleanTrigger = scheduleTrigger('Clean Trigger');
 		const cleanWorkflow = await createPublishedWorkflow([cleanTrigger]);

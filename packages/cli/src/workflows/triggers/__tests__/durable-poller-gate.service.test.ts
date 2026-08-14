@@ -204,6 +204,41 @@ describe('DurablePollerGateService', () => {
 			expect(message).toContain('wf-no-id');
 		});
 
+		// A workflow that cannot be scanned (e.g. an uninstalled community node makes
+		// node-type resolution throw) must never crash startup. It cannot be verified
+		// either, so the gate stays closed — but its rows are kept: without a scan
+		// there is no confirmed duplicate to justify deleting cursor state.
+		it('refuses durable pollers without crashing or deleting rows when a workflow cannot be scanned', async () => {
+			givenActiveWorkflows({
+				'wf-clean': [node('trigger-1', 'poll')],
+				'wf-broken': [node('node-1', 'unrecognized'), node('trigger-2', 'poll')],
+			});
+			const service = buildService();
+
+			await expect(service.init()).resolves.not.toThrow();
+
+			expect(service.allowed).toBe(false);
+			expect(pollerStateRepository.deleteWorkflowCursors).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error.mock.calls[0][0]).toContain('wf-broken');
+		});
+
+		it('still deletes confirmed offenders when another workflow cannot be scanned', async () => {
+			givenActiveWorkflows({
+				'wf-broken': [node('node-1', 'unrecognized')],
+				'wf-dup': [
+					node('dup-id', 'poll', { name: 'Poll A' }),
+					node('dup-id', 'poll', { name: 'Poll B' }),
+				],
+			});
+			const service = buildService();
+
+			await service.init();
+
+			expect(service.allowed).toBe(false);
+			expect(pollerStateRepository.deleteWorkflowCursors).toHaveBeenCalledWith(['wf-dup']);
+		});
+
 		it('reports the refusal to telemetry with the offending workflow ids', async () => {
 			givenActiveWorkflows({
 				'wf-dup': [
