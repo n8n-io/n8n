@@ -12,8 +12,8 @@ import {
 	InMemoryWorkQueue,
 	OrchestrationWorker,
 	StartExecutionService,
-	StepCompletedHandler,
 	StepReadyHandler,
+	StepSettledHandler,
 	StepWorker,
 	WorkflowExecution,
 	WorkflowStepExecution,
@@ -119,7 +119,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		const orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepCompletedHandler(executionStore, stepStore, stepQueue),
+			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
 		);
 		const stepWorker = new StepWorker(
 			stepQueue,

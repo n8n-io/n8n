@@ -1,7 +1,12 @@
 import type { GraphEdge, GraphNode, WorkflowGraph } from '@n8n/engine';
 import type { INode, INodeConnections, IWorkflowBase } from 'n8n-workflow';
 
-import { MAIN_CONNECTION_TYPE, MANUAL_TRIGGER_TYPE, SPLIT_IN_BATCHES_TYPE } from './constants';
+import {
+	MAIN_CONNECTION_TYPE,
+	MANUAL_TRIGGER_TYPE,
+	MERGE_TYPE,
+	SPLIT_IN_BATCHES_TYPE,
+} from './constants';
 import {
 	UnsupportedConnectionTypeError,
 	UnsupportedCycleError,
@@ -81,6 +86,8 @@ export class V1WorkflowConverter {
 			);
 		}
 
+		if (node.type === MERGE_TYPE) this.assertSupportedMergeMode(node);
+
 		const config: V1NodeStepConfig = {
 			nodeType: node.type,
 			typeVersion: node.typeVersion,
@@ -91,6 +98,26 @@ export class V1WorkflowConverter {
 		const type = node.type === SPLIT_IN_BATCHES_TYPE ? 'batch' : 'v1-node';
 
 		return { id: node.id, name: node.name, type, config };
+	}
+
+	/**
+	 * chooseBranch waits for data on every input, but the engine runs a node
+	 * once any input is live. An expression-valued mode could resolve to
+	 * chooseBranch at run time (`noDataExpression` only binds the UI), so it
+	 * is rejected too, except on Merge v1, which predates chooseBranch.
+	 */
+	private assertSupportedMergeMode(node: INode): void {
+		const mode = node.parameters.mode;
+		if (mode === 'chooseBranch') {
+			throw new UnsupportedWorkflowError(
+				`Node "${node.name}" uses Merge mode "chooseBranch", which is not supported yet.`,
+			);
+		}
+		if (node.typeVersion >= 2 && typeof mode === 'string' && mode.startsWith('=')) {
+			throw new UnsupportedWorkflowError(
+				`Node "${node.name}" sets its Merge mode with an expression, which cannot be checked at conversion time. Use a literal mode.`,
+			);
+		}
 	}
 
 	/** Heuristic trigger detection — see {@link KNOWN_TRIGGER_TYPES}. */

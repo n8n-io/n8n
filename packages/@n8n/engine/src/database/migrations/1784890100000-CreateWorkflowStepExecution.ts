@@ -60,7 +60,8 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 				checks: [
 					{
 						name: 'chk_workflow_step_execution_status',
-						expression: "status IN ('queued', 'running', 'completed', 'failed', 'cancelled')",
+						expression:
+							"status IN ('queued', 'running', 'completed', 'failed', 'skipped', 'cancelled')",
 					},
 				],
 			}),

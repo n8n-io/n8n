@@ -1,14 +1,21 @@
 import type { JsonValue } from '../common';
 import type { StepSlots, StepStatus } from './execution.types';
 
-/** A new step to persist. `id` and timestamps are assigned by the store. */
-export interface NewStepRecord {
-	executionId: string;
-	nodeId: string;
-	status: StepStatus;
-	/** Only for a step recorded already-completed, such as the trigger. */
-	outputs?: StepSlots;
-}
+/**
+ * A new step to persist. `id` and timestamps are assigned by the store.
+ *
+ * Creation statuses only: a row becomes `running`, `failed`, or `cancelled`
+ * solely through `claimStep`, `failStep`, or `cancelQueuedSteps`, so it
+ * cannot bypass the checks and locking those transitions enforce.
+ *
+ * A step created `completed` (the trigger) must carry its slot list, even
+ * `[]`: a missing one persists as SQL NULL, which liveness reads as every
+ * output slot dead.
+ */
+export type NewStepRecord = { nodeId: string } & (
+	| { status: Extract<StepStatus, 'queued' | 'skipped'>; outputs?: never }
+	| { status: Extract<StepStatus, 'completed'>; outputs: StepSlots }
+);
 
 /** The error that failed a step, as persisted on its row. */
 export interface StepError {
@@ -35,6 +42,19 @@ export interface StepRecord {
 	error: StepError | null;
 }
 
+/**
+ * Planning view of a step row: everything a settlement decision needs, and no
+ * payloads — outputs can dominate row size, and planning only ever asks
+ * whether a slot holds data, not what.
+ */
+export interface StepSummary {
+	id: string;
+	nodeId: string;
+	status: StepStatus;
+	/** Per output slot: whether the completed step put data there. Empty unless completed. */
+	filledOutputSlots: boolean[];
+}
+
 /** Thrown by `loadStep` when no step exists for the given id. */
 export class StepNotFoundError extends Error {
 	constructor(readonly stepId: string) {
@@ -46,15 +66,22 @@ export class StepNotFoundError extends Error {
 /** Persistence interface for step records. */
 export interface StepStore {
 	/**
-	 * Persist new step records, batched so planning a fan-out costs a single round
-	 * trip. Returns the rows actually created.
+	 * Persist new step records for one execution, batched so planning a fan-out
+	 * costs a single round trip. Returns the rows actually created.
 	 *
 	 * If a step for a given `(executionId, nodeId)` already exists, it is skipped
 	 * and not returned. This allows multiple planners to race to enqueue the same
 	 * node without erroring or duplicating work. We return the actually created rows
 	 * so the caller knows which step creations it needs to publish.
+	 *
+	 * Creates nothing once any step in the execution has failed (serialized with
+	 * `failStep`), so a planning insert cannot land after the failure's
+	 * cancellation sweep and strand rows `queued` forever.
 	 */
-	createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>>;
+	createSteps(
+		executionId: string,
+		records: NewStepRecord[],
+	): Promise<Array<{ id: string; nodeId: string }>>;
 
 	/** Load a single step by id. Throws `StepNotFoundError` if absent. */
 	loadStep(id: string): Promise<StepRecord>;
@@ -63,6 +90,10 @@ export interface StepStore {
 	 * Claim a queued step for execution (`queued → running`). A compare-and-set,
 	 * so it returns the claimed step for at most one caller — `null` means the
 	 * claim was lost and duplicate/redelivered events are handled idempotently.
+	 *
+	 * The claim also refuses once any step in the execution has failed
+	 * (serialized with `failStep`), so fail-fast holds even for a `step:ready`
+	 * published before the failure landed.
 	 *
 	 * Transitions are exposed one named method at a time rather than as a generic
 	 * `(from, to)` pair, so the interface can't express a transition the
@@ -85,27 +116,29 @@ export interface StepStore {
 	cancelQueuedSteps(executionId: string): Promise<void>;
 
 	/**
-	 * Outputs of the given nodes' *completed* steps within an execution, keyed by
-	 * node id. A node whose step is absent or hasn't completed maps to `null`.
+	 * Step rows of the given nodes within an execution, keyed by node id. A node
+	 * with no row yet is absent from the result — absence always means "not
+	 * planned yet", never "forgotten".
 	 *
-	 * This is for gathering a step's inputs, so it deliberately can't answer
-	 * "have all predecessors completed?" — the two are indistinguishable from a
-	 * `null` here. Use `loadCompletedNodeIds` for that.
+	 * Full rows, outputs included — for gathering a ready step's inputs from its
+	 * direct predecessors. Planning reads `loadStepSummaries` instead.
 	 */
-	loadStepOutputs(
-		executionId: string,
-		nodeIds: string[],
-	): Promise<Record<string, StepSlots | null>>;
+	loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<Record<string, StepRecord>>;
 
 	/**
-	 * Which of `nodeIds` have a completed step in the execution. Returns the
-	 * subset rather than a yes/no so one query can answer readiness for several
-	 * candidate steps at once.
+	 * Planning view of the given nodes' rows, keyed by node id; absent as in
+	 * `loadStepsByNodeIds`. The per-slot booleans are computed in the database,
+	 * so planning never pulls the potentially large outputs over the wire.
 	 */
-	loadCompletedNodeIds(executionId: string, nodeIds: string[]): Promise<Set<string>>;
+	loadStepSummaries(executionId: string, nodeIds: string[]): Promise<Record<string, StepSummary>>;
 
-	/** Whether the execution has any step still `queued` or `running`. */
-	hasActiveSteps(executionId: string): Promise<boolean>;
+	/**
+	 * How many of the execution's steps have settled (completed, failed,
+	 * skipped, or cancelled). Rows are unique per node and only exist for
+	 * reachable nodes, so comparing this against the graph's reachable node
+	 * count answers "has everything settled?" exactly.
+	 */
+	countSettledSteps(executionId: string): Promise<number>;
 
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
