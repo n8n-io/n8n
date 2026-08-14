@@ -4,15 +4,14 @@ import type { StepSlots, StepStatus } from './execution.types';
 /**
  * A new step to persist. `id` and timestamps are assigned by the store.
  *
- * Creation statuses only. The rest are reachable solely through their
- * transitions — `running` via `claimStep`, `failed` via `failStep`,
- * `cancelled` via `cancelQueuedSteps` — so a row can't enter a state
- * without passing that transition's guarantees (the failure fence above
- * all: a `failed` row created here would bypass its exclusive lock).
+ * Creation statuses only: the rest are reachable solely through their
+ * transitions (`claimStep`, `failStep`, `cancelQueuedSteps`), so a row can't
+ * enter a state without passing that transition's guarantees, the failure
+ * fence above all.
  *
  * A step created `completed` (the trigger) must carry its slot list, even
  * `[]`: a missing one persists as SQL NULL, which liveness reads as every
- * output slot dead. The other statuses have no outputs by definition.
+ * output slot dead.
  */
 export type NewStepRecord = { nodeId: string } & (
 	| { status: Extract<StepStatus, 'queued' | 'skipped'>; outputs?: never }
@@ -76,9 +75,9 @@ export interface StepStore {
 	 * node without erroring or duplicating work. We return the actually created rows
 	 * so the caller knows which step creations it needs to publish.
 	 *
-	 * Creates nothing once any step in the execution has failed, serialized with
-	 * `failStep` like `claimStep`, so a planning insert cannot land after the
-	 * failure's cancellation sweep and strand rows `queued` forever.
+	 * Creates nothing once any step in the execution has failed (serialized with
+	 * `failStep`), so a planning insert cannot land after the failure's
+	 * cancellation sweep and strand rows `queued` forever.
 	 */
 	createSteps(
 		executionId: string,
@@ -93,11 +92,9 @@ export interface StepStore {
 	 * so it returns the claimed step for at most one caller — `null` means the
 	 * claim was lost and duplicate/redelivered events are handled idempotently.
 	 *
-	 * The claim also refuses once any step in the execution has failed, so
-	 * fail-fast holds even for a `step:ready` published before the failure
-	 * landed. This holds under concurrency: the claim serializes with
-	 * `failStep` on the execution, so it never succeeds after a failure is
-	 * recorded.
+	 * The claim also refuses once any step in the execution has failed
+	 * (serialized with `failStep`), so fail-fast holds even for a `step:ready`
+	 * published before the failure landed.
 	 *
 	 * Transitions are exposed one named method at a time rather than as a generic
 	 * `(from, to)` pair, so the interface can't express a transition the

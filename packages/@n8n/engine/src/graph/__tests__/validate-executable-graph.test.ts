@@ -38,8 +38,7 @@ describe('validateExecutableGraph', () => {
 	});
 
 	it('rejects an edge feeding a reachable node from one the trigger cannot reach', () => {
-		// r would never settle (nothing ever reaches it), leaving a waiting on it
-		// forever and the execution hanging as running
+		// r would never settle, leaving a waiting on it forever
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'r', name: 'R', type: 'v1-node' }],
 			edges: [...validGraph.edges, { from: 'r', to: 'a', outputIndex: 0, inputIndex: 1 }],
@@ -50,8 +49,7 @@ describe('validateExecutableGraph', () => {
 	});
 
 	it('accepts a disconnected island that feeds nothing reachable', () => {
-		// parked nodes are v1-legal; they are never considered, so they cannot
-		// block anything
+		// parked nodes are v1-legal and never considered
 		const graph: WorkflowGraph = {
 			nodes: [
 				...validGraph.nodes,

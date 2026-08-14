@@ -49,9 +49,8 @@ export class StepSettledHandler {
 
 		let queued = 0;
 		if (step.status === 'completed' || step.status === 'skipped') {
-			// Fail-fast is execution-wide: a failure recorded anywhere ends the
-			// run before more work is planned, even when its own settled event is
-			// still queued behind this one.
+			// Fail-fast: a failure recorded anywhere ends the run before more work
+			// is planned, even while its own settled event is still queued.
 			if (await this.stepStore.hasFailedSteps(execution.id)) {
 				await this.failExecution(execution.id);
 				return;
@@ -68,7 +67,6 @@ export class StepSettledHandler {
 		await this.finishExecutionIfDone(execution);
 	}
 
-	/** Fail-fast: record the execution as failed and cancel work not yet claimed. */
 	private async failExecution(executionId: string): Promise<void> {
 		await this.executionStore.finishExecution(executionId, 'failed');
 		await this.stepStore.cancelQueuedSteps(executionId);

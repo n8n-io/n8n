@@ -40,7 +40,7 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 	for (const edge of graph.edges) {
 		if (reachable.has(edge.to) && !reachable.has(edge.from)) {
 			throw new GraphValidationError(
-				`Edge ${edge.from} → ${edge.to} feeds a node the trigger reaches from one it cannot reach; ${edge.to} would wait on ${edge.from} forever`,
+				`Edge ${edge.from} → ${edge.to} feeds a node the trigger reaches from one it cannot reach, so ${edge.to} would wait on ${edge.from} forever`,
 			);
 		}
 	}

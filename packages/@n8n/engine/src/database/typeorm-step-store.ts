@@ -33,11 +33,9 @@ export class TypeOrmStepStore implements StepStore {
 		// instances, and these are plain values.
 		const rows = records.map((record) => ({ ...record, executionId, id: generateId() }));
 
-		// Shared side of the failure fence (see `claimStep`): a concurrent
-		// `failStep` either committed before the check below, which then creates
-		// nothing, or waits for this insert to commit, whereupon the failure's
-		// cancellation sweep sees the new rows. Without it, an insert landing
-		// after the sweep would strand rows `queued` forever.
+		// Shared side of the failure fence (see `claimStep`): rows either commit
+		// before a failure (whose sweep then cancels them) or are never created.
+		// Unfenced, a late insert would strand rows `queued` forever.
 		return await this.repo.manager.transaction(async (manager) => {
 			await manager.query('SELECT id FROM workflow_execution WHERE id = $1 FOR SHARE', [
 				executionId,
@@ -82,10 +80,9 @@ export class TypeOrmStepStore implements StepStore {
 		// only the identity columns: a step claimed out of `queued` can't have
 		// an outcome yet, so `outputs`/`error` are `null` by the lifecycle.
 		//
-		// The failure fence: the claim and `failStep` contend on the execution
-		// row (shared vs exclusive lock), so the failed-sibling check cannot
-		// miss a concurrently committing failure — the claim either waits it
-		// out and sees it, or committed strictly before it.
+		// The failure fence: the claim contends with `failStep` on the execution
+		// row (shared vs exclusive lock), so it either waits out a committing
+		// failure and sees it, or committed strictly before it.
 		return await this.repo.manager.transaction(async (manager) => {
 			const [execution] = await manager.query<Array<{ id: string }>>(
 				`SELECT id FROM workflow_execution
@@ -230,12 +227,12 @@ function assertOutputsMatchStatus(record: {
 }): void {
 	if (record.outputs !== undefined && record.status !== 'completed') {
 		throw new UnexpectedError(
-			`step for node ${record.nodeId} carries outputs but is created ${record.status}; only a step created completed may carry outputs`,
+			`step for node ${record.nodeId} is created ${record.status} with outputs, which only a step created completed may carry`,
 		);
 	}
 	if (record.status === 'completed' && record.outputs === undefined) {
 		throw new UnexpectedError(
-			`step for node ${record.nodeId} is created completed without outputs; a NULL outputs column reads as every slot dead — pass [] for a step that fired nothing`,
+			`step for node ${record.nodeId} is created completed without outputs, which persists as NULL and reads as every slot dead (pass [] for a step that fired nothing)`,
 		);
 	}
 }

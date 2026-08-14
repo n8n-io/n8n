@@ -178,9 +178,8 @@ describe('StepSettledHandler', () => {
 	});
 
 	it('fails the execution before planning when any step has failed', async () => {
-		// b failed while c completed, and settled(c) is handled first: m must not
-		// be planned off c's live edge. The check is execution-wide, so it also
-		// covers failures in branches this settlement's snapshot never sees.
+		// b failed but settled(c) is handled first: m must not be planned off
+		// c's live edge
 		const stepStore = makeStepStore(
 			{ id: 'step-c', nodeId: 'c' },
 			{ hasFailedSteps: vi.fn().mockResolvedValue(true) },

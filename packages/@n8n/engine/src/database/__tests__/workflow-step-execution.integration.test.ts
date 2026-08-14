@@ -51,11 +51,7 @@ describe('workflow_step_execution table (integration)', () => {
 		return step;
 	}
 
-	/**
-	 * Seeds a row in a status the creation contract forbids (`running`,
-	 * `failed`, `cancelled`), straight through the repository. Fixture-only:
-	 * production rows reach these states via their transitions.
-	 */
+	/** Fixture-only: seeds a row in a status the creation contract forbids. */
 	async function seedStep(record: {
 		executionId: string;
 		nodeId: string;
@@ -124,8 +120,7 @@ describe('workflow_step_execution table (integration)', () => {
 	});
 
 	it('TypeOrmStepStore.createSteps rejects outputs mismatched with status at runtime', async () => {
-		// both shapes are unrepresentable in NewStepRecord; the casts simulate a
-		// caller outside the type system reaching the runtime guard
+		// the casts simulate a caller outside the type system
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 
@@ -134,7 +129,7 @@ describe('workflow_step_execution table (integration)', () => {
 			store.createSteps(executionId, [queuedWithOutputs as unknown as NewStepRecord]),
 		).rejects.toMatchObject({
 			name: 'UnexpectedError',
-			message: expect.stringContaining('carries outputs') as string,
+			message: expect.stringContaining('with outputs') as string,
 		});
 
 		const completedWithoutOutputs = { nodeId: 'x', status: 'completed' };
@@ -211,8 +206,6 @@ describe('workflow_step_execution table (integration)', () => {
 		const { id } = await createStep(store, executionId, { nodeId: 'b', status: 'queued' });
 		await seedStep({ executionId, nodeId: 'a', status: 'failed' });
 
-		// the fence in the claim statement keeps b from starting work in a
-		// doomed execution
 		expect(await store.claimStep(id)).toBeNull();
 		expect((await store.loadStep(id)).status).toBe('queued');
 
@@ -227,8 +220,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		await seedStep({ executionId, nodeId: 'a', status: 'failed' });
 
-		// planned after the failure's cancellation sweep, these rows would be
-		// unclaimable and stuck queued forever, so they must not exist at all
+		// rows planned after the cancellation sweep would be stuck queued forever
 		const created = await store.createSteps(executionId, [{ nodeId: 'b', status: 'queued' }]);
 
 		expect(created).toEqual([]);
