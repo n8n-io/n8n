@@ -2,6 +2,7 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AGENT_TASK_ID_MAX_LENGTH, agentTaskSchema } from './agent-task.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -202,11 +203,22 @@ const AgentJsonTaskConfigSchema = z.object({
 	id: z
 		.string()
 		.min(1)
+		.max(AGENT_TASK_ID_MAX_LENGTH)
 		.regex(
 			/^[A-Za-z0-9_-]+$/,
 			'Task id can only contain letters, numbers, hyphens, and underscores',
 		),
 	enabled: z.boolean(),
+	/**
+	 * Embedded task body. Absent on the persisted schema ref — name/objective/
+	 * cron live in `agent_task_definition` (mirroring skills) — but included
+	 * when composing the exported JSON, and accepted on import, so a task
+	 * survives an export/import round-trip even when its definition row no
+	 * longer exists (e.g. deleted, or imported into a different agent).
+	 */
+	name: agentTaskSchema.shape.name.optional(),
+	objective: agentTaskSchema.shape.objective.optional(),
+	cronExpression: agentTaskSchema.shape.cronExpression.optional(),
 });
 
 export const McpAuthenticationSchemaTypes = z.enum([

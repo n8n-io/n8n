@@ -5,6 +5,7 @@ import {
 	formatAgentConfigZodError,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
+	type AgentJsonTaskConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -26,6 +27,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
+import { isValidCronExpression } from './integrations/cron-validation';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
@@ -35,6 +37,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { generateAgentResourceId } from './utils/agent-resource-id';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
@@ -64,7 +67,33 @@ export class AgentConfigService {
 		if (!config) {
 			throw new UserError('Agent has no JSON config yet.');
 		}
-		return config;
+		return await this.embedTaskDefinitions(agentId, config);
+	}
+
+	/**
+	 * Fill in each task ref's body (name/objective/cronExpression) from
+	 * `agent_task_definition` so the composed config — and anything exported
+	 * from it, like the builder's "Export JSON" — is a portable, self-contained
+	 * definition rather than a reference that only resolves on this agent.
+	 */
+	private async embedTaskDefinitions(
+		agentId: string,
+		config: AgentJsonConfig,
+	): Promise<AgentJsonConfig> {
+		if (!config.tasks?.length) return config;
+
+		const tasks = await this.agentTaskRepository.findByAgentId(agentId);
+		const bodyById = new Map(tasks.map((task) => [task.id, task]));
+
+		return {
+			...config,
+			tasks: config.tasks.map((ref) => {
+				const body = bodyById.get(ref.id);
+				return body
+					? { ...ref, name: body.name, objective: body.objective, cronExpression: body.cronExpression }
+					: ref;
+			}),
+		};
 	}
 
 	/**
@@ -164,14 +193,23 @@ export class AgentConfigService {
 		}
 
 		const tasksProvided = validatedConfig.tasks !== undefined;
-		const existingTaskIds = tasksProvided
-			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
-			: [];
+		const existingTaskIds = new Set(
+			tasksProvided
+				? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
+				: [],
+		);
+		// Snapshot before backfilling: used below to find rows that are no
+		// longer referenced, without newly-created ids ever counting as orphans.
+		const preUpdateTaskIds = [...existingTaskIds];
+
+		if (tasksProvided) {
+			await this.createMissingTaskDefinitions(agentId, validatedConfig.tasks, existingTaskIds);
+		}
 
 		const resolvedSubAgents = await this.removeMissingConfigRefs(
 			validatedConfig,
 			entity,
-			new Set(existingTaskIds),
+			existingTaskIds,
 		);
 		this.validateSubAgentRefs(resolvedSubAgents, entity);
 
@@ -217,7 +255,9 @@ export class AgentConfigService {
 			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
 			...(skillsProvided ? { skills: decomposedSchema.skills } : {}),
-			...(tasksProvided ? { tasks: decomposedSchema.tasks } : {}),
+			// Strip any embedded body back to a bare ref — the schema only ever
+			// stores membership + enabled; the body lives in `agent_task_definition`.
+			...(tasksProvided ? { tasks: decomposedSchema.tasks?.map(toBareTaskRef) } : {}),
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
@@ -288,7 +328,7 @@ export class AgentConfigService {
 
 		if (tasksProvided) {
 			const referencedTaskIds = new Set((validatedConfig.tasks ?? []).map((ref) => ref.id));
-			const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
+			const orphanTaskIds = preUpdateTaskIds.filter((id) => !referencedTaskIds.has(id));
 			if (orphanTaskIds.length > 0) {
 				await this.agentTaskRepository.delete(orphanTaskIds);
 			}
@@ -342,6 +382,49 @@ export class AgentConfigService {
 		return [];
 	}
 
+	/**
+	 * Backfill `agent_task_definition` rows for task refs that carry a full
+	 * embedded body (name/objective/cronExpression) but have no matching row —
+	 * e.g. a task deleted after export, or an exported JSON applied to a
+	 * different agent. Mutates `existingTaskIds` and the refs' `id` in place so
+	 * `removeMissingConfigRefs` keeps them and the caller persists the right id.
+	 * Refs without an embedded body are left for `removeMissingConfigRefs` to
+	 * drop, same as a stale ref to a task deleted out from under a config that
+	 * was never re-exported.
+	 */
+	private async createMissingTaskDefinitions(
+		agentId: string,
+		tasks: AgentJsonTaskConfig[] | undefined,
+		existingTaskIds: Set<string>,
+	): Promise<void> {
+		const candidates = (tasks ?? [])
+			.filter(hasEmbeddedTaskBody)
+			.filter((ref) => !existingTaskIds.has(ref.id) && isValidCronExpression(ref.cronExpression));
+		if (candidates.length === 0) return;
+
+		// `id` is a global primary key, not scoped to the agent, so an id
+		// re-imported into a different agent than the one it was exported from
+		// can collide with a still-live row; regenerate the id in that case.
+		const takenIds = await this.agentTaskRepository.findExistingIds(
+			candidates.map((ref) => ref.id),
+		);
+
+		const rows = candidates.map((ref) => {
+			const id = takenIds.has(ref.id) ? generateAgentResourceId('task', existingTaskIds) : ref.id;
+			ref.id = id;
+			existingTaskIds.add(id);
+			return this.agentTaskRepository.create({
+				id,
+				agentId,
+				name: ref.name,
+				objective: ref.objective,
+				cronExpression: ref.cronExpression,
+			});
+		});
+
+		await this.agentTaskRepository.save(rows);
+	}
+
 	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
 		for (const { agentId, agent } of resolvedSubAgents) {
 			if (!agent) continue;
@@ -357,6 +440,17 @@ export class AgentConfigService {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasEmbeddedTaskBody(
+	ref: AgentJsonTaskConfig,
+): ref is AgentJsonTaskConfig & { name: string; objective: string; cronExpression: string } {
+	return ref.name !== undefined && ref.objective !== undefined && ref.cronExpression !== undefined;
+}
+
+/** Persisted schema refs are membership + enabled only; the body lives in `agent_task_definition`. */
+function toBareTaskRef(ref: AgentJsonTaskConfig): AgentJsonTaskConfig {
+	return { type: 'task', id: ref.id, enabled: ref.enabled };
 }
 
 function mergePersonalisationWithPreviousGradient(

@@ -75,6 +75,7 @@ function makeService() {
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
+	agentTaskRepository.findExistingIds.mockResolvedValue(new Set());
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
 		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
@@ -128,6 +129,58 @@ describe('AgentConfigService', () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	describe('getConfig', () => {
+		it('embeds each task ref body from agent_task_definition so the config is a portable, self-contained export', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: {
+						...baseConfig,
+						tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+					},
+				}),
+			);
+			agentTaskRepository.findByAgentId.mockResolvedValue([
+				{
+					id: 'task-1',
+					name: 'Daily report',
+					objective: 'Summarize yesterday',
+					cronExpression: '0 9 * * *',
+				},
+			] as never);
+
+			const config = await service.getConfig(agentId, projectId);
+
+			expect(config.tasks).toEqual([
+				{
+					type: 'task',
+					id: 'task-1',
+					enabled: true,
+					name: 'Daily report',
+					objective: 'Summarize yesterday',
+					cronExpression: '0 9 * * *',
+				},
+			]);
+		});
+
+		it('leaves a task ref bare when its definition row is missing', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: {
+						...baseConfig,
+						tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+					},
+				}),
+			);
+			agentTaskRepository.findByAgentId.mockResolvedValue([]);
+
+			const config = await service.getConfig(agentId, projectId);
+
+			expect(config.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
+		});
 	});
 
 	describe('validateConfig', () => {
@@ -489,6 +542,112 @@ describe('AgentConfigService', () => {
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('backfills a task definition from an embedded body when the referenced row is missing', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentTaskRepository.findByAgentId.mockResolvedValue([]);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tasks: [
+						{
+							type: 'task',
+							id: 'task-1',
+							enabled: true,
+							name: 'Daily report',
+							objective: 'Summarize yesterday',
+							cronExpression: '0 9 * * *',
+						},
+					],
+				},
+				user,
+				byUser,
+			);
+
+			expect(agentTaskRepository.create).toHaveBeenCalledWith({
+				id: 'task-1',
+				agentId,
+				name: 'Daily report',
+				objective: 'Summarize yesterday',
+				cronExpression: '0 9 * * *',
+			});
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			// The persisted schema keeps a bare ref — the body lives on the
+			// agent_task_definition row that was just backfilled, not the schema.
+			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
+			expect(agentTaskRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('drops an embedded body whose cron expression is invalid instead of creating a bad row', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentTaskRepository.findByAgentId.mockResolvedValue([]);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tasks: [
+						{
+							type: 'task',
+							id: 'task-1',
+							enabled: true,
+							name: 'Daily report',
+							objective: 'Summarize yesterday',
+							cronExpression: 'not-a-cron',
+						},
+					],
+				},
+				user,
+				byUser,
+			);
+
+			expect(agentTaskRepository.create).not.toHaveBeenCalled();
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.tasks).toEqual([]);
+		});
+
+		it('regenerates the task id when the embedded id already belongs to another agent', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentTaskRepository.findByAgentId.mockResolvedValue([]);
+			// `id` is a global primary key: this simulates the imported id still
+			// being live on the agent it was originally exported from.
+			agentTaskRepository.findExistingIds.mockResolvedValue(new Set(['task-1']));
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tasks: [
+						{
+							type: 'task',
+							id: 'task-1',
+							enabled: true,
+							name: 'Daily report',
+							objective: 'Summarize yesterday',
+							cronExpression: '0 9 * * *',
+						},
+					],
+				},
+				user,
+				byUser,
+			);
+
+			expect(agentTaskRepository.create).toHaveBeenCalledTimes(1);
+			const createdRow = agentTaskRepository.create.mock.calls[0][0] as { id: string };
+			expect(createdRow.id).not.toBe('task-1');
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: createdRow.id, enabled: true }]);
 		});
 
 		it('sanitizes inaccessible credentials before saving nested config', async () => {
