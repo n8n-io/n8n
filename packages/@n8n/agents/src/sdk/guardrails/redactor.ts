@@ -151,7 +151,7 @@ export function findMatchRanges(
 
 const MAX_DEEP_DEPTH = 8;
 const SENSITIVE_KEY_PATTERN =
-	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
+	/(api[_-]?key|private[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 export interface DeepRedactionResult {
 	value: unknown;

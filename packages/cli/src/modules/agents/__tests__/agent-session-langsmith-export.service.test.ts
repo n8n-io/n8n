@@ -71,7 +71,13 @@ function makeExecution(overrides: Partial<AgentExecution> = {}): AgentExecution 
 				kind: 'tool',
 				name: 'search',
 				toolCallId: 'tool-success',
-				input: { query: 'find docs', apiKey: 'top-secret-key' },
+				input: {
+					query: 'find docs',
+					apiKey: 'top-secret-key',
+					privateKey: 'first-value',
+					private_key: 'second-value',
+					'private-key': 'third-value',
+				},
 				output: { result: 'found' },
 				startTime: Date.parse('2026-08-14T09:00:00.300Z'),
 				endTime: Date.parse('2026-08-14T09:00:00.400Z'),
@@ -246,6 +252,9 @@ describe('AgentSessionLangSmithExportService', () => {
 		]);
 		expect(JSON.stringify(firstRuns)).not.toContain('robin@example.com');
 		expect(JSON.stringify(firstRuns)).not.toContain('top-secret-key');
+		expect(JSON.stringify(firstRuns)).not.toContain('first-value');
+		expect(JSON.stringify(firstRuns)).not.toContain('second-value');
+		expect(JSON.stringify(firstRuns)).not.toContain('third-value');
 		expect(JSON.stringify(firstRuns)).toContain('[REDACTED]');
 		expect(firstRuns[1].inputs.attachments).toEqual([
 			{ id: 'attachment-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 42 },
