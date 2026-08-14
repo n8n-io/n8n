@@ -241,6 +241,13 @@ export default mergeConfig(
 					target: 'https://api.anthropic.com',
 					changeOrigin: true,
 					rewrite: () => '/v1/messages',
+					// Anthropic rejects requests carrying a browser Origin; this hop is server-to-server.
+					configure: (proxy) => {
+						proxy.on('proxyReq', (proxyReq) => {
+							proxyReq.removeHeader('origin');
+							proxyReq.removeHeader('referer');
+						});
+					},
 				},
 			},
 		},

@@ -23,6 +23,8 @@ export class SpecHistory {
 	}
 }
 
-export function historyKey(hash: string, view: 'story' | 'play'): string {
-	return `n8n.workflowGenerativeUi.history.${hash}.${view}`;
+// Keyed by workflow identity, not by workflow content: editing the workflow must
+// not silently replace a view the reader asked for.
+export function historyKey(workflowId: string, view: 'story' | 'play'): string {
+	return `n8n.workflowGenerativeUi.history.${workflowId}.${view}`;
 }

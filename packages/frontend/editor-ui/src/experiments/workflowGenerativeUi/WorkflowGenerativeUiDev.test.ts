@@ -24,7 +24,19 @@ function specResponse(text: string) {
 					text: JSON.stringify({
 						root: 'screen',
 						elements: {
-							screen: { type: 'Screen', props: { title: 'Generated view' }, children: ['text'] },
+							screen: {
+								type: 'Screen',
+								props: { title: 'Generated view', summary: 'A generated view of the workflow.' },
+								children: ['board'],
+							},
+							board: {
+								type: 'GuidedTimeline',
+								props: {},
+								children: ['sec-1', 'sec-2', 'sec-3'],
+							},
+							'sec-1': { type: 'Group', props: { title: 'Intake' }, children: ['text'] },
+							'sec-2': { type: 'Group', props: { title: 'Process' }, children: [] },
+							'sec-3': { type: 'Group', props: { title: 'Deliver' }, children: [] },
 							text: { type: 'Text', props: { text }, children: [] },
 						},
 					}),

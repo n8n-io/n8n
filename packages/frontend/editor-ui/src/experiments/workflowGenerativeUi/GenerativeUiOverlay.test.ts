@@ -38,7 +38,7 @@ function stepSpec(nodeId: string) {
 		elements: {
 			screen: {
 				type: 'Screen',
-				props: { title: 'Generated view' },
+				props: { title: 'Generated view', summary: 'Runs the generated workflow.' },
 				children: ['step'],
 			},
 			step: {
@@ -49,6 +49,28 @@ function stepSpec(nodeId: string) {
 						action: 'openNode',
 						params: { nodeId },
 					},
+				},
+				children: [],
+			},
+		},
+	};
+}
+
+function clusterSpec(nodeId: string) {
+	return {
+		root: 'screen',
+		elements: {
+			screen: {
+				type: 'Screen',
+				props: { title: 'Generated view', summary: 'Runs the generated workflow.' },
+				children: ['cluster'],
+			},
+			cluster: {
+				type: 'Cluster',
+				props: {
+					title: 'Related operations',
+					summary: 'Runs related workflow nodes.',
+					nodeIds: [nodeId],
 				},
 				children: [],
 			},
@@ -72,6 +94,7 @@ describe('GenerativeUiOverlay', () => {
 		const store = useWorkflowGenerativeUiStore();
 		store.apiKey = 'test-key';
 		store.setWorkflowGetter(() => ({
+			id: documentStore.documentId,
 			name: documentStore.name,
 			nodes: documentStore.allNodes.map((workflowNode) => ({ ...workflowNode })),
 			connections: documentStore.connectionsBySourceNode,
@@ -83,8 +106,28 @@ describe('GenerativeUiOverlay', () => {
 
 		expect(screen.getByText('Known node')).toBeInTheDocument();
 		expect(
-			screen.getByText('Generation failed. Showing a basic workflow view.'),
-		).toBeInTheDocument();
+			screen.getByText(/Generation failed\. Showing a basic workflow view\./),
+		).toHaveTextContent('Details: Request failed');
+	});
+
+	it('renders the fallback instead of an invalid catalog spec', () => {
+		setupWorkflow();
+		const store = useWorkflowGenerativeUiStore();
+		store.activeSpec = {
+			root: 'screen',
+			elements: {
+				screen: {
+					type: 'Screen',
+					props: { title: 'Missing required summary' },
+					children: [],
+				},
+			},
+		};
+
+		renderComponent(GenerativeUiOverlay);
+
+		expect(screen.getByText('Known node')).toBeInTheDocument();
+		expect(screen.getByText('Raw spec')).toBeInTheDocument();
 	});
 
 	it('suppresses node interaction in look-only mode', async () => {
@@ -124,6 +167,19 @@ describe('GenerativeUiOverlay', () => {
 		expect(setActiveNodeName).toHaveBeenCalledWith(node.name, 'generative_ui');
 	});
 
+	it('opens a clustered node from its individual brand', async () => {
+		const documentStore = setupWorkflow();
+		const store = useWorkflowGenerativeUiStore();
+		store.activeSpec = clusterSpec(node.id);
+		const ndvStore = useNDVStore(documentStore.documentId);
+		const setActiveNodeName = vi.spyOn(ndvStore, 'setActiveNodeName');
+		renderComponent(GenerativeUiOverlay);
+
+		await fireEvent.click(screen.getByRole('button', { name: `Open ${node.name}` }));
+
+		expect(setActiveNodeName).toHaveBeenCalledWith(node.name, 'generative_ui');
+	});
+
 	it('does not throw when the workflow document store is not provided', async () => {
 		setupWorkflow();
 		const store = useWorkflowGenerativeUiStore();
@@ -135,5 +191,17 @@ describe('GenerativeUiOverlay', () => {
 		await fireEvent.click(screen.getByRole('button'));
 
 		expect(screen.getByText('Known node')).toBeInTheDocument();
+	});
+
+	it('reserves bottom scroll space for the floating follow-up pill', () => {
+		setupWorkflow();
+		const store = useWorkflowGenerativeUiStore();
+		store.activeSpec = stepSpec(node.id);
+		renderComponent(GenerativeUiOverlay);
+
+		expect(screen.getByTestId('generative-ui-overlay')).toHaveStyle({
+			'--generative-ui--follow-up--reserve':
+				'calc(var(--spacing--3xl) + var(--spacing--lg) + env(safe-area-inset-bottom, 0px))',
+		});
 	});
 });

@@ -1,48 +1,110 @@
 <script setup lang="ts">
-import ActionCard from './ActionCard.vue';
-defineProps<{ to: string; subject: string; bodyPreview: string; nodeId?: string | null }>();
+import InteractiveSurface from './InteractiveSurface.vue';
+import NodeBrand from './NodeBrand.vue';
+
+defineProps<{
+	to: string;
+	subject: string;
+	bodyPreview: string;
+	nodeId?: string | null;
+	pressBound?: boolean;
+}>();
+
 defineEmits<{ press: [] }>();
 </script>
+
 <template>
-	<ActionCard :node-id="nodeId" label="Email" :title="subject" @press="$emit('press')"
-		><dl :class="$style.details">
-			<div>
-				<dt>To</dt>
-				<dd>{{ to }}</dd>
-			</div>
-			<div>
-				<dt>Subject</dt>
-				<dd>{{ subject }}</dd>
-			</div>
-		</dl>
-		<p :class="$style.body">{{ bodyPreview }}</p></ActionCard
+	<InteractiveSurface
+		:node-id="nodeId"
+		:label="subject"
+		:press-bound="pressBound"
+		@press="$emit('press')"
 	>
+		<article :class="$style.message" data-test-id="email-message">
+			<header :class="$style.headers" data-test-id="email-headers">
+				<div :class="$style.sender">
+					<NodeBrand :node-id="nodeId" :size="16" />
+					<span :class="$style.channel">Email</span>
+				</div>
+				<h4 :class="$style.subject">{{ subject }}</h4>
+				<dl :class="$style.recipients">
+					<dt>To</dt>
+					<dd>{{ to }}</dd>
+				</dl>
+			</header>
+			<p :class="$style.body" data-test-id="email-body">{{ bodyPreview }}</p>
+		</article>
+	</InteractiveSurface>
 </template>
+
 <style lang="scss" module>
-.details {
+.message {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin: 0;
+	min-width: 0;
+	background: var(--background--surface);
+	border: var(--border);
+	border-radius: var(--radius--sm);
+	overflow: hidden;
 }
-.details div {
-	display: grid;
-	grid-template-columns: var(--spacing--2xl) 1fr;
+
+.headers {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--sm);
+	background: var(--background--subtle);
+	border-bottom: var(--border);
+}
+
+.sender {
+	display: flex;
+	align-items: center;
 	gap: var(--spacing--2xs);
 }
-.details dt {
+
+.channel {
 	color: var(--text-color--subtler);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--medium);
+	letter-spacing: var(--letter-spacing--wide);
+	text-transform: uppercase;
 }
-.details dd {
-	min-width: 0;
+
+.subject {
 	margin: 0;
+	color: var(--text-color);
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--lg);
 	overflow-wrap: anywhere;
 }
+
+.recipients {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: var(--spacing--3xs) var(--spacing--2xs);
+	margin: 0;
+	font-size: var(--font-size--xs);
+}
+
+.recipients dt {
+	color: var(--text-color--subtler);
+}
+
+.recipients dd {
+	min-width: 0;
+	margin: 0;
+	color: var(--text-color--subtle);
+	overflow-wrap: anywhere;
+}
+
 .body {
 	margin: 0;
-	padding-top: var(--spacing--2xs);
-	color: var(--text-color--subtle);
-	border-top: var(--border);
+	padding: var(--spacing--sm);
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 	white-space: pre-wrap;
 }
 </style>

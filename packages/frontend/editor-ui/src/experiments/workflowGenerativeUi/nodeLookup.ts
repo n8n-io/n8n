@@ -4,6 +4,8 @@ import { computed, inject, provide, unref, type InjectionKey, type MaybeRef } fr
 export const GenerativeUiNodesKey: InjectionKey<MaybeRef<INode[]>> = Symbol('generativeUiNodes');
 export const GenerativeUiLookOnlyKey: InjectionKey<MaybeRef<boolean>> =
 	Symbol('generativeUiLookOnly');
+export const GenerativeUiOpenNodeKey: InjectionKey<(nodeId: string) => void> =
+	Symbol('generativeUiOpenNode');
 
 export function provideGenerativeUiNodes(nodes: MaybeRef<INode[]>) {
 	provide(GenerativeUiNodesKey, nodes);
@@ -13,9 +15,17 @@ export function provideGenerativeUiLookOnly(lookOnly: MaybeRef<boolean>) {
 	provide(GenerativeUiLookOnlyKey, lookOnly);
 }
 
+export function provideGenerativeUiOpenNode(openNode: (nodeId: string) => void) {
+	provide(GenerativeUiOpenNodeKey, openNode);
+}
+
 export function useGenerativeUiLookOnly() {
 	const lookOnly = inject(GenerativeUiLookOnlyKey, false);
 	return computed(() => unref(lookOnly));
+}
+
+export function useGenerativeUiOpenNode() {
+	return inject(GenerativeUiOpenNodeKey, null);
 }
 
 export function useGenerativeUiNode(nodeId: () => string | null | undefined) {

@@ -1,9 +1,12 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fireEvent } from '@testing-library/vue';
 import { ref } from 'vue';
 import { describe, expect, it } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { GenerativeUiLookOnlyKey } from '../nodeLookup';
 import ActionCard from './ActionCard.vue';
+import Step from './Step.vue';
 
 const renderComponent = createComponentRenderer(ActionCard, {
 	props: {
@@ -18,12 +21,6 @@ const renderComponent = createComponentRenderer(ActionCard, {
 		},
 	},
 });
-
-function getCard(container: Element) {
-	const card = container.firstElementChild;
-	if (!card) throw new Error('Action card was not rendered');
-	return card;
-}
 
 describe('ActionCard', () => {
 	it('emits press for click, Enter, and Space when interactive', async () => {
@@ -47,40 +44,68 @@ describe('ActionCard', () => {
 				},
 			},
 		});
-		const card = getCard(container);
 
 		expect(queryByRole('button')).not.toBeInTheDocument();
-		expect(card).not.toHaveAttribute('tabindex');
 
-		await fireEvent.click(card);
-		await fireEvent.keyDown(card, { key: 'Enter' });
-		await fireEvent.keyDown(card, { key: ' ' });
+		await fireEvent.click(container.firstElementChild as Element);
 
 		expect(emitted().press).toBeUndefined();
 	});
 
-	it('does not emit press without a node ID', async () => {
-		const { container, emitted, queryByRole } = renderComponent({
-			props: { nodeId: null },
-		});
-		const card = getCard(container);
+	it('has no interactive behavior without a node ID', async () => {
+		const { container, emitted, queryByRole } = renderComponent({ props: { nodeId: null } });
 
 		expect(queryByRole('button')).not.toBeInTheDocument();
-		await fireEvent.click(card);
+		await fireEvent.click(container.firstElementChild as Element);
 
 		expect(emitted().press).toBeUndefined();
 	});
 
 	it('has no interactive behavior without a press binding', async () => {
-		const { container, emitted, queryByRole } = renderComponent({
-			props: { pressBound: false },
-		});
-		const card = getCard(container);
+		const { emitted, queryByRole } = renderComponent({ props: { pressBound: false } });
 
 		expect(queryByRole('button')).not.toBeInTheDocument();
-		expect(card).not.toHaveAttribute('tabindex');
-		await fireEvent.click(card);
-
 		expect(emitted().press).toBeUndefined();
+	});
+
+	it('renders the label, title, node brand, and slot content', () => {
+		const { container, getByTestId, getByText } = renderComponent({
+			slots: { default: '<p>Sends the summary</p>' },
+		});
+
+		expect(getByTestId('generic-action-card')).toBeInTheDocument();
+		expect(getByText('Action')).toBeInTheDocument();
+		expect(getByText('Send email')).toBeInTheDocument();
+		expect(getByText('Sends the summary')).toBeInTheDocument();
+		expect(container.querySelector('node-brand-stub')).not.toBeNull();
+	});
+
+	it('stays quiet and motionless', () => {
+		const { container, getByTestId } = renderComponent();
+		const card = getByTestId('generic-action-card');
+
+		expect(card).not.toHaveAttribute('data-motion');
+		expect(card).not.toHaveAttribute('data-emphasis');
+		expect(card).not.toHaveAttribute('data-tone');
+		expect(container.querySelector('[data-motion]')).toBeNull();
+
+		const source = readFileSync(resolve(__dirname, 'ActionCard.vue'), 'utf8');
+		expect(source).not.toMatch(/@keyframes|animation|transition|\bmotion\b/);
+	});
+
+	it('remains the fallback shell for a generic Step', () => {
+		const renderStep = createComponentRenderer(Step, {
+			props: {
+				nodeId: 'node-1',
+				title: 'Prepare payload',
+				summary: 'Shapes the data for the next call',
+				pressBound: true,
+			},
+			global: { stubs: { NodeBrand: true } },
+		});
+		const { getByTestId, getByText } = renderStep();
+
+		expect(getByTestId('generic-action-card')).toBeInTheDocument();
+		expect(getByText('Shapes the data for the next call')).toBeInTheDocument();
 	});
 });

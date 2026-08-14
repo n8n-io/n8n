@@ -36,6 +36,7 @@ describe('ViewPicker', () => {
 		const store = useWorkflowGenerativeUiStore();
 		const user = userEvent.setup();
 		store.setWorkflowGetter(() => ({
+			id: 'workflow-1',
 			name: 'Workflow',
 			nodes: [],
 			connections: {},

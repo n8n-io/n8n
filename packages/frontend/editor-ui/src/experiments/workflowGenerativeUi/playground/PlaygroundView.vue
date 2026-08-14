@@ -13,7 +13,13 @@ import { jsonParse, type IConnections, type INode } from 'n8n-workflow';
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue';
 import FollowUpBar from '../FollowUpBar.vue';
 import NodeBrand from '../components/NodeBrand.vue';
-import { provideGenerativeUiLookOnly, provideGenerativeUiNodes } from '../nodeLookup';
+import { followUpReserveStyle } from '../followUpReserve';
+import { validateGeneratedSpec } from '../generate';
+import {
+	provideGenerativeUiLookOnly,
+	provideGenerativeUiNodes,
+	provideGenerativeUiOpenNode,
+} from '../nodeLookup';
 import { registry } from '../registry';
 import { buildFallbackSpec } from '../workflowGenerativeUi.store';
 import {
@@ -69,24 +75,20 @@ const nodes = computed(() => activeFixture.value.workflow.nodes);
 provideGenerativeUiNodes(nodes);
 provideGenerativeUiLookOnly(toRef(store, 'lookOnly'));
 
+function openNode(nodeId: string) {
+	if (!store.lookOnly && nodes.value.some((node) => node.id === nodeId)) {
+		highlightedNodeId.value = nodeId;
+	}
+}
+
+provideGenerativeUiOpenNode(openNode);
+
 store.setWorkflowGetter(() => ({
+	id: activeFixture.value.id,
 	name: activeFixture.value.workflow.name,
 	nodes: activeFixture.value.workflow.nodes.map((node) => ({ ...node })),
 	connections: activeFixture.value.workflow.connections,
 }));
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isSpec(value: unknown): value is Spec {
-	return (
-		isRecord(value) &&
-		typeof value.root === 'string' &&
-		isRecord(value.elements) &&
-		isRecord(value.elements[value.root])
-	);
-}
 
 function isFixtureId(value: unknown): value is FixtureId {
 	return value === 'leads' || value === 'ops' || value === 'interview';
@@ -118,9 +120,18 @@ const fallbackSpec = computed(() =>
 		}),
 	),
 );
-const hasParseFailure = computed(() => store.activeSpec !== undefined && !isSpec(store.activeSpec));
+const validatedActiveSpec = computed<Spec | null>(() => {
+	try {
+		return validateGeneratedSpec(store.activeSpec);
+	} catch {
+		return null;
+	}
+});
+const hasParseFailure = computed(
+	() => store.activeSpec !== undefined && validatedActiveSpec.value === null,
+);
 const renderSpec = computed<Spec | null>(() => {
-	if (isSpec(store.activeSpec)) return store.activeSpec;
+	if (validatedActiveSpec.value) return validatedActiveSpec.value;
 	if (hasParseFailure.value) return fallbackSpec.value;
 	return null;
 });
@@ -131,14 +142,16 @@ const errorMessages: Record<WorkflowGenerativeUiError, string> = {
 	unauthorized: 'The API key was rejected. Update it and try again.',
 	'generate-failed': 'Generation failed. Showing a basic workflow view.',
 };
-const errorMessage = computed(() => (store.error ? errorMessages[store.error] : null));
+const errorMessage = computed(() => {
+	if (!store.error) return null;
+	const base = errorMessages[store.error];
+	return store.errorDetail ? `${base} Details: ${store.errorDetail}` : base;
+});
 
 const handlers = {
 	openNode: (params: Record<string, unknown> = {}) => {
 		const nodeId = typeof params.nodeId === 'string' ? params.nodeId : null;
-		if (!store.lookOnly && nodes.value.some((node) => node.id === nodeId)) {
-			highlightedNodeId.value = nodeId;
-		}
+		if (nodeId) openNode(nodeId);
 		return Promise.resolve();
 	},
 };
@@ -175,7 +188,7 @@ onBeforeUnmount(() => {
 				<N8nSelect
 					:model-value="selectedFixtureId"
 					aria-label="Workflow template"
-					data-testid="generative-ui-template"
+					data-test-id="generative-ui-template"
 					@update:model-value="selectFixture"
 				>
 					<N8nOption
@@ -189,7 +202,7 @@ onBeforeUnmount(() => {
 					:model-value="store.view === 'canvas' ? '' : store.view"
 					placeholder="Pick a view"
 					aria-label="Workflow view"
-					data-testid="generative-ui-playground-view"
+					data-test-id="generative-ui-playground-view"
 					@update:model-value="selectView"
 				>
 					<N8nOption label="Story" value="story" />
@@ -213,9 +226,9 @@ onBeforeUnmount(() => {
 				</N8nButton>
 			</div>
 			<form
-				v-if="store.error === 'missing-key'"
+				v-if="store.error === 'missing-key' || store.error === 'unauthorized'"
 				:class="$style.apiKey"
-				data-testid="generative-ui-playground-api-key"
+				data-test-id="generative-ui-playground-api-key"
 				@submit.prevent="saveApiKey"
 			>
 				<N8nInput
@@ -243,18 +256,37 @@ onBeforeUnmount(() => {
 				</ol>
 			</aside>
 
-			<div :class="$style.preview">
-				<N8nText v-if="errorMessage" color="danger" :class="$style.error">
-					{{ errorMessage }}
-				</N8nText>
-				<div v-if="store.isGenerating && !renderSpec" :class="$style.status">
-					<N8nText>Generating…</N8nText>
-				</div>
-				<JSONUIProvider v-else-if="renderSpec" :registry="registry" :handlers="handlers">
-					<Renderer :spec="renderSpec" :registry="registry" :loading="store.isGenerating" />
-				</JSONUIProvider>
-				<div v-else :class="$style.status">
-					<N8nText>Pick a view to generate one.</N8nText>
+			<div
+				:class="$style.previewShell"
+				:style="followUpReserveStyle"
+				data-test-id="generative-ui-playground-preview"
+			>
+				<div :class="$style.previewScroll" data-test-id="generative-ui-playground-preview-scroll">
+					<N8nText v-if="errorMessage" color="danger" :class="$style.error">
+						{{ errorMessage }}
+					</N8nText>
+					<N8nText
+						v-else-if="store.isStale"
+						color="text-light"
+						:class="$style.error"
+						data-test-id="generative-ui-stale-notice"
+					>
+						The workflow changed since this view was made. Regenerate to update it.
+					</N8nText>
+					<div v-if="store.isGenerating && !renderSpec" :class="$style.status">
+						<N8nText>Generating…</N8nText>
+					</div>
+					<JSONUIProvider
+						v-else-if="renderSpec"
+						:registry="registry"
+						:handlers="handlers"
+						:initial-state="renderSpec.state ?? {}"
+					>
+						<Renderer :spec="renderSpec" :registry="registry" :loading="store.isGenerating" />
+					</JSONUIProvider>
+					<div v-else :class="$style.status">
+						<N8nText>Pick a view to generate one.</N8nText>
+					</div>
 				</div>
 				<FollowUpBar />
 			</div>
@@ -338,10 +370,17 @@ onBeforeUnmount(() => {
 	outline-offset: var(--spacing--5xs);
 }
 
-.preview {
+.previewShell {
 	position: relative;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.previewScroll {
+	height: 100%;
 	overflow: auto;
-	padding: var(--spacing--2xl) var(--spacing--lg) calc(var(--spacing--3xl) + var(--spacing--lg));
+	padding: var(--spacing--2xl) var(--spacing--lg) var(--generative-ui--follow-up--reserve);
 }
 
 .error {

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-defineProps<{ title: string | null }>();
+defineProps<{ title?: string | null }>();
 </script>
 
 <template>
-	<details :class="$style.accordion" open>
+	<details :class="$style.accordion">
 		<summary :class="$style.summary">{{ title ?? 'Details' }}</summary>
 		<div :class="$style.content"><slot /></div>
 	</details>

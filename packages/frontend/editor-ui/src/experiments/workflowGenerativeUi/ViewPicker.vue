@@ -68,7 +68,7 @@ function saveApiKey() {
 			</template>
 		</div>
 		<form
-			v-if="store.error === 'missing-key'"
+			v-if="store.error === 'missing-key' || store.error === 'unauthorized'"
 			:class="$style.apiKey"
 			data-testid="generative-ui-api-key"
 			@submit.prevent="saveApiKey"

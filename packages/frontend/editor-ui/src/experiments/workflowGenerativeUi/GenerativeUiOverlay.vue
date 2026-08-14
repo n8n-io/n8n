@@ -5,7 +5,14 @@ import { JSONUIProvider, Renderer, type Spec } from '@json-render/vue';
 import { computed, toRef, watch } from 'vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
-import { provideGenerativeUiLookOnly, provideGenerativeUiNodes } from './nodeLookup';
+import { followUpReserveStyle } from './followUpReserve';
+import { provideGenerativeUiFlowGraph } from './flowGraph';
+import { validateGeneratedSpec } from './generate';
+import {
+	provideGenerativeUiLookOnly,
+	provideGenerativeUiNodes,
+	provideGenerativeUiOpenNode,
+} from './nodeLookup';
 import { registry } from './registry';
 import { buildWorkflowUiPayload } from './workflowPayload';
 import {
@@ -23,31 +30,37 @@ const nodes = computed(() => workflowDocumentStore.value.allNodes);
 provideGenerativeUiNodes(nodes);
 provideGenerativeUiLookOnly(toRef(store, 'lookOnly'));
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
+function openNode(nodeId: string) {
+	const node = nodes.value.find((candidate) => candidate.id === nodeId);
+	if (!store.lookOnly && node) {
+		ndvStore.value?.setActiveNodeName(node.name, 'generative_ui');
+	}
 }
 
-function isSpec(value: unknown): value is Spec {
-	return (
-		isRecord(value) &&
-		typeof value.root === 'string' &&
-		isRecord(value.elements) &&
-		isRecord(value.elements[value.root])
-	);
-}
+provideGenerativeUiOpenNode(openNode);
 
-const hasParseFailure = computed(() => store.activeSpec !== undefined && !isSpec(store.activeSpec));
-const fallbackSpec = computed(() =>
-	buildFallbackSpec(
-		buildWorkflowUiPayload({
-			name: workflowDocumentStore.value.name,
-			nodes: nodes.value.map((node) => ({ ...node })),
-			connections: workflowDocumentStore.value.connectionsBySourceNode,
-		}),
-	),
+const validatedActiveSpec = computed<Spec | null>(() => {
+	try {
+		return validateGeneratedSpec(store.activeSpec);
+	} catch {
+		return null;
+	}
+});
+const hasParseFailure = computed(
+	() => store.activeSpec !== undefined && validatedActiveSpec.value === null,
 );
+const workflowUiPayload = computed(() =>
+	buildWorkflowUiPayload({
+		name: workflowDocumentStore.value.name,
+		nodes: nodes.value.map((node) => ({ ...node })),
+		connections: workflowDocumentStore.value.connectionsBySourceNode,
+	}),
+);
+const fallbackSpec = computed(() => buildFallbackSpec(workflowUiPayload.value));
+
+provideGenerativeUiFlowGraph(computed(() => workflowUiPayload.value.connections));
 const renderSpec = computed<Spec | null>(() => {
-	if (isSpec(store.activeSpec)) return store.activeSpec;
+	if (validatedActiveSpec.value) return validatedActiveSpec.value;
 	if (hasParseFailure.value) return fallbackSpec.value;
 	return null;
 });
@@ -59,7 +72,11 @@ const errorMessages: Record<WorkflowGenerativeUiError, string> = {
 	'generate-failed': 'Generation failed. Showing a basic workflow view.',
 };
 
-const errorMessage = computed(() => (store.error ? errorMessages[store.error] : null));
+const errorMessage = computed(() => {
+	if (!store.error) return null;
+	const base = errorMessages[store.error];
+	return store.errorDetail ? `${base} Details: ${store.errorDetail}` : base;
+});
 
 watch(
 	() => store.error,
@@ -67,7 +84,7 @@ watch(
 		if (!error || error === previousError || error === 'missing-key') return;
 		showToast({
 			title: 'Could not generate view',
-			message: errorMessages[error],
+			message: errorMessage.value ?? errorMessages[error],
 			type: 'error',
 		});
 	},
@@ -76,10 +93,7 @@ watch(
 const handlers = {
 	openNode: (params: Record<string, unknown> = {}) => {
 		const nodeId = typeof params.nodeId === 'string' ? params.nodeId : null;
-		const node = nodes.value.find((candidate) => candidate.id === nodeId);
-		if (!store.lookOnly && node) {
-			ndvStore.value?.setActiveNodeName(node.name, 'generative_ui');
-		}
+		if (nodeId) openNode(nodeId);
 		return Promise.resolve();
 	},
 };
@@ -88,7 +102,7 @@ const rawSpec = computed(() => JSON.stringify(store.activeSpec, null, 2));
 </script>
 
 <template>
-	<div :class="$style.overlay" data-testid="generative-ui-overlay">
+	<div :class="$style.overlay" :style="followUpReserveStyle" data-test-id="generative-ui-overlay">
 		<div v-if="nodes.length === 0" :class="$style.status">
 			<N8nText>Add nodes, then pick a view.</N8nText>
 		</div>
@@ -96,10 +110,23 @@ const rawSpec = computed(() => JSON.stringify(store.activeSpec, null, 2));
 			<N8nText v-if="errorMessage" color="danger" :class="$style.error">
 				{{ errorMessage }}
 			</N8nText>
+			<N8nText
+				v-else-if="store.isStale"
+				color="text-light"
+				:class="$style.notice"
+				data-test-id="generative-ui-stale-notice"
+			>
+				The workflow changed since this view was made. Regenerate to update it.
+			</N8nText>
 			<div v-if="store.isGenerating && !renderSpec" :class="$style.status">
 				<N8nText>Generating…</N8nText>
 			</div>
-			<JSONUIProvider v-else-if="renderSpec" :registry="registry" :handlers="handlers">
+			<JSONUIProvider
+				v-else-if="renderSpec"
+				:registry="registry"
+				:handlers="handlers"
+				:initial-state="renderSpec.state ?? {}"
+			>
 				<Renderer :spec="renderSpec" :registry="registry" :loading="store.isGenerating" />
 			</JSONUIProvider>
 			<details v-if="hasParseFailure" :class="$style.debug">
@@ -116,7 +143,7 @@ const rawSpec = computed(() => JSON.stringify(store.activeSpec, null, 2));
 	inset: 0;
 	z-index: 1;
 	overflow: auto;
-	padding: var(--spacing--3xl) var(--spacing--lg);
+	padding: var(--spacing--3xl) var(--spacing--lg) var(--generative-ui--follow-up--reserve);
 	background: var(--background--surface);
 }
 
@@ -128,6 +155,12 @@ const rawSpec = computed(() => JSON.stringify(store.activeSpec, null, 2));
 }
 
 .error {
+	display: block;
+	margin-bottom: var(--spacing--sm);
+	text-align: center;
+}
+
+.notice {
 	display: block;
 	margin-bottom: var(--spacing--sm);
 	text-align: center;
