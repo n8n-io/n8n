@@ -250,6 +250,54 @@ export default defineConfig(
 		},
 	},
 	{
+		// Modal-key inversion ratchet, half 1 of 2 (CAT-3688): the shell's modal-key
+		// constants file is closed. Everything it still exports is a key on its way out;
+		// the three dialog result sentinels are what remains when the migration is done.
+		//
+		// Level: 'warn' while the pre-existing entries burn down through CAT-3973. Flip
+		// to 'error' at that issue's exit — the level is the only edit needed.
+		//
+		// The message names the destination, not just the ban: a warn is the only signal
+		// a shell-side contributor gets before it becomes an error.
+		//
+		// This file does not touch workflowsStore, so replacing the package-wide
+		// `no-restricted-syntax` list for it loses no coverage.
+		files: ['src/app/constants/modals.ts'],
+		rules: {
+			'no-restricted-syntax': [
+				'warn',
+				{
+					selector:
+						'ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name!=/^MODAL_(CANCEL|CONFIRM|CLOSE)$/]',
+					message:
+						"Modal keys do not live in the shell. Declare this key in its owning feature's constants file (src/features/<feature>/<feature>.constants.ts) and register the modal from that feature's modals.ts fragment — see src/features/core/auth/modals.ts. A modal the shell genuinely owns declares its key beside its fragment in src/app/modals.manifest.ts, not here. Only MODAL_CANCEL/MODAL_CONFIRM/MODAL_CLOSE stay: they are dialog result sentinels, not modal keys.",
+				},
+				{
+					selector: 'ExportNamedDeclaration[source]',
+					message:
+						'Do not re-export a modal key through the shell — it keeps @/app/constants alive as an import path for a key the shell no longer owns, which is the reacquisition this ratchet exists to stop. Import it from its owning feature or package directly.',
+				},
+			],
+		},
+	},
+	{
+		// Modal-key inversion ratchet, half 2 of 2 (CAT-3688): the shell's catalogue of
+		// modal runtime state. Scoped to the entries themselves so the declaration and
+		// each entry's nested state shape stay writable. Same staging as half 1.
+		files: ['src/app/stores/defaults/modals.ts'],
+		rules: {
+			'no-restricted-syntax': [
+				'warn',
+				{
+					selector:
+						"VariableDeclarator[id.name='SHELL_MODAL_INITIAL_STATE'] Property[computed=true]",
+					message:
+						"SHELL_MODAL_INITIAL_STATE only shrinks. Give the modal a ModalDefinition (component + initialState) in its feature's modals.ts fragment so it registers through modalRegistry and renders through DynamicModalLoader — see src/features/core/auth/modals.ts — and delete its <ModalRoot> from Modals.vue in the same change.",
+				},
+			],
+		},
+	},
+	{
 		files: ['src/features/agents/**/*.ts', 'src/features/agents/**/*.vue'],
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
