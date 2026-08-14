@@ -503,8 +503,8 @@ describe('WorkflowReviewRequestRepository', () => {
 			);
 		});
 
-		describe('section partition', () => {
-			it('leaves the query untouched when no partition is requested', async () => {
+		describe('category filter', () => {
+			it('leaves the query untouched when no category is requested', async () => {
 				await repo.findManyForInbox({
 					visibility: allVisibility,
 					limit: 15,
@@ -568,14 +568,14 @@ describe('WorkflowReviewRequestRepository', () => {
 					limit: 15,
 				});
 
-				// Visibility renders first; the partition may only narrow what it allowed.
+				// Visibility renders first; the category filter may only narrow what it allowed.
 				const visibilityCall = queryBuilder.andWhere.mock.calls[0];
-				const partitionCall = queryBuilder.andWhere.mock.calls[1];
+				const categoryCall = queryBuilder.andWhere.mock.calls[1];
 				expect(visibilityCall[0]).toContain(READABLE_WORKFLOW_SQL);
-				expect(partitionCall[0]).toContain(`NOT EXISTS ${AUTHOR_SUBQUERY_SQL}`);
+				expect(categoryCall[0]).toContain(`NOT EXISTS ${AUTHOR_SUBQUERY_SQL}`);
 			});
 
-			it('applies the partition before the limit and the cursor boundary', async () => {
+			it('applies the category filter before the limit and the cursor boundary', async () => {
 				const createdAt = new Date('2024-01-02T00:00:00.000Z');
 
 				await repo.findManyForInbox({
@@ -586,11 +586,11 @@ describe('WorkflowReviewRequestRepository', () => {
 					cursor: { createdAt, id: 'req-cursor' },
 				});
 
-				const partitionCall = queryBuilder.andWhere.mock.invocationCallOrder[0];
+				const categoryCall = queryBuilder.andWhere.mock.invocationCallOrder[0];
 				const cursorCall = queryBuilder.andWhere.mock.invocationCallOrder.at(-1);
 				expect(queryBuilder.andWhere.mock.calls[0][0]).toContain('EXISTS');
-				expect(partitionCall).toBeLessThan(cursorCall!);
-				expect(partitionCall).toBeLessThan(queryBuilder.take.mock.invocationCallOrder[0]);
+				expect(categoryCall).toBeLessThan(cursorCall!);
+				expect(categoryCall).toBeLessThan(queryBuilder.take.mock.invocationCallOrder[0]);
 			});
 		});
 	});

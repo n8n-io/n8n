@@ -24,11 +24,11 @@ export type InboxCursor = {
 };
 
 /**
- * Partitions the visible reviews into the inbox sections. Reviewer assignment
- * wins when both roles apply, so a review always sits where the caller's
- * pending action is: `waiting` = assigned reviewer, or not an author at all;
- * `authored` = an author and not assigned to review it. Narrows the visibility
- * predicate, never widens it.
+ * Splits the visible reviews into the two groups a caller can ask for. Reviewer
+ * assignment wins when both roles apply, so a review always sits where the
+ * caller's pending action is: `waiting` = assigned reviewer, or not an author at
+ * all; `authored` = an author and not assigned to review it. Narrows the
+ * visibility predicate, never widens it.
  *
  * Authorship alone decides the split — the requester is always an author, since
  * `create` writes their author row in the same transaction and nothing removes
@@ -69,7 +69,7 @@ export type InboxVisibility =
 export type FindManyForInboxOptions = {
 	visibility: InboxVisibility;
 	state?: WorkflowReviewRequestState;
-	/** Omitted means no section partitioning. */
+	/** Omitted means no category filter. */
 	category?: InboxCategoryFilter;
 	limit: number;
 	cursor?: InboxCursor;
@@ -471,10 +471,10 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	}
 
 	/**
-	 * Partitions the already-visible rows into the inbox sections — see
+	 * Narrows the already-visible rows to one category — see
 	 * {@link InboxCategoryFilter} for the reviewer-wins rule. The two predicates
 	 * are exact complements, so every visible review lands in exactly one
-	 * section. Always `andWhere` — {@link applyInboxVisibility} runs first.
+	 * category. Always `andWhere` — {@link applyInboxVisibility} runs first.
 	 */
 	private applyCategoryFilter(
 		queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>,

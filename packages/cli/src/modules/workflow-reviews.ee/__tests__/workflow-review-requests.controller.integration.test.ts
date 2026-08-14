@@ -2798,7 +2798,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			.expect(400);
 	});
 
-	describe('authorship partition', () => {
+	describe('category filter', () => {
 		/** Mirrors the create endpoint: a requester always gets an author row too. */
 		async function openReviewBy(
 			createdById: string | null,
@@ -2847,7 +2847,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			expect((await inbox(memberAgent, { category: 'waiting' })).ids).toEqual([theirs.id]);
 		});
 
-		test('partitions add up to the unfiltered list', async () => {
+		test('the two categories add up to the unfiltered list', async () => {
 			await openReviewBy(member.id, 'Mine');
 			const theirs = await openReviewBy(owner.id, 'Theirs');
 			await assignMember(theirs.id);
@@ -2947,7 +2947,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			expect((await inbox(memberAgent, {})).ids).toEqual([]);
 		});
 
-		test('shows a co-author who cannot read the covered workflow in neither partition', async () => {
+		test('hides a co-authored review from both categories when its workflow is unreadable', async () => {
 			const request = await openUnreachableReview(owner.id, 'Out of reach');
 			await authorRepository.addAuthor(
 				{ workflowReviewRequestId: request.id, userId: member.id },
@@ -2999,7 +2999,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			expect((await inbox(ownerAgent, { category: 'authored' })).ids).toEqual([]);
 		});
 
-		test('paginates each partition with its own independent cursor', async () => {
+		test('paginates each category with its own independent cursor', async () => {
 			const waitingOlder = await openReviewBy(owner.id, 'Waiting older');
 			const waitingNewer = await openReviewBy(owner.id, 'Waiting newer');
 			await assignMember(waitingOlder.id);
@@ -3027,7 +3027,9 @@ describe('GET /workflow-review-requests/inbox', () => {
 			expect(authoredPage.nextCursor).toBeNull();
 		});
 
-		test('applies the partition to the closed tab too', async () => {
+		// The category filter is independent of `state`, even though the editor only
+		// sends it for open reviews.
+		test('filters closed reviews by category too', async () => {
 			const closedMine = await openReviewBy(member.id, 'Closed mine', 'closed');
 			await openReviewBy(owner.id, 'Closed theirs', 'closed');
 

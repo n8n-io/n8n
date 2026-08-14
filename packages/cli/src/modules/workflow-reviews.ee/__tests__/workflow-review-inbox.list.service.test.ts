@@ -181,7 +181,7 @@ describe('WorkflowReviewInboxService', () => {
 				);
 			});
 
-			it('leaves the query unpartitioned when the category is omitted', async () => {
+			it('leaves the query unfiltered when the category is omitted', async () => {
 				mockVisibility();
 
 				await service.listForInbox(user, { limit: 15 });

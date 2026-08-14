@@ -23,8 +23,10 @@ export interface WorkflowReviewInboxItem extends WorkflowReviewRequestSummary {
 export const workflowReviewInboxCategorySchema = z.enum(['waiting', 'authored']);
 
 /**
- * Partition of the inbox into its two sections. Reviewer assignment wins when
- * both roles apply, so a review sits where the caller's pending action is.
+ * Which group of reviews to return: `waiting` = the caller is an assigned
+ * reviewer, or is not an author; `authored` = the caller authored it and is not
+ * assigned to review it. Reviewer assignment wins when both apply, so a review
+ * sits where the caller's pending action is.
  */
 export type WorkflowReviewInboxCategory = z.infer<typeof workflowReviewInboxCategorySchema>;
 
@@ -37,12 +39,16 @@ export class ListWorkflowReviewInboxQueryDto extends Z.class({
 	cursor: z.string().min(1).max(256).optional(),
 	state: workflowReviewRequestStateSchema.optional(),
 	/**
-	 * Partition of the visible union into the two inbox sections: `waiting` =
-	 * the caller is an assigned reviewer, or did not author the review at all;
-	 * `authored` = the caller authored it — as requester or by contributing a
-	 * version, both of which write a `workflow_review_request_authors` row — and
-	 * is not assigned to review it; reviewer assignment wins when both roles
-	 * apply. Omitted = no filter. Narrows visibility, never widens it.
+	 * Which group of reviews to return — see {@link WorkflowReviewInboxCategory}.
+	 * The caller counts as an author both as requester and by contributing a
+	 * version, since each writes a `workflow_review_request_authors` row. Every
+	 * visible review falls in exactly one group, so the two add up to the
+	 * unfiltered list.
+	 *
+	 * Independent of `state`: it filters closed reviews the same way. The editor
+	 * sends it only for the open tab, which is why the closed list stays flat.
+	 *
+	 * Omitted means no filter. Narrows visibility, never widens it.
 	 */
 	category: workflowReviewInboxCategorySchema.optional(),
 }) {}
