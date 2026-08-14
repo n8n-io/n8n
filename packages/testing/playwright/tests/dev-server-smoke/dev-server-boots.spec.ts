@@ -11,8 +11,7 @@ import { test } from '../../fixtures/base';
  * any error-level console message or uncaught page error is observed during the
  * load. They are intentionally light — UI behaviour is covered elsewhere.
  *
- * They also fail on `[modals]` warnings; see `MODAL_WARNING_RE` for why that one
- * warning class is treated as an error here and nowhere else.
+ * They also fail on `[modals]` warnings — see `MODAL_WARNING_RE`.
  *
  * Must run against the Vite dev server (`N8N_EDITOR_URL` set), which is what the
  * `test:dev-server-smoke` script wires up.
@@ -28,17 +27,12 @@ const BENIGN_PATTERNS: Array<{ messageRe: RegExp; reason: string }> = [
 const isBenign = (text: string) => BENIGN_PATTERNS.some((p) => p.messageRe.test(text));
 
 /**
- * `ui.store`'s unknown-modal-key warning, and the reason this job asserts on a
- * warning at all.
+ * An unregistered modal key renders closed instead of throwing (CAT-3967), so a
+ * lost registration fails silently. This warning is the only signal, and
+ * `import.meta.env.DEV` strips it from the production bundle the e2e job builds.
+ * Only this job runs the dev server, so only this job can see it.
  *
- * An unregistered modal key renders closed instead of throwing (deliberate, since
- * CAT-3967), so a modal that lost its registration does not fail — it silently
- * never opens. This warning is the only signal that the modal-key inversion broke
- * something, and it is behind `import.meta.env.DEV`, which strips it from the
- * production bundle the e2e job builds. This job boots the Vite dev server, so it
- * is the only place in CI where the class is observable.
- *
- * Scoped to this prefix on purpose: other warnings stay non-fatal.
+ * Other warnings stay non-fatal. The dev server emits many that are not defects.
  */
 const MODAL_WARNING_RE = /\[modals\]/;
 

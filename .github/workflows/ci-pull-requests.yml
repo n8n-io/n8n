@@ -102,12 +102,7 @@ jobs:
               packages/testing/containers/**
             dev-server-smoke:
               packages/frontend/editor-ui/vite.config.mts
-              # The job's [modals] assertion only sees regressions the editor-ui
-              # source can cause, so it has to run when that source changes —
-              # config-only paths never trigger it. The e2e job already gates on
-              # `runtime`, which is broader than this; this one is a single
-              # dev-server boot. If wall-clock proves material, narrow the glob,
-              # never drop the assertion.
+              # If wall-clock costs too much, narrow this glob. Do not drop the assertion.
               packages/frontend/editor-ui/src/**
               pnpm-workspace.yaml
               packages/@n8n/*/package.json
