@@ -1,4 +1,4 @@
-import { getProxyAgent } from '@n8n/ai-utilities';
+import { proxyFetch } from '@n8n/ai-utilities';
 import { listAnthropicModels } from '@n8n/ai-utilities/model-discovery';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
@@ -19,11 +19,7 @@ export async function searchModels(
 		apiKey: (credentials.apiKey as string) ?? '',
 		baseURL,
 		headers: mergeCustomHeaders(credentials, {}),
-		fetch: async (url, init) =>
-			await fetch(url, {
-				...init,
-				dispatcher: getProxyAgent(baseURL),
-			} as RequestInit),
+		fetch: proxyFetch,
 	});
 
 	return {
