@@ -1,8 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
+import { DEFAULT_CONTENT_SECURITY_POLICY } from '@n8n/config';
+
 import {
-	DEFAULT_CONTENT_SECURITY_POLICY,
 	parseContentSecurityPolicy,
 	renderContentSecurityPolicy,
 	resolveContentSecurityPolicies,
@@ -74,26 +75,28 @@ describe('resolveContentSecurityPolicies', () => {
 	const resolve = (policy: string, reportOnly: string) =>
 		resolveContentSecurityPolicies(policy, reportOnly, logger);
 
-	describe('with no policy configured', () => {
-		it('should report on the default policy without enforcing it', () => {
-			expect(resolve('{}', '')).toEqual({ reportOnly: DEFAULT_CONTENT_SECURITY_POLICY });
-		});
+	const DEFAULTS = { policy: '{}', reportOnly: DEFAULT_CONTENT_SECURITY_POLICY };
 
-		it('should enforce the default policy when report-only is turned off', () => {
-			expect(resolve('{}', 'false')).toEqual({ enforced: DEFAULT_CONTENT_SECURITY_POLICY });
-		});
-
-		it.each(['true', 'TRUE', '1'])('should report on the default policy for "%s"', (value) => {
-			expect(resolve('{}', value)).toEqual({ reportOnly: DEFAULT_CONTENT_SECURITY_POLICY });
-		});
-
-		it.each(['false', 'FALSE', '0'])('should enforce the default policy for "%s"', (value) => {
-			expect(resolve('{}', value)).toEqual({ enforced: DEFAULT_CONTENT_SECURITY_POLICY });
-		});
-
-		it('should report on a policy given to the report-only var', () => {
-			expect(resolve('{}', "script-src <nonce> 'strict-dynamic'")).toEqual({
+	describe('with neither var set', () => {
+		it('should report on the default policy and enforce nothing', () => {
+			expect(resolve(DEFAULTS.policy, DEFAULTS.reportOnly)).toEqual({
 				enforced: undefined,
+				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+			});
+		});
+	});
+
+	describe('with a policy to enforce', () => {
+		it('should enforce it and keep reporting on the default', () => {
+			expect(resolve('script-src <nonce>', DEFAULTS.reportOnly)).toEqual({
+				enforced: 'script-src <nonce>',
+				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+			});
+		});
+
+		it('should enforce one policy while reporting on another', () => {
+			expect(resolve('script-src <nonce>', "script-src <nonce> 'strict-dynamic'")).toEqual({
+				enforced: 'script-src <nonce>',
 				reportOnly: "script-src <nonce> 'strict-dynamic'",
 			});
 		});
@@ -106,34 +109,66 @@ describe('resolveContentSecurityPolicies', () => {
 		const policy = 'frame-ancestors http://localhost:3000';
 
 		it('should enforce exactly the configured directives', () => {
-			expect(resolve(helmetJson, '')).toEqual({ enforced: policy });
+			expect(resolve(helmetJson, DEFAULTS.reportOnly).enforced).toBe(policy);
 		});
 
-		it('should report on exactly the configured directives when report-only is on', () => {
-			expect(resolve(helmetJson, 'true')).toEqual({ reportOnly: policy });
+		it('should report on exactly the configured directives', () => {
+			expect(resolve(DEFAULTS.policy, helmetJson).reportOnly).toBe(policy);
 		});
 
-		it('should not add the default policy or a nonce', () => {
-			const { enforced } = resolve(helmetJson, '');
+		it('should not add the default policy or a nonce to it', () => {
+			const { enforced } = resolve(helmetJson, DEFAULTS.reportOnly);
 			expect(enforced).not.toContain('nonce');
 			expect(enforced).not.toContain('script-src');
 		});
 	});
 
-	describe('with a policy configured as a string', () => {
-		it('should enforce it', () => {
-			expect(resolve('script-src <nonce>', '')).toEqual({ enforced: 'script-src <nonce>' });
-		});
-
-		it('should enforce one policy while reporting on another', () => {
-			expect(resolve('script-src <nonce>', "script-src <nonce> 'strict-dynamic'")).toEqual({
-				enforced: 'script-src <nonce>',
-				reportOnly: "script-src <nonce> 'strict-dynamic'",
+	describe('switching a header off', () => {
+		it.each(['{}', '', '   '])('should send no report-only header for "%s"', (value) => {
+			expect(resolve(DEFAULTS.policy, value)).toEqual({
+				enforced: undefined,
+				reportOnly: undefined,
 			});
 		});
 
-		it('should fall back to the default policy when the report-only policy is unusable', () => {
-			expect(resolve('script-src <nonce>', '{"nope":')).toEqual({
+		it('should still enforce a policy when reporting is off', () => {
+			expect(resolve('script-src <nonce>', '{}')).toEqual({
+				enforced: 'script-src <nonce>',
+				reportOnly: undefined,
+			});
+		});
+	});
+
+	describe('with an unusable value', () => {
+		it('should fall back to the default policy for the report-only header', () => {
+			expect(resolve(DEFAULTS.policy, '{"nope":')).toEqual({
+				enforced: undefined,
+				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY'),
+			);
+		});
+
+		it('should enforce nothing rather than guess at a policy to enforce', () => {
+			expect(resolve('{"nope":', DEFAULTS.reportOnly)).toEqual({
+				enforced: undefined,
+				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+			});
+		});
+	});
+
+	describe('with the report-only var set to a legacy boolean', () => {
+		it.each(['true', 'TRUE', '1', 'false', '0'])('should warn and ignore "%s"', (value) => {
+			expect(resolve(DEFAULTS.policy, value)).toEqual({
+				enforced: undefined,
+				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+			});
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('no longer takes'));
+		});
+
+		it('should keep enforcing the policy that is set', () => {
+			expect(resolve('script-src <nonce>', 'true')).toEqual({
 				enforced: 'script-src <nonce>',
 				reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
 			});
@@ -154,7 +189,7 @@ describe('renderContentSecurityPolicy', () => {
 
 	it('should render the default policy with the nonce', () => {
 		expect(renderContentSecurityPolicy(DEFAULT_CONTENT_SECURITY_POLICY, 'abc123')).toBe(
-			"script-src 'nonce-abc123' 'strict-dynamic' 'unsafe-eval'; worker-src 'self'; object-src 'none'; base-uri 'none'",
+			"script-src 'nonce-abc123' 'strict-dynamic' 'unsafe-eval'; object-src 'none'; base-uri 'none'",
 		);
 	});
 });

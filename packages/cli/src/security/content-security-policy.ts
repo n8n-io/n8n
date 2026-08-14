@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { DEFAULT_CONTENT_SECURITY_POLICY } from '@n8n/config';
 
 /**
  * Token that users can place in a policy where they want n8n to substitute the
@@ -12,20 +13,6 @@ export const NONCE_PLACEHOLDER = '<nonce>';
  */
 export const HTML_NONCE_PLACEHOLDER = '{{CSP_NONCE}}';
 
-/**
- * The policy n8n serves when the instance has not configured one. Nonce-based
- * with `'strict-dynamic'`, so scripts n8n itself ships are allowed to run and
- * to load further scripts, while injected markup is not.
- *
- * `'unsafe-eval'` is still required by the editor. `base-uri` can be `'none'`
- * because n8n never serves a `<base>` element. `worker-src` is spelled out
- * because a nonce cannot be given to a worker script, and without it workers
- * fall back to `script-src` and are refused.
- *
- * @see https://web.dev/articles/strict-csp
- */
-export const DEFAULT_CONTENT_SECURITY_POLICY = `script-src ${NONCE_PLACEHOLDER} 'strict-dynamic' 'unsafe-eval'; worker-src 'self'; object-src 'none'; base-uri 'none'`;
-
 export type ContentSecurityPolicies = {
 	/** Policy for the `Content-Security-Policy` header, or `undefined` to not send it. */
 	enforced?: string;
@@ -33,16 +20,8 @@ export type ContentSecurityPolicies = {
 	reportOnly?: string;
 };
 
-/** Values `@n8n/config` accepts for a boolean env var, kept in sync with its decorator. */
-const TRUTHY = ['true', '1'];
-const FALSY = ['false', '0'];
-
-const parseBoolean = (value: string): boolean | undefined => {
-	const normalized = value.toLowerCase();
-	if (TRUTHY.includes(normalized)) return true;
-	if (FALSY.includes(normalized)) return false;
-	return undefined;
-};
+/** `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` was a boolean before it took a policy. */
+const LEGACY_BOOLEANS = ['true', '1', 'false', '0'];
 
 /** `scriptSrc` -> `script-src`, matching how helmet.js normalizes directive names. */
 const toDirectiveName = (name: string) =>
@@ -99,43 +78,51 @@ export const parseContentSecurityPolicy = (
 };
 
 /**
- * Work out which CSP headers to send from the two env vars.
+ * Work out which CSP headers to send from the two env vars. Both hold a policy,
+ * in either accepted format; `{}` or an empty value means "send no such header".
  *
- * `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` keeps its historical meaning when
- * set to a boolean (send the policy as report-only instead of enforcing it) and
- * additionally accepts a policy of its own, so an instance can trial a candidate
- * policy in report-only mode while enforcing a different one.
- *
- * When neither var is set, the default policy is sent report-only: it reports
- * violations without being able to break a running instance.
+ * Only the report-only var has a policy by default, so out of the box n8n
+ * reports violations without being able to break a running instance.
  */
 export const resolveContentSecurityPolicies = (
 	rawPolicy: string,
 	rawReportOnly: string,
 	logger: Pick<Logger, 'warn'>,
 ): ContentSecurityPolicies => {
-	const configured = parseContentSecurityPolicy(rawPolicy, 'N8N_CONTENT_SECURITY_POLICY', logger);
-	const reportOnly = rawReportOnly?.trim() ?? '';
+	// It used to be a boolean. A bare `true` is not a policy, so say so rather than
+	// serving a header made of nonsense.
+	/**
+	 * An empty value or `{}` means the header is switched off, and is left alone.
+	 * A value that is set but unusable falls back, so a typo cannot quietly turn a
+	 * policy off - `fallback` is what is safe for that particular header.
+	 */
+	const resolve = (rawValue: string, envVarName: string, fallback?: string) => {
+		const value = rawValue?.trim() ?? '';
+		if (value === '' || value === '{}') return undefined;
+		return parseContentSecurityPolicy(value, envVarName, logger) ?? fallback;
+	};
 
-	if (reportOnly === '') {
-		return configured ? { enforced: configured } : { reportOnly: DEFAULT_CONTENT_SECURITY_POLICY };
-	}
-
-	const asBoolean = parseBoolean(reportOnly);
-
-	if (asBoolean === true) {
-		return { reportOnly: configured ?? DEFAULT_CONTENT_SECURITY_POLICY };
-	}
-
-	if (asBoolean === false) {
-		return { enforced: configured ?? DEFAULT_CONTENT_SECURITY_POLICY };
+	// It used to be a boolean. A bare `true` is not a policy, so say so rather than
+	// serving a header made of nonsense.
+	const reportOnlyValue = rawReportOnly?.trim() ?? '';
+	if (LEGACY_BOOLEANS.includes(reportOnlyValue.toLowerCase())) {
+		logger.warn(
+			`N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY no longer takes \`${reportOnlyValue}\`: it now holds a policy, like N8N_CONTENT_SECURITY_POLICY. Reporting on the default policy instead - set a policy to report on, \`{}\` to report on nothing, or N8N_CONTENT_SECURITY_POLICY to enforce one.`,
+		);
+		return {
+			enforced: resolve(rawPolicy, 'N8N_CONTENT_SECURITY_POLICY'),
+			reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+		};
 	}
 
 	return {
-		enforced: configured,
-		reportOnly:
-			parseContentSecurityPolicy(reportOnly, 'N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY', logger) ??
+		// Nothing to fall back to: a policy that cannot be read must not be enforced.
+		enforced: resolve(rawPolicy, 'N8N_CONTENT_SECURITY_POLICY'),
+		reportOnly: resolve(
+			rawReportOnly,
+			'N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY',
 			DEFAULT_CONTENT_SECURITY_POLICY,
+		),
 	};
 };
 

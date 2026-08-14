@@ -4,6 +4,15 @@ import { Config, Env } from '../decorators';
 
 const crossOriginOpenerPolicySchema = z.enum(['same-origin', 'same-origin-allow-popups']);
 
+/**
+ * The [Level 3](https://web.dev/articles/strict-csp) policy n8n reports on out of the box.
+ *
+ * `<nonce>` is substituted with the response's nonce when the header is served (see
+ * `NONCE_PLACEHOLDER` in `packages/cli/src/security/content-security-policy.ts`).
+ */
+export const DEFAULT_CONTENT_SECURITY_POLICY =
+	"script-src <nonce> 'strict-dynamic' 'unsafe-eval'; object-src 'none'; base-uri 'none'";
+
 // Mirrors the `Resolvers` union in nodes-base (`system-credentials-utils.ts`);
 // kept in sync manually since @n8n/config cannot import from nodes-base.
 const awsSystemCredentialSources = [
@@ -71,24 +80,24 @@ export class SecurityConfig {
 	 * - a policy string, as the header itself is written,
 	 *   e.g. `frame-ancestors http://localhost:3000`
 	 *
-	 * The value replaces the default policy in full. Write `<nonce>` where the per-request nonce
-	 * should go to keep n8n's own scripts working, e.g. `script-src <nonce> 'strict-dynamic'`.
+	 * Write `<nonce>` where the per-request nonce should go to keep n8n's own scripts working,
+	 * e.g. `script-src <nonce> 'strict-dynamic'`.
+	 *
+	 * Empty by default: n8n enforces nothing until a policy is set here. See
+	 * `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` for the policy it reports on.
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY')
 	contentSecurityPolicy: string = '{}';
 
 	/**
-	 * Set to `true` to send the policy as `Content-Security-Policy-Report-Only` instead of enforcing
-	 * it, or to `false` to enforce it.
+	 * The policy n8n serves as `Content-Security-Policy-Report-Only`, in the same two formats
+	 * `N8N_CONTENT_SECURITY_POLICY` accepts. Violations are reported but nothing is blocked, so an
+	 * instance can be watched before a policy is enforced.
 	 *
-	 * Can also hold a policy of its own - in either format accepted by `N8N_CONTENT_SECURITY_POLICY` -
-	 * to report on a candidate policy while a different one is enforced.
-	 *
-	 * When neither this nor `N8N_CONTENT_SECURITY_POLICY` is set, n8n reports on its default policy
-	 * without enforcing it.
+	 * Defaults to n8n's Level 3 policy. Set to `{}` to send no report-only header at all.
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
-	contentSecurityPolicyReportOnly: string = '';
+	contentSecurityPolicyReportOnly: string = DEFAULT_CONTENT_SECURITY_POLICY;
 
 	/**
 	 * Configuration for the `Cross-Origin-Opener-Policy` header.
