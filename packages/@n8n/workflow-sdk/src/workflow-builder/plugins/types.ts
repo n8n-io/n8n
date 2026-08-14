@@ -360,6 +360,9 @@ export interface SerializerContext extends PluginContext {
 	/** Whether to use Dagre-based layout for node positioning */
 	readonly tidyUp?: boolean;
 
+	/** Whether the computed layout also replaces positions the code authored explicitly */
+	readonly overrideAuthoredPositions?: boolean;
+
 	/**
 	 * Node groups carried by member node *ID* — already resolved to the IDs the emitted
 	 * nodes carry. `id`, when present, is the source group ID (from fromJSON); the serializer

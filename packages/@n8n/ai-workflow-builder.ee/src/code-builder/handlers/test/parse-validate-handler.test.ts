@@ -320,11 +320,29 @@ describe('ParseValidateHandler', () => {
 
 			expect(mockBuilder.toJSON).toHaveBeenCalledWith({
 				tidyUp: true,
+				overrideAuthoredPositions: false,
 				existingGroupIdsByName: new Map([
 					['Ingestion', 'group-random-1'],
 					['Processing', 'group-random-2'],
 				]),
 			});
+		});
+
+		it('makes the layout authoritative when configured to override authored positions', async () => {
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue({ id: 'test', name: 'Test', nodes: [], connections: {} }),
+			};
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			await new ParseValidateHandler({ overrideAuthoredPositions: true }).parseAndValidate('code');
+
+			expect(mockBuilder.toJSON).toHaveBeenCalledWith(
+				expect.objectContaining({ tidyUp: true, overrideAuthoredPositions: true }),
+			);
 		});
 
 		it('should throw on parse error', async () => {

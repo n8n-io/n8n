@@ -267,6 +267,11 @@ export const createCreateWorkflowFromCodeTool = (
 			const handler = new ParseValidateHandler({
 				generatePinData: false,
 				nodeTypesProvider: nodeTypes,
+				// This tool always produces a brand-new workflow, so the code is the only source
+				// of positions and there is no canvas arrangement to protect. Lay every node out,
+				// including ones the code positioned — a client that copies positions off another
+				// workflow (or off the reference examples) would otherwise land an untidied canvas.
+				overrideAuthoredPositions: true,
 			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);

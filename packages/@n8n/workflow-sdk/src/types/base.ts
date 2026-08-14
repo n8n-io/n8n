@@ -1008,6 +1008,13 @@ export interface ToJSONOptions {
 	/** Use Dagre-based layout matching the FE's tidy-up algorithm. Defaults to false (BFS layout). */
 	tidyUp?: boolean;
 	/**
+	 * Lay out every node, including ones the code positioned explicitly. Defaults to false, where
+	 * an authored `config.position` wins over the computed layout so an edit can carry a canvas
+	 * the user arranged by hand. Set this when the code is the only source of positions (a build
+	 * from scratch), so a position the generator invented can't leave the graph untidied.
+	 */
+	overrideAuthoredPositions?: boolean;
+	/**
 	 * Reuse existing group IDs (keyed by group name) instead of deriving deterministic ones.
 	 * Lets an edit of an existing workflow keep its (UI-assigned, random) group IDs so the diff
 	 * isn't skewed; groups without a match fall back to a deterministic ID.

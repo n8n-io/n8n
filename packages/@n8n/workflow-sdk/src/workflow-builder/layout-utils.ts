@@ -424,10 +424,12 @@ function repositionStickyNotes(
  * Calculate positions for nodes using Dagre hierarchical layout.
  * Mirrors the frontend's useCanvasLayout algorithm.
  *
- * Only sets positions for nodes without explicit config.position.
+ * Only sets positions for nodes without explicit config.position, unless
+ * `overrideAuthoredPositions` is set, in which case every node is laid out.
  */
 export function calculateNodePositionsDagre(
 	nodes: ReadonlyMap<string, GraphNode>,
+	{ overrideAuthoredPositions = false }: { overrideAuthoredPositions?: boolean } = {},
 ): Map<string, [number, number]> {
 	const positions = new Map<string, [number, number]>();
 
@@ -451,10 +453,12 @@ export function calculateNodePositionsDagre(
 	if (nonStickyNames.length === 0) return positions;
 
 	// Check if any nodes actually need positioning
-	const needsLayout = nonStickyNames.some((name) => {
-		const node = nodes.get(name);
-		return node && !node.instance.config?.position;
-	});
+	const needsLayout =
+		overrideAuthoredPositions ||
+		nonStickyNames.some((name) => {
+			const node = nodes.get(name);
+			return node && !node.instance.config?.position;
+		});
 
 	if (!needsLayout) return positions;
 
@@ -619,10 +623,10 @@ export function calculateNodePositionsDagre(
 			}
 		});
 
-	// Snap to grid and build result (skip nodes with explicit positions)
+	// Snap to grid and build result (skip nodes with explicit positions unless overriding)
 	for (const [name, box] of Object.entries(boundingBoxByNodeId)) {
 		const node = nodes.get(name);
-		if (node && !node.instance.config?.position) {
+		if (node && (overrideAuthoredPositions || !node.instance.config?.position)) {
 			positions.set(name, [snapToGrid(box.x), snapToGrid(box.y)]);
 		}
 	}
@@ -644,6 +648,15 @@ export function calculateNodePositionsDagre(
 		const positionsAfter = new Map<string, BoundingBox>();
 		for (const [name, graphNode] of nodes) {
 			const explicitPosition = graphNode.instance.config?.position;
+			// A node keeps its authored position unless the layout was authoritative, in which
+			// case the box dagre produced is where it actually ended up.
+			const stayedPut = explicitPosition && !overrideAuthoredPositions;
+			const box = stayedPut ? undefined : boundingBoxByNodeId[name];
+			if (box) {
+				positionsAfter.set(name, box);
+				continue;
+			}
+
 			if (explicitPosition) {
 				const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
 				positionsAfter.set(name, {
@@ -652,12 +665,6 @@ export function calculateNodePositionsDagre(
 					width,
 					height,
 				});
-				continue;
-			}
-
-			const box = boundingBoxByNodeId[name];
-			if (box) {
-				positionsAfter.set(name, box);
 			}
 		}
 
