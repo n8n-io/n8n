@@ -332,7 +332,12 @@ describe('SourceControlGitService', () => {
 					binary: 'git',
 					maxConcurrentProcesses: 6,
 					trimmed: false,
-					config: [`credential.helper=${expectedCredentialScript}`, 'credential.useHttpPath=true'],
+					config: [
+						`credential.helper=${expectedCredentialScript}`,
+						'credential.useHttpPath=true',
+						'http.lowSpeedLimit=1000',
+						'http.lowSpeedTime=30',
+					],
 					unsafe: { allowUnsafeCredentialHelper: true },
 				}),
 			);
@@ -359,7 +364,12 @@ describe('SourceControlGitService', () => {
 				"!f() { echo username='user'\"'\"'; rm -rf /'; echo password='pass'\"'\"'; rm -rf /'; }; f";
 			expect(simpleGit).toHaveBeenCalledWith(
 				expect.objectContaining({
-					config: [`credential.helper=${expectedCredentialScript}`, 'credential.useHttpPath=true'],
+					config: [
+						`credential.helper=${expectedCredentialScript}`,
+						'credential.useHttpPath=true',
+						'http.lowSpeedLimit=1000',
+						'http.lowSpeedTime=30',
+					],
 				}),
 			);
 		});
@@ -382,7 +392,7 @@ describe('SourceControlGitService', () => {
 			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith(
 				'GIT_SSH_COMMAND',
-				'ssh -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "private-key"',
+				'ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "private-key"',
 			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
 		});
