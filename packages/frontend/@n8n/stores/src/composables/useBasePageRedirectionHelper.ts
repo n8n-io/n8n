@@ -14,6 +14,8 @@ import { useVersionsStore } from '../versions.store';
  */
 export type UpgradeRedirectGuard = () => Promise<boolean>;
 
+export type CloudDashboardRedirectMode = 'open' | 'redirect';
+
 /**
  * Injectable page-redirection composable. The app-facing `usePageRedirectionHelper`
  * wraps this and supplies the guard, which keeps this base free of any feature
@@ -31,32 +33,65 @@ export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirect
 	const telemetry = useTelemetry();
 	const settingsStore = useSettingsStore();
 
+	const canAutoLoginToCloudDashboard = () =>
+		usersStore.isInstanceOwner && settingsStore.isCloudDeployment;
+
+	/**
+	 * Sends a Cloud instance owner to a Cloud Admin Panel path via auto-login.
+	 * `open` reserves the tab in the click gesture so the later navigation is
+	 * not treated as a popup; if the popup is blocked, it falls back to this tab.
+	 * Returns false when the current user cannot auto-login (member / non-cloud).
+	 */
+	const goToCloudDashboard = async ({
+		redirectionPath,
+		mode = 'redirect',
+	}: {
+		redirectionPath: string;
+		mode?: CloudDashboardRedirectMode;
+	}): Promise<boolean> => {
+		if (!canAutoLoginToCloudDashboard()) {
+			return false;
+		}
+
+		if (mode === 'redirect') {
+			location.href = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
+				redirectionPath,
+			});
+			return true;
+		}
+
+		const tab = window.open('', '_blank');
+		if (tab) tab.opener = null;
+		try {
+			const link = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
+				redirectionPath,
+			});
+			if (tab) {
+				tab.location.href = link;
+			} else {
+				location.href = link;
+			}
+		} catch (error) {
+			tab?.close();
+			throw error;
+		}
+		return true;
+	};
+
 	/**
 	 * If the user is an instance owner in the cloud, it generates an auto-login link to the
 	 * cloud dashboard that redirects the user to the /manage page where they can upgrade to a new n8n version.
 	 * Otherwise, it redirect them to our docs.
 	 */
 	const goToVersions = async () => {
-		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
-			location.href = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
-				redirectionPath: '/manage',
-			});
-			return;
-		}
+		const didNavigate = await goToCloudDashboard({ redirectionPath: '/manage' });
+		if (didNavigate) return;
 
 		window.open(versionsStore.infoUrl, '_blank', 'noopener');
 	};
 
 	const goToDashboard = async () => {
-		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
-			const dashboardLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
-				redirectionPath: '/dashboard',
-			});
-
-			location.href = dashboardLink;
-		}
-
-		return;
+		await goToCloudDashboard({ redirectionPath: '/dashboard' });
 	};
 
 	/**
@@ -98,7 +133,7 @@ export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirect
 	const generateUpgradeLink = async (source: string, utm_campaign: string) => {
 		let upgradeLink = N8N_PRICING_PAGE_URL;
 
-		if (usersStore.isInstanceOwner && settingsStore.isCloudDeployment) {
+		if (canAutoLoginToCloudDashboard()) {
 			upgradeLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
 				redirectionPath: '/account/change-plan',
 			});
@@ -118,6 +153,7 @@ export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirect
 	};
 
 	return {
+		goToCloudDashboard,
 		goToDashboard,
 		goToVersions,
 		goToUpgrade,

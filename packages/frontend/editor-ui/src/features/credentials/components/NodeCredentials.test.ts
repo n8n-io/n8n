@@ -1,6 +1,6 @@
 import { shallowRef, ref, computed, nextTick } from 'vue';
 import { describe, it, vi, beforeEach } from 'vitest';
-import { screen, within } from '@testing-library/vue';
+import { screen, within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -1764,7 +1764,9 @@ describe('NodeCredentials', () => {
 
 				await userEvent.click(screen.getByTestId('credential-topup-button'));
 
-				expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
+				await waitFor(() => {
+					expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
+				});
 			});
 
 			it('switches to an own credential from the managed state via the dropdown', async () => {

@@ -97,7 +97,9 @@ describe('SettingsAiGatewayView', () => {
 
 			await userEvent.click(screen.getByTestId('ai-gateway-topup-button'));
 
-			expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
+			await waitFor(() => {
+				expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
+			});
 		});
 	});
 

@@ -893,7 +893,7 @@ function getIssues(credentialTypeName: string): string[] {
 
 function onTopUp(credentialType: string): void {
 	if (props.readonly) return;
-	openTopUp({
+	void openTopUp({
 		source: 'credential_selector',
 		credentialType,
 	});
