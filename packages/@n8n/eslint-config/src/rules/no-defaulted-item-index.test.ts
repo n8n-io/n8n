@@ -46,5 +46,15 @@ ruleTester.run('no-defaulted-item-index', NoDefaultedItemIndexRule, {
 			code: 'const resolveTarget = (ctx: IExecuteFunctions, itemIndex = 0) => ctx.getNodeParameter("target", itemIndex);',
 			errors: [{ messageId: 'requireItemIndex' }],
 		},
+		// A nested parameter that only mentions the name must not hide the outer
+		// defaulted index the callback actually reads.
+		{
+			code: 'function resolveAll(this: IExecuteFunctions, itemIndex = 0) { return items.map((item: ItemWithItemIndex) => this.getNodeParameter("target", itemIndex)); }',
+			errors: [{ messageId: 'requireItemIndex' }],
+		},
+		{
+			code: 'function resolveAll(this: IExecuteFunctions, itemIndex = 0) { return items.map((itemIndexes: number[]) => this.getNodeParameter("target", itemIndex)); }',
+			errors: [{ messageId: 'requireItemIndex' }],
+		},
 	],
 });

@@ -24,6 +24,26 @@ const isFunctionNode = (node: TSESTree.Node): node is FunctionNode =>
 	node.type === TSESTree.AST_NODE_TYPES.FunctionExpression ||
 	node.type === TSESTree.AST_NODE_TYPES.ArrowFunctionExpression;
 
+/** Whether a parameter declares `itemIndex`, however it is written. */
+const declaresItemIndex = (param: TSESTree.Parameter): boolean => {
+	if (param.type === TSESTree.AST_NODE_TYPES.Identifier) return param.name === ITEM_INDEX;
+	if (param.type === TSESTree.AST_NODE_TYPES.AssignmentPattern)
+		return declaresItemIndex(param.left as TSESTree.Parameter);
+	if (param.type === TSESTree.AST_NODE_TYPES.RestElement)
+		return declaresItemIndex(param.argument as TSESTree.Parameter);
+	if (param.type === TSESTree.AST_NODE_TYPES.ObjectPattern)
+		return param.properties.some(
+			(property) =>
+				property.type === TSESTree.AST_NODE_TYPES.Property &&
+				declaresItemIndex(property.value as TSESTree.Parameter),
+		);
+	if (param.type === TSESTree.AST_NODE_TYPES.ArrayPattern)
+		return param.elements.some(
+			(element) => element !== null && declaresItemIndex(element as TSESTree.Parameter),
+		);
+	return false;
+};
+
 /** The `itemIndex` parameter of `fn`, if it is defaulted or optional. */
 const weakItemIndexParam = (fn: FunctionNode) =>
 	fn.params.find(
@@ -79,11 +99,11 @@ export const NoDefaultedItemIndexRule = ESLintUtils.RuleCreator.withoutDocs({
 
 					const param = weakItemIndexParam(ancestor);
 					// A nested function without its own `itemIndex` closes over an outer
-					// one, so keep walking up to the declaration that owns it.
+					// one, so keep walking up to the declaration that owns it. Only a real
+					// `itemIndex` binding stops the walk: a parameter that merely mentions
+					// the name (a type, a lookalike identifier) must not hide the outer one.
 					if (!param) {
-						if (ancestor.params.some((p) => context.sourceCode.getText(p).includes(ITEM_INDEX))) {
-							return;
-						}
+						if (ancestor.params.some(declaresItemIndex)) return;
 						continue;
 					}
 

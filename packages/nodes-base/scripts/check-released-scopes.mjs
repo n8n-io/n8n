@@ -113,9 +113,13 @@ const usedAllowances = new Set();
 
 for (const { name, dir } of PACKAGES) {
 	const localFile = path.join(dir, TYPES_FILE);
+	// Not a soft failure: skipping here would silently disable the check if a
+	// build stops emitting the metadata or it moves.
 	if (!existsSync(localFile)) {
-		warn(`${name} is not built (${TYPES_FILE} missing), skipping it`);
-		continue;
+		console.error(
+			`[check-released-scopes] ${name} is not built: ${TYPES_FILE} is missing. Run \`pnpm build --filter=${name}\` first.`,
+		);
+		process.exit(1);
 	}
 
 	const version = release.dependencies[name];
