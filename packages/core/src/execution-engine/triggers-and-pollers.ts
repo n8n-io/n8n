@@ -23,11 +23,19 @@ import type { IGetExecuteTriggerFunctions } from './interfaces';
 export type PollErrorKind = 'auth' | 'rate_limited' | 'thrown';
 
 const classifyPollError = (error: unknown): PollErrorKind => {
-	if (error instanceof NodeApiError) {
-		if (error.httpCode === '429') {
+	// Poll implementations often rethrow the API error wrapped in another node
+	// error, so unwrap one level of `cause` before classifying.
+	const apiError =
+		error instanceof NodeApiError
+			? error
+			: error instanceof Error && error.cause instanceof NodeApiError
+				? error.cause
+				: undefined;
+	if (apiError) {
+		if (apiError.httpCode === '429') {
 			return 'rate_limited';
 		}
-		if (error.httpCode === '401' || error.httpCode === '403') {
+		if (apiError.httpCode === '401' || apiError.httpCode === '403') {
 			return 'auth';
 		}
 	}

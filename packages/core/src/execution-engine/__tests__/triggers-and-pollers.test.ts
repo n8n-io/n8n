@@ -1,4 +1,4 @@
-import { NodeApiError, UnexpectedError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, UnexpectedError } from 'n8n-workflow';
 import type {
 	Workflow,
 	INode,
@@ -220,6 +220,21 @@ describe('TriggersAndPollers', () => {
 				expect(ticks).toEqual([expect.objectContaining({ status: 'error', errorKind })]);
 			},
 		);
+
+		it('classifies a NodeApiError wrapped as another error cause by its HTTP code', async () => {
+			pollFn.mockRejectedValue(
+				new NodeOperationError(
+					pollNode,
+					new NodeApiError(pollNode, {}, { httpCode: '429', message: 'API error' }),
+				),
+			);
+
+			await expect(runPoll()).rejects.toThrow(NodeOperationError);
+
+			expect(ticks).toEqual([
+				expect.objectContaining({ status: 'error', errorKind: 'rate_limited' }),
+			]);
+		});
 
 		it('emits no tick when the node type has no poll function', async () => {
 			nodeType.poll = undefined;
