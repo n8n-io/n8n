@@ -75,6 +75,7 @@ function makeService() {
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
+	agentTaskRepository.create.mockImplementation((data) => data as never);
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
 		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
@@ -128,6 +129,60 @@ describe('AgentConfigService', () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	describe('getConfig', () => {
+		const skill = { name: 'Refunds', description: 'Issue refunds', instructions: 'Be careful' };
+		const task = {
+			id: 'task-1',
+			name: 'Daily digest',
+			objective: 'Summarise',
+			cronExpression: '0 9 * * *',
+		};
+
+		function makeAgentWithBodies() {
+			return makeAgent({
+				schema: {
+					...baseConfig,
+					skills: [{ type: 'skill', id: 'skill-1' }],
+					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+				},
+				skills: { 'skill-1': skill },
+			});
+		}
+
+		it('returns refs alone by default, so ordinary reads stay lean', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgentWithBodies());
+
+			const config = await service.getConfig(agentId, projectId);
+
+			expect(config.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
+			expect(config.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
+			expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
+		});
+
+		it('inlines skill and task bodies when definitions are requested', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgentWithBodies());
+			agentTaskRepository.findByAgentId.mockResolvedValue([task] as never);
+
+			const config = await service.getConfig(agentId, projectId, { includeDefinitions: true });
+
+			expect(config.skills).toEqual([{ type: 'skill', id: 'skill-1', definition: skill }]);
+			expect(config.tasks).toEqual([
+				{
+					type: 'task',
+					id: 'task-1',
+					enabled: true,
+					definition: {
+						name: task.name,
+						objective: task.objective,
+						cronExpression: task.cronExpression,
+					},
+				},
+			]);
+		});
 	});
 
 	describe('validateConfig', () => {
@@ -489,6 +544,113 @@ describe('AgentConfigService', () => {
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		// An exported config is re-imported into an agent that has never seen these
+		// ids. Without the inlined bodies every ref would be pruned as dangling.
+		it('materialises inlined skill and task bodies instead of dropping their refs', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const skill = { name: 'Refunds', description: 'Issue refunds', instructions: 'Be careful' };
+			const task = { name: 'Daily digest', objective: 'Summarise', cronExpression: '0 9 * * *' };
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					skills: [{ type: 'skill', id: 'skill-1', definition: skill }],
+					tasks: [{ type: 'task', id: 'task-1', enabled: true, definition: task }],
+				},
+				user,
+				byUser,
+			);
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
+			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
+			// The bodies land in their own stores, never in `agent.schema`.
+			expect(saved.skills).toEqual({ 'skill-1': skill });
+			expect(agentTaskRepository.save).toHaveBeenCalledWith([
+				expect.objectContaining({ id: 'task-1', agentId, ...task }),
+			]);
+		});
+
+		it('updates a task body in place when the imported id already exists', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			const existing = {
+				id: 'task-1',
+				agentId,
+				name: 'Old',
+				objective: 'Old objective',
+				cronExpression: '0 0 * * *',
+			};
+			agentTaskRepository.findByAgentId.mockResolvedValue([existing] as never);
+
+			const task = { name: 'Daily digest', objective: 'Summarise', cronExpression: '0 9 * * *' };
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tasks: [{ type: 'task', id: 'task-1', enabled: true, definition: task }],
+				},
+				user,
+				byUser,
+			);
+
+			expect(agentTaskRepository.save).toHaveBeenCalledWith([
+				expect.objectContaining({ id: 'task-1', ...task }),
+			]);
+			// Updated, not duplicated, and not treated as an orphan of the import.
+			expect(agentTaskRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('leaves a config that carries only refs on the pre-existing path', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, tasks: [{ type: 'task', id: 'missing-task', enabled: true }] },
+				user,
+				byUser,
+			);
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.tasks).toEqual([]);
+			expect(agentTaskRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('rejects an inlined task whose cron expression could never schedule', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						tasks: [
+							{
+								type: 'task',
+								id: 'task-1',
+								enabled: true,
+								definition: { name: 'Broken', objective: 'Do it', cronExpression: 'not-a-cron' },
+							},
+						],
+					},
+					user,
+					byUser,
+				),
+			).rejects.toThrow('invalid cron expression');
+
+			expect(agentRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('sanitizes inaccessible credentials before saving nested config', async () => {

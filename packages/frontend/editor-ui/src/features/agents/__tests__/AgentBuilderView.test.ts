@@ -128,6 +128,7 @@ const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
 const getAgentConfigValidationMock = vi.fn().mockResolvedValue({ status: 'valid', issues: [] });
+const getAgentConfigMock = vi.fn();
 interface SessionThread {
 	id: string;
 	updatedAt: string;
@@ -167,6 +168,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 	getAgentConfigValidation: getAgentConfigValidationMock,
+	getAgentConfig: getAgentConfigMock,
 }));
 
 const generateDraftCasesMock = vi.fn();
@@ -613,6 +615,10 @@ function resetViewMocks() {
 	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
+	getAgentConfigMock.mockReset();
+	// The export re-reads the config with skill and task bodies inlined; by
+	// default the server has none to add beyond what the editor already holds.
+	getAgentConfigMock.mockImplementation(async () => withDefaultLlm(intendedConfig));
 	listAgentFilesMock.mockReset();
 	listAgentFilesMock.mockResolvedValue([]);
 	uploadAgentFilesMock.mockReset();
@@ -2528,6 +2534,11 @@ describe('AgentBuilderView — three-column shell', () => {
 		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'export-json');
 		await flushPromises();
 
+		// Skill and task bodies live outside the config the editor holds, so the
+		// file has to come from a read that inlines them.
+		expect(getAgentConfigMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', {
+			includeDefinitions: true,
+		});
 		expect(createObjectURLSpy).toHaveBeenCalledWith(expect.any(Blob));
 		const blob = createObjectURLSpy.mock.calls[0][0] as Blob;
 		await expect(readBlobText(blob)).resolves.toBe(
@@ -2538,6 +2549,58 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:agent-json');
 
 		createElementSpy.mockRestore();
+	});
+
+	it('writes the inlined skill and task bodies into the exported file', async () => {
+		Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+		Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+		createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:agent-json');
+		vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+		vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+		const exported = {
+			...withDefaultLlm(intendedConfig),
+			skills: [
+				{
+					type: 'skill',
+					id: 'skill-1',
+					definition: { name: 'Refunds', description: 'Issue refunds', instructions: 'Careful' },
+				},
+			],
+			tasks: [
+				{
+					type: 'task',
+					id: 'task-1',
+					enabled: true,
+					definition: {
+						name: 'Daily digest',
+						objective: 'Summarise',
+						cronExpression: '0 9 * * *',
+					},
+				},
+			],
+		};
+		getAgentConfigMock.mockResolvedValue(exported);
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'export-json');
+		await flushPromises();
+
+		const blob = createObjectURLSpy.mock.calls[0][0] as Blob;
+		await expect(readBlobText(blob)).resolves.toBe(`${JSON.stringify(exported, null, 2)}\n`);
+	});
+
+	it('surfaces an error and writes no file when the export read fails', async () => {
+		Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+		createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:agent-json');
+		getAgentConfigMock.mockRejectedValue(new Error('nope'));
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'export-json');
+		await flushPromises();
+
+		expect(createObjectURLSpy).not.toHaveBeenCalled();
+		expect(showErrorMock).toHaveBeenCalled();
 	});
 
 	it('opens the JSON import modal and saves imported config from the header menu', async () => {
@@ -2583,6 +2646,47 @@ describe('AgentBuilderView — three-column shell', () => {
 			expect.objectContaining({
 				...importedConfig,
 				memory: { enabled: true, storage: 'n8n' },
+			}),
+		);
+	});
+
+	it('saves imported skill and task bodies but keeps them out of the working config', async () => {
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'import-json');
+		await nextTick();
+
+		const skill = { name: 'Refunds', description: 'Issue refunds', instructions: 'Careful' };
+		const task = { name: 'Daily digest', objective: 'Summarise', cronExpression: '0 9 * * *' };
+		const importedConfig = {
+			name: 'Imported agent',
+			model: 'openai/gpt-4o-mini',
+			credential: 'cred-openai',
+			instructions: 'Use the imported settings.',
+			skills: [{ type: 'skill', id: 'skill-1', definition: skill }],
+			tasks: [{ type: 'task', id: 'task-1', enabled: true, definition: task }],
+		};
+		openModalWithDataMock.mock.calls[0][0].data.onConfirm(importedConfig);
+		await nextTick();
+
+		// Every later autosave replays localConfig wholesale, so a body left
+		// behind here would keep overwriting whatever the user edits through the
+		// skill and task panels.
+		const localConfig = (
+			wrapper.vm as unknown as { localConfig: { skills: unknown[]; tasks: unknown[] } }
+		).localConfig;
+		expect(localConfig.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
+		expect(localConfig.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
+
+		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+
+		// The bodies still have to reach the backend, or it has nothing to
+		// materialise and the refs get pruned as dangling.
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({
+				skills: [{ type: 'skill', id: 'skill-1', definition: skill }],
+				tasks: [{ type: 'task', id: 'task-1', enabled: true, definition: task }],
 			}),
 		);
 	});

@@ -384,15 +384,22 @@ export const listAgentVersions = async (
 	);
 };
 
+/**
+ * `includeDefinitions` inlines skill and task bodies into their config refs.
+ * Only the JSON export needs them — a ref alone is meaningless outside the
+ * agent that owns it — so the editor's own reads leave it off and stay lean.
+ */
 export const getAgentConfig = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	options: { includeDefinitions?: boolean } = {},
 ): Promise<AgentJsonConfig> => {
 	return await makeRestApiRequest<AgentJsonConfig>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
+		options.includeDefinitions ? { includeDefinitions: true } : undefined,
 	);
 };
 

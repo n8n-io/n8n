@@ -12,6 +12,7 @@ import { AgentVectorStoreConfigSchema } from './agent-json-config.schema';
 import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
+import { booleanFromString } from '../schemas/boolean-from-string';
 import { Z } from '../zod-class';
 
 export const AGENTS_LIST_SORT_OPTIONS = [
@@ -65,6 +66,15 @@ export class ListAgentsQueryDto extends Z.class({
 
 export class AgentProviderModelsQueryDto extends Z.class({
 	credentialId: z.string().min(1).max(64).optional(),
+}) {}
+
+/**
+ * `includeDefinitions` inlines skill and task bodies into their config refs,
+ * yielding a config that survives a round trip through a file. Opt-in so the
+ * ordinary editor/builder read stays lean — see `AgentConfigService.getConfig`.
+ */
+export class GetAgentConfigQueryDto extends Z.class({
+	includeDefinitions: booleanFromString.optional().default('false'),
 }) {}
 
 /**

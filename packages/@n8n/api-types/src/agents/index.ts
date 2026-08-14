@@ -6,6 +6,7 @@ export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
 export * from './agent-node-tool-operations';
 export * from './agent-personalisation';
+export * from './agent-ref-definitions';
 export * from './agent-skill.schema';
 export * from './child-trace';
 export * from './inline-agent-config.schema';

@@ -2,6 +2,8 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { agentSkillSchema } from './agent-skill.schema';
+import { agentTaskSchema } from './agent-task.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -186,6 +188,17 @@ export const NodeConfigSchema = z.object({
 	credentials: z.record(NodeToolCredentialSchema).optional(),
 });
 
+/**
+ * Skill and task bodies are persisted outside `agent.schema` (skills in the
+ * `skills` column, tasks in `agent_task_definition`), so a config normally
+ * carries only refs. `definition` optionally inlines the body, which is what
+ * makes an exported config self-contained: on import the ref would otherwise
+ * point at a body the target agent has never seen and get dropped.
+ *
+ * It is populated only on the export read and consumed only on the config
+ * write — read paths that just need membership (builder LLM, MCP, editor) keep
+ * getting refs alone, and the persisted `agent.schema` stays refs-only.
+ */
 const AgentJsonSkillConfigSchema = z.object({
 	type: z.literal('skill'),
 	id: z
@@ -195,6 +208,7 @@ const AgentJsonSkillConfigSchema = z.object({
 			/^[A-Za-z0-9_-]+$/,
 			'Skill id can only contain letters, numbers, hyphens, and underscores',
 		),
+	definition: agentSkillSchema.optional(),
 });
 
 const AgentJsonTaskConfigSchema = z.object({
@@ -207,6 +221,7 @@ const AgentJsonTaskConfigSchema = z.object({
 			'Task id can only contain letters, numbers, hyphens, and underscores',
 		),
 	enabled: z.boolean(),
+	definition: agentTaskSchema.optional(),
 });
 
 export const McpAuthenticationSchemaTypes = z.enum([

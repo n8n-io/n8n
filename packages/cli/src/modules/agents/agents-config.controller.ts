@@ -1,6 +1,19 @@
-import { type AgentConfigValidationResponse, UpdateAgentConfigDto } from '@n8n/api-types';
+import {
+	type AgentConfigValidationResponse,
+	GetAgentConfigQueryDto,
+	UpdateAgentConfigDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, ProjectScope, Put, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Param,
+	ProjectScope,
+	Put,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
@@ -23,9 +36,15 @@ export class AgentsConfigController {
 
 	@Get('/:agentId/config')
 	@ProjectScope('agent:read')
-	async getConfig(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+	async getConfig(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Query query: GetAgentConfigQueryDto,
+	) {
 		const { projectId, agentId } = req.params;
-		return await this.agentConfigService.getConfig(agentId, projectId);
+		return await this.agentConfigService.getConfig(agentId, projectId, {
+			includeDefinitions: query.includeDefinitions,
+		});
 	}
 
 	/**

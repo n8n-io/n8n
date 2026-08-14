@@ -1,11 +1,14 @@
 import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import {
 	AgentJsonConfigSchema,
+	extractRefDefinitions,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
+	inlineRefDefinitions,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
+	type AgentRefDefinitions,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
@@ -25,7 +28,9 @@ import {
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
+import type { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
+import { isValidCronExpression } from './integrations/cron-validation';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
@@ -56,15 +61,36 @@ export class AgentConfigService {
 
 	/**
 	 * Get the JSON config for an agent.
+	 *
+	 * `includeDefinitions` inlines the skill and task bodies into their config
+	 * refs, making the result self-contained enough to export and re-import
+	 * elsewhere. It is opt-in because those bodies are large (skill
+	 * instructions alone go up to 64KB each) and no other consumer of this
+	 * endpoint — editor, builder LLM, MCP — needs more than membership.
 	 */
-	async getConfig(agentId: string, projectId: string): Promise<AgentJsonConfig> {
+	async getConfig(
+		agentId: string,
+		projectId: string,
+		options: { includeDefinitions?: boolean } = {},
+	): Promise<AgentJsonConfig> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 		const config = composeJsonConfig(entity);
 		if (!config) {
 			throw new UserError('Agent has no JSON config yet.');
 		}
-		return config;
+		if (!options.includeDefinitions) return config;
+
+		const tasks = await this.agentTaskRepository.findByAgentId(agentId);
+		return inlineRefDefinitions(config, {
+			skills: entity.skills ?? {},
+			tasks: Object.fromEntries(
+				tasks.map(({ id, name, objective, cronExpression }) => [
+					id,
+					{ name, objective, cronExpression },
+				]),
+			),
+		});
 	}
 
 	/**
@@ -153,7 +179,14 @@ export class AgentConfigService {
 		// Reconcile native web-search provider tools with the config's explicit
 		// `webSearch` state. This is the single write path, so persisted config
 		// always agrees with read/compose paths.
-		const validatedConfig = reconcileNativeWebSearch(result.config);
+		const reconciledConfig = reconcileNativeWebSearch(result.config);
+
+		// An imported config carries its skill and task bodies inline. Split them
+		// back out so they can be written to their own stores, leaving `agent.schema`
+		// persisting refs only. A config that arrived without bodies (the ordinary
+		// editor round trip) yields empty definitions and behaves exactly as before.
+		const { config: validatedConfig, definitions } = extractRefDefinitions(reconciledConfig);
+		this.assertValidTaskDefinitions(definitions.tasks);
 
 		if (validatedConfig.tools !== undefined) {
 			await this.nodeToolAiGatewayService.assignManagedCredentials(
@@ -164,14 +197,18 @@ export class AgentConfigService {
 		}
 
 		const tasksProvided = validatedConfig.tasks !== undefined;
-		const existingTaskIds = tasksProvided
-			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
+		const existingTasks = tasksProvided
+			? await this.agentTaskRepository.findByAgentId(agentId)
 			: [];
+		const existingTaskIds = existingTasks.map((task) => task.id);
 
+		// Both applied before ref pruning, so a ref that arrived with its body is
+		// treated as resolvable instead of being dropped as dangling.
+		this.applySkillDefinitions(entity, definitions.skills);
 		const resolvedSubAgents = await this.removeMissingConfigRefs(
 			validatedConfig,
 			entity,
-			new Set(existingTaskIds),
+			new Set([...existingTaskIds, ...Object.keys(definitions.tasks)]),
 		);
 		this.validateSubAgentRefs(resolvedSubAgents, entity);
 
@@ -288,6 +325,13 @@ export class AgentConfigService {
 
 		if (tasksProvided) {
 			const referencedTaskIds = new Set((validatedConfig.tasks ?? []).map((ref) => ref.id));
+			await this.persistTaskDefinitions(
+				agentId,
+				existingTasks,
+				definitions.tasks,
+				referencedTaskIds,
+			);
+
 			const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
 			if (orphanTaskIds.length > 0) {
 				await this.agentTaskRepository.delete(orphanTaskIds);
@@ -303,6 +347,58 @@ export class AgentConfigService {
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
+	}
+
+	/**
+	 * Cron validity is beyond the schema's reach — it only bounds the string's
+	 * length — and an unparseable expression would silently never schedule.
+	 */
+	private assertValidTaskDefinitions(definitions: AgentRefDefinitions['tasks']): void {
+		for (const [taskId, { cronExpression }] of Object.entries(definitions)) {
+			if (!isValidCronExpression(cronExpression)) {
+				throw new UserError(
+					`Invalid agent config: task "${taskId}" has an invalid cron expression`,
+				);
+			}
+		}
+	}
+
+	/**
+	 * Upsert the bodies of skills that arrived inline. Bodies still unreferenced
+	 * once the config is applied are pruned by `removeUnreferencedSkills`, so an
+	 * inline body can never outlive its ref.
+	 */
+	private applySkillDefinitions(entity: Agent, definitions: AgentRefDefinitions['skills']): void {
+		if (Object.keys(definitions).length === 0) return;
+		entity.skills = { ...(entity.skills ?? {}), ...definitions };
+	}
+
+	/**
+	 * Upsert the bodies of tasks that arrived inline. An id already owned by this
+	 * agent is updated rather than duplicated — task ids are only unique per
+	 * agent, so importing into an agent that already has tasks would otherwise
+	 * collide. The inline body wins, matching the full-replace semantics of a
+	 * config write.
+	 */
+	private async persistTaskDefinitions(
+		agentId: string,
+		existingTasks: AgentTask[],
+		definitions: AgentRefDefinitions['tasks'],
+		referencedTaskIds: ReadonlySet<string>,
+	): Promise<void> {
+		const existingById = new Map(existingTasks.map((task) => [task.id, task]));
+
+		const rows = Object.entries(definitions)
+			.filter(([taskId]) => referencedTaskIds.has(taskId))
+			.map(([taskId, body]) => {
+				const existing = existingById.get(taskId);
+				return existing
+					? Object.assign(existing, body)
+					: this.agentTaskRepository.create({ id: taskId, agentId, ...body });
+			});
+
+		if (rows.length === 0) return;
+		await this.agentTaskRepository.save(rows);
 	}
 
 	private async removeMissingConfigRefs(

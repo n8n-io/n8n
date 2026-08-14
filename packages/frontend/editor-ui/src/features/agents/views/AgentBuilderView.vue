@@ -25,6 +25,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
+	getAgentConfig,
 	createAgent,
 	deleteAgent,
 	listAgentFiles,
@@ -61,7 +62,7 @@ import {
 	useInstanceAiAgentPreviewHandoff,
 	type AgentPreviewHandoffParams,
 } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
-import { addMissingAgentPersonalisation } from '@n8n/api-types';
+import { addMissingAgentPersonalisation, extractRefDefinitions } from '@n8n/api-types';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -1081,6 +1082,25 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	});
 }
 
+/**
+ * An imported file inlines skill and task bodies. They have to reach the save
+ * so the backend can materialise them into their own stores, but they must not
+ * stay in `localConfig`: every later autosave replays it wholesale, which would
+ * keep overwriting those bodies with the imported copy long after the user
+ * edited them through the skill and task panels.
+ */
+function importConfigAndScheduleSave(importedConfig: AgentJsonConfig) {
+	invalidateConfigValidation();
+	localConfig.value = extractRefDefinitions(deepCopy(importedConfig)).config;
+	syncAgentIdentityFromConfig(localConfig.value);
+	configAutosave.scheduleAutosave({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		type: 'config',
+		config: normalizeAgentMemoryConfig(deepCopy(importedConfig)),
+	});
+}
+
 function persistMissingPersonalisationGradient() {
 	if (!effectiveCanEditAgent.value) return;
 	if (!localConfig.value) return;
@@ -1221,11 +1241,29 @@ async function exportAgentJson() {
 	}
 	if (!localConfig.value) return;
 
-	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+	// `localConfig` holds only refs to skills and tasks, whose bodies are stored
+	// apart from the config. Re-read with the bodies inlined so the file can be
+	// imported into another agent instead of arriving with dangling refs.
+	let exportedConfig: AgentJsonConfig;
+	try {
+		exportedConfig = await getAgentConfig(
+			rootStore.restApiContext,
+			projectId.value,
+			agentId.value,
+			{
+				includeDefinitions: true,
+			},
+		);
+	} catch (error) {
+		showError(error, locale.baseText('agents.builder.exportJsonError' as BaseTextKey));
+		return;
+	}
+
+	const blob = new Blob([`${JSON.stringify(exportedConfig, null, 2)}\n`], {
 		type: 'application/json',
 	});
 	const url = URL.createObjectURL(blob);
-	const name = localConfig.value.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
+	const name = exportedConfig.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
 	const link = Object.assign(document.createElement('a'), {
 		href: url,
 		download: `${name}.json`,
@@ -1242,7 +1280,7 @@ function openImportJsonModal() {
 	uiStore.openModalWithData({
 		name: AGENT_JSON_IMPORT_MODAL_KEY,
 		data: {
-			onConfirm: replaceConfigAndScheduleSave,
+			onConfirm: importConfigAndScheduleSave,
 		},
 	});
 }
