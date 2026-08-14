@@ -79,6 +79,7 @@ describe('OAuthConsentService', () => {
 			const client = mock<OAuthClient>({
 				id: 'client-123',
 				name: 'Test Client',
+				isFirstParty: false,
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
@@ -93,6 +94,7 @@ describe('OAuthConsentService', () => {
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
 				previousScopes: undefined,
+				isFirstParty: false,
 			});
 			expect(oauthSessionService.verifySession).toHaveBeenCalledWith(sessionToken);
 			expect(oauthClientRepository.findOne).toHaveBeenCalledWith({
@@ -144,6 +146,7 @@ describe('OAuthConsentService', () => {
 			const client = mock<OAuthClient>({
 				id: 'client-123',
 				name: 'Test Client',
+				isFirstParty: false,
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
@@ -158,6 +161,7 @@ describe('OAuthConsentService', () => {
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
 				previousScopes: undefined,
+				isFirstParty: false,
 			});
 		});
 
@@ -241,7 +245,11 @@ describe('OAuthConsentService', () => {
 				state: null,
 				resource: 'https://n8n.example.com/mcp/wf-123',
 			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+			const client = mock<OAuthClient>({
+				id: 'client-123',
+				name: 'Test Client',
+				isFirstParty: false,
+			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
@@ -261,6 +269,7 @@ describe('OAuthConsentService', () => {
 				redirectUri: 'https://example.com/callback',
 				scopes: [],
 				previousScopes: undefined,
+				isFirstParty: false,
 			});
 			expect(protectedResourceRegistry.getByResourceUrl).toHaveBeenCalledWith(
 				'https://n8n.example.com/mcp/wf-123',
@@ -276,7 +285,11 @@ describe('OAuthConsentService', () => {
 				state: null,
 				resource: 'https://n8n.example.com/mcp-server/http',
 			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+			const client = mock<OAuthClient>({
+				id: 'client-123',
+				name: 'Test Client',
+				isFirstParty: false,
+			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			oauthClientRepository.findOne.mockResolvedValue(client);
@@ -297,7 +310,70 @@ describe('OAuthConsentService', () => {
 				redirectUri: 'https://example.com/callback',
 				scopes: INSTANCE_SCOPES,
 				previousScopes: undefined,
+				isFirstParty: false,
 			});
+		});
+
+		it('should forward the resource uiHints and a first-party client flag', async () => {
+			const sessionToken = 'valid-session-token';
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: null,
+				resource: 'https://n8n.example.com/form/wf-123',
+			};
+			const client = mock<OAuthClient>({
+				id: 'client-123',
+				name: 'Test Client',
+				isFirstParty: true,
+			});
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				displayName: 'My Form',
+				scopes: [],
+				uiHints: { icon: 'square-pen', consentType: 'form' },
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
+
+			expect(result).toMatchObject({
+				ok: true,
+				isFirstParty: true,
+				uiHints: { icon: 'square-pen', consentType: 'form' },
+			});
+		});
+
+		it('should report a non-first-party client and omit uiHints when the resource has none', async () => {
+			const sessionToken = 'valid-session-token';
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge',
+				state: null,
+				resource: 'https://n8n.example.com/mcp/wf-123',
+			};
+			const client = mock<OAuthClient>({
+				id: 'client-123',
+				name: 'Test Client',
+				isFirstParty: false,
+			});
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				displayName: 'My Workflow',
+				scopes: [],
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+
+			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
+
+			expect(result).toMatchObject({ ok: true, isFirstParty: false });
+			expect((result as { uiHints?: unknown }).uiHints).toBeUndefined();
 		});
 
 		it('should report resource_unavailable when the resource cannot be resolved', async () => {
