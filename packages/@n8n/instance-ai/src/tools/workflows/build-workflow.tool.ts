@@ -168,6 +168,15 @@ export const buildWorkflowInputSchema = z
 				'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
 					'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
 			),
+		preferNewCredentials: z
+			.array(z.string())
+			.optional()
+			.describe(
+				'Credential types (e.g. ["slackApi"]) the user explicitly asked to create fresh — pass ONLY on ' +
+					'an explicit request like "create a new Slack credential", never as a default. Those slots are ' +
+					'left unresolved instead of being filled from an existing credential or n8n credits, so ' +
+					'credential setup can offer to create one. Pass the same list to workflows(action="setup").',
+			),
 		executionIntent: z
 			.enum(['one-off', 'reusable'])
 			.optional()
@@ -851,7 +860,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const credentialMap = await buildCredentialMap(context.credentialService);
-			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
+			const mockResult = await resolveCredentials(
+				json,
+				targetWorkflowId,
+				context,
+				credentialMap,
+				input.preferNewCredentials,
+			);
 
 			// Deterministic backstop for a builder that never checked credentials:
 			// a chat-model node for a provider the user has no credential for gets
@@ -879,6 +894,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
 				const hasResolvedCredentials = Object.keys(mockResult.resolvedCredentialsByNode).length > 0;
+				// Only the asked-for-fresh types the resolver actually held back, so the
+				// note never tells the agent to route a type nothing is pending for.
+				const heldForNewCredentialTypes = (input.preferNewCredentials ?? []).filter((type) =>
+					mockResult.mockedCredentialTypes.includes(type),
+				);
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 				const triggerNodes = (json.nodes ?? [])
 					.filter((n) => isTriggerNodeType(n.type))
@@ -892,7 +912,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					saved: { id: string; versionId: string; checksum?: string },
 					operation: 'create' | 'update',
 				) => {
-					const setupRequests = await analyzeWorkflow(context, saved.id);
+					const setupRequests = await analyzeWorkflow(context, saved.id, undefined, {
+						...(input.preferNewCredentials
+							? { preferNewCredentialTypes: input.preferNewCredentials }
+							: {}),
+					});
 					const workflowNeedsSetup = setupRequests.some((request) => request.needsAction);
 					const { nodeSimulationPlan, simulationFixtures, waitGateScripts } =
 						await planVerificationSimulation({
@@ -1030,9 +1054,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						resolvedCredentialsByNode: hasResolvedCredentials
 							? mockResult.resolvedCredentialsByNode
 							: undefined,
-						credentialResolutionNote: hasResolvedCredentials
-							? buildCredentialResolutionNote(mockResult.resolvedCredentialsByNode)
-							: undefined,
+						credentialResolutionNote:
+							hasResolvedCredentials || heldForNewCredentialTypes.length > 0
+								? buildCredentialResolutionNote(
+										mockResult.resolvedCredentialsByNode,
+										heldForNewCredentialTypes,
+									)
+								: undefined,
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,

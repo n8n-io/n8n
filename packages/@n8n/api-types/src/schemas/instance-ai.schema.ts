@@ -412,6 +412,10 @@ export const credentialRequestSchema = z.object({
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
 	suggestedName: z.string().optional(),
 	setupHint: credentialSetupHintSchema.optional(),
+	/** The user asked for a fresh credential, so the card must not preselect an
+	 *  existing one. Existing candidates stay listed — the user may still change
+	 *  their mind once they see what is available. */
+	preferNew: z.boolean().optional(),
 });
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;
@@ -446,6 +450,10 @@ export const workflowSetupNodeSchema = z.object({
 	isFirstTrigger: z.boolean().optional(),
 	isTestable: z.boolean().optional(),
 	isAutoApplied: z.boolean().optional(),
+	/** The user asked for a fresh credential of this type, so nothing is
+	 *  auto-applied and the picker opens unselected. Existing candidates are
+	 *  still offered in `existingCredentials`. */
+	preferNewCredential: z.boolean().optional(),
 	credentialTestResult: z
 		.object({
 			success: z.boolean(),

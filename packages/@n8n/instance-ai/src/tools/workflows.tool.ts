@@ -137,6 +137,15 @@ const setupAction = z.object({
 		.describe(
 			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
 		),
+	preferNewCredentials: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Credential types (e.g. ["slackApi"]) the user explicitly asked to create fresh — pass ONLY on an ' +
+				'explicit request like "create a new Slack credential", never as a default. The card opens with ' +
+				'nothing preselected so the user lands on credential creation; existing credentials of the type ' +
+				'stay listed in case they change their mind. Pass the same list you passed to build-workflow.',
+		),
 });
 
 const validateAction = z.object({
@@ -610,6 +619,19 @@ function collectCredentialTestFailures(
 	return failures;
 }
 
+/**
+ * Carry the "user asked for a fresh credential" types into every setup analysis
+ * of this call, so no re-analysis (trigger test, apply) quietly reinstates the
+ * auto-applied credential the first analysis withheld.
+ */
+function preferNewCredentialOptions(input: Extract<Input, { action: 'setup' }>): {
+	preferNewCredentialTypes?: readonly string[];
+} {
+	return input.preferNewCredentials?.length
+		? { preferNewCredentialTypes: input.preferNewCredentials }
+		: {};
+}
+
 /** Setup state 3: persist setup, run the trigger, and re-suspend with the refreshed requests. */
 async function handleSetupTestTrigger(
 	context: InstanceAiContext,
@@ -639,9 +661,12 @@ async function handleSetupTestTrigger(
 
 	const triggerTestResult = await runTriggerTest(context, input.workflowId, testTriggerNode);
 
-	const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
-		[testTriggerNode]: triggerTestResult,
-	});
+	const refreshedRequests = await analyzeWorkflow(
+		context,
+		input.workflowId,
+		{ [testTriggerNode]: triggerTestResult },
+		preferNewCredentialOptions(input),
+	);
 	applyCredentialHints(refreshedRequests, input.credentialHints);
 
 	// Generate a new requestId so the frontend doesn't filter it
@@ -698,6 +723,7 @@ async function handleSetupApply(
 		// a bound credential is settled for routing even when its test fails.
 		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
 			includeSettled: true,
+			...preferNewCredentialOptions(input),
 		});
 		const pendingRequests = remainingRequests.filter((r) => r.needsAction);
 		const completedNodes = buildCompletedReport(
@@ -773,7 +799,12 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+		const setupRequests = await analyzeWorkflow(
+			context,
+			input.workflowId,
+			undefined,
+			preferNewCredentialOptions(input),
+		);
 
 		// Validated against the workflow's node URLs so a recipe can't set one of
 		// the workflow's own (action) endpoints as its probe testUrl.
