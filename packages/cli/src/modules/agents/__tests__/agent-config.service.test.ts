@@ -491,6 +491,120 @@ describe('AgentConfigService', () => {
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
+		it('restores task definitions carried inline by an imported config', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentTaskRepository.findByAgentId.mockResolvedValue([]);
+			agentTaskRepository.create.mockImplementation((data) => data as never);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tasks: [
+						{
+							type: 'task',
+							id: 'task_exported',
+							enabled: true,
+							body: {
+								name: 'Daily digest',
+								objective: 'Summarise the inbox',
+								cronExpression: '0 9 * * *',
+							},
+						},
+					],
+				},
+				user,
+				byUser,
+			);
+
+			// The body is persisted as a real task row under a fresh id (task ids
+			// are a global primary key, so the exported id is not reused).
+			const created = agentTaskRepository.save.mock.calls[0][0] as Array<{ id: string }>;
+			expect(created).toHaveLength(1);
+			expect(agentTaskRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId,
+					name: 'Daily digest',
+					objective: 'Summarise the inbox',
+					cronExpression: '0 9 * * *',
+				}),
+			);
+
+			// The ref survives (it is not dropped as "missing"), is repointed to the
+			// new id, and the inline body is stripped from the persisted schema.
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: created[0].id, enabled: true }]);
+			expect(created[0].id).toBe(saved.schema?.tasks?.[0].id);
+		});
+
+		it('rejects an imported task whose cron expression is invalid', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentTaskRepository.findByAgentId.mockResolvedValue([]);
+			agentTaskRepository.create.mockImplementation((data) => data as never);
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						tasks: [
+							{
+								type: 'task',
+								id: 'task_exported',
+								enabled: true,
+								body: {
+									name: 'Broken',
+									objective: 'Never runs',
+									cronExpression: 'not a cron',
+								},
+							},
+						],
+					},
+					user,
+					byUser,
+				),
+			).rejects.toThrow('invalid cron expression');
+			expect(agentTaskRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('restores skill bodies carried inline by an imported config', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					skills: [
+						{
+							type: 'skill',
+							id: 'skill_exported',
+							body: { name: 'Refunds', description: 'Handle refunds', instructions: 'Steps' },
+						},
+					],
+				},
+				user,
+				byUser,
+			);
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			// The body is persisted under its ref id and the schema keeps a plain ref.
+			expect(saved.skills.skill_exported).toEqual({
+				name: 'Refunds',
+				description: 'Handle refunds',
+				instructions: 'Steps',
+			});
+			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill_exported' }]);
+		});
+
 		it('sanitizes inaccessible credentials before saving nested config', async () => {
 			const { service, agentRepository, credentialsService } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());

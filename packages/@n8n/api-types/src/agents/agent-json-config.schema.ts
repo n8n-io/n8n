@@ -2,6 +2,8 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { agentSkillSchema } from './agent-skill.schema';
+import { agentTaskSchema } from './agent-task.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -195,6 +197,13 @@ const AgentJsonSkillConfigSchema = z.object({
 			/^[A-Za-z0-9_-]+$/,
 			'Skill id can only contain letters, numbers, hyphens, and underscores',
 		),
+	/**
+	 * Full skill body. Only populated in an exported config so the file is
+	 * self-contained and re-importable; the interactive builder reads bodies
+	 * from the dedicated skills endpoint and ignores this. On import the body is
+	 * persisted and stripped, leaving a plain `{ type, id }` ref.
+	 */
+	body: agentSkillSchema.optional(),
 });
 
 const AgentJsonTaskConfigSchema = z.object({
@@ -207,6 +216,14 @@ const AgentJsonTaskConfigSchema = z.object({
 			'Task id can only contain letters, numbers, hyphens, and underscores',
 		),
 	enabled: z.boolean(),
+	/**
+	 * Full task definition. Only populated in an exported config so the file is
+	 * self-contained and re-importable; the interactive builder reads
+	 * definitions from the dedicated tasks endpoint and ignores this. On import
+	 * the body is persisted and stripped, leaving a plain `{ type, id, enabled }`
+	 * ref.
+	 */
+	body: agentTaskSchema.optional(),
 });
 
 export const McpAuthenticationSchemaTypes = z.enum([

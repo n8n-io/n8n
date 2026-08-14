@@ -393,6 +393,31 @@ describe('sanitizeAgentJsonConfig', () => {
 		});
 	});
 
+	it('preserves inline skill and task bodies carried by an exported config', () => {
+		const config = {
+			...baseConfig,
+			skills: [
+				{
+					type: 'skill',
+					id: 'summarize',
+					body: { name: 'Summarize', description: 'Summarise things', instructions: 'Do it' },
+				},
+			],
+			tasks: [
+				{
+					type: 'task',
+					id: 'weekly_review',
+					enabled: true,
+					body: { name: 'Weekly review', objective: 'Review', cronExpression: '0 9 * * 1' },
+				},
+			],
+		};
+
+		const sanitized = sanitizeAgentJsonConfig(config);
+		expect(sanitized).toEqual(config);
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
 	it('leaves malformed typed-array entries in place for schema validation to reject', () => {
 		const config = {
 			...baseConfig,

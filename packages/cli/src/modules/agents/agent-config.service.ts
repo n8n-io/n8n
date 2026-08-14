@@ -25,7 +25,9 @@ import {
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
+import { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
+import { isValidCronExpression } from './integrations/cron-validation';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
@@ -35,6 +37,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { generateAgentResourceId } from './utils/agent-resource-id';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
@@ -168,10 +171,22 @@ export class AgentConfigService {
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
+		// Restore inline definitions carried by a self-contained exported config
+		// (the builder's export bundles skill/task bodies into their refs) so refs
+		// whose bodies don't exist yet — the import case — recreate the body
+		// instead of being dropped below. Bodies are stripped afterwards; the
+		// persisted schema stores refs only.
+		const importedTasks = await this.restoreImportedTaskBodies(
+			agentId,
+			validatedConfig,
+			existingTaskIds,
+		);
+		this.restoreImportedSkillBodies(entity, validatedConfig);
+
 		const resolvedSubAgents = await this.removeMissingConfigRefs(
 			validatedConfig,
 			entity,
-			new Set(existingTaskIds),
+			new Set([...existingTaskIds, ...importedTasks.map((task) => task.id)]),
 		);
 		this.validateSubAgentRefs(resolvedSubAgents, entity);
 
@@ -287,6 +302,11 @@ export class AgentConfigService {
 		await emitSetupCompleted?.();
 
 		if (tasksProvided) {
+			// Persist restored task bodies after the agent write lands, so a
+			// validation failure earlier in the flow can't leave orphaned rows.
+			if (importedTasks.length > 0) {
+				await this.agentTaskRepository.save(importedTasks);
+			}
 			const referencedTaskIds = new Set((validatedConfig.tasks ?? []).map((ref) => ref.id));
 			const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
 			if (orphanTaskIds.length > 0) {
@@ -303,6 +323,68 @@ export class AgentConfigService {
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
+	}
+
+	/**
+	 * Persist task definitions carried inline by an imported, self-contained
+	 * config. A ref whose body is present and whose id is not already an existing
+	 * task of this agent is created under a FRESH id — task ids are a global
+	 * primary key, so reusing an exported id could collide with (or hijack)
+	 * another agent's task. The ref is repointed to the new id; its inline body is
+	 * stripped either way, so the schema persists as a plain `{ type, id, enabled }`
+	 * ref. Returns the newly created task rows.
+	 */
+	private async restoreImportedTaskBodies(
+		agentId: string,
+		config: AgentJsonConfig,
+		existingTaskIds: string[],
+	): Promise<AgentTask[]> {
+		const usedIds = new Set(existingTaskIds);
+		const created: AgentTask[] = [];
+
+		for (const ref of config.tasks ?? []) {
+			const { body } = ref;
+			delete ref.body;
+			if (!body || usedIds.has(ref.id)) continue;
+
+			if (!isValidCronExpression(body.cronExpression)) {
+				throw new UserError('Invalid agent config: imported task has an invalid cron expression');
+			}
+
+			const id = generateAgentResourceId('task', usedIds);
+			usedIds.add(id);
+			ref.id = id;
+			created.push(
+				this.agentTaskRepository.create({
+					id,
+					agentId,
+					name: body.name,
+					objective: body.objective,
+					cronExpression: body.cronExpression,
+				}),
+			);
+		}
+
+		return created;
+	}
+
+	/**
+	 * Restore skill bodies carried inline by an imported, self-contained config.
+	 * A ref whose body is present and whose id isn't already a stored skill has
+	 * its body persisted under that id (skill ids are agent-scoped, so no global
+	 * collision). The inline body is stripped either way, so the schema persists
+	 * as a plain `{ type, id }` ref.
+	 */
+	private restoreImportedSkillBodies(entity: Agent, config: AgentJsonConfig): void {
+		for (const ref of config.skills ?? []) {
+			const { body } = ref;
+			delete ref.body;
+			if (!body) continue;
+
+			const skills = entity.skills ?? {};
+			if (skills[ref.id]) continue;
+			entity.skills = { ...skills, [ref.id]: body };
+		}
 	}
 
 	private async removeMissingConfigRefs(

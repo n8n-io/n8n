@@ -25,6 +25,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
+	getAgentTasks,
 	createAgent,
 	deleteAgent,
 	listAgentFiles,
@@ -1211,6 +1212,50 @@ const headerActions = computed(() => {
 	return actions;
 });
 
+/**
+ * Bundle skill bodies and task definitions into their config refs so the
+ * exported file is self-contained and re-importable. The live config carries
+ * refs only (bodies live behind their own endpoints and the interactive builder
+ * reads them from there), so without this the references would be dropped on
+ * import.
+ */
+async function buildExportConfig(config: AgentJsonConfig): Promise<AgentJsonConfig> {
+	const skills = agent.value?.skills ?? {};
+	const exportSkills = config.skills?.map((ref) => {
+		const body = skills[ref.id];
+		return body ? { ...ref, body } : ref;
+	});
+
+	let exportTasks = config.tasks;
+	if (config.tasks?.length) {
+		const definitions = await getAgentTasks(
+			rootStore.restApiContext,
+			projectId.value,
+			agentId.value,
+		);
+		const byId = new Map(definitions.map((task) => [task.id, task]));
+		exportTasks = config.tasks.map((ref) => {
+			const task = byId.get(ref.id);
+			return task
+				? {
+						...ref,
+						body: {
+							name: task.name,
+							objective: task.objective,
+							cronExpression: task.cronExpression,
+						},
+					}
+				: ref;
+		});
+	}
+
+	return {
+		...config,
+		...(exportSkills ? { skills: exportSkills } : {}),
+		...(exportTasks ? { tasks: exportTasks } : {}),
+	};
+}
+
 async function exportAgentJson() {
 	if (!localConfig.value) return;
 
@@ -1221,7 +1266,9 @@ async function exportAgentJson() {
 	}
 	if (!localConfig.value) return;
 
-	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+	const exportConfig = await buildExportConfig(localConfig.value);
+
+	const blob = new Blob([`${JSON.stringify(exportConfig, null, 2)}\n`], {
 		type: 'application/json',
 	});
 	const url = URL.createObjectURL(blob);

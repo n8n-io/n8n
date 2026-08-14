@@ -119,6 +119,7 @@ const createAgentSkillMock = vi.fn();
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
+const getAgentTasksMock = vi.fn();
 const createAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
@@ -154,6 +155,7 @@ const stopSessionAutoRefreshMock = vi.fn();
 
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
+	getAgentTasks: getAgentTasksMock,
 	createAgent: createAgentMock,
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
@@ -220,6 +222,7 @@ interface TestAgentConfig {
 	credential?: string;
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
+	tasks?: Array<{ type: 'task'; id: string; enabled: boolean }>;
 	personalisation?: AgentJsonConfig['personalisation'];
 }
 
@@ -608,6 +611,8 @@ function resetViewMocks() {
 	updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 	repointConfigMock.mockReset();
 	getAgentMock.mockResolvedValue(makeAgentResponse());
+	getAgentTasksMock.mockReset();
+	getAgentTasksMock.mockResolvedValue([]);
 	createAgentMock.mockReset();
 	createAgentMock.mockResolvedValue(makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' }));
 	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
@@ -2538,6 +2543,64 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:agent-json');
 
 		createElementSpy.mockRestore();
+	});
+
+	it('bundles skill bodies and task definitions into the exported JSON file', async () => {
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+			tasks: [{ type: 'task', id: 'task_digest', enabled: true }],
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		getAgentMock.mockResolvedValue(
+			makeAgentResponse({
+				skills: {
+					summarize_notes: {
+						name: 'Summarize notes',
+						description: 'Summarise things',
+						instructions: 'Do it',
+					},
+				},
+			}),
+		);
+		getAgentTasksMock.mockResolvedValue([
+			{
+				id: 'task_digest',
+				name: 'Daily digest',
+				objective: 'Summarise the inbox',
+				cronExpression: '0 9 * * *',
+				createdAt: '2026-01-01T00:00:00Z',
+				updatedAt: '2026-01-01T00:00:00Z',
+			},
+		]);
+
+		Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+		Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+		createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:agent-json');
+		revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+		anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'export-json');
+		await flushPromises();
+
+		expect(getAgentTasksMock).toHaveBeenCalled();
+		const blob = createObjectURLSpy.mock.calls[0][0] as Blob;
+		const exported = JSON.parse(await readBlobText(blob)) as {
+			skills: Array<{ id: string; body?: unknown }>;
+			tasks: Array<{ id: string; body?: unknown }>;
+		};
+		expect(exported.skills[0].body).toEqual({
+			name: 'Summarize notes',
+			description: 'Summarise things',
+			instructions: 'Do it',
+		});
+		expect(exported.tasks[0].body).toEqual({
+			name: 'Daily digest',
+			objective: 'Summarise the inbox',
+			cronExpression: '0 9 * * *',
+		});
 	});
 
 	it('opens the JSON import modal and saves imported config from the header menu', async () => {
