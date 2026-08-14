@@ -1261,7 +1261,12 @@ describe('CredentialEdit', () => {
 
 		const setupExistingOAuthCredential = (
 			credentialModalState: Partial<NewCredentialsModal> = {},
-			dataOverrides: { scopes?: Scope[]; isResolvable?: boolean; connectedByMe?: boolean } = {},
+			dataOverrides: {
+				scopes?: Scope[];
+				isResolvable?: boolean;
+				connectedByMe?: boolean;
+				data?: Record<string, string>;
+			} = {},
 		) => {
 			vi.stubGlobal('BroadcastChannel', BroadcastChannelMock);
 			vi.stubGlobal(
@@ -1283,7 +1288,7 @@ describe('CredentialEdit', () => {
 			};
 			credentialsStore.getCredentialData.mockResolvedValueOnce({
 				// @ts-expect-error data is decrypted
-				data: {
+				data: dataOverrides.data ?? {
 					grantType: 'authorizationCode',
 					authUrl: 'https://auth.example.com',
 					accessTokenUrl: 'https://token.example.com',
@@ -1577,6 +1582,33 @@ describe('CredentialEdit', () => {
 
 			expect(confirmMock).not.toHaveBeenCalled();
 		});
+
+		test('reveals the connect banner without saving once missing required fields are filled', async () => {
+			const { credentialsStore, queryByTestId, getAllByTestId } = setupExistingOAuthCredential(
+				{},
+				{
+					// clientId is missing, so the modal opens with the validation
+					// warning latched and the connect banner suppressed
+					data: {
+						grantType: 'authorizationCode',
+						authUrl: 'https://auth.example.com',
+						accessTokenUrl: 'https://token.example.com',
+						clientSecret: 'secret',
+					},
+				},
+			);
+
+			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await waitFor(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+
+			const clientIdForm = getAllByTestId('credential-connection-parameter').find((form) =>
+				form.textContent?.includes('Client ID'),
+			);
+			expect(clientIdForm).toBeDefined();
+			await userEvent.type(within(clientIdForm!).getByRole('textbox'), 'client');
+
+			await waitFor(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
+		});
 	});
 
 	describe('per-user OAuth banner', () => {
@@ -1621,6 +1653,16 @@ describe('CredentialEdit', () => {
 				[oAuth2Api.name]: oAuth2Api,
 				[googleOAuth2Api.name]: googleOAuth2Api,
 				[googleBigQueryOAuth2Api.name]: googleBigQueryOAuth2Api,
+			};
+
+			// The type selector needs a team home project, resolved from the store
+			credentialsStore.state.credentials = {
+				'cred-banner': {
+					id: 'cred-banner',
+					name: 'Google BigQuery account',
+					type: 'googleBigQueryOAuth2Api',
+					homeProject: { id: 'project-1', type: 'team' },
+				} as ICredentialsResponse,
 			};
 
 			return credentialsStore;

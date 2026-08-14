@@ -7,7 +7,7 @@ import {
 	useInstanceAiHandoff,
 } from './useInstanceAiHandoff';
 
-interface AgentPreviewHandoffParams {
+export interface AgentPreviewHandoffParams {
 	projectId: string;
 	agentId: string;
 	threadId: string;
@@ -15,12 +15,13 @@ interface AgentPreviewHandoffParams {
 	agentIcon?: string;
 	sessionTitle?: string;
 	executionId?: string;
+	initialDraft?: string;
 }
 
 export function useInstanceAiAgentPreviewHandoff() {
 	const telemetry = useTelemetry();
 	const canSendPreviewToInstanceAi = useInstanceAiAvailable();
-	const { openThreadWithContext } = useInstanceAiHandoff();
+	const { openAgentArtifactThread } = useInstanceAiHandoff();
 
 	async function sendPreviewSessionToInstanceAi({
 		projectId,
@@ -30,25 +31,34 @@ export function useInstanceAiAgentPreviewHandoff() {
 		agentIcon,
 		sessionTitle,
 		executionId,
+		initialDraft,
 	}: AgentPreviewHandoffParams): Promise<void> {
 		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return;
 
-		const opened = await openThreadWithContext(
-			projectId,
-			buildInstanceAiAgentPreviewHandoffContext({
-				agentId,
-				threadId,
-				agentName,
-				agentIcon,
-				sessionTitle,
-				executionId,
-			}),
+		const context = buildInstanceAiAgentPreviewHandoffContext({
+			agentId,
+			threadId,
+			agentName,
+			agentIcon,
+			sessionTitle,
+			executionId,
+		});
+		const opened = await openAgentArtifactThread(
+			{
+				type: 'agent',
+				id: agentId,
+				projectId,
+				...(agentName ? { name: agentName } : {}),
+			},
 			{
 				source: 'agent_preview',
 				origin: 'internal',
 				sourceContext: { agentId, previewThreadId: threadId },
 			},
-			{ newTab: true },
+			{
+				context,
+				...(initialDraft ? { initialDraft } : {}),
+			},
 		);
 		if (!opened) return;
 

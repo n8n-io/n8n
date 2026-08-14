@@ -56,6 +56,7 @@ import type {
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
+import { MAX_ATTACHMENT_BASE64_BYTES, MAX_TOTAL_ATTACHMENT_BASE64_BYTES } from '@n8n/api-types';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -347,6 +348,57 @@ describe('InstanceAiController', () => {
 				nodesPayload.timeZone,
 				nodesPayload.pushRef,
 			);
+		});
+
+		it('should reject an oversized attachment before starting a run', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			const oversizedPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'see screenshot',
+				attachments: [
+					{
+						type: 'file',
+						data: 'A'.repeat(MAX_ATTACHMENT_BASE64_BYTES + 1),
+						mimeType: 'image/png',
+						fileName: 'screenshot.png',
+					},
+				],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, oversizedPayload)).rejects.toMatchObject({
+				message: expect.stringContaining('screenshot.png'),
+			});
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
+		});
+
+		it('should reject a combined payload over the total budget before starting a run', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			const halfBudget = Math.floor(MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 2) + 1;
+			const payloadOverBudget = mock<InstanceAiSendMessageRequest>({
+				message: 'two screenshots',
+				attachments: [
+					{
+						type: 'file',
+						data: 'A'.repeat(halfBudget),
+						mimeType: 'image/png',
+						fileName: 'a.png',
+					},
+					{
+						type: 'file',
+						data: 'A'.repeat(halfBudget),
+						mimeType: 'image/png',
+						fileName: 'b.png',
+					},
+				],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, payloadOverBudget)).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1160,7 +1212,7 @@ describe('InstanceAiController', () => {
 			expect(gatewayService.disconnectAllGateways).not.toHaveBeenCalled();
 		});
 
-		it('should publish settings reloads to other mains', async () => {
+		it('should publish settings reloads and refresh affected module settings', async () => {
 			settingsService.updateAdminSettings.mockResolvedValue({ enabled: true } as never);
 
 			await controller.updateAdminSettings(req, res, { enabled: true });
@@ -1168,6 +1220,8 @@ describe('InstanceAiController', () => {
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'reload-instance-ai-settings',
 			});
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('agents');
 		});
 
 		it('should publish and attempt every local side effect when one fails', async () => {

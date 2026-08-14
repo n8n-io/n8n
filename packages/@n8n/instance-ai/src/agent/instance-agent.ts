@@ -24,7 +24,26 @@ import type {
 	CreateInstanceAgentOptions,
 	InstanceAiContext,
 	InstanceAiToolRegistry,
+	ModelConfig,
 } from '../types';
+import { withModalSession } from '../utils/modal-session';
+
+function resolveModalSessionModelId(
+	modelId: ModelConfig,
+	context: InstanceAiContext,
+	orchestrationThreadId: string | undefined,
+): ModelConfig {
+	const threadId = [context.threadId, orchestrationThreadId]
+		.map((value) => value?.trim())
+		.find((value): value is string => value !== undefined && value.length > 0);
+	if (!threadId) return modelId;
+
+	const stickyModelId = withModalSession(modelId, threadId);
+	if (stickyModelId === modelId) return modelId;
+
+	context.modelId = stickyModelId;
+	return stickyModelId;
+}
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
@@ -53,13 +72,18 @@ export async function createInstanceAgent(
 	options: CreateInstanceAgentOptions,
 ): Promise<{ agent: Agent; mcpConnectionFailures: Array<{ server: string; error: string }> }> {
 	const {
-		modelId,
+		modelId: rawModelId,
 		context,
 		orchestrationContext,
 		mcpServers = [],
 		mcpManager,
 		memoryConfig,
 	} = options;
+
+	const modelId = resolveModalSessionModelId(rawModelId, context, orchestrationContext?.threadId);
+	if (orchestrationContext && orchestrationContext.modelId !== modelId) {
+		orchestrationContext.modelId = modelId;
+	}
 
 	// Build native n8n domain tools (context captured via closures — per-run).
 	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit

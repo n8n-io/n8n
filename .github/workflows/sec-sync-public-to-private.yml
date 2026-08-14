@@ -5,6 +5,8 @@
 #
 # Scheduled runs only sync if private is not ahead of public.
 # Manual runs always sync (for conflict recovery after failed cherry-pick).
+#
+# The bundle/* integration branches are kept current by sec-rebase-bundle-branches.yml.
 
 name: 'Security: Sync from Public'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('Security: Sync from Public (force={0})', inputs.force) || '' }}"
@@ -90,58 +92,3 @@ jobs:
 
           git reset --hard public-1.x
           git push origin 1.x --force-with-lease
-
-      - name: Ensure bundle/2.x exists
-        run: |
-          if git ls-remote --exit-code origin refs/heads/bundle/2.x; then
-            echo "bundle/2.x already exists, skipping"
-          else
-            echo "bundle/2.x not found, creating from master"
-            git checkout master
-            git checkout -b bundle/2.x
-            git push origin bundle/2.x
-          fi
-
-      - name: Ensure bundle/1.x exists
-        run: |
-          if git ls-remote --exit-code origin refs/heads/bundle/1.x; then
-            echo "bundle/1.x already exists, skipping"
-          else
-            echo "bundle/1.x not found, creating from 1.x"
-            git checkout 1.x
-            git checkout -b bundle/1.x
-            git push origin bundle/1.x
-          fi
-
-      - name: Update bundle/2.x from master
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git fetch origin bundle/2.x
-          git checkout -B bundle/2.x FETCH_HEAD
-
-          if git merge --no-edit master; then
-            git push origin bundle/2.x
-          else
-            # A conflict needs a human; keep the run green so the rest of the sync still reports success
-            git merge --abort || true
-            echo "::warning title=bundle/2.x is out of sync::Merging master into bundle/2.x hit a conflict. Resolve it manually, then re-run this workflow."
-            exit 0
-          fi
-
-      - name: Update bundle/1.x from 1.x
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git fetch origin bundle/1.x
-          git checkout -B bundle/1.x FETCH_HEAD
-
-          if git merge --no-edit 1.x; then
-            git push origin bundle/1.x
-          else
-            git merge --abort || true
-            echo "::warning title=bundle/1.x is out of sync::Merging 1.x into bundle/1.x hit a conflict. Resolve it manually, then re-run this workflow."
-            exit 0
-          fi

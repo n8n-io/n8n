@@ -1,4 +1,5 @@
 import {
+	AgentConnectIntegrationDto,
 	AgentDisconnectIntegrationDto,
 	isDraftIntegration,
 	type AgentIntegrationStatusResponse,
@@ -30,6 +31,7 @@ export class AgentIntegrationsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
+		@Body payload: AgentConnectIntegrationDto,
 	) {
 		await this.integrationManagementService.validateConfig(req.body);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
@@ -38,6 +40,9 @@ export class AgentIntegrationsController {
 			agent,
 			user: req.user,
 			integration: req.body,
+			...(payload.replaces
+				? { replaces: { type: payload.type, credentialId: payload.replaces.credentialId } }
+				: {}),
 		});
 		if (savedAgent.activeVersionId === null) return { status: 'configured' };
 

@@ -7,7 +7,9 @@ import type {
 	ListWorkflowReviewActivityResponse,
 	ListWorkflowReviewInboxResponse,
 	UpdateWorkflowReviewRequestVersionDto,
+	WorkflowReviewActivityEntry,
 	WorkflowReviewEligibleReviewersList,
+	WorkflowReviewInboxCategory,
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
@@ -17,6 +19,8 @@ import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
 export type FetchWorkflowReviewInboxParams = {
 	state?: WorkflowReviewRequestState;
+	/** Partitions the open tab by authorship */
+	category?: WorkflowReviewInboxCategory;
 	limit?: number;
 	cursor?: string;
 };
@@ -122,5 +126,18 @@ export async function fetchWorkflowReviewActivity(
 		'GET',
 		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/activity`,
 		params,
+	);
+}
+
+export async function createWorkflowReviewComment(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+	payload: { body: string },
+): Promise<WorkflowReviewActivityEntry> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/comments`,
+		{ ...payload },
 	);
 }

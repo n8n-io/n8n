@@ -89,7 +89,12 @@ vi.mock('../components/AgentChatEmptyState.vue', () => ({
 }));
 
 vi.mock('../components/AgentChatMessageList.vue', () => ({
-	default: { template: '<div data-testid="message-list-stub" />', props: ['messages'] },
+	default: {
+		name: 'AgentChatMessageList',
+		template: '<div data-testid="message-list-stub" />',
+		props: ['messages'],
+		emits: ['send-to-assistant'],
+	},
 }));
 
 vi.mock('../composables/useAgentChatStream', () => ({
@@ -193,6 +198,28 @@ describe('AgentChatPanel', () => {
 		onHistoryLoaded?.(3);
 
 		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'session-1', count: 3 }]]);
+	});
+
+	it('forwards Fix with Assistant metadata from the message list', () => {
+		messagesMock.value = [
+			{ id: 'assistant-1', role: 'assistant', content: 'Failed', status: 'error' },
+		];
+		const fixEvent = {
+			executionId: 'execution-1',
+			failures: [
+				{
+					toolCallId: 'call-1',
+					toolName: 'http_request',
+					toolDisplayName: 'HTTP request',
+					error: 'Request failed',
+				},
+			],
+		};
+		const wrapper = mountPanel();
+
+		wrapper.findComponent({ name: 'AgentChatMessageList' }).vm.$emit('send-to-assistant', fixEvent);
+
+		expect(wrapper.emitted('send-to-assistant')).toEqual([[fixEvent]]);
 	});
 
 	/**
@@ -400,6 +427,31 @@ describe('AgentChatPanel', () => {
 						toolCallId: 'tc-1',
 						runId: 'run-1',
 						state: 'suspended',
+					},
+				],
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('isStreaming')).toBe(true);
+	});
+
+	it('shows stop while tool calls are in-flight even when the stream ended (desync)', () => {
+		// Stream ended (isStreaming=false) but a tool call is still `running` —
+		// the pulsing desync. Stop must stay visible so the user can clear it.
+		isStreamingMock.value = false;
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{
+						tool: 'create_issue',
+						toolCallId: 'tc-stuck',
+						state: 'running',
 					},
 				],
 			},
