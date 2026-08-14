@@ -2,6 +2,7 @@ import type { ThreadPatch, ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext } from '../../../types';
 import {
 	getObservedWorkflowChecksum,
+	rememberCurrentWorkflowChecksum,
 	rememberObservedWorkflowChecksum,
 } from '../observed-workflow-checksums';
 
@@ -95,6 +96,29 @@ describe('observed workflow checksums', () => {
 		await rememberObservedWorkflowChecksum(context, 'wf-1', 'checksum-1');
 
 		await expect(getObservedWorkflowChecksum(context, 'wf-1')).resolves.toBe('checksum-1');
+	});
+
+	it('has no expectation when the thread copy cannot be read', async () => {
+		const threadMemory = createThreadMemory();
+		await rememberObservedWorkflowChecksum(createContextForRun(threadMemory), 'wf-1', 'checksum-1');
+
+		const laterRun = createContextForRun(threadMemory);
+		threadMemory.getThread.mockRejectedValue(new Error('thread store is down'));
+
+		// An unguarded save beats blocking the agent on unreadable bookkeeping.
+		await expect(getObservedWorkflowChecksum(laterRun, 'wf-1')).resolves.toBeUndefined();
+	});
+
+	it('records no expectation when the workflow itself cannot be read', async () => {
+		const context = {
+			threadId: 'thread-1',
+			threadMemory: createThreadMemory(),
+			logger: { debug: vi.fn(), warn: vi.fn() },
+			workflowService: { get: vi.fn().mockRejectedValue(new Error('workflow is gone')) },
+		} as unknown as InstanceAiContext;
+
+		await expect(rememberCurrentWorkflowChecksum(context, 'wf-1')).resolves.toBeUndefined();
+		await expect(getObservedWorkflowChecksum(context, 'wf-1')).resolves.toBeUndefined();
 	});
 
 	it('prefers what this run observed over a stale thread copy', async () => {

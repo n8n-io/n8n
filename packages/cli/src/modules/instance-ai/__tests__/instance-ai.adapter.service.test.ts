@@ -2721,6 +2721,19 @@ describe('createWorkflowAdapter', () => {
 			expect(mockWorkflowService.update).not.toHaveBeenCalled();
 		});
 
+		it('refuses to write when the lock cannot be checked, without claiming a lock', async () => {
+			// Fail closed: an unreadable lock is no proof that nobody is editing.
+			const { adapter, mockCollaborationService, mockWorkflowService } =
+				createWorkflowAdapterForTests();
+			const lookupFailure = new Error('collaboration cache is unreachable');
+			mockCollaborationService.ensureWorkflowEditable.mockRejectedValue(lookupFailure);
+
+			await expect(adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON)).rejects.toBe(
+				lookupFailure,
+			);
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+
 		it('refuses to unpublish a locked workflow', async () => {
 			const { adapter, mockCollaborationService, mockWorkflowService } =
 				createWorkflowAdapterForTests();
