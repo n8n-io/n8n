@@ -22,6 +22,13 @@ import { createKafkaClient, createKafkaProducer, type KafkaProducerOptions } fro
 
 const DEFAULT_TIMEOUT_MS = 30000;
 
+/**
+ * Budget for the credential test's metadata request. Well under `DEFAULT_TIMEOUT_MS`:
+ * someone is waiting on the modal, and an unreachable broker should report back rather
+ * than hold the request open.
+ */
+const CREDENTIAL_TEST_TIMEOUT_MS = 5000;
+
 /** One row of the `headersUi` fixed collection. */
 interface HeaderRow {
 	key: string;
@@ -340,6 +347,11 @@ export class KafkaV2 implements INodeType {
 					const kafka = await createKafkaClient(credential.data as unknown as KafkaCredentials);
 					admin = kafka.admin();
 					await admin.connect();
+					// `connect()` alone proves nothing: the library builds the client handle and
+					// resolves without contacting a broker, so any address at all would pass. Only
+					// a request that needs cluster metadata forces the connection and the SASL/SSL
+					// handshake to actually happen.
+					await admin.listTopics({ timeout: CREDENTIAL_TEST_TIMEOUT_MS });
 					return { status: 'OK', message: 'Authentication successful' };
 				} catch (error) {
 					return { status: 'Error', message: ensureError(error).message };

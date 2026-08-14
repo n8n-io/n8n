@@ -44,6 +44,8 @@ export interface FakeConsumer {
 
 export interface FakeAdmin {
 	connect: Mock;
+	/** The metadata request the credential test relies on to prove the broker is reachable. */
+	listTopics: Mock;
 	disconnect: Mock;
 }
 
@@ -68,6 +70,7 @@ export function setFakeConsumerAssignment(
 function createFakeAdmin(): FakeAdmin {
 	const admin: FakeAdmin = {
 		connect: vi.fn(async () => {}),
+		listTopics: vi.fn(async () => [] as string[]),
 		disconnect: vi.fn(async () => {}),
 	};
 

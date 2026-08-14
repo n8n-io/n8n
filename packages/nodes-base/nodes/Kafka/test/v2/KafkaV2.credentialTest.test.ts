@@ -76,6 +76,36 @@ it('connects through the library the node executes with', async () => {
 	});
 });
 
+// The library's `connect()` resolves without contacting a broker, so a test that stops
+// there reports any address as valid. These two pin the metadata request that makes the
+// result mean something.
+it('requests cluster metadata rather than trusting connect()', async () => {
+	await runTest(validCredential);
+
+	const [admin] = getFakeAdmins();
+	expect(admin.listTopics).toHaveBeenCalledWith({ timeout: expect.any(Number) });
+});
+
+it('fails when the broker is unreachable, even though connect() resolved', async () => {
+	const { Kafka } = await getKafkaLibrary();
+	vi.mocked(Kafka).mockImplementationOnce(function () {
+		return {
+			admin: () => ({
+				connect: async () => {},
+				listTopics: async () => {
+					throw new Error('Local: Broker transport failure');
+				},
+				disconnect: async () => {},
+			}),
+		} as unknown as InstanceType<typeof Kafka>;
+	});
+
+	await expect(runTest(validCredential)).resolves.toEqual({
+		status: 'Error',
+		message: 'Local: Broker transport failure',
+	});
+});
+
 it('disconnects the admin client it opened', async () => {
 	await runTest(validCredential);
 
@@ -123,6 +153,7 @@ it('still passes when only the disconnect fails', async () => {
 		return {
 			admin: () => ({
 				connect: async () => {},
+				listTopics: async () => [],
 				disconnect: async () => {
 					throw new Error('disconnect timed out');
 				},
