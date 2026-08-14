@@ -476,6 +476,19 @@ describe('Microsoft Graph transport kernel', () => {
 			expect(() => validateMicrosoftGraphId('19:abc@thread.tacv2', mockNode)).not.toThrow();
 		});
 
+		it('accepts a URL-copied percent-encoded channel id and returns the decoded form', () => {
+			// Teams URLs only ever expose the threadId percent-encoded.
+			expect(
+				validateMicrosoftGraphId('19%3A16259efabba44a66916d91dd91862a6f%40thread.tacv2', mockNode),
+			).toBe('19:16259efabba44a66916d91dd91862a6f@thread.tacv2');
+		});
+
+		it('leaves an already-decoded id unchanged', () => {
+			expect(validateMicrosoftGraphId('19:abc@thread.tacv2', mockNode)).toBe(
+				'19:abc@thread.tacv2',
+			);
+		});
+
 		it.each(['', '   '])('rejects empty / whitespace-only ids', (id) => {
 			expect(() => validateMicrosoftGraphId(id, mockNode)).toThrow();
 		});
@@ -489,11 +502,13 @@ describe('Microsoft Graph transport kernel', () => {
 			'a\\b',
 			'a?b',
 			'a#b',
+			// malformed percent-encoding rejects in the decode step
 			'a%b',
+			// decodes to `../..` and is caught by the separator class
 			'..%2F..',
 			'x/../../groups/abc',
 			'abc?$expand=foo',
-		])('rejects ids containing separators, query characters or percent signs (%s)', (id) => {
+		])('rejects ids containing separators or query characters, raw or encoded (%s)', (id) => {
 			expect(() => validateMicrosoftGraphId(id, mockNode)).toThrow();
 		});
 
@@ -553,6 +568,19 @@ describe('Microsoft Graph transport kernel', () => {
 			// proven raw Graph shape — never percent-encoded
 			expect(path).not.toContain('%3A');
 			expect(path).not.toContain('%40');
+		});
+
+		it('interpolates a URL-copied percent-encoded id in its decoded form', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
+
+			const path = buildMicrosoftGraphPath.call(mockExecuteFunctions, [
+				'/v1.0/teams/',
+				{ id: '1111-2222' },
+				'/channels/',
+				{ id: '19%3Aabc%40thread.tacv2' },
+			]);
+
+			expect(path).toBe('/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2');
 		});
 
 		// A node expression like `={{ 123 }}` resolves to a non-string at runtime; the

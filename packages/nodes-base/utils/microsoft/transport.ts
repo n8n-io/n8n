@@ -37,29 +37,42 @@ export type MicrosoftGraphCredentialType<TDefault extends string> =
 	| typeof SERVICE_PRINCIPAL_AUTH;
 
 // Reject any id that could escape its Graph path segment or start a query/fragment:
-// path separators (`/` `\`), query/fragment starters (`?` `#`), percent (`%`, so a
-// pre-encoded separator like `..%2F..` cannot smuggle structure; legitimate Graph ids
-// never carry a literal `%`), and control chars (0x00-0x1F). `:` and `@` are ALLOWED:
-// they are structure-neutral inside a single Teams id segment (real channel ids look
-// like `19:...@thread.tacv2`), and the proven Graph URL shape interpolates them raw.
-// Validating the shape (not encoding) is what keeps a value safe to interpolate raw.
-// Messages are static so a rejected id is never echoed back.
+// path separators (`/` `\`), query/fragment starters (`?` `#`), and control chars
+// (0x00-0x1F). `:` and `@` are ALLOWED: they are structure-neutral inside a single
+// Teams id segment (real channel ids look like `19:...@thread.tacv2`), and the proven
+// Graph URL shape interpolates them raw. This class runs against the percent-DECODED
+// value, so a pre-encoded separator like `..%2F..` decodes to `../..` and is caught
+// here; a malformed encoding rejects in the decode step before this.
+// Validating the decoded shape (not encoding) is what keeps a value safe to
+// interpolate raw. Messages are static so a rejected id is never echoed back.
 // eslint-disable-next-line no-control-regex
-const GRAPH_ID_REJECT = /[\x00-\x1f\/\\?#%]/;
+const GRAPH_ID_REJECT = /[\x00-\x1f\/\\?#]/;
 
 /**
  * Validates a user-supplied Graph id (already `extractValue`-resolved) before it is
- * interpolated RAW into a Graph path, and returns the coerced + trimmed value.
+ * interpolated RAW into a Graph path, and returns the coerced, trimmed and
+ * percent-decoded value. Teams URLs expose ids percent-encoded
+ * (`19%3A...%40thread.tacv2`) and the RLC hints tell users to paste them, so the id
+ * is decoded once and the decoded form is what gets validated and interpolated,
+ * matching the raw shape list-sourced ids already travel in.
  * Throws a `NodeOperationError` with a fully static message (never echoing the id)
  * on a bad shape. Reused for both path IDs and `task:create` body IDs.
  */
 export function validateMicrosoftGraphId(id: string, node: INode): string {
-	const value = String(id ?? '').trim();
-	if (value === '') {
+	const trimmed = String(id ?? '').trim();
+	if (trimmed === '') {
 		throw new NodeOperationError(node, 'A required ID is empty', {
 			// Teams wording; make it injectable (UserTargetMessages pattern in
 			// nodes/Microsoft/GenericFunctions.ts) when the second consumer (SharePoint v2) lands.
 			description: 'Set the team, channel, plan, bucket or task ID and try again.',
+		});
+	}
+	let value: string;
+	try {
+		value = decodeURIComponent(trimmed);
+	} catch {
+		throw new NodeOperationError(node, 'The ID is not valid', {
+			description: 'The ID contains a malformed percent-encoding. Copy it again and try again.',
 		});
 	}
 	if (/^\.+$/.test(value)) {
@@ -69,8 +82,7 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 	}
 	if (GRAPH_ID_REJECT.test(value)) {
 		throw new NodeOperationError(node, 'The ID is not valid', {
-			description:
-				'Remove any slashes, backslashes, question marks, hashes or percent signs and try again.',
+			description: 'Remove any slashes, backslashes, question marks or hashes and try again.',
 		});
 	}
 	return value;
