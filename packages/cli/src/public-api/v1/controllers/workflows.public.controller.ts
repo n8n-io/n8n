@@ -290,6 +290,7 @@ export class WorkflowsPublicController {
 	)
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async archiveWorkflow(
 		req: AuthenticatedRequest,
@@ -317,6 +318,7 @@ export class WorkflowsPublicController {
 	@ApiDescription('Restores an archived workflow.')
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async unarchiveWorkflow(
 		req: AuthenticatedRequest,
