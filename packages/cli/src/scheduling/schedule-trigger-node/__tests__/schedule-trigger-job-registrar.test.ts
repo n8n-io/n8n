@@ -396,7 +396,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 		it.each<[string, INodeParameters | undefined, ScheduledJobMisfirePolicy]>([
 			['1.4', undefined, ScheduledJobMisfirePolicy.Skip],
-			['1.4', { misfirePolicy: 'coalesce' }, ScheduledJobMisfirePolicy.Coalesce],
+			['1.4', { misfirePolicy: 'coalesce' }, ScheduledJobMisfirePolicy.CoalesceOwner],
 			['1.4', { misfirePolicy: 'skip' }, ScheduledJobMisfirePolicy.Skip],
 			['1.3', undefined, ScheduledJobMisfirePolicy.Skip],
 			['1.4', { misfirePolicy: 'nonsense' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
@@ -487,7 +487,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				SCHEDULE_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				expect.anything(),
-				ScheduledJobMisfirePolicy.Coalesce,
+				ScheduledJobMisfirePolicy.CoalesceOwner,
 			);
 		});
 
@@ -526,7 +526,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				SCHEDULE_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[],
-				ScheduledJobMisfirePolicy.Coalesce,
+				ScheduledJobMisfirePolicy.CoalesceOwner,
 			);
 		});
 
@@ -576,7 +576,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				SCHEDULE_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				expect.anything(),
-				ScheduledJobMisfirePolicy.Coalesce,
+				ScheduledJobMisfirePolicy.CoalesceOwner,
 			);
 			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
 				2,
@@ -610,7 +610,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				SCHEDULE_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: 'node-coalesce' },
 				expect.anything(),
-				ScheduledJobMisfirePolicy.Coalesce,
+				ScheduledJobMisfirePolicy.CoalesceOwner,
 			);
 			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
 				2,

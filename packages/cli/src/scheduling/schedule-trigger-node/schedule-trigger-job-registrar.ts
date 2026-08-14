@@ -424,6 +424,6 @@ function withResolvedTimezone(schedule: Schedule, defaultTimezone: string): Sche
  */
 function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
 	return node.parameters?.misfirePolicy === ScheduledJobMisfirePolicy.Coalesce
-		? ScheduledJobMisfirePolicy.Coalesce
+		? ScheduledJobMisfirePolicy.CoalesceOwner
 		: ScheduledJobMisfirePolicy.Skip;
 }
