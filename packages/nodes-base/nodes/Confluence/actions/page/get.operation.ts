@@ -13,6 +13,8 @@ import {
 } from '../common';
 import type { ConfluenceOperation } from '../router';
 
+// The descendants endpoint's documented maximum; `depth` is an upper bound
+// ("maximum depth of descendants to return"), not an exact-depth filter
 const MAX_DEPTH = 10;
 
 export const description: INodeProperties[] = [
@@ -174,7 +176,12 @@ async function collectDescendantPageIds(
 	return pageIds;
 }
 
-/** Hydration phase: batched `GET /pages?id=a,b,c` (this endpoint only accepts storage/atlas_doc_format). */
+/**
+ * Hydration phase: batched `GET /pages?id=a,b,c` (this endpoint only accepts
+ * storage/atlas_doc_format). May return fewer pages than requested — IDs the
+ * caller can't read or that were deleted since discovery are dropped silently,
+ * which is intended.
+ */
 async function fetchPagesByIds(
 	this: IExecuteFunctions,
 	ids: string[],

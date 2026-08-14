@@ -140,14 +140,32 @@ export const spaceRLC: INodeProperties = {
 };
 
 /** `spaceRLC` for operations where the space is optional: the list gets an
- * "All Spaces" reset entry. */
+ * "All Spaces" reset entry and By ID accepts an empty value. */
 export const optionalSpaceRLC: INodeProperties = {
 	...spaceRLC,
-	modes: (spaceRLC.modes ?? []).map((mode) =>
-		mode.name === 'list'
-			? { ...mode, typeOptions: { ...mode.typeOptions, searchListMethod: 'searchSpacesWithAll' } }
-			: mode,
-	),
+	modes: (spaceRLC.modes ?? []).map((mode) => {
+		if (mode.name === 'list') {
+			return {
+				...mode,
+				typeOptions: { ...mode.typeOptions, searchListMethod: 'searchSpacesWithAll' },
+			};
+		}
+		if (mode.name === 'id') {
+			return {
+				...mode,
+				validation: [
+					{
+						type: 'regex' as const,
+						properties: {
+							regex: '^[0-9]*$',
+							errorMessage: 'The space ID must be numeric (leave empty for all spaces)',
+						},
+					},
+				],
+			};
+		}
+		return mode;
+	}),
 };
 
 const spaceKeyCache = new Map<string, string>();

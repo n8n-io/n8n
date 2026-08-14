@@ -42,7 +42,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const message = error instanceof Error ? error.message : String(error);
-				returnData.push({ json: { error: message }, pairedItem: { item: i } });
+				const errorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: message }),
+					{ itemData: { item: i } },
+				);
+				returnData.push.apply(returnData, errorData);
 				continue;
 			}
 			throw error;
