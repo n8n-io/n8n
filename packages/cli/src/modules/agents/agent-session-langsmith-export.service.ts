@@ -3,7 +3,6 @@ import type { AgentSessionLangSmithExportResponse } from '@n8n/api-types';
 import { buildProxyHeaders } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -71,8 +70,6 @@ interface ExportSessionInput {
 export class AgentSessionLangSmithExportService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly agentsConfig: AgentsConfig,
-		private readonly globalConfig: GlobalConfig,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly agentExecutionService: AgentExecutionService,
@@ -112,11 +109,7 @@ export class AgentSessionLangSmithExportService {
 	}
 
 	private ensureEnabled() {
-		if (
-			!this.agentsConfig.langsmithDebugExportEnabled ||
-			!this.globalConfig.diagnostics.enabled ||
-			!this.aiService.isProxyEnabled()
-		) {
+		if (!this.aiService.isProxyEnabled()) {
 			throw new NotFoundError('LangSmith debug export is not enabled');
 		}
 	}

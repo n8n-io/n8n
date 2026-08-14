@@ -26,7 +26,7 @@ export function useAgentSessionLangSmithExport() {
 	const isEnabled = computed(
 		() =>
 			localStorage.getItem('instanceAi.debugMode') === 'true' &&
-			settingsStore.moduleSettings.agents?.langsmithDebugExportEnabled === true,
+			settingsStore.moduleSettings.agents?.proxyEnabled === true,
 	);
 
 	async function sendSession({ projectId, agentId, threadId }: AgentSessionIdentifiers) {

@@ -1,6 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
-import type { AgentsConfig, GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -133,8 +132,6 @@ function makeExecution(overrides: Partial<AgentExecution> = {}): AgentExecution 
 
 function setup(
 	options: {
-		envEnabled?: boolean;
-		diagnosticsEnabled?: boolean;
 		proxyEnabled?: boolean;
 	} = {},
 ) {
@@ -152,12 +149,6 @@ function setup(
 	outboundHttp.transport.mockReturnValue(transport);
 	const service = new AgentSessionLangSmithExportService(
 		mockLogger(),
-		mock<AgentsConfig>({
-			langsmithDebugExportEnabled: options.envEnabled ?? true,
-		}),
-		mock<GlobalConfig>({
-			diagnostics: { enabled: options.diagnosticsEnabled ?? true },
-		}),
 		aiService,
 		outboundHttp,
 		agentExecutionService,
@@ -288,18 +279,15 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(changedResult.traceId).not.toBe(firstResult.traceId);
 	});
 
-	it.each([{ envEnabled: false }, { diagnosticsEnabled: false }, { proxyEnabled: false }])(
-		'rejects before loading data when the capability is disabled',
-		async (options) => {
-			const { service, agentExecutionService } = setup(options);
+	it('rejects before loading data when the AI proxy is disabled', async () => {
+		const { service, agentExecutionService } = setup({ proxyEnabled: false });
 
-			await expect(service.exportSession(input)).rejects.toThrow(
-				'LangSmith debug export is not enabled',
-			);
-			expect(agentExecutionService.getThreadDetail).not.toHaveBeenCalled();
-			expect(createRunMock).not.toHaveBeenCalled();
-		},
-	);
+		await expect(service.exportSession(input)).rejects.toThrow(
+			'LangSmith debug export is not enabled',
+		);
+		expect(agentExecutionService.getThreadDetail).not.toHaveBeenCalled();
+		expect(createRunMock).not.toHaveBeenCalled();
+	});
 
 	it('rejects inaccessible sessions without submitting a run', async () => {
 		const { service } = setup();

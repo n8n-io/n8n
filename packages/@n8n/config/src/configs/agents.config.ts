@@ -63,10 +63,6 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_TRACING_RECORD_OUTPUTS')
 	tracingRecordOutputs: boolean = true;
 
-	/** Allow explicit export of persisted agent sessions to LangSmith for debugging. */
-	@Env('N8N_AGENTS_LANGSMITH_DEBUG_EXPORT_ENABLED')
-	langsmithDebugExportEnabled: boolean = false;
-
 	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
 	 * gates a specific frontend/runtime capability inside the agents module.
