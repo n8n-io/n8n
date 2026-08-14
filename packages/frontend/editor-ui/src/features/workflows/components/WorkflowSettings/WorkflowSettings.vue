@@ -229,11 +229,10 @@ const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.va
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
-const workflowOwnerName = computed(() => {
-	const fallback = i18n.baseText('workflowSettings.callerPolicy.options.workflowsFromSameProject');
-
-	return workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`, fallback);
-});
+/** Empty when the owning project is not known yet, so callers can pick a label of their own. */
+const workflowOwnerName = computed(() =>
+	workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`, ''),
+);
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
 
 const projectPermissions = computed(() => {
@@ -445,16 +444,19 @@ const loadWorkflowCallerPolicyOptions = async () => {
 		},
 		{
 			key: 'workflowsFromSameOwner',
-			value: i18n.baseText(
-				workflow.value.homeProject?.type === ProjectTypes.Personal
-					? 'workflowSettings.callerPolicy.options.workflowsFromPersonalProject'
-					: 'workflowSettings.callerPolicy.options.workflowsFromTeamProject',
-				{
-					interpolate: {
-						projectName: workflowOwnerName.value,
-					},
-				},
-			),
+			// Without a project name to interpolate, use the label that names no project.
+			value: workflowOwnerName.value
+				? i18n.baseText(
+						workflow.value.homeProject?.type === ProjectTypes.Personal
+							? 'workflowSettings.callerPolicy.options.workflowsFromPersonalProject'
+							: 'workflowSettings.callerPolicy.options.workflowsFromTeamProject',
+						{
+							interpolate: {
+								projectName: workflowOwnerName.value,
+							},
+						},
+					)
+				: i18n.baseText('workflowSettings.callerPolicy.options.workflowsFromSameProject'),
 		},
 		{
 			key: 'workflowsFromAList',

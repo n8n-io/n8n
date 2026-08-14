@@ -336,6 +336,19 @@ describe('WorkflowSettingsVue', () => {
 		});
 	});
 
+	// The labels are built in the same `Promise.all` as the workflow fetch, so the owning
+	// project can still be unknown when the same-owner option is labelled.
+	it('should label the same-owner option without a project name when the project is unknown', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		const { getByTestId } = createComponent({ pinia });
+
+		await flushPromises();
+		const dropdownItems = await getDropdownItems(getByTestId('workflow-caller-policy'));
+
+		expect(dropdownItems[1]).toHaveTextContent('Only workflows in the same project');
+		expect(dropdownItems[1]).not.toHaveTextContent('Only workflows in Only workflows');
+	});
+
 	it('should render list of workflows field when policy is set to workflowsFromAList', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		const { getByTestId } = createComponent({ pinia });
