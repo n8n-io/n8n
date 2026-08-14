@@ -154,6 +154,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 
 		const target = pendingSnapshot;
 		const targetRevision = pendingSnapshotRevision;
+		const gen = generation;
 		pendingSnapshot = null;
 		pendingSnapshotRevision = 0;
 
@@ -161,7 +162,15 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 			try {
 				await chainSave(target, true);
 			} catch (error) {
-				if (latestSnapshotRevision === targetRevision && pendingSnapshot === null) {
+				// Restore the failed snapshot for a retry — unless a `reset()`
+				// happened while the save was in flight: the loop now serves a
+				// new target and re-queueing the old target's snapshot would
+				// replay it on the new target's next flush.
+				if (
+					gen === generation &&
+					latestSnapshotRevision === targetRevision &&
+					pendingSnapshot === null
+				) {
 					pendingSnapshot = target;
 					pendingSnapshotRevision = targetRevision;
 				}

@@ -24,7 +24,7 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 
 export interface CredentialIntegrationMutationContext {
 	user: User;
@@ -118,7 +118,7 @@ export class AgentIntegrationPersistenceService {
 			credentialProvider,
 			context.user,
 		);
-		const result = await this.agentRepository.save(agent);
+		const result = await saveAgentDraftFenced(this.agentRepository, agent);
 		this.eventService.emit('agent-saved', { agentId: agent.id });
 		await emitSetupCompleted?.();
 		await this.recordIntegrationMutation(
@@ -161,7 +161,7 @@ export class AgentIntegrationPersistenceService {
 
 		markAgentDraftDirty(agent);
 		this.runtimeCacheService.clearRuntimes(agent.id);
-		const result = await this.agentRepository.save(agent);
+		const result = await saveAgentDraftFenced(this.agentRepository, agent);
 		this.eventService.emit('agent-saved', { agentId: agent.id });
 		await this.recordIntegrationMutation(
 			result,

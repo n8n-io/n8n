@@ -1978,6 +1978,55 @@ describe('AgentBuilderView — three-column shell', () => {
 		}
 	});
 
+	it('still resets autosave state when a pending-target hydration supersedes the switch mid-drain', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		vi.useFakeTimers();
+		try {
+			// A's save hangs so the A→B switch's drain stays in flight.
+			let rejectSave: (error: Error) => void = () => {};
+			updateConfigMock.mockImplementationOnce(
+				async () =>
+					await new Promise((_resolve, reject) => {
+						rejectSave = reject;
+					}),
+			);
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { name: 'Agent A edit' });
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(500);
+
+			// Genuine switch to a pending B: the switching init starts draining
+			// A's hanging save and cannot reach its reset yet.
+			await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
+			// B persists while that drain is still in flight: the same-target
+			// hydration supersedes the switching init and must take over the
+			// owed reset.
+			await wrapper.setProps({ artifactAgentPending: false });
+
+			// A's save eventually fails; it belongs to A and must stay detached.
+			rejectSave(new Error('save for A failed'));
+			await flushPromises();
+
+			expect(header.props('saveStatus')).toBe('idle');
+			// B's flush must not rethrow A's error.
+			await expect(
+				(wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave(),
+			).resolves.toBeUndefined();
+		} finally {
+			vi.useRealTimers();
+			wrapper.unmount();
+		}
+	});
+
 	it('keeps artifact mode tab switching out of the route query', async () => {
 		const wrapper = await renderView({
 			props: {

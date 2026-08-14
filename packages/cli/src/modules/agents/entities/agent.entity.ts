@@ -59,11 +59,12 @@ export class Agent extends WithTimestampsAndStringId {
 	activeVersion?: Relation<AgentHistory> | null;
 
 	/**
-	 * Monotonic per-row counter bumped on every write to this agent. Used as an
-	 * optimistic-lock token by publish/unpublish: the fenced UPDATE only affects
-	 * the row when `revision` still matches the value seen at load, so a concurrent
-	 * edit (autosave, another publish) that bumped `revision` in between causes a
-	 * user-retryable `ConflictError` instead of silently overwriting newer state.
+	 * Optimistic-lock token. Every write that can conflict — draft edits via
+	 * `AgentRepository.saveDraftFenced`, publish/unpublish via
+	 * `setActiveVersionFenced` — bumps it in SQL behind `WHERE revision =
+	 * :expected`, so a concurrent writer that bumped `revision` in between
+	 * loses the fence (user-retryable `ConflictError`) instead of silently
+	 * overwriting newer state. Never bump or write this column any other way.
 	 */
 	@Column({ type: 'int', default: 0 })
 	revision: number;

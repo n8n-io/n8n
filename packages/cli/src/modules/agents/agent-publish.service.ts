@@ -5,7 +5,7 @@ import {
 	type AgentVersionListItemDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { EntityManager } from '@n8n/typeorm';
@@ -46,6 +46,7 @@ import {
 	countAgentCapabilities,
 	totalAgentCapabilities,
 } from './utils/agent-capabilities';
+import { saveAgentDraftFenced } from './utils/agent-draft.utils';
 
 export type AgentPublishTrigger = 'explicit' | 'republish';
 
@@ -164,17 +165,33 @@ export class AgentPublishService {
 				nextVersionId = uuid();
 			} else {
 				nextVersionId = agent.versionId ?? uuid();
-				nextActiveVersion = await this.agentHistoryRepository.saveVersion(
-					{
-						versionId: nextVersionId,
-						agentId: agent.id,
-						schema: agent.schema,
-						tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-						skills: this.pickConfiguredSkillBodies(agent.schema, agent.skills ?? {}),
-						publishedBy: user,
-					},
-					trx,
-				);
+				try {
+					nextActiveVersion = await this.agentHistoryRepository.saveVersion(
+						{
+							versionId: nextVersionId,
+							agentId: agent.id,
+							schema: agent.schema,
+							tools: this.customToolsService.snapshotConfiguredTools(
+								agent.schema,
+								agent.tools ?? {},
+							),
+							skills: this.pickConfiguredSkillBodies(agent.schema, agent.skills ?? {}),
+							publishedBy: user,
+						},
+						trx,
+					);
+				} catch (error) {
+					// Two concurrent publishes of the same draft share this
+					// versionId, so the loser collides on the history primary
+					// key before it can reach the revision fence. Surface the
+					// same retryable conflict the fence would have produced.
+					if (isUniqueConstraintError(error)) {
+						throw new ConflictError(
+							'Agent was modified concurrently while publishing; please retry',
+						);
+					}
+					throw error;
+				}
 				await this.snapshotConfiguredTasks(trx, nextVersionId, agent.schema, tasks);
 				nextActiveVersionId = nextVersionId;
 			}
@@ -451,13 +468,11 @@ export class AgentPublishService {
 			agent.skills = deepCopy(activeVersion.skills ?? {});
 			agent.versionId = activeVersion.versionId;
 
-			agent.revision++;
-
 			if (agent.schema) {
 				agent.name = agent.schema.name;
 			}
 
-			await trx.save(agent);
+			await saveAgentDraftFenced(this.agentRepository, agent, trx);
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
 		this.eventService.emit('agent-saved', { agentId });
@@ -505,13 +520,11 @@ export class AgentPublishService {
 			agent.skills = deepCopy(target.skills ?? {});
 			agent.versionId = uuid();
 
-			agent.revision++;
-
 			if (agent.schema) {
 				agent.name = agent.schema.name;
 			}
 
-			await trx.save(agent);
+			await saveAgentDraftFenced(this.agentRepository, agent, trx);
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
 		});
 		this.eventService.emit('agent-saved', { agentId });

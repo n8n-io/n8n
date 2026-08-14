@@ -76,6 +76,38 @@ describe('useAgentConfigAutosave', () => {
 		expect(save).toHaveBeenNthCalledWith(2, { value: 'new' });
 	});
 
+	it('does not restore a failed flush snapshot when reset() ran while the save was in flight', async () => {
+		vi.useFakeTimers();
+		const error = new Error('save failed');
+		let rejectFirstSave: (error: Error) => void = () => {};
+		const save = vi.fn((snapshot: { value: string }) => {
+			if (snapshot.value === 'a') {
+				return new Promise<'skipped' | undefined>((_resolve, reject) => {
+					rejectFirstSave = reject;
+				});
+			}
+			return Promise.resolve(undefined);
+		});
+		const autosave = useAgentConfigAutosave<{ value: string }>({
+			save,
+			debounceMs: 500,
+		});
+
+		autosave.scheduleAutosave({ value: 'a' });
+		const flushPromise = autosave.flushAutosave();
+		await Promise.resolve();
+
+		// Target switch while A's flush is still awaiting the failing save.
+		autosave.reset();
+		rejectFirstSave(error);
+		await expect(flushPromise).rejects.toBe(error);
+
+		// B's flush must not replay A's failed snapshot.
+		await autosave.flushAutosave();
+		expect(save).toHaveBeenCalledTimes(1);
+		expect(save).toHaveBeenCalledWith({ value: 'a' });
+	});
+
 	it('cancelPendingAutosave drops a debounced snapshot without saving it', async () => {
 		vi.useFakeTimers();
 		const save = vi.fn().mockResolvedValue(undefined);

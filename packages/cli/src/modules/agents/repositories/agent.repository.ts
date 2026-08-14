@@ -314,4 +314,41 @@ export class AgentRepository extends Repository<Agent> {
 			.execute();
 		return (result.affected ?? 0) > 0;
 	}
+
+	/**
+	 * Persists a draft edit behind the same optimistic revision fence as
+	 * publish/unpublish. Writes only the draft-owned columns and bumps
+	 * `revision` in SQL, so it can neither clobber `activeVersionId` written by
+	 * a concurrent publish nor mask that publish by writing a stale in-memory
+	 * revision over the row. On a win the in-memory entity's `revision` and
+	 * `updatedAt` are synced to what was written. Returns whether this caller
+	 * won the fence.
+	 */
+	async saveDraftFenced(agent: Agent, trx?: EntityManager): Promise<boolean> {
+		const expectedRevision = agent.revision;
+		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
+		// so the in-memory entity can report the exact persisted timestamp.
+		const updatedAt = new Date();
+		const result = await (trx ?? this)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				name: agent.name,
+				schema: agent.schema,
+				integrations: agent.integrations,
+				tools: agent.tools,
+				skills: agent.skills,
+				versionId: agent.versionId,
+				updatedAt,
+				revision: () => 'revision + 1',
+			})
+			.where('id = :id AND revision = :expected', { id: agent.id, expected: expectedRevision })
+			.execute();
+		const won = (result.affected ?? 0) > 0;
+		if (won) {
+			agent.revision = expectedRevision + 1;
+			agent.updatedAt = updatedAt;
+		}
+		return won;
+	}
 }

@@ -3,6 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -125,6 +126,7 @@ function makeService() {
 
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	agentRepository.setActiveVersionFenced.mockResolvedValue(true);
+	agentRepository.saveDraftFenced.mockResolvedValue(true);
 	agentHistoryRepository.saveVersion.mockResolvedValue(makeHistory());
 	customToolsService.snapshotConfiguredTools.mockReturnValue(null);
 	chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
@@ -808,6 +810,38 @@ describe('AgentPublishService', () => {
 		expect(agent.activeVersionId).toBeNull();
 		expect(agent.versionId).toBe(versionId);
 		expect(agent.revision).toBe(1);
+	});
+
+	it('conflicts when a concurrent publish already inserted the same draft version snapshot', async () => {
+		const { service, agentRepository, agentHistoryRepository, telemetry } = makeService();
+		const agent = makeAgent({ revision: 2 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		// Both racers share the draft's versionId as the history primary key,
+		// so the loser collides on the insert before reaching the fence.
+		agentHistoryRepository.saveVersion.mockRejectedValue(
+			new QueryFailedError(
+				'insert',
+				undefined,
+				Object.assign(new Error('duplicate key'), { code: '23505' }),
+			),
+		);
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+			'Agent was modified concurrently while publishing; please retry',
+		);
+
+		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+		expect(agent.revision).toBe(2);
+	});
+
+	it('propagates non-unique-constraint failures from the draft snapshot insert as-is', async () => {
+		const { service, agentRepository, agentHistoryRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.saveVersion.mockRejectedValue(new Error('db down'));
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow('db down');
 	});
 
 	it('unpublish conflicts on a stale revision and skips telemetry', async () => {

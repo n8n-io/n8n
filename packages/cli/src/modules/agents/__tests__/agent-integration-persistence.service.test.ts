@@ -58,7 +58,7 @@ function makeService() {
 	const credentialsService = mock<CredentialsService>();
 	const setupCompletionService = mock<AgentSetupCompletionService>();
 
-	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.saveDraftFenced.mockResolvedValue(true);
 	setupCompletionService.recordIfSetupComplete.mockResolvedValue(null);
 
 	return {
@@ -138,7 +138,7 @@ describe('AgentIntegrationPersistenceService', () => {
 		expect(agent.integrations).toEqual([{ type: 'slack', credentialId: 'slack-1' }]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, undefined);
 		expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			agentId,
@@ -157,7 +157,7 @@ describe('AgentIntegrationPersistenceService', () => {
 				expect(candidate.integrations).toEqual([{ type: 'slack', credentialId: 'slack-1' }]);
 				expect(candidateProjectId).toBe(projectId);
 				expect(actingUser).toBe(user);
-				expect(agentRepository.save).not.toHaveBeenCalled();
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 				await credentialProvider.list();
 				return emitSetupCompleted;
 			},
@@ -172,9 +172,9 @@ describe('AgentIntegrationPersistenceService', () => {
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId,
 		});
-		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, undefined);
 		expect(emitSetupCompleted).toHaveBeenCalledOnce();
-		expect(agentRepository.save.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(agentRepository.saveDraftFenced.mock.invocationCallOrder[0]).toBeLessThan(
 			emitSetupCompleted.mock.invocationCallOrder[0],
 		);
 	});
@@ -188,7 +188,7 @@ describe('AgentIntegrationPersistenceService', () => {
 		expect(agent.integrations).toEqual([{ type: 'slack', credentialId: 'c1' }]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, undefined);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			agentId,
 			{ type: 'slack', credentialId: 'c1' },
@@ -214,7 +214,7 @@ describe('AgentIntegrationPersistenceService', () => {
 		]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.save).toHaveBeenCalledTimes(1);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledTimes(1);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			agentId,
 			{ type: 'slack', credentialId: 'new' },
@@ -282,7 +282,7 @@ describe('AgentIntegrationPersistenceService', () => {
 		await expect(
 			service.removeCredentialIntegration(agent, 'slack', 'slack-1', byUser),
 		).resolves.toBe(agent);
-		expect(agentRepository.save).not.toHaveBeenCalled();
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
 	});
@@ -294,7 +294,7 @@ describe('AgentIntegrationPersistenceService', () => {
 		await expect(
 			service.removeCredentialIntegration(agent, 'slack', 'slack-1', byUser),
 		).resolves.toBe(agent);
-		expect(agentRepository.save).not.toHaveBeenCalled();
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
 	});
@@ -313,7 +313,7 @@ describe('AgentIntegrationPersistenceService', () => {
 		expect(agent.integrations).toEqual([{ type: 'linear', credentialId: 'linear-1' }]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, undefined);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			agentId,
 			{ type: 'slack', credentialId: 'slack-1' },
