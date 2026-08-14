@@ -21,6 +21,14 @@ export async function googleApiCredentialTest(
 	const isHttpNodeCredential = data.httpNode === true;
 	const rawScopes = typeof data.scopes === 'string' ? data.scopes : '';
 	const parsedScopes = isHttpNodeCredential ? parseGoogleScopes(rawScopes) : [];
+
+	if (isHttpNodeCredential && parsedScopes.length === 0) {
+		return {
+			status: 'Error',
+			message: 'Add at least one scope in the "Scope(s)" field to test this credential.',
+		};
+	}
+
 	const scopeOverride = parsedScopes.length > 0 ? parsedScopes : undefined;
 
 	// When testing user-configured scopes, don't also pass the sheetV2 default:
