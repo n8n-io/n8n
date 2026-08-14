@@ -54,7 +54,11 @@ export type {
 	DeleteFinishedTasksOptions,
 	ScheduledTaskMetricSnapshot,
 } from './scheduled-task.repository';
-export { PollerStateRepository, type PollerCursor } from './poller-state.repository';
+export {
+	PollerStateRepository,
+	type PollerCursor,
+	type PollLeaseFence,
+} from './poller-state.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
@@ -80,6 +84,7 @@ export { WorkflowPublishHistoryRepository } from './workflow-publish-history.rep
 export {
 	WorkflowReviewRequestRepository,
 	type InboxCursor,
+	type InboxVisibility,
 	type WorkflowReviewRequestForWorkflowRow,
 } from './workflow-review-request.repository';
 export {

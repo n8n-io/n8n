@@ -73,6 +73,7 @@ import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracke
 import { createRemediation } from '../../workflow-loop/remediation';
 import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
+import { buildChatModelProviderMismatchWarnings } from '../nodes/preferred-chat-model';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 
 /** Over this serialized length only a `truncated` marker is emitted; the seed
@@ -815,6 +816,22 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			const credentialMap = await buildCredentialMap(context.credentialService);
 			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
+
+			// Deterministic backstop for a builder that never checked credentials:
+			// a chat-model node for a provider the user has no credential for gets
+			// flagged with the LLM credentials they do have. Nodes the resolver
+			// covered with n8n credits are exempt — they run as built.
+			for (const message of buildChatModelProviderMismatchWarnings(
+				json.nodes ?? [],
+				[...credentialMap.values()].flat(),
+				mockResult.resolvedCredentialsByNode,
+			)) {
+				informational.push({
+					code: 'chat_model_provider_mismatch',
+					message,
+					severity: 'informational',
+				});
+			}
 
 			await stripStaleCredentialsFromWorkflow(context, json);
 

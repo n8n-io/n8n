@@ -50,6 +50,7 @@ describe('FolderExporter', () => {
 			folderIds: ['fld-1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
+			workflowVersionPolicy: 'latest',
 			basePrefix: 'projects/team-ligo',
 		});
 
@@ -82,6 +83,7 @@ describe('FolderExporter', () => {
 			folderIds: ['fld-1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		// The folder's own target is passed as basePrefix, so workflows nest under it.
@@ -114,6 +116,7 @@ describe('FolderExporter', () => {
 				folderIds: ['fld-1'],
 				writer: new CapturingWriter(),
 				includeTags: true,
+				workflowVersionPolicy: 'latest',
 			}),
 		).rejects.toThrow(/not found or not accessible/);
 	});

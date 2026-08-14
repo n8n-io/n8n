@@ -3,7 +3,7 @@
   "version": "0.20.0",
   "description": "AI agent SDK for n8n's code-first execution engine",
   "engines": {
-    "node": ">=22.22"
+    "node": ">=24.0.0"
   },
   "main": "dist/index.js",
   "module": "dist/index.js",
