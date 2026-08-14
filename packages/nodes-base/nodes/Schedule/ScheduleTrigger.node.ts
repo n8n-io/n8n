@@ -436,9 +436,25 @@ export class ScheduleTrigger implements INodeType {
 					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce' },
 					{ name: "Don't Run Missed Executions", value: 'skip' },
 				],
-				hint: 'Applies once an execution is later than its configured grace period',
+				hint: 'Applies once an execution is later than the grace period set below',
 				isNodeSetting: true,
 				noDataExpression: true, // read at activation, so an expression would never be resolved
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Missed Execution Grace Period (Seconds)',
+				name: 'misfireGraceSeconds',
+				type: 'number',
+				default: 0, // `0` means "use the instance settings"
+				typeOptions: { minValue: 0, numberPrecision: 0 },
+				description:
+					'How late an execution may start before it counts as missed. Set to 0 to use the instance setting.',
+				isNodeSetting: true,
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.4 } }],
