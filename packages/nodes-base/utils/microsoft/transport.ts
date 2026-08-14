@@ -37,16 +37,19 @@ export type MicrosoftGraphCredentialType<TDefault extends string> =
 	| typeof SERVICE_PRINCIPAL_AUTH;
 
 // Reject any id that could escape its Graph path segment or start a query/fragment:
-// path separators (`/` `\`), query/fragment starters (`?` `#`), and control chars
-// (0x00-0x1F). `:` and `@` are ALLOWED: they are structure-neutral inside a single
-// Teams id segment (real channel ids look like `19:...@thread.tacv2`), and the proven
-// Graph URL shape interpolates them raw. This class runs against the percent-DECODED
-// value, so a pre-encoded separator like `..%2F..` decodes to `../..` and is caught
-// here; a malformed encoding rejects in the decode step before this.
+// path separators (`/` `\`), query/fragment starters (`?` `#`), residual percent
+// (`%`), and control chars (0x00-0x1F). `:` and `@` are ALLOWED: they are
+// structure-neutral inside a single Teams id segment (real channel ids look like
+// `19:...@thread.tacv2`), and the proven Graph URL shape interpolates them raw.
+// This class runs against the percent-DECODED value: a pre-encoded separator like
+// `..%2F..` decodes to `../..` and is caught by the separator chars, a double-encoded
+// one like `..%252F..` decodes to `..%2F..` and is caught by the residual `%`
+// (legitimate Graph ids never carry a literal `%` after the single decode), and a
+// malformed encoding rejects in the decode step before this.
 // Validating the decoded shape (not encoding) is what keeps a value safe to
 // interpolate raw. Messages are static so a rejected id is never echoed back.
 // eslint-disable-next-line no-control-regex
-const GRAPH_ID_REJECT = /[\x00-\x1f\/\\?#]/;
+const GRAPH_ID_REJECT = /[\x00-\x1f\/\\?#%]/;
 
 /**
  * Validates a user-supplied Graph id (already `extractValue`-resolved) before it is
@@ -82,7 +85,8 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 	}
 	if (GRAPH_ID_REJECT.test(value)) {
 		throw new NodeOperationError(node, 'The ID is not valid', {
-			description: 'Remove any slashes, backslashes, question marks or hashes and try again.',
+			description:
+				'Remove any slashes, backslashes, question marks or hashes, and make sure the ID is not double-encoded.',
 		});
 	}
 	return value;

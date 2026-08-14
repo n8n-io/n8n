@@ -506,6 +506,8 @@ describe('Microsoft Graph transport kernel', () => {
 			'a%b',
 			// decodes to `../..` and is caught by the separator class
 			'..%2F..',
+			// double-encoded separator decodes to `..%2F..` and is caught by the residual `%`
+			'..%252F..',
 			'x/../../groups/abc',
 			'abc?$expand=foo',
 		])('rejects ids containing separators or query characters, raw or encoded (%s)', (id) => {
