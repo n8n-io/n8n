@@ -7,9 +7,10 @@ import {
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { randomUUID } from 'node:crypto';
 import { jsonParse } from 'n8n-workflow';
 
-const MIGRATION_NAME = 'AddProjectManageUsersScopeToApiKeys1786526297065';
+const MIGRATION_NAME = 'AddProjectManageUsersScopeToCustomRoles1786526297066';
 
 const MANAGE_USERS_SCOPE = 'project:manageUsers';
 const UPDATE_SCOPE = 'project:update';
@@ -84,10 +85,12 @@ describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
 
 	it('grants project:manageUsers to keys that carry project:update', async () => {
 		const context = createTestMigrationContext(dataSource);
-		await insertUser(context, 'user-1');
+		const userId = randomUUID();
+		const keyId = randomUUID();
+		await insertUser(context, userId);
 		await insertApiKey(context, {
-			id: 'key-with-update',
-			userId: 'user-1',
+			id: keyId,
+			userId,
 			scopes: ['workflow:read', UPDATE_SCOPE],
 		});
 		await context.queryRunner.release();
@@ -96,7 +99,7 @@ describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
 		dataSource = Container.get(DataSource);
 
 		const postContext = createTestMigrationContext(dataSource);
-		expect(await scopesOfApiKey(postContext, 'key-with-update')).toEqual([
+		expect(await scopesOfApiKey(postContext, keyId)).toEqual([
 			MANAGE_USERS_SCOPE,
 			UPDATE_SCOPE,
 			'workflow:read',
@@ -106,10 +109,12 @@ describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
 
 	it('leaves keys without project:update untouched', async () => {
 		const context = createTestMigrationContext(dataSource);
-		await insertUser(context, 'user-1');
+		const userId = randomUUID();
+		const keyId = randomUUID();
+		await insertUser(context, userId);
 		await insertApiKey(context, {
-			id: 'key-without-update',
-			userId: 'user-1',
+			id: keyId,
+			userId,
 			scopes: ['workflow:read'],
 		});
 		await context.queryRunner.release();
@@ -118,16 +123,18 @@ describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
 		dataSource = Container.get(DataSource);
 
 		const postContext = createTestMigrationContext(dataSource);
-		expect(await scopesOfApiKey(postContext, 'key-without-update')).toEqual(['workflow:read']);
+		expect(await scopesOfApiKey(postContext, keyId)).toEqual(['workflow:read']);
 		await postContext.queryRunner.release();
 	});
 
 	it('does not duplicate project:manageUsers when the key already has it', async () => {
 		const context = createTestMigrationContext(dataSource);
-		await insertUser(context, 'user-1');
+		const userId = randomUUID();
+		const keyId = randomUUID();
+		await insertUser(context, userId);
 		await insertApiKey(context, {
-			id: 'key-already-granted',
-			userId: 'user-1',
+			id: keyId,
+			userId,
 			scopes: [UPDATE_SCOPE, MANAGE_USERS_SCOPE],
 		});
 		await context.queryRunner.release();
@@ -136,24 +143,23 @@ describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
 		dataSource = Container.get(DataSource);
 
 		const postContext = createTestMigrationContext(dataSource);
-		expect(await scopesOfApiKey(postContext, 'key-already-granted')).toEqual([
-			MANAGE_USERS_SCOPE,
-			UPDATE_SCOPE,
-		]);
+		expect(await scopesOfApiKey(postContext, keyId)).toEqual([MANAGE_USERS_SCOPE, UPDATE_SCOPE]);
 		await postContext.queryRunner.release();
 	});
 
 	it('skips a key with an empty scope list without failing', async () => {
 		const context = createTestMigrationContext(dataSource);
-		await insertUser(context, 'user-1');
-		await insertApiKey(context, { id: 'key-empty', userId: 'user-1', scopes: [] });
+		const userId = randomUUID();
+		const keyId = randomUUID();
+		await insertUser(context, userId);
+		await insertApiKey(context, { id: keyId, userId, scopes: [] });
 		await context.queryRunner.release();
 
 		await runSingleMigration(MIGRATION_NAME);
 		dataSource = Container.get(DataSource);
 
 		const postContext = createTestMigrationContext(dataSource);
-		expect(await scopesOfApiKey(postContext, 'key-empty')).toEqual([]);
+		expect(await scopesOfApiKey(postContext, keyId)).toEqual([]);
 		await postContext.queryRunner.release();
 	});
 });

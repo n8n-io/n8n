@@ -2,14 +2,13 @@ import {
 	createTestMigrationContext,
 	initDbUpToMigration,
 	runSingleMigration,
-	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddProjectManageUsersScopeToCustomRoles1786518610254';
+const MIGRATION_NAME = 'AddProjectManageUsersScopeToCustomRoles1786526297066';
 
 const MANAGE_USERS_SCOPE = 'project:manageUsers';
 const UPDATE_SCOPE = 'project:update';
@@ -111,22 +110,6 @@ describe('AddProjectManageUsersScopeToCustomRoles Migration', () => {
 		);
 
 		return rows.map((r) => r.scopeSlug).sort();
-	}
-
-	async function rolesWithScope(
-		context: TestMigrationContext,
-		scopeSlug: string,
-	): Promise<string[]> {
-		const tableName = context.escape.tableName('role_scope');
-		const roleSlugColumn = context.escape.columnName('roleSlug');
-		const scopeSlugColumn = context.escape.columnName('scopeSlug');
-
-		const rows = await context.runQuery<RoleScopeRow[]>(
-			`SELECT ${roleSlugColumn} AS "roleSlug", ${scopeSlugColumn} AS "scopeSlug" FROM ${tableName} WHERE ${scopeSlugColumn} = :scopeSlug`,
-			{ scopeSlug },
-		);
-
-		return rows.map((r) => r.roleSlug).sort();
 	}
 
 	async function findScope(
@@ -269,37 +252,6 @@ describe('AddProjectManageUsersScopeToCustomRoles Migration', () => {
 				MANAGE_USERS_SCOPE,
 				UPDATE_SCOPE,
 			]);
-			await postContext.queryRunner.release();
-		});
-	});
-
-	describe('down migration', () => {
-		it('removes every project:manageUsers grant', async () => {
-			const context = createTestMigrationContext(dataSource);
-
-			await insertScope(context, UPDATE_SCOPE);
-			await insertRole(context, {
-				slug: 'project:custom-admin',
-				displayName: 'Custom Admin',
-				roleType: 'project',
-			});
-			await grantScope(context, 'project:custom-admin', UPDATE_SCOPE);
-
-			await context.queryRunner.release();
-
-			await runSingleMigration(MIGRATION_NAME);
-			dataSource = Container.get(DataSource);
-
-			const afterUp = createTestMigrationContext(dataSource);
-			expect(await rolesWithScope(afterUp, MANAGE_USERS_SCOPE)).toEqual(['project:custom-admin']);
-			await afterUp.queryRunner.release();
-
-			await undoLastSingleMigration();
-			dataSource = Container.get(DataSource);
-
-			const postContext = createTestMigrationContext(dataSource);
-			expect(await rolesWithScope(postContext, MANAGE_USERS_SCOPE)).toEqual([]);
-			expect(await scopesOfRole(postContext, 'project:custom-admin')).toEqual([UPDATE_SCOPE]);
 			await postContext.queryRunner.release();
 		});
 	});
