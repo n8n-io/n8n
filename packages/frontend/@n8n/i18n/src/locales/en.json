@@ -7834,7 +7834,7 @@
 	"agents.builder.preview.layout.floating.ariaLabel": "Use floating preview",
 	"agents.builder.preview.layout.docked": "Docked",
 	"agents.builder.preview.layout.docked.ariaLabel": "Use docked preview",
-	"agents.builder.preview.layout.fullpage": "Full page",
+	"agents.builder.preview.layout.fullpage": "Full screen",
 	"agents.builder.preview.layout.fullpage.ariaLabel": "Use full-page preview",
 	"agents.builder.preview.layout.openInNewTab": "Open in new tab",
 	"agents.builder.validation.issue.missingRequired": "A required field is missing",
