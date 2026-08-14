@@ -93,8 +93,8 @@ export class SecurityConfig {
 
 	/**
 	 * The policy n8n serves as `Content-Security-Policy-Report-Only`, in the same two formats
-	 * `N8N_CONTENT_SECURITY_POLICY` accepts. Violations are reported but nothing is blocked, so an
-	 * instance can be watched before a policy is enforced.
+	 * `N8N_CONTENT_SECURITY_POLICY` accepts. This header blocks nothing, so it is how a policy is
+	 * trialled before it is enforced - both headers report violations, only the enforced one blocks.
 	 *
 	 * Defaults to n8n's Level 3 policy. Set to `default` for that policy explicitly, or to `{}` to
 	 * send no report-only header at all.
