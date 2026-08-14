@@ -213,7 +213,7 @@ describe('PrometheusPollTriggerMetricsService', () => {
 			});
 			expect(
 				histogramObserveFor('n8n_poll_trigger_cursor_commit_duration_seconds'),
-			).toHaveBeenCalledWith({ operation: 'with_execution' }, 0.04);
+			).toHaveBeenCalledWith({ operation: 'with_execution', result: 'fence_rejected' }, 0.04);
 		});
 	});
 });

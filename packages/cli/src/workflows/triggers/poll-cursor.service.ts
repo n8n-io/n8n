@@ -36,13 +36,13 @@ export class PollCursorService {
 		operation: PollCursorCommitOperation,
 		commit: () => Promise<{ value: T; advanced: boolean }>,
 	): Promise<T> {
-		const startedAt = Date.now();
+		const startedAt = performance.now();
 		const emitSettled = (result: PollCursorCommitResult) => {
 			try {
 				this.eventService.emit('poll-cursor-commit-settled', {
 					operation,
 					result,
-					durationMs: Date.now() - startedAt,
+					durationMs: performance.now() - startedAt,
 				});
 			} catch {
 				// Deliberately swallowed: a metrics sink must not fail a commit.

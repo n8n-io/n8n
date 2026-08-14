@@ -154,13 +154,13 @@ export class TriggersAndPollers {
 		const inFlight = this.inFlightPolls.get(pollKey) ?? 0;
 		const overlapped = inFlight > 0;
 		this.inFlightPolls.set(pollKey, inFlight + 1);
-		const startedAt = Date.now();
+		const startedAt = performance.now();
 		try {
 			const result = await nodeType.poll.call(pollFunctions);
 			this.emitTick({
 				nodeType: node.type,
 				status: 'success',
-				durationMs: Date.now() - startedAt,
+				durationMs: performance.now() - startedAt,
 				overlapped,
 			});
 			return result;
@@ -169,7 +169,7 @@ export class TriggersAndPollers {
 				nodeType: node.type,
 				status: 'error',
 				errorKind: classifyPollError(error),
-				durationMs: Date.now() - startedAt,
+				durationMs: performance.now() - startedAt,
 				overlapped,
 			});
 			throw error;

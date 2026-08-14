@@ -63,8 +63,8 @@ export class PrometheusPollTriggerMetricsService implements PrometheusMetricsCol
 
 		const cursorCommitDuration = new promClient.Histogram({
 			name: `${prefix}poll_trigger_cursor_commit_duration_seconds`,
-			help: 'Duration in seconds of poll cursor commits, by operation.',
-			labelNames: ['operation'],
+			help: 'Duration in seconds of poll cursor commits, by operation and result.',
+			labelNames: ['operation', 'result'],
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
 
@@ -83,7 +83,7 @@ export class PrometheusPollTriggerMetricsService implements PrometheusMetricsCol
 
 		this.eventService.on('poll-cursor-commit-settled', ({ operation, result, durationMs }) => {
 			cursorCommits.inc({ operation, result });
-			cursorCommitDuration.observe({ operation }, durationMs / 1000);
+			cursorCommitDuration.observe({ operation, result }, durationMs / 1000);
 		});
 	}
 }
