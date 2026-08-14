@@ -1,5 +1,10 @@
 import { type Router } from 'vue-router';
-import { modalRegistry, registerResource } from '@n8n/frontend-module-sdk';
+import {
+	modalRegistry,
+	registerResource,
+	pushHandlerRegistry,
+	commandRegistry,
+} from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -90,6 +95,29 @@ export const registerModuleModals = () => {
 		});
 		module.adHocModalKeyPrefixes?.forEach((prefix) => {
 			modalRegistry.declareAdHocKeyPrefix(prefix);
+		});
+	});
+};
+
+/**
+ * Initialize module push handlers, done in init.ts. Handlers are consulted by
+ * `usePushConnection` before its built-in switch.
+ */
+export const registerModulePushHandlers = () => {
+	modules.forEach((module) => {
+		if (module.pushHandlers) {
+			pushHandlerRegistry.registerAll(module.pushHandlers);
+		}
+	});
+};
+
+/**
+ * Initialize module command-bar contributions, done in init.ts.
+ */
+export const registerModuleCommands = () => {
+	modules.forEach((module) => {
+		module.commands?.forEach((command) => {
+			commandRegistry.register(command);
 		});
 	});
 };
