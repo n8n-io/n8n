@@ -5,7 +5,7 @@ import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
 
 export function getActiveCredentialType(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
-	itemIndex: number,
+	itemIndex = 0,
 ): 'databricksApi' | 'databricksOAuth2Api' {
 	const authentication = context.getNodeParameter(
 		'authentication',

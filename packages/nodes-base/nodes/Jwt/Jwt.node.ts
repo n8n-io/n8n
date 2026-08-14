@@ -27,7 +27,7 @@ const prettifyOperation = (operation: string) => {
 	return operation;
 };
 
-const getToken = (ctx: IExecuteFunctions, itemIndex: number) => {
+const getToken = (ctx: IExecuteFunctions, itemIndex = 0) => {
 	const token = ctx.getNodeParameter('token', itemIndex) as string;
 
 	if (!token) {

@@ -483,9 +483,7 @@ workflowInputs: {
 					0,
 					true,
 				) as boolean;
-				// Whole-batch mode: the sub-workflow runs once for all items, so the
-				// source is read at item 0.
-				const workflowInfo = await getWorkflowInfo.call(this, source, 0);
+				const workflowInfo = await getWorkflowInfo.call(this, source);
 
 				const executionResult: ExecuteWorkflowData = await this.executeWorkflow(
 					workflowInfo,

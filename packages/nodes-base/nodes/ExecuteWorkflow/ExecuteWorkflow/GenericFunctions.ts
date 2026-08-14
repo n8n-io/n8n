@@ -7,7 +7,7 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 
-export async function getWorkflowInfo(this: IExecuteFunctions, source: string, itemIndex: number) {
+export async function getWorkflowInfo(this: IExecuteFunctions, source: string, itemIndex = 0) {
 	const workflowInfo: IExecuteWorkflowInfo = {};
 	const nodeVersion = this.getNode().typeVersion;
 	if (source === 'database') {
