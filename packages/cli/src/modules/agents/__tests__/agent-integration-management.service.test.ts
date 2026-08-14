@@ -383,7 +383,7 @@ describe('AgentIntegrationManagementService', () => {
 	});
 
 	describe('removing a channel', () => {
-		it('runs platform cleanup before removal and returns its warning', async () => {
+		it('runs platform cleanup after durable removal and returns its warning', async () => {
 			const { service, persistenceService, chatService, implementation, agentRepository } =
 				makeService();
 			const agent = makeAgent({ integrations: [integration] });
@@ -412,8 +412,10 @@ describe('AgentIntegrationManagementService', () => {
 				}),
 			).resolves.toMatchObject({ warning });
 
-			expect(order(removal.onRemove)).toBeLessThan(order(persistenceService.applyIntegrationDelta));
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(removal.onRemove),
+			);
+			expect(order(removal.onRemove)).toBeLessThan(
 				order(chatService.disconnectChannel),
 			);
 		});
@@ -446,10 +448,12 @@ describe('AgentIntegrationManagementService', () => {
 			);
 		});
 
-		it('leaves the channel live when the durable removal fails', async () => {
-			const { service, persistenceService, chatService } = makeService();
+		it('leaves the channel and its managed resources intact when durable removal fails', async () => {
+			const { service, persistenceService, chatService, implementation, agentRepository } =
+				makeService();
 			const removalError = new Error('write failed');
 			persistenceService.applyIntegrationDelta.mockRejectedValue(removalError);
+			stubRow(agentRepository, [integration]);
 
 			await expect(
 				service.disconnect({
@@ -457,9 +461,11 @@ describe('AgentIntegrationManagementService', () => {
 					user: user as never,
 					type: integration.type,
 					credentialId: integration.credentialId,
+					deleteExternalResource: true,
 				}),
 			).rejects.toBe(removalError);
 
+			expect(implementation.onRemove).not.toHaveBeenCalled();
 			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
 			expect(chatService.disconnect).not.toHaveBeenCalled();
 		});
@@ -550,7 +556,7 @@ describe('AgentIntegrationManagementService', () => {
 
 	describe('replacing a channel', () => {
 		it('starts the new channel, swaps in one write, then releases the old one', async () => {
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, implementation } = makeService();
 			const agent = makeAgent({ integrations: [replaced] });
 			persistenceService.applyIntegrationDelta.mockResolvedValue({
 				agent,
@@ -573,6 +579,7 @@ describe('AgentIntegrationManagementService', () => {
 			expect(order(chatService.connect)).toBeLessThan(
 				order(persistenceService.applyIntegrationDelta),
 			);
+			expect(implementation.onRemove).not.toHaveBeenCalled();
 			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, replaced);
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
 				order(chatService.disconnectChannel),
@@ -622,7 +629,7 @@ describe('AgentIntegrationManagementService', () => {
 		});
 
 		it('keeps the old channel live when the swap fails to persist', async () => {
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, implementation } = makeService();
 			persistenceService.applyIntegrationDelta.mockRejectedValue(new Error('write failed'));
 			const agent = makeAgent({ integrations: [replaced] });
 
@@ -638,6 +645,7 @@ describe('AgentIntegrationManagementService', () => {
 			// Only the connection we just brought up is released, locally, and the old
 			// one stays — on this main and on every peer.
 			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, integration);
+			expect(implementation.onRemove).not.toHaveBeenCalled();
 			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});

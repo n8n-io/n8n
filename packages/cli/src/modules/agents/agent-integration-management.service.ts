@@ -85,7 +85,8 @@ export class AgentIntegrationManagementService {
 			agent: options.agent,
 			user: options.user,
 			remove: { type: options.type, credentialId: options.credentialId },
-			removeExternalResource: { deleteExternalResource: options.deleteExternalResource },
+			cleanupRemovedIntegration: true,
+			deleteExternalResource: options.deleteExternalResource,
 			modifiedBy: options.modifiedBy ?? 'user',
 		});
 
@@ -110,7 +111,8 @@ export class AgentIntegrationManagementService {
 		user: User;
 		add?: AgentIntegrationConfig;
 		remove?: IntegrationRef;
-		removeExternalResource?: { deleteExternalResource?: boolean };
+		cleanupRemovedIntegration?: boolean;
+		deleteExternalResource?: boolean;
 		modifiedBy: AgentActor;
 	}): Promise<IntegrationDeltaResult & { warning?: AgentIntegrationDisconnectWarning }> {
 		return await this.serializePerAgent(
@@ -145,7 +147,8 @@ export class AgentIntegrationManagementService {
 		user: User;
 		add?: AgentIntegrationConfig;
 		remove?: IntegrationRef;
-		removeExternalResource?: { deleteExternalResource?: boolean };
+		cleanupRemovedIntegration?: boolean;
+		deleteExternalResource?: boolean;
 		modifiedBy: AgentActor;
 	}): Promise<IntegrationDeltaResult & { warning?: AgentIntegrationDisconnectWarning }> {
 		const { agent, add } = options;
@@ -162,7 +165,7 @@ export class AgentIntegrationManagementService {
 		// a rollback would restore to. The write does its own read and reconciles
 		// anything that lands after this one.
 		const state =
-			add || options.removeExternalResource
+			add || options.cleanupRemovedIntegration
 				? await this.agentRepository.findIntegrationState(agent.id)
 				: null;
 		const publishedBefore = state ? state.activeVersionId !== null : agent.activeVersionId !== null;
@@ -174,21 +177,6 @@ export class AgentIntegrationManagementService {
 		const persistedBefore =
 			add && state
 				? (state.integrations ?? []).find((entry) => matchesIntegrationRef(entry, add))
-				: undefined;
-		const persistedRemoval =
-			remove && state
-				? (state.integrations ?? []).find((entry) => matchesIntegrationRef(entry, remove))
-				: undefined;
-		const warning =
-			persistedRemoval && options.removeExternalResource
-				? await this.registry.get(persistedRemoval.type)?.onRemove?.({
-						agentId: agent.id,
-						projectId: agent.projectId,
-						credentialId: persistedRemoval.credentialId,
-						user: options.user,
-						deleteExternalResource:
-							options.removeExternalResource.deleteExternalResource ?? !publishedBefore,
-					})
 				: undefined;
 
 		let connected: boolean;
@@ -233,6 +221,20 @@ export class AgentIntegrationManagementService {
 				result.published,
 			);
 		}
+
+		const isPublished = result.published ?? publishedBefore;
+		const warning =
+			result.removed && options.cleanupRemovedIntegration
+				? await this.registry.get(result.removed.type)?.onRemove?.({
+						agentId: agent.id,
+						projectId: agent.projectId,
+						credentialId: result.removed.credentialId,
+						user: options.user,
+						deleteExternalResource:
+							// if not published, by default delete the external resource
+							options.deleteExternalResource ?? !isPublished,
+					})
+				: undefined;
 
 		if (remove) await this.releaseRemoved(agent, remove, result);
 		if (connected && add) {
