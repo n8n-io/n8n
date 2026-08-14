@@ -433,6 +433,12 @@ export interface WorkflowContext {
  * Configuration options for creating a node
  */
 export interface NodeConfig<TParams = IDataObject> {
+	/**
+	 * Stable n8n node id. Keep it verbatim when editing an existing node — execution
+	 * logs, poll cursors, dedupe state and the version diff are all keyed on it, and a
+	 * rename does not change it. Omit it for a node you are adding; one is assigned on save.
+	 */
+	id?: string;
 	parameters?: TParams;
 	credentials?: Record<
 		string,
@@ -465,6 +471,8 @@ export interface NodeConfig<TParams = IDataObject> {
  * Configuration for sticky notes
  */
 export interface StickyNoteConfig {
+	/** Stable n8n node id — see {@link NodeConfig.id}. */
+	id?: string;
 	color?: number;
 	position?: [number, number];
 	width?: number;

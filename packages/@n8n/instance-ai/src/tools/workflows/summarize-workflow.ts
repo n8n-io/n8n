@@ -77,7 +77,9 @@ export async function summarizeWorkflowStructure(
 		return generateWorkflowCode({
 			name,
 			nodes: nodes.map((node) => ({
-				id: node.name,
+				// No real node id is available here, and codegen must never present a
+				// human name as one — this view is structure-only.
+				id: '',
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion ?? 1,

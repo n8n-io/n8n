@@ -57,8 +57,11 @@ import {
 	saveWorkflowSourceFileBinding,
 } from './workflow-file-bindings';
 import {
+	ensureUniqueNodeIds,
 	ensureWebhookIds,
 	getReferencedWorkflowIds,
+	hasLostAllSavedNodeIds,
+	preserveExistingNodeIds,
 	isTriggerNodeType,
 	preserveExistingNodeGroupIds,
 	preserveExistingSetupValues,
@@ -872,10 +875,29 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
+				// Runs first: the passes below key off node ids, so they must be unique.
+				ensureUniqueNodeIds(json);
+				// Recovers the saved id of a surviving node whose source declared none — layered
+				// under the declared id, so a rename still follows the id.
+				await preserveExistingNodeIds(json, targetWorkflowId, context);
 				await preserveExistingSetupValues(json, targetWorkflowId, context);
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);
+
+				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
+					context.logger.debug('Build kept none of the saved node ids', {
+						workflowId: targetWorkflowId,
+					});
+					informational.push({
+						code: 'node_ids_not_preserved',
+						message:
+							"None of this workflow's saved node IDs were kept, so every node is recorded as " +
+							"deleted and re-added. Keep each node's `id` from get-as-code verbatim when " +
+							'editing, and omit `id` only for nodes you add.',
+						severity: 'informational',
+					});
+				}
 
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
 				const hasResolvedCredentials = Object.keys(mockResult.resolvedCredentialsByNode).length > 0;
