@@ -17,6 +17,10 @@ import {
 	type StepSummary,
 } from '../execution/step-store';
 
+/** RETURNING rows come back keyed by database column name (snake_case). */
+type InsertedStepRow = { id: string; node_id: string };
+type ClaimedStepRow = { id: string; execution_id: string; node_id: string };
+
 /** TypeORM-backed `StepStore` adapter. */
 export class TypeOrmStepStore implements StepStore {
 	constructor(private readonly repo: Repository<WorkflowStepExecution>) {}
@@ -60,9 +64,7 @@ export class TypeOrmStepStore implements StepStore {
 				.returning(['id', 'nodeId'])
 				.execute();
 
-			return (result.raw as Array<{ id: string; node_id: string }>).map(
-				({ id, node_id: nodeId }) => ({ id, nodeId }),
-			);
+			return (result.raw as InsertedStepRow[]).map(({ id, node_id: nodeId }) => ({ id, nodeId }));
 		});
 	}
 
@@ -107,7 +109,7 @@ export class TypeOrmStepStore implements StepStore {
 				.returning(['id', 'executionId', 'nodeId'])
 				.execute();
 
-			const [row] = result.raw as Array<{ id: string; execution_id: string; node_id: string }>;
+			const [row] = result.raw as ClaimedStepRow[];
 			if (!row) return null;
 
 			return {
