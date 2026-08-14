@@ -209,6 +209,12 @@ export async function runWorkflowChecks(args: {
 	workflow: WorkflowResponse | undefined;
 	prompt: string;
 	agentText: string | undefined;
+	/**
+	 * The workflow as it stood when the conversation opened, for checks that compare
+	 * before against after. Only set when the case hands the agent an existing workflow;
+	 * those checks report N/A without it.
+	 */
+	workflowBefore?: WorkflowResponse;
 	/** Per-live-turn failed build-workflow attempt counts; feeds the efficiency check. */
 	failedBuildsPerTurn?: number[];
 	logger: EvalLogger;
@@ -220,6 +226,7 @@ export async function runWorkflowChecks(args: {
 		prompt: args.prompt,
 		...(modelId ? { modelId } : {}),
 		...(args.agentText ? { agentTextResponse: args.agentText } : {}),
+		...(args.workflowBefore ? { workflowBefore: args.workflowBefore } : {}),
 		...(args.failedBuildsPerTurn ? { failedBuildsPerTurn: args.failedBuildsPerTurn } : {}),
 	};
 

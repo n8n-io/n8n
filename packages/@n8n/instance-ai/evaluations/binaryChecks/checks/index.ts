@@ -32,6 +32,7 @@ import { noHardcodedCredentials } from './no-hardcoded-credentials';
 import { noInvalidFromAi } from './no-invalid-from-ai';
 import { noUnnecessaryCodeNodes } from './no-unnecessary-code-nodes';
 import { noUnreachableNodes } from './no-unreachable-nodes';
+import { nodeIdsPreserved } from './node-ids-preserved';
 import { responseDescribesChangesAccurately } from './response-describes-changes-accurately';
 import { secretsUseCredentialsNotParameters } from './secrets-use-credentials-not-parameters';
 import { switchFallbackOutputEnabled } from './switch-fallback-output-enabled';
@@ -46,6 +47,7 @@ export const STRUCTURE_CHECKS: BinaryCheck[] = [
 	hasTrigger,
 	hasStartNode,
 	noDisabledNodes,
+	nodeIdsPreserved,
 ];
 
 export const CONNECTION_TOPOLOGY_CHECKS: BinaryCheck[] = [

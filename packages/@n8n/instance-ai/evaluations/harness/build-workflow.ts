@@ -576,6 +576,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			}),
 		};
 	};
+	// The attached workflow as it stood before the agent edited it; feeds the checks that
+	// compare before against after. Undefined for from-scratch cases.
+	let workflowBefore: WorkflowResponse | undefined;
 
 	try {
 		const buildStart = Date.now();
@@ -840,6 +843,19 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const openingAttachments: InstanceAiWorkflowAttachment[] | undefined = restoredForAttach
 			? [{ type: 'workflow', id: restoredForAttach.id, name: restoredForAttach.name }]
 			: undefined;
+		// Snapshot the attached workflow before the agent touches it, for the checks that
+		// compare before against after. Best-effort: a failed read must not fail the case.
+		if (restoredForAttach) {
+			try {
+				workflowBefore = await client.getWorkflow(restoredForAttach.id);
+			} catch (error) {
+				logger.warn(
+					`  Could not snapshot the attached workflow before the build: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				);
+			}
+		}
 		// Name the out-of-band attachment in the RECORDED turn, or the judge and the
 		// prompt-aware checks read a text-less hand-off as a bare empty message — see
 		// `attachedWorkflowNote`. Mirrors `openingMessageSuffix`, which diverges
@@ -1021,6 +1037,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					workflow: outcome.workflowJsons[0],
 					prompt: userTurnsAsText(transcript),
 					agentText: agentTurnsAsText(transcript),
+					...(workflowBefore ? { workflowBefore } : {}),
 					failedBuildsPerTurn: failedBuildsPerTurn(transcript),
 					logger,
 				});

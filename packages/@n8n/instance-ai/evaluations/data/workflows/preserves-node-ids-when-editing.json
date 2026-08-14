@@ -1,0 +1,119 @@
+{
+	"description": "INS-1120: the user opens the assistant with an existing workflow attached and asks for a single parameter change. Every node the agent keeps must keep its node id. A node id is that node's stable identity in n8n — execution logs pair a run against the canvas by it, and (workflowId, nodeId) keys poll cursors, deduplication records and publication status — so re-identifying surviving nodes strikes every name through in the logs panel, makes the version diff read as deleted + re-added, and silently resets poll cursors and dedupe state. The regression came from generated SDK code not carrying node ids, so each sandbox rebuild minted fresh UUIDs for the whole graph. Note the id loss is only reachable through the TypeScript SDK path (get-as-code → .ts → build-workflow); a build from a WorkflowJSON .json source copies nodes through verbatim and keeps ids regardless, which is why this case grades the path taken as well as the ids. The deterministic guard for the round trip itself is the instance-ai unit test get-as-code-node-identity.test.ts.",
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "Build me a small workflow I can run by hand: it should set a status field and then build a summary field."
+			},
+			{
+				"role": "assistant",
+				"text": "Done — I created \"Daily Status Digest\" with a Manual Trigger, a Set node called \"Status Marker\" that sets `status`, and a Set node called \"Build Summary\" that sets `summary`."
+			}
+		],
+		"workflows": [
+			{
+				"id": "ins1120DigestSeed",
+				"name": "Daily Status Digest",
+				"nodes": [
+					{
+						"id": "seed-manual-trigger",
+						"name": "Manual Trigger",
+						"type": "n8n-nodes-base.manualTrigger",
+						"typeVersion": 1,
+						"position": [0, 0],
+						"parameters": {}
+					},
+					{
+						"id": "seed-status-marker",
+						"name": "Status Marker",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [240, 0],
+						"parameters": {
+							"assignments": {
+								"assignments": [
+									{
+										"id": "status-assignment",
+										"name": "status",
+										"value": "pending",
+										"type": "string"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "seed-build-summary",
+						"name": "Build Summary",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [480, 0],
+						"parameters": {
+							"assignments": {
+								"assignments": [
+									{
+										"id": "summary-assignment",
+										"name": "summary",
+										"value": "no summary yet",
+										"type": "string"
+									}
+								]
+							},
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Manual Trigger": {
+						"main": [
+							[
+								{
+									"node": "Status Marker",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Status Marker": {
+						"main": [
+							[
+								{
+									"node": "Build Summary",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Change the Status Marker node so the status value is \"ready\" instead of \"pending\". Leave everything else exactly as it is.",
+			"attach": {
+				"workflow": "ins1120DigestSeed"
+			}
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "simple",
+	"tags": ["edit", "node-identity", "regression"],
+	"datasets": ["full"],
+	"processExpectations": [
+		"The agent edited the existing attached workflow instead of creating a new one.",
+		"The agent edited the workflow through the TypeScript SDK source path — it called workflows(action=\"get-as-code\"), edited the returned TypeScript, and built from a .ts source file. Building from a WorkflowJSON .json source instead does not exercise node-id preservation and should fail this expectation.",
+		"The agent kept the `id` values that get-as-code returned for the nodes it did not add, rather than dropping or regenerating them."
+	],
+	"outcomeExpectations": [
+		"The workflow still has exactly three nodes — Manual Trigger, Status Marker and Build Summary — connected in that order.",
+		"The Status Marker node sets `status` to \"ready\".",
+		"The Build Summary node is untouched and still sets `summary` to \"no summary yet\"."
+	]
+}
