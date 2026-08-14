@@ -234,10 +234,22 @@ describe('node id emission', () => {
 
 		it('should assign a fresh id to a node added without one', () => {
 			const code = generateWorkflowCode({ workflow: simpleWorkflow, includeNodeIds: true });
-			const rebuilt = parseWorkflowCodeToBuilder(code).toJSON();
-			const ids = new Set(rebuilt.nodes.map((n) => n.id));
+			// Add a node that declares no id, the way an agent extends the generated source: declare
+			// it above the builder and hang it off the end of the export chain.
+			const declaration =
+				"const added = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Added' } });\n\n";
+			const withAdded = `${code.replace('const wf = workflow(', `${declaration}const wf = workflow(`).trimEnd()}\n  .to(added)\n`;
+			expect(withAdded).toContain("name: 'Added'");
 
-			expect(ids.size).toBe(rebuilt.nodes.length);
+			const rebuilt = parseWorkflowCodeToBuilder(withAdded).toJSON();
+			const addedNode = rebuilt.nodes.find((n) => n.name === 'Added');
+
+			expect(addedNode?.id).toBeTruthy();
+			// A fresh id, not one borrowed from a preserved node.
+			expect(['saved-trigger', 'saved-set']).not.toContain(addedNode?.id);
+			expect(rebuilt.nodes.find((n) => n.name === 'Process')?.id).toBe('saved-set');
+			const ids = rebuilt.nodes.map((n) => n.id);
+			expect(new Set(ids).size).toBe(ids.length);
 		});
 	});
 });

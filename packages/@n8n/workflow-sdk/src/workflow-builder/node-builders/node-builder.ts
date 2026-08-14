@@ -114,9 +114,19 @@ function generateNodeName(type: string): string {
  * Returns a new config object when any normalization happens; otherwise a
  * shallow copy (matching the previous `{ ...config }` semantics).
  */
+/**
+ * A declared node id, or undefined when there is none. A blank string is not a declaration —
+ * treating it as one would hand every such node the same empty identity, which
+ * `duplicate-node-id-validator` would then skip and the DB would accept.
+ */
+export function declaredNodeId(id: unknown): string | undefined {
+	return typeof id === 'string' && id.trim() !== '' ? id : undefined;
+}
+
 export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
+	const id = declaredNodeId(config?.id);
 	const creds = config?.credentials as Record<string, unknown> | undefined;
-	if (!creds) return { ...config };
+	if (!creds) return { ...config, id };
 
 	let normalizedCreds:
 		| Record<string, CredentialReference | NewCredentialValue | string>
@@ -169,8 +179,8 @@ export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
 		// 4. else: leave as CredentialReference / plain string
 	}
 
-	if (!normalizedCreds) return { ...config };
-	return { ...config, credentials: normalizedCreds } as NodeConfig;
+	if (!normalizedCreds) return { ...config, id };
+	return { ...config, id, credentials: normalizedCreds } as NodeConfig;
 }
 
 /**
@@ -199,8 +209,9 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		this.version = version;
 		this.config = normalizeNodeConfig(config);
 		// An explicit `id` argument (update/clone) wins over one declared in the source,
-		// so `update()` can never re-identify a node.
-		this.id = id ?? config?.id ?? uuid();
+		// so `update()` can never re-identify a node. Read the NORMALIZED config so a blank
+		// declaration is treated as absent rather than becoming a shared empty identity.
+		this.id = id ?? this.config.id ?? uuid();
 		this.name = name ?? config?.name ?? generateNodeName(type);
 		this._connections = connections ?? [];
 	}
@@ -209,6 +220,9 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		const mergedConfig = {
 			...this.config,
 			...config,
+			// Identity is not patchable: an `id` in the patch would leave `config.id` diverging
+			// from `this.id`, and regenerateNodeIds() would adopt it on the next rebuild.
+			id: this.config.id,
 			parameters: config.parameters ?? this.config.parameters,
 			credentials: config.credentials ?? this.config.credentials,
 		};
@@ -1111,7 +1125,7 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		stickyConfig: StickyNoteConfig = {},
 		id?: string,
 	) {
-		this.id = id ?? stickyConfig.id ?? uuid();
+		this.id = id ?? declaredNodeId(stickyConfig.id) ?? uuid();
 		// Use a unique default name to prevent multiple stickies from overwriting each other
 		// when added to a workflow (Map uses name as key)
 		this.name = stickyConfig.name ?? `Sticky Note ${this.id.slice(0, 8)}`;
@@ -1122,7 +1136,7 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		this.config = {
 			// Only mirror an author-declared id, so `config.id` keeps meaning "declared
 			// in the source" for the id-precedence rules in regenerateNodeIds().
-			...(stickyConfig.id !== undefined && { id: stickyConfig.id }),
+			...(declaredNodeId(stickyConfig.id) !== undefined && { id: stickyConfig.id }),
 			name: this.name,
 			position: stickyConfig.position ?? boundingBox?.position,
 			parameters: {

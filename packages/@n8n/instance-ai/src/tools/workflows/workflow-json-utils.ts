@@ -180,12 +180,14 @@ export function ensureUniqueNodeIds(json: WorkflowJSON): void {
 	if (!json.nodes?.length) return;
 
 	const claimedIds = new Set<string>();
-	const replacementsByIndex = new Map<number, { previousId: string; nextId: string }>();
+	// Replacement IDs per previous ID, in node order — so the Nth surplus occurrence of an ID
+	// in a group's membership maps to the Nth node that was reassigned.
+	const replacementsByPreviousId = new Map<string, string[]>();
 
-	json.nodes.forEach((node, index) => {
+	for (const node of json.nodes) {
 		if (node.id && !claimedIds.has(node.id)) {
 			claimedIds.add(node.id);
-			return;
+			continue;
 		}
 
 		const previousId = node.id;
@@ -194,18 +196,29 @@ export function ensureUniqueNodeIds(json: WorkflowJSON): void {
 
 		claimedIds.add(nextId);
 		node.id = nextId;
-		if (previousId) replacementsByIndex.set(index, { previousId, nextId });
-	});
+		if (previousId) {
+			const queued = replacementsByPreviousId.get(previousId);
+			if (queued) queued.push(nextId);
+			else replacementsByPreviousId.set(previousId, [nextId]);
+		}
+	}
 
-	if (replacementsByIndex.size === 0) return;
+	if (replacementsByPreviousId.size === 0) return;
 
 	for (const group of json.nodeGroups ?? []) {
-		// Walk each replacement in node order and rewrite one matching membership entry
-		// per reassigned node, so duplicates are distributed rather than collapsed.
-		for (const { previousId, nextId } of replacementsByIndex.values()) {
-			const membershipIndex = group.nodeIds.lastIndexOf(previousId);
-			if (membershipIndex !== -1) group.nodeIds[membershipIndex] = nextId;
-		}
+		// The first occurrence keeps the original ID (that node kept it); each later occurrence
+		// takes the next replacement in node order. Counting occurrences rather than searching
+		// keeps three-or-more-way collisions in the same order as the nodes themselves.
+		const seenCounts = new Map<string, number>();
+		group.nodeIds = group.nodeIds.map((nodeId) => {
+			const replacements = replacementsByPreviousId.get(nodeId);
+			if (!replacements) return nodeId;
+
+			const occurrence = seenCounts.get(nodeId) ?? 0;
+			seenCounts.set(nodeId, occurrence + 1);
+			// Occurrence 0 belongs to the node that kept the ID.
+			return occurrence === 0 ? nodeId : (replacements[occurrence - 1] ?? nodeId);
+		});
 	}
 }
 

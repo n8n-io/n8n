@@ -1071,5 +1071,66 @@ describe('Node Builder', () => {
 
 			expect(sib.sibNode.update({ parameters: { batchSize: 5 } }).id).toBe(sib.sibNode.id);
 		});
+
+		/**
+		 * `update()` must not be a back door to changing identity. The instance id is passed
+		 * positionally so it already wins, but the patch must not leave a different value in
+		 * `config.id` either — `regenerateNodeIds()` reads that as the author's declaration and
+		 * would adopt it on the next rebuild.
+		 */
+		it('should ignore an id in an update() patch', () => {
+			const n = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { id: 'declared', parameters: { a: 1 } },
+			});
+
+			const updated = n.update({ id: 'hijacked', parameters: { a: 2 } });
+
+			expect(updated.id).toBe('declared');
+			expect(updated.config.id).toBe('declared');
+		});
+
+		it('should not let an update() patch introduce an id where none was declared', () => {
+			const n = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+
+			const updated = n.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe(n.id);
+			expect(updated.config.id).toBeUndefined();
+		});
+
+		it('should ignore an id in a subnode update() patch', () => {
+			const model = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: { id: 'declared-model' },
+			});
+
+			const updated = model.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe('declared-model');
+			expect(updated.config.id).toBe('declared-model');
+		});
+
+		it('should ignore an id in a splitInBatches update() patch', () => {
+			const sib = splitInBatches({ version: 3, config: { id: 'declared-sib' } });
+
+			const updated = sib.sibNode.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe('declared-sib');
+			expect(updated.config.id).toBe('declared-sib');
+		});
+
+		/** A blank id is not a declaration — it would hand two nodes one empty identity. */
+		it('should treat a blank declared id as absent', () => {
+			const n1 = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: '' } });
+			const n2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: '   ' } });
+
+			expect(n1.id).not.toBe('');
+			expect(n1.config.id).toBeUndefined();
+			expect(n2.config.id).toBeUndefined();
+			expect(n1.id).not.toBe(n2.id);
+		});
 	});
 });

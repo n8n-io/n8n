@@ -123,9 +123,24 @@ describe('get-as-code node identity', () => {
 	});
 
 	it('should give a node added to the generated code an id of its own', async () => {
-		const rebuilt = rebuild(await getAsCode());
-		const ids = rebuilt.nodes.map((node) => node.id);
+		const code = await getAsCode();
+		// Add a node that declares no id, the way the agent extends the source: declare it above
+		// the builder and hang it off the end of the export chain.
+		const declaration =
+			"const added = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Added' } });\n\n";
+		const withAdded = `${code.replace('const wf = workflow(', `${declaration}const wf = workflow(`).trimEnd()}\n  .to(added)\n`;
+		expect(withAdded).toContain("name: 'Added'");
 
-		expect(new Set(ids).size).toBe(ids.length);
+		const rebuilt = rebuild(withAdded);
+		const addedNode = rebuilt.nodes.find((node) => node.name === 'Added');
+		const savedIds = SAVED_WORKFLOW.nodes.map((node) => node.id);
+
+		expect(addedNode?.id).toBeTruthy();
+		// A fresh id of its own, not one taken from a node that already existed.
+		expect(savedIds).not.toContain(addedNode?.id);
+		// ...and the pre-existing nodes still hold theirs.
+		for (const node of SAVED_WORKFLOW.nodes) {
+			expect(rebuilt.nodes.find((n) => n.name === node.name)?.id).toBe(node.id);
+		}
 	});
 });

@@ -54,6 +54,22 @@ describe('duplicateNodeIdValidator', () => {
 		expect(wf.validate().errors.filter((e) => e.code === 'DUPLICATE_NODE_ID')).toHaveLength(0);
 	});
 
+	/** A blank id must not become a shared identity that this check silently skips. */
+	it('should not let two nodes share a blank declared id', () => {
+		const wf = workflow('wf-1', 'Blank ids').add(
+			trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { id: '', name: 'Start' },
+			}).to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { id: '', name: 'Set' } })),
+		);
+
+		const ids = wf.toJSON().nodes.map((n) => n.id);
+
+		expect(ids).not.toContain('');
+		expect(new Set(ids).size).toBe(ids.length);
+	});
+
 	it('should report one error per duplicated id', () => {
 		const wf = workflow('wf-1', 'Two collisions').add(
 			trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { id: 'a', name: 'T' } })

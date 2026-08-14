@@ -508,6 +508,27 @@ export default wf.add(start);
 			expect(json.nodes.find((n) => n.name === 'Plain')?.id).toBe('from-map-plain');
 		});
 
+		/**
+		 * The P1 an `update({ id })` patch used to create: the instance kept its old id while
+		 * `config.id` held the patched value, so the next regenerate adopted the new one.
+		 */
+		it('should not adopt an id smuggled in through an update() patch', () => {
+			const declared = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { id: 'declared-set', name: 'Set' },
+			});
+			const wf = workflow('test-workflow-id', 'Test Workflow').add(
+				trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } }).to(
+					declared.update({ id: 'hijacked', parameters: { mode: 'raw' } }),
+				),
+			);
+
+			wf.regenerateNodeIds();
+
+			expect(wf.toJSON().nodes.find((n) => n.name === 'Set')?.id).toBe('declared-set');
+		});
+
 		it('should be idempotent across repeated calls', () => {
 			const once = buildMixedWorkflow();
 			once.regenerateNodeIds();

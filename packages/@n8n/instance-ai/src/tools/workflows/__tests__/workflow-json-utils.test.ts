@@ -136,6 +136,21 @@ describe('ensureUniqueNodeIds', () => {
 		expect(new Set(workflow.nodeGroups?.[0]?.nodeIds)).toHaveProperty('size', 2);
 	});
 
+	it('remaps group membership in order when three nodes share an id', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Triplicated in group',
+			nodes: [node('dup', 'A'), node('dup', 'B'), node('dup', 'C')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['dup', 'dup', 'dup'] }],
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		// Membership must line up with the nodes positionally, not in reverse.
+		expect(workflow.nodeGroups?.[0]?.nodeIds).toEqual(workflow.nodes.map((n) => n.id));
+		expect(new Set(workflow.nodeGroups?.[0]?.nodeIds)).toHaveProperty('size', 3);
+	});
+
 	it('leaves group membership alone when nothing was reassigned', () => {
 		const workflow: WorkflowJSON = {
 			name: 'Unique in group',
