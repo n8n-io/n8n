@@ -1,0 +1,21 @@
+packages/cli/test/integration/executions/poll-cursor-atomicity.test.ts
+  s_5c28558b5e8d58::t_17a960f04b47b1 23,28-30
+  s_5c28558b5e8d58::t_81da9287994e02 1
+  s_5c28558b5e8d58::t_3b503021fb90fb 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3d3f0b61c98d8390cd1451bd19de239d43268ba2",
+  "prompts": {},
+  "sessions": {
+    "s_5c28558b5e8d58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebdd8402-ff44-4aa2-a4cd-54dcb8c3a3e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
