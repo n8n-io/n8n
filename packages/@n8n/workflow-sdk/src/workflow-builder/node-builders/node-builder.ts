@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { NODE_TYPES, isIfNodeType, isSwitchNodeType } from '../../constants/node-types';
 import {
 	isNodeChain,
+	type AnchoredStickyNote,
 	type NodeInstance,
 	type TriggerInstance,
 	type NodeConfig,
@@ -1034,23 +1035,14 @@ export function trigger<TTrigger extends TriggerInput>(
 	);
 }
 
-// Default node dimensions for bounding box calculation
-const DEFAULT_NODE_WIDTH = 200;
-const DEFAULT_NODE_HEIGHT = 100;
-const STICKY_PADDING = 50;
-
 /**
- * Calculate bounding box around a set of nodes
+ * Resolve the IDs of the nodes a sticky was asked to wrap.
+ *
+ * Only IDs are captured — the sticky's box is computed during serialization, once
+ * layout has decided where the anchors actually sit.
  */
-function calculateNodesBoundingBox(nodes: Array<NodeInstance<string, string, unknown>>): {
-	position: [number, number];
-	width: number;
-	height: number;
-} | null {
-	if (nodes.length === 0) return null;
-
-	// Normalize builder objects to their underlying NodeInstance
-	const normalizedNodes = nodes
+function resolveAnchorIds(nodes: Array<NodeInstance<string, string, unknown>>): string[] {
+	return nodes
 		.map((item): NodeInstance<string, string, unknown> | null => {
 			if (isSplitInBatchesBuilder(item)) {
 				return extractSplitInBatchesBuilder(item).sibNode;
@@ -1066,68 +1058,43 @@ function calculateNodesBoundingBox(nodes: Array<NodeInstance<string, string, unk
 			}
 			return null;
 		})
-		.filter((n): n is NodeInstance<string, string, unknown> => n !== null);
-
-	if (normalizedNodes.length === 0) return null;
-
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
-
-	for (const node of normalizedNodes) {
-		const pos = node.config.position ?? [0, 0];
-		const x = pos[0];
-		const y = pos[1];
-
-		minX = Math.min(minX, x);
-		minY = Math.min(minY, y);
-		maxX = Math.max(maxX, x + DEFAULT_NODE_WIDTH);
-		maxY = Math.max(maxY, y + DEFAULT_NODE_HEIGHT);
-	}
-
-	return {
-		position: [minX - STICKY_PADDING, minY - STICKY_PADDING],
-		width: maxX - minX + STICKY_PADDING * 2,
-		height: maxY - minY + STICKY_PADDING * 2,
-	};
+		.filter((n): n is NodeInstance<string, string, unknown> => n !== null)
+		.map((n) => n.id);
 }
 
 /**
  * Sticky note node instance
  */
-class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void> {
+class StickyNoteInstance
+	implements NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>, AnchoredStickyNote
+{
 	readonly type = 'n8n-nodes-base.stickyNote' as const;
 	readonly version = 'v1' as const;
 	readonly config: NodeConfig;
 	readonly id: string;
 	readonly name: string;
+	readonly stickyAnchorIds: readonly string[];
 
 	constructor(
 		content: string,
 		nodes: Array<NodeInstance<string, string, unknown>> = [],
 		stickyConfig: StickyNoteConfig = {},
+		anchorIds?: readonly string[],
 	) {
 		this.id = uuid();
 		// Use a unique default name to prevent multiple stickies from overwriting each other
 		// when added to a workflow (Map uses name as key)
 		this.name = stickyConfig.name ?? `Sticky Note ${this.id.slice(0, 8)}`;
-
-		// If nodes are provided, calculate bounding box to wrap around them
-		const boundingBox = nodes.length > 0 ? calculateNodesBoundingBox(nodes) : null;
+		this.stickyAnchorIds = anchorIds ?? resolveAnchorIds(nodes);
 
 		this.config = {
 			name: this.name,
-			position: stickyConfig.position ?? boundingBox?.position,
+			position: stickyConfig.position,
 			parameters: {
 				content,
 				...(stickyConfig.color !== undefined && { color: stickyConfig.color }),
-				...((stickyConfig.width ?? boundingBox?.width) !== undefined && {
-					width: stickyConfig.width ?? boundingBox?.width,
-				}),
-				...((stickyConfig.height ?? boundingBox?.height) !== undefined && {
-					height: stickyConfig.height ?? boundingBox?.height,
-				}),
+				...(stickyConfig.width !== undefined && { width: stickyConfig.width }),
+				...(stickyConfig.height !== undefined && { height: stickyConfig.height }),
 			},
 		};
 	}
@@ -1141,8 +1108,8 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 			height: (config.parameters?.height as number) ?? (this.config.parameters?.height as number),
 			name: config.name ?? this.name,
 		};
-		// Pass empty nodes array since update doesn't recalculate bounding box
-		return new StickyNoteInstance(newContent, [], newConfig);
+		// Anchors carry over: update() changes config, not what the sticky wraps
+		return new StickyNoteInstance(newContent, [], newConfig, this.stickyAnchorIds);
 	}
 
 	input(_index: number): InputTarget {

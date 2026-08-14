@@ -11,7 +11,13 @@ import {
 	switchCase,
 } from './node-builder';
 import { languageModel, memory, tool, outputParser } from './subnode-builders';
+import { isAnchoredStickyNote, type NodeInstance } from '../../types/base';
 import { splitInBatches } from '../control-flow-builders/split-in-batches';
+
+/** The nodes a sticky was asked to wrap, by ID. */
+function anchorsOf(instance: NodeInstance<string, string, unknown>): readonly string[] {
+	return isAnchoredStickyNote(instance) ? instance.stickyAnchorIds : [];
+}
 
 describe('Node Builder', () => {
 	describe('node()', () => {
@@ -214,7 +220,7 @@ describe('Node Builder', () => {
 			expect(s.config.parameters?.height).toBe(200);
 		});
 
-		it('should auto-position around nodes when nodes array is provided as second parameter', () => {
+		it('should record the nodes it wraps as anchors', () => {
 			const n1 = node({
 				type: 'n8n-nodes-base.httpRequest',
 				version: 4.2,
@@ -229,13 +235,10 @@ describe('Node Builder', () => {
 			// New signature: sticky(content, nodes?, config?)
 			const s = sticky('## API Section', [n1, n2], { color: 2 });
 
-			// Should calculate bounding box around nodes with padding (50px)
-			// minX = 400, maxX = 700 + 200 = 900, minY = 300, maxY = 300 + 100 = 400
-			// position = [400-50, 300-50] = [350, 250]
-			// width = (900-400) + 100 = 600, height = (400-300) + 100 = 200
-			expect(s.config.position).toEqual([350, 250]);
-			expect(s.config.parameters?.width).toBe(600);
-			expect(s.config.parameters?.height).toBe(200);
+			// The box itself is resolved during serialization, once layout has placed
+			// the anchors — see sticky-placement.test.ts
+			expect(anchorsOf(s)).toEqual([n1.id, n2.id]);
+			expect(s.config.position).toBeUndefined();
 			expect(s.config.parameters?.color).toBe(2);
 		});
 
@@ -312,8 +315,8 @@ describe('Node Builder', () => {
 
 			expect(s.type).toBe('n8n-nodes-base.stickyNote');
 			expect(s.config.parameters?.content).toBe('## Batch Processing');
-			// Should use the sibNode's position for bounding box
-			expect(s.config.position).toEqual([450, 350]);
+			// Anchors on the underlying node, not the builder wrapper
+			expect(anchorsOf(s)).toEqual([sibNode.id]);
 		});
 
 		it('should not crash when nodes array contains an IfElseBuilder', () => {
@@ -330,8 +333,8 @@ describe('Node Builder', () => {
 
 			expect(s.type).toBe('n8n-nodes-base.stickyNote');
 			expect(s.config.parameters?.content).toBe('## Conditional Logic');
-			// Should use ifNode's position for bounding box
-			expect(s.config.position).toEqual([250, 150]);
+			// Anchors on the IF node, not the builder wrapper
+			expect(anchorsOf(s)).toEqual([ifNode.id]);
 		});
 
 		it('should not crash when nodes array contains a SwitchCaseBuilder', () => {
@@ -348,8 +351,8 @@ describe('Node Builder', () => {
 
 			expect(s.type).toBe('n8n-nodes-base.stickyNote');
 			expect(s.config.parameters?.content).toBe('## Routing');
-			// Should use switchNode's position for bounding box
-			expect(s.config.position).toEqual([350, 250]);
+			// Anchors on the Switch node, not the builder wrapper
+			expect(anchorsOf(s)).toEqual([sw.id]);
 		});
 	});
 
