@@ -5,6 +5,7 @@ import { reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import BrowserUseSetupContent from '../BrowserUseSetupContent.vue';
 import BrowserUseSetupModal from '../BrowserUseSetupModal.vue';
+import type { BrowserUseExtensionState } from '../../../utils/browserUseExtension';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -29,6 +30,11 @@ vi.mock('../../../instanceAiBrowserUse.telemetry', () => ({
 const settingsStoreMock = vi.fn();
 vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => settingsStoreMock(),
+}));
+
+const { detectExtensionMock } = vi.hoisted(() => ({ detectExtensionMock: vi.fn() }));
+vi.mock('../../../utils/browserUseExtension', () => ({
+	detectBrowserUseExtension: detectExtensionMock,
 }));
 
 const CONNECT_URL =
@@ -80,11 +86,19 @@ function setUserAgent(userAgent: string) {
 	Object.defineProperty(navigator, 'userAgent', { value: userAgent, configurable: true });
 }
 
+async function renderWithExtensionState(state: BrowserUseExtensionState) {
+	detectExtensionMock.mockResolvedValue(state);
+	const rendered = renderComponent();
+	await flushPromises();
+	return rendered;
+}
+
 describe('BrowserUseSetupModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setUserAgent(CHROME_WINDOWS);
 		settingsStoreMock.mockReturnValue(makeSettingsStore());
+		detectExtensionMock.mockResolvedValue('unknown');
 	});
 
 	afterEach(() => {
@@ -113,6 +127,57 @@ describe('BrowserUseSetupModal', () => {
 		await fireEvent.click(getByTestId('browser-use-open-connect-page'));
 
 		expect(telemetryMock.trackOpenExtensionClicked).toHaveBeenCalledTimes(1);
+	});
+
+	it('replaces the connect step with an explanation when the extension is not installed', async () => {
+		const { queryByTestId, queryByText } = await renderWithExtensionState('not-installed');
+
+		expect(queryByTestId('browser-use-open-connect-page')).toBeNull();
+		expect(queryByText('instanceAi.browserUse.step.connect.description')).toBeNull();
+		expect(queryByTestId('browser-use-extension-missing-note')).not.toBeNull();
+	});
+
+	it('drops the install step entirely when the extension is detected', async () => {
+		const { queryByTestId, queryByText } = await renderWithExtensionState('installed');
+
+		expect(queryByTestId('browser-use-install-extension')).toBeNull();
+		expect(queryByText('instanceAi.browserUse.step.extension.title')).toBeNull();
+		expect(queryByTestId('browser-use-open-connect-page')).not.toBeNull();
+	});
+
+	it.each(['not-installed', 'unknown'] as const)(
+		'still offers the install step when the extension state is %s',
+		async (state) => {
+			const { queryByTestId } = await renderWithExtensionState(state);
+
+			expect(queryByTestId('browser-use-install-extension')).not.toBeNull();
+		},
+	);
+
+	it.each(['installed', 'unknown'] as const)(
+		'offers the connect button when the extension state is %s',
+		async (state) => {
+			const { getByTestId, queryByTestId } = await renderWithExtensionState(state);
+
+			expect(getByTestId('browser-use-open-connect-page')).not.toBeDisabled();
+			expect(queryByTestId('browser-use-extension-missing-note')).toBeNull();
+		},
+	);
+
+	it.each([
+		['the tab becomes visible again', () => document.dispatchEvent(new Event('visibilitychange'))],
+		['the window regains focus', () => window.dispatchEvent(new Event('focus'))],
+	])('re-probes for the extension when %s', async (_label, triggerReturn) => {
+		const { getByTestId, queryByTestId } = await renderWithExtensionState('not-installed');
+		expect(queryByTestId('browser-use-extension-missing-note')).not.toBeNull();
+
+		detectExtensionMock.mockResolvedValue('installed');
+		triggerReturn();
+		await flushPromises();
+
+		expect(queryByTestId('browser-use-extension-missing-note')).toBeNull();
+		expect(queryByTestId('browser-use-install-extension')).toBeNull();
+		expect(getByTestId('browser-use-open-connect-page')).not.toBeDisabled();
 	});
 
 	it('does not render the connect steps when already connected', () => {
@@ -216,5 +281,26 @@ describe('BrowserUseSetupModal', () => {
 
 			expect(telemetryMock.trackDirectConnectRequested).not.toHaveBeenCalled();
 		});
+
+		it('does not probe for the extension', async () => {
+			renderComponent();
+			await flushPromises();
+
+			document.dispatchEvent(new Event('visibilitychange'));
+			await flushPromises();
+
+			expect(detectExtensionMock).not.toHaveBeenCalled();
+		});
+	});
+
+	it('does not probe for the extension when already connected', async () => {
+		settingsStoreMock.mockReturnValue(makeSettingsStore({ browserConnected: true }));
+		renderComponent();
+		await flushPromises();
+
+		document.dispatchEvent(new Event('visibilitychange'));
+		await flushPromises();
+
+		expect(detectExtensionMock).not.toHaveBeenCalled();
 	});
 });

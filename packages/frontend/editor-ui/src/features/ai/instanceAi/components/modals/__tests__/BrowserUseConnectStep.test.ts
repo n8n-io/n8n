@@ -85,6 +85,16 @@ describe('BrowserUseConnectStep', () => {
 		expect(queryByTestId('browser-use-direct-connect-retry')).toBeNull();
 	});
 
+	it('shows the extension missing note instead of any connect action', async () => {
+		installExtensionMock({ connect: { accepted: true } });
+		const { getByTestId, queryByTestId } = renderComponent({ props: { extensionMissing: true } });
+		await flushPromises();
+
+		expect(getByTestId('browser-use-extension-missing-note')).toBeVisible();
+		expect(queryByTestId('browser-use-direct-connect-waiting')).toBeNull();
+		expect(queryByTestId('browser-use-open-connect-page')).toBeNull();
+	});
+
 	it('waits for the connect result once the extension opened the popup', async () => {
 		installExtensionMock({ connect: { accepted: true } });
 		const { getByTestId, queryByTestId } = renderComponent();

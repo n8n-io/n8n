@@ -8,6 +8,15 @@ import { useExtensionDirectConnect } from '../../composables/useExtensionDirectC
 
 const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
 
+const props = withDefaults(
+	defineProps<{
+		extensionMissing?: boolean;
+	}>(),
+	{
+		extensionMissing: false,
+	},
+);
+
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
@@ -62,8 +71,17 @@ onBeforeUnmount(() => {
 			{{ i18n.baseText('instanceAi.browserUse.step.connect.title') }}
 		</N8nText>
 
+		<N8nText
+			v-if="props.extensionMissing"
+			color="text-light"
+			size="small"
+			data-test-id="browser-use-extension-missing-note"
+		>
+			{{ i18n.baseText('instanceAi.browserUse.step.connect.extensionMissing') }}
+		</N8nText>
+
 		<div
-			v-if="status === 'waiting'"
+			v-else-if="status === 'waiting'"
 			:class="$style.waiting"
 			data-test-id="browser-use-direct-connect-waiting"
 		>
