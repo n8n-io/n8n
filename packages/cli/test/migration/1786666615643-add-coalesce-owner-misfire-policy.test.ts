@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddCoalesceOwnerMisfirePolicy1785844235369';
+const MIGRATION_NAME = 'AddCoalesceOwnerMisfirePolicy1786666615643';
 
 const SCHEDULE_TRIGGER_TASK_TYPE = 'workflow:schedule-trigger';
 const SYSTEM_TASK_TYPE = 'system:prune-executions';
