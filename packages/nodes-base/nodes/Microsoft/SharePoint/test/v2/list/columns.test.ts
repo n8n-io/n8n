@@ -197,6 +197,14 @@ const V1_CONTENT_TYPES_REPLY: IDataObject = {
 					readOnly: false,
 					type: 'unknownFutureValue',
 				},
+				{
+					displayName: 'Name',
+					enforceUniqueValues: false,
+					hidden: false,
+					name: 'FileLeafRef',
+					readOnly: false,
+					type: 'unknownFutureValue',
+				},
 			],
 		},
 	],
@@ -245,7 +253,10 @@ const EXPECTED_CREATE_FIELDS = [
 	{ ...sharedFieldShape, id: 'currency', displayName: 'Currency', type: 'number' },
 	{ ...sharedFieldShape, id: 'image', displayName: 'Image', type: 'object' },
 	{ ...sharedFieldShape, id: 'lookupLookupId', displayName: 'Lookup (Lookup ID)', type: 'number' },
-	{ ...sharedFieldShape, id: 'AverageRating', displayName: 'Rating (0-5)', type: 'number' },
+	// unknownFutureValue columns must never map to a numeric input: the type also covers
+	// text columns like a Documents library's Name (FileLeafRef)
+	{ ...sharedFieldShape, id: 'AverageRating', displayName: 'Rating (0-5)', type: 'string' },
+	{ ...sharedFieldShape, id: 'FileLeafRef', displayName: 'Name', type: 'string' },
 ];
 
 const SYNTHETIC_ID_FIELD = {
