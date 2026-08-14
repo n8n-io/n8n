@@ -48,6 +48,7 @@ describe('getStatus', () => {
 		mock(),
 		mock(),
 		mock(),
+		mock(),
 	);
 	const sourceControlContextFactory = mock<SourceControlContextFactory>();
 	const sourceControlStatusService = new SourceControlStatusService(
