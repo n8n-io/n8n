@@ -4,6 +4,7 @@ import type { InstanceAiContext } from '../../../types';
 import {
 	ensureUniqueNodeIds,
 	ensureWebhookIds,
+	preserveExistingNodeIds,
 	hasLostAllSavedNodeIds,
 	isMockableTriggerNodeType,
 	isTriggerNodeType,
@@ -194,6 +195,170 @@ describe('ensureUniqueNodeIds', () => {
 		ensureUniqueNodeIds(workflow);
 
 		expect(workflow.nodeGroups?.[0]?.nodeIds).toEqual(['a', 'b']);
+	});
+});
+
+describe('preserveExistingNodeIds', () => {
+	const node = (id: string, name: string): WorkflowJSON['nodes'][number] => ({
+		id,
+		name,
+		type: 'n8n-nodes-base.set',
+		typeVersion: 3.4,
+		position: [0, 0],
+		parameters: {},
+	});
+
+	const contextWithExisting = (existing: WorkflowJSON) =>
+		({
+			workflowService: { getAsWorkflowJSON: vi.fn().mockResolvedValue(existing) },
+		}) as unknown as InstanceAiContext;
+
+	/**
+	 * The case Oleg found: a node the agent added in an earlier build has no `id` in the
+	 * source file (nothing writes it back), so every rebuild from that file mints a fresh
+	 * one. Recovering it by name keeps the identity the save already assigned.
+	 */
+	it('recovers the saved id of a node whose source declares none', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [node('saved-trigger', 'Trigger'), node('assigned-on-first-build', 'Added')],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('saved-trigger', 'Trigger'), node('fresh-uuid', 'Added')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes.find((n) => n.name === 'Added')?.id).toBe('assigned-on-first-build');
+		expect(rebuilt.nodes.find((n) => n.name === 'Trigger')?.id).toBe('saved-trigger');
+	});
+
+	it('leaves a node that already carries a saved id untouched', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [node('a', 'A'), node('b', 'B')],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('a', 'A'), node('b', 'B')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes.map((n) => n.id)).toEqual(['a', 'b']);
+	});
+
+	/** A declared id is authoritative: a rename must follow the id, not be undone by name. */
+	it('keeps a declared id when the node was renamed', async () => {
+		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('a', 'Old')], connections: {} };
+		const rebuilt: WorkflowJSON = { name: 'Rebuilt', nodes: [node('a', 'New')], connections: {} };
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes[0].id).toBe('a');
+		expect(rebuilt.nodes[0].name).toBe('New');
+	});
+
+	/** A new node must not inherit the id of a node that merely gave up its name. */
+	it('does not hand a saved id to a new node that reused a renamed node name', async () => {
+		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('a', 'Old')], connections: {} };
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('a', 'New'), node('fresh', 'Old')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes.find((n) => n.name === 'New')?.id).toBe('a');
+		expect(rebuilt.nodes.find((n) => n.name === 'Old')?.id).toBe('fresh');
+	});
+
+	it('leaves a genuinely new node with its fresh id', async () => {
+		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('a', 'A')], connections: {} };
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('a', 'A'), node('fresh', 'Brand New')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes.find((n) => n.name === 'Brand New')?.id).toBe('fresh');
+	});
+
+	it('self-heals an id the agent mangled', async () => {
+		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('saved-a', 'Get')], connections: {} };
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('saved-aX', 'Get')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes[0].id).toBe('saved-a');
+	});
+
+	it('remaps node-group membership onto a recovered id', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [node('saved-added', 'Added')],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('fresh', 'Added')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['fresh'] }],
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodeGroups?.[0]?.nodeIds).toEqual(['saved-added']);
+	});
+
+	it('keeps every id unique after recovery', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [node('a', 'A'), node('b', 'B')],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('fresh-1', 'A'), node('fresh-2', 'B')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		const ids = rebuilt.nodes.map((n) => n.id);
+		expect(ids).toEqual(['a', 'b']);
+		expect(new Set(ids).size).toBe(2);
+	});
+
+	it('does not fetch or change anything for a new workflow', async () => {
+		const context = contextWithExisting({ name: 'Saved', nodes: [], connections: {} });
+		const rebuilt: WorkflowJSON = { name: 'New', nodes: [node('x', 'A')], connections: {} };
+
+		await preserveExistingNodeIds(rebuilt, undefined, context);
+
+		expect(context.workflowService.getAsWorkflowJSON).not.toHaveBeenCalled();
+		expect(rebuilt.nodes[0].id).toBe('x');
+	});
+
+	it('leaves ids alone when the saved workflow has none to recover', async () => {
+		const context = contextWithExisting({ name: 'Saved', nodes: [], connections: {} });
+		const rebuilt: WorkflowJSON = { name: 'R', nodes: [node('fresh', 'A')], connections: {} };
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', context);
+
+		expect(rebuilt.nodes[0].id).toBe('fresh');
 	});
 });
 

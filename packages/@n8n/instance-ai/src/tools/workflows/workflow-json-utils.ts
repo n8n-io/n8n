@@ -230,13 +230,88 @@ export function ensureUniqueNodeIds(json: WorkflowJSON): void {
 }
 
 /**
+ * Recover the saved ID of a surviving node whose rebuilt source declared none.
+ *
+ * Identity is carried structurally: `get-as-code` emits each node's `id`, and a node that keeps
+ * it keeps its identity even through a rename. But a node the agent *adds* has no `id` in the
+ * source, gets a fresh UUID on save, and nothing writes that UUID back into the workspace file —
+ * so the next rebuild from that same file (the documented repair path) would mint another one.
+ * This recovers it by name, which also covers a rewrite that dropped the `id` lines entirely.
+ *
+ * Layered strictly *under* the declared ID, never instead of it:
+ *
+ *   1. an ID the saved workflow already holds → the node matched structurally; left untouched,
+ *      so a rename follows the ID rather than being undone by name;
+ *   2. otherwise a saved ID whose name still exists and is unclaimed → recovered;
+ *   3. otherwise the fresh UUID stands — the node is genuinely new.
+ *
+ * Membership of `savedIds` is the provenance signal, so no channel from the sandbox is needed:
+ * an ID that came back unchanged was declared, and one that did not was minted this build. That
+ * also self-heals an ID the agent mangled, which a provenance flag would have waved through.
+ */
+export async function preserveExistingNodeIds(
+	json: WorkflowJSON,
+	workflowId: string | undefined,
+	ctx: InstanceAiContext,
+): Promise<void> {
+	if (!workflowId || !json.nodes?.length) return;
+
+	let existing: WorkflowJSON;
+	try {
+		existing = await ctx.workflowService.getAsWorkflowJSON(workflowId);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(
+			`Failed to load existing workflow ${workflowId} to preserve node IDs: ${message}`,
+			{ cause: error },
+		);
+	}
+
+	const savedIds = new Set<string>();
+	const savedIdsByName = new Map<string, string>();
+	for (const node of existing.nodes ?? []) {
+		if (!node.id) continue;
+		savedIds.add(node.id);
+		if (node.name) savedIdsByName.set(node.name, node.id);
+	}
+	if (savedIds.size === 0) return;
+
+	// Claim up front every saved ID that came back unchanged, so a node that merely inherited a
+	// renamed node's name cannot take an ID its original owner is still using.
+	const claimedSavedIds = new Set<string>();
+	for (const node of json.nodes) {
+		if (node.id && savedIds.has(node.id)) claimedSavedIds.add(node.id);
+	}
+
+	// `ensureUniqueNodeIds` runs first, so IDs are unique here and a flat old→new map is safe.
+	const recoveredIds = new Map<string, string>();
+
+	for (const node of json.nodes) {
+		if (!node.name || (node.id && savedIds.has(node.id))) continue;
+
+		const savedId = savedIdsByName.get(node.name);
+		if (!savedId || claimedSavedIds.has(savedId)) continue;
+
+		claimedSavedIds.add(savedId);
+		if (node.id) recoveredIds.set(node.id, savedId);
+		node.id = savedId;
+	}
+
+	if (recoveredIds.size === 0) return;
+
+	for (const group of json.nodeGroups ?? []) {
+		group.nodeIds = group.nodeIds.map((nodeId) => recoveredIds.get(nodeId) ?? nodeId);
+	}
+}
+
+/**
  * True when an update kept none of the saved workflow's node IDs.
  *
- * Node identity is carried through the `id` values in the generated source, so a rewrite
- * that drops them re-identifies the whole graph: execution-log pairing, poll cursors and
- * dedupe state reset, and the version diff shows every node as deleted and re-added. That
- * is worth reporting, but it is also legitimate when a workflow really was replaced
- * wholesale — hence informational only, never a blocked save.
+ * Runs after `preserveExistingNodeIds`, so this is now the residual case: nothing matched,
+ * neither by declared ID nor by name. That means the rebuild genuinely replaced the graph —
+ * execution-log pairing, poll cursors and dedupe state all reset, and the version diff shows
+ * every node as deleted and re-added. Legitimate when the user really did ask for a
+ * replacement, hence informational only, never a blocked save.
  *
  * Never throws: a signal must not be able to fail a build.
  */

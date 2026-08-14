@@ -61,6 +61,7 @@ import {
 	ensureWebhookIds,
 	getReferencedWorkflowIds,
 	hasLostAllSavedNodeIds,
+	preserveExistingNodeIds,
 	isTriggerNodeType,
 	preserveExistingNodeGroupIds,
 	preserveExistingSetupValues,
@@ -823,6 +824,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			try {
 				// Runs first: the passes below key off node ids, so they must be unique.
 				ensureUniqueNodeIds(json);
+				// Recovers the saved id of a surviving node whose source declared none — layered
+				// under the declared id, so a rename still follows the id.
+				await preserveExistingNodeIds(json, targetWorkflowId, context);
 				await preserveExistingSetupValues(json, targetWorkflowId, context);
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
