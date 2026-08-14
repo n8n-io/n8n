@@ -1053,7 +1053,7 @@ describe('CredentialConfig', () => {
 		});
 	});
 
-	describe('Connect banner gating by connect permission', () => {
+	describe('Connect banner gating', () => {
 		const oAuthNotConnectedProps = {
 			isManaged: false,
 			mode: 'edit' as const,
@@ -1088,6 +1088,18 @@ describe('CredentialConfig', () => {
 
 			expect(screen.getByTestId('oauth-not-connected-banner')).toBeInTheDocument();
 			expect(screen.queryByTestId('quick-connect-button')).not.toBeInTheDocument();
+		});
+
+		it('hides the connect banner while required properties are not filled', () => {
+			renderComponent({
+				props: {
+					...oAuthNotConnectedProps,
+					requiredPropertiesFilled: false,
+					credentialPermissions: { read: true, connect: true },
+				},
+			});
+
+			expect(screen.getByTestId('oauth-not-connected-banner')).not.toBeVisible();
 		});
 	});
 

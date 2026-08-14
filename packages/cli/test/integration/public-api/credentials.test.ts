@@ -4,6 +4,7 @@ import { createTeamProject, linkUserToProject, randomName, testDb } from '@n8n/b
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Snowflake } from 'n8n-nodes-base/credentials/Snowflake.credentials';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	type ICredentialDataDecryptedObject,
@@ -12,6 +13,7 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
@@ -48,6 +50,14 @@ beforeAll(async () => {
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	await utils.initCredentialsTypes();
+
+	// `snowflake` carries a conditionally-required field (`privateKey` under
+	// `authentication: keyPair`), which none of the shared test credential types
+	// do; the partial-update tests below need that schema shape.
+	Container.get(LoadNodesAndCredentials).loaded.credentials.snowflake = {
+		type: new Snowflake(),
+		sourcePath: '',
+	};
 });
 
 beforeEach(async () => {
@@ -1266,6 +1276,85 @@ describe('PATCH /credentials/:id', () => {
 		expect(updatedData.accessToken).toBe(originalAccessToken); // Should keep original, not blanking value
 		expect(updatedData.user).toBe('newUserValue'); // Should be updated
 		expect(updatedData.server).toBe(originalServer); // Should be preserved
+	});
+
+	test('should not require omitted fields when isPartialData is true', async () => {
+		// `ftp` marks `host` and `port` as unconditionally required in its schema
+		const savedCredential = await saveCredential(
+			{
+				name: randomName(),
+				type: 'ftp',
+				data: { host: 'ftp.example.com', port: 21, username: 'user', password: 'oldPassword' },
+			},
+			{ user: owner },
+		);
+
+		// A partial payload omits required keys by design: it is validated per key
+		// and merged with the stored data, so it must not fail key-presence checks.
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ data: { password: 'newPassword' }, isPartialData: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.password).toBe('newPassword');
+		expect(updatedData.host).toBe('ftp.example.com');
+		expect(updatedData.port).toBe(21);
+	});
+
+	test('should keep requiring fields on a full-replace update', async () => {
+		const savedCredential = await saveCredential(
+			{
+				name: randomName(),
+				type: 'ftp',
+				data: { host: 'ftp.example.com', port: 21, username: 'user', password: 'oldPassword' },
+			},
+			{ user: owner },
+		);
+
+		// Without isPartialData the payload replaces the whole data object, so
+		// required keys must still be present.
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ data: { password: 'newPassword' } });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should not require conditionally-required fields when isPartialData is true', async () => {
+		// `snowflake` requires `privateKey` only while `authentication` is `keyPair`,
+		// a conditional `allOf` block in the schema (unlike ftp's flat `required`).
+		const savedCredential = await saveCredential(
+			{
+				name: randomName(),
+				type: 'snowflake',
+				data: {
+					account: 'acme',
+					database: 'db',
+					warehouse: 'wh',
+					authentication: 'password',
+					username: 'user',
+					password: 'oldPassword',
+				},
+			},
+			{ user: owner },
+		);
+
+		// Pins the partial-update semantics: the payload is validated per key only,
+		// so flipping a mode field without its conditionally-required dependents is
+		// accepted and merged; the merged result is not re-validated against the
+		// full schema.
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ data: { authentication: 'keyPair' }, isPartialData: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.authentication).toBe('keyPair');
+		expect(updatedData.privateKey).toBeUndefined();
+		expect(updatedData.password).toBe('oldPassword');
 	});
 });
 

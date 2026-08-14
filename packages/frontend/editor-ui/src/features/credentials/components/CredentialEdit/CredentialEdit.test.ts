@@ -1261,7 +1261,12 @@ describe('CredentialEdit', () => {
 
 		const setupExistingOAuthCredential = (
 			credentialModalState: Partial<NewCredentialsModal> = {},
-			dataOverrides: { scopes?: Scope[]; isResolvable?: boolean; connectedByMe?: boolean } = {},
+			dataOverrides: {
+				scopes?: Scope[];
+				isResolvable?: boolean;
+				connectedByMe?: boolean;
+				data?: Record<string, string>;
+			} = {},
 		) => {
 			vi.stubGlobal('BroadcastChannel', BroadcastChannelMock);
 			vi.stubGlobal(
@@ -1283,7 +1288,7 @@ describe('CredentialEdit', () => {
 			};
 			credentialsStore.getCredentialData.mockResolvedValueOnce({
 				// @ts-expect-error data is decrypted
-				data: {
+				data: dataOverrides.data ?? {
 					grantType: 'authorizationCode',
 					authUrl: 'https://auth.example.com',
 					accessTokenUrl: 'https://token.example.com',
@@ -1576,6 +1581,33 @@ describe('CredentialEdit', () => {
 			await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalledTimes(2));
 
 			expect(confirmMock).not.toHaveBeenCalled();
+		});
+
+		test('reveals the connect banner without saving once missing required fields are filled', async () => {
+			const { credentialsStore, queryByTestId, getAllByTestId } = setupExistingOAuthCredential(
+				{},
+				{
+					// clientId is missing, so the modal opens with the validation
+					// warning latched and the connect banner suppressed
+					data: {
+						grantType: 'authorizationCode',
+						authUrl: 'https://auth.example.com',
+						accessTokenUrl: 'https://token.example.com',
+						clientSecret: 'secret',
+					},
+				},
+			);
+
+			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await waitFor(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+
+			const clientIdForm = getAllByTestId('credential-connection-parameter').find((form) =>
+				form.textContent?.includes('Client ID'),
+			);
+			expect(clientIdForm).toBeDefined();
+			await userEvent.type(within(clientIdForm!).getByRole('textbox'), 'client');
+
+			await waitFor(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
 		});
 	});
 
