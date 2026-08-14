@@ -15,6 +15,7 @@ describe('getAdditionalKeys', () => {
 		formWaitingBaseUrl: 'https://form.test',
 		variables: { testVar: 'value' },
 		externalSecretsProxy,
+		rootExecutionMode: undefined,
 	});
 	additionalData.externalSecretProviderKeysAccessibleByCredential =
 		providerKeysAccessibleByCredential;
