@@ -201,10 +201,14 @@ function calculateNodeHeight(mainInputCount: number, mainOutputCount: number): n
 	return DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
 }
 
-/** Whether a sticky carries its own width/height, rather than relying on defaults. */
-function declaresOwnSize(graphNode: GraphNode): boolean {
-	const parameters = graphNode.instance.config?.parameters;
-	return typeof parameters?.width === 'number' || typeof parameters?.height === 'number';
+/** Whether a sticky carries its own width, rather than relying on the default. */
+function declaresOwnWidth(graphNode: GraphNode): boolean {
+	return typeof graphNode.instance.config?.parameters?.width === 'number';
+}
+
+/** Whether a sticky carries its own height, rather than relying on the default. */
+function declaresOwnHeight(graphNode: GraphNode): boolean {
+	return typeof graphNode.instance.config?.parameters?.height === 'number';
 }
 
 /**
@@ -532,11 +536,9 @@ export function resolveStickyGeometry(
 		return { x: position[0], y: position[1], width, height };
 	};
 
-	const placed: BoundingBox[] = [];
-
-	for (const name of stickyNames) {
+	const resolved = stickyNames.flatMap((name) => {
 		const graphNode = nodes.get(name);
-		if (!graphNode) continue;
+		if (!graphNode) return [];
 
 		const { instance } = graphNode;
 		const explicitPosition = instance.config?.position;
@@ -550,28 +552,48 @@ export function resolveStickyGeometry(
 			: [];
 
 		const wrappingBox = wrappingBoxFor(anchorBoxes);
-		const sizedByAnchors = wrappingBox !== undefined && !declaresOwnSize(graphNode);
 
-		// Whatever the caller declared wins; the anchors only fill in what is missing.
+		// Whatever the caller declared wins, dimension by dimension; the anchors only
+		// fill in what is missing, so a declared width still gets a wrapping height.
+		const declared = declaredStickySize(graphNode);
+		const ownWidth = declaresOwnWidth(graphNode);
+		const ownHeight = declaresOwnHeight(graphNode);
+		const size = {
+			width: !ownWidth && wrappingBox ? wrappingBox.width : declared.width,
+			height: !ownHeight && wrappingBox ? wrappingBox.height : declared.height,
+		};
+		const sizedByAnchors = wrappingBox !== undefined && !(ownWidth && ownHeight);
+
 		const origin = toPoint(explicitPosition) ??
 			(wrappingBox && { x: wrappingBox.x, y: wrappingBox.y }) ??
 			toPoint(positions.get(name)) ?? { x: START_X, y: DEFAULT_Y };
-		const size =
-			sizedByAnchors && wrappingBox
-				? { width: wrappingBox.width, height: wrappingBox.height }
-				: declaredStickySize(graphNode);
 
-		let box: BoundingBox = { ...origin, ...size };
+		// A sticky is pinned when the author placed it or when it wraps anchors — moving
+		// either one would take it away from the thing it is meant to sit on.
+		const pinned = explicitPosition !== undefined || wrappingBox !== undefined;
 
-		// An explicitly placed sticky is where the author wanted it; everything else
-		// gets pushed clear of the stickies already placed so none of them stack.
-		if (!explicitPosition) box = separateFrom(placed, box);
+		return [{ name, box: { ...origin, ...size }, sizedByAnchors, pinned }];
+	});
 
-		placed.push(box);
+	const record = (name: string, box: BoundingBox, sizedByAnchors: boolean): void => {
 		geometryByName.set(name, {
 			position: [box.x, box.y],
 			...(sizedByAnchors && { size: { width: box.width, height: box.height } }),
 		});
+	};
+
+	const placed = resolved.filter((sticky) => sticky.pinned).map(({ box }) => box);
+	for (const { name, box, sizedByAnchors, pinned } of resolved) {
+		if (pinned) {
+			record(name, box, sizedByAnchors);
+			continue;
+		}
+
+		// Free-floating notes have nowhere they need to be, so they give way to
+		// everything already placed rather than stacking on it.
+		const separated = separateFrom(placed, box);
+		placed.push(separated);
+		record(name, separated, sizedByAnchors);
 	}
 
 	return geometryByName;

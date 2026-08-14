@@ -7,7 +7,7 @@
 
 import type { NodeJSON, WorkflowJSON } from '../types/base';
 import { workflow } from '../workflow-builder';
-import { DEFAULT_NODE_SIZE, STICKY_NODE_TYPE } from './constants';
+import { DEFAULT_NODE_SIZE, DEFAULT_STICKY_SIZE, STICKY_NODE_TYPE } from './constants';
 import { node, sticky, trigger } from './node-builders/node-builder';
 
 interface Box {
@@ -32,9 +32,6 @@ function nodeBox(json: WorkflowJSON, name: string): Box {
 		height: DEFAULT_NODE_SIZE[1],
 	};
 }
-
-/** Matches the StickyNote node's own width/height defaults, used when the sticky declares none. */
-const DEFAULT_STICKY_SIZE: [number, number] = [240, 160];
 
 function stickyBox(json: WorkflowJSON, name: string): Box {
 	const found = findNode(json, name);
@@ -165,6 +162,41 @@ describe('sticky note placement with tidyUp', () => {
 		expect(stickyBox(json, 'Large note').width).toBeGreaterThan(
 			stickyBox(json, 'Small note').width,
 		);
+	});
+
+	it('keeps wrapping its anchors when two anchored stickies overlap', () => {
+		const { start, fetch, compute, post, record } = buildChain();
+		// Overlapping anchor sets: both stickies want a box around "Compute week"
+		const first = sticky('## Ingest', [start, fetch, compute], { name: 'First note' });
+		const second = sticky('## Deliver', [compute, post, record], { name: 'Second note' });
+
+		const json = workflow('wf', 'Test')
+			.add(start.to(fetch).to(compute).to(post).to(record))
+			.add(first)
+			.add(second)
+			.toJSON({ tidyUp: true });
+
+		// Neither may be shoved off its anchors just because the two boxes intersect
+		const firstBox = stickyBox(json, 'First note');
+		expect(contains(firstBox, nodeBox(json, 'Every Friday'))).toBe(true);
+		expect(contains(firstBox, nodeBox(json, 'Compute week'))).toBe(true);
+
+		const secondBox = stickyBox(json, 'Second note');
+		expect(contains(secondBox, nodeBox(json, 'Compute week'))).toBe(true);
+		expect(contains(secondBox, nodeBox(json, 'Record run'))).toBe(true);
+	});
+
+	it('derives only the dimension the caller left out', () => {
+		const { start, fetch } = buildChain();
+		const note = sticky('## Wide', [start, fetch], { name: 'Wide note', width: 800 });
+
+		const json = workflow('wf', 'Test').add(start.to(fetch)).add(note).toJSON({ tidyUp: true });
+
+		const box = stickyBox(json, 'Wide note');
+		// Declared width is honoured, height still wraps the anchors
+		expect(box.width).toBe(800);
+		expect(contains(box, nodeBox(json, 'Every Friday'))).toBe(true);
+		expect(contains(box, nodeBox(json, 'Active teams'))).toBe(true);
 	});
 
 	it('emits every sticky as a sticky note node', () => {
