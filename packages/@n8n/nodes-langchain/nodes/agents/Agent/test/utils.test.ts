@@ -1,109 +1,52 @@
-import type { Tool } from '@langchain/classic/tools';
-import { DynamicStructuredTool } from '@langchain/classic/tools';
 import { NodeOperationError } from 'n8n-workflow';
-import type { INode } from 'n8n-workflow';
-import { z } from 'zod';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
-import type { ZodObjectAny } from '../../../../types/types';
-import { checkForStructuredTools } from '../agents/utils';
-import { getInputs } from '../utils';
+import { assertToolsAgentMode, getInputs } from '../utils';
 
-describe('checkForStructuredTools', () => {
-	let mockNode: INode;
+describe('assertToolsAgentMode', () => {
+	const createContext = (parameters: INode['parameters'], typeVersion = 1.6) =>
+		({
+			getNode: () => ({
+				id: 'test-node',
+				name: 'AI Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion,
+				position: [0, 0],
+				parameters,
+			}),
+		}) as unknown as IExecuteFunctions;
 
-	beforeEach(() => {
-		mockNode = {
-			id: 'test-node',
-			name: 'Test Node',
-			type: 'test',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		};
+	it('should not throw when the agent parameter is unset from version 1.6 onwards', () => {
+		expect(() => assertToolsAgentMode(createContext({}))).not.toThrow();
 	});
 
-	it('should not throw error when no DynamicStructuredTools are present', async () => {
-		const tools = [
-			{
-				name: 'regular-tool',
-				constructor: { name: 'Tool' },
-			} as Tool,
-		];
-
-		await expect(
-			checkForStructuredTools(tools, mockNode, 'Conversation Agent'),
-		).resolves.not.toThrow();
-	});
-
-	it('should throw NodeOperationError when DynamicStructuredTools are present', async () => {
-		const dynamicTool = new DynamicStructuredTool({
-			name: 'dynamic-tool',
-			description: 'test tool',
-			schema: z.object({}),
-			func: async () => 'result',
-		});
-
-		const tools: Array<Tool | DynamicStructuredTool<ZodObjectAny>> = [dynamicTool];
-
-		await expect(checkForStructuredTools(tools, mockNode, 'Conversation Agent')).rejects.toThrow(
-			NodeOperationError,
+	it('should throw when the agent parameter is unset up to version 1.5', () => {
+		expect(() => assertToolsAgentMode(createContext({}, 1.5))).toThrow(
+			'The "Conversational Agent" mode is no longer available',
 		);
-
-		await expect(
-			checkForStructuredTools(tools, mockNode, 'Conversation Agent'),
-		).rejects.toMatchObject({
-			message:
-				'The selected tools are not supported by "Conversation Agent", please use "Tools Agent" instead',
-			description: 'Incompatible connected tools: "dynamic-tool"',
-		});
 	});
 
-	it('should list multiple dynamic tools in error message', async () => {
-		const dynamicTool1 = new DynamicStructuredTool({
-			name: 'dynamic-tool-1',
-			description: 'test tool 1',
-			schema: z.object({}),
-			func: async () => 'result',
-		});
-
-		const dynamicTool2 = new DynamicStructuredTool({
-			name: 'dynamic-tool-2',
-			description: 'test tool 2',
-			schema: z.object({}),
-			func: async () => 'result',
-		});
-
-		const tools = [dynamicTool1, dynamicTool2];
-
-		await expect(
-			checkForStructuredTools(tools, mockNode, 'Conversation Agent'),
-		).rejects.toMatchObject({
-			description: 'Incompatible connected tools: "dynamic-tool-1", "dynamic-tool-2"',
-		});
+	it('should not throw for the tools agent', () => {
+		expect(() => assertToolsAgentMode(createContext({ agent: 'toolsAgent' }))).not.toThrow();
 	});
 
-	it('should throw error with mixed tool types and list only dynamic tools in error message', async () => {
-		const regularTool = {
-			name: 'regular-tool',
-			constructor: { name: 'Tool' },
-		} as Tool;
+	it('should not throw for versions 2 and above', () => {
+		expect(() => assertToolsAgentMode(createContext({}, 2.2))).not.toThrow();
+	});
 
-		const dynamicTool = new DynamicStructuredTool({
-			name: 'dynamic-tool',
-			description: 'test tool',
-			schema: z.object({}),
-			func: async () => 'result',
-		});
+	it.each([
+		['conversationalAgent', 'Conversational Agent'],
+		['openAiFunctionsAgent', 'OpenAI Functions Agent'],
+		['planAndExecuteAgent', 'Plan and Execute Agent'],
+		['reActAgent', 'ReAct Agent'],
+		['sqlAgent', 'SQL Agent'],
+	])('should throw for the %s mode', (agent, displayName) => {
+		const context = createContext({ agent });
 
-		const tools = [regularTool, dynamicTool];
-
-		await expect(
-			checkForStructuredTools(tools, mockNode, 'Conversation Agent'),
-		).rejects.toMatchObject({
-			message:
-				'The selected tools are not supported by "Conversation Agent", please use "Tools Agent" instead',
-			description: 'Incompatible connected tools: "dynamic-tool"',
-		});
+		expect(() => assertToolsAgentMode(context)).toThrow(NodeOperationError);
+		expect(() => assertToolsAgentMode(context)).toThrow(
+			`The "${displayName}" mode is no longer available`,
+		);
 	});
 });
 

@@ -16,7 +16,7 @@ import {
 
 import { getToolsAgentProperties } from '../agents/ToolsAgent/V2/description';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
-import { getInputs } from '../utils';
+import { assertToolsAgentMode, getInputs } from '../utils';
 
 export class AgentV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -24,7 +24,8 @@ export class AgentV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2],
+			// Versions 1 to 1.9 are served by this implementation as well
+			version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2],
 			iconColor: 'black',
 			defaults: {
 				name: 'AI Agent',
@@ -139,6 +140,8 @@ export class AgentV2 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		assertToolsAgentMode(this);
+
 		return await toolsAgentExecute.call(this);
 	}
 }
