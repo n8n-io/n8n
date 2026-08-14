@@ -270,6 +270,17 @@ describe('external messages (direct connect flow)', () => {
 		expect(chromeMock.storage.session.set).not.toHaveBeenCalled();
 	});
 
+	it('responds not accepted when opening the popup fails', async () => {
+		chromeMock.windows.create.mockRejectedValue(new Error('window creation failed'));
+
+		const response = await simulateExternalMessage(
+			{ type: 'connect', relayUrl: RELAY_URL },
+			ALLOWED_ORIGIN,
+		);
+
+		expect(response()).toEqual({ accepted: false });
+	});
+
 	it('throttles rapid connect requests', async () => {
 		const first = await simulateExternalMessage(
 			{ type: 'connect', relayUrl: RELAY_URL },

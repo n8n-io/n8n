@@ -228,7 +228,10 @@ chrome.runtime.onMessageExternal.addListener(
 		log.debug('external message received:', message.type, 'from', sender.origin);
 
 		if (message.type === 'connect') {
-			void handleExternalConnect(message.relayUrl).then(sendResponse);
+			void handleExternalConnect(message.relayUrl).then(sendResponse, (error: unknown) => {
+				log.warn('external connect failed:', error);
+				sendResponse({ accepted: false });
+			});
 			return true;
 		}
 
