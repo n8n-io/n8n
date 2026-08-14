@@ -1,6 +1,6 @@
 import type { AgentActivity, CapturedToolCall, EventOutcome } from '../../types';
-import { runExpectedToolsInvokedCheck } from '../expected-tools-invoked';
-import type { DiscoveryTestCase } from '../types';
+import { evaluateDiscoveryTrial, runExpectedToolsInvokedCheck } from '../expected-tools-invoked';
+import type { DiscoveryTestCase, DiscoveryTrialFacts } from '../types';
 
 type ToolCallInput = Pick<CapturedToolCall, 'toolName'> &
 	Partial<Pick<CapturedToolCall, 'args' | 'result'>>;
@@ -599,5 +599,98 @@ describe('runExpectedToolsInvokedCheck', () => {
 				),
 			).toThrow();
 		});
+	});
+});
+
+describe('evaluateDiscoveryTrial', () => {
+	const trial = (overrides: Partial<DiscoveryTrialFacts> = {}): DiscoveryTrialFacts => ({
+		streamStatus: 'completed',
+		timeoutMs: 60_000,
+		unmatchedConfirmations: [],
+		...overrides,
+	});
+
+	const negativeOnly: DiscoveryTestCase = {
+		id: 'test',
+		userMessage: 'Set up a Slack credential.',
+		expectedToolInvocations: { noneOf: ['browser_navigate'] },
+	};
+
+	const positiveOnly: DiscoveryTestCase = {
+		id: 'test',
+		userMessage: 'Screenshot my dashboard.',
+		expectedToolInvocations: { anyOf: ['browser_navigate'] },
+	};
+
+	const satisfied = makeOutcome({ toolCalls: [{ toolName: 'browser_navigate' }] });
+
+	it('passes a satisfied expectation on a completed run', () => {
+		expect(evaluateDiscoveryTrial(negativeOnly, makeOutcome({}), trial()).pass).toBe(true);
+		expect(evaluateDiscoveryTrial(positiveOnly, satisfied, trial()).pass).toBe(true);
+	});
+
+	it.each([
+		['negative-only', negativeOnly, makeOutcome({})],
+		['positive-only', positiveOnly, satisfied],
+	])('fails a satisfied %s expectation when the run stopped at its step cap', (_l, s, outcome) => {
+		const result = evaluateDiscoveryTrial(s, outcome, trial({ streamStatus: 'step-exhausted' }));
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('step cap');
+	});
+
+	it.each(['errored', 'suspended'] as const)(
+		'fails a satisfied expectation when the run %s',
+		(streamStatus) => {
+			const result = evaluateDiscoveryTrial(positiveOnly, satisfied, trial({ streamStatus }));
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('Run did not complete');
+		},
+	);
+
+	it('fails a satisfied expectation when the run exceeded its budget', () => {
+		const result = evaluateDiscoveryTrial(
+			positiveOnly,
+			satisfied,
+			trial({ streamStatus: 'timed-out', timeoutMs: 150_000 }),
+		);
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('exceeded its 150000ms budget');
+	});
+
+	it('reports the run error alongside the invalid trial', () => {
+		const result = evaluateDiscoveryTrial(
+			negativeOnly,
+			makeOutcome({}),
+			trial({ streamStatus: 'errored', runError: 'overloaded_error' }),
+		);
+
+		expect(result.comment).toContain('errored: overloaded_error');
+	});
+
+	it('keeps the expectation diagnostic when an invalid trial also failed its expectation', () => {
+		const result = evaluateDiscoveryTrial(
+			positiveOnly,
+			makeOutcome({ toolCalls: [{ toolName: 'nodes' }] }),
+			trial({ streamStatus: 'timed-out' }),
+		);
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('budget and was abandoned');
+		expect(result.comment).toContain('Expected at least one of');
+	});
+
+	it('fails when a declared confirmation answer was never asked for', () => {
+		const result = evaluateDiscoveryTrial(
+			negativeOnly,
+			makeOutcome({}),
+			trial({ unmatchedConfirmations: ['mcp_notion_notion-search'] }),
+		);
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('mcp_notion_notion-search');
+		expect(result.comment).toContain('never ran');
 	});
 });

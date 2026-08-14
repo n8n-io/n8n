@@ -11,8 +11,9 @@
 // stubbed — when the orchestrator loads a runtime skill or reaches for a
 // Computer Use browser tool, the tool-call event fires before any downstream
 // failure, so the discovery check still sees the dispatch intent. The wall-clock
-// timeout bounds the loop so an erroring tool can't drive API spend; scenarios
-// or --max-steps can additionally opt into an iteration cap.
+// timeout bounds the trial, not the run: at the budget the trial stops and fails,
+// and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
+// can additionally opt into an iteration cap.
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
@@ -21,10 +22,12 @@ import { nanoid } from 'nanoid';
 import {
 	buildConfirmationPolicy,
 	resolveConfirmation,
+	unmatchedConfirmations,
 	type ApprovalResponder,
 } from './confirmation-policy';
 import { credentialAutoSetupResponder } from './credential-approval';
-import { runExpectedToolsInvokedCheck } from './expected-tools-invoked';
+import { evaluateDiscoveryTrial } from './expected-tools-invoked';
+import { resolveStreamStatus } from './stream-status';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import {
 	createMcpConnectResponder,
@@ -34,7 +37,7 @@ import {
 	stubMcpServerConfigs,
 	type StubMcpRegistry,
 } from './stub-mcp-registry';
-import type { DiscoveryCheckResult, DiscoveryTestCase } from './types';
+import type { DiscoveryCheckResult, DiscoveryStreamStatus, DiscoveryTestCase } from './types';
 import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
@@ -55,6 +58,7 @@ import type {
 import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
+import { createStubWorkspace, stubWorkspaceRoot } from '../harness/stub-workspace';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, EventOutcome } from '../types';
 
@@ -67,7 +71,7 @@ export interface DiscoveryRunOptions {
 	modelId: ModelConfig;
 	/** Defaults to `defaultNodesJsonPath()`. */
 	nodesJsonPath?: string;
-	/** Hard cap on agent steps. Discovery scenarios are single-turn — 5 is plenty. */
+	/** Hard cap on agent steps. Unset leaves the SDK's own 30-iteration ceiling in place. */
 	maxSteps?: number;
 	/** Per-trial timeout in ms. */
 	timeoutMs?: number;
@@ -80,7 +84,7 @@ export interface DiscoveryRunResult {
 	outcome: EventOutcome;
 	durationMs: number;
 	/** Final agent status — useful for diagnosing why noop / unexpected loops happened. */
-	streamStatus: 'completed' | 'errored' | 'cancelled' | 'suspended';
+	streamStatus: DiscoveryStreamStatus;
 	/** Populated when the run errored before reaching the check. */
 	runError?: string;
 }
@@ -89,9 +93,9 @@ export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
 	const started = Date.now();
-	// Uncapped by default, matching live behavior: today's orchestrator legitimately
-	// explores past any small fixed cap (data-table-workflow needs >8 iterations), and
-	// the wall-clock timeout below bounds runaway runs. Scenarios/CLI opt in to a cap.
+	// Unset by default: the orchestrator legitimately explores past any small fixed cap
+	// (data-table-workflow needs >8 iterations). Unset still lands on the SDK's own
+	// 30-iteration ceiling, which reports `step-exhausted`.
 	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
 	const timeoutMs = options.scenario?.timeoutMs ?? options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
@@ -101,25 +105,37 @@ export async function runDiscoveryScenario(
 	let streamStatus: DiscoveryRunResult['streamStatus'] = 'completed';
 	let runError: string | undefined;
 
+	const confirmationPolicy = buildConfirmationPolicy(options.scenario);
+	const suspensions = new Map<string, SuspensionInfo>();
+
 	const abortController = new AbortController();
-	const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
+	let mcpManager: StubMcpClientManager | undefined;
+	let timeoutHandle: NodeJS.Timeout | undefined;
+	const budgetExpired = new Promise<'timed-out'>((resolve) => {
+		timeoutHandle = setTimeout(() => {
+			abortController.abort();
+			resolve('timed-out');
+		}, timeoutMs);
+	});
 
 	try {
 		const services = await createStubServices({ nodesJsonPath });
 		const mcpState = options.scenario.instanceState?.mcp;
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
-		const context = applyInstanceState(services.context, options.scenario, mcpRegistry);
+		const context: InstanceAiContext = {
+			...applyInstanceState(services.context, options.scenario, mcpRegistry),
+			workspace: createStubWorkspace(),
+			workspaceRoot: stubWorkspaceRoot,
+		};
 
-		const mcpManager = new StubMcpClientManager(createStubMcpToolRegistry(mcpState ?? {}));
+		mcpManager = new StubMcpClientManager(createStubMcpToolRegistry(mcpState ?? {}));
 		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
 
-		const confirmationPolicy = buildConfirmationPolicy(options.scenario);
 		const approvalResponders: ApprovalResponder[] = [
 			credentialAutoSetupResponder,
 			...(mcpRegistry ? [createMcpConnectResponder(mcpRegistry)] : []),
 		];
-		const suspensions = new Map<string, SuspensionInfo>();
 
 		const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
 			events.push(toCapturedEvent(event));
@@ -159,7 +175,7 @@ export async function runDiscoveryScenario(
 			}),
 		);
 
-		const result = await executeResumableStream({
+		const run = executeResumableStream({
 			agent: asResumable(agent),
 			stream: streamSource,
 			context: {
@@ -179,30 +195,32 @@ export async function runDiscoveryScenario(
 					),
 			},
 		});
+		void run.catch(() => {});
+		const result = await Promise.race([run, budgetExpired]);
 
-		if (abortController.signal.aborted || result.status === 'cancelled') {
-			streamStatus = 'cancelled';
-		} else if (result.status === 'errored') {
-			streamStatus = 'errored';
-		} else if (result.status === 'suspended') {
-			streamStatus = 'suspended';
-		}
-
-		await mcpManager.disconnect();
+		streamStatus = resolveStreamStatus(result, abortController.signal.aborted);
 	} catch (error) {
 		runError = error instanceof Error ? error.message : String(error);
-		streamStatus = 'errored';
+		streamStatus = abortController.signal.aborted ? 'timed-out' : 'errored';
 	} finally {
 		clearTimeout(timeoutHandle);
+		await mcpManager?.disconnect();
 	}
 
-	const outcome = extractOutcomeFromEvents(events);
-	const check = runExpectedToolsInvokedCheck(options.scenario, outcome);
+	const observedEvents = [...events];
+	const outcome = extractOutcomeFromEvents(observedEvents);
+	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
+		streamStatus,
+		timeoutMs,
+		...(runError ? { runError } : {}),
+		unmatchedConfirmations: unmatchedConfirmations(confirmationPolicy, suspensions.values()),
+	});
 
 	return {
 		scenario: options.scenario,
 		check,
-		events,
+		// An abandoned stream can still publish, so hand back what the verdict saw.
+		events: [...events],
 		outcome,
 		durationMs: Date.now() - started,
 		streamStatus,
@@ -292,6 +310,9 @@ function createStubOrchestrationContext(
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
+		// Registers the `workspace_*` file tools for build-workflow
+		...(opts.context.workspace ? { workspace: opts.context.workspace } : {}),
+		...(opts.context.workspaceRoot ? { workspaceRoot: opts.context.workspaceRoot } : {}),
 		// Used for the orchestrator's untrusted-content doctrine and other domain references.
 		// Provide the same context the orchestrator sees.
 		domainContext: opts.context,

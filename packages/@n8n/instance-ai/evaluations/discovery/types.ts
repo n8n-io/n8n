@@ -93,6 +93,20 @@ export interface DiscoveryTestCase {
 	timeoutMs?: number;
 }
 
+export type DiscoveryStreamStatus =
+	| 'completed'
+	| 'errored'
+	| 'timed-out'
+	| 'suspended'
+	| 'step-exhausted';
+
+export interface DiscoveryTrialFacts {
+	streamStatus: DiscoveryStreamStatus;
+	timeoutMs: number;
+	runError?: string;
+	unmatchedConfirmations: string[];
+}
+
 export interface DiscoveryCheckResult {
 	pass: boolean;
 	/** Human-readable reason — included in failure reports. */

@@ -51,6 +51,18 @@ export function resolveConfirmation(
 	return { ...answer?.resumeWith, approved: true };
 }
 
+export function unmatchedConfirmations(
+	policy: ConfirmationPolicy,
+	suspensions: Iterable<SuspensionInfo>,
+): string[] {
+	const asked = new Set([...suspensions].map(suspendedToolName));
+	return [...policy]
+		.filter(
+			([tool, answer]) => !asked.has(tool) && (answer.decision === 'deny' || answer.resumeWith),
+		)
+		.map(([tool]) => tool);
+}
+
 function suspendedToolName(suspension: SuspensionInfo | undefined): string {
 	if (suspension?.toolName) return suspension.toolName;
 	const payload = suspension?.suspendPayload;

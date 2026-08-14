@@ -87,6 +87,8 @@ export interface ExecuteResumableStreamResult {
 	usage?: RunTokenUsage;
 	/** Reason this stream stopped early after publishing the current chunk. */
 	stopReason?: OrchestratorRunHandoffReason;
+	/** Terminal `finish` chunk's reason; `'max-iterations'` means the agent ran out of steps. */
+	finishReason?: string;
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
@@ -298,6 +300,7 @@ function publishRedactedEvents(
 
 interface StreamPassResult {
 	cancelled: boolean;
+	finishReason?: string;
 	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	hasError: boolean;
@@ -352,6 +355,7 @@ async function consumeStreamPass(args: {
 	let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 	let confirmationEvent: ConfirmationRequestEvent | undefined;
 	let confirmationEventPublished = false;
+	let finishReason: string | undefined;
 	const drainedCorrectionsForResume: string[] = [];
 
 	for await (const chunk of activeStream) {
@@ -383,6 +387,9 @@ async function consumeStreamPass(args: {
 
 		options.context.onActivity?.();
 		usageAccumulator.observe(chunk);
+		if (isRecord(chunk) && chunk.type === 'finish' && typeof chunk.finishReason === 'string') {
+			finishReason = chunk.finishReason;
+		}
 
 		if (isRecord(chunk) && chunk.type === 'start-step') {
 			nativeStepIndex += 1;
@@ -463,6 +470,7 @@ async function consumeStreamPass(args: {
 			return {
 				cancelled: false,
 				stopReason: stopSignal.reason,
+				finishReason,
 				suspension,
 				hasError,
 				error,
@@ -477,6 +485,7 @@ async function consumeStreamPass(args: {
 
 	return {
 		cancelled: false,
+		finishReason,
 		suspension,
 		hasError,
 		error,
@@ -543,6 +552,7 @@ export async function executeResumableStream(
 				agentRunId: activeAgentRunId,
 				text,
 				...(error !== undefined ? { error } : {}),
+				finishReason: pass.finishReason,
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 				stopReason: pass.stopReason,
@@ -555,6 +565,7 @@ export async function executeResumableStream(
 				agentRunId: activeAgentRunId,
 				text,
 				...(error !== undefined ? { error } : {}),
+				finishReason: pass.finishReason,
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 			};

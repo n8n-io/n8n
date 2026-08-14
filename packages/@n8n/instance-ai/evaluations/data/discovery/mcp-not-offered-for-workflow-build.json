@@ -12,5 +12,6 @@
 		]
 	},
 	"rationale": "A workflow talks to a service through its node and credential, not an MCP connection. Slack is in the registry to make the wrong move available. `connected` is allowed — only offering a connection is the regression.",
-	"maxSteps": 24
+	"maxSteps": 24,
+	"timeoutMs": 120000
 }

@@ -22,6 +22,7 @@ import type { EventOutcome } from '../types';
 import type {
 	DiscoveryCheckResult,
 	DiscoveryTestCase,
+	DiscoveryTrialFacts,
 	ExpectedToolInvocations,
 	ForbiddenToolCall,
 } from './types';
@@ -213,4 +214,37 @@ export function runExpectedToolsInvokedCheck(
 		invokedTools,
 		spawnedAgents,
 	};
+}
+
+/**
+ * Only a run that finished on its own terms can settle an expectation, so anything else
+ * fails whichever way the expectation points — a truncated run that satisfied a positive
+ * expectation still means the agent never got to finish what it was doing.
+ */
+export function evaluateDiscoveryTrial(
+	scenario: DiscoveryTestCase,
+	outcome: EventOutcome,
+	trial: DiscoveryTrialFacts,
+): DiscoveryCheckResult {
+	const check = runExpectedToolsInvokedCheck(scenario, outcome);
+	const invalid = invalidTrialReason(trial);
+	if (!invalid) return check;
+
+	return { ...check, pass: false, comment: check.pass ? invalid : `${invalid} ${check.comment}` };
+}
+
+function invalidTrialReason(trial: DiscoveryTrialFacts): string | undefined {
+	switch (trial.streamStatus) {
+		case 'timed-out':
+			return `Run exceeded its ${String(trial.timeoutMs)}ms budget and was abandoned.`;
+		case 'step-exhausted':
+			return 'Run stopped at its step cap instead of finishing.';
+		case 'errored':
+		case 'suspended':
+			return `Run did not complete (${trial.runError ? `${trial.streamStatus}: ${trial.runError}` : trial.streamStatus}).`;
+		case 'completed':
+			return trial.unmatchedConfirmations.length > 0
+				? `Scenario declared confirmation answers for [${trial.unmatchedConfirmations.join(', ')}] that no suspension asked for, so those decisions never ran.`
+				: undefined;
+	}
 }

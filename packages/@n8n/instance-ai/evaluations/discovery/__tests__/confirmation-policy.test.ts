@@ -1,6 +1,10 @@
 import type { SuspensionInfo } from '../../../src/utils/stream-helpers';
 import { discoveryTestCaseSchema } from '../../data/discovery';
-import { buildConfirmationPolicy, resolveConfirmation } from '../confirmation-policy';
+import {
+	buildConfirmationPolicy,
+	resolveConfirmation,
+	unmatchedConfirmations,
+} from '../confirmation-policy';
 import { credentialAutoSetupResponder } from '../credential-approval';
 import { createMcpConnectResponder, createStubMcpRegistry } from '../stub-mcp-registry';
 import type { DiscoveryTestCase } from '../types';
@@ -158,6 +162,48 @@ describe('resolveConfirmation', () => {
 			approved: true,
 			answer: 'yes',
 		});
+	});
+});
+
+describe('unmatchedConfirmations', () => {
+	const policy = buildConfirmationPolicy(
+		scenario({
+			confirmations: {
+				'mcp_notion_notion-search': 'deny',
+				credentials: { decision: 'approve', resumeWith: { autoSetup: { credentialType: 'x' } } },
+			},
+		}),
+	);
+
+	it('reports every behaviour-changing answer no suspension asked for', () => {
+		expect(unmatchedConfirmations(policy, [])).toEqual(['mcp_notion_notion-search', 'credentials']);
+	});
+
+	it('reports nothing once each declared tool has suspended', () => {
+		const asked = [suspension('mcp_notion_notion-search'), suspension('credentials')];
+		expect(unmatchedConfirmations(policy, asked)).toEqual([]);
+	});
+
+	it('exempts a bare approve, which only asks for the default', () => {
+		const approveOnly = buildConfirmationPolicy(
+			scenario({ confirmations: { 'ask-user': 'approve' } }),
+		);
+		expect(unmatchedConfirmations(approveOnly, [])).toEqual([]);
+	});
+
+	it('matches the tool name echoed into the suspend payload', () => {
+		const gated: SuspensionInfo = {
+			toolCallId: 'call-1',
+			requestId: 'req-1',
+			suspendPayload: { type: 'approval', toolName: 'mcp_notion_notion-search' },
+		};
+		expect(unmatchedConfirmations(policy, [gated, suspension('credentials')])).toEqual([]);
+	});
+
+	it('ignores suspensions the scenario never declared', () => {
+		expect(
+			unmatchedConfirmations(buildConfirmationPolicy(scenario()), [suspension('nodes')]),
+		).toEqual([]);
 	});
 });
 
