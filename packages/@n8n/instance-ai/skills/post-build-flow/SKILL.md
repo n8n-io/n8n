@@ -161,6 +161,14 @@ workflow does not need to be active. Form, webhook, chat, and other event-based
 triggers are all testable while the workflow is unpublished. Never publish a
 workflow as a precondition for running it.
 
+Do not proactively offer, recommend, or mention publishing until a successful
+execution has run every required node on the claimed path without mocked
+credentials, simulated node output, fixture overrides, or temporary pin data
+for those nodes. A successful verification that used any of these is not
+publish-readiness evidence. If the user explicitly asks to publish before a
+live execution succeeds, warn that the live path remains untested, then follow
+the requested publish flow.
+
 For workflows produced by `build-workflow`, **always verify with
 `verify-built-workflow`, never with raw `executions(action="run")`.** It reuses
 the build outcome simulation plan, mocked credentials, and temporary pin data, so
@@ -247,13 +255,14 @@ again.
 6. After setup completes or is applied, follow
    [Mocked verification live-test follow-up](#mocked-verification-live-test-follow-up)
    when the latest verification evidence used mocks or simulations. If this
-   follow-up is due, ask only that question now; do not also ask about the error
-   workflow in the same response.
+   follow-up is due, ask only whether the user wants the live test. Do not
+   mention publishing or ask about the error workflow in the same response.
 7. If testing has not already been offered or completed, ask whether the user
    wants to test the workflow. Skip this if `verify-built-workflow` already
    proved it works end-to-end with full coverage.
 8. Only call `workflows(action="publish")` when the user explicitly asks to
-   publish. Never publish automatically.
+   publish. Never publish automatically or proactively offer publishing before
+   the publish-readiness requirement above is met.
 9. After a direct new primary workflow is successfully published, follow
    [Error workflow follow-up](#error-workflow-follow-up).
    Do not replace this explicit opt-in with a generic "add
@@ -319,17 +328,24 @@ If the user says yes:
 After workflow setup completes or is applied, if the latest verification for
 that workflow used mocked credentials, simulated node output, fixture overrides,
 temporary pin data, or another mocked input, ask whether the user wants a live
-test without mocks. Do not run the live test automatically.
+test without mocks. Ask only about the live test. Do not run it automatically.
+Do not offer publishing as an alternative or describe the workflow as ready to
+use or publish.
 
 If the user agrees, use the explicit live execution path (`executions(action="run")`
 for a direct live run) and report the result separately from the earlier mocked
-verification. If the user declines or defers, state what remains untested and do not claim live end-to-end verification.
+verification. If the live test fails, treat the workflow as unresolved and do
+not offer publishing. If the user declines or defers, state what remains
+untested, do not claim live end-to-end verification, and do not offer
+publishing.
 
 ## Claiming success
 
 Do not tell the user a workflow is "fixed", "verified", "tested", "working", or
 has "no errors" unless this turn has a passing `verify-built-workflow` or
-`executions(action="run")` that exercised the path being claimed. A successful
+`executions(action="run")` that exercised the path being claimed. Do not call a
+workflow "ready to use" or "ready to publish" unless a passing execution met the
+publish-readiness requirement above. A successful
 `build-workflow`/save, a static `workflows(action="validate")`, or your own
 narration are NOT execution evidence. For a produced artifact (a file, generated
 document, or Code-node output), read the real output before calling it complete;
