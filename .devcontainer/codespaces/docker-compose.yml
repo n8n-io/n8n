@@ -28,3 +28,6 @@ services:
       DB_POSTGRESDB_PASSWORD: password
       # Prompt-cache TTL in seconds. 1 hour keeps the cache warm between turns.
       ANTHROPIC_PROMPT_CACHE_TTL: "3600"
+      # Compose does not inherit the codespace env. Pass the box name through so
+      # the worker can stamp boxId and dev:up can print the forwarded URL.
+      CODESPACE_NAME: ${CODESPACE_NAME:-}

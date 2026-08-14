@@ -474,6 +474,10 @@ export interface InstanceAiCredentialService {
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
 	/** List all credential types supported by n8n Connect on this instance. */
 	listAiGatewayCredentialTypes?(): Promise<string[]>;
+	/** Whether the credential type is an OAuth type whose client the instance
+	 *  provides via credential overwrites (managed OAuth) — the editor offers
+	 *  one-click connect for these instead of an API-key form. */
+	isManagedOAuthCredentialType?(credType: string): Promise<boolean>;
 }
 
 export interface CredentialFieldInfo {

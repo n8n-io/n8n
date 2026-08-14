@@ -31,6 +31,7 @@ const COMPARED_KEYS = [
 	'outcomeExpectations',
 	'messageBudget',
 	'credentials',
+	'credentialFixture',
 	'datasets',
 	// Round-trips faithfully: PATCH /cases/:id reconciles scenario rows by name
 	// (lang-tracer #48) and the export emits them back in disk shape.

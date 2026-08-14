@@ -16,6 +16,7 @@
  * manual evidence on ENT-222.
  */
 import { sleep } from '@n8n/utils/sleep';
+import { Kafka, type Consumer } from 'kafkajs';
 import { createServiceStack, type N8NStack } from 'n8n-containers';
 import type {
 	IBinaryData,
@@ -256,6 +257,76 @@ describe('delivery guarantees against a real broker', () => {
 		// A fresh consumer in the same group still gets it: at-least-once holds.
 		expect(await consumeOnce(true)).toContain('must not be lost');
 	}, 180_000);
+});
+
+describe('a group the consumer can never join fails startup (ENT-340)', () => {
+	let kafkajsConsumer: Consumer | undefined;
+
+	afterEach(async () => {
+		await kafkajsConsumer?.disconnect().catch(() => {});
+		kafkajsConsumer = undefined;
+	});
+
+	it('rejects with the broker refusal instead of reporting a successful start', async () => {
+		// Staged as the bug was found: kafkajs (v1) and librdkafka (v2) advertise
+		// different partition-assignment strategy names, so whichever joins second
+		// is refused with "Broker: Inconsistent group protocol" forever.
+		const topic = uniqueTopic('join-refused');
+		const groupId = `${topic}-group`;
+		await createTopic(topic);
+
+		// The incumbent: a kafkajs consumer holding the group, as v1 would.
+		kafkajsConsumer = new Kafka({ clientId: 'ent340-v1', brokers: [credentials.brokers] }).consumer(
+			{ groupId },
+		);
+		await kafkajsConsumer.connect();
+		await kafkajsConsumer.subscribe({ topic });
+		await kafkajsConsumer.run({ eachMessage: async () => {} });
+		await withDeadline(
+			(async () => {
+				while (
+					!(
+						await inBroker(
+							`kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group ${groupId} --state`,
+						)
+					).includes('Stable')
+				) {
+					await sleep(500);
+				}
+			})(),
+			30_000,
+			'the kafkajs consumer to hold the group',
+		);
+
+		// The challenger: a v2 consumer wired the way the node wires it.
+		let failStartup!: (error: Error) => void;
+		const startupFailure = new Promise<never>((_, reject) => (failStartup = reject));
+		void startupFailure.catch(() => {});
+
+		const consumer = await createKafkaConsumer(
+			credentials,
+			{ groupId },
+			{ logger, onFatalError: (error) => failStartup(error) },
+		);
+
+		const startup = consumeTopic(consumer, {
+			topic,
+			logger,
+			parseMessage: createMessageParser({}, logger, undefined, prepareBinaryData),
+			emit: async () => ({ mayAdvance: true }),
+			startupFailure,
+		});
+
+		await expect(withDeadline(startup, 30_000, 'startup to settle')).rejects.toThrow(
+			/inconsistent group protocol/i,
+		);
+
+		// The refused consumer must not linger in the group.
+		const members = await inBroker(
+			`kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group ${groupId} --state`,
+		);
+		expect(members).toMatch(/Stable\s+1\s*$/m);
+	}, 120_000);
 });
 
 describe('library logging against a real broker', () => {

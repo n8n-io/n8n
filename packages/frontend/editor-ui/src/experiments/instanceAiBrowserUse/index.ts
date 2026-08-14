@@ -1,1 +1,4 @@
-export { useInstanceAiBrowserUseExperiment } from './useInstanceAiBrowserUseExperiment';
+export {
+	isBrowserUseSupportedForBrowser,
+	useInstanceAiBrowserUseExperiment,
+} from './useInstanceAiBrowserUseExperiment';

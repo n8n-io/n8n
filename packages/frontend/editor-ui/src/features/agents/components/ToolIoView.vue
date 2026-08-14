@@ -1,34 +1,11 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, provide, shallowRef } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { Workflow } from 'n8n-workflow';
 import type { IDataObject, INodeExecutionData, IRunData } from 'n8n-workflow';
-import { ChatSymbol } from '@n8n/chat/constants';
-import type { Chat } from '@n8n/chat/types';
-import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
-import {
-	disposeWorkflowExecutionStateStore,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
-import {
-	createWorkflowDocumentId,
-	disposeWorkflowDocumentStore,
-	useWorkflowDocumentStore,
-	type WorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
-import {
-	createExecutionDataId,
-	disposeExecutionDataStore,
-	hasExecutionDataStore,
-	useExecutionDataStore,
-} from '@/app/stores/executionData.store';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
-import RunData from '@/features/ndv/runData/components/RunData.vue';
+import StandaloneRunData from '@/features/ndv/runData/components/StandaloneRunData.vue';
+import StandaloneRunDataHost from '@/features/ndv/runData/components/StandaloneRunDataHost.vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
-import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 /**
  * Renders input/output for a single tool/node call using the same RunData
@@ -36,9 +13,8 @@ import type { WorkflowObjectAccessors } from '@/app/types/workflow';
  * the surrounding node list, since a tool call is always one logical node.
  *
  * Synthesizes a fake two-node workflow (an input source + the tool node) so
- * RunData's input pane has a previous node to walk back to, populates the
- * workflows store with the synthesized execution, and tears it all down on
- * unmount.
+ * RunData's input pane has a previous node to walk back to. The standalone
+ * host owns the isolated stores needed to render that execution.
  */
 const props = withDefaults(
 	defineProps<{
@@ -64,31 +40,9 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-const workflowHelpers = useWorkflowHelpers();
-const nodeTypesStore = useNodeTypesStore();
 
 const SYNTHETIC_ID = '__tool_io__';
 const INPUT_NODE_NAME = '__tool_io_input__';
-
-// RunData (and VirtualSchema) resolve their NDV store via `injectNDVStore()`,
-// which throws when `WorkflowDocumentStoreKey` is null. On the sessions page
-// no real workflow is loaded, so App.vue provides `shallowRef(null)`. Provide
-// a synthetic, never-null document store keyed by the same id we write
-// execution state under, so the subtree resolves a scoped NDV store instead
-// of throwing on mount. SessionDetailPanel renders at most one ToolIoView, so
-// this component owns and disposes the fixed scope.
-const documentId = createWorkflowDocumentId(SYNTHETIC_ID);
-const scopedDocumentStore = useWorkflowDocumentStore(documentId);
-const documentStore = shallowRef<WorkflowDocumentStore | null>(scopedDocumentStore);
-const executionStateStore = useWorkflowExecutionStateStore(documentId);
-const executionDataId = createExecutionDataId(SYNTHETIC_ID);
-
-provide(
-	WorkflowIdKey,
-	computed(() => SYNTHETIC_ID),
-);
-provide(WorkflowDocumentStoreKey, documentStore);
-provide(ChatSymbol, null as unknown as Chat);
 
 function wrap(value: unknown): INodeExecutionData[] {
 	if (value === undefined || value === null) return [{ json: {} }];
@@ -226,93 +180,42 @@ const synthExecution = computed<IExecutionResponse>(() => {
 	} as unknown as IExecutionResponse;
 });
 
-const synthWorkflow = computed<WorkflowObjectAccessors>(
-	() =>
-		new Workflow({
-			...synthExecution.value.workflowData,
-			nodeTypes: workflowHelpers.getNodeTypes(),
-		}) as unknown as WorkflowObjectAccessors,
-);
-
-const toolNodeUi = computed<INodeUi>(() => {
-	return synthExecution.value.workflowData.nodes.find((n) => n.name === props.name) as INodeUi;
-});
-
-let unmounted = false;
-
-onMounted(async () => {
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	// The component may unmount while node types are loading.
-	if (unmounted) return;
-	executionStateStore.setWorkflowExecutionData(synthExecution.value);
-});
-
-onBeforeUnmount(() => {
-	unmounted = true;
-	if (hasExecutionDataStore(executionDataId)) {
-		disposeExecutionDataStore(useExecutionDataStore(executionDataId));
-	}
-	disposeNDVStore(useNDVStore(documentId));
-	disposeWorkflowExecutionStateStore(executionStateStore);
-	disposeWorkflowDocumentStore(scopedDocumentStore);
+const toolNodeUi = computed<INodeUi | null>(() => {
+	return synthExecution.value.workflowData.nodes.find((node) => node.name === props.name) ?? null;
 });
 </script>
 
 <template>
-	<div :class="$style.root">
-		<div :class="$style.pane">
-			<div :class="$style.paneTitle">
-				{{ i18n.baseText('agentSessions.timeline.input') }}
+	<StandaloneRunDataHost v-slot="{ workflowObject, workflowExecution }" :execution="synthExecution">
+		<div :class="$style.root">
+			<div :class="$style.pane" data-test-id="agent-session-run-data-input">
+				<div :class="$style.paneTitle">
+					{{ i18n.baseText('agentSessions.timeline.input') }}
+				</div>
+				<StandaloneRunData
+					:key="`tool-input-${name}`"
+					:node="toolNodeUi"
+					:run-index="0"
+					:workflow-object="workflowObject"
+					:workflow-execution="workflowExecution"
+					pane-type="input"
+				/>
 			</div>
-			<RunData
-				:key="`tool-input-${name}`"
-				:node="toolNodeUi"
-				:run-index="0"
-				:workflow-object="synthWorkflow"
-				:workflow-execution="synthExecution.data"
-				pane-type="input"
-				display-mode="schema"
-				:disable-display-mode-selection="true"
-				:disable-run-index-selection="true"
-				:compact="true"
-				:show-actions-on-hover="true"
-				:disable-pin="true"
-				:disable-edit="true"
-				:disable-hover-highlight="true"
-				:disable-settings-hint="true"
-				:collapsing-table-column-name="null"
-				table-header-bg-color="light"
-				executing-message=""
-				no-data-in-branch-message=""
-			/>
-		</div>
-		<div :class="$style.pane">
-			<div :class="$style.paneTitle">
-				{{ i18n.baseText('agentSessions.timeline.output') }}
+			<div :class="$style.pane" data-test-id="agent-session-run-data-output">
+				<div :class="$style.paneTitle">
+					{{ i18n.baseText('agentSessions.timeline.output') }}
+				</div>
+				<StandaloneRunData
+					:key="`tool-output-${name}`"
+					:node="toolNodeUi"
+					:run-index="0"
+					:workflow-object="workflowObject"
+					:workflow-execution="workflowExecution"
+					pane-type="output"
+				/>
 			</div>
-			<RunData
-				:key="`tool-output-${name}`"
-				:node="toolNodeUi"
-				:run-index="0"
-				:workflow-object="synthWorkflow"
-				:workflow-execution="synthExecution.data"
-				pane-type="output"
-				display-mode="schema"
-				:disable-display-mode-selection="true"
-				:disable-run-index-selection="true"
-				:compact="true"
-				:show-actions-on-hover="true"
-				:disable-pin="true"
-				:disable-edit="true"
-				:disable-hover-highlight="true"
-				:disable-settings-hint="true"
-				:collapsing-table-column-name="null"
-				table-header-bg-color="light"
-				executing-message=""
-				no-data-in-branch-message=""
-			/>
 		</div>
-	</div>
+	</StandaloneRunDataHost>
 </template>
 
 <style module lang="scss">

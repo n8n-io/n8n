@@ -1,3 +1,4 @@
+import type { ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -29,6 +30,10 @@ type ConsentDetailsResult =
 			previousScopes?: string[];
 			/** Tool names each scope unlocks, shown per scope group in the picker. */
 			scopeTools?: Record<string, string[]>;
+			/** Presentational hints for the consent screen, sourced from the target resource. */
+			uiHints?: ConsentUiHints;
+			/** Whether the requesting client is a trusted first-party client. */
+			isFirstParty: boolean;
 	  }
 	| { ok: false; reason: 'resource_unavailable' }
 	| { ok: false; reason: 'forbidden' };
@@ -91,6 +96,8 @@ export class OAuthConsentService {
 					scopes,
 					previousScopes: await this.previousScopes(user.id, client.id, scopes),
 					scopeTools: resource.getScopeTools?.(),
+					uiHints: resource.uiHints,
+					isFirstParty: client.isFirstParty,
 				};
 			}
 
@@ -108,6 +115,8 @@ export class OAuthConsentService {
 				scopes,
 				previousScopes: await this.previousScopes(user.id, client.id, scopes),
 				scopeTools: defaultResource?.getScopeTools?.(),
+				uiHints: defaultResource?.uiHints,
+				isFirstParty: client.isFirstParty,
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });

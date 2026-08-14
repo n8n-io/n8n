@@ -12,8 +12,8 @@ import { setSchemaRegistry, type KafkaCredentials } from '../utils';
 import { consumeTopic, createDataEmitter, createMessageParser } from './consumer';
 import type { KafkaConsumerHandle } from './consumer';
 import { versionDescription } from './KafkaTriggerV2Description';
-import { explainManualRunGroupDenial, getSettings } from './TriggerSettings';
 import { createKafkaConsumer } from './transport';
+import { explainManualRunGroupDenial, getSettings } from './TriggerSettings';
 
 export class KafkaTriggerV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -61,6 +61,16 @@ export class KafkaTriggerV2 implements INodeType {
 		};
 
 		const startConsumerOnce = async () => {
+			// Where a fatal consumer error goes depends on when it arrives (ENT-340):
+			// - during startup: reject this gate → activation fails and n8n retries
+			//   with backoff, instead of flapping through emitError every second
+			// - after a successful start: emitError → n8n restarts the dead trigger
+			// - after a failed start: log it; nothing activated, nothing to restart
+			let reportFatal!: (error: Error) => void;
+			const startupFailure = new Promise<never>((_, reject) => (reportFatal = reject));
+			// A rejection that loses the startup race would otherwise be unhandled.
+			void startupFailure.catch(() => {});
+
 			try {
 				const consumer = await createKafkaConsumer(credentials, settings.consumer, {
 					logger: this.logger,
@@ -69,7 +79,7 @@ export class KafkaTriggerV2 implements INodeType {
 					// not failures, so they stay quiet.
 					onFatalError: (error) => {
 						if (closeController.signal.aborted) return;
-						this.emitError(
+						reportFatal(
 							explainManualRunGroupDenial(error, settings.configuredGroupId, settings.isManualRun),
 						);
 					},
@@ -83,8 +93,18 @@ export class KafkaTriggerV2 implements INodeType {
 					batchSize: settings.batchSize,
 					partitionsConsumedConcurrently: settings.partitionsConsumedConcurrently,
 					errorRetryDelay: settings.errorRetryDelay,
+					startupFailure,
+					closeSignal: closeController.signal,
 				});
+				// Startup succeeded. No gap here: a fatal always arrives from a fresh
+				// macrotask, so it cannot land between the await and this re-point.
+				reportFatal = (error) => this.emitError(error);
 			} catch (error) {
+				// Startup failed.
+				reportFatal = (fatal) =>
+					this.logger.error('Kafka consumer reported a fatal error after startup had failed', {
+						error: fatal,
+					});
 				throw new NodeOperationError(this.getNode(), error);
 			}
 		};
