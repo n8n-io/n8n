@@ -8,6 +8,7 @@ import { FolderSerializer } from './folder.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
 import type { WorkflowExportRequirements } from '../requirements.types';
@@ -19,6 +20,7 @@ export interface FolderExportRequest {
 	folderIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
+	workflowVersionPolicy: WorkflowVersionPolicy;
 	/**
 	 * Directory the folder tree is written under. Empty for a top-level folder
 	 * export (`folders/...`); a project exporter passes `projects/<slug>` so the
@@ -183,6 +185,7 @@ export class FolderExporter {
 			writer: request.writer,
 			workflowIds,
 			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix,
 		});
 	}
