@@ -37,17 +37,17 @@ const statusChecked = ref(false);
 const extensionState = ref<BrowserUseExtensionState>('unknown');
 const isExtensionMissing = computed(() => extensionState.value === 'not-installed');
 const isExtensionInstalled = computed(() => extensionState.value === 'installed');
-let extensionProbeId = 0;
+let isProbingExtension = false;
 
 async function refreshExtensionState(): Promise<void> {
-	if (!isBrowserSupported || store.browserConnected) return;
+	// Returning to the tab can fire both triggers below, so skip a probe while one is in flight.
+	if (!isBrowserSupported || store.browserConnected || isProbingExtension) return;
 
-	// Returning to the tab can fire both triggers below, so let the newest probe win rather
-	// than whichever settles last.
-	const probeId = ++extensionProbeId;
-	const state = await detectBrowserUseExtension();
-	if (probeId === extensionProbeId) {
-		extensionState.value = state;
+	isProbingExtension = true;
+	try {
+		extensionState.value = await detectBrowserUseExtension();
+	} finally {
+		isProbingExtension = false;
 	}
 }
 

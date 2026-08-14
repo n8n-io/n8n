@@ -69,13 +69,6 @@ jobs:
           fetch-depth: 0
           persist-credentials: false # we push with an explicit token URL instead
 
-      # Node toolchain only — the replay runs no install and no build.
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          install-command: ''
-          build-command: ''
-
       - name: Replay bundle branch onto its base
         # On a merged bundle PR, only the branch that received it needs replaying.
         # (`matrix` is not available in a job-level `if`, so the filter lives here.)

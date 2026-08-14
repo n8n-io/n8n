@@ -365,6 +365,22 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).not.toContain('add-plan-item');
 	});
 
+	it('loads the bundled one-off-operations skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'one-off-operations');
+
+		expect(skill?.description).toContain('one-off operations');
+		expect(skill?.description).toContain('direct-one-off-build-succeeded');
+
+		const loaded = await source.loadSkill('one-off-operations');
+		// Normalize whitespace so assertions survive markdown re-wrapping.
+		const flattened = loaded?.instructions.replace(/\s+/g, ' ');
+		expect(flattened).toContain('executionIntent: "one-off"');
+		expect(flattened).toContain('not required and never the completion criterion');
+		expect(flattened).toContain('get-node-output');
+		expect(flattened).toContain('keep the workflow for future reuse or delete');
+	});
+
 	it('loads the bundled post-build-flow skill and trigger input reference', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find((entry) => entry.name === 'post-build-flow');
