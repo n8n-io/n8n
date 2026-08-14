@@ -12,6 +12,7 @@ import type {
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
+import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
@@ -233,21 +234,11 @@ export interface NodeSummary {
 }
 
 /**
- * Metadata about how a node is reachable via the AI Gateway (n8n Connect).
- * Attached to node results only when the instance is licensed for the
- * gateway AND the node is listed in the gateway config. Absence means either
- * "not licensed" or "not supported" — consumers treat both the same.
- *
- * `operations` mirrors the gateway config's `supportedActions[nodeName]`:
- * a map from resource name to allowed operations. Nodes without a resource
- * dimension use the marker key `'__operation_only__'`.
+ * Re-exported from `@n8n/ai-utilities/node-catalog`, which owns the definition
+ * because the shared node search engine reads it. Kept exported here so this
+ * package's consumers have one import site for the Instance AI types.
  */
-export interface AiGatewayNodeMeta {
-	supported: true;
-	operations?: Record<string, string[]>;
-	minVersion?: number;
-	hiddenProperties?: string[];
-}
+export type { AiGatewayNodeMeta };
 
 export interface NodeDescription extends NodeSummary {
 	properties: Array<{
@@ -483,6 +474,10 @@ export interface InstanceAiCredentialService {
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
 	/** List all credential types supported by n8n Connect on this instance. */
 	listAiGatewayCredentialTypes?(): Promise<string[]>;
+	/** Whether the credential type is an OAuth type whose client the instance
+	 *  provides via credential overwrites (managed OAuth) — the editor offers
+	 *  one-click connect for these instead of an API-key form. */
+	isManagedOAuthCredentialType?(credType: string): Promise<boolean>;
 }
 
 export interface CredentialFieldInfo {
@@ -497,6 +492,7 @@ export interface McpRegistryServerSummary {
 	slug: string;
 	title: string;
 	description: string;
+	credentialType: string;
 	tools: string[];
 }
 
@@ -509,6 +505,8 @@ export interface ConnectedMcpService {
 
 export interface InstanceAiMcpService {
 	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
+	getServers(slugs: string[]): Promise<McpRegistryServerSummary[]>;
+	listConnections(): Promise<Array<{ slug: string }>>;
 }
 
 export interface ExploreResourcesParams {
@@ -620,7 +618,7 @@ export interface SearchableNodeDescription {
 	outputs: string[] | string;
 	codex?: { alias?: string[] };
 	builderHint?: {
-		message?: string;
+		searchHint?: string;
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
 		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
 	};
@@ -1406,16 +1404,22 @@ export interface InstanceAiMemoryConfig {
 
 type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
 
+/** Direct Google Vertex Claude (Anthropic Messages via `:rawPredict`). */
+export type VertexAnthropicModelConfig = {
+	id: `google-vertex-anthropic/${string}`;
+	project: string;
+	location: string;
+	googleCredentials?: string;
+};
+
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
- *  or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
+ *  Vertex Claude, or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
- *  The LanguageModel variant exists for proxy routes that need a provider-native transport.
- *  For example, Vertex AI Anthropic routes use the native Messages API at `/v1/messages`, so
- *  we must use `@ai-sdk/anthropic` directly instead of routing through an OpenAI-compatible
- *  `/chat/completions` adapter. */
+ *  The LanguageModel variant exists for proxy routes that need a provider-native transport. */
 export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| VertexAnthropicModelConfig
 	| NativeLanguageModelConfig;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */

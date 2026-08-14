@@ -80,10 +80,15 @@ session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
 - **Bring the app up with one command: `pnpm dev:up`.** It installs missing
   dependencies, starts the backend, waits for health, and prints the URL. Add
   `--build` only when a frontend change must appear (see below).
-- **Open the app** at `https://<codespace-name>-5678.app.github.dev`. The port
-  is private. It opens for you in a browser that is signed in to GitHub. You do
-  not need a tunnel. An anonymous or server caller gets a 302. That is why the
-  worker polls outward instead.
+- **Open the app** at `https://<codespace-name>-5678.app.github.dev`. `dev:up`
+  makes that port visible to the org, thus any n8n member who is signed into
+  GitHub can open it. You do not need a tunnel. GitHub makes every forwarded port
+  private again at each container start, so `dev:up` shares it again on each run.
+  To see the current state, run `gh codespace ports`. The share command needs `gh`
+  with the codespace scope (see the one-time setup above). If it fails, `dev:up`
+  starts the app, prints the reason, and gives you the command to try again. A
+  private port opens for you only, in a browser that is signed in to GitHub. An
+  anonymous or server caller gets a 302. That is why the worker polls outward.
 - **`pnpm dev` no longer exists.** Use `pnpm dev:be` for the backend (on 5678).
   Use `pnpm dev:fe:editor` for the editor UI with hot reload (on 8080).
 - **`dev:be` serves the editor from the `dist` build.** So a frontend edit does
@@ -121,9 +126,15 @@ The private marketplace uses the codespace's own GitHub auth — no extra token.
 prompts for it, then remembers). Both repos are in the same org, which is what
 lets this work.
 
-If a user does not authorize it, the clone fails and the skills step is skipped
-(the worker still starts). Existing codespaces created before this change need a
-recreate to get the prompt. The log is at `/tmp/post-start.log`.
+The codespace authenticates git over HTTPS and has no SSH key, so `post-start.mjs`
+sets `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` — Claude Code's plugin loader otherwise
+clones `owner/repo` shorthand over SSH and the private clone fails.
+
+If a user does not authorize the grant, the clone fails and the skills step is
+skipped (the worker still starts). Existing codespaces created before this change
+need a recreate to get the prompt. The log is at `/tmp/post-start.log`: a failed
+`skills repo reachable` line means the grant was not authorized; a failed
+`marketplace add` after a reachable repo means a loader-auth problem.
 
 ## Viewing the dev UI locally
 
@@ -181,6 +192,14 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
   Code shows `Missing environment variables: FLAKY_MCP_TOKEN`, the shell that
   started Claude did not source the file. Run
   `. /usr/local/lib/codespaces-env.sh` and start Claude again.
+- **Do not read `CODESPACE_NAME` or `GITHUB_USER` from the process env** — use
+  `scripts/codespace-env.mjs`. Codespaces gives these variables to VS Code
+  sessions only. Other processes read them from `codespaces-env.sh`, and a
+  process that tmux starts can get an empty copy: tmux keeps the environment of
+  its own start, and `update-environment` does not refresh these keys. A worker
+  polled correctly as its owner while `dev:up` in the same session saw an empty
+  box name, printed the localhost URL, and did not share the port. The helper
+  reads `/workspaces/.codespaces/shared`, which is always correct.
 - **You cannot paste images into a remote Claude session.** Image paste reads
   the clipboard of the machine where `claude` runs — the codespace, not your
   laptop. Drag the file into the VS Code explorer (or
@@ -203,7 +222,7 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
 
 ## Costs
 
-Compute bills only while the codespace runs: ~$0.36/hr (4-core) / ~$0.72/hr
-(8-core), ~nothing stopped. Usage draws from a shared monthly org budget, so
+Compute bills only while the codespace runs: ~$0.72/hr for the 8-core box,
+~nothing stopped. Usage draws from a shared monthly org budget, so
 `pnpm session stop` when you leave; the idle timeout is the backstop, not the
 plan.
