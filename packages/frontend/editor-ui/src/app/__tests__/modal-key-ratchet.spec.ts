@@ -45,7 +45,7 @@ import shellCatalogueSource from '@/app/stores/defaults/modals.ts?raw';
 const BASELINE = {
 	/** `export const <KEY>` + re-export statements in `app/constants/modals.ts`. */
 	shellModalKeyExports: 36,
-	/** Computed entries in `SHELL_MODAL_INITIAL_STATE`. */
+	/** Direct members of `SHELL_MODAL_INITIAL_STATE`, a spread counting as one. */
 	shellCatalogueEntries: 56,
 };
 
@@ -55,11 +55,18 @@ const RESULT_SENTINELS = ['MODAL_CANCEL', 'MODAL_CONFIRM', 'MODAL_CLOSE'];
 const EXPORT_CONST_REGEX = /^export const ([A-Za-z_0-9]+)/gm;
 const REEXPORT_REGEX = /^export \{/gm;
 /**
- * A catalogue entry in any form the object literal accepts — computed key, quoted
- * string, or bare identifier. All three resolve and open identically at runtime,
- * so counting only the computed UPPER_SNAKE form left two ways in.
+ * A catalogue member in any form the object literal accepts — computed key, quoted
+ * string, bare identifier, or a spread. All resolve and open identically at
+ * runtime, so counting only the computed UPPER_SNAKE form left three ways in.
+ *
+ * The spread counts as one member, which understates a `...TEN_MODALS` by nine.
+ * That is deliberate and still safe in the direction that matters: it can only
+ * ever make the count too low, so it fails the exact-match check rather than
+ * passing a hidden increase. Under exact-match the alternative is worse — an
+ * uncounted spread lets ten entries collapse into one line, the count drop by ten,
+ * and the author lock the smaller number in with the modals still shell-owned.
  */
-const CATALOGUE_ENTRY_REGEX = /^\t(?:\[[^\]]+\]|'[^']*'|"[^"]*"|[A-Za-z_$][\w$]*)\s*:/gm;
+const CATALOGUE_ENTRY_REGEX = /^\t(?:\.\.\.|(?:\[[^\]]+\]|'[^']*'|"[^"]*"|[A-Za-z_$][\w$]*)\s*:)/gm;
 
 function countShellModalKeyExports(): number {
 	const declared = [...shellConstantsSource.matchAll(EXPORT_CONST_REGEX)]
