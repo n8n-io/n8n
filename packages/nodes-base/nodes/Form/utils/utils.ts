@@ -242,6 +242,7 @@ export function prepareFormData({
 	nodeVersion,
 	authToken,
 	shellInner,
+	hasAuthenticatedSubmitter,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -259,6 +260,7 @@ export function prepareFormData({
 	nodeVersion?: number;
 	authToken?: string;
 	shellInner?: boolean;
+	hasAuthenticatedSubmitter?: boolean;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -283,6 +285,8 @@ export function prepareFormData({
 		authToken,
 		// Only set inside the hosting shell, so the plain form's render data is unchanged.
 		shellInner: shellInner || undefined,
+		// Only set for forms that can be gated, so the rest never ship the client handling.
+		hasAuthenticatedSubmitter: hasAuthenticatedSubmitter || undefined,
 	};
 
 	if (redirectUrl) {
@@ -572,6 +576,7 @@ export function renderForm({
 	customCss,
 	authToken,
 	shellInner,
+	hasAuthenticatedSubmitter,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -587,6 +592,7 @@ export function renderForm({
 	customCss?: string;
 	authToken?: string;
 	shellInner?: boolean;
+	hasAuthenticatedSubmitter?: boolean;
 }) {
 	const instanceId = context.getInstanceId();
 
@@ -631,6 +637,7 @@ export function renderForm({
 		nodeVersion: context.getNode().typeVersion,
 		authToken,
 		shellInner,
+		hasAuthenticatedSubmitter,
 	});
 
 	if (!isFormHtmlSandboxingDisabled()) {
@@ -1204,6 +1211,7 @@ export async function formWebhook(
 			customCss: options.customCss,
 			authToken,
 			shellInner,
+			hasAuthenticatedSubmitter: authentication === 'n8nUserAuth',
 		});
 
 		return {

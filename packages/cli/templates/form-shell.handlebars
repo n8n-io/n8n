@@ -284,8 +284,13 @@
 				});
 			} catch (e) {}
 			window.addEventListener('message', function (event) {
-				// Ignore the sandboxed form iframe so author content can't spoof a connect.
-				if (frame && event.source === frame.contentWindow) return;
+				// The sandboxed form iframe can't spoof a connect: its only accepted message is
+				// the POST gate's rejection, which carries ids and moves rows one way only, so
+				// the worst author script can do is degrade its own form's UX.
+				if (frame && event.source === frame.contentWindow) {
+					handleGateRejection(event.data);
+					return;
+				}
 				if (event.data === 'success') onSuccessSignal();
 			});
 
@@ -410,6 +415,21 @@
 				document.getElementById('close-dialog').addEventListener('click', function () { overlay.classList.remove('open'); });
 				document.getElementById('done-dialog').addEventListener('click', function () { overlay.classList.remove('open'); });
 				overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.classList.remove('open'); });
+			}
+
+			// The form's POST was refused by the server-side gate. Rows rendered at page load
+			// can be stale (revoked since, or disconnected in another tab), so flip the ones
+			// the server no longer considers connected and surface the panel — the 3+ layout
+			// otherwise keeps every row behind the strip. Declared after the dialog wiring so
+			// `overlay` is assigned; hoisting keeps it callable from the listener above.
+			function handleGateRejection(data) {
+				if (!data || data.type !== 'n8n-form-credentials-rejected' || !Array.isArray(data.ids)) return;
+				data.ids.forEach(function (id) {
+					// Only rows the server actually rendered, so a crafted key can't walk the
+					// prototype chain. Never markConnected from here — one direction only.
+					if (typeof id === 'string' && Object.prototype.hasOwnProperty.call(ids, id)) markDisconnected(id);
+				});
+				if (overlay) overlay.classList.add('open');
 			}
 		})();
 	</script>
