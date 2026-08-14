@@ -1,55 +1,17 @@
-<script lang="ts">
-import { N8nButton, N8nCallout, N8nIcon } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { defineComponent, h } from 'vue';
-
-/** Shared Fix CTA used in both grouped and ungrouped tool-step layouts. */
-const FixWithAssistantCallout = defineComponent({
-	name: 'FixWithAssistantCallout',
-	props: {
-		errorText: { type: String, required: true },
-	},
-	emits: ['fix'],
-	setup(calloutProps, { emit: calloutEmit }) {
-		const calloutI18n = useI18n();
-		return () =>
-			h(
-				N8nCallout,
-				{
-					theme: 'danger',
-					'data-test-id': 'agent-chat-tool-fix-with-assistant-callout',
-				},
-				{
-					default: () => calloutProps.errorText,
-					trailingContent: () =>
-						h(
-							N8nButton,
-							{
-								size: 'small',
-								variant: 'subtle',
-								'data-test-id': 'agent-chat-tool-fix-with-assistant',
-								onClick: () => calloutEmit('fix'),
-							},
-							{
-								icon: () => h(N8nIcon, { icon: 'sparkles', size: 'small' }),
-								default: () => calloutI18n.baseText('agents.builder.preview.fixWithAssistant'),
-							},
-						),
-				},
-			);
-	},
-});
-
-export default {
-	components: { FixWithAssistantCallout },
-};
-</script>
-
 <script setup lang="ts">
-import { N8nAiActivityStep, N8nAiActivityStepGroup, N8nMarkdownEditor } from '@n8n/design-system';
+import {
+	N8nAiActivityStep,
+	N8nAiActivityStepGroup,
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nMarkdownEditor,
+} from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed, toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
+import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import {
@@ -75,16 +37,39 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	fixWithAssistant: [];
+	fixWithAssistant: [failures: AgentFixWithAssistantFailure[]];
 }>();
 
 const i18n = useI18n();
 
 const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
 
-const fixableErroredTools = computed(() =>
-	showFix.value ? props.toolCalls.filter((tc) => tc.state === TOOL_CALL_STATE.ERROR) : [],
-);
+const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
+	if (!showFix.value) return [];
+
+	const failures: AgentFixWithAssistantFailure[] = [];
+	for (const toolCall of props.toolCalls) {
+		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
+
+		const error = toolStepError(toolCall)?.trim();
+		if (!error) continue;
+
+		failures.push({
+			toolCallId: toolCall.toolCallId,
+			toolName: toolCall.tool,
+			toolDisplayName: toolStepLabel(toolCall),
+			error,
+			...(toolCall.startTime !== undefined ? { startedAt: toolCall.startTime } : {}),
+			...(toolCall.endTime !== undefined ? { endedAt: toolCall.endTime } : {}),
+		});
+	}
+
+	return failures;
+});
+
+const fixableErrorTexts = computed(() => {
+	return [...new Set(fixableFailures.value.map(({ error }) => error))];
+});
 
 function toolCallsNeedSubAgentNames(toolCalls: ToolCall[]): boolean {
 	return toolCalls.some((tc) => {
@@ -188,6 +173,11 @@ function toolStepError(tc: ToolCall): string | undefined {
 	return formatToolData(tc.output);
 }
 
+function emitFixWithAssistant() {
+	if (fixableFailures.value.length === 0) return;
+	emit('fixWithAssistant', fixableFailures.value);
+}
+
 function isToolStepLoading(tc: ToolCall): boolean {
 	return (
 		tc.state === TOOL_CALL_STATE.PENDING ||
@@ -276,12 +266,6 @@ function hasActiveToolCall(): boolean {
 					</N8nAiActivityStep>
 				</template>
 			</N8nAiActivityStepGroup>
-			<FixWithAssistantCallout
-				v-for="tc in fixableErroredTools"
-				:key="`fix-${tc.toolCallId}`"
-				:error-text="toolStepError(tc) ?? ''"
-				@fix="emit('fixWithAssistant')"
-			/>
 		</template>
 
 		<template v-else>
@@ -345,19 +329,47 @@ function hasActiveToolCall(): boolean {
 						</div>
 					</template>
 				</N8nAiActivityStep>
-				<FixWithAssistantCallout
-					v-if="showFix && tc.state === TOOL_CALL_STATE.ERROR"
-					:error-text="toolStepError(tc) ?? ''"
-					@fix="emit('fixWithAssistant')"
-				/>
 			</template>
 		</template>
+
+		<N8nCallout
+			v-if="fixableErrorTexts.length > 0"
+			theme="danger"
+			data-test-id="agent-chat-tool-fix-with-assistant-callout"
+		>
+			<template v-if="fixableErrorTexts.length === 1">
+				{{ fixableErrorTexts[0] }}
+			</template>
+			<ul v-else :class="$style.errorList">
+				<li v-for="error in fixableErrorTexts" :key="error">{{ error }}</li>
+			</ul>
+			<template #trailingContent>
+				<N8nButton
+					size="small"
+					variant="subtle"
+					data-test-id="agent-chat-tool-fix-with-assistant"
+					@click="emitFixWithAssistant"
+				>
+					<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+					{{ i18n.baseText('agents.builder.preview.fixWithAssistant') }}
+				</N8nButton>
+			</template>
+		</N8nCallout>
 	</div>
 </template>
 
 <style module>
 .toolSteps {
 	margin: 0 0 var(--spacing--sm);
+}
+
+.errorList {
+	margin: 0;
+	padding-left: var(--spacing--sm);
+}
+
+.errorList li + li {
+	margin-top: var(--spacing--4xs);
 }
 
 .childProgress {

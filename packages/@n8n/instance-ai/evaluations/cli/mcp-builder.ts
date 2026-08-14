@@ -192,6 +192,9 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// user's personal project (the standalone manifest builder cannot — it has
 	// no n8n session).
 	credentials: 'supported',
+	// The fixture server, Chromium and the relay are booted around the build;
+	// `claude` gets a flattened prompt and no browser.
+	credentialFixture: 'orchestrator-only',
 	seed: 'orchestrator-only',
 	datasets: 'supported',
 };

@@ -21,17 +21,31 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const reporter = mock<PublicationStatusReporter>();
 	const tracing = mock<Tracing>();
 	const eventService = mock<EventService>();
+	const abortSignal = new AbortController().signal;
 
 	let consumer: WorkflowPublicationOutboxConsumer;
 
 	const POLL_INTERVAL_MS = 15_000;
+	const LEASE_SECONDS = 120;
+	// Abort fires at 70% of the lease; abandonment follows after the grace period.
+	const ABORT_AFTER_MS = LEASE_SECONDS * 0.7 * 1000;
+	const ABANDON_GRACE_MS = 10_000;
 
-	function createConsumer(useWorkflowPublicationService = true, isLeader = true, concurrency = 1) {
+	let lifecycleLock: WorkflowPublicationLifecycleLock;
+
+	function createConsumer(
+		useWorkflowPublicationService = true,
+		isLeader = true,
+		concurrency = 1,
+		leaseSeconds = LEASE_SECONDS,
+	) {
 		const workflowsConfig = mock<WorkflowsConfig>({
 			useWorkflowPublicationService,
 			publicationOutboxPollIntervalMs: POLL_INTERVAL_MS,
 			workflowPublicationConcurrency: concurrency,
+			publicationOutboxLeaseSeconds: leaseSeconds,
 		});
+		lifecycleLock = new WorkflowPublicationLifecycleLock();
 		return new WorkflowPublicationOutboxConsumer(
 			logger,
 			workflowsConfig,
@@ -40,7 +54,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			applier,
 			reporter,
 			mock<InstanceSettings>({ isLeader }),
-			new WorkflowPublicationLifecycleLock(),
+			lifecycleLock,
 			tracing,
 			eventService,
 		);
@@ -291,16 +305,19 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			const result: PublicationResult = { type: 'completed', triggerStatuses: [] };
 			applier.apply.mockResolvedValue(result);
 
-			await consumer.processRecord(record);
+			await consumer.processRecord(record, abortSignal);
 
-			expect(applier.apply).toHaveBeenCalledWith(record);
+			expect(applier.apply).toHaveBeenCalledWith(
+				record,
+				expect.objectContaining({ signal: abortSignal }),
+			);
 			expect(reporter.report).toHaveBeenCalledWith(record, result);
 		});
 
 		test('reports a failed result when the applier throws unexpectedly', async () => {
 			applier.apply.mockRejectedValue(new Error('teardown failed'));
 
-			await consumer.processRecord(makeRecord());
+			await consumer.processRecord(makeRecord(), abortSignal);
 
 			expect(reporter.report).toHaveBeenCalledWith(
 				expect.anything(),
@@ -315,7 +332,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			const reportError = new Error('db write failed');
 			reporter.report.mockRejectedValue(reportError);
 
-			await expect(consumer.processRecord(makeRecord())).resolves.toBeUndefined();
+			await expect(consumer.processRecord(makeRecord(), abortSignal)).resolves.toBeUndefined();
 
 			expect(errorReporter.error).toHaveBeenCalledWith(reportError, { shouldBeLogged: true });
 		});
@@ -324,11 +341,154 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			consumer = createConsumer(true, false);
 			const record = makeRecord({ id: 7, workflowId: 'wf-7' });
 
-			await consumer.processRecord(record);
+			await consumer.processRecord(record, abortSignal);
 
 			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7);
 			expect(applier.apply).not.toHaveBeenCalled();
 			expect(reporter.report).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('abort and abandon', () => {
+		test('abandons a record that ignores the abort signal and keeps the drain alive', async () => {
+			const stuck = makeRecord({ id: 1, workflowId: 'wf-stuck' });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(stuck).mockResolvedValue(null);
+			applier.apply.mockImplementationOnce(async () => await new Promise(() => {}));
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(ABORT_AFTER_MS + ABANDON_GRACE_MS);
+
+			// The drain settles without the stuck record; no terminal status is
+			// written for it (it stays in_progress for lease reclaim).
+			await expect(drain).resolves.toBe(0);
+			expect(reporter.report).not.toHaveBeenCalled();
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringContaining('Abandoned workflow publication outbox record'),
+				}),
+				{ shouldBeLogged: true },
+			);
+
+			// A fresh drain still processes new records.
+			const next = makeRecord({ id: 2, workflowId: 'wf-2' });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(next).mockResolvedValue(null);
+			await expect(consumer.drainPending()).resolves.toBe(1);
+			expect(reporter.report).toHaveBeenCalledTimes(1);
+		});
+
+		test('a record that settles during the grace period still gets its terminal status', async () => {
+			const record = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+			// Settles after the abort deadline but within the grace period.
+			applier.apply.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) =>
+						setTimeout(
+							() => resolve({ type: 'completed', triggerStatuses: [] }),
+							ABORT_AFTER_MS + 1000,
+						),
+					),
+			);
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(ABORT_AFTER_MS + 2000);
+
+			await expect(drain).resolves.toBe(1);
+			expect(reporter.report).toHaveBeenCalledWith(
+				record,
+				expect.objectContaining({ type: 'completed' }),
+			);
+		});
+
+		test('an abort honored by the applier still writes a terminal failed status', async () => {
+			const record = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+			applier.apply.mockImplementationOnce(
+				async (_record, abort) =>
+					await new Promise((_resolve, reject) => {
+						abort?.signal.addEventListener('abort', () => reject(abort.signal.reason));
+					}),
+			);
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(ABORT_AFTER_MS);
+
+			await expect(drain).resolves.toBe(1);
+			expect(reporter.report).toHaveBeenCalledWith(
+				record,
+				expect.objectContaining({
+					type: 'failed',
+					error: expect.objectContaining({
+						message: expect.stringContaining('exceeded its deadline'),
+					}),
+				}),
+			);
+		});
+
+		test('holds the workflow lock until abandoned trigger operations settle', async () => {
+			const record = makeRecord({ id: 1, workflowId: 'wf-1' });
+			let releaseDetached!: () => void;
+			const detachedWork = new Promise<void>((resolve) => {
+				releaseDetached = resolve;
+			});
+			applier.apply.mockImplementationOnce(async (_record, abort) => {
+				abort?.onDetached(detachedWork);
+				return { type: 'failed', error: new Error('deadline') };
+			});
+			const controller = new AbortController();
+
+			const processing = consumer.processRecord(record, controller.signal);
+			await vi.advanceTimersByTimeAsync(0);
+
+			// The terminal status is written, but the lock is still held for the orphan.
+			expect(reporter.report).toHaveBeenCalledWith(
+				record,
+				expect.objectContaining({ type: 'failed' }),
+			);
+			expect(lifecycleLock.isLocked('wf-1')).toBe(true);
+
+			releaseDetached();
+			await processing;
+			expect(lifecycleLock.isLocked('wf-1')).toBe(false);
+		});
+
+		test('leaves an aborted record in progress for lease reclaim instead of applying it', async () => {
+			const record = makeRecord({ id: 7, workflowId: 'wf-7' });
+			const controller = new AbortController();
+			controller.abort();
+
+			await consumer.processRecord(record, controller.signal);
+
+			// Not returned to pending: the wait for the lock may have outlived the
+			// lease, and flipping the row would release a newer claimant's claim.
+			expect(outboxRepository.returnToPending).not.toHaveBeenCalled();
+			expect(applier.apply).not.toHaveBeenCalled();
+			expect(reporter.report).not.toHaveBeenCalled();
+		});
+
+		test('scales the abandon grace down for short leases so abandonment stays within the lease', async () => {
+			// Lease 16s: abort fires at 11.2s, grace is capped at 4s (a quarter of
+			// the lease) instead of the fixed 10s, so abandonment lands at 15.2s —
+			// still inside the lease.
+			consumer = createConsumer(true, true, 1, 16);
+			const stuck = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(stuck).mockResolvedValue(null);
+			applier.apply.mockImplementationOnce(async () => await new Promise(() => {}));
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(15_200);
+
+			await expect(drain).resolves.toBe(0);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringContaining('Abandoned workflow publication outbox record'),
+				}),
+				{ shouldBeLogged: true },
+			);
 		});
 	});
 
@@ -354,7 +514,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			async (result, expectedResult, expectedReason) => {
 				applier.apply.mockResolvedValue(result);
 
-				await consumer.processRecord(makeRecord());
+				await consumer.processRecord(makeRecord(), abortSignal);
 
 				expect(lastOutcome()).toEqual(
 					expect.objectContaining({ result: expectedResult, reason: expectedReason }),
@@ -366,7 +526,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			applier.apply.mockResolvedValue({ type: 'completed', triggerStatuses: [] });
 			reporter.report.mockRejectedValue(new Error('db write failed'));
 
-			await consumer.processRecord(makeRecord());
+			await consumer.processRecord(makeRecord(), abortSignal);
 
 			expect(lastOutcome()).toEqual(expect.objectContaining({ result: 'failed', reason: 'none' }));
 		});
@@ -374,7 +534,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		test('does not emit when the record is returned to the queue (no longer leader)', async () => {
 			consumer = createConsumer(true, false);
 
-			await consumer.processRecord(makeRecord());
+			await consumer.processRecord(makeRecord(), abortSignal);
 
 			expect(eventService.emit).not.toHaveBeenCalledWith(
 				'workflow-publication-outbox-record-processed',
