@@ -1,3 +1,13 @@
+## [2.34.6](https://github.com/n8n-io/n8n/compare/n8n@2.34.5...n8n@2.34.6) (2026-08-14)
+
+
+### Bug Fixes
+
+* **core:** Allow `details` field in `continueErrorOutput` mode ([#36229](https://github.com/n8n-io/n8n/issues/36229)) ([a5b4822](https://github.com/n8n-io/n8n/commit/a5b4822c43c39779bf063d6d699324794607db05))
+* **Google Ads Node:** Migrate from sunset v21 API to v25 ([#36260](https://github.com/n8n-io/n8n/issues/36260)) ([ee0c183](https://github.com/n8n-io/n8n/commit/ee0c183745c1f59d58747beb82170d7ee6582657))
+* **Microsoft Teams Node:** Restore Group.ReadWrite.All OAuth2 scope ([#36187](https://github.com/n8n-io/n8n/issues/36187)) ([10758c2](https://github.com/n8n-io/n8n/commit/10758c24319eaac20c9dcbf12da0056f0622557e))
+
+
 ## [2.34.5](https://github.com/n8n-io/n8n/compare/n8n@2.34.4...n8n@2.34.5) (2026-08-12)
 
 
