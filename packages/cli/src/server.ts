@@ -464,10 +464,12 @@ export class Server extends AbstractServer {
 					method,
 					headers: { accept },
 				} = req;
+				// A request with no `Accept` counts as wanting the page: this handler is the only
+				// one that fills in the nonce placeholders, and falling through to `express.static`
+				// would serve `index.html` with its placeholders intact, unrunnable under the CSP.
 				if (
 					method === 'GET' &&
-					accept &&
-					(accept.includes('text/html') || accept.includes('*/*')) &&
+					(!accept || accept.includes('text/html') || accept.includes('*/*')) &&
 					!req.path.endsWith('.wasm') &&
 					!nonUIRoutesRegex.test(req.path)
 				) {
