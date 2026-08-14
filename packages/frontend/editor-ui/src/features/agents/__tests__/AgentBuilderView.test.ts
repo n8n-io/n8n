@@ -1590,7 +1590,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 				.findComponent({ name: 'AgentBuilderEditorColumn' })
 				.vm.$emit('toggle-mcp-access', true);
 			await nextTick();
-			await vi.advanceTimersByTimeAsync(500);
+			await vi.runOnlyPendingTimersAsync();
 			expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a2', true);
 		} finally {
 			vi.useRealTimers();

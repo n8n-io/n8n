@@ -6,9 +6,8 @@ import { TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
-const { useKeybindingsMock, langsmithExportState } = vi.hoisted(() => ({
+const { useKeybindingsMock } = vi.hoisted(() => ({
 	useKeybindingsMock: vi.fn(),
-	langsmithExportState: { enabled: false, exporting: false },
 }));
 
 vi.mock('@/app/composables/useKeybindings', () => ({
@@ -17,8 +16,8 @@ vi.mock('@/app/composables/useKeybindings', () => ({
 
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	useAgentSessionLangSmithExport: () => ({
-		isEnabled: langsmithExportState.enabled,
-		isExporting: langsmithExportState.exporting,
+		isEnabled: false,
+		isExporting: false,
 		sendSession: vi.fn(),
 	}),
 }));
@@ -88,8 +87,6 @@ function mountDock(
 describe('AgentPreviewDock', () => {
 	beforeEach(() => {
 		useKeybindingsMock.mockClear();
-		langsmithExportState.enabled = false;
-		langsmithExportState.exporting = false;
 	});
 
 	it('renders the Instance AI session heading before the compact actions', () => {
@@ -165,21 +162,6 @@ describe('AgentPreviewDock', () => {
 
 		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-preview-view-session-tooltip"]').exists()).toBe(false);
-	});
-
-	it('hides LangSmith export for an unpersisted session', () => {
-		langsmithExportState.enabled = true;
-
-		const wrapper = mountDock({ hasSession: false });
-
-		expect(wrapper.find('[data-testid="agent-preview-langsmith-export-btn"]').exists()).toBe(false);
-	});
-
-	it('shows LangSmith export for a persisted session when enabled', () => {
-		langsmithExportState.enabled = true;
-		const wrapper = mountDock({ effectiveSessionId: 'current-thread' });
-
-		expect(wrapper.find('[data-testid="agent-preview-langsmith-export-btn"]').exists()).toBe(true);
 	});
 
 	it('forwards chat events and opts the chat page into dock layout', () => {
