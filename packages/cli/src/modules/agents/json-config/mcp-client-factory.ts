@@ -1,7 +1,8 @@
 import type { CredentialProvider, McpClient, McpServerConfig } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
-import { isMcpOAuth2Authentication } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isMcpOAuth2Authentication, OperationalError } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
@@ -35,6 +36,8 @@ function isTokenData(tokenData: unknown): tokenData is { access_token: string } 
 type DerivedAuth = {
 	headers: Record<string, string>;
 	credentialData?: ICredentialDataDecryptedObject;
+	/** Set when the credential could not be resolved (e.g. unreachable secret store). */
+	credentialError?: Error;
 };
 
 function withCredentialData(
@@ -140,11 +143,14 @@ async function deriveAuthHeaders(
 ): Promise<DerivedAuth> {
 	if (server.authentication === 'none' || !server.credential) return { headers: {} };
 
-	const resolved = await credentialProvider.resolve(server.credential).catch(() => null);
-	if (!resolved) return { headers: {} };
-
-	const credentialData = resolved as ICredentialDataDecryptedObject;
-	return deriveHeadersForAuthentication(server, credentialData, credentialData);
+	try {
+		const resolved = (await credentialProvider.resolve(
+			server.credential,
+		)) as ICredentialDataDecryptedObject;
+		return deriveHeadersForAuthentication(server, resolved, resolved);
+	} catch (error) {
+		return { headers: {}, credentialError: ensureError(error) };
+	}
 }
 
 export interface BuildMcpClientDeps {
@@ -189,10 +195,11 @@ export async function buildMcpClientForServer(
 	} = deps;
 	const { McpClient } = await import('@n8n/agents');
 
-	const { headers: initialHeaders, credentialData } = await deriveAuthHeaders(
-		server,
-		credentialProvider,
-	);
+	const {
+		headers: initialHeaders,
+		credentialData,
+		credentialError,
+	} = await deriveAuthHeaders(server, credentialProvider);
 	const allowedDomains = credentialData ? resolveAllowedDomains(credentialData) : undefined;
 
 	const onUnauthorized =
@@ -206,12 +213,24 @@ export async function buildMcpClientForServer(
 				}
 			: undefined;
 
-	const authFetch = createAuthFetch({
-		baseFetch: proxyFetch,
-		initialHeaders,
-		onUnauthorized,
-		allowedDomains,
-	});
+	// An unresolved credential fails at connect time so the real reason travels
+	// the SDK's connection-failure channel (surfaced as a `warning` chunk);
+	// connecting unauthenticated returns an opaque 401/403 instead. Rejecting
+	// rather than throwing keeps both `promise-function-async` and
+	// `require-await` satisfied.
+	const authFetch: typeof fetch = credentialError
+		? async () =>
+				await Promise.reject(
+					new OperationalError(
+						`Could not resolve the credential for MCP server "${server.name}": ${credentialError.message}`,
+					),
+				)
+		: createAuthFetch({
+				baseFetch: proxyFetch,
+				initialHeaders,
+				onUnauthorized,
+				allowedDomains,
+			});
 
 	const sdkServerConfig: McpServerConfig = {
 		name: server.name,
