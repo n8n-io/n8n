@@ -87,9 +87,8 @@ export class StepReadyHandler {
 		inputs: StepSlots,
 		executor: IStepExecutor,
 	): Promise<StepSlots> {
-		// Outputs are recorded shape-agnostically: which slots fired (including
-		// none) is planning's concern — the settlement handler reads the slots
-		// to queue live branches and skip dead ones.
+		// Outputs are stored without inspection. Which slots fired (including
+		// none) is the settlement handler's concern when it plans successors.
 		const { outputs } = await executor.execute({
 			node,
 			inputs,

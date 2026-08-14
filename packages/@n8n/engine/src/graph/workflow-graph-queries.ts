@@ -22,9 +22,9 @@ export function getSuccessorNodeIds(graph: WorkflowGraph, nodeId: string): strin
 
 /**
  * Ids of every node reachable downstream of `nodeId` (transitive successors),
- * de-duplicated, in BFS order, excluding `nodeId` itself. Bounds the region a
- * settlement can decide: nothing outside a settled step's descendants changes
- * when it settles.
+ * de-duplicated, in BFS order, excluding `nodeId` itself. The completion
+ * check counts these against settled rows, and validation uses them to
+ * reject unreachable predecessors.
  */
 export function getDescendantNodeIds(graph: WorkflowGraph, nodeId: string): string[] {
 	// BFS where the queue doubles as the result: every id is appended exactly

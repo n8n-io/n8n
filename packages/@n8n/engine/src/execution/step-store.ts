@@ -127,8 +127,8 @@ export interface StepStore {
 
 	/**
 	 * Planning view of the given nodes' rows, keyed by node id; absent as in
-	 * `loadStepsByNodeIds`. Slot liveness is computed in the database so
-	 * settlement decisions never pull output payloads over the wire.
+	 * `loadStepsByNodeIds`. The per-slot booleans are computed in the database,
+	 * so planning never pulls the potentially large outputs over the wire.
 	 */
 	loadStepSummaries(executionId: string, nodeIds: string[]): Promise<Record<string, StepSummary>>;
 

@@ -181,8 +181,9 @@ export class TypeOrmStepStore implements StepStore {
 	): Promise<Record<string, StepSummary>> {
 		if (nodeIds.length === 0) return {};
 
-		// Slot liveness is projected in SQL so the jsonb payloads never leave the
-		// database: a slot is filled unless it holds JSON null.
+		// The per-slot booleans are computed inside the query, so the potentially
+		// large outputs payloads are never transferred. A slot counts as filled
+		// unless it holds JSON null.
 		const rows: Array<{
 			id: string;
 			nodeId: string;
