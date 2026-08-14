@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import VueMarkdown from 'vue-markdown-render';
@@ -10,8 +10,8 @@ import {
 	N8nIconButton,
 	N8nText,
 	N8nCard,
+	N8nCodeBlock,
 	N8nIcon,
-	N8nTooltip,
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -24,9 +24,10 @@ import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
 import {
-	hitlTimelineNameKey,
-	isErroredToolCallTimelineItem,
+	hitlTimelineName,
 	isSubAgentTimelineItem,
+	linkedToolDisplayName,
+	timelineItemStatus,
 } from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
@@ -50,9 +51,6 @@ const userAttachments = computed((): ChatMessageAttachment[] => {
 		sizeBytes: attachment.sizeBytes,
 	}));
 });
-const copiedBlock = ref<string | null>(null);
-let copiedResetTimer: ReturnType<typeof setTimeout> | null = null;
-
 const fullExecutionHref = computed((): string => {
 	if (
 		props.item?.kind !== 'workflow' ||
@@ -110,51 +108,6 @@ function stringifyJson(value: unknown): string {
 	return JSON.stringify(parsed, null, 2) ?? String(parsed);
 }
 
-async function copyJsonBlock(id: string, value: unknown): Promise<void> {
-	try {
-		await navigator.clipboard.writeText(stringifyJson(value));
-		copiedBlock.value = id;
-		if (copiedResetTimer) clearTimeout(copiedResetTimer);
-		copiedResetTimer = setTimeout(() => {
-			copiedBlock.value = null;
-			copiedResetTimer = null;
-		}, 1500);
-	} catch {}
-}
-
-function escapeHtml(text: string): string {
-	return text
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;');
-}
-
-function highlightJson(value: unknown, indent = 0): string {
-	const pad = '  '.repeat(indent);
-	const padInner = '  '.repeat(indent + 1);
-	if (value === null) return '<span class="json-bool">null</span>';
-	if (typeof value === 'boolean') return `<span class="json-bool">${value}</span>`;
-	if (typeof value === 'number') return `<span class="json-number">${value}</span>`;
-	if (typeof value === 'string')
-		return `<span class="json-string">&quot;${escapeHtml(value)}&quot;</span>`;
-	if (Array.isArray(value)) {
-		if (value.length === 0) return '[]';
-		const items = value.map((v) => `${padInner}${highlightJson(v, indent + 1)}`);
-		return `[\n${items.join(',\n')}\n${pad}]`;
-	}
-	if (typeof value === 'object') {
-		const entries = Object.entries(value as Record<string, unknown>);
-		if (entries.length === 0) return '{}';
-		const lines = entries.map(
-			([k, v]) =>
-				`${padInner}<span class="json-key">&quot;${escapeHtml(k)}&quot;</span>: ${highlightJson(v, indent + 1)}`,
-		);
-		return `{\n${lines.join(',\n')}\n${pad}}`;
-	}
-	return escapeHtml(String(value));
-}
-
 const toolDisplayName = computed((): string => {
 	if (
 		!props.item ||
@@ -169,10 +122,7 @@ const toolDisplayName = computed((): string => {
 
 const linkedToolName = computed((): string => {
 	const item = props.item;
-	if (!item) return '';
-	return (
-		item.hitlToolDisplayName ?? item.workflowName ?? item.nodeDisplayName ?? toolDisplayName.value
-	);
+	return item ? linkedToolDisplayName(item, i18n) : '';
 });
 
 const hitlRequestContent = computed((): unknown => {
@@ -190,16 +140,10 @@ const hitlRequestContent = computed((): unknown => {
 	return request;
 });
 
-const hitlResponseLabel = computed((): string => {
-	const status = props.item?.hitlResponseStatus;
-	if (status === 'approved') return i18n.baseText('agentSessions.timeline.approved');
-	if (status === 'declined') return i18n.baseText('agentSessions.timeline.declined');
-	return i18n.baseText('agentSessions.timeline.responseReceived');
-});
-
 const isSubAgent = computed((): boolean =>
 	props.item ? isSubAgentTimelineItem(props.item) : false,
 );
+const status = computed(() => (props.item ? timelineItemStatus(props.item) : undefined));
 
 /**
  * For an agent (assistant) message the persisted content is the raw response
@@ -231,17 +175,13 @@ const headerTitle = computed((): string => {
 	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
 	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
 	if (item.kind === 'suspension') {
-		const nameKey = hitlTimelineNameKey(item);
-		if (nameKey) {
-			return i18n.baseText(nameKey, { interpolate: { toolName: linkedToolName.value } });
-		}
-		return i18n.baseText('agentSessions.timeline.hitlRequested');
+		return item.hitlRequestType === 'approval'
+			? hitlTimelineName(item, i18n)
+			: i18n.baseText('agentSessions.timeline.hitlRequested');
 	}
-	const nameKey = hitlTimelineNameKey(item);
-	if (nameKey) {
-		return i18n.baseText(nameKey, { interpolate: { toolName: linkedToolName.value } });
-	}
-	return i18n.baseText('agentSessions.timeline.hitlResponse');
+	return item.hitlRequestType === 'approval'
+		? hitlTimelineName(item, i18n)
+		: i18n.baseText('agentSessions.timeline.hitlResponse');
 });
 
 const headerIcon = computed((): IconName => {
@@ -296,20 +236,16 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					<N8nIcon :icon="headerIcon" :size="16" />
 					<N8nText bold>{{ headerTitle }}</N8nText>
 					<N8nBadge
-						v-if="item.kind === 'hitl-response'"
-						:theme="item.hitlResponseStatus === 'approved' ? 'success' : 'default'"
+						v-if="status"
+						:theme="status.theme"
 						size="xsmall"
-						data-test-id="detail-hitl-response-badge"
+						:data-test-id="
+							status.kind === 'hitl-response'
+								? 'detail-hitl-response-badge'
+								: 'detail-tool-error-badge'
+						"
 					>
-						{{ hitlResponseLabel }}
-					</N8nBadge>
-					<N8nBadge
-						v-if="isErroredToolCallTimelineItem(item)"
-						theme="danger"
-						size="xsmall"
-						data-test-id="detail-tool-error-badge"
-					>
-						{{ i18n.baseText('agentSessions.timeline.error') }}
+						{{ i18n.baseText(status.labelKey) }}
 					</N8nBadge>
 				</div>
 				<N8nIconButton
@@ -349,33 +285,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 							<div :class="$style.label">
 								{{ i18n.baseText('agentSessions.timeline.requestDetails') }}
 							</div>
-							<div :class="$style.codeBlock">
-								<div :class="$style.codeBlockCopy">
-									<N8nTooltip
-										:content="
-											copiedBlock === 'hitl-request'
-												? i18n.baseText('generic.copied')
-												: i18n.baseText('generic.copy')
-										"
-									>
-										<N8nButton
-											variant="outline"
-											size="small"
-											icon-only
-											:icon="copiedBlock === 'hitl-request' ? 'check' : 'copy'"
-											:aria-label="
-												copiedBlock === 'hitl-request'
-													? i18n.baseText('generic.copied')
-													: i18n.baseText('generic.copy')
-											"
-											@click="copyJsonBlock('hitl-request', hitlRequestContent)"
-										/>
-									</N8nTooltip>
-								</div>
-								<!-- eslint-disable vue/no-v-html -->
-								<pre :class="$style.json" v-html="highlightJson(hitlRequestContent)" />
-								<!-- eslint-enable vue/no-v-html -->
-							</div>
+							<N8nCodeBlock :code="stringifyJson(hitlRequestContent)" language="json" />
 						</div>
 					</template>
 
@@ -384,33 +294,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 							<div :class="$style.label">
 								{{ i18n.baseText('agentSessions.timeline.response') }}
 							</div>
-							<div :class="$style.codeBlock">
-								<div :class="$style.codeBlockCopy">
-									<N8nTooltip
-										:content="
-											copiedBlock === 'hitl-response'
-												? i18n.baseText('generic.copied')
-												: i18n.baseText('generic.copy')
-										"
-									>
-										<N8nButton
-											variant="outline"
-											size="small"
-											icon-only
-											:icon="copiedBlock === 'hitl-response' ? 'check' : 'copy'"
-											:aria-label="
-												copiedBlock === 'hitl-response'
-													? i18n.baseText('generic.copied')
-													: i18n.baseText('generic.copy')
-											"
-											@click="copyJsonBlock('hitl-response', item.hitlResponse)"
-										/>
-									</N8nTooltip>
-								</div>
-								<!-- eslint-disable vue/no-v-html -->
-								<pre :class="$style.json" v-html="highlightJson(item.hitlResponse)" />
-								<!-- eslint-enable vue/no-v-html -->
-							</div>
+							<N8nCodeBlock :code="stringifyJson(item.hitlResponse)" language="json" />
 						</div>
 					</template>
 
@@ -439,41 +323,17 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 							<div :class="$style.label">
 								{{ i18n.baseText('agentSessions.timeline.input') }}
 							</div>
-							<!-- eslint-disable vue/no-v-html -->
-							<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
-							<!-- eslint-enable vue/no-v-html -->
+							<N8nCodeBlock
+								:code="stringifyJson(item.toolInput)"
+								language="json"
+								:copyable="false"
+							/>
 						</div>
 						<div v-else data-test-id="wf-error-fallback" :class="$style.errorFallback">
 							<div :class="$style.errorBanner">
 								{{ i18n.baseText('agentSessions.timeline.workflowError') }}
 							</div>
-							<div :class="$style.codeBlock">
-								<div :class="$style.codeBlockCopy">
-									<N8nTooltip
-										:content="
-											copiedBlock === 'workflow-output'
-												? i18n.baseText('generic.copied')
-												: i18n.baseText('generic.copy')
-										"
-									>
-										<N8nButton
-											variant="outline"
-											size="small"
-											icon-only
-											:icon="copiedBlock === 'workflow-output' ? 'check' : 'copy'"
-											:aria-label="
-												copiedBlock === 'workflow-output'
-													? i18n.baseText('generic.copied')
-													: i18n.baseText('generic.copy')
-											"
-											@click="copyJsonBlock('workflow-output', item.toolOutput)"
-										/>
-									</N8nTooltip>
-								</div>
-								<!-- eslint-disable vue/no-v-html -->
-								<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
-								<!-- eslint-enable vue/no-v-html -->
-							</div>
+							<N8nCodeBlock :code="stringifyJson(item.toolOutput)" language="json" />
 						</div>
 					</template>
 
@@ -484,65 +344,13 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						<template v-else>
 							<div>
 								<div :class="$style.label">{{ i18n.baseText('agentSessions.timeline.input') }}</div>
-								<div :class="$style.codeBlock">
-									<div :class="$style.codeBlockCopy">
-										<N8nTooltip
-											:content="
-												copiedBlock === 'tool-input'
-													? i18n.baseText('generic.copied')
-													: i18n.baseText('generic.copy')
-											"
-										>
-											<N8nButton
-												variant="outline"
-												size="small"
-												icon-only
-												:icon="copiedBlock === 'tool-input' ? 'check' : 'copy'"
-												:aria-label="
-													copiedBlock === 'tool-input'
-														? i18n.baseText('generic.copied')
-														: i18n.baseText('generic.copy')
-												"
-												@click="copyJsonBlock('tool-input', item.toolInput)"
-											/>
-										</N8nTooltip>
-									</div>
-									<!-- eslint-disable vue/no-v-html -->
-									<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
-									<!-- eslint-enable vue/no-v-html -->
-								</div>
+								<N8nCodeBlock :code="stringifyJson(item.toolInput)" language="json" />
 							</div>
 							<div v-if="item.toolOutput !== undefined">
 								<div :class="$style.label">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</div>
-								<div :class="$style.codeBlock">
-									<div :class="$style.codeBlockCopy">
-										<N8nTooltip
-											:content="
-												copiedBlock === 'tool-output'
-													? i18n.baseText('generic.copied')
-													: i18n.baseText('generic.copy')
-											"
-										>
-											<N8nButton
-												variant="outline"
-												size="small"
-												icon-only
-												:icon="copiedBlock === 'tool-output' ? 'check' : 'copy'"
-												:aria-label="
-													copiedBlock === 'tool-output'
-														? i18n.baseText('generic.copied')
-														: i18n.baseText('generic.copy')
-												"
-												@click="copyJsonBlock('tool-output', item.toolOutput)"
-											/>
-										</N8nTooltip>
-									</div>
-									<!-- eslint-disable vue/no-v-html -->
-									<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
-									<!-- eslint-enable vue/no-v-html -->
-								</div>
+								<N8nCodeBlock :code="stringifyJson(item.toolOutput)" language="json" />
 							</div>
 						</template>
 					</template>
@@ -561,33 +369,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'agent' && agentStructuredContent !== undefined">
-						<div :class="$style.codeBlock">
-							<div :class="$style.codeBlockCopy">
-								<N8nTooltip
-									:content="
-										copiedBlock === 'agent-output'
-											? i18n.baseText('generic.copied')
-											: i18n.baseText('generic.copy')
-									"
-								>
-									<N8nButton
-										variant="outline"
-										size="small"
-										icon-only
-										:icon="copiedBlock === 'agent-output' ? 'check' : 'copy'"
-										:aria-label="
-											copiedBlock === 'agent-output'
-												? i18n.baseText('generic.copied')
-												: i18n.baseText('generic.copy')
-										"
-										@click="copyJsonBlock('agent-output', agentStructuredContent)"
-									/>
-								</N8nTooltip>
-							</div>
-							<!-- eslint-disable vue/no-v-html -->
-							<pre :class="$style.json" v-html="highlightJson(agentStructuredContent)" />
-							<!-- eslint-enable vue/no-v-html -->
-						</div>
+						<N8nCodeBlock :code="stringifyJson(agentStructuredContent)" language="json" />
 					</template>
 
 					<template v-else-if="item.kind === 'user' || item.kind === 'agent'">
@@ -694,42 +476,6 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	justify-content: start;
 }
 
-.codeBlock {
-	position: relative;
-}
-
-.codeBlockCopy {
-	position: absolute;
-	top: var(--spacing--sm);
-	right: var(--spacing--lg);
-	z-index: 1;
-	opacity: 0;
-	transition: opacity var(--duration--snappy) var(--easing--ease-out);
-
-	.codeBlock:hover &,
-	.codeBlock:focus-within & {
-		opacity: 1;
-	}
-}
-
-.json {
-	font-family: var(--font-family--monospace);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	white-space: pre-wrap;
-	word-break: break-word;
-	margin: 0;
-	background-color: var(--background--subtle);
-	padding: var(--spacing--sm);
-	padding-right: calc(var(--spacing--2xl) + var(--spacing--lg));
-	border-radius: var(--radius--3xs);
-	overflow-x: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-	color: var(--color--text--tint-1);
-	margin-top: var(--spacing--2xs);
-}
-
 .formCard {
 	border: var(--border);
 	padding: var(--spacing--sm);
@@ -775,24 +521,5 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	> *:first-child {
 		margin-top: 0;
 	}
-}
-</style>
-
-<style lang="scss">
-.json-key {
-	color: var(--color--primary);
-}
-
-.json-string {
-	color: var(--color--success);
-}
-
-.json-number {
-	color: var(--color--warning);
-}
-
-.json-bool {
-	color: var(--color--text--tint-1);
-	font-style: italic;
 }
 </style>

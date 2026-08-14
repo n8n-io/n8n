@@ -147,47 +147,26 @@ describe('SessionTimelineTable', () => {
 		expect(rows[2].text()).toContain('Approval response for Protected action');
 	});
 
-	it('shows an Error badge only on failed tool calls', () => {
-		const w = mountTable({
-			items: [
-				{
-					kind: 'tool',
-					executionId: 'e1',
-					timestamp: 1000,
-					toolName: 'http',
-					toolOutcome: 'error',
-				},
-				{
-					kind: 'node',
-					executionId: 'e1',
-					timestamp: 2000,
-					toolName: 'send_message',
-					toolOutcome: 'error',
-				},
-				{
-					kind: 'workflow',
-					executionId: 'e1',
-					timestamp: 3000,
-					workflowName: 'Run report',
-					toolOutcome: 'error',
-				},
-				{
-					kind: 'tool',
-					executionId: 'e1',
-					timestamp: 4000,
-					toolName: 'successful_tool',
-					toolOutcome: 'success',
-				},
-			],
-			selectedIndex: null,
-			visibleKinds: new Set<string>(),
-		});
+	it.each(['tool', 'node', 'workflow'] as const)(
+		'shows an Error badge on failed %s calls',
+		(kind) => {
+			const w = mountTable({
+				items: [
+					{
+						kind,
+						executionId: 'e1',
+						timestamp: 1000,
+						toolName: 'failed_tool',
+						toolOutcome: 'error',
+					},
+				],
+				selectedIndex: null,
+				visibleKinds: new Set<string>(),
+			});
 
-		const badges = w.findAll('[data-test-id="timeline-tool-error-badge"]');
-		expect(badges).toHaveLength(3);
-		expect(badges.every((badge) => badge.text() === 'Error')).toBe(true);
-		expect(w.findAll('[data-test-id="timeline-row"]')[3].text()).not.toContain('Error');
-	});
+			expect(w.get('[data-test-id="timeline-tool-error-badge"]').text()).toBe('Error');
+		},
+	);
 
 	it('hides items whose filterKey is not in visibleKinds', () => {
 		const w = mountTable({

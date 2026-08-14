@@ -1258,7 +1258,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(hook.warnings.value.map((w) => w.server)).toEqual(['s2']);
 	});
 
-	it('does not show the same warning again after it is dismissed', async () => {
+	it('keeps a dismissed warning hidden until a new chat composable is created', async () => {
 		const events: AgentSseEvent[] = [
 			{
 				type: 'warning',
@@ -1278,24 +1278,6 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		await hook.sendMessage('run again');
 
 		expect(hook.warnings.value).toHaveLength(0);
-	});
-
-	it('shows a dismissed warning again in a new chat composable instance', async () => {
-		const events: AgentSseEvent[] = [
-			{
-				type: 'warning',
-				message: 'Invalid access token',
-				code: 'mcp_connection_failed',
-				source: 'mcp',
-				server: 'Linear',
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const firstHook = buildHook();
-		await firstHook.sendMessage('run');
-		firstHook.dismissWarning(0);
 
 		const refreshedHook = buildHook();
 		await refreshedHook.sendMessage('run');

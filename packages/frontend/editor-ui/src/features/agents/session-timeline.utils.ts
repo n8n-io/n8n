@@ -1,4 +1,4 @@
-import type { BaseTextKey } from '@n8n/i18n';
+import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
 	EventKind,
@@ -10,7 +10,11 @@ import type {
 } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
-import { formatToolNameForDisplay, getToolNameTranslationKey } from './utils/toolDisplayName';
+import {
+	formatToolNameForDisplay,
+	getToolNameTranslationKey,
+	resolveToolNameForDisplay,
+} from './utils/toolDisplayName';
 
 export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
 
@@ -34,6 +38,53 @@ export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined
 	if (item.hitlRequestType !== 'approval') return undefined;
 	if (item.kind === 'suspension') return 'agentSessions.timeline.approvalRequestForTool';
 	if (item.kind === 'hitl-response') return 'agentSessions.timeline.approvalResponseForTool';
+	return undefined;
+}
+
+type TimelineI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
+
+export function linkedToolDisplayName(item: TimelineItem, i18n: TimelineI18n): string {
+	return (
+		item.hitlToolDisplayName ??
+		item.workflowName ??
+		item.nodeDisplayName ??
+		resolveToolNameForDisplay(item.toolName, i18n)
+	);
+}
+
+export function hitlTimelineName(item: TimelineItem, i18n: TimelineI18n): string {
+	const toolName = linkedToolDisplayName(item, i18n);
+	const nameKey = hitlTimelineNameKey(item);
+	return nameKey ? i18n.baseText(nameKey, { interpolate: { toolName } }) : toolName;
+}
+
+export type TimelineItemStatus = {
+	kind: 'hitl-response' | 'tool-error';
+	labelKey: BaseTextKey;
+	theme: 'default' | 'success' | 'danger';
+};
+
+export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | undefined {
+	if (item.kind === 'hitl-response') {
+		if (item.hitlResponseStatus === 'approved') {
+			return {
+				kind: 'hitl-response',
+				labelKey: 'agentSessions.timeline.approved',
+				theme: 'success',
+			};
+		}
+		return {
+			kind: 'hitl-response',
+			labelKey:
+				item.hitlResponseStatus === 'declined'
+					? 'agentSessions.timeline.declined'
+					: 'agentSessions.timeline.responseReceived',
+			theme: 'default',
+		};
+	}
+	if (isErroredToolCallTimelineItem(item)) {
+		return { kind: 'tool-error', labelKey: 'agentSessions.timeline.error', theme: 'danger' };
+	}
 	return undefined;
 }
 

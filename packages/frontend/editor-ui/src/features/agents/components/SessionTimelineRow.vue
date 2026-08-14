@@ -8,9 +8,9 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
 import {
-	hitlTimelineNameKey,
-	isErroredToolCallTimelineItem,
+	hitlTimelineName,
 	isSubAgentTimelineItem,
+	timelineItemStatus,
 } from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
@@ -42,25 +42,6 @@ const workflowHref = computed((): string => {
 		.href;
 });
 
-function linkedToolName(item: TimelineItem): string {
-	return (
-		item.hitlToolDisplayName ??
-		item.workflowName ??
-		item.nodeDisplayName ??
-		resolveToolNameForDisplay(item.toolName, i18n)
-	);
-}
-
-function hitlResponseLabel(item: TimelineItem): string {
-	if (item.hitlResponseStatus === 'approved') {
-		return i18n.baseText('agentSessions.timeline.approved');
-	}
-	if (item.hitlResponseStatus === 'declined') {
-		return i18n.baseText('agentSessions.timeline.declined');
-	}
-	return i18n.baseText('agentSessions.timeline.responseReceived');
-}
-
 const infoText = computed((): string => {
 	const it = props.item;
 	switch (it.kind) {
@@ -76,15 +57,14 @@ const infoText = computed((): string => {
 		case 'node':
 			return it.nodeDisplayName ?? formatToolNameForDisplay(it.toolName);
 		case 'suspension':
-		case 'hitl-response': {
-			const toolName = linkedToolName(it);
-			const nameKey = hitlTimelineNameKey(it);
-			return nameKey ? i18n.baseText(nameKey, { interpolate: { toolName } }) : toolName;
-		}
+		case 'hitl-response':
+			return hitlTimelineName(it, i18n);
 		default:
 			return '';
 	}
 });
+
+const status = computed(() => timelineItemStatus(props.item));
 
 const attachmentChip = computed((): { label: string; tooltip: string } | null => {
 	const attachments = props.item.attachments;
@@ -143,22 +123,17 @@ const label = computed((): string => {
 				<span>{{ infoText }}</span>
 			</template>
 			<N8nBadge
-				v-if="item.kind === 'hitl-response'"
+				v-if="status"
 				:class="$style.statusBadge"
-				:theme="item.hitlResponseStatus === 'approved' ? 'success' : 'default'"
+				:theme="status.theme"
 				size="xsmall"
-				data-test-id="timeline-hitl-response-badge"
+				:data-test-id="
+					status.kind === 'hitl-response'
+						? 'timeline-hitl-response-badge'
+						: 'timeline-tool-error-badge'
+				"
 			>
-				{{ hitlResponseLabel(item) }}
-			</N8nBadge>
-			<N8nBadge
-				v-if="isErroredToolCallTimelineItem(item)"
-				:class="$style.statusBadge"
-				theme="danger"
-				size="xsmall"
-				data-test-id="timeline-tool-error-badge"
-			>
-				{{ i18n.baseText('agentSessions.timeline.error') }}
+				{{ i18n.baseText(status.labelKey) }}
 			</N8nBadge>
 			<N8nTooltip v-if="attachmentChip" :content="attachmentChip.tooltip" placement="top">
 				<span :class="$style.attachmentChip" data-testid="timeline-attachment-chip">

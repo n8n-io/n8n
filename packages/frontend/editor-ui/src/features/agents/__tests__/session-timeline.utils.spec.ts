@@ -204,6 +204,33 @@ function withTimeline(
 	return exec({ timeline: events, ...overrides });
 }
 
+function toolCallEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
+	return {
+		type: 'tool-call',
+		kind: 'tool',
+		name: 'protected_action',
+		toolCallId: 'tc-1',
+		startTime: 100,
+		endTime: 0,
+		success: false,
+		...overrides,
+	};
+}
+
+function suspensionEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
+	return {
+		type: 'suspension',
+		toolName: 'protected_action',
+		toolCallId: 'tc-1',
+		timestamp: 110,
+		...overrides,
+	};
+}
+
+function hitlResponseEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
+	return { type: 'hitl-response', toolCallId: 'tc-1', timestamp: 190, ...overrides };
+}
+
 describe('flattenExecutionsToTimelineItems', () => {
 	const attachment = { id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 };
 
@@ -236,38 +263,26 @@ describe('flattenExecutionsToTimelineItems', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline(
 				[
-					{
-						type: 'tool-call',
-						kind: 'tool',
+					toolCallEvent({
 						name: 'chat_action',
-						toolCallId: 'tc-1',
 						input: { action: 'respond' },
-						startTime: 100,
-						endTime: 0,
-						success: false,
-					},
-					{ type: 'suspension', toolName: 'chat_action', toolCallId: 'tc-1', timestamp: 110 },
+					}),
+					suspensionEvent({ toolName: 'chat_action' }),
 				],
 				{ id: 'e-suspended', hitlStatus: 'suspended' },
 			),
 			withTimeline(
 				[
-					{
-						type: 'hitl-response',
-						toolCallId: 'tc-1',
+					hitlResponseEvent({
 						response: { type: 'button', value: 'approve' },
-						timestamp: 190,
-					},
-					{
-						type: 'tool-call',
-						kind: 'tool',
+					}),
+					toolCallEvent({
 						name: 'chat_action',
-						toolCallId: 'tc-1',
 						output: { actionRecorded: true },
 						startTime: 200,
 						endTime: 200,
 						success: true,
-					},
+					}),
 				],
 				{ id: 'e-resumed', hitlStatus: 'resumed' },
 			),
@@ -295,31 +310,21 @@ describe('flattenExecutionsToTimelineItems', () => {
 			const items = flattenExecutionsToTimelineItems([
 				withTimeline(
 					[
-						{
-							type: 'tool-call',
+						toolCallEvent({
 							kind,
-							name: 'protected_action',
 							toolCallId: 'tc-declined',
 							input: { recordId: '1' },
-							startTime: 100,
-							endTime: 0,
-							success: false,
-						},
-						{
-							type: 'suspension',
-							toolName: 'protected_action',
+						}),
+						suspensionEvent({
 							toolCallId: 'tc-declined',
-							timestamp: 110,
-						},
+						}),
 					],
 					{ id: 'e-suspended', hitlStatus: 'suspended' },
 				),
 				withTimeline(
 					[
-						{
-							type: 'tool-call',
+						toolCallEvent({
 							kind,
-							name: 'protected_action',
 							toolCallId: 'tc-declined',
 							output: {
 								declined: true,
@@ -328,7 +333,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 							startTime: 200,
 							endTime: 200,
 							success: true,
-						},
+						}),
 					],
 					{ id: 'e-resumed', hitlStatus: 'resumed' },
 				),
@@ -363,48 +368,34 @@ describe('flattenExecutionsToTimelineItems', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline(
 				[
-					{
-						type: 'tool-call',
-						kind: 'tool',
-						name: 'protected_action',
+					toolCallEvent({
 						toolCallId: 'tc-approved',
-						startTime: 100,
-						endTime: 0,
-						success: false,
-					},
-					{
-						type: 'suspension',
-						toolName: 'protected_action',
+					}),
+					suspensionEvent({
 						toolCallId: 'tc-approved',
-						timestamp: 110,
 						suspendPayload: {
 							type: 'approval',
 							toolName: 'protected_action',
 							displayName: 'Protected action',
 							args: { recordId: '1' },
 						},
-					},
+					}),
 				],
 				{ id: 'e-suspended', hitlStatus: 'suspended' },
 			),
 			withTimeline(
 				[
-					{
-						type: 'hitl-response',
+					hitlResponseEvent({
 						toolCallId: 'tc-approved',
 						response: { approved: true },
-						timestamp: 190,
-					},
-					{
-						type: 'tool-call',
-						kind: 'tool',
-						name: 'protected_action',
+					}),
+					toolCallEvent({
 						toolCallId: 'tc-approved',
 						output: { updated: true },
 						startTime: 200,
 						endTime: 200,
 						success: true,
-					},
+					}),
 				],
 				{ id: 'e-resumed', hitlStatus: 'resumed' },
 			),
@@ -435,28 +426,22 @@ describe('flattenExecutionsToTimelineItems', () => {
 	it('keeps a pending approval as a two-item tool and request sequence', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([
-				{
-					type: 'tool-call',
+				toolCallEvent({
 					kind: 'node',
 					name: 'check_ledger',
 					toolCallId: 'tc-pending',
 					input: {},
-					startTime: 100,
-					endTime: 0,
-					success: false,
 					nodeDisplayName: 'Check ledger',
-				},
-				{
-					type: 'suspension',
+				}),
+				suspensionEvent({
 					toolName: 'check_ledger',
 					toolCallId: 'tc-pending',
-					timestamp: 110,
 					suspendPayload: {
 						type: 'approval',
 						toolName: 'check_ledger',
 						args: {},
 					},
-				},
+				}),
 			]),
 		]);
 

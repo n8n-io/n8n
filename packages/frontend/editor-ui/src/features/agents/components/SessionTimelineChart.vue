@@ -8,10 +8,10 @@ import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import {
 	formatDuration,
-	hitlTimelineNameKey,
-	isErroredToolCallTimelineItem,
+	hitlTimelineName,
 	isSubAgentTimelineItem,
 	itemFilterKey,
+	timelineItemStatus,
 } from '../session-timeline.utils';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
@@ -44,6 +44,10 @@ const canScrollLeft = ref(false);
 const canScrollRight = ref(false);
 const activePopover = ref<PopoverTarget | null>(null);
 const popoverOpen = ref(false);
+const activePopoverStatus = computed(() => {
+	const segment = activePopover.value?.segment;
+	return segment?.kind === 'event' ? timelineItemStatus(segment.item) : undefined;
+});
 
 const INSTANT_MS = 100;
 const POPOVER_SHOW_DELAY_MS = 300;
@@ -139,35 +143,16 @@ function popoverName(item: TimelineItem): string {
 		case 'node':
 			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
 		case 'suspension':
-		case 'hitl-response': {
-			const toolName =
-				item.hitlToolDisplayName ??
-				item.workflowName ??
-				item.nodeDisplayName ??
-				resolveToolNameForDisplay(item.toolName, i18n);
-			const nameKey = hitlTimelineNameKey(item);
-			return nameKey ? i18n.baseText(nameKey, { interpolate: { toolName } }) : toolName;
-		}
+		case 'hitl-response':
+			return hitlTimelineName(item, i18n);
 		default:
 			return '';
 	}
 }
 
-function hitlResponseLabel(item: TimelineItem): string | undefined {
-	if (item.kind !== 'hitl-response') return undefined;
-	if (item.hitlResponseStatus === 'approved') {
-		return i18n.baseText('agentSessions.timeline.approved');
-	}
-	if (item.hitlResponseStatus === 'declined') {
-		return i18n.baseText('agentSessions.timeline.declined');
-	}
-	return i18n.baseText('agentSessions.timeline.responseReceived');
-}
-
-function toolErrorLabel(item: TimelineItem): string | undefined {
-	return isErroredToolCallTimelineItem(item)
-		? i18n.baseText('agentSessions.timeline.error')
-		: undefined;
+function statusLabel(item: TimelineItem): string | undefined {
+	const status = timelineItemStatus(item);
+	return status ? i18n.baseText(status.labelKey) : undefined;
 }
 
 /**
@@ -193,7 +178,7 @@ function popoverTime(item: TimelineItem): string {
 }
 
 function blockAriaLabel(item: TimelineItem): string {
-	return [popoverLabel(item), popoverName(item), hitlResponseLabel(item), toolErrorLabel(item)]
+	return [popoverLabel(item), popoverName(item), statusLabel(item)]
 		.filter((part): part is string => Boolean(part))
 		.join(', ');
 }
@@ -360,22 +345,16 @@ onBeforeUnmount(() => {
 						/>
 						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
 						<N8nBadge
-							v-if="activePopover.segment.item.kind === 'hitl-response'"
-							:theme="
-								activePopover.segment.item.hitlResponseStatus === 'approved' ? 'success' : 'default'
+							v-if="activePopoverStatus"
+							:theme="activePopoverStatus.theme"
+							size="xsmall"
+							:data-test-id="
+								activePopoverStatus.kind === 'hitl-response'
+									? 'timeline-popover-hitl-response-badge'
+									: 'timeline-popover-tool-error-badge'
 							"
-							size="xsmall"
-							data-test-id="timeline-popover-hitl-response-badge"
 						>
-							{{ hitlResponseLabel(activePopover.segment.item) }}
-						</N8nBadge>
-						<N8nBadge
-							v-if="isErroredToolCallTimelineItem(activePopover.segment.item)"
-							theme="danger"
-							size="xsmall"
-							data-test-id="timeline-popover-tool-error-badge"
-						>
-							{{ i18n.baseText('agentSessions.timeline.error') }}
+							{{ i18n.baseText(activePopoverStatus.labelKey) }}
 						</N8nBadge>
 						<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
 							{{ popoverDuration(activePopover.segment.item) }}
