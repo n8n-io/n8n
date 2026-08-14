@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
@@ -10,10 +9,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
-import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -23,10 +20,8 @@ import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	projectScope,
-	validCursor,
 	deprecated,
 } from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 const handleError = (error: unknown) => {
 	if (error instanceof FolderNotFoundError) {
@@ -41,27 +36,16 @@ const handleError = (error: unknown) => {
 	throw error;
 };
 
-function parseTagNames(tags: string): string[] {
-	return tags.split(',').map((tag) => tag.trim());
-}
-
-function areWorkflowTagsEnabled(): boolean {
-	return !Container.get(GlobalConfig).tags.disabled;
-}
-
 type WorkflowHandlers = {
 	createWorkflow: PublicAPIEndpoint<WorkflowRequest.Create>;
 	transferWorkflow: PublicAPIEndpoint<WorkflowRequest.Transfer>;
 	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
-	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
 	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
 	publishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	deactivateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
-	getWorkflowTags: PublicAPIEndpoint<WorkflowRequest.GetTags>;
-	updateWorkflowTags: PublicAPIEndpoint<WorkflowRequest.UpdateTags>;
 	archiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	unarchiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 };
@@ -198,53 +182,6 @@ const workflowHandlers: WorkflowHandlers = {
 			}
 		},
 	],
-	getWorkflows: [
-		publicApiScope('workflow:list'),
-		validCursor,
-		async (req, res) => {
-			const {
-				offset = 0,
-				limit = 100,
-				excludePinnedData = false,
-				active,
-				tags,
-				name,
-				projectId,
-			} = req.query;
-
-			const { workflows, count } = await Container.get(WorkflowFinderService).findWorkflowsForUser(
-				req.user,
-				['workflow:read'],
-				{
-					filters: {
-						name,
-						active,
-						tagNames: tags ? parseTagNames(tags) : undefined,
-						projectId,
-					},
-					offset,
-					limit,
-					includePinnedData: !excludePinnedData,
-					includeTags: areWorkflowTagsEnabled(),
-					includeActiveVersion: true,
-				},
-			);
-
-			Container.get(EventService).emit('user-retrieved-all-workflows', {
-				userId: req.user.id,
-				publicApi: true,
-			});
-
-			return res.json({
-				data: workflows,
-				nextCursor: encodeNextCursor({
-					offset,
-					limit,
-					numberOfTotalRecords: count,
-				}),
-			});
-		},
-	],
 	updateWorkflow: [
 		publicApiScope('workflow:update'),
 		projectScope('workflow:update', 'workflow'),
@@ -299,52 +236,6 @@ const workflowHandlers: WorkflowHandlers = {
 	deactivateWorkflow: [
 		deprecated({ since: new Date('2026-07-23T00:00:00Z') }),
 		...unpublishWorkflow,
-	],
-	getWorkflowTags: [
-		publicApiScope('workflowTags:list'),
-		projectScope('workflow:read', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-
-			if (!areWorkflowTagsEnabled()) {
-				throw new BadRequestError('Workflow Tags Disabled');
-			}
-
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:read'],
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow he does not own
-				// or workflow does not exist
-				throw new NotFoundError('Not Found');
-			}
-
-			const tags = await Container.get(TagService).getAllByWorkflowId(id);
-
-			return res.json(tags);
-		},
-	],
-	updateWorkflowTags: [
-		publicApiScope('workflowTags:update'),
-		projectScope('workflow:update', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const newTags = req.body.map((newTag) => newTag.id);
-
-			if (!areWorkflowTagsEnabled()) {
-				throw new BadRequestError('Workflow Tags Disabled');
-			}
-
-			try {
-				const tags = await Container.get(WorkflowService).updateWorkflowTags(req.user, id, newTags);
-				return res.json(tags);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
 	],
 	archiveWorkflow: [
 		publicApiScope('workflow:delete'),

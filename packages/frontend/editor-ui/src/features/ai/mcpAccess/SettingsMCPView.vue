@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { ElSwitch } from 'element-plus';
 import {
 	N8nButton,
 	N8nDialog,
@@ -19,6 +20,7 @@ import {
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
+import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from '@/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
@@ -45,6 +47,7 @@ const router = useRouter();
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
+const exposeAllWorkflowsToMcpStore = useExposeAllWorkflowsToMcpStore();
 
 const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents'));
 
@@ -58,9 +61,25 @@ const canManageMcpInstance = computed(() =>
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
 
 const exposedWorkflowsCount = ref<number | null>(null);
-
+const autoExposeSaving = ref(false);
 const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
+
+const onAutoExposeSwitchUpdate = (value: string | number | boolean) => {
+	void onToggleAutoExpose(value === true);
+};
+
+const onToggleAutoExpose = async (value: boolean) => {
+	autoExposeSaving.value = true;
+	try {
+		const updated = await mcpStore.setAutoExposeNewWorkflows(value);
+		mcp.trackAutoExposeToggled({ enabled: updated, source: 'settings' });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.autoExpose.error.title'));
+	} finally {
+		autoExposeSaving.value = false;
+	}
+};
 
 const showInstanceCapacityNotice = computed(
 	() => canManageMcpInstance.value && mcpStore.instanceClientStats?.atCapacity === true,
@@ -307,6 +326,22 @@ onMounted(async () => {
 					>
 						<template #action>
 							<N8nSettingsRowConfigure :value="agentsExposedValue" />
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="canManageMcpInstance && exposeAllWorkflowsToMcpStore.isEnabled">
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.mcp.autoExpose.title')"
+						:description="i18n.baseText('settings.mcp.autoExpose.description')"
+					>
+						<template #action>
+							<ElSwitch
+								data-test-id="mcp-auto-expose-toggle"
+								:model-value="mcpStore.autoExposeNewWorkflows"
+								:disabled="mcpStore.mcpManagedByEnv"
+								:loading="autoExposeSaving"
+								@update:model-value="onAutoExposeSwitchUpdate"
+							/>
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>

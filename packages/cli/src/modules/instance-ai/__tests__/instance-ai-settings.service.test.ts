@@ -90,6 +90,8 @@ describe('InstanceAiSettingsService', () => {
 		vi.stubEnv('N8N_INSTANCE_AI_MODEL', '');
 		vi.stubEnv('OPENAI_API_KEY', '');
 		vi.stubEnv('ANTHROPIC_API_KEY', '');
+		vi.stubEnv('GOOGLE_VERTEX_PROJECT', '');
+		vi.stubEnv('GOOGLE_VERTEX_LOCATION', '');
 		persistedSettingsValue = undefined;
 		logger.scoped.mockReturnValue(logger);
 		Container.set(Logger, logger);
@@ -107,6 +109,9 @@ describe('InstanceAiSettingsService', () => {
 			searxngUrl: '',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
+			vertexProjectId: '',
+			vertexLocation: '',
+			vertexServiceAccountJson: '',
 		});
 		globalConfig.deployment.type = 'default';
 		instanceCredentialBroker.listForUse.mockResolvedValue([]);
@@ -1797,6 +1802,23 @@ describe('InstanceAiSettingsService', () => {
 			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
 		});
 
+		it('reports Vertex as env-configured only when a project id is resolvable', async () => {
+			globalConfig.instanceAi.model = 'google-vertex-anthropic/claude-opus-4-8';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(false);
+
+			globalConfig.instanceAi.vertexServiceAccountJson =
+				'{"client_email":"svc@example.com","private_key":"k"}';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(false);
+
+			globalConfig.instanceAi.vertexServiceAccountJson =
+				'{"project_id":"from-json","client_email":"svc@example.com","private_key":"k"}';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
+
+			globalConfig.instanceAi.vertexServiceAccountJson = '';
+			globalConfig.instanceAi.vertexProjectId = 'from-env';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
+		});
+
 		it('reports environment configuration for the selected sandbox provider', async () => {
 			globalConfig.instanceAi.sandboxProvider = 'daytona';
 			globalConfig.instanceAi.daytonaApiKey = 'dtn-key';
@@ -1984,6 +2006,66 @@ describe('InstanceAiSettingsService', () => {
 
 			globalConfig.instanceAi.modelApiKey = '';
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toBe('openai/gpt-4');
+		});
+
+		it('builds google-vertex-anthropic configs from Vertex environment variables', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'google-vertex-anthropic/claude-opus-4-8');
+			Object.assign(globalConfig.instanceAi, {
+				model: 'google-vertex-anthropic/claude-opus-4-8',
+				modelUrl: '',
+				modelApiKey: '',
+				vertexProjectId: 'instance-ai-494613',
+				vertexLocation: 'global',
+				vertexServiceAccountJson: '{"client_email":"svc@example.com","private_key":"k"}',
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'instance-ai-494613',
+				location: 'global',
+				googleCredentials: '{"client_email":"svc@example.com","private_key":"k"}',
+			});
+		});
+
+		it('derives the Vertex project from service-account JSON when env project is unset', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'google-vertex-anthropic/claude-opus-4-8');
+			Object.assign(globalConfig.instanceAi, {
+				model: 'google-vertex-anthropic/claude-opus-4-8',
+				modelUrl: '',
+				modelApiKey: '',
+				vertexProjectId: '',
+				vertexLocation: '',
+				vertexServiceAccountJson:
+					'{"project_id":"from-json","client_email":"svc@example.com","private_key":"k"}',
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'from-json',
+				location: 'global',
+				googleCredentials:
+					'{"project_id":"from-json","client_email":"svc@example.com","private_key":"k"}',
+			});
+		});
+
+		it('falls back to GOOGLE_VERTEX_LOCATION when the n8n Vertex location env is empty', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'google-vertex-anthropic/claude-opus-4-8');
+			vi.stubEnv('GOOGLE_VERTEX_LOCATION', 'us-east5');
+			Object.assign(globalConfig.instanceAi, {
+				model: 'google-vertex-anthropic/claude-opus-4-8',
+				modelUrl: '',
+				modelApiKey: '',
+				vertexProjectId: 'instance-ai-494613',
+				vertexLocation: '',
+				vertexServiceAccountJson: '{"client_email":"svc@example.com","private_key":"k"}',
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toMatchObject({
+				location: 'us-east5',
+			});
 		});
 	});
 

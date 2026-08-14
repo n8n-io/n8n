@@ -10,9 +10,9 @@
 // Env:
 //   N8N_DEQUEUE_URL     n8n webhook that hands back one pending turn (required)
 //   AGENT_WORKER_TOKEN  shared bearer sent on every dequeue (required)
-//   GITHUB_USER         box owner's login; turns are addressed to it (codespaces set this)
-//   AGENT_WORKER_ROOT   confine turn cwd under here (default /workspaces)
-//   POLL_INTERVAL_MS    delay between empty polls (default 3000)
+//   GITHUB_USER         box owner's login; the bootstrap route for a new thread (codespaces set this)
+//   CODESPACE_NAME      stable box id; routes a thread back to the box holding its session (codespaces set this)
+//   TURN_TIMEOUT_MS     per-turn limit; keep below the n8n Wait limit (default 25 min)
 import { execFile } from 'node:child_process';
 import { resolve as resolvePath, sep } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -20,10 +20,13 @@ import { setTimeout as sleep } from 'node:timers/promises';
 const DEQUEUE_URL = process.env.N8N_DEQUEUE_URL;
 const TOKEN = process.env.AGENT_WORKER_TOKEN;
 const GITHUB_USER = process.env.GITHUB_USER;
-const ROOT = resolvePath(process.env.AGENT_WORKER_ROOT ?? '/workspaces');
+const BOX_ID = process.env.CODESPACE_NAME;
+const ROOT = '/workspaces';
 
-// Read a positive-number env var. Fall back to the default (and warn) on a bad
-// value, so a config mistake cannot change the poll rate or the turn limit.
+const POLL_INTERVAL_MS = 3000;
+
+// Warn and use the default on a bad value, so a config mistake cannot silently
+// disable the turn limit.
 function posNum(name, fallback) {
 	const raw = process.env[name];
 	if (raw === undefined) return fallback;
@@ -33,7 +36,6 @@ function posNum(name, fallback) {
 	return fallback;
 }
 
-const POLL_INTERVAL_MS = posNum('POLL_INTERVAL_MS', 3000);
 // Keep this below the n8n Wait-node limit. Then the worker reports a slow turn
 // before n8n's Wait ends with a generic message.
 const TURN_TIMEOUT_MS = posNum('TURN_TIMEOUT_MS', 25 * 60_000);
@@ -48,6 +50,10 @@ for (const [k, v] of Object.entries({
 		process.exit(1);
 	}
 }
+
+// Not fatal, but box pinning needs it: without a box id every turn routes by
+// owner, so a thread cannot follow the box holding its session.
+if (!BOX_ID) console.error('CODESPACE_NAME is not set — box pinning disabled; turns route by githubUser only.');
 
 function runClaude({ message, sessionId, cwd }) {
 	const safeCwd = resolvePath(typeof cwd === 'string' && cwd ? cwd : `${ROOT}/n8n`);
@@ -88,7 +94,7 @@ async function post(url, body) {
 }
 
 async function dequeue() {
-	const res = await post(DEQUEUE_URL, { githubUser: GITHUB_USER, token: TOKEN });
+	const res = await post(DEQUEUE_URL, { githubUser: GITHUB_USER, boxId: BOX_ID, token: TOKEN });
 	if (!res.ok) throw new Error(`dequeue HTTP ${res.status}`);
 	const text = await res.text();
 	if (!text.trim()) return null; // no pending turn
@@ -105,6 +111,7 @@ async function handle(turn) {
 			status: 'done',
 			output: r.result ?? '',
 			sessionId: r.session_id ?? turn.sessionId ?? '',
+			boxId: BOX_ID,
 		};
 	} catch (error) {
 		result = {
@@ -112,6 +119,7 @@ async function handle(turn) {
 			status: 'error',
 			output: error.message,
 			sessionId: turn.sessionId ?? '',
+			boxId: BOX_ID,
 		};
 	}
 	// Send the result to the turn's resume URL. This continues the waiting n8n
@@ -137,7 +145,9 @@ for (;;) {
 	try {
 		const turn = await dequeue();
 		if (turn) {
-			console.log(`turn ${turn.turnId}: ${turn.sessionId ? 'resume' : 'new'}`);
+			console.log(
+				`${new Date().toISOString()} turn ${turn.turnId} by ${turn.author ?? 'unknown'}: ${turn.sessionId ? 'resume' : 'new'}`,
+			);
 			await handle(turn);
 			continue; // get the next turn now, with no delay
 		}

@@ -29,6 +29,7 @@ import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-w
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
+import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -836,6 +837,9 @@ export class WorkflowService {
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			this._validateTriggerNodeIds(workflowId, versionToActivate);
+		}
 
 		// Run hook before destructive state changes so a rejection leaves
 		// the previous active version running instead of deactivating it.
@@ -1452,6 +1456,20 @@ export class WorkflowService {
 				error: validation.error,
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
+		}
+	}
+
+	private _validateTriggerNodeIds(workflowId: string, version: WorkflowHistory) {
+		const validation = this.workflowValidationService.validateTriggerNodeIds(
+			getEnabledTriggerNodes(version, this.nodeTypes),
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed trigger node id validation', {
+				workflowId,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(validation.error ?? 'Trigger node id validation failed');
 		}
 	}
 
