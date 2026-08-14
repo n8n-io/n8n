@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	deriveInstanceAiSetupState,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
 } from '@n8n/api-types';
@@ -1321,21 +1322,7 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId,
 			searchCredentialId,
 		});
-		const modelConfigured = Boolean(
-			response.modelEnvConfigured || (response.modelCredentialId && response.modelName),
-		);
-		const sandboxCredentialId =
-			response.sandboxProvider === 'daytona'
-				? response.daytonaCredentialId
-				: response.n8nSandboxCredentialId;
-		const sandboxConfigured = Boolean(
-			response.sandboxEnabled && (response.sandboxEnvConfigured || sandboxCredentialId),
-		);
-		const searchDecided = Boolean(
-			response.searchEnvConfigured || response.searchCredentialId || response.searchDisabled,
-		);
-
-		return modelConfigured && sandboxConfigured && searchDecided;
+		return deriveInstanceAiSetupState(response).setupCompleted;
 	}
 
 	getConfiguredModelId(): string {

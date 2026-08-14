@@ -1,4 +1,10 @@
-import type { InstanceAiAdminSettingsResponse } from '@n8n/api-types';
+import {
+	deriveInstanceAiSetupState,
+	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	type InstanceAiAdminSettingsResponse,
+	type InstanceAiComponentSource,
+	type InstanceAiWebSearchSource,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
@@ -30,7 +36,7 @@ type SetupSnapshot = InferTelemetryProps<
 const CREDENTIAL_TO_SEARCH_PROVIDER: Record<string, 'brave' | 'searxng'> = {
 	braveSearchApi: 'brave',
 	searXngApi: 'searxng',
-};
+} satisfies Record<(typeof INSTANCE_AI_SEARCH_CREDENTIAL_TYPES)[number], 'brave' | 'searxng'>;
 
 function extractModelName(model: string): string {
 	const slash = model.indexOf('/');
@@ -116,15 +122,16 @@ export class InstanceAiSetupTelemetryService {
 
 	private async modelSnapshot(
 		response: InstanceAiAdminSettingsResponse,
+		source: InstanceAiComponentSource,
 	): Promise<Pick<SetupSnapshot, 'model_source' | 'model_provider' | 'model_name'>> {
-		if (response.modelEnvConfigured) {
+		if (source === 'env') {
 			return {
 				model_source: 'env',
 				model_provider: this.config.model.split('/', 1)[0] || null,
 				model_name: extractModelName(this.config.model) || null,
 			};
 		}
-		if (response.modelCredentialId && response.modelName) {
+		if (source === 'ui') {
 			return {
 				model_source: 'ui',
 				model_provider: await this.modelProviderForCredential(response.modelCredentialId),
@@ -134,32 +141,17 @@ export class InstanceAiSetupTelemetryService {
 		return { model_source: 'none', model_provider: null, model_name: null };
 	}
 
-	private sandboxSnapshot(
-		response: InstanceAiAdminSettingsResponse,
-	): Pick<SetupSnapshot, 'sandbox_source' | 'sandbox_type'> {
-		let source: SetupSnapshot['sandbox_source'] = 'none';
-		if (response.sandboxEnabled && response.sandboxEnvConfigured) source = 'env';
-		else if (
-			response.sandboxEnabled &&
-			(response.daytonaCredentialId || response.n8nSandboxCredentialId)
-		)
-			source = 'ui';
-		return {
-			sandbox_source: source,
-			sandbox_type: source === 'none' ? null : response.sandboxProvider,
-		};
-	}
-
 	private async searchSnapshot(
 		response: InstanceAiAdminSettingsResponse,
+		source: InstanceAiWebSearchSource,
 	): Promise<Pick<SetupSnapshot, 'web_search_source' | 'web_search_provider'>> {
-		if (response.searchCredentialId) {
+		if (source === 'ui') {
 			return {
 				web_search_source: 'ui',
 				web_search_provider: await this.searchProviderForCredential(response.searchCredentialId),
 			};
 		}
-		if (response.searchEnvConfigured) {
+		if (source === 'env') {
 			const provider = this.config.braveSearchApiKey.trim()
 				? 'brave'
 				: this.config.searxngUrl.trim()
@@ -167,19 +159,23 @@ export class InstanceAiSetupTelemetryService {
 					: null;
 			return { web_search_source: 'env', web_search_provider: provider };
 		}
-		return {
-			web_search_source: response.searchDisabled ? 'disabled' : 'none',
-			web_search_provider: null,
-		};
+		return { web_search_source: source, web_search_provider: null };
 	}
 
-	/** Configuration state of each setup component, shared by the setup telemetry events. */
+	/**
+	 * Configuration state of each setup component, shared by the setup telemetry
+	 * events. Sources come from `deriveInstanceAiSetupState` — the same
+	 * derivation the setup gate and the frontend use — enriched with provider
+	 * names the response deliberately does not carry.
+	 */
 	async buildSetupSnapshot(): Promise<SetupSnapshot> {
 		const response = await this.settingsService.getAdminSettings();
+		const state = deriveInstanceAiSetupState(response);
 		return {
-			...(await this.modelSnapshot(response)),
-			...this.sandboxSnapshot(response),
-			...(await this.searchSnapshot(response)),
+			...(await this.modelSnapshot(response, state.modelSource)),
+			sandbox_source: state.sandboxSource,
+			sandbox_type: state.sandboxType,
+			...(await this.searchSnapshot(response, state.webSearchSource)),
 		};
 	}
 

@@ -1,3 +1,4 @@
+import { deriveInstanceAiSetupState } from '@n8n/api-types';
 import type { InstanceAiAdminSettingsResponse, InstanceAiProviderConnection } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
@@ -15,52 +16,35 @@ type SetupPageViewedProps = InferTelemetryProps<
 type SetupSnapshot = Omit<SetupPageViewedProps, 'page'>;
 
 /**
- * Configuration state of each setup component, mirroring the backend snapshot
- * on "AI Assistant setup completed". Provider names for env-var configuration
- * are not exposed to the frontend, so they report as null here.
+ * Configuration state of each setup component, from the same
+ * `deriveInstanceAiSetupState` derivation the backend snapshot uses. Provider
+ * names for env-var configuration are not exposed to the frontend, so they
+ * report as null here.
  */
 export function buildSetupSnapshot(
 	settings: InstanceAiAdminSettingsResponse,
 	modelCredentials: InstanceAiProviderConnection[],
 	serviceCredentials: InstanceAiProviderConnection[],
 ): SetupSnapshot {
-	const modelSource: SetupSnapshot['model_source'] = settings.modelEnvConfigured
-		? 'env'
-		: settings.modelCredentialId && settings.modelName
-			? 'ui'
-			: 'none';
+	const state = deriveInstanceAiSetupState(settings);
 	const modelCredentialType = modelCredentials.find(
 		(credential) => credential.id === settings.modelCredentialId,
 	)?.type;
 	const modelProvider =
-		modelSource === 'ui'
+		state.modelSource === 'ui'
 			? (INSTANCE_AI_MODEL_PROVIDERS.find(
 					(provider) => provider.credentialType === modelCredentialType,
 				)?.id ?? null)
 			: null;
-	const sandboxSource: SetupSnapshot['sandbox_source'] = !settings.sandboxEnabled
-		? 'none'
-		: settings.sandboxEnvConfigured
-			? 'env'
-			: settings.daytonaCredentialId || settings.n8nSandboxCredentialId
-				? 'ui'
-				: 'none';
-	const searchSource: SetupSnapshot['web_search_source'] = settings.searchCredentialId
-		? 'ui'
-		: settings.searchEnvConfigured
-			? 'env'
-			: settings.searchDisabled
-				? 'disabled'
-				: 'none';
 	const searchCredentialType = serviceCredentials.find(
 		(credential) => credential.id === settings.searchCredentialId,
 	)?.type;
 	const searchProvider =
-		searchSource === 'ui'
+		state.webSearchSource === 'ui'
 			? (INSTANCE_AI_SEARCH_PROVIDERS.find(
 					(provider) => provider.credentialType === searchCredentialType,
 				)?.id ?? null)
-			: searchSource === 'env'
+			: state.webSearchSource === 'env'
 				? settings.envManaged?.search.apiKey
 					? 'brave'
 					: settings.envManaged?.search.url
@@ -68,12 +52,12 @@ export function buildSetupSnapshot(
 						: null
 				: null;
 	return {
-		model_source: modelSource,
+		model_source: state.modelSource,
 		model_provider: modelProvider,
-		model_name: modelSource === 'none' ? null : settings.modelName,
-		sandbox_source: sandboxSource,
-		sandbox_type: sandboxSource === 'none' ? null : settings.sandboxProvider,
-		web_search_source: searchSource,
+		model_name: state.modelSource === 'none' ? null : settings.modelName,
+		sandbox_source: state.sandboxSource,
+		sandbox_type: state.sandboxType,
+		web_search_source: state.webSearchSource,
 		web_search_provider: searchProvider,
 	};
 }
