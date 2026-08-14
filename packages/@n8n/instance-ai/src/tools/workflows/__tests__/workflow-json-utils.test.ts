@@ -279,6 +279,59 @@ describe('preserveExistingNodeIds', () => {
 		expect(rebuilt.nodes.find((n) => n.name === 'Old')?.id).toBe('fresh');
 	});
 
+	/**
+	 * Durable state is type-specific — a poll cursor belongs to a poll trigger — so identity must
+	 * never cross node types, even when the name matches.
+	 */
+	it('does not recover a saved id across a different node type', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [
+				{
+					id: 'saved-poller',
+					name: 'Watcher',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('fresh', 'Watcher')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes[0].id).toBe('fresh');
+	});
+
+	/**
+	 * The limit of name recovery, kept as an explicit expectation rather than left implied.
+	 *
+	 * If a rename drops the node's id, the renamed node and a new node reusing the old name both
+	 * arrive with ids the saved workflow has never seen, and nothing distinguishes them — the same
+	 * shape as "the agent added a node", which recovery exists to serve. So the saved id follows
+	 * the name. Carrying the id in the source (the documented contract, and what `get-as-code`
+	 * emits) is what makes this case correct instead.
+	 */
+	it('follows the name when a rename dropped the id, which can move identity', async () => {
+		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('a', 'Old')], connections: {} };
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('minted-1', 'New'), node('minted-2', 'Old')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes.find((n) => n.name === 'Old')?.id).toBe('a');
+		expect(rebuilt.nodes.find((n) => n.name === 'New')?.id).toBe('minted-1');
+	});
+
 	it('leaves a genuinely new node with its fresh id', async () => {
 		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('a', 'A')], connections: {} };
 		const rebuilt: WorkflowJSON = {

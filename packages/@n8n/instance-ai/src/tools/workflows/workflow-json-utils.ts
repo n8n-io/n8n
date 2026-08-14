@@ -248,6 +248,17 @@ export function ensureUniqueNodeIds(json: WorkflowJSON): void {
  * Membership of `savedIds` is the provenance signal, so no channel from the sandbox is needed:
  * an ID that came back unchanged was declared, and one that did not was minted this build. That
  * also self-heals an ID the agent mangled, which a provenance flag would have waved through.
+ *
+ * Two limits, both inherent to matching by name:
+ *   - If a rename DROPS the node's ID, the renamed node and a new node reusing the old name both
+ *     arrive with IDs the saved workflow has never seen, and nothing separates them — it is the
+ *     same shape as "a node was added", which this pass exists to serve. So the ID follows the
+ *     name. Carrying the ID in the source, which is what `get-as-code` emits, is what makes that
+ *     case correct; matching on type as well as name at least stops identity crossing node types.
+ *   - A sticky note the agent adds without a name gets an SDK default derived from its own ID, so
+ *     a fresh ID yields a fresh name and there is nothing stable to match on. It churns until the
+ *     next `get-as-code`, which emits both its ID and its name. Cosmetic: stickies carry no
+ *     durable state.
  */
 export async function preserveExistingNodeIds(
 	json: WorkflowJSON,
@@ -268,11 +279,14 @@ export async function preserveExistingNodeIds(
 	}
 
 	const savedIds = new Set<string>();
-	const savedIdsByName = new Map<string, string>();
+	// Keyed by type AND name: durable state is type-specific (a poll cursor belongs to a poll
+	// trigger), so identity must never cross node types even when the name matches. Mirrors the
+	// `type:name` key `preserveExistingSetupValues` uses.
+	const savedIdsByTypeAndName = new Map<string, string>();
 	for (const node of existing.nodes ?? []) {
 		if (!node.id) continue;
 		savedIds.add(node.id);
-		if (node.name) savedIdsByName.set(node.name, node.id);
+		if (node.name && node.type) savedIdsByTypeAndName.set(`${node.type}:${node.name}`, node.id);
 	}
 	if (savedIds.size === 0) return;
 
@@ -287,9 +301,9 @@ export async function preserveExistingNodeIds(
 	const recoveredIds = new Map<string, string>();
 
 	for (const node of json.nodes) {
-		if (!node.name || (node.id && savedIds.has(node.id))) continue;
+		if (!node.name || !node.type || (node.id && savedIds.has(node.id))) continue;
 
-		const savedId = savedIdsByName.get(node.name);
+		const savedId = savedIdsByTypeAndName.get(`${node.type}:${node.name}`);
 		if (!savedId || claimedSavedIds.has(savedId)) continue;
 
 		claimedSavedIds.add(savedId);
