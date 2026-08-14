@@ -1,6 +1,6 @@
 {
   "name": "@n8n/client-oauth2",
-  "version": "1.16.3",
+  "version": "1.16.4",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
