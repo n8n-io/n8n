@@ -7,7 +7,7 @@ import {
 	preparePrompt,
 } from '../../agents/Agent/agents/ToolsAgent/common';
 
-import { SYSTEM_MESSAGE } from '../../agents/Agent/agents/ConversationalAgent/prompt';
+import { SYSTEM_MESSAGE } from './prompt';
 import { createAgentExecutor } from '../../agents/Agent/agents/ToolsAgent/V2/execute';
 import type { RunnableConfig } from '@langchain/core/runnables';
 
