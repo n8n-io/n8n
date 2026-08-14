@@ -504,8 +504,7 @@ watch(
 						icon-size="medium"
 						icon="arrow-left"
 						:disabled="
-							channelViewLoading ||
-							(selectedChannelType ? isLoading(selectedChannelType) : false)
+							channelViewLoading || (selectedChannelType ? isLoading(selectedChannelType) : false)
 						"
 						:class="$style.backButton"
 						@click="goBackToList"
@@ -621,8 +620,7 @@ watch(
 							variant="outline"
 							size="medium"
 							:disabled="
-								channelViewLoading ||
-								(selectedChannelType ? isLoading(selectedChannelType) : false)
+								channelViewLoading || (selectedChannelType ? isLoading(selectedChannelType) : false)
 							"
 							@click="closeModal"
 						>
