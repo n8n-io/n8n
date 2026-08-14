@@ -203,39 +203,24 @@ describe('Commenting on a review', () => {
 		expect(detail.body.data.viewerCanDecide).toBe(true);
 	});
 
-	test('lets a reader who cannot approve read the feed but not post to it', async () => {
-		// The review lives in teamProject (where member may publish) while the workflow
-		// moved to a project member can only read.
-		const destinationProject = await createTeamProject('Destination Project', owner);
-		await linkUserToProject(member, destinationProject, 'project:viewer');
-		const workflow = await createWorkflow({}, destinationProject);
-		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
-		const request = await seedRequest(workflow.id, 'version-pinned', owner);
+	// Every viewer is an admin, an author, or an assigned reviewer, so a reader who
+	// cannot comment cannot reach a review either. The eligibility service unit tests
+	// cover what such a viewer would get.
 
-		await getActivity(memberAgent, request.id);
-		const detail = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
-		expect(detail.body.data.viewerCanComment).toBe(false);
-
-		await memberAgent
-			.post(`/workflow-review-requests/${request.id}/comments`)
-			.send({ body: 'Can I?' })
-			.expect(403);
-	});
-
-	test('refuses a requester who can no longer read the workflow under review', async () => {
+	test('hides the review from a requester who can no longer read the workflow under review', async () => {
 		const destinationProject = await createTeamProject('Out Of Reach', owner);
 		const workflow = await createWorkflow({}, destinationProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
 		const request = await seedRequest(workflow.id, 'version-pinned', viewer);
 
-		// The requester still reads their own review, but that alone is not a write right
-		const detail = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
-		expect(detail.body.data.viewerCanComment).toBe(false);
-
+		// Seeing a review requires still holding read on what it reviews — the feed
+		// and the comment box disappear together with the review itself.
+		await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(404);
+		await viewerAgent.get(`/workflow-review-requests/${request.id}/activity`).expect(404);
 		await viewerAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
 			.send({ body: 'Still here' })
-			.expect(403);
+			.expect(404);
 	});
 
 	test('lets a requester downgraded to view-only keep commenting on their own review', async () => {
@@ -257,6 +242,11 @@ describe('Commenting on a review', () => {
 
 	test('refuses everyone once the reviewed workflow is deleted, but keeps the feed readable', async () => {
 		const { workflow, request } = await seedReviewInTeamProject(owner);
+		// Member reads through their reviewer assignment; owner through the admin scope
+		await Container.get(WorkflowReviewRequestReviewerRepository).addReviewers(
+			{ workflowReviewRequestId: request.id, userIds: [member.id] },
+			{},
+		);
 		await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
 			.send({ body: 'Before the deletion' })
@@ -495,10 +485,14 @@ describe('Reading the activity feed', () => {
 		]);
 	});
 
-	// The owner reaches every review through global `workflow:publish`, which short-circuits the
-	// project lookup. Only a project member exercises the project-scoped path.
-	test('shows the feed to a project member who can publish there', async () => {
+	// The owner reaches every review through the admin scope, which short-circuits the
+	// project lookup. Only an assigned reviewer exercises the involvement path.
+	test('shows the feed to an assigned reviewer', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
+		await Container.get(WorkflowReviewRequestReviewerRepository).addReviewers(
+			{ workflowReviewRequestId: request.id, userIds: [member.id] },
+			{},
+		);
 		const [id] = await seedEntries(request.id, 1);
 
 		const feed = await getActivity(memberAgent, request.id);

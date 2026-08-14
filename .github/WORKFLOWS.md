@@ -382,7 +382,8 @@ Push to master/1.x
 
 | Schedule (UTC)            | Workflow                          | Purpose                  |
 |---------------------------|-----------------------------------|--------------------------|
-| Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private, refresh bundle branches |
+| Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private  |
+| Every 6h :00              | `sec-rebase-bundle-branches.yml`  | Replay `bundle/*` onto their base |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
@@ -502,6 +503,18 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+
+### Branch Replay Scripts
+
+Both keep a long-lived branch that is "base + its own commits" in sync by rebasing those
+commits onto the base and force-pushing, sharing the merge-tree content guard that makes the
+rewrite safe.
+
+| Script                     | Purpose                                                              | Called By                          |
+|----------------------------|----------------------------------------------------------------------|------------------------------------|
+| `branch-replay.mjs`        | Shared primitives: merge-tree, tree guard, marker scan               | the two scripts below              |
+| `sync-master-to-3x.mjs`    | master → `3.x`; auto-resolves mechanical files, opens a conflict PR   | `util-sync-master-to-3x.yml`       |
+| `rebase-bundle-branch.mjs` | base → `bundle/*` in n8n-private; fail-loud, never resolves conflicts | `sec-rebase-bundle-branches.yml`   |
 
 ### Slack Scripts
 
@@ -698,14 +711,30 @@ mirroring public `master` and `1.x` into private with `reset --hard` +
 commits when judging "ahead". Fixes are never committed to private `master`/`1.x`
 directly: `ci-restrict-private-merges.yml` requires PRs into them to come from the
 long-lived integration branches `bundle/2.x` and `bundle/1.x` (a `bundle/2.x` merge is
-backported to `bundle/1.x` by `util-backport-bundle.yml`). The sync creates those
-branches if missing and then **merges `master` into `bundle/2.x` and `1.x` into
-`bundle/1.x`** so they don't drift; on a conflict it aborts the merge, leaves the branch
-untouched, and emits a warning annotation while **keeping the run green** — the other
-bundle branch still syncs, and a human resolves the conflict by hand. Once a bundle
-branch is merged into private `master`/`1.x` as a `chore: Bundle/*` PR,
-`sec-publish-fix.yml` / `sec-publish-fix-1x.yml` cherry-pick that merge commit onto a
-fresh branch in the public repo and open the PR there.
+backported to `bundle/1.x` by `util-backport-bundle.yml`). Once a bundle branch is merged
+into private `master`/`1.x` as a `chore: Bundle/*` PR, `sec-publish-fix.yml` /
+`sec-publish-fix-1x.yml` cherry-pick that commit onto a fresh branch in the public repo and
+open the PR there. That PR **must stay a single-parent squash** — the publish step is a bare
+`git cherry-pick` of `HEAD`, which aborts on a merge commit.
+
+`sec-rebase-bundle-branches.yml` keeps those branches current, every 6 hours plus whenever a
+PR is merged into one (and on `workflow_dispatch`). It **replays** the bundle-only commits
+onto the base with `git rebase` and force-pushes, via
+[`scripts/rebase-bundle-branch.mjs`](scripts/rebase-bundle-branch.mjs) — so a clean run
+adds **no commit at all** and `base..bundle` stays a readable list of the fixes not yet
+published. Rebasing is safe here precisely because a bundle ships as one squashed,
+deliberately obfuscated commit: SHAs and dates on these branches carry no meaning downstream,
+and the `n8n-assistant` app is a bypass actor on the `bundle/*` ruleset's `non_fast_forward`
+rule. Every push is verified to carry exactly the tree a merge of the two sides would produce
+(`git merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing. Fixes
+already published come back through the base and are dropped by `--empty=drop`.
+
+There is **one job per bundle branch**. A conflict is detected from the merge tree before the
+working tree is touched, so the branch is left exactly as it was, that job **fails** (no more
+green runs hiding a stalled branch) and `#alerts-security` gets a run link — while the other
+branch still syncs. Recovery is deliberate: rebase the branch onto its base locally, resolve,
+force-push, then re-run the workflow. The replay never resolves a conflict itself, unlike
+`util-sync-master-to-3x.yml`.
 
 See **[`../AGENTS.md`](../AGENTS.md)** ("Security Fix Hygiene") for the naming rules that
 keep the vulnerability out of public branch names, commits, and test descriptions.

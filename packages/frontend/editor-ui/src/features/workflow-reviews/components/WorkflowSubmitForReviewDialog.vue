@@ -19,9 +19,10 @@ import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import { useToast } from '@n8n/composables/useToast';
+import CharacterCount from '@/app/components/CharacterCount.vue';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { useReviewVersionName } from '@/features/workflow-reviews/composables/useReviewVersionName';
-import { formatUserDisplayName } from '@/features/workflow-reviews/formatUserDisplayName';
+import { formatUserDisplayName } from '@/features/workflow-reviews/workflowReviews.utils';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import {
@@ -278,6 +279,11 @@ const submit = async () => {
 						:disabled="isSubmitting"
 						data-test-id="workflow-review-title-input"
 					/>
+					<CharacterCount
+						:value="reviewTitle"
+						:max="REVIEW_TITLE_MAX_LENGTH"
+						data-test-id="workflow-review-title-character-count"
+					/>
 				</N8nInputLabel>
 				<N8nInputLabel
 					input-name="workflow-review-description"
@@ -291,6 +297,11 @@ const submit = async () => {
 						:maxlength="REVIEW_DESCRIPTION_MAX_LENGTH"
 						:disabled="isSubmitting"
 						data-test-id="workflow-review-description-input"
+					/>
+					<CharacterCount
+						:value="description"
+						:max="REVIEW_DESCRIPTION_MAX_LENGTH"
+						data-test-id="workflow-review-description-character-count"
 					/>
 				</N8nInputLabel>
 				<N8nInputLabel
