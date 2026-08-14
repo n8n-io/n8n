@@ -49,6 +49,8 @@ tags:
     description: Operations about projects
   - name: Role
     description: Operations about roles
+  - name: RoleMappingRule
+    description: Operations about identity-provider role-mapping rules
   - name: SecurityPolicy
     description: Operations about the instance security policy settings
   - name: SettingsLdap
@@ -133,8 +135,6 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.unarchive.yml'
   /workflows/{id}/transfer:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
-  /workflows/{id}/tags:
-    $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /workflows/{id}/test-runs:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
   /workflows/{id}/test-runs/{runId}:
@@ -221,7 +221,13 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      # Must match AUTH_COOKIE_NAME in packages/cli/src/constants.ts
+      name: n8n-auth
 
 security:
   - ApiKeyAuth: []
   - BearerAuth: []
+  - CookieAuth: []

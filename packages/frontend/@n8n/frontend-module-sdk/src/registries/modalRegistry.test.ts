@@ -373,4 +373,35 @@ describe('modalRegistry', () => {
 			expect(modalRegistry.get('test-modal-1')?.component).toBe(mockComponent1);
 		});
 	});
+	describe('ad-hoc key prefixes', () => {
+		it('should report a key built from a declared prefix as ad-hoc', () => {
+			modalRegistry.declareAdHocKeyPrefix('downloadDataTableModal');
+
+			expect(modalRegistry.isAdHocKey('downloadDataTableModal-42')).toBe(true);
+			expect(modalRegistry.isAdHocKey('downloadDataTableModal')).toBe(true);
+		});
+
+		it('should not report an undeclared key as ad-hoc', () => {
+			modalRegistry.declareAdHocKeyPrefix('downloadDataTableModal');
+
+			expect(modalRegistry.isAdHocKey('someOtherModal')).toBe(false);
+			expect(modalRegistry.isAdHocKey('someOtherModal-42')).toBe(false);
+		});
+
+		it('should not treat a prefix as a match for an unrelated key that merely starts with it', () => {
+			modalRegistry.declareAdHocKeyPrefix('importCsvModal');
+
+			// Only the bare prefix and the `<prefix>-<id>` form count, so a longer
+			// camelCase name starting with the same letters is still a real key.
+			expect(modalRegistry.isAdHocKey('importCsvModalSettings')).toBe(false);
+		});
+
+		it('should survive clear(), which empties registrations and not declarations', () => {
+			modalRegistry.declareAdHocKeyPrefix('importCsvModal');
+
+			modalRegistry.clear();
+
+			expect(modalRegistry.isAdHocKey('importCsvModal-7')).toBe(true);
+		});
+	});
 });

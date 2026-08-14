@@ -1,5 +1,8 @@
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	instanceAiApprovalResumeSchema,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { SDK_IMPORTABLE_FUNCTIONS } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -20,8 +23,11 @@ import {
 	combineWarnings,
 	formatWarning,
 	getBuildFailureTrackingKey,
+	grantSessionWorkflowUpdate,
 	isApprovedBuildContext,
+	canSkipWorkflowUpdateHitl,
 	markSourceBuildFailed,
+	recordSessionOwnedWorkflow,
 	resolveBuildIdentifiers,
 	resolveWorkflowName,
 	sourceResponseBase,
@@ -67,6 +73,7 @@ import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracke
 import { createRemediation } from '../../workflow-loop/remediation';
 import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
+import { buildChatModelProviderMismatchWarnings } from '../nodes/preferred-chat-model';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 
 /** Over this serialized length only a `truncated` marker is emitted; the seed
@@ -77,11 +84,11 @@ const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
 	severity: instanceAiConfirmationSeveritySchema,
+	/** Resolved target workflow — used by the UI for per-workflow always-allow keys. */
+	workflowId: z.string(),
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-});
+const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 interface BuildCtx {
 	toolCallId?: string;
@@ -445,13 +452,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			const isOwnInFlightWorkflow =
-				targetWorkflowId !== undefined &&
-				(context.aiCreatedWorkflowIds?.has(targetWorkflowId) ?? false);
+			const canSkipUpdateHitl =
+				targetWorkflowId !== undefined && canSkipWorkflowUpdateHitl(context, targetWorkflowId);
 
 			if (
 				targetWorkflowId &&
-				!isOwnInFlightWorkflow &&
+				!canSkipUpdateHitl &&
 				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
@@ -518,7 +524,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						requestId: nanoid(),
 						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
 						severity: 'warning',
+						workflowId: targetWorkflowId,
 					});
+				}
+				// "Always allow" — persist so later edits of this workflow skip HITL.
+				if (ctx.resumeData.approved && ctx.resumeData.scope === 'session') {
+					await grantSessionWorkflowUpdate(context, targetWorkflowId);
 				}
 			}
 
@@ -806,6 +817,22 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const credentialMap = await buildCredentialMap(context.credentialService);
 			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
 
+			// Deterministic backstop for a builder that never checked credentials:
+			// a chat-model node for a provider the user has no credential for gets
+			// flagged with the LLM credentials they do have. Nodes the resolver
+			// covered with n8n credits are exempt — they run as built.
+			for (const message of buildChatModelProviderMismatchWarnings(
+				json.nodes ?? [],
+				[...credentialMap.values()].flat(),
+				mockResult.resolvedCredentialsByNode,
+			)) {
+				informational.push({
+					code: 'chat_model_provider_mismatch',
+					message,
+					severity: 'informational',
+				});
+			}
+
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
@@ -992,7 +1019,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					...(projectId ? { projectId } : {}),
 					markAsAiTemporary: true,
 				});
-				(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
+				await recordSessionOwnedWorkflow(context, created.id);
 				return await createSuccessResponse(created, 'create');
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Unknown error';

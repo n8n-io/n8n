@@ -1290,7 +1290,7 @@ describe('CredentialEdit', () => {
 			vi.stubGlobal('BroadcastChannel', BroadcastChannelMock);
 			vi.stubGlobal(
 				'open',
-				vi.fn(() => ({ close: vi.fn() })),
+				vi.fn(() => ({ close: vi.fn(), closed: false, location: { href: '' } })),
 			);
 
 			const pinia = createPiniaForSaveTest(credentialModalState);

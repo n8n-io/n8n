@@ -325,6 +325,8 @@ export type FrontendModuleSettings = {
 		mcpManagedByEnv: boolean;
 		/** Public URL of the instance MCP server endpoint. */
 		serverUrl?: string;
+		/** Whether newly created workflows are auto-exposed to MCP. */
+		autoExposeNewWorkflows: boolean;
 	};
 
 	/**
@@ -353,6 +355,8 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
+		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
+		activationCapped?: boolean;
 	};
 
 	/**
