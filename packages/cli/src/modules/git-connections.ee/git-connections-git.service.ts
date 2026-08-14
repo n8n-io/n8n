@@ -44,11 +44,42 @@ export class GitConnectionsGitService {
 			return;
 		}
 
-		const isSshUrl = /^ssh:\/\/[^\s/]+\/[^\s]+$/.test(repositoryUrl);
-		const isScpLike = /^(?:[^@\s/:]+@)?[^\s/:]+:[^\s]+$/.test(repositoryUrl);
-		if (!isSshUrl && !isScpLike) {
-			throw new BadRequestError('SSH connections require an SSH or SCP-like repository URL');
+		this.validateSshRepositoryUrl(repositoryUrl);
+	}
+
+	/**
+	 * Only accept `ssh://host/path` and scp-like `user@host:path`. Reject a
+	 * leading `-` (option injection), the `::` transport-helper form (e.g.
+	 * `ext::<cmd>`, which runs arbitrary commands), and any non-ssh scheme (e.g.
+	 * `file://`, `http://`) — git's remote transports would otherwise let a URL
+	 * clone local paths off the host or execute commands.
+	 */
+	private validateSshRepositoryUrl(repositoryUrl: string) {
+		const error = new BadRequestError(
+			'SSH connections require an ssh:// or user@host:path repository URL',
+		);
+
+		// Reject option injection (leading `-`) and the transport-helper form (`ext::<cmd>`).
+		if (repositoryUrl.startsWith('-') || repositoryUrl.includes('::')) throw error;
+
+		const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\//.exec(repositoryUrl);
+		if (scheme) {
+			if (scheme[1].toLowerCase() !== 'ssh') throw error;
+			let url: URL;
+			try {
+				url = new URL(repositoryUrl);
+			} catch {
+				throw error;
+			}
+			if (!url.hostname || !url.pathname || url.pathname === '/') throw error;
+			return;
 		}
+
+		// scp-like: [user@]host:path, host must not start with `-`.
+		const isScpLike = /^(?:[a-zA-Z0-9_.-]+@)?[a-zA-Z0-9._][a-zA-Z0-9._-]*:[^\s]+$/.test(
+			repositoryUrl,
+		);
+		if (!isScpLike) throw error;
 	}
 
 	async validateBranchName(branchName: string) {
