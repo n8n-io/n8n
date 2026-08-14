@@ -1655,6 +1655,16 @@ describe('CredentialEdit', () => {
 				[googleBigQueryOAuth2Api.name]: googleBigQueryOAuth2Api,
 			};
 
+			// The type selector needs a team home project, resolved from the store
+			credentialsStore.state.credentials = {
+				'cred-banner': {
+					id: 'cred-banner',
+					name: 'Google BigQuery account',
+					type: 'googleBigQueryOAuth2Api',
+					homeProject: { id: 'project-1', type: 'team' },
+				} as ICredentialsResponse,
+			};
+
 			return credentialsStore;
 		};
 

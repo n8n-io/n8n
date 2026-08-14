@@ -1457,6 +1457,7 @@ const { width } = useElementSize(credNameRef);
 							:connected-by-me="connectedByMe"
 							:connected-account-identifier="connectedAccountIdentifier"
 							:is-new-credential="isNewCredential"
+							:new-credential-project-type="homeProject?.type"
 							:managed-oauth-available="managedOAuthAvailable"
 							:use-custom-oauth="useCustomOAuth"
 							:is-quick-connect-mode="isQuickConnectMode"
