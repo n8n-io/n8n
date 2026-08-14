@@ -57,9 +57,16 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 	/**
 	 * The grace period the last provisioning call carried, named so the tests
-	 * below do not depend on its position in the argument list.
+	 * below do not depend on its position in the argument list. Throws when no
+	 * call was made, so an expected-`undefined` grace cannot pass vacuously.
 	 */
-	const lastProvisionedGrace = () => jobProvisioner.provision.mock.calls.at(-1)?.[6];
+	const lastProvisionedGrace = () => {
+		const lastCall = jobProvisioner.provision.mock.calls.at(-1);
+		if (lastCall === undefined) {
+			throw new Error('expected provision to have been called');
+		}
+		return lastCall[6];
+	};
 
 	const makeRegistrar = ({
 		schedulerEnabled = true,
@@ -646,6 +653,10 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		it.each<[string, INodeParameters]>([
 			['a stored 0', { misfireGraceSeconds: 0 }],
 			['a stored "0" string', { misfireGraceSeconds: '0' }],
+			[
+				'a stored null, as empty as an absent parameter',
+				{ misfireGraceSeconds: null } as unknown as INodeParameters,
+			],
 		])(
 			'provisions no misfire grace for %s, which stands for the instance value',
 			async (_label, parameters) => {
@@ -665,7 +676,6 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			['Infinity', { misfireGraceSeconds: Number.POSITIVE_INFINITY }],
 			['a non-numeric string', { misfireGraceSeconds: 'nonsense' }],
 			['an empty string', { misfireGraceSeconds: '' }],
-			['null', { misfireGraceSeconds: null } as unknown as INodeParameters],
 			[
 				'a boolean true, which is not a number the author could have typed',
 				{
@@ -748,6 +758,10 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				['no misfire grace parameter', {}],
 				['a stored 0, which stands for the instance value', { misfireGraceSeconds: 0 }],
 				['a stored "0" string, which stands for it just as well', { misfireGraceSeconds: '0' }],
+				[
+					'a stored null, as empty as an absent parameter',
+					{ misfireGraceSeconds: null } as unknown as INodeParameters,
+				],
 				['a usable misfire grace', { misfireGraceSeconds: 90 }],
 			])('does not warn for a node with %s', (_label, parameters) => {
 				const { registrar, scopedLogger } = makeRegistrarWatchingWarnings();

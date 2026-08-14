@@ -439,8 +439,8 @@ function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
 /**
  * Decides only whether the node states a usable number; the value itself is
  * left unbounded above one second, since the provisioner is the single place
- * that clamps it. Absent, `0` and anything that is not a number of at least a
- * second resolve to `undefined`, leaving the instance setting to apply. The
+ * that clamps it. Absent, `null`, `0` and anything that is not a number of at
+ * least a second resolve to `undefined`, leaving the instance setting to apply. The
  * one-second floor is where the provisioner stops reading a value as stated, so
  * anything below it warns here rather than being dropped there in silence.
  */
@@ -458,9 +458,10 @@ function resolveMisfireGraceSeconds(
 
 	// A blank string coerces to zero but states nothing, so it is unusable
 	// rather than the sentinel. Everything else is judged on the coerced value,
-	// so a stored `"0"` inherits as quietly as a stored `0`.
+	// so a stored `"0"` inherits as quietly as a stored `0`. A stored `null` is
+	// as empty as an absent parameter, so it inherits quietly too.
 	const isBlank = typeof requested === 'string' && requested.trim() === '';
-	const inherits = requested === undefined || (numeric === 0 && !isBlank);
+	const inherits = requested === undefined || requested === null || (numeric === 0 && !isBlank);
 
 	if (stated === undefined && !inherits) {
 		logger.warn(
