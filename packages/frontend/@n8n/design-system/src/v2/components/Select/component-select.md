@@ -1,7 +1,7 @@
 # Component specification
 
 Allows users to choose one or more options from a predefined list. It supports both single and multiple selection modes via the `multiple` prop.
-Built-in search (`searchable`) filters the dropdown by `textValue` (falling back to `label`) and `keywords` (case-insensitive substring). Closing the menu clears the query. Group labels and separators without a matching item are dropped from the filtered list. When search is off, Reka typeahead matches the prefix of `textValue` (falling back to `label`); `keywords` are not used. For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
+Built-in search (`searchable`) filters the dropdown by `textValue` (falling back to `label`) and `keywords` (case-insensitive substring). Closing the menu clears the query. Groups and separators without a matching item are dropped from the filtered list. When search is off, Reka typeahead matches the prefix of `textValue` (falling back to `label`); `keywords` are not used. For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
 
 - **Component Name:** N8nSelect2
 - **Related export:** N8nSelect2Item (default menu row; use when replacing the `item` slot)
@@ -15,7 +15,7 @@ Built-in search (`searchable`) filters the dropdown by `textValue` (falling back
 
 **Item shape**
 
-Selectable items must be objects with required `value` and `label`. Empty `value` or `label` is skipped (dev warning). Structural rows use a discriminant `type`:
+Selectable items must be objects with required `value` and `label`. Empty `value` or `label` is skipped (dev warning). Use `type: 'group'` for sections. The `label` is optional. Each group maps to its own Reka `SelectGroup`, so heading DOM `id`s stay unique and `aria-labelledby` points at the correct label. Top-level options (outside any group) are batched into an unlabeled group. Separators belong at the top level between groups.
 
 ```typescript
 type SelectValue = string | number;
@@ -31,9 +31,10 @@ type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	onSelect?: (event: Event) => void; // preventDefault() keeps the value from updating
 };
 
-type SelectLabelItem = { type: 'label'; label: string };
-type SelectSeparatorItem = { type: 'separator' };
-type SelectItem = SelectOptionBase | SelectLabelItem | SelectSeparatorItem;
+type SelectItem =
+	| SelectOptionBase
+	| { type: 'group'; label?: string; items: SelectOptionBase[] }
+	| { type: 'separator' };
 type SelectItemUi = { class: string; strokeWidth?: number };
 ```
 
@@ -53,7 +54,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 
 - `id?: string`
 - `placeholder?: string` Visual empty-state text in the trigger. Defaults to `t('nds.select.placeholder')` (`Select an option`). Not used as the accessible name — pass `aria-label` / `aria-labelledby`, or associate a `<label>` via `id`.
-- `items?: SelectItem[]` Array of options / labels / separators to render
+- `items?: SelectItem[]` Array of options / groups / separators to render
 - `defaultValue?: SelectValue | SelectValue[]` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
 - `modelValue?: SelectValue | SelectValue[]` The controlled value of the Select. Bind as `v-model`. Typed as `SelectValue[]` when `multiple` is `true`.
 - `multiple?: boolean` Whether multiple options can be selected or not.
@@ -91,7 +92,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 
 - `default`: `{ modelValue?: SelectValue | SelectValue[]; open: boolean }` — trigger display. Default is the selected label(s), comma-separated in multiple mode.
 - `item`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour)
-- `label`: `{ item: SelectLabelItem }` — group label rows (`type: 'label'`)
+- `label`: `{ item: SelectGroupItem }` — section heading for `type: 'group'` entries that have a `label`
 - `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). In single select, the same slot is reused on the trigger for the selected value, even when the item has no `icon`. Not used on the trigger in `multiple` mode.
 - `item-label`: `{ item: SelectOptionBase }`
 - `item-trailing`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom trailing content
@@ -189,9 +190,40 @@ const value = ref<string>()
 </template>
 ```
 
+**Grouped list with groups and separators:**
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { N8nSelect2 } from '@n8n/design-system'
+
+const items = ref([
+	{
+		type: 'group',
+		label: 'Fruits',
+		items: [
+			{ label: 'Apple', value: 'apple' },
+			{ label: 'Banana', value: 'banana' },
+		],
+	},
+	{ type: 'separator' },
+	{
+		type: 'group',
+		label: 'Vegetables',
+		items: [{ label: 'Carrot', value: 'carrot' }],
+	},
+])
+const value = ref<string | undefined>()
+</script>
+
+<template>
+  <N8nSelect2 v-model="value" :items="items" />
+</template>
+```
+
 **Header and footer actions**
 
-Do not put buttons in `#footer` / `#header` for actions that need a reliable click — they sit inside Reka's `role="listbox"` and pointer events are often swallowed. Model the action as an option: pin it with `type: 'separator'`, and call `event.preventDefault()` in `onSelect` so it does not become the field value.
+Do not put buttons in `#footer` / `#header` for actions that need a reliable click — they sit inside Reka's `role="listbox"` and pointer events are often swallowed. Model the action as an option: use `type: 'group'` for labeled sections, pin it with `type: 'separator'`, and call `event.preventDefault()` in `onSelect` so it does not become the field value.
 
 ```vue
 <script setup lang="ts">
@@ -207,7 +239,11 @@ const open = ref(false)
 const createOpen = ref(false)
 
 const items = computed(() => [
-  ...options,
+  {
+    type: 'group' as const,
+    label: 'Roles',
+    items: options,
+  },
   { type: 'separator' as const },
   {
     label: 'Add custom role',

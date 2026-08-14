@@ -29,20 +29,23 @@ export type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	onSelect?: (event: Event) => void;
 };
 
-export type SelectLabelItem = {
-	type: 'label';
-	label: string;
+export type SelectGroupItem<TValue extends SelectValue = SelectValue> = {
+	type: 'group';
+	label?: string;
+	items: Array<SelectOptionBase<TValue>>;
 };
 
 export type SelectSeparatorItem = {
 	type: 'separator';
 };
 
-export type SelectStructuralItem = SelectLabelItem | SelectSeparatorItem;
+export type SelectStructuralItem<TValue extends SelectValue = SelectValue> =
+	| SelectGroupItem<TValue>
+	| SelectSeparatorItem;
 
 export type SelectItem<TValue extends SelectValue = SelectValue> =
 	| SelectOptionBase<TValue>
-	| SelectStructuralItem;
+	| SelectStructuralItem<TValue>;
 
 export type SelectVariants = 'default' | 'ghost' | 'flush';
 
@@ -72,7 +75,8 @@ export type SelectProps<M extends boolean = false> = Omit<
 
 	/**
 	 * When `true`, shows a search field at the top of the dropdown and filters
-	 * items by `textValue` (falling back to `label`) and `keywords`.
+	 * items by `textValue` (falling back to `label`) and `keywords`. Groups and
+	 * separators without a matching item are dropped from the filtered list.
 	 * @defaultValue false
 	 */
 	searchable?: boolean;
@@ -102,9 +106,7 @@ export type SelectProps<M extends boolean = false> = Omit<
 };
 
 export type SelectEmits<M extends boolean = false> = Omit<SelectRootEmits, 'update:modelValue'> & {
-	// eslint-disable-next-line @typescript-eslint/naming-convention -- Vue v-model emit
 	'update:modelValue': [value: SelectModelValue<M> | undefined];
-	// eslint-disable-next-line @typescript-eslint/naming-convention -- Vue v-model emit
 	'update:searchQuery': [value: string];
 	clear: [];
 };
@@ -125,7 +127,7 @@ export type SelectItemSlots = {
 export type SelectSlots<M extends boolean = false> = SelectItemSlots & {
 	default(props: { modelValue?: SelectModelValue<M>; open: boolean }): unknown;
 	item: (props: { item: SelectOptionBase }) => unknown;
-	label: (props: { item: SelectLabelItem }) => unknown;
+	label: (props: { item: SelectGroupItem }) => unknown;
 	header?: () => unknown;
 	footer?: () => unknown;
 	empty?: () => unknown;

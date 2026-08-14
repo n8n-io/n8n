@@ -60,16 +60,26 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const fruitItems: SelectItem[] = [
-	{ type: 'label', label: 'Fruits' },
-	{ label: 'Apple', value: 'apple' },
-	{ label: 'Banana', value: 'banana' },
-	{ label: 'Orange', value: 'orange' },
-	{ label: 'Grapes', value: 'grapes' },
+	{
+		type: 'group',
+		label: 'Fruits',
+		items: [
+			{ label: 'Apple', value: 'apple' },
+			{ label: 'Banana', value: 'banana' },
+			{ label: 'Orange', value: 'orange' },
+			{ label: 'Grapes', value: 'grapes' },
+		],
+	},
 	{ type: 'separator' },
-	{ type: 'label', label: 'More Fruits' },
-	{ label: 'Pomegranate', value: 'pomegranate' },
-	{ label: 'Guava', value: 'guava' },
-	{ label: 'Dragon Fruit', value: 'dragon_fruit' },
+	{
+		type: 'group',
+		label: 'More Fruits',
+		items: [
+			{ label: 'Pomegranate', value: 'pomegranate' },
+			{ label: 'Guava', value: 'guava' },
+			{ label: 'Dragon Fruit', value: 'dragon_fruit' },
+		],
+	},
 ];
 
 const plainItems: SelectItem[] = [
@@ -736,17 +746,19 @@ const SelectSearchAndFooterDemo = defineComponent({
 		const open = ref(false);
 		const createOpen = ref(false);
 
-		const items = computed<SelectItem[]>(() => {
-			const result: SelectItem[] = [];
-
-			result.push({ type: 'label', label: 'System roles' });
-			result.push(...systemRoles);
-
-			result.push({ type: 'label', label: 'Custom roles' });
-			result.push(...customRoles);
-
-			result.push({ type: 'separator' });
-			result.push({
+		const items = computed<SelectItem[]>(() => [
+			{
+				type: 'group',
+				label: 'System roles',
+				items: systemRoles,
+			},
+			{
+				type: 'group',
+				label: 'Custom roles',
+				items: customRoles,
+			},
+			{ type: 'separator' },
+			{
 				value: ADD_CUSTOM_ROLE_VALUE,
 				label: 'Add custom role',
 				icon: 'plus',
@@ -756,10 +768,8 @@ const SelectSearchAndFooterDemo = defineComponent({
 					createOpen.value = true;
 					action('add-custom-role')();
 				},
-			});
-
-			return result;
-		});
+			},
+		]);
 
 		const selectedLabel = computed(
 			() =>

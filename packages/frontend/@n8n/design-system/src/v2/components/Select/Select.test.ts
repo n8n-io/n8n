@@ -80,6 +80,24 @@ describe('v2/components/Select', () => {
 			});
 			const trigger = wrapper.getByTestId('select-trigger');
 			expect(trigger).toHaveAttribute('data-disabled');
+			expect(trigger).not.toHaveAttribute('tabindex');
+		});
+
+		it('should not focus the trigger when clicked while disabled', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+					],
+					disabled: true,
+				},
+			});
+			const trigger = wrapper.getByTestId('select-trigger');
+
+			await userEvent.click(trigger);
+
+			expect(trigger).not.toHaveFocus();
 		});
 
 		it('should not use placeholder as aria-label', () => {
@@ -272,10 +290,18 @@ describe('v2/components/Select', () => {
 			);
 		});
 
-		it('should render label items', async () => {
+		it('should render each group label with a unique id and its own group', async () => {
 			const items: SelectItem[] = [
-				{ label: 'Group 1', type: 'label' },
-				{ value: '1', label: 'Option 1' },
+				{
+					type: 'group',
+					label: 'Fruits',
+					items: [{ value: 'apple', label: 'Apple' }],
+				},
+				{
+					type: 'group',
+					label: 'More Fruits',
+					items: [{ value: 'mango', label: 'Mango' }],
+				},
 			];
 			const wrapper = render(Select, {
 				props: {
@@ -283,11 +309,50 @@ describe('v2/components/Select', () => {
 					defaultOpen: true,
 				},
 			});
-			const trigger = wrapper.getByTestId('select-trigger');
 
-			const { popover } = await getPopoverContainer(trigger);
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
 
-			expect(within(popover).getByText('Group 1')).toBeVisible();
+			const fruits = within(popover).getByText('Fruits');
+			const moreFruits = within(popover).getByText('More Fruits');
+			expect(fruits).toBeVisible();
+			expect(moreFruits).toBeVisible();
+			expect(fruits.id).toBeTruthy();
+			expect(moreFruits.id).toBeTruthy();
+			expect(fruits.id).not.toBe(moreFruits.id);
+
+			const groupElements = popover.querySelectorAll('[role="group"]');
+			expect(groupElements).toHaveLength(2);
+			expect(groupElements[0]).toHaveAttribute('aria-labelledby', fruits.id);
+			expect(groupElements[1]).toHaveAttribute('aria-labelledby', moreFruits.id);
+		});
+
+		it('should render unlabeled groups without a heading', async () => {
+			const items: SelectItem[] = [
+				{
+					type: 'group',
+					items: [{ value: 'apple', label: 'Apple' }],
+				},
+				{ type: 'separator' },
+				{
+					type: 'group',
+					label: 'Vegetables',
+					items: [{ value: 'carrot', label: 'Carrot' }],
+				},
+			];
+			const wrapper = render(Select, {
+				props: {
+					items,
+					defaultOpen: true,
+				},
+			});
+
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+
+			const groupElements = popover.querySelectorAll('[role="group"]');
+			expect(groupElements).toHaveLength(2);
+			expect(within(popover).getByText('Vegetables')).toBeVisible();
+			expect(within(popover).getByRole('option', { name: 'Apple' })).toBeVisible();
+			expect(within(popover).getByRole('option', { name: 'Carrot' })).toBeVisible();
 		});
 
 		it('should render separator items', async () => {
@@ -305,7 +370,10 @@ describe('v2/components/Select', () => {
 			const trigger = wrapper.getByTestId('select-trigger');
 
 			const { popover } = await getPopoverContainer(trigger);
-			expect(popover.querySelectorAll('[role="separator"]')).toHaveLength(1);
+			// Decorative only (Reka sets aria-hidden); role="separator" is invalid inside listbox.
+			expect(popover.querySelectorAll('[role="separator"]')).toHaveLength(0);
+			expect(within(popover).getByRole('option', { name: 'Option 1' })).toBeVisible();
+			expect(within(popover).getByRole('option', { name: 'Option 2' })).toBeVisible();
 		});
 	});
 
@@ -659,11 +727,19 @@ describe('v2/components/Select', () => {
 
 	describe('searchable', () => {
 		const roleItems: SelectItem[] = [
-			{ type: 'label', label: 'System roles' },
-			{ value: 'admin', label: 'Admin' },
-			{ value: 'member', label: 'Member' },
-			{ type: 'label', label: 'Custom roles' },
-			{ value: 'developer', label: 'Developer' },
+			{
+				type: 'group',
+				label: 'System roles',
+				items: [
+					{ value: 'admin', label: 'Admin' },
+					{ value: 'member', label: 'Member' },
+				],
+			},
+			{
+				type: 'group',
+				label: 'Custom roles',
+				items: [{ value: 'developer', label: 'Developer' }],
+			},
 		];
 
 		it('should autofocus the search input when opened', async () => {
@@ -699,8 +775,10 @@ describe('v2/components/Select', () => {
 
 			await waitFor(() => {
 				expect(within(popover).getByText('Developer')).toBeInTheDocument();
+				expect(within(popover).getByText('Custom roles')).toBeInTheDocument();
 				expect(within(popover).queryByText('Admin')).not.toBeInTheDocument();
 				expect(within(popover).queryByText('Member')).not.toBeInTheDocument();
+				expect(within(popover).queryByText('System roles')).not.toBeInTheDocument();
 			});
 
 			await userEvent.clear(searchInput);

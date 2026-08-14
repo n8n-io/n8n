@@ -19,10 +19,15 @@ interface RoleSelectOption extends SelectOptionBase<string> {
 	requiresUpgrade?: boolean;
 }
 
-type RoleSelectItem = RoleSelectOption | Extract<SelectItem, { type: 'label' | 'separator' }>;
-
 const isRoleSelectOption = (item: SelectOptionBase): item is RoleSelectOption =>
 	'role' in item && item.role !== undefined;
+
+const toRoleSelectOption = (role: Role): RoleSelectOption => ({
+	value: role.slug,
+	label: role.displayName,
+	role,
+	requiresUpgrade: !role.licensed,
+});
 
 const props = withDefaults(
 	defineProps<{
@@ -85,36 +90,22 @@ const selectedRole = computed(() =>
 	[...props.systemRoles, ...props.customRoles].find((role) => role.slug === props.currentRole),
 );
 
-const roleItems = computed<RoleSelectItem[]>(() => {
-	const items: RoleSelectItem[] = [];
+const roleItems = computed<SelectItem[]>(() => {
+	const items: SelectItem[] = [];
 
 	if (props.systemRoles.length > 0) {
 		items.push({
-			type: 'label',
+			type: 'group',
 			label: i18n.baseText('projects.settings.role.selector.section.system'),
-		});
-		props.systemRoles.forEach((role) => {
-			items.push({
-				value: role.slug,
-				label: role.displayName,
-				role,
-				requiresUpgrade: !role.licensed,
-			});
+			items: props.systemRoles.map(toRoleSelectOption),
 		});
 	}
 
 	if (props.customRoles.length > 0 || !props.hasCustomRolesLicense) {
 		items.push({
-			type: 'label',
+			type: 'group',
 			label: i18n.baseText('projects.settings.role.selector.section.custom'),
-		});
-		props.customRoles.forEach((role) => {
-			items.push({
-				value: role.slug,
-				label: role.displayName,
-				role,
-				requiresUpgrade: !role.licensed,
-			});
+			items: props.customRoles.map(toRoleSelectOption),
 		});
 	}
 

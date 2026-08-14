@@ -32,8 +32,8 @@ import { useI18n } from '@n8n/design-system/composables/useI18n';
 
 import type {
 	SelectEmits,
+	SelectGroupItem,
 	SelectItem,
-	SelectLabelItem,
 	SelectModelValue,
 	SelectOptionBase,
 	SelectProps,
@@ -224,20 +224,12 @@ function isSelectValue(value: unknown): value is SelectValue {
 	return typeof value === 'string' || typeof value === 'number';
 }
 
-function isOptionItem(item: SelectItem): item is SelectOptionBase {
-	return item.type !== 'label' && item.type !== 'separator';
+function isGroupItem(item: SelectItem): item is SelectGroupItem {
+	return item.type === 'group';
 }
 
-function itemKey(item: SelectItem, index: number) {
-	if (isOptionItem(item)) {
-		return `item-${String(item.value)}`;
-	}
-
-	if (item.type === 'label') {
-		return `label-${item.label}-${index}`;
-	}
-
-	return `separator-${index}`;
+function isSeparatorItem(item: SelectItem): item is SelectSeparatorItem {
+	return item.type === 'separator';
 }
 
 function stringifyPrimitive(value: unknown): string | undefined {
@@ -252,7 +244,7 @@ function stringifyPrimitive(value: unknown): string | undefined {
 	}
 }
 
-function warnInvalidItem(message: string, item: SelectItem) {
+function warnInvalidItem(message: string, item: SelectItem | SelectOptionBase) {
 	if (!import.meta.env.DEV) {
 		return;
 	}
@@ -261,52 +253,96 @@ function warnInvalidItem(message: string, item: SelectItem) {
 	console.warn(`[N8nSelect2] ${message}`, item);
 }
 
-function normaliseItems(items: SelectItem[] | undefined): SelectItem[] {
-	if (!items?.length) {
+function normaliseOption(item: SelectOptionBase): SelectOptionBase | undefined {
+	if (item.value === '') {
+		warnInvalidItem(
+			'Skipping item: "value" is missing or empty. Every selectable item needs a non-empty value.',
+			item,
+		);
+		return undefined;
+	}
+
+	if (!item.label) {
+		warnInvalidItem(
+			'Skipping item: "label" is missing or empty. Every selectable item needs a label.',
+			item,
+		);
+		return undefined;
+	}
+
+	return {
+		...item,
+		textValue: item.textValue ?? item.label,
+	};
+}
+
+type SelectSection =
+	| {
+			type: 'group';
+			/** Present when this section came from an explicit `type: 'group'` entry. */
+			group?: SelectGroupItem;
+			label?: string;
+			items: SelectOptionBase[];
+	  }
+	| { type: 'separator' };
+
+const sections = computed<SelectSection[]>(() => {
+	if (!props.items?.length) {
 		return [];
 	}
 
-	const result: SelectItem[] = [];
+	const result: SelectSection[] = [];
+	let pendingOptions: SelectOptionBase[] = [];
 
-	for (const item of items) {
-		if (item.type === 'label') {
-			if (!item.label) {
-				warnInvalidItem('Skipping label item: "label" is missing or empty.', item);
-				continue;
+	const flushPendingOptions = () => {
+		if (pendingOptions.length === 0) {
+			return;
+		}
+		result.push({ type: 'group', items: pendingOptions });
+		pendingOptions = [];
+	};
+
+	for (const item of props.items) {
+		if (isGroupItem(item)) {
+			flushPendingOptions();
+
+			const groupItems: SelectOptionBase[] = [];
+			for (const child of item.items) {
+				const normalised = normaliseOption(child);
+				if (normalised) {
+					groupItems.push(normalised);
+				}
 			}
-			result.push(item);
+
+			const label = item.label || undefined;
+			if (item.label !== undefined && !item.label) {
+				warnInvalidItem('Skipping group label: "label" is empty.', item);
+			}
+
+			result.push({
+				type: 'group',
+				group: item,
+				label,
+				items: groupItems,
+			});
 			continue;
 		}
 
-		if (item.type === 'separator') {
-			result.push(item);
+		if (isSeparatorItem(item)) {
+			flushPendingOptions();
+			result.push({ type: 'separator' });
 			continue;
 		}
 
-		if (item.value === '') {
-			warnInvalidItem(
-				'Skipping item: "value" is missing or empty. Every selectable item needs a non-empty value.',
-				item,
-			);
-			continue;
+		const normalised = normaliseOption(item);
+		if (normalised) {
+			pendingOptions.push(normalised);
 		}
-
-		if (!item.label) {
-			warnInvalidItem(
-				'Skipping item: "label" is missing or empty. Every selectable item needs a label.',
-				item,
-			);
-			continue;
-		}
-
-		result.push({
-			...item,
-			textValue: item.textValue ?? item.label,
-		});
 	}
 
+	flushPendingOptions();
 	return result;
-}
+});
 
 function itemMatchesQuery(item: SelectOptionBase, query: string): boolean {
 	if ((item.textValue ?? item.label).toLowerCase().includes(query)) {
@@ -316,28 +352,23 @@ function itemMatchesQuery(item: SelectOptionBase, query: string): boolean {
 	return (item.keywords ?? []).some((keyword) => keyword.toLowerCase().includes(query));
 }
 
-function filterGroupedItems(items: SelectItem[], query: string): SelectItem[] {
+function filterSections(currentSections: SelectSection[], query: string): SelectSection[] {
 	const normalizedQuery = query.toLowerCase().trim();
 	if (!normalizedQuery) {
-		return items;
+		return currentSections;
 	}
 
-	const result: SelectItem[] = [];
-	let pendingLabel: SelectLabelItem | undefined;
-	let pendingSeparator: SelectSeparatorItem | undefined;
+	const result: SelectSection[] = [];
+	let pendingSeparator: Extract<SelectSection, { type: 'separator' }> | undefined;
 
-	for (const item of items) {
-		if (item.type === 'label') {
-			pendingLabel = item;
+	for (const section of currentSections) {
+		if (section.type === 'separator') {
+			pendingSeparator = section;
 			continue;
 		}
 
-		if (item.type === 'separator') {
-			pendingSeparator = item;
-			continue;
-		}
-
-		if (!itemMatchesQuery(item, normalizedQuery)) {
+		const items = section.items.filter((item) => itemMatchesQuery(item, normalizedQuery));
+		if (items.length === 0) {
 			continue;
 		}
 
@@ -346,28 +377,27 @@ function filterGroupedItems(items: SelectItem[], query: string): SelectItem[] {
 			pendingSeparator = undefined;
 		}
 
-		if (pendingLabel) {
-			result.push(pendingLabel);
-			pendingLabel = undefined;
-		}
-
-		result.push(item);
+		result.push({ ...section, items });
 	}
 
 	return result;
 }
 
-const normalisedItems = computed(() => normaliseItems(props.items));
+const optionItems = computed(() =>
+	sections.value.flatMap((section) => (section.type === 'group' ? section.items : [])),
+);
 
-const visibleItems = computed(() => {
+const visibleSections = computed(() => {
 	if (!props.searchable) {
-		return normalisedItems.value;
+		return sections.value;
 	}
 
-	return filterGroupedItems(normalisedItems.value, searchQuery.value);
+	return filterSections(sections.value, searchQuery.value);
 });
 
-const hasSelectableItems = computed(() => visibleItems.value.some(isOptionItem));
+const hasSelectableItems = computed(() =>
+	visibleSections.value.some((section) => section.type === 'group' && section.items.length > 0),
+);
 
 function hasValue(value: unknown): boolean {
 	if (Array.isArray(value)) {
@@ -408,9 +438,7 @@ function getSelectedItem(
 		return undefined;
 	}
 
-	return normalisedItems.value.find(
-		(item): item is SelectOptionBase => isOptionItem(item) && item.value === value,
-	);
+	return optionItems.value.find((item) => item.value === value);
 }
 
 function isModelValue(value: unknown): value is SelectModelValue<M> {
@@ -462,14 +490,12 @@ function resolveDisplayValue(value: unknown): string | undefined {
 		return undefined;
 	}
 
-	const items = normalisedItems.value;
+	const items = optionItems.value;
 
 	if (Array.isArray(value)) {
 		const labels = value
 			.map((entry: unknown) => {
-				const found = items.find(
-					(item): item is SelectOptionBase => isOptionItem(item) && item.value === entry,
-				);
+				const found = items.find((item) => item.value === entry);
 				return found?.label ?? stringifyPrimitive(entry);
 			})
 			.filter((label): label is string => Boolean(label));
@@ -477,9 +503,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 		return labels.length > 0 ? labels.join(', ') : undefined;
 	}
 
-	const found = items.find(
-		(item): item is SelectOptionBase => isOptionItem(item) && item.value === value,
-	);
+	const found = items.find((item) => item.value === value);
 	if (found !== undefined) {
 		return found.label;
 	}
@@ -503,7 +527,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 			as="div"
 			data-test-id="select-trigger"
 			v-bind="triggerAttrs()"
-			:tabindex="disabled ? -1 : 0"
+			:tabindex="disabled ? undefined : 0"
 			:class="[$style.selectTrigger, variantClasses[variant], size, triggerClass()]"
 		>
 			<template
@@ -592,39 +616,49 @@ function resolveDisplayValue(value: unknown): string | undefined {
 								{{ t('nds.select.noResults') }}
 							</slot>
 						</div>
-						<SelectGroup v-else>
-							<template v-for="(item, index) in visibleItems" :key="itemKey(item, index)">
-								<RSelectLabel v-if="item.type === 'label'" :class="$style.selectLabel">
-									<slot name="label" :item="item">
-										{{ item.label }}
-									</slot>
-								</RSelectLabel>
-
+						<template v-else>
+							<template
+								v-for="(section, sectionIndex) in visibleSections"
+								:key="`section-${sectionIndex}`"
+							>
 								<RSelectSeparator
-									v-else-if="item.type === 'separator'"
+									v-if="section.type === 'separator'"
 									:class="$style.selectSeparator"
-									role="separator"
+									aria-hidden="true"
 								/>
 
-								<slot v-else name="item" :item="item">
-									<N8nSelectItem
-										v-bind="item"
-										:class="$style.selectItem"
-										:stroke-width="iconStrokeWidth()"
+								<SelectGroup v-else>
+									<RSelectLabel v-if="section.label && section.group" :class="$style.selectLabel">
+										<slot name="label" :item="section.group">
+											{{ section.label }}
+										</slot>
+									</RSelectLabel>
+
+									<template
+										v-for="item in section.items"
+										:key="`section-${sectionIndex}-item-${String(item.value)}`"
 									>
-										<template #item-leading="{ ui }">
-											<slot name="item-leading" :item="item" :ui="ui" />
-										</template>
-										<template #item-label>
-											<slot name="item-label" :item="item" />
-										</template>
-										<template #item-trailing="{ ui }">
-											<slot name="item-trailing" :item="item" :ui="ui" />
-										</template>
-									</N8nSelectItem>
-								</slot>
+										<slot name="item" :item="item">
+											<N8nSelectItem
+												v-bind="item"
+												:class="$style.selectItem"
+												:stroke-width="iconStrokeWidth()"
+											>
+												<template #item-leading="{ ui }">
+													<slot name="item-leading" :item="item" :ui="ui" />
+												</template>
+												<template #item-label>
+													<slot name="item-label" :item="item" />
+												</template>
+												<template #item-trailing="{ ui }">
+													<slot name="item-trailing" :item="item" :ui="ui" />
+												</template>
+											</N8nSelectItem>
+										</slot>
+									</template>
+								</SelectGroup>
 							</template>
-						</SelectGroup>
+						</template>
 					</SelectViewport>
 
 					<SelectScrollDownButton
@@ -669,18 +703,20 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	outline: none;
 	box-shadow: var(--input--shadow);
 
-	@include focus.focus-visible-ring;
-
 	&:hover:not([data-disabled]):not(:focus-visible):not(:has(.clearButton:hover)) {
 		border-color: var(--input--border-color--hover);
 		box-shadow: var(--input--shadow--hover);
 		cursor: pointer;
 	}
 
-	&:focus-visible {
-		border-color: var(--input--border-color--focus);
-		box-shadow: var(--input--shadow--focus);
-		z-index: 1;
+	&:not([data-disabled]) {
+		@include focus.focus-visible-ring;
+
+		&:focus-visible {
+			border-color: var(--input--border-color--focus);
+			box-shadow: var(--input--shadow--focus);
+			z-index: 1;
+		}
 	}
 
 	&[data-placeholder] {
