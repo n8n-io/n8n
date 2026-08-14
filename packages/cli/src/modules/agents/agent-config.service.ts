@@ -90,7 +90,12 @@ export class AgentConfigService {
 			tasks: config.tasks.map((ref) => {
 				const body = bodyById.get(ref.id);
 				return body
-					? { ...ref, name: body.name, objective: body.objective, cronExpression: body.cronExpression }
+					? {
+							...ref,
+							name: body.name,
+							objective: body.objective,
+							cronExpression: body.cronExpression,
+						}
 					: ref;
 			}),
 		};
