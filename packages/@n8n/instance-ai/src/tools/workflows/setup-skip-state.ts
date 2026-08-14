@@ -128,6 +128,12 @@ export function resolveReopenTargets(
 		// the type-wide record — otherwise a card re-keyed since the skip (a credential attached
 		// outside the panel) would stay hidden. Naming one node touches only that node, so it
 		// can't drag another node's declined credential back into the card.
+		//
+		// Naming the type deliberately reaches the parameter cards on nodes using it, not just the
+		// credential ones: `cred:` is coarse by design (that is what quiets sibling nodes), and the
+		// user asking to set up Slack is asking about Slack. Restricting this to credential cards
+		// would make "set up Slack" fail outright whenever the only Slack card left is a parameter
+		// one, and split one request into two asks.
 		if (byCredentialType.length > 0) {
 			subjects.add(`cred:${byCredentialType[0].credentialType}`);
 		}
