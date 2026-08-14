@@ -308,6 +308,34 @@ describe('useCredentialForm', () => {
 		});
 	});
 
+	describe('isCredentialTestable', () => {
+		// The store getter checks every registered node version; the composable must defer to
+		// it rather than deciding for itself, or a test declared on an older version stays
+		// hidden and the credential silently saves without being tested.
+		const stubStoreTestable = (testable: boolean) => {
+			Object.defineProperty(credentialsStore, 'isCredentialTypeTestable', {
+				configurable: true,
+				get: () => () => testable,
+			});
+		};
+
+		it('is testable when the store finds a test for the type', async () => {
+			stubStoreTestable(true);
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
+			await form.initialize();
+
+			expect(form.isCredentialTestable.value).toBe(true);
+		});
+
+		it('is not testable when the store finds no test on any version', async () => {
+			stubStoreTestable(false);
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
+			await form.initialize();
+
+			expect(form.isCredentialTestable.value).toBe(false);
+		});
+	});
+
 	describe('requiredPropertiesFilled', () => {
 		it('is false while a required string field is empty and true once it is set', async () => {
 			const form = useCredentialForm({ mode: 'new', activeId: 'requiredStringApi' });
