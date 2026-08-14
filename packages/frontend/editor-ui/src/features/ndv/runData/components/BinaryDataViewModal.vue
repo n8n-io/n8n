@@ -175,11 +175,12 @@ onBeforeUnmount(() => {
 					>
 
 					<!-- PDF -->
-					<embed
+					<!-- An iframe rather than an embed, so a `object-src 'none'` CSP does not refuse it -->
+					<iframe
 						v-else-if="binaryData.fileType === 'pdf'"
 						:src="embedSource"
 						class="binary-data"
-						type="application/pdf"
+						:title="binaryData.fileName || i18n.baseText('binaryDataDisplay.filePreview')"
 					/>
 
 					<!-- UNKNOWN -->
@@ -234,6 +235,7 @@ onBeforeUnmount(() => {
 	.binary-data {
 		height: 100%;
 		width: 100%;
+		border: 0;
 	}
 
 	.text-content {
