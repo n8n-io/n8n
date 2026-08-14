@@ -1,0 +1,78 @@
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  s_673cb9b7bf3383::t_b16fc60df62047 232-237
+  s_673cb9b7bf3383::t_f2f37b3b13998f 124-129
+  s_673cb9b7bf3383::t_9022f14177ce46 42
+packages/@n8n/config/test/config.test.ts
+  s_673cb9b7bf3383::t_9f5c746dbc49aa 256
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_673cb9b7bf3383::t_eaea0304ed2427 699-733,735-745
+  s_673cb9b7bf3383::t_ed657da4395975 51
+  s_673cb9b7bf3383::t_1357ccca56ff6a 734
+  s_673cb9b7bf3383::t_f3365dac9ccb6c 626-627
+packages/cli/src/events/maps/poll-trigger-metrics.event-map.ts
+  s_673cb9b7bf3383::t_352dd005f6be8a 1-10,17-19,21-23
+  s_673cb9b7bf3383::t_1046bb5812a517 11-16,20
+packages/cli/src/events/event.service.ts
+  s_673cb9b7bf3383::t_22abe4fd6d0e11 7,17-18
+packages/core/src/execution-engine/index.ts
+  s_673cb9b7bf3383::t_9900170ce47445 111
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_673cb9b7bf3383::t_c0cd79ab83cf33 71-74
+packages/cli/src/metrics/prometheus/poll-trigger-metrics.service.ts
+  s_673cb9b7bf3383::t_9651f634f245a5 1-2,4-89
+  s_673cb9b7bf3383::t_8b3afdb5aebe92 3
+packages/core/src/execution-engine/__tests__/triggers-and-pollers.test.ts
+  s_673cb9b7bf3383::t_e58d23fb92420d 1,16
+  s_673cb9b7bf3383::t_7a97044551633d 155-212,214,216-220,222-235,237-256,258-268
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_673cb9b7bf3383::t_c54683a02f757c 123-139,141-153
+  s_673cb9b7bf3383::t_831168ee47647b 7-11,24,27-53
+  s_673cb9b7bf3383::t_a624f30bc3589a 167-176
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_673cb9b7bf3383::t_da8991b1112648 1503-1519
+packages/@n8n/scheduler/src/observability/metrics.ts
+  s_673cb9b7bf3383::t_7d5b1b17c256e2 48
+  s_673cb9b7bf3383::t_46b733dec284a3 18-22
+packages/@n8n/scheduler/src/core/factory.ts
+  s_673cb9b7bf3383::t_2131245a4d8157 290-297
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_673cb9b7bf3383::t_37dc391c0d0fe3 316
+  s_673cb9b7bf3383::t_17715c36117448 327
+  s_673cb9b7bf3383::t_d673181d7736e5 52-58
+  s_673cb9b7bf3383::t_0c46a61fadda3d 291
+  s_673cb9b7bf3383::t_6150bae22e2efb 304
+packages/cli/src/workflows/triggers/__tests__/poll-cursor.service.test.ts
+  s_673cb9b7bf3383::t_e1a63a83bc211c 313-411
+  s_673cb9b7bf3383::t_bafec0aac68e9c 13,20,35
+packages/cli/src/metrics/prometheus/__tests__/scheduler-metrics.service.test.ts
+  s_673cb9b7bf3383::t_67324bfad91eb8 344
+  s_673cb9b7bf3383::t_1c32897ab5f4d9 127
+  s_673cb9b7bf3383::t_78caae95e58c15 319-326
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_673cb9b7bf3383::t_e07a2b13a88935 84
+  s_673cb9b7bf3383::t_ed98137f286387 59
+  s_673cb9b7bf3383::t_5f701570331080 16
+packages/core/src/execution-engine/triggers-and-pollers.ts
+  s_673cb9b7bf3383::t_dfe5ecc134c9d6 1,4,22-26,33-49,52-56
+  s_673cb9b7bf3383::t_e2c7c3a38ca79d 57
+  s_673cb9b7bf3383::t_84dd25b4fa965d 144-174
+  s_673cb9b7bf3383::t_d31be16fea3544 27-32
+packages/cli/src/metrics/prometheus/__tests__/poll-trigger-metrics.service.test.ts
+  s_673cb9b7bf3383::t_198c589e313679 1-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "83a538a93c99e64f97da6f1df31da3a90b07704d",
+  "prompts": {},
+  "sessions": {
+    "s_673cb9b7bf3383": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9c68ecd-838c-40bc-98a4-05f0d7e7dc0f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
