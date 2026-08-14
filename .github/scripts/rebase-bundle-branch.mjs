@@ -76,7 +76,7 @@ export function rebaseBundleBranch({ git = runGit, env = process.env, log = cons
 	git(['fetch', remote, base]);
 	const baseSha = git(['rev-parse', 'FETCH_HEAD']);
 	git(['fetch', remote, bundle]);
-	git(['checkout', '-B', bundle, 'FETCH_HEAD']);
+	git(['checkout', '--force', '-B', bundle, 'FETCH_HEAD']);
 	const preHead = git(['rev-parse', 'HEAD']);
 
 	if (isAncestor(git, baseSha, preHead)) {
