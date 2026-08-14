@@ -23,6 +23,20 @@ export const agentTaskSchema = z.object({
 export type AgentTaskConfig = z.infer<typeof agentTaskSchema>;
 
 /**
+ * A task as embedded in exported agent JSON: the persisted body plus the
+ * `enabled` flag from its config ref. Refs alone are dropped on import (the
+ * body lives in a separate table), so export inlines the full definition and
+ * import recreates it via the task API.
+ */
+export const agentExportedTaskSchema = agentTaskSchema.extend({
+	enabled: z.boolean(),
+});
+
+export const agentExportedTasksSchema = z.array(agentExportedTaskSchema);
+
+export type AgentExportedTask = z.infer<typeof agentExportedTaskSchema>;
+
+/**
  * API response shape for a task body. `enabled` and `nextRunAt` are derived
  * from the config ref on the client, so they are not part of this DTO.
  */

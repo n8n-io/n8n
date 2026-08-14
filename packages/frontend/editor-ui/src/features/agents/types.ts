@@ -141,4 +141,5 @@ export type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentVectorStoreProvider,
+	AgentExportedTask,
 } from '@n8n/api-types';

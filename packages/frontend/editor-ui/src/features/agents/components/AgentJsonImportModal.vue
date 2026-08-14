@@ -1,27 +1,34 @@
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue';
-import { AgentJsonConfigSchema } from '@n8n/api-types';
+import { AgentJsonConfigSchema, agentExportedTasksSchema } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { AgentJsonConfig } from '../types';
+import type { AgentExportedTask, AgentJsonConfig } from '../types';
 
 const props = defineProps<{
 	modalName: string;
-	data: { onConfirm: (config: AgentJsonConfig) => void | Promise<void> };
+	data: {
+		onConfirm: (
+			config: AgentJsonConfig,
+			taskDefinitions: AgentExportedTask[],
+		) => void | Promise<void>;
+	};
 }>();
 
 const i18n = useI18n();
 const uiStore = useUIStore();
 const parsedConfig = ref<AgentJsonConfig | null>(null);
+const parsedTaskDefinitions = ref<AgentExportedTask[]>([]);
 const errorMessage = ref('');
 const importing = ref(false);
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 
 function resetImportState() {
 	parsedConfig.value = null;
+	parsedTaskDefinitions.value = [];
 	errorMessage.value = '';
 	if (fileInput.value) {
 		fileInput.value.value = '';
@@ -39,6 +46,7 @@ async function onFileChange(event: Event) {
 
 	const file = input.files?.[0];
 	parsedConfig.value = null;
+	parsedTaskDefinitions.value = [];
 	errorMessage.value = '';
 	if (!file) return;
 
@@ -49,6 +57,14 @@ async function onFileChange(event: Event) {
 			throw new Error('Invalid agent JSON');
 		}
 		parsedConfig.value = result.data;
+
+		// `taskDefinitions` is a sibling of the config (stripped by the config
+		// schema above). Parse it leniently — a missing or malformed block just
+		// imports no tasks rather than failing the whole import.
+		const taskResult = agentExportedTasksSchema.safeParse(
+			(parsed as { taskDefinitions?: unknown }).taskDefinitions ?? [],
+		);
+		parsedTaskDefinitions.value = taskResult.success ? taskResult.data : [];
 	} catch {
 		errorMessage.value = i18n.baseText('agents.builder.importJsonModal.invalidJson' as BaseTextKey);
 	}
@@ -59,7 +75,7 @@ async function onConfirm() {
 
 	importing.value = true;
 	try {
-		await props.data.onConfirm(parsedConfig.value);
+		await props.data.onConfirm(parsedConfig.value, parsedTaskDefinitions.value);
 		closeModal();
 	} finally {
 		importing.value = false;

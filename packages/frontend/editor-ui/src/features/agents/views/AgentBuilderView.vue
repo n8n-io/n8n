@@ -32,6 +32,8 @@ import {
 	deleteAgentFile,
 	warmAgentKnowledgeSandbox,
 	updateAgentSkill,
+	getAgentTasks,
+	createAgentTask,
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type {
@@ -41,6 +43,7 @@ import type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
+	AgentExportedTask,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
@@ -1211,6 +1214,37 @@ const headerActions = computed(() => {
 	return actions;
 });
 
+/**
+ * Fetch the full task bodies referenced by a config and pair each with its
+ * ref's `enabled` flag, ready to embed in an export. Best-effort: if the task
+ * fetch fails the agent still exports (just without task definitions).
+ */
+async function collectExportedTaskDefinitions(
+	config: AgentJsonConfig,
+): Promise<AgentExportedTask[]> {
+	const taskRefs = config.tasks ?? [];
+	if (taskRefs.length === 0) return [];
+
+	try {
+		const bodies = await getAgentTasks(rootStore.restApiContext, projectId.value, agentId.value);
+		const bodyById = new Map(bodies.map((body) => [body.id, body]));
+		return taskRefs.flatMap((ref) => {
+			const body = bodyById.get(ref.id);
+			if (!body) return [];
+			return [
+				{
+					name: body.name,
+					objective: body.objective,
+					cronExpression: body.cronExpression,
+					enabled: ref.enabled,
+				},
+			];
+		});
+	} catch {
+		return [];
+	}
+}
+
 async function exportAgentJson() {
 	if (!localConfig.value) return;
 
@@ -1221,7 +1255,16 @@ async function exportAgentJson() {
 	}
 	if (!localConfig.value) return;
 
-	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+	// Task refs (`{ id, enabled }`) alone are dropped on import because the task
+	// bodies live in a separate table. Inline the full definitions so the import
+	// can recreate them.
+	const taskDefinitions = await collectExportedTaskDefinitions(localConfig.value);
+	const exportPayload = {
+		...localConfig.value,
+		...(taskDefinitions.length > 0 ? { taskDefinitions } : {}),
+	};
+
+	const blob = new Blob([`${JSON.stringify(exportPayload, null, 2)}\n`], {
 		type: 'application/json',
 	});
 	const url = URL.createObjectURL(blob);
@@ -1236,13 +1279,39 @@ async function exportAgentJson() {
 	URL.revokeObjectURL(url);
 }
 
+/**
+ * Apply an imported config and recreate its task bodies. Task bodies live in a
+ * separate table keyed by server-generated ids, so the imported refs can't be
+ * reused: the config is applied with its tasks cleared, then each embedded
+ * definition is recreated via the task API (which mints a fresh id and attaches
+ * its own ref). Finally the config/task views are refreshed to pick up the new
+ * refs.
+ */
+async function importAgentJson(config: AgentJsonConfig, taskDefinitions: AgentExportedTask[] = []) {
+	replaceConfigAndScheduleSave({ ...config, tasks: [] });
+
+	if (taskDefinitions.length === 0) return;
+
+	try {
+		// Flush the scheduled config save so the agent has a persisted schema to
+		// attach the recreated task refs to (`saveConfig` persists the agent).
+		await flushAutosave();
+		for (const task of taskDefinitions) {
+			await createAgentTask(rootStore.restApiContext, projectId.value, agentId.value, task);
+		}
+		await onConfigUpdated();
+	} catch (error) {
+		showError(error, locale.baseText('agents.builder.tasks.saveError'));
+	}
+}
+
 function openImportJsonModal() {
 	if (!effectiveCanEditAgent.value) return;
 
 	uiStore.openModalWithData({
 		name: AGENT_JSON_IMPORT_MODAL_KEY,
 		data: {
-			onConfirm: replaceConfigAndScheduleSave,
+			onConfirm: importAgentJson,
 		},
 	});
 }

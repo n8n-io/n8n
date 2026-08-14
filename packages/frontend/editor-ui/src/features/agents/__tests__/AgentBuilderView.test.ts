@@ -128,6 +128,8 @@ const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
 const getAgentConfigValidationMock = vi.fn().mockResolvedValue({ status: 'valid', issues: [] });
+const getAgentTasksMock = vi.fn().mockResolvedValue([]);
+const createAgentTaskMock = vi.fn().mockResolvedValue(undefined);
 interface SessionThread {
 	id: string;
 	updatedAt: string;
@@ -167,6 +169,8 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 	getAgentConfigValidation: getAgentConfigValidationMock,
+	getAgentTasks: getAgentTasksMock,
+	createAgentTask: createAgentTaskMock,
 }));
 
 const generateDraftCasesMock = vi.fn();
@@ -220,6 +224,7 @@ interface TestAgentConfig {
 	credential?: string;
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
+	tasks?: AgentJsonConfig['tasks'];
 	personalisation?: AgentJsonConfig['personalisation'];
 }
 
@@ -613,6 +618,10 @@ function resetViewMocks() {
 	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
+	getAgentTasksMock.mockReset();
+	getAgentTasksMock.mockResolvedValue([]);
+	createAgentTaskMock.mockReset();
+	createAgentTaskMock.mockResolvedValue(undefined);
 	listAgentFilesMock.mockReset();
 	listAgentFilesMock.mockResolvedValue([]);
 	uploadAgentFilesMock.mockReset();
@@ -2584,6 +2593,85 @@ describe('AgentBuilderView — three-column shell', () => {
 				...importedConfig,
 				memory: { enabled: true, storage: 'n8n' },
 			}),
+		);
+	});
+
+	it('embeds task definitions in the exported JSON', async () => {
+		Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+		Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+		createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:agent-json');
+		revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+		anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+		intendedConfig = {
+			name: 'Agent One',
+			...defaultLlmConfig,
+			instructions: 'You are a helpful assistant.',
+			tasks: [{ type: 'task', id: 'task_1', enabled: false }],
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		getAgentTasksMock.mockResolvedValue([
+			{
+				id: 'task_1',
+				name: 'Daily summary',
+				objective: 'Summarise yesterday',
+				cronExpression: '0 9 * * *',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+		]);
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'export-json');
+		await flushPromises();
+
+		const blob = createObjectURLSpy.mock.calls[0][0] as Blob;
+		const exported = JSON.parse(await readBlobText(blob));
+		expect(exported.taskDefinitions).toEqual([
+			{
+				name: 'Daily summary',
+				objective: 'Summarise yesterday',
+				cronExpression: '0 9 * * *',
+				enabled: false,
+			},
+		]);
+	});
+
+	it('recreates embedded task definitions on import', async () => {
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'import-json');
+		await nextTick();
+
+		const importedConfig = {
+			name: 'Imported agent',
+			model: 'openai/gpt-4o-mini',
+			credential: 'cred-openai',
+			instructions: 'Use the imported settings.',
+			tasks: [{ type: 'task', id: 'task_1', enabled: true }],
+		};
+		const taskDefinitions = [
+			{
+				name: 'Daily summary',
+				objective: 'Summarise yesterday',
+				cronExpression: '0 9 * * *',
+				enabled: true,
+			},
+		];
+		await openModalWithDataMock.mock.calls[0][0].data.onConfirm(importedConfig, taskDefinitions);
+		await flushPromises();
+
+		// Config is applied with its task refs cleared — the bodies are recreated
+		// with fresh ids via the task API.
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ tasks: [] }),
+		);
+		expect(createAgentTaskMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			taskDefinitions[0],
 		);
 	});
 

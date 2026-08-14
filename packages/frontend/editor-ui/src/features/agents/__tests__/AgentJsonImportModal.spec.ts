@@ -102,8 +102,62 @@ describe('AgentJsonImportModal', () => {
 		});
 		await wrapper.find('[data-testid="agent-json-import-confirm"]').trigger('click');
 
-		expect(onConfirm).toHaveBeenCalledWith(config);
+		expect(onConfirm).toHaveBeenCalledWith(config, []);
 		expect(closeModalMock).toHaveBeenCalledWith('agentJsonImportModal');
+	});
+
+	it('passes embedded task definitions through to the confirm handler', async () => {
+		const onConfirm = vi.fn();
+		const config: AgentJsonConfig = {
+			name: 'Imported agent',
+			model: 'openai/gpt-4o-mini',
+			credential: 'cred-openai',
+			instructions: 'Use imported settings.',
+			tasks: [{ type: 'task', id: 'task_1', enabled: true }],
+		};
+		const taskDefinitions = [
+			{
+				name: 'Daily summary',
+				objective: 'Summarise yesterday',
+				cronExpression: '0 9 * * *',
+				enabled: true,
+			},
+		];
+		const wrapper = await mountModal(onConfirm);
+
+		await selectFile(wrapper, makeJsonFile(JSON.stringify({ ...config, taskDefinitions })));
+		await vi.waitFor(() => {
+			expect(wrapper.find('[data-testid="agent-json-import-confirm"]').attributes('disabled')).toBe(
+				undefined,
+			);
+		});
+		await wrapper.find('[data-testid="agent-json-import-confirm"]').trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith(config, taskDefinitions);
+	});
+
+	it('imports no tasks when the embedded task definitions are malformed', async () => {
+		const onConfirm = vi.fn();
+		const config: AgentJsonConfig = {
+			name: 'Imported agent',
+			model: 'openai/gpt-4o-mini',
+			credential: 'cred-openai',
+			instructions: 'Use imported settings.',
+		};
+		const wrapper = await mountModal(onConfirm);
+
+		await selectFile(
+			wrapper,
+			makeJsonFile(JSON.stringify({ ...config, taskDefinitions: [{ name: 'missing fields' }] })),
+		);
+		await vi.waitFor(() => {
+			expect(wrapper.find('[data-testid="agent-json-import-confirm"]').attributes('disabled')).toBe(
+				undefined,
+			);
+		});
+		await wrapper.find('[data-testid="agent-json-import-confirm"]').trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith(config, []);
 	});
 
 	it('clears selected file state when the modal is cancelled', async () => {
