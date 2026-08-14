@@ -1,8 +1,12 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
+	CONFIGURABLE_NODE_SIZE,
+	CONFIGURATION_NODE_RADIUS,
+	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
 	GRID_SIZE,
+	NODE_MIN_INPUT_ITEMS_COUNT,
 	NODE_X_SPACING,
 	NODE_Y_SPACING,
 	isStickyNoteType,
@@ -11,6 +15,7 @@ import {
 import type { InstanceAiContext } from '../../types';
 
 type Position = [number, number];
+type Size = [number, number];
 
 interface Box {
 	x: number;
@@ -20,9 +25,6 @@ interface Box {
 }
 
 const [NODE_WIDTH, NODE_HEIGHT] = DEFAULT_NODE_SIZE;
-
-/** Horizontal step between a node and the one wired after it — the editor's HORIZONTAL_NODE_STEP. */
-const NODE_STEP_X = NODE_WIDTH + NODE_X_SPACING;
 
 /** Row step when one parent fans out to several outputs (IF/Switch branches). */
 const BRANCH_STEP_Y = NODE_HEIGHT + GRID_SIZE;
@@ -36,7 +38,7 @@ const SHIFT_Y_TOLERANCE = NODE_HEIGHT * 2;
 /** Bound on the de-overlap walk so a pathological graph can't spin. */
 const MAX_SEPARATION_STEPS = 50;
 
-const DEFAULT_STICKY_SIZE: [number, number] = [240, 160];
+const DEFAULT_STICKY_SIZE: Size = [240, 160];
 
 function snapToGrid(value: number): number {
 	return Math.round(value / GRID_SIZE) * GRID_SIZE;
@@ -46,10 +48,6 @@ function median(values: number[]): number {
 	const sorted = [...values].sort((a, b) => a - b);
 	const mid = Math.floor(sorted.length / 2);
 	return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-}
-
-function boxOf(node: NodeJSON): Box {
-	return { x: node.position[0], y: node.position[1], width: NODE_WIDTH, height: NODE_HEIGHT };
 }
 
 function stickyBoxOf(node: NodeJSON): Box {
@@ -75,6 +73,8 @@ interface Wire {
 	type: string;
 	/** Index of the source node's output group this wire leaves from. */
 	outputIndex: number;
+	/** Index of the target node's input this wire lands on. */
+	inputIndex: number;
 }
 
 /** Direct predecessors and successors by node name, across all connection types. */
@@ -94,14 +94,10 @@ function buildAdjacency(json: WorkflowJSON): {
 				for (const connection of group) {
 					if (!isRecord(connection) || typeof connection.node !== 'string') continue;
 					const target = connection.node;
-					childrenOf.set(source, [
-						...(childrenOf.get(source) ?? []),
-						{ node: target, type, outputIndex },
-					]);
-					parentsOf.set(target, [
-						...(parentsOf.get(target) ?? []),
-						{ node: source, type, outputIndex },
-					]);
+					const inputIndex = typeof connection.index === 'number' ? connection.index : 0;
+					const wire = { type, outputIndex, inputIndex };
+					childrenOf.set(source, [...(childrenOf.get(source) ?? []), { ...wire, node: target }]);
+					parentsOf.set(target, [...(parentsOf.get(target) ?? []), { ...wire, node: source }]);
 				}
 			});
 		}
@@ -135,6 +131,9 @@ class AddedNodePlacer {
 
 	private readonly childrenOf: Map<string, Wire[]>;
 
+	/** Per-node canvas size, mirroring the layout engine's getNodeDimensions. */
+	private readonly sizeByName = new Map<string, Size>();
+
 	/** Positions the layout engine gave the added nodes, before any reconciliation. */
 	private readonly builtPositions = new Map<NodeJSON, Position>();
 
@@ -149,6 +148,73 @@ class AddedNodePlacer {
 		}
 		for (const node of added) this.builtPositions.set(node, [...node.position]);
 		({ parentsOf: this.parentsOf, childrenOf: this.childrenOf } = buildAdjacency(json));
+		this.computeSizes();
+	}
+
+	/**
+	 * Derives each node's rendered size from the connection graph, the same way
+	 * the layout engine does: ai_* sources are small round configuration nodes,
+	 * ai_* targets are wide configurable cards sized by their ai port count, and
+	 * plain nodes grow taller with extra main inputs/outputs.
+	 */
+	private computeSizes(): void {
+		const aiConfigs = new Set<string>();
+		const aiInputTypesByHost = new Map<string, Set<string>>();
+		for (const [source, wires] of this.childrenOf) {
+			for (const wire of wires) {
+				if (!isAiConnectionType(wire.type)) continue;
+				aiConfigs.add(source);
+				const types = aiInputTypesByHost.get(wire.node) ?? new Set<string>();
+				types.add(wire.type);
+				aiInputTypesByHost.set(wire.node, types);
+			}
+		}
+
+		for (const [name, node] of this.byName) {
+			if (isStickyNoteType(node.type)) continue;
+
+			if (aiConfigs.has(name)) {
+				this.sizeByName.set(name, [CONFIGURATION_NODE_SIZE[0], CONFIGURATION_NODE_SIZE[1]]);
+				continue;
+			}
+
+			const aiInputTypes = aiInputTypesByHost.get(name);
+			if (aiInputTypes) {
+				const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, aiInputTypes.size);
+				this.sizeByName.set(name, [
+					CONFIGURATION_NODE_RADIUS * 2 + GRID_SIZE * (portCount - 1) * 3,
+					CONFIGURABLE_NODE_SIZE[1],
+				]);
+				continue;
+			}
+
+			const mainInputCount = Math.max(
+				1,
+				...(this.parentsOf.get(name) ?? [])
+					.filter((wire) => !isAiConnectionType(wire.type))
+					.map((wire) => wire.inputIndex + 1),
+			);
+			const mainOutputCount = Math.max(
+				1,
+				...(this.childrenOf.get(name) ?? [])
+					.filter((wire) => !isAiConnectionType(wire.type))
+					.map((wire) => wire.outputIndex + 1),
+			);
+			const verticalHandles = Math.max(mainInputCount, mainOutputCount);
+			this.sizeByName.set(name, [
+				NODE_WIDTH,
+				NODE_HEIGHT + Math.max(0, verticalHandles - 2) * GRID_SIZE * 2,
+			]);
+		}
+	}
+
+	private sizeOf(node: NodeJSON): Size {
+		return (node.name ? this.sizeByName.get(node.name) : undefined) ?? DEFAULT_NODE_SIZE;
+	}
+
+	private boxOf(node: NodeJSON): Box {
+		const [width, height] = this.sizeOf(node);
+		return { x: node.position[0], y: node.position[1], width, height };
 	}
 
 	run(): void {
@@ -181,6 +247,10 @@ class AddedNodePlacer {
 		return node && this.placed.has(node) && !isStickyNoteType(node.type) ? node : undefined;
 	}
 
+	private rightEdgeOf(node: NodeJSON): number {
+		return node.position[0] + this.sizeOf(node)[0];
+	}
+
 	private resolveInsertSpot(node: NodeJSON): InsertSpot | undefined {
 		if (!node.name) return undefined;
 
@@ -193,11 +263,10 @@ class AddedNodePlacer {
 
 		const mainParents = parents.filter(({ wire }) => !isAiConnectionType(wire.type));
 		if (mainParents.length > 0) {
-			const x =
-				Math.max(...mainParents.map(({ node: parent }) => parent.position[0])) + NODE_STEP_X;
 			const anchor = mainParents.reduce((a, b) =>
-				b.node.position[0] > a.node.position[0] ? b : a,
+				this.rightEdgeOf(b.node) > this.rightEdgeOf(a.node) ? b : a,
 			);
+			const x = this.rightEdgeOf(anchor.node) + NODE_X_SPACING;
 			const y =
 				mainParents.length > 1
 					? median(mainParents.map(({ node: parent }) => parent.position[1]))
@@ -209,7 +278,10 @@ class AddedNodePlacer {
 		const aiHost = children.find(({ wire }) => isAiConnectionType(wire.type));
 		if (aiHost) {
 			return {
-				position: [aiHost.node.position[0], aiHost.node.position[1] + NODE_HEIGHT + NODE_Y_SPACING],
+				position: [
+					aiHost.node.position[0],
+					aiHost.node.position[1] + this.sizeOf(aiHost.node)[1] + NODE_Y_SPACING,
+				],
 			};
 		}
 
@@ -217,14 +289,17 @@ class AddedNodePlacer {
 		const mainChild = children.find(({ wire }) => !isAiConnectionType(wire.type));
 		if (mainChild) {
 			return {
-				position: [mainChild.node.position[0] - NODE_STEP_X, mainChild.node.position[1]],
+				position: [
+					mainChild.node.position[0] - NODE_X_SPACING - this.sizeOf(node)[0],
+					mainChild.node.position[1],
+				],
 			};
 		}
 
 		if (parents.length > 0) {
 			const anchor = parents[0];
 			return {
-				position: [anchor.node.position[0] + NODE_STEP_X, anchor.node.position[1]],
+				position: [this.rightEdgeOf(anchor.node) + NODE_X_SPACING, anchor.node.position[1]],
 				shiftAnchor: anchor.node.name,
 			};
 		}
@@ -240,7 +315,8 @@ class AddedNodePlacer {
 		// a gap, like the editor does. Colliding with a just-placed sibling instead
 		// means a fan-out from the same parent, which spreads downward.
 		if (collider && !this.builtPositions.has(collider) && spot.shiftAnchor) {
-			this.shiftRight(boxOf(node), spot.shiftAnchor, node);
+			const margin = this.sizeOf(node)[0] + NODE_X_SPACING;
+			this.shiftRight(this.boxOf(node), spot.shiftAnchor, node, margin);
 		}
 		this.pushDownUntilFree(node);
 
@@ -248,11 +324,11 @@ class AddedNodePlacer {
 	}
 
 	private findCollider(node: NodeJSON): NodeJSON | undefined {
-		const box = boxOf(node);
+		const box = this.boxOf(node);
 		for (const other of this.placed) {
 			// Stickies sit behind nodes, so they never block a spot.
 			if (other === node || isStickyNoteType(other.type)) continue;
-			if (intersects(box, boxOf(other))) return other;
+			if (intersects(box, this.boxOf(other))) return other;
 		}
 		return undefined;
 	}
@@ -263,7 +339,7 @@ class AddedNodePlacer {
 			if (!collider) return;
 			node.position = [
 				node.position[0],
-				snapToGrid(collider.position[1] + NODE_HEIGHT + NODE_Y_SPACING),
+				snapToGrid(collider.position[1] + this.sizeOf(collider)[1] + NODE_Y_SPACING),
 			];
 		}
 	}
@@ -274,7 +350,7 @@ class AddedNodePlacer {
 	 * Sticky notes spanning the insertion point stretch instead of moving, so they
 	 * keep wrapping the nodes that slid.
 	 */
-	private shiftRight(insertBox: Box, anchorName: string, inserted: NodeJSON): void {
+	private shiftRight(insertBox: Box, anchorName: string, inserted: NodeJSON, margin: number): void {
 		const downstream = new Set<string>();
 		const queue = [anchorName];
 		while (queue.length > 0) {
@@ -298,18 +374,18 @@ class AddedNodePlacer {
 					box.y + box.height >= insertBox.y - SHIFT_Y_TOLERANCE;
 				if (!overlapsBand) continue;
 				if (box.x >= insertBox.x) {
-					node.position = [node.position[0] + NODE_STEP_X, node.position[1]];
+					node.position = [node.position[0] + margin, node.position[1]];
 				} else if (box.x + box.width > insertBox.x) {
-					node.parameters = { ...node.parameters, width: box.width + NODE_STEP_X };
+					node.parameters = { ...node.parameters, width: box.width + margin };
 				}
 				continue;
 			}
 
-			const box = boxOf(node);
+			const box = this.boxOf(node);
 			const rightOfInsert = box.x + box.width > insertBox.x;
 			const isDownstream = node.name !== undefined && downstream.has(node.name);
 			if ((rightOfInsert && inYBand(box)) || isDownstream) {
-				node.position = [node.position[0] + NODE_STEP_X, node.position[1]];
+				node.position = [node.position[0] + margin, node.position[1]];
 			}
 		}
 	}
@@ -319,11 +395,13 @@ class AddedNodePlacer {
 		if (canvas.length === 0) return;
 
 		const canvasMinX = Math.min(...canvas.map((node) => node.position[0]));
-		const canvasMaxY = Math.max(...canvas.map((node) => node.position[1]));
+		const canvasMaxBottom = Math.max(
+			...canvas.map((node) => node.position[1] + this.sizeOf(node)[1]),
+		);
 		const builtMinX = Math.min(...leftovers.map((node) => node.position[0]));
 		const builtMinY = Math.min(...leftovers.map((node) => node.position[1]));
 		const deltaX = canvasMinX - builtMinX;
-		const deltaY = canvasMaxY + NODE_HEIGHT + NODE_Y_SPACING - builtMinY;
+		const deltaY = canvasMaxBottom + NODE_Y_SPACING - builtMinY;
 
 		for (const node of leftovers) {
 			node.position = [

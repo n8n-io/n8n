@@ -203,6 +203,23 @@ describe('preserveExistingNodePositions', () => {
 			expect(positionsByName(built).Model).toEqual([320, 288]);
 		});
 
+		it('steps past a wide configurable parent instead of assuming standard width', async () => {
+			// Agent hosts an ai_* sub-node, so the canvas renders it as a 224px-wide
+			// card; the inserted node must clear that width, not the default 96px.
+			const aiWire = {
+				Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+			};
+			const saved = workflow([node('Agent', [96, 96]), node('Model', [96, 288])], aiWire);
+			const built = workflow(
+				[node('Agent', [0, 0]), node('Model', [0, 150]), node('Send Email', [300, 0])],
+				{ ...aiWire, ...wire('Agent', 'Send Email') },
+			);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			expect(positionsByName(built)['Send Email']).toEqual([448, 96]);
+		});
+
 		it('places a new predecessor one step left of its child', async () => {
 			const saved = workflow([node('B', [320, 96])]);
 			const built = workflow([node('Trigger', [0, 0]), node('B', [224, 0])], {
