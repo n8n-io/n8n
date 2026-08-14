@@ -81,9 +81,11 @@ export class WorkflowReviewAccessService {
 	}
 
 	/**
-	 * A custom global role with `workflow:read` reads every project. Return `null`
-	 * for those callers, so the inbox query does not bind one parameter per project
-	 * on the instance.
+	 * `workflow:read` is the bar for the inbox, and every role granting
+	 * `workflow:publish` grants read too, so publishers are covered.
+	 *
+	 * A custom global role with read sees every project, so return `null` for those
+	 * callers instead of binding one parameter per project on every inbox query.
 	 */
 	private async resolveReadableProjectIds(user: User): Promise<string[] | null> {
 		if (hasGlobalScope(user, ['workflow:read'], { mode: 'allOf' })) {
