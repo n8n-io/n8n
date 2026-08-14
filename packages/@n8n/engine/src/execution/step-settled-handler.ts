@@ -89,17 +89,9 @@ export class StepSettledHandler {
 		// TODO(CAT-2938): a crash between the insert and the publishes strands
 		// the rows forever; the reconciler re-announces stale queued steps and
 		// settled steps whose decidable successors have no rows.
-		const created = await this.stepStore.createSteps([
-			...toQueue.map((id) => ({
-				executionId: execution.id,
-				nodeId: id,
-				status: 'queued' as const,
-			})),
-			...toSkip.map((id) => ({
-				executionId: execution.id,
-				nodeId: id,
-				status: 'skipped' as const,
-			})),
+		const created = await this.stepStore.createSteps(execution.id, [
+			...toQueue.map((id) => ({ nodeId: id, status: 'queued' as const })),
+			...toSkip.map((id) => ({ nodeId: id, status: 'skipped' as const })),
 		]);
 
 		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue));

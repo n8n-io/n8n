@@ -21,7 +21,10 @@ import {
 export class TypeOrmStepStore implements StepStore {
 	constructor(private readonly repo: Repository<WorkflowStepExecution>) {}
 
-	async createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>> {
+	async createSteps(
+		executionId: string,
+		records: NewStepRecord[],
+	): Promise<Array<{ id: string; nodeId: string }>> {
 		if (records.length === 0) return [];
 
 		for (const record of records) {
@@ -34,23 +37,22 @@ export class TypeOrmStepStore implements StepStore {
 
 		// Ids are assigned here because the entity's insert hook only runs on class
 		// instances, and these are plain values.
-		const rows = records.map((record) => ({ ...record, id: generateId() }));
+		const rows = records.map((record) => ({ ...record, executionId, id: generateId() }));
 
 		// Shared side of the failure fence (see `claimStep`): a concurrent
 		// `failStep` either committed before the check below, which then creates
 		// nothing, or waits for this insert to commit, whereupon the failure's
 		// cancellation sweep sees the new rows. Without it, an insert landing
 		// after the sweep would strand rows `queued` forever.
-		const executionIds = [...new Set(records.map((record) => record.executionId))];
 		return await this.repo.manager.transaction(async (manager) => {
-			await manager.query('SELECT id FROM workflow_execution WHERE id = ANY($1) FOR SHARE', [
-				executionIds,
+			await manager.query('SELECT id FROM workflow_execution WHERE id = $1 FOR SHARE', [
+				executionId,
 			]);
 			const [failed] = await manager.query<Array<{ id: string }>>(
 				`SELECT id FROM workflow_step_execution
-				 WHERE execution_id = ANY($1) AND status = 'failed'
+				 WHERE execution_id = $1 AND status = 'failed'
 				 LIMIT 1`,
-				[executionIds],
+				[executionId],
 			);
 			if (failed) return [];
 

@@ -73,9 +73,8 @@ describe('ExecutionStartHandler', () => {
 		// only the trigger's row — planning is the step:settled handler's job.
 		// Its payload rides along as output slot 0, read downstream like any
 		// other predecessor's outputs.
-		expect(createSteps).toHaveBeenCalledExactlyOnceWith([
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
 			{
-				executionId: 'exec-1',
 				nodeId: 'trigger',
 				status: 'completed',
 				outputs: [{ webhook: 'data' }],
@@ -104,8 +103,8 @@ describe('ExecutionStartHandler', () => {
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
-		expect(createSteps).toHaveBeenCalledExactlyOnceWith([
-			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed', outputs: [{}] },
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'trigger', status: 'completed', outputs: [{}] },
 		]);
 	});
 

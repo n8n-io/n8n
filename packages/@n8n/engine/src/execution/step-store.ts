@@ -3,7 +3,6 @@ import type { StepSlots, StepStatus } from './execution.types';
 
 /** A new step to persist. `id` and timestamps are assigned by the store. */
 export interface NewStepRecord {
-	executionId: string;
 	nodeId: string;
 	/**
 	 * Creation statuses only. The rest are reachable solely through their
@@ -66,8 +65,8 @@ export class StepNotFoundError extends Error {
 /** Persistence interface for step records. */
 export interface StepStore {
 	/**
-	 * Persist new step records, batched so planning a fan-out costs a single round
-	 * trip. Returns the rows actually created.
+	 * Persist new step records for one execution, batched so planning a fan-out
+	 * costs a single round trip. Returns the rows actually created.
 	 *
 	 * If a step for a given `(executionId, nodeId)` already exists, it is skipped
 	 * and not returned. This allows multiple planners to race to enqueue the same
@@ -78,7 +77,10 @@ export interface StepStore {
 	 * `failStep` like `claimStep`, so a planning insert cannot land after the
 	 * failure's cancellation sweep and strand rows `queued` forever.
 	 */
-	createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>>;
+	createSteps(
+		executionId: string,
+		records: NewStepRecord[],
+	): Promise<Array<{ id: string; nodeId: string }>>;
 
 	/** Load a single step by id. Throws `StepNotFoundError` if absent. */
 	loadStep(id: string): Promise<StepRecord>;

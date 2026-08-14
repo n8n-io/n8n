@@ -43,9 +43,8 @@ export class ExecutionStartHandler {
 		// NOTE: trigger payloads are not really supported yet — the raw payload is
 		// not item-shaped, so the v1 shim coerces it to zero items. Proper trigger
 		// handling will decide its shape.
-		const [triggerStep] = await this.stepStore.createSteps([
+		const [triggerStep] = await this.stepStore.createSteps(event.executionId, [
 			{
-				executionId: event.executionId,
 				nodeId: trigger.id,
 				status: 'completed',
 				outputs: [execution.triggerPayload ?? {}],

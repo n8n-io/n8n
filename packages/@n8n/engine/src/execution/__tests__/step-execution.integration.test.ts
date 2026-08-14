@@ -321,10 +321,10 @@ describe('step execution (integration)', () => {
 			graph,
 			triggerPayload: null,
 		});
-		const created = await stepStore.createSteps([
+		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them
-			{ executionId, nodeId: 'trigger', status: 'completed', outputs: [{}] },
-			{ executionId, nodeId: 'node-a', status: 'queued' },
+			{ nodeId: 'trigger', status: 'completed', outputs: [{}] },
+			{ nodeId: 'node-a', status: 'queued' },
 		]);
 		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')!.id;
 

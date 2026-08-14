@@ -82,7 +82,7 @@ function makeStepStore(
 	const summariesByNodeId = Object.fromEntries(summaries.map((s) => [s.nodeId, s]));
 	return {
 		// ids derived from the node, so assertions can name the step they expect
-		createSteps: vi.fn().mockImplementation(async (records: NewStepRecord[]) => {
+		createSteps: vi.fn().mockImplementation(async (_: string, records: NewStepRecord[]) => {
 			await Promise.resolve();
 			return records.map(({ nodeId }) => ({ id: `step-${nodeId}`, nodeId }));
 		}),
@@ -139,9 +139,9 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith([
-			{ executionId: 'exec-1', nodeId: 'b', status: 'queued' },
-			{ executionId: 'exec-1', nodeId: 'c', status: 'queued' },
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'b', status: 'queued' },
+			{ nodeId: 'c', status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledTimes(2);
 		expect(stepQueue.publish).toHaveBeenCalledWith({
@@ -167,8 +167,8 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle({ ...event, stepId: 'step-trigger' });
 
-		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith([
-			{ executionId: 'exec-1', nodeId: 'a', status: 'queued' },
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'a', status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
@@ -222,9 +222,9 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith([
-			{ executionId: 'exec-1', nodeId: 'b', status: 'queued' },
-			{ executionId: 'exec-1', nodeId: 'c', status: 'skipped' },
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'b', status: 'queued' },
+			{ nodeId: 'c', status: 'skipped' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
@@ -251,8 +251,8 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle({ ...event, stepId: 'step-c' });
 
-		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith([
-			{ executionId: 'exec-1', nodeId: 'm', status: 'queued' },
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'm', status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
