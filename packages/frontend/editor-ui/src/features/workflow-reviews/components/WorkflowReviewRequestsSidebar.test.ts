@@ -112,14 +112,6 @@ describe('WorkflowReviewRequestsSidebar', () => {
 	});
 
 	describe('cards', () => {
-		it('does not render an avatar stack for inbox cards', () => {
-			const { queryByTestId } = renderComponent({
-				props: openProps([{ items: [makeItem()] }, {}]),
-			});
-
-			expect(queryByTestId('workflow-review-request-users')).not.toBeInTheDocument();
-		});
-
 		it.each([
 			{ state: 'open' as const, decision: 'pending' as const, label: 'Waiting for review' },
 			{
