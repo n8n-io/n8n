@@ -173,15 +173,13 @@ const plugins: UserConfig['plugins'] = [
 		},
 	},
 	{
+		// Mark the scripts we ship as ours, so the backend can hand them the request's
+		// Content-Security-Policy nonce (`HTML_NONCE_PLACEHOLDER` in packages/cli).
+		// Build output only - the dev server has no CSP to satisfy.
 		name: 'csp-nonce',
 		transformIndexHtml(html, ctx) {
-			// Only needed for production build output; dev server uses the template as-is
-			// and the BE replaces {{CSP_NONCE}} at request time.
 			if (ctx.server) return html;
-			return html.replace(
-				/<script(?![^>]*\bnonce=)([^>]*)>/g,
-				'<script nonce="{{CSP_NONCE}}"$1>',
-			);
+			return html.replace(/<script(?![^>]*\bnonce=)([^>]*)>/g, '<script nonce="{{CSP_NONCE}}"$1>');
 		},
 	},
 	// For sanitize-html
