@@ -63,9 +63,6 @@ afterEach(() => vi.unstubAllGlobals());
 // last test of a file unmounts an open overlay, that timer is still pending when
 // vitest tears jsdom down, and it throws `document is not defined` as an uncaught
 // exception — a non-zero exit code on a run where every test passed.
-//
-// Runs after the last afterEach (Testing Library's auto-cleanup), so the timer is
-// already queued: yielding one macrotask lets it run while `document` still exists.
 afterAll(async () => {
 	await new Promise((resolve) => setTimeout(resolve, 0));
 });
