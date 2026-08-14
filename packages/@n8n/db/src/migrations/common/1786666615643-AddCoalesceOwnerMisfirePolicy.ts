@@ -33,7 +33,7 @@ const POLICY_COMMENT =
  * rows to `coalesce` too (instead of deleting them), so a rollback leaves
  * every live trigger scheduled.
  */
-export class AddCoalesceOwnerMisfirePolicy1785844235369 implements ReversibleMigration {
+export class AddCoalesceOwnerMisfirePolicy1786666615643 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.refreshTableMetadata(context);
 		await this.setPolicyCheck(context, POLICY_VALUES);

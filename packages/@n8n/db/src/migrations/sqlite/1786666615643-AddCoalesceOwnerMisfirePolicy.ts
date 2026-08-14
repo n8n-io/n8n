@@ -1,4 +1,4 @@
-import { AddCoalesceOwnerMisfirePolicy1785844235369 as BaseMigration } from '../common/1785844235369-AddCoalesceOwnerMisfirePolicy';
+import { AddCoalesceOwnerMisfirePolicy1786666615643 as BaseMigration } from '../common/1786666615643-AddCoalesceOwnerMisfirePolicy';
 
 /**
  * Swapping the `misfirePolicy` CHECK recreates the whole `scheduled_job` table on SQLite,
@@ -10,6 +10,6 @@ import { AddCoalesceOwnerMisfirePolicy1785844235369 as BaseMigration } from '../
  * the rollback path it issues that pragma inside the transaction, where SQLite ignores
  * it, so this flag keeps the drop local to `scheduled_job` on that path.
  */
-export class AddCoalesceOwnerMisfirePolicy1785844235369 extends BaseMigration {
+export class AddCoalesceOwnerMisfirePolicy1786666615643 extends BaseMigration {
 	withFKsDisabled = true as const;
 }
