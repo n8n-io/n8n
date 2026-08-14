@@ -17,21 +17,40 @@ const props = defineProps<{
 	expanded?: boolean | null;
 }>();
 
-const emit = defineEmits<{ remove: []; 'toggle-expand': [] }>();
+const emit = defineEmits<{ remove: []; 'toggle-expand': []; 'enter-panel': [] }>();
 
-// The chip is one tab stop (its inner buttons are tabindex="-1"), so a keyboard
-// user walks chip-by-chip and acts on the focused chip with these keys instead
-// of having to tab into each button separately.
+// The chip itself is the tab stop; inner buttons are tabindex="-1".
+// stopPropagation prevents the canvas/logs panel's own document-level
+// Arrow/Enter/Escape shortcuts from also firing (see shouldIgnoreCanvasShortcut).
 function handleKeydown(event: KeyboardEvent) {
-	const isActivationKey = event.key === 'Enter';
-	if (isActivationKey && props.expanded != null) {
+	const isExpandable = props.expanded != null;
+
+	if (event.key === 'Enter' && isExpandable) {
 		event.preventDefault();
+		event.stopPropagation();
 		emit('toggle-expand');
+		return;
+	}
+
+	if (event.key === 'Escape' && props.expanded === true) {
+		event.preventDefault();
+		event.stopPropagation();
+		emit('toggle-expand');
+		return;
+	}
+
+	// Drop straight into the expand panel's node list; the parent expands it
+	// first if it wasn't already open.
+	if (event.key === 'ArrowDown' && isExpandable) {
+		event.preventDefault();
+		event.stopPropagation();
+		emit('enter-panel');
 		return;
 	}
 
 	if (isNodeChipRemovalKey(event.key) && props.removable) {
 		event.preventDefault();
+		event.stopPropagation();
 		emit('remove');
 	}
 }

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, inject, ref } from 'vue';
+import { computed, inject, nextTick, ref } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -153,20 +153,96 @@ function removeChip(chip: ChipVM) {
 	else removeSet(chip.setIndex);
 }
 
-// The panel's remove button is a native <button>, so Enter/Space already
-// trigger it via the browser's default click behavior. X/Delete/Backspace
-// don't, so wire them here to match the top-level chips' removal keys.
+// Native <button> already handles Enter/Space for remove; X/Delete/Backspace and
+// arrow-key row navigation are wired here. stopPropagation keeps the canvas/logs
+// panel's own document-level shortcuts from also firing (see NodeChip.vue).
 function handlePanelRowKeydown(setIndex: number, nodeIndex: number, event: KeyboardEvent) {
 	if (isNodeChipRemovalKey(event.key)) {
 		event.preventDefault();
+		event.stopPropagation();
 		removeNode(setIndex, nodeIndex);
+		void focusPanelRowAfterRemoval(nodeIndex);
+		return;
 	}
+
+	if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+		event.preventDefault();
+		event.stopPropagation();
+		const direction = event.key === 'ArrowDown' ? 1 : -1;
+		focusAdjacentPanelRow(event.currentTarget as HTMLElement, direction);
+		return;
+	}
+
+	if (event.key === 'Escape') {
+		event.preventDefault();
+		event.stopPropagation();
+		closePanel(event.currentTarget as HTMLElement);
+	}
+}
+
+function focusAdjacentPanelRow(currentRow: HTMLElement, direction: 1 | -1) {
+	const rows = Array.from(currentRow.parentElement?.children ?? []) as HTMLElement[];
+	const nextRow = rows[rows.indexOf(currentRow) + direction];
+	nextRow?.focus(); // out of range → no-op, focus stays on the current row
+}
+
+// After a keyboard removal, focus what took the removed row's place — the row
+// that shifted up into its index, or the new last row if it was the bottom one.
+async function focusPanelRowAfterRemoval(removedIndex: number) {
+	await nextTick();
+	const rows = Array.from(
+		containerRef.value?.querySelectorAll('[data-testid="nodes-chip-panel-row"]') ?? [],
+	) as HTMLElement[];
+
+	if (!rows.length) {
+		// the set (and its panel) was removed along with the last node
+		return;
+	}
+	const focusIndex = Math.min(removedIndex, rows.length - 1);
+	rows[focusIndex]?.focus();
+}
+
+// Closes the panel and hands focus back to the chip that opened it (the
+// panel's previous sibling within their shared anchor — see the template).
+function closePanel(row: HTMLElement) {
+	expandedSetIndex.value = null;
+	const panel = row.closest('[data-testid="nodes-chip-panel"]');
+	(panel?.previousElementSibling as HTMLElement | null)?.focus();
+}
+
+// Close the panel once focus leaves the chip+panel pair (e.g. Tab out), so it
+// doesn't stay floating open over whatever's focused now. Deferred to a
+// macrotask — a keyboard removal destroys the focused row and fires this with
+// a null relatedTarget an instant before its own refocus lands.
+function handlePanelFocusOut(setIndex: number, event: FocusEvent) {
+	if (expandedSetIndex.value !== setIndex) {
+		return;
+	}
+	const anchor = event.currentTarget as HTMLElement;
+	setTimeout(() => {
+		if (expandedSetIndex.value !== setIndex) {
+			return;
+		}
+		if (anchor.contains(document.activeElement)) {
+			return; // focus landed back inside the chip/panel — stays open
+		}
+		expandedSetIndex.value = null;
+	}, 0);
 }
 
 // which bundled set's panel is open (index into attachment.sets), null = none open
 const expandedSetIndex = ref<number | null>(null);
+const containerRef = ref<HTMLElement | null>(null);
 function toggleExpanded(index: number) {
 	expandedSetIndex.value = expandedSetIndex.value === index ? null : index;
+}
+
+// ArrowDown on a collapsed chip: open its panel (if needed) and jump straight
+// into the first row, instead of requiring a separate Enter to expand first.
+async function enterPanel(setIndex: number) {
+	expandedSetIndex.value = setIndex;
+	await nextTick();
+	containerRef.value?.querySelector<HTMLElement>('[data-testid="nodes-chip-panel-row"]')?.focus();
 }
 
 // Collapse/expand toggle only earns its keep once there's enough chips to skim past.
@@ -181,7 +257,7 @@ const totalNodeCount = computed(() =>
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div ref="containerRef" :class="$style.container">
 		<span
 			v-if="isCollapsed"
 			:class="$style.summaryChip"
@@ -205,7 +281,12 @@ const totalNodeCount = computed(() =>
 			</button>
 		</span>
 		<template v-else>
-			<span v-for="chip in chips" :key="chip.key" :class="$style.chipAnchor">
+			<span
+				v-for="chip in chips"
+				:key="chip.key"
+				:class="$style.chipAnchor"
+				@focusout="handlePanelFocusOut(chip.setIndex, $event)"
+			>
 				<NodeChip
 					:label="chip.label"
 					:testid="chip.testid"
@@ -215,6 +296,7 @@ const totalNodeCount = computed(() =>
 					:expanded="chip.panel ? expandedSetIndex === chip.setIndex : null"
 					@remove="removeChip(chip)"
 					@toggle-expand="toggleExpanded(chip.setIndex)"
+					@enter-panel="enterPanel(chip.setIndex)"
 				/>
 				<div
 					v-if="chip.panel && expandedSetIndex === chip.setIndex"
@@ -226,6 +308,9 @@ const totalNodeCount = computed(() =>
 						:key="node.id"
 						:class="$style.panelRow"
 						data-testid="nodes-chip-panel-row"
+						tabindex="-1"
+						role="option"
+						:aria-label="node.name"
 						@keydown="handlePanelRowKeydown(chip.setIndex, nodeIndex, $event)"
 					>
 						<NodeIcon v-if="node.nodeType" :node-type="node.nodeType" :size="12" />
@@ -235,6 +320,7 @@ const totalNodeCount = computed(() =>
 							v-if="isRemovable"
 							:class="$style.panelRemove"
 							data-testid="nodes-chip-panel-remove"
+							tabindex="-1"
 							@click.stop="removeNode(chip.setIndex, nodeIndex)"
 						>
 							<N8nIcon icon="x" size="xsmall" />
@@ -324,6 +410,11 @@ const totalNodeCount = computed(() =>
 	padding: var(--spacing--4xs) 0;
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
+
+	&:focus-visible {
+		outline: 2px solid var(--color--primary);
+		outline-offset: 2px;
+	}
 }
 
 .panelRowName {
