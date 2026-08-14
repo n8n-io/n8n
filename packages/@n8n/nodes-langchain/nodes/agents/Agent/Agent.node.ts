@@ -1,7 +1,6 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { AgentV1 } from './V1/AgentV1.node';
 import { AgentV2 } from './V2/AgentV2.node';
 import { AgentV3 } from './V3/AgentV3.node';
 
@@ -123,16 +122,18 @@ const agent = node({
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
-			1: new AgentV1(baseDescription),
-			1.1: new AgentV1(baseDescription),
-			1.2: new AgentV1(baseDescription),
-			1.3: new AgentV1(baseDescription),
-			1.4: new AgentV1(baseDescription),
-			1.5: new AgentV1(baseDescription),
-			1.6: new AgentV1(baseDescription),
-			1.7: new AgentV1(baseDescription),
-			1.8: new AgentV1(baseDescription),
-			1.9: new AgentV1(baseDescription),
+			// Versions 1 to 1.9 stay declared so existing workflows keep loading, but they
+			// run the v2 implementation, which only supports the Tools Agent.
+			1: new AgentV2(baseDescription),
+			1.1: new AgentV2(baseDescription),
+			1.2: new AgentV2(baseDescription),
+			1.3: new AgentV2(baseDescription),
+			1.4: new AgentV2(baseDescription),
+			1.5: new AgentV2(baseDescription),
+			1.6: new AgentV2(baseDescription),
+			1.7: new AgentV2(baseDescription),
+			1.8: new AgentV2(baseDescription),
+			1.9: new AgentV2(baseDescription),
 			2: new AgentV2(baseDescription),
 			2.1: new AgentV2(baseDescription),
 			2.2: new AgentV2(baseDescription),
