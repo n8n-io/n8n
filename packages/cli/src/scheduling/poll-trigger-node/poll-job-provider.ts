@@ -5,6 +5,8 @@ import { NoOpPollJobManager, PollJobManager } from 'n8n-core';
 
 import { PollTriggerJobRegistrar } from './poll-trigger-job-registrar';
 
+import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
+
 /**
  * Decides, from config, which {@link PollJobManager} implementation activation
  * code resolves from DI: {@link PollTriggerJobRegistrar} when the durable path
@@ -18,6 +20,7 @@ export class PollJobProvider {
 		private readonly globalConfig: GlobalConfig,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
+		private readonly durablePollerGateService: DurablePollerGateService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -26,7 +29,10 @@ export class PollJobProvider {
 	init(): void {
 		const intercepting =
 			this.globalConfig.scheduler.enabled && this.workflowsConfig.useWorkflowPublicationService;
-		const active = intercepting && this.globalConfig.scheduler.enabledForPollTriggers;
+		const active =
+			intercepting &&
+			this.globalConfig.scheduler.enabledForPollTriggers &&
+			this.durablePollerGateService.allowed;
 
 		if (
 			this.globalConfig.scheduler.enabled &&

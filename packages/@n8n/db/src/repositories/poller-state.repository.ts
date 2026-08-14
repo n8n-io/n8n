@@ -1,6 +1,6 @@
 import { ScheduledTaskStatus } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager, type ObjectLiteral } from '@n8n/typeorm';
+import { DataSource, In, type EntityManager, type ObjectLiteral } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -118,6 +118,10 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
 			extra: { workflowId, nodeId },
 		});
+	}
+
+	async deleteWorkflowCursors(workflowIds: string[], ctx: OperationContext = {}) {
+		await this.managerFor(ctx).delete(PollerState, { workflowId: In(workflowIds) });
 	}
 
 	private buildFenceClause(

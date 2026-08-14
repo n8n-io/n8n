@@ -47,6 +47,7 @@ import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import { BaseCommand } from './base-command';
+import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -215,6 +216,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
+		await Container.get(DurablePollerGateService).init();
 		// Resolved lazily at activation time, so this only needs to run before the
 		// first workflow activation.
 		Container.get(PollJobProvider).init();
