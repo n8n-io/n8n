@@ -15,7 +15,7 @@ Built-in search (`searchable`) filters the dropdown by `textValue` (falling back
 
 **Item shape**
 
-Selectable items must be objects with required `value` and `label`. Empty `value` or `label` is skipped (dev warning). Use `type: 'group'` for sections. The `label` is optional. Each group maps to its own Reka `SelectGroup`, so heading DOM `id`s stay unique and `aria-labelledby` points at the correct label. Top-level options (outside any group) are batched into an unlabeled group. Separators belong at the top level between groups.
+Selectable items must be objects with required `value` and `label`. Empty string `value` or `label` is skipped (dev warning); `0` is a valid value. Use `type: 'group'` for sections. On groups, `label` is optional. Each group maps to its own Reka `SelectGroup`, so heading DOM `id`s stay unique and `aria-labelledby` points at the correct label. Top-level options (outside any group) are batched into an unlabeled group. Separators belong at the top level between groups.
 
 ```typescript
 type SelectValue = string | number;
@@ -31,10 +31,20 @@ type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	onSelect?: (event: Event) => void; // preventDefault() keeps the value from updating
 };
 
+type SelectGroupItem<TValue extends SelectValue = SelectValue> = {
+	type: 'group';
+	label?: string;
+	items: Array<SelectOptionBase<TValue>>;
+};
+
+type SelectSeparatorItem = {
+	type: 'separator';
+};
+
 type SelectItem =
 	| SelectOptionBase
-	| { type: 'group'; label?: string; items: SelectOptionBase[] }
-	| { type: 'separator' };
+	| SelectGroupItem
+	| SelectSeparatorItem;
 type SelectItemUi = { class: string; strokeWidth?: number };
 ```
 
@@ -66,8 +76,8 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `autocomplete?: string` Native HTML `autocomplete` attribute.
 - `dir?: 'ltr' | 'rtl'` Reading direction. When omitted, inherits from `ConfigProvider` or defaults to LTR.
 - `icon?: IconName` Fallback leading icon on the trigger when nothing is selected, or the selected item has no leading visual. In single select, a selected item's `#item-leading` (or its `icon`) is shown on the trigger instead.
-- `clearable?: boolean` When `true`, shows a clear button when a value is selected. Hidden when `disabled` or the value is empty. Default: `false`.
-- `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by `textValue` (falling back to `label`) and `keywords`. Default: `false`.
+- `clearable?: boolean` When `true`, shows a clear button when a value is selected. Hidden when `disabled` or the value is empty. Default: `false`. The button's accessible name is `t('nds.select.clear')` (`Clear selection`).
+- `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by `textValue` (falling back to `label`) and `keywords`. Default: `false`. Opening autofocuses the field. ArrowDown moves to the first option; ArrowUp from the first option returns to search; typing on an option appends into the field.
 - `searchPlaceholder?: string` Placeholder for the search field. Defaults to `t('nds.select.searchPlaceholder')` (`Search`).
 - `searchQuery?: string` Controlled search query (`v-model:searchQuery`). Reset to `''` when the dropdown closes.
 - `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. Default: `'item-aligned'`.
@@ -91,14 +101,14 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 **Slots**
 
 - `default`: `{ modelValue?: SelectValue | SelectValue[]; open: boolean }` — trigger display. Default is the selected label(s), comma-separated in multiple mode.
-- `item`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour)
+- `item`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour; `v-bind` the item). `N8nSelect2Item` also accepts `class` and `strokeWidth` (passed through to `#item-leading` / `#item-trailing` `ui`).
 - `label`: `{ item: SelectGroupItem }` — section heading for `type: 'group'` entries that have a `label`
 - `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). In single select, the same slot is reused on the trigger for the selected value, even when the item has no `icon`. Not used on the trigger in `multiple` mode.
 - `item-label`: `{ item: SelectOptionBase }`
 - `item-trailing`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom trailing content
-- `header?: ()`
+- `header?: ()` — rendered below the search field (when `searchable`) and above the list
 - `footer?: ()`
-- `empty?: ()` — shown when there are no selectable items (e.g. search with no matches)
+- `empty?: ()` — shown when there are no selectable items (e.g. search with no matches). Defaults to `t('nds.select.noResults')` (`No results found`)
 
 **Expose**
 
@@ -171,6 +181,45 @@ const value = ref('light')
 </template>
 ```
 
+**Custom label with extra fields:**
+
+```vue
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { N8nSelect2 } from '@n8n/design-system'
+import type { SelectOptionBase } from '@n8n/design-system'
+
+interface ModeOption extends SelectOptionBase<'build' | 'plan'> {
+	description: string
+}
+
+const items: ModeOption[] = [
+	{ value: 'build', label: 'Build', description: 'Generate a workflow from a prompt', icon: 'box' },
+	{ value: 'plan', label: 'Plan', description: 'Draft steps before building', icon: 'scroll-text' },
+]
+const value = ref<'build' | 'plan'>('build')
+const current = computed(() => items.find((item) => item.value === value.value) ?? items[0])
+</script>
+
+<template>
+  <N8nSelect2
+    v-model="value"
+    :items="items"
+    :icon="current.icon"
+    position="popper"
+    side="top"
+  >
+    <template #default>
+      {{ current.label }}
+    </template>
+    <template #item-label="{ item }">
+      <span>{{ item.label }}</span>
+      <span>{{ items.find((option) => option.value === item.value)?.description }}</span>
+    </template>
+  </N8nSelect2>
+</template>
+```
+
 **Searchable (`textValue` + `keywords`):**
 
 ```vue
@@ -221,9 +270,36 @@ const value = ref<string | undefined>()
 </template>
 ```
 
-**Header and footer actions**
+**Trailing options**
 
-Do not put buttons in `#footer` / `#header` for actions that need a reliable click — they sit inside Reka's `role="listbox"` and pointer events are often swallowed. Model the action as an option: use `type: 'group'` for labeled sections, pin it with `type: 'separator'`, and call `event.preventDefault()` in `onSelect` so it does not become the field value.
+Do not put buttons in `#footer` / `#header` for actions that need a reliable click — they sit inside Reka's `role="listbox"` and pointer events are often swallowed. Put a trailing item after `type: 'separator'` instead.
+
+If the trailing option should become the value (e.g. a sentinel like "Block access"), omit `onSelect` / `preventDefault()`:
+
+```vue
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { N8nSelect2 } from '@n8n/design-system'
+
+const roles = [
+  { label: 'Admin', value: 'admin' },
+  { label: 'Member', value: 'member' },
+]
+const value = ref<string | undefined>()
+
+const items = computed(() => [
+  { type: 'group' as const, label: 'Roles', items: roles },
+  { type: 'separator' as const },
+  { label: 'Block access', value: 'block-access' },
+])
+</script>
+
+<template>
+  <N8nSelect2 v-model="value" :items="items" placeholder="Select a role" />
+</template>
+```
+
+**Action that must not become the value**
 
 ```vue
 <script setup lang="ts">

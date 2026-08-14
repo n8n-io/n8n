@@ -11,7 +11,7 @@ import N8nInput from '@n8n/design-system/components/N8nInput';
 import N8nInputLabel from '@n8n/design-system/components/N8nInputLabel';
 import N8nText from '@n8n/design-system/components/N8nText';
 
-import type { SelectItem } from './Select.types';
+import type { SelectItem, SelectOptionBase } from './Select.types';
 import Select from './Select.vue';
 import N8nIcon from '../../../components/N8nIcon/Icon.vue';
 
@@ -240,6 +240,73 @@ export const WithSlots = {
 			},
 		] satisfies SelectItem[],
 		modelValue: undefined,
+	},
+} satisfies Story;
+
+type DescribedOption = SelectOptionBase & { description: string };
+
+const modeItems: DescribedOption[] = [
+	{
+		value: 'build',
+		label: 'Build',
+		description: 'Generate a workflow from a prompt',
+		icon: 'box',
+	},
+	{
+		value: 'plan',
+		label: 'Plan',
+		description: 'Draft steps before building',
+		icon: 'scroll-text',
+	},
+];
+
+export const ItemWithDescription = {
+	name: 'Item with description',
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Extend `SelectOptionBase` with extra fields (here `description`) and render them in `#item-label`. `side="top"` opens the menu above the trigger.',
+			},
+		},
+	},
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { Select },
+		setup() {
+			const value = ref(args.modelValue);
+			const items = args.items as DescribedOption[];
+			const current = computed(() => items.find((item) => item.value === value.value) ?? items[0]);
+			return { args, value, items, current };
+		},
+		template: `
+		<div style="padding: 80px 40px 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<Select
+				v-bind="args"
+				v-model="value"
+				:icon="current.icon"
+				size="medium"
+				position="popper"
+				side="top"
+			>
+				<template #default>
+					{{ current.label }}
+				</template>
+				<template #item-label="{ item }">
+					<div style="display: flex; flex-direction: column; gap: var(--spacing--5xs);">
+						<span>{{ item.label }}</span>
+						<span style="font-size: var(--font-size--3xs); color: var(--color--text--tint-1); line-height: var(--line-height--sm);">
+							{{ items.find((option) => option.value === item.value)?.description }}
+						</span>
+					</div>
+				</template>
+			</Select>
+		</div>
+		`,
+	}),
+	args: {
+		items: modeItems,
+		modelValue: 'build',
 	},
 } satisfies Story;
 
@@ -842,6 +909,82 @@ export const WithSearchAndFooter: Story = {
 	render: () => ({
 		components: { SelectSearchAndFooterDemo },
 		template: '<SelectSearchAndFooterDemo />',
+	}),
+};
+
+const BLOCK_ACCESS_VALUE = 'block-access';
+
+const TerminalOptionDemo = defineComponent({
+	name: 'TerminalOptionDemo',
+	setup() {
+		const value = ref<string | undefined>();
+		const roles = [
+			{ value: 'admin', label: 'Admin' },
+			{ value: 'member', label: 'Member' },
+			{ value: 'viewer', label: 'Viewer' },
+		];
+		const terminalOption = { value: BLOCK_ACCESS_VALUE, label: 'Block access' };
+
+		const items = computed<SelectItem[]>(() => [
+			{
+				type: 'group',
+				label: 'Roles',
+				items: roles,
+			},
+			{ type: 'separator' },
+			terminalOption,
+		]);
+
+		const selectedLabel = computed(() => {
+			if (value.value === terminalOption.value) return terminalOption.label;
+			return roles.find((role) => role.value === value.value)?.label;
+		});
+
+		return {
+			value,
+			items,
+			selectedLabel,
+			placeholder: 'Select a role',
+			onUpdate: action('update:modelValue'),
+			Select,
+			N8nText,
+		};
+	},
+	template: `
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--sm);">
+			<component :is="N8nText" size="small" color="text-light" tag="p" style="margin: 0;">
+				"Block access" is a real selectable value after a separator — unlike the Add custom role action in With search and footer, it updates modelValue.
+			</component>
+			<component
+				:is="Select"
+				v-model="value"
+				:items="items"
+				:placeholder="placeholder"
+				position="popper"
+				:style="{ width: '220px' }"
+				@update:model-value="onUpdate"
+			>
+				<template #default>
+					{{ selectedLabel ?? placeholder }}
+				</template>
+			</component>
+		</div>
+	`,
+});
+
+export const TerminalOption: Story = {
+	name: 'Terminal option',
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'A trailing option after a separator that **does** update `modelValue` (e.g. a sentinel like Block access). Omit `onSelect` / `preventDefault()`. Contrast with With search and footer, where the trailing item is an action.',
+			},
+		},
+	},
+	render: () => ({
+		components: { TerminalOptionDemo },
+		template: '<TerminalOptionDemo />',
 	}),
 };
 
