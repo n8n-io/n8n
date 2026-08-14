@@ -5,6 +5,7 @@ import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { Agent } from '../entities/agent.entity';
@@ -12,6 +13,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
+const telemetryContext = { user: { id: 'user-1' } as never, modifiedBy: 'user' as const };
 const descriptor: ToolDescriptor = {
 	name: 'lookup_customer',
 	description: 'Look up a customer',
@@ -48,11 +50,17 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
+	const modificationTelemetry = mock<AgentModificationTelemetryService>();
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 
-	const service = new AgentCustomToolsService(mockLogger(), agentRepository, runtimeCacheService);
+	const service = new AgentCustomToolsService(
+		mockLogger(),
+		agentRepository,
+		runtimeCacheService,
+		modificationTelemetry,
+	);
 
-	return { service, agentRepository, runtimeCacheService };
+	return { service, agentRepository, runtimeCacheService, modificationTelemetry };
 }
 
 describe('AgentCustomToolsService', () => {
@@ -65,7 +73,13 @@ describe('AgentCustomToolsService', () => {
 		const agent = makeAgent();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		const result = await service.buildCustomTool(agentId, projectId, 'return 1;', descriptor);
+		const result = await service.buildCustomTool(
+			agentId,
+			projectId,
+			'return 1;',
+			descriptor,
+			telemetryContext,
+		);
 
 		expect(result).toEqual({
 			ok: true,
@@ -83,7 +97,7 @@ describe('AgentCustomToolsService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
 		await expect(
-			service.buildCustomTool(agentId, projectId, 'return 1;', descriptor),
+			service.buildCustomTool(agentId, projectId, 'return 1;', descriptor, telemetryContext),
 		).rejects.toThrow(NotFoundError);
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
@@ -117,7 +131,7 @@ describe('AgentCustomToolsService', () => {
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await service.deleteCustomTool(agentId, projectId, 'tool_delete');
+		await service.deleteCustomTool(agentId, projectId, 'tool_delete', telemetryContext);
 
 		expect(agent.tools).toEqual({ tool_keep: { code: 'return 2;', descriptor } });
 		expect(agent.schema?.tools).toEqual([
@@ -182,5 +196,21 @@ describe('AgentCustomToolsService', () => {
 				{},
 			),
 		).toThrow(UserError);
+	});
+
+	it('reports custom tool body changes through lifecycle telemetry', async () => {
+		const { service, agentRepository, modificationTelemetry } = makeService();
+		const agent = makeAgent({ integrations: [] });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await service.buildCustomTool(agentId, projectId, 'return 1;', descriptor, telemetryContext);
+
+		expect(modificationTelemetry.record).toHaveBeenCalledWith(
+			expect.objectContaining({
+				by: 'user',
+				changedParts: ['tools'],
+				wasUnconfigured: false,
+			}),
+		);
 	});
 });

@@ -44,6 +44,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   json grantTypes
   varchar id
+  boolean isFirstParty
   varchar_255_ name
   json redirectUris
   varchar_255_ tokenEndpointAuthMethod

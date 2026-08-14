@@ -12,7 +12,7 @@ import {
 	EnterpriseEditionFeature,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type {
 	WorkflowHistoryActionTypes,
 	WorkflowVersionId,
@@ -28,7 +28,7 @@ import Modal from '@/app/components/Modal.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -37,12 +37,12 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import type { IUser } from 'n8n-workflow';
 
 import { N8nBadge, N8nHeading, N8nIcon, N8nTabs } from '@n8n/design-system';
-import type { TabOptions } from '@n8n/design-system/types';
+import type { TabOptions } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowVersionFormModalEventBusEvents } from '../components/WorkflowVersionFormModal.vue';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { getPublishedVersionId } from '../utils';
 
 type WorkflowHistoryActionRecord = {

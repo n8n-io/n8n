@@ -76,3 +76,40 @@ describe('resolveNodeTypeDefinition — resource/operation split', () => {
 		expect(result.content).toBe('// slack post def');
 	});
 });
+
+describe('resolveNodeTypeDefinition — latest version resolution', () => {
+	let defsDir: string;
+
+	beforeAll(() => {
+		defsDir = mkdtempSync(join(tmpdir(), 'node-defs-versions-'));
+		// Notion ships versions 1, 2, 2.1, 2.2 and 3, so on disk its version
+		// dirs are v1, v2, v21, v22, v3 (the dot is dropped when naming).
+		const notionDir = join(defsDir, 'nodes', 'n8n-nodes-base', 'notion');
+		for (const [version, content] of [
+			['v1', '// notion v1 get def'],
+			['v2', '// notion v2 get def'],
+			['v21', '// notion v2.1 get def'],
+			['v22', '// notion v2.2 get def'],
+			['v3', '// notion v3 get def'],
+		]) {
+			const opDir = join(notionDir, version, 'resource_database_page');
+			mkdirSync(opDir, { recursive: true });
+			writeFileSync(join(opDir, 'operation_get.ts'), content);
+		}
+	});
+
+	afterAll(() => {
+		rmSync(defsDir, { recursive: true, force: true });
+	});
+
+	it('treats v3 as latest, not v2.2, when no version is requested', () => {
+		const result = resolveNodeTypeDefinition('n8n-nodes-base.notion', [defsDir], {
+			resource: 'databasePage',
+			operation: 'get',
+		});
+
+		expect(result.error).toBeUndefined();
+		expect(result.version).toBe('v3');
+		expect(result.content).toBe('// notion v3 get def');
+	});
+});

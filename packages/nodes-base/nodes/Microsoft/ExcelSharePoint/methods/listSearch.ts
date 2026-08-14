@@ -3,35 +3,34 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
+	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { SERVICE_PRINCIPAL_AUTH } from '../helpers/constants';
-import { resolveSiteId } from '../helpers/utils';
+import { isWorkbookFile, workbookSearchEndpoint } from '../helpers/workbookSearch';
+import type { DriveItem } from '../helpers/workbookSearch';
+import type { GraphListResponse, GraphTable, GraphWorksheet } from '../helpers/interfaces';
+import { listSearchPage } from '../helpers/listSearch';
+import { resolveSiteId, resolveWorkbookRoot, validatePathSegment } from '../helpers/utils';
 import { getExcelSharePointCredentialType, microsoftApiRequest } from '../transport';
 
-type GraphCollectionReply<T> = {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'@odata.nextLink'?: string;
-	value?: T[];
-};
-
-type Site = { id?: string; displayName?: string; webUrl?: string };
-type Drive = { id?: string; name?: string; webUrl?: string };
+type Site = IDataObject & { id?: string; displayName?: string; webUrl?: string };
+type Drive = IDataObject & { id?: string; name?: string; webUrl?: string };
 
 /**
  * Fetches one page of a Graph collection. An explicit `paginationToken` (a
  * complete next-page link) is requested exactly as returned, never rebuilt;
  * otherwise the initial request is built from `resource`/`qs`.
  */
-async function fetchPage<T>(
+async function fetchPage<T extends IDataObject>(
 	this: ILoadOptionsFunctions,
 	resource: string,
 	qs: IDataObject,
 	paginationToken?: string,
-): Promise<GraphCollectionReply<T>> {
+): Promise<GraphListResponse<T>> {
 	return paginationToken
-		? await (microsoftApiRequest<GraphCollectionReply<T>>).call(
+		? await (microsoftApiRequest<GraphListResponse<T>>).call(
 				this,
 				'GET',
 				'',
@@ -39,7 +38,7 @@ async function fetchPage<T>(
 				{},
 				paginationToken,
 			)
-		: await (microsoftApiRequest<GraphCollectionReply<T>>).call(this, 'GET', resource, {}, qs);
+		: await (microsoftApiRequest<GraphListResponse<T>>).call(this, 'GET', resource, {}, qs);
 }
 
 /**
@@ -67,6 +66,14 @@ function driveToItem(drive: Drive): INodeListSearchItems {
 		name: drive.name ?? String(drive.id),
 		value: String(drive.id),
 		url: drive.webUrl,
+	};
+}
+
+function workbookToItem(item: DriveItem): INodeListSearchItems {
+	return {
+		name: item.name ?? String(item.id),
+		value: String(item.id),
+		url: item.webUrl,
 	};
 }
 
@@ -99,7 +106,7 @@ export async function searchSites(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	let response: GraphCollectionReply<Site>;
+	let response: GraphListResponse<Site>;
 	try {
 		response = await (fetchPage<Site>).call(
 			this,
@@ -138,4 +145,78 @@ export async function searchLibraries(
 		results: toListItems(response.value, driveToItem),
 		paginationToken: response['@odata.nextLink'],
 	};
+}
+
+export async function searchWorkbooks(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const siteId = await resolveSiteId.call(this, 0);
+	const driveId = validatePathSegment(
+		this.getNode(),
+		'Library',
+		String(
+			(this.getNodeParameter('library', 0) as INodeParameterResourceLocator | undefined)?.value ??
+				'',
+		),
+	);
+
+	const typed = filter?.trim() ?? '';
+	const resource = workbookSearchEndpoint(siteId, driveId, typed);
+
+	let nextLink = paginationToken;
+	let workbooks: DriveItem[] = [];
+	do {
+		const response = await (fetchPage<DriveItem>).call(
+			this,
+			resource,
+			{ $select: 'id,name,webUrl,file' },
+			nextLink,
+		);
+		workbooks = (response.value ?? []).filter(isWorkbookFile);
+		nextLink = response['@odata.nextLink'];
+	} while (typed !== '' && workbooks.length === 0 && nextLink !== undefined);
+
+	return {
+		results: toListItems(workbooks, workbookToItem),
+		paginationToken: nextLink,
+	};
+}
+
+export async function getSheets(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const workbookRoot = await resolveWorkbookRoot.call(this);
+
+	return await (listSearchPage<GraphWorksheet>).call(
+		this,
+		`${workbookRoot}/workbook/worksheets`,
+		(sheet) => ({ name: sheet.name, value: sheet.id }),
+		filter,
+		paginationToken,
+	);
+}
+
+export async function getTables(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const workbookRoot = await resolveWorkbookRoot.call(this);
+	const worksheetId = validatePathSegment(
+		this.getNode(),
+		'Sheet',
+		this.getNodeParameter('worksheet', undefined, { extractValue: true }) as string,
+	);
+
+	return await (listSearchPage<GraphTable>).call(
+		this,
+		`${workbookRoot}/workbook/worksheets/${encodeURIComponent(worksheetId)}/tables`,
+		(table) => ({ name: table.name, value: table.id }),
+		filter,
+		paginationToken,
+	);
 }

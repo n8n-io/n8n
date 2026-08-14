@@ -27,7 +27,8 @@ interface CliArgs {
 	trials: number;
 	passThreshold: number;
 	timeoutMs: number;
-	maxSteps: number;
+	/** Optional iteration cap; default uncapped — the wall-clock timeout bounds a run. */
+	maxSteps?: number;
 	modelId: string;
 	concurrency: number;
 	nodesJsonPath?: string;
@@ -85,7 +86,6 @@ function parseArgs(argv: string[]): CliArgs {
 		trials: 3,
 		passThreshold: 2 / 3,
 		timeoutMs: 60_000,
-		maxSteps: 5,
 		modelId: DEFAULT_MODEL,
 		concurrency: 3,
 		failOnZeroPass: false,

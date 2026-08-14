@@ -1,6 +1,7 @@
 import { createAllTools, createOrchestrationTools, createOrchestratorDomainTools } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext } from '../../types';
+import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
 
 vi.mock('../../parsers/structured-file-parser', () => ({
 	isParseableAttachment: vi.fn(() => false),
@@ -36,12 +37,12 @@ vi.mock('../n8n-docs.tool', () => ({
 	createN8nDocsTool: vi.fn(() => ({ id: 'n8n-docs' })),
 }));
 
-vi.mock('../orchestration/build-agent.tool', () => ({
-	createBuildAgentTool: vi.fn(() => ({ id: 'build-agent' })),
+vi.mock('../mcp-servers.tool', () => ({
+	createMcpServersTool: vi.fn(() => ({ id: 'mcp-servers' })),
 }));
 
-vi.mock('../agents.tool', () => ({
-	createAgentsTool: vi.fn(() => ({ id: 'agents' })),
+vi.mock('../orchestration/build-agent.tool', () => ({
+	createBuildAgentTool: vi.fn(() => ({ id: 'build-agent' })),
 }));
 
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
@@ -142,6 +143,7 @@ describe('domain tool construction', () => {
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(domainTools.has('templates')).toBe(false);
 	});
 
 	it('creates the native orchestrator domain tool map', async () => {
@@ -162,6 +164,7 @@ describe('domain tool construction', () => {
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(orchestratorTools.has('templates')).toBe(false);
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
 		const { createNodesTool } = await import('../nodes.tool.js');
@@ -210,6 +213,21 @@ describe('domain tool construction', () => {
 		expect(createOrchestratorDomainTools(enabled).get('eval-config')).toBeDefined();
 	});
 
+	it('gates the mcp-servers tool on the host-wired mcpService', () => {
+		// Gates off: adapter leaves mcpService unset → tool absent.
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('mcp-servers')).toBeUndefined();
+
+		const enabled = makeContext({ mcpService: {} as InstanceAiContext['mcpService'] });
+		expect(createOrchestratorDomainTools(enabled).get('mcp-servers')).toBeDefined();
+		// Orchestrator only — a sub-agent can't offer the user a connection.
+		expect(createAllTools(enabled).get('mcp-servers')).toBeUndefined();
+	});
+
+	it('never defers mcp-servers behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
+	});
+
 	it('registers create-tasks but not the removed plan orchestration tool', () => {
 		const context = makeContext({
 			workflowTaskService: {},
@@ -239,19 +257,20 @@ describe('domain tool construction', () => {
 		});
 	});
 
-	it('registers agents only when a builder delegate is present on the domain context', () => {
-		const withoutDelegate = createOrchestrationTools(
+	it('registers get-session only when a preview session and resolver are present', () => {
+		const withoutSession = createOrchestrationTools(
 			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
 		);
-		expect(withoutDelegate.has('agents')).toBe(false);
+		expect(withoutSession.has('get-session')).toBe(false);
 
-		const withDelegate = createOrchestrationTools(
+		const withSession = createOrchestrationTools(
 			makeContext({
-				domainContext: { builderDelegate: {} },
+				domainContext: {
+					agentPreviewSession: { agentId: 'agent-1', threadId: 'preview-1' },
+					resolvePreviewSession: async () => await Promise.resolve(null),
+				},
 			} as Partial<InstanceAiContext>) as never,
 		);
-		expect(Object.fromEntries(withDelegate)).toMatchObject({
-			agents: { id: 'agents' },
-		});
+		expect(withSession.has('get-session')).toBe(true);
 	});
 });

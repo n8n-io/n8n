@@ -153,7 +153,7 @@ test.describe(
 			await n8n.canvas.openNode('Edit Fields (old)');
 			await n8n.ndv.openSettings();
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Set node version 2');
-			await expect(n8n.ndv.getNodeVersion()).toContainText('Latest version: 3.4');
+			await expect(n8n.ndv.getNodeVersion()).toContainText('Latest version: 3.5');
 			await n8n.ndv.close();
 
 			await n8n.canvas.openNode('Edit Fields (latest)');

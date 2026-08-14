@@ -58,7 +58,7 @@ const mockRBACStore = {
 	hasScope: vi.fn(() => true), // Default: has permission
 };
 
-vi.mock('@/app/stores/rbac.store', () => ({
+vi.mock('@n8n/stores/rbac.store', () => ({
 	useRBACStore: vi.fn(() => mockRBACStore),
 }));
 
@@ -74,7 +74,7 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 }));
 
 // Mock settings store
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		isEnterpriseFeatureEnabled: {
 			[EnterpriseEditionFeature.ExternalSecrets]: true,

@@ -3,7 +3,7 @@ import type {
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import { isActiveBuilderAgent } from './builderAgents';
+import { isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user. */
 export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
@@ -17,13 +17,6 @@ const INVISIBLE_RENDER_HINTS = new Set(['data-table', 'eval-setup']);
 const TAIL_NARRATION_MAX_LENGTH = 200;
 
 type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
-
-/** First sentence of a streamed markdown-ish text, for trace status lines. */
-export function firstSentence(content: string): string {
-	const plain = content.replace(/[*_`#]/g, '').trim();
-	const match = plain.match(/^.*?[.!?](?=\s|$)/s);
-	return (match ? match[0] : plain).trim();
-}
 
 /**
  * The timeline reduced to renderable blocks.
@@ -40,6 +33,7 @@ export type TimelineBlock =
 	| { type: 'text'; key: string; entry: TextEntry }
 	| { type: 'tasks'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'child'; key: string; child: InstanceAiAgentNode };
 
@@ -47,14 +41,15 @@ type ToolCallKind =
 	| 'hidden'
 	| 'tasks'
 	| 'plan-review'
+	| 'mcp-connect'
 	| 'questions'
 	| 'questions-pending'
 	| 'trace';
 
 /**
  * How a tool call renders in the timeline. `trace` rows join thinking blocks;
- * `tasks`/`plan-review`/`questions` render standalone UI; `hidden` calls are
- * dropped without splitting a run.
+ * `tasks`/`plan-review`/`mcp-connect`/`questions` render standalone UI; `hidden`
+ * calls are dropped without splitting a run.
  *
  * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
  * child agent section represents them. In-thread builds (`build-workflow`)
@@ -66,11 +61,19 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
 	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
 	if (tc.confirmation?.inputType === 'plan-review') return 'plan-review';
+	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
 	if (tc.renderHint === 'planner') return 'hidden';
 	if (tc.confirmation?.inputType === 'questions') {
 		return tc.isLoading ? 'questions-pending' : 'questions';
 	}
 	return 'trace';
+}
+
+function hasBuilderChildInResponse(
+	responseId: string | undefined,
+	builderChildResponseIds: Set<string>,
+): boolean {
+	return responseId !== undefined && builderChildResponseIds.has(responseId);
 }
 
 export function buildTimelineBlocks(
@@ -84,13 +87,33 @@ export function buildTimelineBlocks(
 	// kept working after writing it. Trailing text of a response (and text
 	// without a responseId, from old snapshots) is user-facing.
 	const lastTraceIdxByResponse = new Map<string, number>();
+	const builderChildResponseIds = new Set(
+		entries
+			.filter(
+				(entry): entry is Extract<InstanceAiTimelineEntry, { type: 'child' }> =>
+					entry.type === 'child' &&
+					entry.responseId !== undefined &&
+					!!childrenById[entry.agentId] &&
+					isBuilderAgent(childrenById[entry.agentId]),
+			)
+			.map((entry) => entry.responseId)
+			.filter((responseId): responseId is string => responseId !== undefined),
+	);
+
 	entries.forEach((entry, idx) => {
 		if (entry.responseId === undefined) return;
 		if (entry.type === 'reasoning') {
 			lastTraceIdxByResponse.set(entry.responseId, idx);
 		} else if (entry.type === 'tool-call') {
 			const tc = toolCallsById[entry.toolCallId];
-			if (tc && classifyToolCall(tc) === 'trace') {
+			if (
+				tc &&
+				classifyToolCall(tc) === 'trace' &&
+				!(
+					tc.toolName === 'build-agent' &&
+					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
+				)
+			) {
 				lastTraceIdxByResponse.set(entry.responseId, idx);
 			}
 		}
@@ -156,12 +179,21 @@ export function buildTimelineBlocks(
 
 		const tc = toolCallsById[entry.toolCallId];
 		if (!tc) return;
+		if (
+			tc.toolName === 'build-agent' &&
+			hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
+		) {
+			return;
+		}
 		switch (classifyToolCall(tc)) {
 			case 'tasks':
 				pushStandalone({ type: 'tasks', key: `tasks-${idx}`, toolCall: tc });
 				return;
 			case 'plan-review':
 				pushStandalone({ type: 'plan-review', key: `plan-${idx}`, toolCall: tc });
+				return;
+			case 'mcp-connect':
+				pushStandalone({ type: 'mcp-connect', key: `mcp-connect-${idx}`, toolCall: tc });
 				return;
 			case 'questions':
 				pushStandalone({ type: 'questions', key: `questions-${idx}`, toolCall: tc });

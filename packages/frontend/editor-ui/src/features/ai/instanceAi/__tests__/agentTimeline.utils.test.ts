@@ -306,6 +306,62 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(4);
 	});
 
+	test('an mcp connect confirmation renders as a standalone block', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					confirmation: {
+						requestId: 'req-1',
+						severity: 'info',
+						message: 'To search the web',
+						mcpConnectRequest: {
+							servers: [
+								{ serverSlug: 'brave', title: 'Brave', credentialType: 'braveMcpOAuth2Api' },
+							],
+						},
+					},
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking', 'mcp-connect']);
+	});
+
+	test('an in-flight connect call stays a trace row until its payload arrives', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					args: { action: 'connect' },
+					isLoading: true,
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking']);
+	});
+
+	test('a settled connect call that never suspended stays a trace row', () => {
+		const blocks = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'mcp-servers',
+					args: { action: 'connect' },
+					isLoading: false,
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['thinking']);
+	});
+
 	test('text followed by same-response trace content joins the thinking block', () => {
 		const blocks = blocksOf(
 			[reasoning('r1'), text('Let me check the schema.', 'r1'), toolEntry('tc-1', 'r1')],
@@ -409,6 +465,77 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toEqual([
 			expect.objectContaining({ toolCallId: 'tc-build' }),
 		]);
+	});
+
+	test('hides build-agent trace when a builder child exists in the same response', () => {
+		const childEntry = (agentId: string, responseId?: string): InstanceAiTimelineEntry => ({
+			type: 'child',
+			agentId,
+			responseId,
+		});
+		const builderChild = makeAgentNode({
+			agentId: 'builder-1',
+			role: 'agent-builder',
+			kind: 'agent-builder',
+		});
+
+		const blocks = blocksOf(
+			[toolEntry('tc-build-agent', 'r1'), childEntry('builder-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-build-agent',
+					toolName: 'build-agent',
+				}),
+			],
+			'completed',
+			[builderChild],
+		);
+
+		expect(blocks).toEqual([{ type: 'child', key: 'child-1', child: builderChild }]);
+	});
+
+	test('keeps build-agent trace when no builder child exists', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-build-agent', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-build-agent',
+					toolName: 'build-agent',
+				}),
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toEqual([
+			expect.objectContaining({ toolCallId: 'tc-build-agent' }),
+		]);
+	});
+
+	test('does not hide unrelated trace tools when child is not a builder', () => {
+		const childEntry = (agentId: string, responseId?: string): InstanceAiTimelineEntry => ({
+			type: 'child',
+			agentId,
+			responseId,
+		});
+		const nonBuilderChild = makeAgentNode({ agentId: 'sub-1', role: 'researcher' });
+
+		const blocks = blocksOf(
+			[toolEntry('tc-build-agent', 'r1'), childEntry('sub-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-build-agent',
+					toolName: 'build-agent',
+				}),
+			],
+			'completed',
+			[nonBuilderChild],
+		);
+
+		expect(blocks).toHaveLength(2);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toEqual([
+			expect.objectContaining({ toolCallId: 'tc-build-agent' }),
+		]);
+		expect(blocks[1]).toEqual({ type: 'child', key: 'child-1', child: nonBuilderChild });
 	});
 
 	test('user-facing tool calls split thinking runs', () => {

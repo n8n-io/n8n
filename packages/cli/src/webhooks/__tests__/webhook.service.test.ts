@@ -7,7 +7,12 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Workflow, WebhookPathTakenError } from 'n8n-workflow';
+import {
+	Workflow,
+	WebhookPathTakenError,
+	webhookDescriptionFields,
+	fromParameter,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -135,6 +140,105 @@ describe('WebhookService', () => {
 
 				expect(returnValue).toBeNull();
 			});
+		});
+	});
+
+	describe('findTriggerWebhooksByPath()', () => {
+		const triggerRow = (fields: Partial<WebhookEntity>) =>
+			Object.assign(new WebhookEntity(), {
+				workflowId: 'wf-1',
+				node: 'Webhook',
+				method: 'POST',
+				...fields,
+			}) as WebhookEntity;
+
+		test('should return every method row of the static trigger serving the method', async () => {
+			const get = triggerRow({ webhookPath: 'orders', method: 'GET' });
+			const post = triggerRow({ webhookPath: 'orders', method: 'POST' });
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([get, post]);
+
+			expect(await webhookService.findTriggerWebhooksByPath('orders', 'GET')).toEqual([get, post]);
+		});
+
+		test('should exclude rows of a different trigger sharing the path', async () => {
+			// two workflows can share a path under disjoint methods (the key is (path, method))
+			const mine = triggerRow({ webhookPath: 'orders', method: 'GET' });
+			const theirs = triggerRow({ webhookPath: 'orders', method: 'POST', workflowId: 'wf-2' });
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([mine, theirs]);
+
+			expect(await webhookService.findTriggerWebhooksByPath('orders', 'GET')).toEqual([mine]);
+		});
+
+		test('should resolve an unambiguous path without a method', async () => {
+			const only = triggerRow({ webhookPath: 'orders' });
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([only]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([]);
+
+			expect(await webhookService.findTriggerWebhooksByPath('orders')).toEqual([only]);
+		});
+
+		test('should refuse a selector-less path a dynamic template also serves', async () => {
+			// the concrete path is static on GET and templated on POST, so without a method
+			// there is no single trigger to name — a lone static row must not be accepted
+			const webhookId = uuid();
+			const concretePath = `${webhookId}/orders/42`;
+			const staticGet = triggerRow({ webhookPath: concretePath, method: 'GET' });
+			const dynamicPost = triggerRow({
+				webhookPath: 'orders/:id',
+				method: 'POST',
+				webhookId,
+				workflowId: 'wf-2',
+			});
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([staticGet]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([dynamicPost]);
+
+			expect(await webhookService.findTriggerWebhooksByPath(concretePath)).toEqual([]);
+		});
+
+		test('should fall through to dynamic when no static row serves the method', async () => {
+			// a static row for *another* method must not shadow the routed template
+			const webhookId = uuid();
+			const staticGet = triggerRow({ webhookPath: `${webhookId}/orders`, method: 'GET' });
+			const dynamicPost = triggerRow({
+				webhookPath: 'orders/:id',
+				method: 'POST',
+				webhookId,
+				workflowId: 'wf-2',
+			});
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([staticGet]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([dynamicPost]);
+
+			expect(
+				await webhookService.findTriggerWebhooksByPath(`${webhookId}/orders/42`, 'POST'),
+			).toEqual([dynamicPost]);
+		});
+
+		test('should pick the dynamic template among rows serving the method', async () => {
+			// the winner must come from method-eligible candidates only
+			const webhookId = uuid();
+			const getTemplate = triggerRow({ webhookPath: 'user/:id', method: 'GET', webhookId });
+			const postTemplate = triggerRow({
+				webhookPath: ':id/user',
+				method: 'POST',
+				webhookId,
+				workflowId: 'wf-2',
+			});
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([
+				getTemplate,
+				postTemplate,
+			]);
+
+			expect(
+				await webhookService.findTriggerWebhooksByPath(`${webhookId}/user/user`, 'POST'),
+			).toEqual([postTemplate]);
+		});
+
+		test('should return an empty array when nothing matches', async () => {
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([]);
+
+			expect(await webhookService.findTriggerWebhooksByPath('orders', 'GET')).toEqual([]);
 		});
 	});
 
@@ -412,6 +516,100 @@ describe('WebhookService', () => {
 		});
 	});
 
+	describe('createWebhook()', () => {
+		it('normalizes the path and adds dynamic path metadata', () => {
+			webhookRepository.create.mockImplementation(
+				(data) => Object.assign(new WebhookEntity(), data) as WebhookEntity,
+			);
+
+			const webhook = webhookService.createWebhook(
+				{
+					workflowId: 'wf-1',
+					webhookPath: ' /:id/team/ ',
+					node: 'Webhook',
+					method: 'GET',
+				},
+				'hook-id',
+			);
+
+			expect(webhook).toEqual(
+				expect.objectContaining({
+					webhookPath: ':id/team',
+					webhookId: 'hook-id',
+					pathLength: 2,
+				}),
+			);
+		});
+	});
+
+	describe('getStaticWebhookKeys()', () => {
+		const webhookNodeType = {
+			description: {
+				properties: [
+					{
+						displayName: 'Path',
+						name: 'path',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Method',
+						name: 'httpMethod',
+						type: 'string',
+						default: 'GET',
+					},
+				],
+				webhooks: [
+					{
+						name: 'default',
+						httpMethod: '={{$parameter["httpMethod"]}}',
+						path: '={{$parameter["path"]}}',
+						isFullPath: true,
+					},
+				],
+			},
+		} as INodeType;
+
+		const createWebhookNode = (overrides: Partial<INode> = {}) =>
+			({
+				id: 'webhook-node',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				webhookId: 'webhook-id',
+				parameters: { path: '/test/', httpMethod: 'GET' },
+				...overrides,
+			}) as INode;
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
+		});
+
+		it('returns the method and normalized static path', () => {
+			expect(webhookService.getStaticWebhookKeys([createWebhookNode()])).toEqual(['GET test']);
+		});
+
+		it.each([
+			['disabled node', { disabled: true }],
+			['node without a webhook id', { webhookId: undefined }],
+			['node without a path', { parameters: { httpMethod: 'GET' } }],
+			['expression path', { parameters: { path: '={{ "/test" }}', httpMethod: 'GET' } }],
+			['empty path', { parameters: { path: '/', httpMethod: 'GET' } }],
+			['dynamic path', { parameters: { path: '/users/:id', httpMethod: 'GET' } }],
+		] satisfies Array<[string, Partial<INode>]>)('skips a %s', (_name, overrides) => {
+			expect(webhookService.getStaticWebhookKeys([createWebhookNode(overrides)])).toEqual([]);
+		});
+
+		it('skips nodes without a full-path webhook', () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: { ...webhookNodeType.description, webhooks: [{ isFullPath: false }] },
+			} as INodeType);
+
+			expect(webhookService.getStaticWebhookKeys([createWebhookNode()])).toEqual([]);
+		});
+	});
+
 	describe('getNodeWebhooks()', () => {
 		const workflow = new Workflow({
 			id: 'test-workflow',
@@ -490,6 +688,45 @@ describe('WebhookService', () => {
 			expect(webhooks).toHaveLength(1);
 			expect(webhooks[0].path).not.toMatch(/\s/);
 			expect(webhooks[0].path).toMatch(/\/path$/);
+		});
+
+		test('should resolve declared fields natively, without the expression engine', async () => {
+			const node = {
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				disabled: false,
+				parameters: { path: 'native-path', httpMethod: 'POST' },
+			} as unknown as INode;
+
+			const fields = webhookDescriptionFields({
+				httpMethod: fromParameter('httpMethod', 'GET'),
+				path: fromParameter('path'),
+			});
+			const nodeType = {
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							...fields,
+							isFullPath: false,
+							restartWebhook: false,
+						},
+					],
+				},
+			} as INodeType;
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			const engineSpy = vi.spyOn(workflow.expression, 'getSimpleParameterValue');
+
+			const webhooks = webhookService.getNodeWebhooks(workflow, node, additionalData);
+
+			expect(webhooks).toHaveLength(1);
+			expect(webhooks[0]).toMatchObject({ httpMethod: 'POST' });
+			expect(webhooks[0].path).toMatch(/\/native-path$/);
+			// fields with declared resolvers must never engage the expression engine
+			const engineEvaluatedValues = engineSpy.mock.calls.map((call) => call[1]);
+			expect(engineEvaluatedValues).not.toContain(fields.path);
+			expect(engineEvaluatedValues).not.toContain(fields.httpMethod);
 		});
 	});
 

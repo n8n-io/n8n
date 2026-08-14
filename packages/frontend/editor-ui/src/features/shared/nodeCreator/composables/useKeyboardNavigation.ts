@@ -46,16 +46,20 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	function getElementId(element?: Element) {
 		return element?.getAttribute(KEYBOARD_ID_ATTR) || undefined;
 	}
+	const pendingRefreshes = new Set<ReturnType<typeof setTimeout>>();
+
 	async function refreshSelectableItems(): Promise<void> {
 		return await new Promise((resolve) => {
 			// Wait for DOM to update
 			cleanupSelectableItems();
-			setTimeout(() => {
+			const timer = setTimeout(() => {
+				pendingRefreshes.delete(timer);
 				selectableItems.value = Array.from(
 					document.querySelectorAll('[data-keyboard-nav-type]'),
 				).map((el) => new WeakRef(el));
 				resolve();
 			}, 0);
+			pendingRefreshes.add(timer);
 		});
 	}
 
@@ -149,6 +153,10 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	}
 
 	function detachKeydownEvent() {
+		// Cancel pending refreshes: a timer firing after the panel is gone would
+		// query a document that may no longer exist (e.g. unit-test teardown).
+		for (const timer of pendingRefreshes) clearTimeout(timer);
+		pendingRefreshes.clear();
 		cleanupSelectableItems();
 		document.removeEventListener('keydown', onKeyDown, { capture: true });
 	}

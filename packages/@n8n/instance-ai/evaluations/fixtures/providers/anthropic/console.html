@@ -1,0 +1,170 @@
+<!doctype html>
+<!--
+  Lookalike API-keys console for credential-setup evals. Our own generic content —
+  no provider source, no recorded responses, no real tokens.
+
+  CALIBRATED against a real captured accessibility tree (LangTracer thread
+  3c764a14, page https://platform.claude.com/settings/keys). Landmarks taken from
+  that capture, so the agent sees the same shape it sees in production:
+    heading "API keys <count>" [level=1] · button "Create Key" · textbox "Search keys"
+    table with sortable columnheaders: Key / Workspace / Created by / Created /
+      Expires / Last used / Actions
+    existing keys rendered as `code` with a TRUNCATED value (sk-ant-api03-2Zx...egAA)
+    dialog "Create API key" [level=2]: combobox "Workspace", textbox "Name",
+      combobox "Expires", button "Add", button "Close"
+    dialog "Save your API key" [level=2]: button "Copy Key", button "Done"
+
+  Two properties that are load-bearing, both taken from the real page:
+  1. The list is PRE-POPULATED with truncated keys. An agent that grabs a
+     displayed value instead of the freshly issued one captures an ellipsised
+     string — a real failure mode, and one the exact-value check is meant to
+     catch. An empty list would hide it.
+  2. The submit button is "Add", NOT "Create Key" — "Create Key" only opens the
+     dialog. An agent that clicks the wrong one never creates anything.
+
+  The captured tree was German (the user's browser locale). Rendered in English
+  here because the eval corpus is English; re-check names if a locale-specific
+  run is ever needed.
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>API keys - Claude Console</title>
+	</head>
+	<body>
+		<nav aria-label="Main navigation">
+			<button type="button">Collapse</button>
+			<a href="/dashboard">Claude Console</a>
+			<a href="/dashboard">Back to app</a>
+			<button type="button">Search console…</button>
+			<ul>
+				<li><a href="/settings/general">General</a></li>
+				<li><a href="/settings/organization">Organization</a></li>
+				<li><a href="/settings/members">Members</a></li>
+				<li><a href="/settings/workspaces">Workspaces</a></li>
+				<li><a href="/settings/limits">Limits</a></li>
+				<li><a href="/settings/keys" aria-current="page">API keys</a></li>
+				<li><a href="/settings/service-accounts">Service Accounts</a></li>
+				<li><a href="/settings/workload-identity">Workload Identity</a></li>
+				<li><a href="/docs">Documentation</a></li>
+			</ul>
+			<button type="button">Eval Owner n8n GmbH</button>
+		</nav>
+
+		<main>
+			<h1>API keys <span id="key-count">8</span></h1>
+
+			<button id="create-key" type="button">Create Key</button>
+			<label for="search-keys">Search keys</label>
+			<input id="search-keys" name="search-keys" type="text" />
+
+			<table>
+				<thead>
+					<tr>
+						<th scope="col"><button type="button">Key</button></th>
+						<th scope="col"><button type="button">Workspace</button></th>
+						<th scope="col"><button type="button">Created by</button></th>
+						<th scope="col"><button type="button">Created</button></th>
+						<th scope="col"><button type="button">Expires</button></th>
+						<th scope="col"><button type="button">Last used</button></th>
+						<th scope="col"><button type="button">Actions</button></th>
+					</tr>
+				</thead>
+				<tbody id="key-rows">
+					<!-- Pre-existing keys, shown truncated exactly as the real console does. -->
+					<tr><td><code>sk-ant-api03-2Zx...egAA</code></td><td>Default</td><td>Eval Owner</td><td>Mar 3, 2026</td><td>Never</td><td>Apr 1, 2026</td><td><button type="button">Delete</button></td></tr>
+					<tr><td><code>sk-ant-api03-PCa...GwAA</code></td><td>Default</td><td>Eval Owner</td><td>Mar 8, 2026</td><td>Never</td><td>Mar 30, 2026</td><td><button type="button">Delete</button></td></tr>
+					<tr><td><code>sk-ant-api03-FuC...CgAA</code></td><td>Default</td><td>Eval Owner</td><td>Apr 2, 2026</td><td>Never</td><td>—</td><td><button type="button">Delete</button></td></tr>
+					<tr><td><code>sk-ant-api03-jOy...EgAA</code></td><td>Staging</td><td>Eval Owner</td><td>Apr 19, 2026</td><td>Never</td><td>May 2, 2026</td><td><button type="button">Delete</button></td></tr>
+					<tr><td><code>sk-ant-api03-Oxa...jgAA</code></td><td>Default</td><td>Eval Owner</td><td>May 6, 2026</td><td>Never</td><td>—</td><td><button type="button">Delete</button></td></tr>
+					<tr><td><code>sk-ant-api03-Nvq...nQAA</code></td><td>Default</td><td>Eval Owner</td><td>May 21, 2026</td><td>Never</td><td>Jun 9, 2026</td><td><button type="button">Delete</button></td></tr>
+					<tr><td><code>sk-ant-api03-8YM...aQAA</code></td><td>Production</td><td>Eval Owner</td><td>Jun 11, 2026</td><td>Never</td><td>Jul 3, 2026</td><td><button type="button">Delete</button></td></tr>
+					<tr><td><code>sk-ant-api03-5os..._QAA</code></td><td>Default</td><td>Eval Owner</td><td>Jul 1, 2026</td><td>Never</td><td>—</td><td><button type="button">Delete</button></td></tr>
+				</tbody>
+			</table>
+
+			<!-- Creation dialog — opened by "Create Key"; submit is "Add". -->
+			<div id="create-dialog" role="dialog" aria-labelledby="create-title" aria-modal="true" hidden>
+				<h2 id="create-title">Create API key</h2>
+				<button id="create-close" type="button">Close</button>
+				<label for="workspace">Workspace</label>
+				<select id="workspace" name="workspace">
+					<option value="default" selected>Default</option>
+					<option value="staging">Staging</option>
+					<option value="production">Production</option>
+				</select>
+				<label for="key-name">Name</label>
+				<input id="key-name" name="key-name" type="text" value="" />
+				<label for="expires">Expires</label>
+				<select id="expires" name="expires">
+					<option value="never" selected>Never</option>
+					<option value="30d">30 days</option>
+					<option value="90d">90 days</option>
+				</select>
+				<button id="create-submit" type="button">Add</button>
+			</div>
+
+			<!-- Reveal dialog — the ONLY place the full key ever appears. -->
+			<div id="reveal" role="dialog" aria-labelledby="reveal-title" aria-modal="true" hidden>
+				<h2 id="reveal-title">Save your API key</h2>
+				<p>This is the only time the full key will be shown.</p>
+				<label for="key-value">API key</label>
+				<input id="key-value" name="key-value" type="text" readonly value="" />
+				<button id="copy-key" type="button">Copy Key</button>
+				<button id="reveal-done" type="button">Done</button>
+			</div>
+		</main>
+
+		<script>
+			const dialog = document.getElementById('create-dialog');
+			const reveal = document.getElementById('reveal');
+			const keyValue = document.getElementById('key-value');
+			const nameInput = document.getElementById('key-name');
+
+			document.getElementById('create-key').addEventListener('click', () => {
+				dialog.hidden = false;
+			});
+			document.getElementById('create-close').addEventListener('click', () => {
+				dialog.hidden = true;
+			});
+
+			document.getElementById('create-submit').addEventListener('click', async () => {
+				const response = await fetch('/__fixture__/create-key', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						name: nameInput.value || 'Untitled',
+						workspace: document.getElementById('workspace').value,
+						expires: document.getElementById('expires').value,
+					}),
+				});
+				const { key } = await response.json();
+				keyValue.value = key;
+				dialog.hidden = true;
+				reveal.hidden = false;
+
+				// New row shows the TRUNCATED form, like the real console.
+				const row = document.createElement('tr');
+				row.innerHTML =
+					'<td><code>' +
+					key.slice(0, 16) +
+					'...' +
+					key.slice(-4) +
+					'</code></td><td>' +
+					document.getElementById('workspace').value +
+					'</td><td>Eval Owner</td><td>just now</td><td>Never</td><td>—</td>' +
+					'<td><button type="button">Delete</button></td>';
+				document.getElementById('key-rows').prepend(row);
+				const count = document.getElementById('key-count');
+				count.textContent = String(Number(count.textContent) + 1);
+			});
+
+			document.getElementById('copy-key').addEventListener('click', async () => {
+				await navigator.clipboard.writeText(keyValue.value).catch(() => {});
+			});
+			document.getElementById('reveal-done').addEventListener('click', () => {
+				reveal.hidden = true;
+			});
+		</script>
+	</body>
+</html>

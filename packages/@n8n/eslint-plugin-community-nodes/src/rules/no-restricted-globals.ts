@@ -17,6 +17,12 @@ const restrictedGlobals = [
 	'__filename',
 ];
 
+// Nudge toward the n8n-workflow alternatives that work under n8n Cloud's restrictions
+const restrictedGlobalHints: Record<string, string> = {
+	setTimeout: "Use the 'sleep' helper from 'n8n-workflow' instead.",
+	clearTimeout: "Use 'sleepWithAbort' from 'n8n-workflow' with an AbortSignal instead.",
+};
+
 export const NoRestrictedGlobalsRule = createRule({
 	name: 'no-restricted-globals',
 	meta: {
@@ -26,6 +32,7 @@ export const NoRestrictedGlobalsRule = createRule({
 		},
 		messages: {
 			restrictedGlobal: "Use of restricted global '{{ name }}' is not allowed",
+			restrictedGlobalWithHint: "Use of restricted global '{{ name }}' is not allowed. {{ hint }}",
 		},
 		schema: [],
 	},
@@ -43,11 +50,21 @@ export const NoRestrictedGlobalsRule = createRule({
 				return;
 			}
 
-			context.report({
-				node: ref.identifier,
-				messageId: 'restrictedGlobal',
-				data: { name },
-			});
+			const hint = restrictedGlobalHints[name];
+
+			context.report(
+				hint
+					? {
+							node: ref.identifier,
+							messageId: 'restrictedGlobalWithHint',
+							data: { name, hint },
+						}
+					: {
+							node: ref.identifier,
+							messageId: 'restrictedGlobal',
+							data: { name },
+						},
+			);
 		}
 
 		return {

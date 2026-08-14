@@ -103,6 +103,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description:
 			"Allows creating, deleting, and changing the type of end-user credentials, which resolve to each user's own connection.",
 	},
+	'credential:manageInstance': {
+		displayName: 'Manage provider connections',
+		description:
+			'Allows creating, updating, and deleting provider connections used by instance-level features. These connections are not available in workflows.',
+	},
 	'insights:read': {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',

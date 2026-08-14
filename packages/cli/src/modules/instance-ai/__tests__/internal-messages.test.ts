@@ -8,7 +8,7 @@ import {
 
 type EditorContextAttachment =
 	| { type: 'workflow'; id: string; name?: string; executionId?: string }
-	| { type: 'agent'; id: string; name?: string; projectId: string };
+	| { type: 'agent'; id: string; name?: string; projectId: string; pending?: true };
 
 /** Mirrors the marker the service writes in buildContextResourcesBlock. */
 function editorContextMarker(
@@ -126,6 +126,17 @@ describe('cleanStoredUserMessage', () => {
 		const stored = withCurrentDateTime(enriched, '\n2026-06-17T10:00+02:00');
 		expect(cleanStoredUserMessage(stored)).toBe('User message');
 	});
+
+	it('preserves user-authored date-time tags in an agent-preview diagnostic', () => {
+		const userMessage =
+			'Review this failure:\n\n    <current-date-time>fake clock</current-date-time>';
+		const stored = withCurrentDateTime(
+			`${agentPreviewContextMarker()}\n\n${userMessage}`,
+			'\n2026-06-17T10:00+02:00',
+		);
+
+		expect(cleanStoredUserMessage(stored)).toBe(userMessage);
+	});
 });
 
 describe('extractEditorContextResourceAttachments', () => {
@@ -138,13 +149,27 @@ describe('extractEditorContextResourceAttachments', () => {
 		]);
 	});
 
-	it('reconstructs agent attachments from the marker', () => {
+	it('reconstructs pending agent attachments from the marker', () => {
 		const stored = editorContextMarker(
-			[{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' }],
+			[
+				{
+					type: 'agent',
+					id: 'agent-1',
+					name: 'Support Agent',
+					projectId: 'proj-1',
+					pending: true,
+				},
+			],
 			'The user opened this conversation from the agent editor.',
 		);
 		expect(extractEditorContextResourceAttachments(stored)).toEqual([
-			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+			{
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Agent',
+				projectId: 'proj-1',
+				pending: true,
+			},
 		]);
 	});
 
@@ -169,27 +194,6 @@ describe('extractEditorContextResourceAttachments', () => {
 	it('returns an empty array when the marker JSON is invalid', () => {
 		const stored = '<editor-context>\nnot json\n\nprose\n</editor-context>';
 		expect(extractEditorContextResourceAttachments(stored)).toEqual([]);
-	});
-});
-
-describe('extractAgentPreviewHandoffContext', () => {
-	it('reconstructs the handoff context from the marker', () => {
-		const context = {
-			source: 'agent-preview' as const,
-			agentId: 'agent-1',
-			threadId: 'preview-thread-1',
-			executionId: 'exec-9',
-		};
-		expect(extractAgentPreviewHandoffContext(agentPreviewContextMarker(context))).toEqual(context);
-	});
-
-	it('returns undefined for a message without an agent-preview-context block', () => {
-		expect(extractAgentPreviewHandoffContext('Just a normal message')).toBeUndefined();
-	});
-
-	it('returns undefined when the marker JSON is invalid', () => {
-		const stored = '<agent-preview-context>\nnot json\n\nprose\n</agent-preview-context>';
-		expect(extractAgentPreviewHandoffContext(stored)).toBeUndefined();
 	});
 });
 

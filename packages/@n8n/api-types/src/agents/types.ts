@@ -3,7 +3,6 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
@@ -15,7 +14,6 @@ export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 ] as const;
@@ -44,53 +42,8 @@ export interface AgentIntegrationStatusEntry {
 }
 
 export interface AgentIntegrationStatusResponse {
-	status: 'connected' | 'disconnected';
+	status: 'configured' | 'connected' | 'disconnected';
 	integrations: AgentIntegrationStatusEntry[];
-}
-
-export interface CreateSlackAgentAppResponse {
-	appId: string;
-	installUrl: string;
-}
-
-export interface SlackAgentAppManifest {
-	display_information: {
-		name: string;
-	};
-	features: {
-		app_home: {
-			home_tab_enabled: boolean;
-			messages_tab_enabled: boolean;
-			messages_tab_read_only_enabled: boolean;
-		};
-		bot_user: {
-			display_name: string;
-			always_online: boolean;
-		};
-	};
-	oauth_config: {
-		redirect_urls?: string[];
-		scopes: {
-			bot: string[];
-		};
-	};
-	settings: {
-		event_subscriptions: {
-			request_url: string;
-			bot_events: string[];
-		};
-		interactivity: {
-			is_enabled: boolean;
-			request_url: string;
-		};
-		org_deploy_enabled: boolean;
-		socket_mode_enabled: boolean;
-		token_rotation_enabled: boolean;
-	};
-}
-
-export interface SlackAgentAppManifestResponse {
-	manifest: SlackAgentAppManifest;
 }
 
 export interface AgentSkillReference {
@@ -192,8 +145,29 @@ export interface AgentCapabilitySummary {
 	tasks: AgentCapabilityTask[];
 }
 
+export interface PersistedChildTraceSegment {
+	id: string;
+	content: string;
+	startTime?: number;
+	endTime?: number;
+}
+
+export interface PersistedChildTraceStep {
+	toolCallId: string;
+	toolName: string;
+	running: boolean;
+}
+
+/** A delegated child's trace, captured from forwarded chunks and persisted on
+ *  the parent's `delegate_subagent` tool call. */
+export interface PersistedChildTrace {
+	text: string;
+	reasoningSegments: PersistedChildTraceSegment[];
+	steps: PersistedChildTraceStep[];
+}
+
 export interface AgentPersistedMessageContentPart {
-	type: 'text' | 'reasoning' | 'tool-call' | (string & {});
+	type: 'text' | 'reasoning' | 'tool-call' | 'file' | (string & {});
 	text?: string;
 	toolName?: string;
 	toolCallId?: string;
@@ -202,16 +176,27 @@ export interface AgentPersistedMessageContentPart {
 	output?: unknown;
 	canceled?: boolean;
 	error?: string;
-	/** Epoch ms when the tool handler started executing. */
+	/** Epoch ms when this content part started. */
 	startTime?: number;
-	/** Epoch ms when the tool handler settled. */
+	/** Epoch ms when this content part settled. */
 	endTime?: number;
+	/** File parts carry attachment metadata only — bytes are fetched via the attachment download route. */
+	fileId?: string;
+	fileName?: string;
+	mimeType?: string;
+	sizeBytes?: number;
+	/** Live trace of a delegated child, present only on `delegate_subagent` parts. */
+	childTrace?: PersistedChildTrace;
 }
 
 export interface AgentPersistedMessageDto {
 	id: string;
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
+	/** Agent-execution turn id when this message was produced from an execution transcript. */
+	executionId?: string;
+	/** Outcome of the execution that produced this message. */
+	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 }
 
 export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
@@ -243,6 +228,8 @@ export type AgentBuilderAdminSettingsUpdateRequest = AgentBuilderAdminSettings;
 export interface AgentBuilderOpenSuspension {
 	toolCallId: string;
 	runId: string;
+	/** Client-visible suspend payload used to rebuild an interactive card after history reload. */
+	suspendPayload?: unknown;
 }
 
 /** Chat history envelope returned by the agent chat messages endpoints. */

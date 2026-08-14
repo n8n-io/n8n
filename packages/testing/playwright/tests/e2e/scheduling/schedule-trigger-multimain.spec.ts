@@ -1,8 +1,8 @@
+import { sleep } from '@n8n/utils/sleep';
+
 import { expectScheduleTriggerFires } from './schedule-trigger-helpers';
 import { makeScheduleTriggerWorkflow } from './schedule-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
-
-const sleep = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
 
 // Durable scheduler under a multi-main cluster. The scheduler has no leader: the
 // sweep, executor and reaper loops run on every main, and correctness comes from

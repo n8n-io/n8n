@@ -1,34 +1,33 @@
-import type { TelemetrySettings } from 'ai';
+import type { TelemetryOptions } from 'ai';
 
 import type { BuiltTelemetry } from '../../types/telemetry';
 
 /**
- * Map a resolved BuiltTelemetry to the AI SDK's `experimental_telemetry`
+ * Map a resolved BuiltTelemetry to the AI SDK's `telemetry`
  * option. Single source of truth for all runtime LLM calls (loop, memory
  * tasks). `functionSuffix` namespaces auxiliary calls (e.g. 'memory-observer')
  * under the parent functionId.
  */
-export function buildExperimentalTelemetry(
+export function buildAiSdkTelemetry(
 	telemetry: BuiltTelemetry | undefined,
 	options: { fallbackFunctionId?: string; functionSuffix?: string } = {},
-): { experimental_telemetry?: TelemetrySettings } {
+): { telemetry?: TelemetryOptions } {
 	if (!telemetry?.enabled) return {};
 
 	const baseFunctionId = telemetry.functionId ?? options.fallbackFunctionId ?? 'agent';
 	const functionId = options.functionSuffix
 		? `${baseFunctionId}.${options.functionSuffix}`
 		: baseFunctionId;
+	const integrations =
+		telemetry.resolveIntegrations?.(telemetry.metadata) ?? telemetry.integrations;
 
 	return {
-		experimental_telemetry: {
+		telemetry: {
 			isEnabled: true,
 			functionId,
-			metadata: telemetry.metadata,
 			recordInputs: telemetry.recordInputs,
 			recordOutputs: telemetry.recordOutputs,
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-			tracer: telemetry.tracer as any,
-			integrations: telemetry.integrations.length > 0 ? telemetry.integrations : undefined,
+			integrations: integrations.length > 0 ? integrations : undefined,
 		},
 	};
 }

@@ -1,10 +1,67 @@
-import type { INode } from 'n8n-workflow';
+import type { INode, IExecuteFunctions } from 'n8n-workflow';
+import { Binary, ObjectId } from 'mongodb';
 
-import { prepareItems } from './GenericFunctions';
+import {
+	parseAndResolveQueryParameters,
+	prepareItems,
+	serializeMongoItems,
+} from './GenericFunctions';
 
 const mockNode = { name: 'MongoDB', type: 'n8n-nodes-base.mongoDb' } as INode;
 
 describe('MongoDB Node: Generic Functions', () => {
+	describe('parseAndResolveQueryParameters', () => {
+		it('replaces placeholders with scalars and scalar arrays', () => {
+			const query = JSON.stringify({
+				name: '$1',
+				age: { $gte: '$2' },
+				tags: { $in: '$3' },
+			});
+
+			const result = parseAndResolveQueryParameters(
+				query,
+				'["Alice", 30, ["active", "admin"]]',
+				mockNode,
+				0,
+			);
+
+			expect(result).toEqual({
+				name: 'Alice',
+				age: { $gte: 30 },
+				tags: { $in: ['active', 'admin'] },
+			});
+		});
+
+		it('only replaces complete values, not keys or parts of strings', () => {
+			const query = JSON.stringify({ $1: 'key', exact: '$1', partial: 'user-$1' });
+
+			const result = parseAndResolveQueryParameters(query, ['Alice'], mockNode, 0);
+
+			expect(result).toEqual({ $1: 'key', exact: 'Alice', partial: 'user-$1' });
+		});
+
+		it('does not replace placeholders when parameters are empty', () => {
+			const result = parseAndResolveQueryParameters('{ "name": "$1" }', [], mockNode, 0);
+
+			expect(result).toEqual({ name: '$1' });
+		});
+
+		it.each([{ parameters: [{ name: 'Alice' }] }, { parameters: [[['nested']]] }])(
+			'throws for unsupported parameter value $parameters',
+			({ parameters }) => {
+				expect(() =>
+					parseAndResolveQueryParameters('{ "name": "$1" }', parameters, mockNode, 0),
+				).toThrow(/must be a scalar or an array of scalars/);
+			},
+		);
+
+		it('throws when a parameter is not used', () => {
+			expect(() =>
+				parseAndResolveQueryParameters('{ "name": "$1" }', ['Alice', 30], mockNode, 0),
+			).toThrow('Query parameter 2 is not used');
+		});
+	});
+
 	describe('prepareItems', () => {
 		it('should select fields', () => {
 			const items = [{ json: { name: 'John', age: 30 } }, { json: { name: 'Jane', age: 25 } }];
@@ -148,6 +205,59 @@ describe('MongoDB Node: Generic Functions', () => {
 				node: mockNode,
 			});
 			expect(result).toEqual([{ 'user.name': 'John' }, { 'user.name': 'Jane' }]);
+		});
+	});
+
+	describe('serializeMongoItems', () => {
+		const prepareBinaryData = vi.fn(async (buffer: Buffer, fileName?: string) => ({
+			data: buffer.toString('base64'),
+			fileName,
+			mimeType: 'application/octet-stream',
+		}));
+		const thisArg = {
+			helpers: { prepareBinaryData },
+		} as unknown as IExecuteFunctions;
+
+		it('should stringify nested ObjectIds and Dates to JSON-safe values', async () => {
+			const date = new Date('2020-01-01T12:00:00.000Z');
+			const items = [
+				{
+					json: {
+						_id: new ObjectId('507f1f77bcf86cd799439011'),
+						createdAt: date,
+						author: { ref: new ObjectId('507f191e810c19729de860ea'), joinedAt: date },
+					},
+				},
+			];
+
+			const result = await serializeMongoItems.call(thisArg, items);
+
+			expect(result[0].json).toEqual({
+				_id: '507f1f77bcf86cd799439011',
+				createdAt: '2020-01-01T12:00:00.000Z',
+				author: {
+					ref: '507f191e810c19729de860ea',
+					joinedAt: '2020-01-01T12:00:00.000Z',
+				},
+			});
+		});
+
+		it('should move top-level binary fields to the binary output and remove them from json', async () => {
+			const items = [
+				{
+					json: {
+						_id: new ObjectId('507f1f77bcf86cd799439011'),
+						avatar: new Binary(Buffer.from('image-bytes')),
+					},
+				},
+			];
+
+			const result = await serializeMongoItems.call(thisArg, items);
+
+			expect(result[0].json).toEqual({ _id: '507f1f77bcf86cd799439011' });
+			expect(result[0].json).not.toHaveProperty('avatar');
+			expect(prepareBinaryData).toHaveBeenCalledWith(Buffer.from('image-bytes'), 'avatar');
+			expect(result[0].binary?.avatar).toBeDefined();
 		});
 	});
 });

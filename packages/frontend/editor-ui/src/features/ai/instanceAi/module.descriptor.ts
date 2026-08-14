@@ -1,10 +1,7 @@
 import { i18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
-import {
-	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-} from '@/app/constants/modals';
 import { VIEWS } from '@/app/constants';
+import { INSTANCE_AI_MODALS } from './modals';
 import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
@@ -22,10 +19,6 @@ const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
-const ComputerUseSetupModal = async () =>
-	await import('./components/modals/ComputerUseSetupModal.vue');
-const BrowserUseSetupModal = async () =>
-	await import('./components/modals/BrowserUseSetupModal.vue');
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
@@ -36,6 +29,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		{
 			path: '/assistant',
 			component: InstanceAiView,
+			beforeEnter: () => (useInstanceAiAvailable().value ? true : { name: VIEWS.HOMEPAGE }),
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
@@ -121,7 +115,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
 					rbac: {
-						scope: 'instanceAi:message',
+						scope: ['instanceAi:message', 'instanceAi:manage'],
 					},
 				},
 				telemetry: {
@@ -139,16 +133,23 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				},
 			},
 		},
+		// Permanent redirect from the removed `/settings/assistant/credentials` page.
+		{
+			path: 'assistant/credentials',
+			redirect: (to) => ({ name: INSTANCE_AI_SETTINGS_VIEW, query: to.query, hash: to.hash }),
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
 	],
 	projectTabs: {
 		overview: [],
 		project: [],
 	},
 	resources: [],
-	modals: [
-		{ key: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY, component: ComputerUseSetupModal },
-		{ key: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY, component: BrowserUseSetupModal },
-	],
+	modals: INSTANCE_AI_MODALS,
 	pushHandlers: {
 		// Credits are instance-level state, so the module owns this push type through
 		// the SDK registry instead of a view-scoped store listener. The store is
@@ -167,7 +168,9 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			preview: true,
 			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } });
+				return hasPermission(['rbac'], {
+					rbac: { scope: ['instanceAi:message', 'instanceAi:manage'] },
+				});
 			},
 		},
 	],

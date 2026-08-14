@@ -1,10 +1,34 @@
 import type { LanguageModel } from 'ai';
 import { describe, expect, it } from 'vitest';
 
+import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
+import type { BuiltTool } from '../../types';
 import { Agent } from '../agent';
 import { McpClient } from '../mcp-client';
 
 const fakeModel = { doGenerate: vi.fn() } as unknown as LanguageModel;
+
+function makeMcpTool(serverName: string): BuiltTool {
+	return {
+		name: 'foo_bar_read',
+		description: 'Read data',
+		inputSchema: { type: 'object' },
+		handler: async () => await Promise.resolve({ ok: true }),
+		mcpTool: true,
+		mcpServerName: serverName,
+		mcpToolName: 'read',
+	};
+}
+
+function makeMcpClient(serverName: string): McpClient {
+	const client = new McpClient([]);
+	vi.spyOn(client, 'listTools').mockResolvedValue([makeMcpTool(serverName)]);
+	return client;
+}
+
+async function buildAgentConfig(agent: Agent): Promise<AgentRuntimeConfig> {
+	return await (agent as unknown as { build(): Promise<AgentRuntimeConfig> }).build();
+}
 
 describe('Agent MCP validation', () => {
 	it('throws when requireApproval: true is set without a checkpoint store', async () => {
@@ -64,5 +88,17 @@ describe('Agent MCP validation', () => {
 					new McpClient([{ name: 'tools', url: 'http://localhost:9999/sse', requireApproval: [] }]),
 				),
 		).not.toThrow();
+	});
+
+	it('keeps model-facing names unique across separate MCP clients', async () => {
+		const config = await buildAgentConfig(
+			new Agent('normalized-prefixes')
+				.model(fakeModel)
+				.instructions('test')
+				.mcp(makeMcpClient('foo bar'))
+				.mcp(makeMcpClient('foo_bar')),
+		);
+
+		expect(new Set(config.tools?.map((tool) => tool.name)).size).toBe(2);
 	});
 });

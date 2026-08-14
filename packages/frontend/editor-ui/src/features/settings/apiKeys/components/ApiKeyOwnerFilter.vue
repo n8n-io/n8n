@@ -3,7 +3,9 @@ import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from '@n8n/design-system';
-import { N8nAvatar, N8nCheckbox, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
+import { N8nAvatar, N8nCheckbox, N8nIcon, N8nPopover, N8nTag, N8nText } from '@n8n/design-system';
+
+import { getApiKeyOwnerDisplayName } from '../apiKeys.utils';
 
 interface ApiKeyOwnerFilterProps {
 	/** Selected owner ids. Empty means "all" (no narrowing). */
@@ -45,10 +47,7 @@ const someSelected = computed(
 // trigger and summary (and reverts to all when the panel closes).
 const effectiveAll = computed(() => allSelected.value || props.modelValue.length === 0);
 
-const displayName = (user: IUser) => {
-	const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
-	return name || user.email || '';
-};
+const displayName = (user: IUser) => getApiKeyOwnerDisplayName(user);
 
 const filteredUsers = computed(() => {
 	const needle = filter.value.trim().toLowerCase();
@@ -78,8 +77,10 @@ const pillCount = computed(() =>
 	effectiveAll.value ? props.users.length : props.modelValue.length,
 );
 
+// Only a real narrowing shows the person; when the one selected owner is also
+// the only owner (i.e. "all"), the trigger keeps the generic all-owners look.
 const singleSelectedUser = computed(() =>
-	props.modelValue.length === 1
+	!effectiveAll.value && props.modelValue.length === 1
 		? props.users.find((user) => user.id === props.modelValue[0])
 		: undefined,
 );
@@ -157,11 +158,10 @@ watch(open, (isOpen, wasOpen) => {
 					/>
 					<N8nIcon v-else icon="users" :class="$style.triggerIcon" />
 					<span :class="$style.triggerText">{{ triggerLabel }}</span>
+					<!-- Same tag component the tabs use for their counts. -->
+					<N8nTag :text="String(pillCount)" :clickable="false" :class="$style.triggerTag" />
 				</span>
-				<span :class="$style.triggerRight">
-					<span :class="$style.pill">{{ pillCount }}</span>
-					<N8nIcon icon="chevron-down" :class="$style.chevron" />
-				</span>
+				<N8nIcon icon="chevron-down" :class="$style.chevron" />
 			</button>
 		</template>
 
@@ -268,7 +268,7 @@ watch(open, (isOpen, wasOpen) => {
 </template>
 
 <style lang="scss" module>
-// A subtle coral wash for selected rows / the count pill. Mixed into whatever
+// A subtle coral wash for selected rows. Mixed into whatever
 // surface sits behind it, so it stays light on the light panel and becomes a
 // muted dark coral on the dark panel — unlike --color--primary--tint-3, which
 // the design system never re-themes for dark mode. Declared on both .trigger
@@ -285,7 +285,9 @@ watch(open, (isOpen, wasOpen) => {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	width: 100%;
-	height: 36px;
+	// Same height token as N8nInput size="medium" resolves to, so the trigger
+	// lines up exactly with the search input and button beside it.
+	height: var(--height--md);
 	padding: 0 var(--spacing--xs);
 	// Share N8nInput's resting surface, border and radius so the trigger and the
 	// search box are visually identical at rest; coral only appears on open.
@@ -325,23 +327,13 @@ watch(open, (isOpen, wasOpen) => {
 	text-overflow: ellipsis;
 }
 
-.triggerRight {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+/* Long owner names truncate; the count tag never shrinks away. */
+.triggerTag {
 	flex-shrink: 0;
 }
 
-.pill {
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--primary);
-	background-color: var(--owner-filter--accent-fill);
-	padding: 1px 7px;
-	border-radius: var(--radius--xlarge, 999px);
-}
-
 .chevron {
+	flex-shrink: 0;
 	color: var(--color--text--tint-2);
 	font-size: var(--font-size--sm);
 }

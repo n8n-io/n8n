@@ -4,7 +4,7 @@ import { setActivePinia } from 'pinia';
 import CanvasNodeChoicePrompt from './CanvasNodeChoicePrompt.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { EditorEnabledFeaturesKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => ({

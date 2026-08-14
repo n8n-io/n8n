@@ -54,7 +54,7 @@ describe('workflowHandler', () => {
 		const expectedIds = extractWorkflowIdsFromMessages(messages);
 		expect(expectedIds.length).toBeGreaterThan(0);
 
-		const refs = workflowHandler.discover({ messages });
+		const refs = workflowHandler.discover({ messages, artifactRefs: [] });
 		expect(refs.map((r) => r.id)).toEqual(expectedIds);
 		for (const ref of refs) {
 			expect(ref.type).toBe('workflow');

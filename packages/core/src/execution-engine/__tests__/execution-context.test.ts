@@ -730,6 +730,98 @@ describe('establishExecutionContext', () => {
 		});
 	});
 
+	describe('sub-workflow re-runs global context hooks against the inherited context', () => {
+		let mockExecutionContextService: ReturnType<typeof mock<ExecutionContextService>>;
+
+		const buildSubWorkflowRunData = (withStartItem = true) =>
+			createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: withStartItem
+						? [
+								{
+									node: mock<INode>({
+										name: 'Execute Workflow Trigger',
+										type: 'n8n-nodes-base.executeWorkflowTrigger',
+									}),
+									data: { main: [[{ json: { fromParent: true } }]] },
+									source: null,
+								},
+							]
+						: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+				parentExecution: {
+					executionId: 'parent-execution-id',
+					workflowId: 'parent-workflow-id',
+					executionContext: {
+						version: 1,
+						establishedAt: 1000,
+						source: 'manual',
+						redaction: { version: 2, production: false, manual: false },
+					},
+				},
+			});
+
+		beforeEach(() => {
+			mockExecutionContextService = mock<ExecutionContextService>();
+			Container.set(ExecutionContextService, mockExecutionContextService);
+		});
+
+		afterEach(() => {
+			Container.reset();
+		});
+
+		it('passes the inherited context to augmentSubExecutionContext and assigns its result', async () => {
+			const runExecutionData = buildSubWorkflowRunData();
+			const rederived: IExecutionContext = {
+				version: 1,
+				establishedAt: 2000,
+				source: 'integrated',
+				parentExecutionId: 'parent-execution-id',
+				redaction: { version: 2, production: true, manual: true, source: 'workflow' },
+			};
+			mockExecutionContextService.augmentSubExecutionContext.mockResolvedValue(rederived);
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'integrated',
+			);
+
+			expect(mockExecutionContextService.augmentSubExecutionContext).toHaveBeenCalledWith(
+				mockWorkflow,
+				runExecutionData.executionData!.nodeExecutionStack[0],
+				expect.objectContaining({
+					parentExecutionId: 'parent-execution-id',
+					redaction: { version: 2, production: false, manual: false },
+				}),
+			);
+			expect(runExecutionData.executionData!.runtimeData).toBe(rederived);
+		});
+
+		it('skips augmentation when the child sub-execution has no start item', async () => {
+			const runExecutionData = buildSubWorkflowRunData(false);
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'integrated',
+			);
+
+			expect(mockExecutionContextService.augmentSubExecutionContext).not.toHaveBeenCalled();
+			expect(runExecutionData.executionData!.runtimeData!.parentExecutionId).toBe(
+				'parent-execution-id',
+			);
+		});
+	});
+
 	describe('error workflow context inheritance', () => {
 		it('should inherit context from start item metadata', async () => {
 			const parentContext: IExecutionContext = {
@@ -1173,29 +1265,24 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
 		});
 
-		it('should NOT inject credentials for webhook mode even when ciphertext is present', async () => {
-			const runExecutionData = buildRunDataWithManualTrigger();
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				encryptedRunnerIdentity: 'encrypted-credential-blob',
-			});
+		// The identity channel is not manual-only: identity-bearing triggers (Form, MCP)
+		// run in webhook/trigger mode and must resolve the submitter's credentials too.
+		it.each(['webhook', 'trigger'] as const)(
+			'should inject credentials for %s mode when ciphertext is present',
+			async (mode) => {
+				const runExecutionData = buildRunDataWithManualTrigger();
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					encryptedRunnerIdentity: 'encrypted-credential-blob',
+				});
 
-			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'webhook');
+				await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, mode);
 
-			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
-			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
-		});
-
-		it('should NOT inject credentials for trigger mode even when ciphertext is present', async () => {
-			const runExecutionData = buildRunDataWithManualTrigger();
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				encryptedRunnerIdentity: 'encrypted-credential-blob',
-			});
-
-			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'trigger');
-
-			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
-			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
-		});
+				expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+				expect(runExecutionData.executionData!.runtimeData!.credentials).toBe(
+					'encrypted-credential-blob',
+				);
+			},
+		);
 
 		it('should not overwrite existing runtimeData when it is already established', async () => {
 			const runExecutionData = buildRunDataWithManualTrigger();

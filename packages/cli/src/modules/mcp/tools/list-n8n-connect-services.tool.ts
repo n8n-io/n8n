@@ -13,7 +13,7 @@ const outputSchema = {
 	available: z
 		.boolean()
 		.describe(
-			'True when n8n Connect is available for this instance. When false, the remaining fields are omitted.',
+			'True when n8n credits is available for this instance. When false, the remaining fields are omitted.',
 		),
 	credentialTypes: z
 		.array(z.string())
@@ -56,11 +56,11 @@ export const createListN8nConnectServicesTool = (
 	name: LIST_N8N_CONNECT_SERVICES_TOOL_NAME,
 	config: {
 		description:
-			'List n8n Connect coverage: node and credential types the platform can provide managed credentials for, plus supported resource+operation combinations, minimum type versions, and hidden node properties. Use this to decide which nodes let the user skip credential setup.',
+			'List n8n credits coverage: node and credential types the platform can provide managed credentials for, plus supported resource+operation combinations, minimum type versions, and hidden node properties. Use this to decide which nodes let the user skip credential setup.',
 		inputSchema,
 		outputSchema,
 		annotations: {
-			title: 'List n8n Connect services',
+			title: 'List services available with n8n credits',
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,

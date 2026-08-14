@@ -84,7 +84,6 @@ export class DataTableExporter {
 			requirements.push({
 				id: dataTable.id,
 				name: dataTable.name,
-				sourceProjectId: dataTable.projectId,
 				usedByWorkflows,
 			});
 		}

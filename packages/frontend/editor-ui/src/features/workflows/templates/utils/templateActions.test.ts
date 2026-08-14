@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { VIEWS } from '@/app/constants';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client/api/templates';
-import { Telemetry } from '@/app/plugins/telemetry';
+import { TelemetryService } from '@/app/plugins/telemetry';
 import type { NodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { TemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -42,7 +42,7 @@ export const testTemplate2 = mock<ITemplatesWorkflowFull>({
 
 describe('templateActions', () => {
 	describe('useTemplateWorkflow', () => {
-		const telemetry = new Telemetry();
+		const telemetry = new TelemetryService();
 		const externalHooks = {
 			run: vi.fn(),
 		};

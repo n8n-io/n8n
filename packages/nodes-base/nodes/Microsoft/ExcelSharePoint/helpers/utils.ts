@@ -1,8 +1,14 @@
-import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeParameterResourceLocator,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { AuthContext } from './interfaces';
-import { microsoftApiRequest } from '../transport';
+import type { AuthContext, GraphListResponse } from './interfaces';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../transport';
 
 /**
  * Guards a user-supplied value destined for a URL path segment: rejects empty
@@ -32,10 +38,16 @@ export function validatePathSegment(node: INode, label: string, value: string): 
  * `workbookRootCache`/`siteIdCache` are the caller's per-execution caches (one
  * lookup per distinct pasted address, not one per item) — the caller hoists
  * them once above its item loop and passes the same instances every call.
+ *
+ * `itemIndex` defaults to 0 so load-options contexts (list-search methods for
+ * the sheet/table dropdowns), which have no item index and no loop to
+ * amortize a cache across, can call this too without passing any of the
+ * three — `AuthContext.getNodeParameter`'s 2nd arg is itemIndex in execute
+ * and the fallback in load-options; 0 is a valid, harmless value either way.
  */
 export async function resolveWorkbookRoot(
-	this: IExecuteFunctions,
-	itemIndex: number,
+	this: AuthContext,
+	itemIndex = 0,
 	workbookRootCache: Map<string, string> = new Map(),
 	siteIdCache: Map<string, string> = new Map(),
 ): Promise<string> {
@@ -156,4 +168,63 @@ export async function resolveSiteId(
 	const siteId = validatePathSegment(this.getNode(), 'Site', String(response.id ?? ''));
 	cache.set(endpoint, siteId);
 	return siteId;
+}
+
+export async function runPerItem(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+	produce: (itemIndex: number) => Promise<IDataObject | IDataObject[]>,
+): Promise<INodeExecutionData[]> {
+	const returnData: INodeExecutionData[] = [];
+	for (let i = 0; i < items.length; i++) {
+		try {
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(await produce(i)),
+				{ itemData: { item: i } },
+			);
+			returnData.push.apply(returnData, executionData);
+		} catch (error) {
+			if (!this.continueOnFail()) throw error;
+			const message = error instanceof Error ? error.message : String(error);
+			const executionErrorData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray({ error: message }),
+				{ itemData: { item: i } },
+			);
+			returnData.push.apply(returnData, executionErrorData);
+		}
+	}
+	return returnData;
+}
+
+export async function fetchCollection<T extends IDataObject = IDataObject>(
+	this: IExecuteFunctions,
+	itemIndex: number,
+	endpoint: string,
+	qs: IDataObject,
+	filterPage?: (items: T[]) => T[],
+): Promise<T[]> {
+	const keep = filterPage ?? ((items: T[]) => items);
+	if (this.getNodeParameter('returnAll', itemIndex)) {
+		return keep(await (microsoftApiRequestAllItems<T>).call(this, endpoint, qs));
+	}
+	// $top is only a page-size hint: a client-side filter can leave a page short
+	// (even empty) while matches exist further on — follow nextLink until the
+	// limit is met or there are no more pages
+	const limit = this.getNodeParameter('limit', itemIndex) as number;
+	const collected: T[] = [];
+	let uri: string | undefined;
+	do {
+		const response = uri
+			? await (microsoftApiRequest<GraphListResponse<T>>).call(this, 'GET', '', {}, {}, uri)
+			: await (microsoftApiRequest<GraphListResponse<T>>).call(
+					this,
+					'GET',
+					endpoint,
+					{},
+					{ ...qs, $top: limit },
+				);
+		collected.push.apply(collected, keep(response.value ?? []));
+		uri = response['@odata.nextLink'];
+	} while (collected.length < limit && uri !== undefined);
+	return collected.slice(0, limit);
 }

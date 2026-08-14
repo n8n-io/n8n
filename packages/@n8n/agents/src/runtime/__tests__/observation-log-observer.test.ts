@@ -149,16 +149,15 @@ describe('observation-log observer defaults', () => {
 		await observe({ ...baseInput, telemetry: { ...telemetry, enabled: false } });
 
 		expect(mockGenerateText.mock.calls[0][0]).toMatchObject({
-			experimental_telemetry: {
+			telemetry: {
 				isEnabled: true,
 				functionId: 'my-agent.memory-observer',
-				metadata: { thread_id: 't1' },
 				recordInputs: true,
 				recordOutputs: false,
 			},
 		});
-		expect(mockGenerateText.mock.calls[1][0].experimental_telemetry).toBeUndefined();
-		expect(mockGenerateText.mock.calls[2][0].experimental_telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[1][0].telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[2][0].telemetry).toBeUndefined();
 	});
 
 	it('reports normalized, cache-aware usage through an async onUsage before the observer promise settles', async () => {
@@ -297,24 +296,21 @@ describe('renderObserverTranscript', () => {
 						state: 'resolved',
 						output: {
 							access_token: 'output-access-token',
-							message: 'Authorization: Basic output-basic-token; token: inline-output-token',
+							message: 'Authorization: Basic output-basic-token',
 						},
 					},
 				],
 			},
 		]);
 
-		expect(transcript).toContain('[redacted]');
+		expect(transcript).toContain('[REDACTED]');
 		expect(transcript).toContain('"x-safe-header":"keep-me"');
 		expect(transcript).toContain('safe=1');
-		expect(transcript).toContain('password=[redacted]');
 		expect(transcript).not.toContain('sk-live-input-secret');
 		expect(transcript).not.toContain('input-token');
 		expect(transcript).not.toContain('inline-secret');
 		expect(transcript).not.toContain('output-access-token');
 		expect(transcript).not.toContain('output-basic-token');
-		expect(transcript).not.toContain('inline-output-token');
-		expect(transcript).not.toMatch(/password=\d+\[redacted\]/);
 	});
 
 	it('redacts credential-looking rejected tool errors before serialization', () => {
@@ -341,12 +337,38 @@ describe('renderObserverTranscript', () => {
 		);
 
 		expect(transcript).toContain('tool_result call_api error=');
-		expect(transcript).toContain('Authorization: [redacted]');
-		expect(transcript).toContain('api_key=[redacted]');
-		expect(transcript).toContain('password=[redacted]');
+		expect(transcript).toContain('[REDACTED]');
 		expect(transcript).not.toContain('rejected-token');
 		expect(transcript).not.toContain('rejected-key');
 		expect(transcript).not.toContain('rejected-password');
+	});
+
+	it('redacts secret values from user and assistant message text', () => {
+		const transcript = renderObserverTranscript([
+			message(
+				'u1',
+				'user',
+				'Here is the setup: xoxb-1234567890-abcdefghij for the integration.',
+				new Date(0),
+			),
+			{
+				id: 'a1',
+				createdAt: new Date(1),
+				role: 'assistant',
+				content: [
+					{
+						type: 'text',
+						text: 'Got it, I will use sk-live-assistant-echo-secret to configure it.',
+					},
+				],
+			},
+		]);
+
+		expect(transcript).toContain('for the integration.');
+		expect(transcript).toContain('Got it, I will use');
+		expect(transcript).toContain('[REDACTED]');
+		expect(transcript).not.toContain('xoxb-1234567890-abcdefghij');
+		expect(transcript).not.toContain('sk-live-assistant-echo-secret');
 	});
 });
 
@@ -378,6 +400,10 @@ describe('runObservationLogObserver', () => {
 
 	it('writes parsed observations and advances the cursor after observing', async () => {
 		const store = new InMemoryMemory();
+		const parentText = 'User needs the current request remembered.';
+		const childText = 'Observer pipeline parsed the child row.';
+		const tokenCounter = async (text: string) =>
+			await Promise.resolve(text === parentText ? 7 : text === childText ? 9 : 10);
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
 		await store.saveMessages({
 			threadId: 'thread-1',
@@ -385,19 +411,17 @@ describe('runObservationLogObserver', () => {
 			messages: [message('m1', 'user', 'I need this remembered.', new Date(2026, 4, 12, 14, 30))],
 		});
 
+		const now = new Date(2026, 4, 12, 14, 31);
 		const result = await runObservationLogObserver({
 			memory: store,
 			observationScopeId: 'thread-1',
 			observerThresholdTokens: 1,
 			observationLogTailLimit: 20,
-			tokenCounter: () => 10,
-			now: new Date(2026, 4, 12, 14, 31),
+			tokenCounter,
+			now,
 			observe: async () =>
 				await Promise.resolve(
-					[
-						'* CRITICAL (14:31) User needs the current request remembered.',
-						'  * COMPLETION (14:31) Observer pipeline parsed the child row.',
-					].join('\n'),
+					[`* CRITICAL (14:31) ${parentText}`, `  * COMPLETION (14:31) ${childText}`].join('\n'),
 				),
 		});
 
@@ -408,13 +432,17 @@ describe('runObservationLogObserver', () => {
 		expect(observations).toMatchObject([
 			{
 				marker: 'critical',
-				text: 'User needs the current request remembered.',
+				text: parentText,
 				parentId: null,
+				tokenCount: 7,
+				createdAt: now,
 			},
 			{
 				marker: 'completion',
-				text: 'Observer pipeline parsed the child row.',
+				text: childText,
 				parentId: observations[0]?.id,
+				tokenCount: 9,
+				createdAt: new Date(now.getTime() + 1),
 			},
 		]);
 		expect(await store.getCursor('thread-1')).toMatchObject({
@@ -453,5 +481,35 @@ describe('runObservationLogObserver', () => {
 		// raw history in the meantime.
 		expect(await store.getCursor('thread-1')).toBeNull();
 		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
+	});
+
+	it('does not persist secret values echoed by the observer into observation entries', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [
+				message('m1', 'user', 'setting up the integration', new Date(2026, 4, 12, 14, 30)),
+			],
+		});
+
+		await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observerThresholdTokens: 1,
+			observationLogTailLimit: 20,
+			tokenCounter: () => 10,
+			now: new Date(2026, 4, 12, 14, 31),
+			observe: async () =>
+				await Promise.resolve(
+					'* CRITICAL (14:31) User provided the token xoxb-1234567890-abcdefghij for the integration.',
+				),
+		});
+
+		const observations = await store.getActiveObservationLog({ observationScopeId: 'thread-1' });
+		expect(observations).toHaveLength(1);
+		expect(observations[0].text).toContain('[REDACTED]');
+		expect(observations[0].text).not.toContain('xoxb-1234567890-abcdefghij');
 	});
 });

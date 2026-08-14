@@ -12,22 +12,39 @@ import {
 	N8nIcon,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import { parseIntegrationActionCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
+import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { isSubAgentTimelineItem } from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 
 const i18n = useI18n();
 const router = useRouter();
 
-const props = defineProps<{ item: TimelineItem | null }>();
+const props = defineProps<{
+	item: TimelineItem | null;
+	/** Scope for the attachment download URLs on user items. */
+	projectId?: string;
+	agentId?: string;
+}>();
+
+const userAttachments = computed((): ChatMessageAttachment[] => {
+	if (props.item?.kind !== 'user' || !props.item.attachments) return [];
+	return props.item.attachments.map((attachment) => ({
+		fileId: attachment.id,
+		fileName: attachment.fileName,
+		mimeType: attachment.mimeType,
+		sizeBytes: attachment.sizeBytes,
+	}));
+});
 const copiedBlock = ref<string | null>(null);
 let copiedResetTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -136,8 +153,7 @@ function highlightJson(value: unknown, indent = 0): string {
 const toolDisplayName = computed((): string => {
 	if (!props.item || (props.item.kind !== 'tool' && props.item.kind !== 'suspension')) return '';
 	if (props.item.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
-	const key = builtinToolLabelKey(props.item.toolName, props.item.toolOutput);
-	return key ? i18n.baseText(key) : formatToolNameForDisplay(props.item.toolName);
+	return resolveToolNameForDisplay(props.item.toolName, i18n);
 });
 
 const isSubAgent = computed((): boolean =>
@@ -414,6 +430,12 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'user' || item.kind === 'agent'">
+						<AgentChatMessageAttachments
+							v-if="userAttachments.length > 0 && projectId && agentId"
+							:attachments="userAttachments"
+							:project-id="projectId"
+							:agent-id="agentId"
+						/>
 						<VueMarkdown :source="item.content ?? ''" :class="$style.markdown" />
 					</template>
 				</div>

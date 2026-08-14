@@ -1,19 +1,34 @@
 <script lang="ts" setup>
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
+import {
+	AGENT_PREVIEW_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	CONTINUE_SESSION_ID_PARAM,
+	EXECUTIONS_SECTION_KEY,
+} from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type { AgentExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nTableBase,
+	N8nTooltip,
+} from '@n8n/design-system';
+import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
+
+type TraceTarget = { agentId: string; threadId: string };
+type OriginPresentation = { icon: IconName; label: string };
 
 const props = withDefaults(
 	defineProps<{
@@ -21,8 +36,15 @@ const props = withDefaults(
 		projectId?: string;
 		agentId?: string;
 		openSessionInNewTab?: boolean;
+		manageStoreLifecycle?: boolean;
 	}>(),
-	{ embedded: false, projectId: undefined, agentId: undefined, openSessionInNewTab: false },
+	{
+		embedded: false,
+		projectId: undefined,
+		agentId: undefined,
+		openSessionInNewTab: false,
+		manageStoreLifecycle: true,
+	},
 );
 
 const i18n = useI18n();
@@ -32,6 +54,8 @@ const router = useRouter();
 const toast = useToast();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
+let disposed = false;
+let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
@@ -47,18 +71,26 @@ function onVisibilityChange() {
 }
 
 onMounted(async () => {
+	if (!props.manageStoreLifecycle) return;
+	managesStoreLifecycle = true;
+	document.addEventListener('visibilitychange', onVisibilityChange);
+
 	if (projectId.value && agentId.value) {
 		try {
 			await sessionsStore.fetchThreads(projectId.value, agentId.value);
+			if (disposed) return;
 			sessionsStore.startAutoRefresh();
 		} catch (error) {
+			if (disposed) return;
 			toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 		}
 	}
-	document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
 onBeforeUnmount(() => {
+	disposed = true;
+	if (!managesStoreLifecycle) return;
+
 	document.removeEventListener('visibilitychange', onVisibilityChange);
 	sessionsStore.stopAutoRefresh();
 });
@@ -74,10 +106,42 @@ function formatDuration(ms: number): string {
 	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
-function originLabel(thread: AgentExecutionThread): string {
-	if (thread.parentThreadId) return i18n.baseText('agentSessions.origin.subAgent');
-	if (thread.taskId) return i18n.baseText('agentSessions.origin.task');
-	return i18n.baseText('agentSessions.origin.agent');
+function originPresentation(thread: AgentExecutionThread): OriginPresentation {
+	const rawSource = thread.source?.trim();
+	const source = rawSource ? rawSource.toLowerCase() : undefined;
+
+	if (thread.parentThreadId || source === 'subagent' || source === 'sub-agent') {
+		return { icon: 'bot', label: i18n.baseText('agentSessions.origin.subAgent') };
+	}
+	if (thread.taskId || source === 'task') {
+		return { icon: 'clock', label: i18n.baseText('agentSessions.origin.schedule') };
+	}
+
+	switch (source) {
+		case 'instance-ai':
+			return {
+				icon: 'flask-conical',
+				label: i18n.baseText('agentSessions.origin.instanceAi'),
+			};
+		case 'mcp':
+			return { icon: 'flask-conical', label: i18n.baseText('agentSessions.origin.mcp') };
+		case 'workflow':
+			return { icon: 'workflow', label: i18n.baseText('agentSessions.origin.workflow') };
+		case 'slack':
+		case 'telegram':
+		case 'linear':
+		case 'discord':
+			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
+		case 'chat':
+		case 'n8n_chat':
+		case undefined:
+			return { icon: 'flask-conical', label: i18n.baseText('agentSessions.origin.preview') };
+		default:
+			return {
+				icon: 'plug',
+				label: rawSource ? rawSource.charAt(0).toUpperCase() + rawSource.slice(1) : '',
+			};
+	}
 }
 
 function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {
@@ -101,10 +165,14 @@ function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<stri
 	return actions;
 }
 
-function onRowClick(threadId: string) {
+function openConversation(threadId: string) {
 	const target = {
-		name: AGENT_SESSION_DETAIL_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value, threadId },
+		name: AGENT_PREVIEW_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: {
+			[CONTINUE_SESSION_ID_PARAM]: threadId,
+			section: EXECUTIONS_SECTION_KEY,
+		},
 	};
 	if (props.openSessionInNewTab) {
 		window.open(router.resolve(target).href, '_blank');
@@ -113,16 +181,28 @@ function onRowClick(threadId: string) {
 	void router.push(target);
 }
 
+function onViewTrace(target: TraceTarget) {
+	const routeTarget = {
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: {
+			projectId: projectId.value,
+			agentId: target.agentId,
+			threadId: target.threadId,
+		},
+	};
+	if (props.openSessionInNewTab) {
+		window.open(router.resolve(routeTarget).href, '_blank');
+		return;
+	}
+	void router.push(routeTarget);
+}
+
 async function onAction(actionId: string, thread: AgentExecutionThread) {
 	if (actionId === 'goToParentRun') {
 		if (!thread.parentAgentId || !thread.parentThreadId) return;
-		void router.push({
-			name: AGENT_SESSION_DETAIL_VIEW,
-			params: {
-				projectId: projectId.value,
-				agentId: thread.parentAgentId,
-				threadId: thread.parentThreadId,
-			},
+		onViewTrace({
+			agentId: thread.parentAgentId,
+			threadId: thread.parentThreadId,
 		});
 		return;
 	}
@@ -171,17 +251,24 @@ async function loadMore() {
 						:key="thread.id"
 						:class="$style.clickableRow"
 						data-test-id="agent-session-list-item"
-						@click="onRowClick(thread.id)"
+						@click="openConversation(thread.id)"
 					>
 						<td :class="$style.titleCell">
-							<span :class="$style.sessionTitle" data-test-id="agent-session-title">
-								{{ threadTitleOf(thread) }}
-							</span>
+							<button
+								type="button"
+								:class="$style.sessionOpen"
+								data-test-id="agent-session-open"
+								@click.stop="openConversation(thread.id)"
+							>
+								<span :class="$style.sessionTitle" data-test-id="agent-session-title">
+									{{ threadTitleOf(thread) }}
+								</span>
+							</button>
 						</td>
 						<td :class="$style.originCell" data-test-id="agent-session-origin">
 							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
-								<N8nIcon icon="zap" size="large" />
-								<span>{{ originLabel(thread) }}</span>
+								<N8nIcon :icon="originPresentation(thread).icon" size="large" />
+								<span>{{ originPresentation(thread).label }}</span>
 							</span>
 						</td>
 						<td :class="$style.dateCell" data-test-id="agent-session-updated-at">
@@ -194,12 +281,25 @@ async function loadMore() {
 							{{ formatDuration(thread.totalDuration) }}
 						</td>
 						<td :class="$style.actionCell" @click.stop>
-							<N8nActionDropdown
-								:items="rowActions(thread)"
-								activator-icon="ellipsis"
-								data-test-id="agent-session-actions"
-								@select="onAction($event, thread)"
-							/>
+							<div :class="$style.actionGroup">
+								<N8nTooltip :content="i18n.baseText('agentSessions.viewTrace')">
+									<N8nIconButton
+										icon="list-tree"
+										icon-size="medium"
+										size="xsmall"
+										variant="ghost"
+										:aria-label="i18n.baseText('agentSessions.viewTrace')"
+										data-test-id="agent-session-view-trace"
+										@click="onViewTrace({ agentId, threadId: thread.id })"
+									/>
+								</N8nTooltip>
+								<N8nActionDropdown
+									:items="rowActions(thread)"
+									activator-icon="ellipsis"
+									data-test-id="agent-session-actions"
+									@select="onAction($event, thread)"
+								/>
+							</div>
 						</td>
 					</tr>
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
@@ -241,6 +341,8 @@ async function loadMore() {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
 .wrapper {
 	display: flex;
 	flex-direction: column;
@@ -268,6 +370,8 @@ async function loadMore() {
 
 .titleCell {
 	width: 46%;
+	min-width: var(--spacing--3xl);
+	max-width: 0;
 }
 
 .sessionTitle {
@@ -279,6 +383,21 @@ async function loadMore() {
 	font-weight: var(--font-weight--medium);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.sessionOpen {
+	@include focus.focus-visible-ring-offset;
+
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	color: inherit;
+	background: transparent;
+	font: inherit;
+	text-align: left;
+	appearance: none;
+	cursor: pointer;
 }
 
 .originCell,
@@ -316,6 +435,13 @@ async function loadMore() {
 	min-width: var(--spacing--2xl);
 	color: var(--text-color--subtler);
 	white-space: nowrap;
+}
+
+.actionGroup {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--4xs);
 }
 
 .clickableRow {

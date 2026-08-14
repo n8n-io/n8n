@@ -3,7 +3,7 @@ import { N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { onMounted } from 'vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import AgentBuilderModelSection from '../components/settings/AgentBuilderModelSection.vue';
 import { useAgentBuilderSettingsStore } from '../agentBuilderSettings.store';
 

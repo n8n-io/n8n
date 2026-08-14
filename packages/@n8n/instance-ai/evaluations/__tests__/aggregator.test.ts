@@ -1,4 +1,4 @@
-import { aggregateResults } from '../cli/aggregator';
+import { aggregateResults } from '../run/aggregator';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 const scenario: ExecutionScenario = {
@@ -97,6 +97,76 @@ describe('aggregateResults — verifier-incomplete scenario runs', () => {
 	});
 });
 
+describe('aggregateResults — case verification status', () => {
+	it('marks a case notVerified when every scenario run is incomplete', () => {
+		const allRuns = [
+			[makeRunResult({ success: false, incomplete: true })],
+			[makeRunResult({ success: false, incomplete: true })],
+		];
+
+		const evaluation = aggregateResults(allRuns, 2);
+
+		expect(evaluation.testCases[0].status).toBe('notVerified');
+	});
+
+	it('marks a case verified when at least one scenario run was evaluated', () => {
+		const allRuns = [
+			[makeRunResult({ success: true })],
+			[makeRunResult({ success: false, incomplete: true })],
+		];
+
+		const evaluation = aggregateResults(allRuns, 2);
+
+		expect(evaluation.testCases[0].status).toBe('verified');
+	});
+
+	it('marks a build-failed case verified — a build failure is a verified failure, not a gap', () => {
+		// Build failures substitute a non-incomplete "scenario not executed" result,
+		// so they count as evaluated failures rather than an unverifiable gap.
+		const buildFailedCase: WorkflowTestCase = {
+			...incompleteTestCase,
+		};
+		const allRuns = [
+			[
+				{
+					testCase: buildFailedCase,
+					workflowBuildSuccess: false,
+					executionScenarioResults: [],
+				},
+			],
+		];
+
+		const evaluation = aggregateResults(allRuns, 1);
+
+		expect(evaluation.testCases[0].executionScenarios[0].evaluatedCount).toBe(1);
+		expect(evaluation.testCases[0].status).toBe('verified');
+	});
+
+	it('marks a case notVerified when its only expectations were skipped (prebuilt process gap)', () => {
+		// A process-only case run without a transcript (prebuilt/MCP) judges nothing:
+		// the expectation is absent from every run, so nothing could be verified.
+		const processOnlyCase: WorkflowTestCase = {
+			...incompleteTestCase,
+			executionScenarios: undefined,
+			processExpectations: ['asks before building'],
+		};
+		const allRuns = [
+			[
+				{
+					testCase: processOnlyCase,
+					workflowBuildSuccess: true,
+					executionScenarioResults: [],
+					buildExpectationResults: [],
+				},
+			],
+		];
+
+		const evaluation = aggregateResults(allRuns, 1);
+
+		expect(evaluation.testCases[0].status).toBe('notVerified');
+	});
+});
+
 describe('aggregateResults — build expectations as units', () => {
 	const expectationCase: WorkflowTestCase = {
 		...incompleteTestCase,
@@ -167,6 +237,39 @@ describe('aggregateResults — build expectations as units', () => {
 
 		expect(process).toMatchObject({ evaluatedCount: 1, passCount: 1 });
 		expect(outcome).toMatchObject({ evaluatedCount: 1, passCount: 1 });
+	});
+
+	it('counts harness-injected verdicts the case never declared', () => {
+		// The deterministic credential-setup checks are graded units but appear on
+		// no case. Driving aggregation off the case alone computed them and then
+		// silently dropped them from the pass rate, the summary and the status.
+		const allRuns = [
+			[
+				expectationRun([
+					{ expectation: 'asks before building', pass: true },
+					{ expectation: 'workflow has a trigger', pass: true },
+					{ expectation: 'A anthropicApi credential is created in n8n', pass: true },
+				]),
+			],
+			[
+				expectationRun([
+					{ expectation: 'asks before building', pass: true },
+					{ expectation: 'workflow has a trigger', pass: true },
+					{ expectation: 'A anthropicApi credential is created in n8n', pass: false },
+				]),
+			],
+		];
+
+		const evaluation = aggregateResults(allRuns, 2);
+		const units = evaluation.testCases[0].buildExpectations;
+
+		// Declared first, injected appended — and each injected text only once.
+		expect(units.map((u) => u.expectation)).toEqual([
+			'asks before building',
+			'workflow has a trigger',
+			'A anthropicApi credential is created in n8n',
+		]);
+		expect(units[2]).toMatchObject({ evaluatedCount: 2, passCount: 1 });
 	});
 
 	it('reports evaluatedCount 0 for an expectation the judge never evaluated', () => {

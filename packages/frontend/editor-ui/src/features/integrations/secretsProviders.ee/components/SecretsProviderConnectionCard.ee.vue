@@ -13,13 +13,13 @@ import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/
 import { DateTime } from 'luxon';
 import { isDateObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const i18n = useI18n();
 const rbacStore = useRBACStore();
