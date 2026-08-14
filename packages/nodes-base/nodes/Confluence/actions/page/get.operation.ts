@@ -2,6 +2,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { NodeOperationError } from 'n8n-workflow';
 
 import { confluenceApiRequest } from '../../transport';
+import type { ConfluenceBodyFormat } from '../common';
 import {
 	PAGE_LIMIT,
 	bodyFormatOption,
@@ -106,7 +107,7 @@ function adfToPlainText(node: IDataObject): string {
 	return ADF_BLOCK_TYPES.has(node.type as string) ? `${inner}\n` : inner;
 }
 
-function shapeBody(page: IDataObject, bodyFormat: string): IDataObject {
+function shapeBody(page: IDataObject, bodyFormat: ConfluenceBodyFormat): IDataObject {
 	if (bodyFormat !== 'plainText') return page;
 	const adf = (page.body as IDataObject | undefined)?.atlas_doc_format as IDataObject | undefined;
 	let value = '';
@@ -177,7 +178,7 @@ async function collectDescendantPageIds(
 async function fetchPagesByIds(
 	this: IExecuteFunctions,
 	ids: string[],
-	requestedFormat: string,
+	requestedFormat: Exclude<ConfluenceBodyFormat, 'plainText'>,
 ): Promise<IDataObject[]> {
 	const pages: IDataObject[] = [];
 	for (let start = 0; start < ids.length; start += PAGE_LIMIT) {
@@ -199,7 +200,11 @@ export const execute: ConfluenceOperation = async function (
 	this: IExecuteFunctions,
 	itemIndex: number,
 ) {
-	const bodyFormat = this.getNodeParameter('bodyFormat', itemIndex, 'storage') as string;
+	const bodyFormat = this.getNodeParameter(
+		'bodyFormat',
+		itemIndex,
+		'storage',
+	) as ConfluenceBodyFormat;
 	const includeDescendants = this.getNodeParameter(
 		'includeDescendants',
 		itemIndex,

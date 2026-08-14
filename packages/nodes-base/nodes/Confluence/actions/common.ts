@@ -79,6 +79,8 @@ export const pageRLC: INodeProperties = {
 	],
 };
 
+export type ConfluenceBodyFormat = 'storage' | 'atlas_doc_format' | 'plainText';
+
 export const bodyFormatOption: INodeProperties = {
 	displayName: 'Body Format',
 	name: 'bodyFormat',
