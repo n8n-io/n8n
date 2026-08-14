@@ -1556,8 +1556,14 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 		});
 	};
 
-	for (let attempt = 0; attempt < 5 && !hasGraphCaughtUpWithChanges(); attempt++) {
+	// Always await at least one tick before the first check: onTidyUp can run
+	// synchronously in the same tick as the store mutation it's reacting to,
+	// before VueFlow's internal graph has had any chance to sync at all.
+	for (let attempt = 0; attempt < 5; attempt++) {
 		await nextTick();
+		if (hasGraphCaughtUpWithChanges()) {
+			break;
+		}
 	}
 
 	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
