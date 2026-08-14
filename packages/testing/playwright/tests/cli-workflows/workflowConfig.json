@@ -551,11 +551,6 @@
 		"skipReason": "Not Found on node Qdrant Vector Store. Could be a timing issue."
 	},
 	{
-		"workflowId": "243",
-		"status": "ACTIVE",
-		"enableSchemaValidation": false
-	},
-	{
 		"workflowId": "252",
 		"status": "SKIPPED"
 	},
