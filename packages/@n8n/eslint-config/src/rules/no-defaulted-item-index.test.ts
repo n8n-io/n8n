@@ -27,6 +27,14 @@ ruleTester.run('no-defaulted-item-index', NoDefaultedItemIndexRule, {
 		{
 			code: 'async function apiRequest(this: IExecuteFunctions, endpoint: string, itemIndex = 0) { const auth = this.getNodeParameter("authentication", 0); return await request(endpoint, auth, itemIndex); }',
 		},
+		// The read uses the loop's own binding, which shadows the outer default.
+		{
+			code: 'function resolveAll(this: IExecuteFunctions, itemIndex = 0) { for (let itemIndex = 0; itemIndex < items.length; itemIndex++) { this.getNodeParameter("target", itemIndex); } }',
+		},
+		// Destructured, but the call site cannot omit it.
+		{
+			code: 'function resolveTarget(this: IExecuteFunctions, { itemIndex }: { itemIndex: number }) { return this.getNodeParameter("target", itemIndex); }',
+		},
 	],
 	invalid: [
 		{
@@ -54,6 +62,16 @@ ruleTester.run('no-defaulted-item-index', NoDefaultedItemIndexRule, {
 		},
 		{
 			code: 'function resolveAll(this: IExecuteFunctions, itemIndex = 0) { return items.map((itemIndexes: number[]) => this.getNodeParameter("target", itemIndex)); }',
+			errors: [{ messageId: 'requireItemIndex' }],
+		},
+		// Destructured with a default: the call site can still omit it.
+		{
+			code: 'function resolveTarget(this: IExecuteFunctions, { itemIndex = 0 }: { itemIndex?: number }) { return this.getNodeParameter("target", itemIndex); }',
+			errors: [{ messageId: 'requireItemIndex' }],
+		},
+		// Optional destructured binding, same hole.
+		{
+			code: 'function resolveTarget(this: IExecuteFunctions, { itemIndex }: { itemIndex?: number } = {}) { return this.getNodeParameter("target", itemIndex); }',
 			errors: [{ messageId: 'requireItemIndex' }],
 		},
 	],

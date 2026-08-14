@@ -1,4 +1,4 @@
-import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
+import { ASTUtils, ESLintUtils, TSESTree } from '@typescript-eslint/utils';
 
 /**
  * `execute` runs once for the whole input, so a helper that reads node parameters
@@ -14,63 +14,47 @@ import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
  */
 const ITEM_INDEX = 'itemIndex';
 
-type FunctionNode =
-	| TSESTree.FunctionDeclaration
-	| TSESTree.FunctionExpression
-	| TSESTree.ArrowFunctionExpression;
-
-const isFunctionNode = (node: TSESTree.Node): node is FunctionNode =>
-	node.type === TSESTree.AST_NODE_TYPES.FunctionDeclaration ||
-	node.type === TSESTree.AST_NODE_TYPES.FunctionExpression ||
-	node.type === TSESTree.AST_NODE_TYPES.ArrowFunctionExpression;
-
-/** Whether a parameter declares `itemIndex`, however it is written. */
-const declaresItemIndex = (param: TSESTree.Parameter): boolean => {
-	if (param.type === TSESTree.AST_NODE_TYPES.Identifier) return param.name === ITEM_INDEX;
-	if (param.type === TSESTree.AST_NODE_TYPES.AssignmentPattern)
-		return declaresItemIndex(param.left as TSESTree.Parameter);
-	if (param.type === TSESTree.AST_NODE_TYPES.RestElement)
-		return declaresItemIndex(param.argument as TSESTree.Parameter);
-	if (param.type === TSESTree.AST_NODE_TYPES.ObjectPattern)
-		return param.properties.some(
-			(property) =>
-				property.type === TSESTree.AST_NODE_TYPES.Property &&
-				declaresItemIndex(property.value as TSESTree.Parameter),
-		);
-	if (param.type === TSESTree.AST_NODE_TYPES.ArrayPattern)
-		return param.elements.some(
-			(element) => element !== null && declaresItemIndex(element as TSESTree.Parameter),
-		);
-	return false;
-};
-
-/** The `itemIndex` parameter of `fn`, if it is defaulted or optional. */
-const weakItemIndexParam = (fn: FunctionNode) =>
-	fn.params.find(
-		(param) =>
-			(param.type === TSESTree.AST_NODE_TYPES.AssignmentPattern &&
-				param.left.type === TSESTree.AST_NODE_TYPES.Identifier &&
-				param.left.name === ITEM_INDEX) ||
-			(param.type === TSESTree.AST_NODE_TYPES.Identifier &&
-				param.name === ITEM_INDEX &&
-				param.optional === true),
-	);
-
 const isGetNodeParameterCall = (node: TSESTree.CallExpression) =>
 	node.callee.type === TSESTree.AST_NODE_TYPES.MemberExpression &&
 	node.callee.property.type === TSESTree.AST_NODE_TYPES.Identifier &&
 	node.callee.property.name === 'getNodeParameter';
 
-/** `getNodeParameter(name, itemIndex, …)`, including `itemIndex ?? 0` forms. */
-const readsWithItemIndex = (node: TSESTree.CallExpression) => {
+/** The identifier passed as the item index, including `itemIndex ?? 0` forms. */
+const itemIndexArgument = (node: TSESTree.CallExpression) => {
 	const arg = node.arguments[1];
-	if (!arg) return false;
-	if (arg.type === TSESTree.AST_NODE_TYPES.Identifier) return arg.name === ITEM_INDEX;
-	return (
+	if (!arg) return undefined;
+	if (arg.type === TSESTree.AST_NODE_TYPES.Identifier) return arg;
+	if (
 		arg.type === TSESTree.AST_NODE_TYPES.LogicalExpression &&
-		arg.left.type === TSESTree.AST_NODE_TYPES.Identifier &&
-		arg.left.name === ITEM_INDEX
-	);
+		arg.left.type === TSESTree.AST_NODE_TYPES.Identifier
+	) {
+		return arg.left;
+	}
+	return undefined;
+};
+
+/**
+ * Whether a call site can leave this parameter out, following the binding up
+ * through any destructuring: `itemIndex = 0`, `itemIndex?: number` and
+ * `{ itemIndex = 0 }` are all omissible, a plain `itemIndex: number` is not.
+ */
+const isOmissible = (name: TSESTree.Identifier) => {
+	if (name.optional === true) return true;
+
+	let node: TSESTree.Node | undefined = name;
+	while (node?.parent) {
+		if (node.parent.type === TSESTree.AST_NODE_TYPES.AssignmentPattern) return true;
+		if (
+			node.parent.type === TSESTree.AST_NODE_TYPES.Property ||
+			node.parent.type === TSESTree.AST_NODE_TYPES.ObjectPattern ||
+			node.parent.type === TSESTree.AST_NODE_TYPES.ArrayPattern
+		) {
+			node = node.parent;
+			continue;
+		}
+		return false;
+	}
+	return false;
 };
 
 export const NoDefaultedItemIndexRule = ESLintUtils.RuleCreator.withoutDocs({
@@ -92,26 +76,24 @@ export const NoDefaultedItemIndexRule = ESLintUtils.RuleCreator.withoutDocs({
 
 		return {
 			CallExpression(node) {
-				if (!isGetNodeParameterCall(node) || !readsWithItemIndex(node)) return;
+				if (!isGetNodeParameterCall(node)) return;
 
-				for (const ancestor of context.sourceCode.getAncestors(node).reverse()) {
-					if (!isFunctionNode(ancestor)) continue;
+				const argument = itemIndexArgument(node);
+				if (argument?.name !== ITEM_INDEX) return;
 
-					const param = weakItemIndexParam(ancestor);
-					// A nested function without its own `itemIndex` closes over an outer
-					// one, so keep walking up to the declaration that owns it. Only a real
-					// `itemIndex` binding stops the walk: a parameter that merely mentions
-					// the name (a type, a lookalike identifier) must not hide the outer one.
-					if (!param) {
-						if (ancestor.params.some(declaresItemIndex)) return;
-						continue;
-					}
+				// Resolve the identifier through scope, so a local `for (let itemIndex …)`
+				// is recognised as its own binding instead of the outer parameter it
+				// shadows.
+				const variable = ASTUtils.findVariable(context.sourceCode.getScope(node), ITEM_INDEX);
+				const definition = variable?.defs.at(0);
+				if (definition?.type !== 'Parameter') return;
 
-					if (reported.has(param)) return;
-					reported.add(param);
-					context.report({ messageId: 'requireItemIndex', node: param });
-					return;
-				}
+				const { name } = definition;
+				if (name.type !== TSESTree.AST_NODE_TYPES.Identifier) return;
+				if (!isOmissible(name) || reported.has(name)) return;
+
+				reported.add(name);
+				context.report({ messageId: 'requireItemIndex', node: name.parent ?? name });
 			},
 		};
 	},

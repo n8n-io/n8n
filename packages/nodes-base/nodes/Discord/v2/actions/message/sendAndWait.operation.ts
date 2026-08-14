@@ -40,6 +40,9 @@ export async function execute(
 			userGuilds,
 			isOAuth2,
 			body: createSendAndWaitMessageBody(this),
+			// Whole-batch operation: one message is sent for the run, so its
+			// parameters are read at item 0.
+			itemIndex: 0,
 		});
 	} catch (error) {
 		const err = parseDiscordError.call(this, error, 0);
