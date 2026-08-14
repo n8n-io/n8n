@@ -93,6 +93,7 @@ minimumReleaseAgeExclude:
   - '@langchain/*'
   - 'langchain'
   - '@anthropic-ai/sdk'
+  - '@xmldom/xmldom'
   - '@google/generative-ai'
   - '@google/genai'
   - body-parser
