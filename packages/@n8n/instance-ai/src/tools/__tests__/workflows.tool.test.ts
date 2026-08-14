@@ -875,6 +875,65 @@ describe('workflows tool', () => {
 				);
 			});
 
+			it('expects the checksum read in an earlier turn of the same conversation', async () => {
+				// Each run builds its own context, so the expectation has to live on the thread.
+				const threads = new Map<string, { metadata: Record<string, unknown> }>();
+				const threadMemory = {
+					getThread: vi.fn(
+						async (threadId: string) => await Promise.resolve(threads.get(threadId) ?? null),
+					),
+					patchThread: vi.fn(
+						async ({
+							threadId,
+							update,
+						}: {
+							threadId: string;
+							update: (current: { metadata: Record<string, unknown> }) => {
+								metadata?: Record<string, unknown>;
+							} | null;
+						}) => {
+							const current = threads.get(threadId) ?? { metadata: {} };
+							const patch = update(current);
+							if (!patch) return null;
+							const next = { ...current, metadata: patch.metadata ?? current.metadata };
+							threads.set(threadId, next);
+							return await Promise.resolve(next);
+						},
+					),
+				};
+				const contextForTurn = () =>
+					createMockContext({
+						permissions: { updateWorkflow: 'always_allow' },
+						threadId: 'thread-1',
+						threadMemory,
+					});
+
+				const readTurn = contextForTurn();
+				(readTurn.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
+				await executeTool(
+					createWorkflowsTool(readTurn, 'full'),
+					{ action: 'get', workflowId: 'wf1' },
+					{} as never,
+				);
+
+				const updateTurn = contextForTurn();
+				(updateTurn.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
+				(updateTurn.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
+					workflowDetail('checksum-saved'),
+				);
+				await executeTool(
+					createWorkflowsTool(updateTurn, 'full'),
+					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+					{} as never,
+				);
+
+				expect(updateTurn.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+					'wf1',
+					workflowPayload,
+					{ expectedChecksum: 'checksum-read' },
+				);
+			});
+
 			it('advances the expectation to the checksum of its own save', async () => {
 				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
 				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));

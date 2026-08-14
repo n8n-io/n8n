@@ -441,7 +441,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			};
 		}
 		const detail = await context.workflowService.get(input.workflowId);
-		rememberObservedWorkflowChecksum(context, input.workflowId, detail.checksum);
+		await rememberObservedWorkflowChecksum(context, input.workflowId, detail.checksum);
 		if (input.full || isSmallPayload(detail)) return detail;
 		const { nodes, connections, ...meta } = detail;
 		return {
@@ -952,7 +952,7 @@ async function handleUpdate(
 	// Guard against overwriting a save this conversation never saw (canvas
 	// autosave, another user, another thread). Absent when the agent never read
 	// the workflow here — then there is nothing to pin the save to.
-	const expectedChecksum = getObservedWorkflowChecksum(context, input.workflowId);
+	const expectedChecksum = await getObservedWorkflowChecksum(context, input.workflowId);
 
 	try {
 		const saved = expectedChecksum
@@ -964,7 +964,7 @@ async function handleUpdate(
 		// Pin to what this save wrote, not to the re-read above: if another writer
 		// landed in between, the next update should conflict rather than clobber.
 		if (saved.checksum) {
-			rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
+			await rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
 		}
 		return { success: true, workflowId: input.workflowId };
 	} catch (error) {

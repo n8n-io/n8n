@@ -151,7 +151,7 @@ export async function refreshWorkflowSourceFileBindingFromSave(
 	// Every agent-side save routes through here, so this is also where the
 	// conversation's view of the workflow (used by `workflows(action="update")`)
 	// stays in step with the DB.
-	rememberObservedWorkflowChecksum(context, workflowId, saved.checksum);
+	await rememberObservedWorkflowChecksum(context, workflowId, saved.checksum);
 
 	const threadBindings = await readThreadBindings(context);
 	const fallback = getFallbackBindings(context);
