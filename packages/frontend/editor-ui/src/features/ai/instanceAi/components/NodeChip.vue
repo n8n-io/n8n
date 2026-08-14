@@ -24,7 +24,7 @@ const emit = defineEmits<{ remove: []; 'toggle-expand': [] }>();
 		<N8nIcon v-if="icon" :icon="icon" size="xsmall" />
 		<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
 		<N8nIcon v-else icon="crosshair" size="xsmall" />
-		<span :class="$style.name">{{ label }}</span>
+		<span :class="$style.name" :title="label">{{ label }}</span>
 		<button
 			v-if="expanded != null"
 			:class="$style.iconBtn"

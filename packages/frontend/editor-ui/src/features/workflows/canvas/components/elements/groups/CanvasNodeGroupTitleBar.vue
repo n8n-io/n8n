@@ -34,7 +34,6 @@ import { useAddNodesToChat } from '@/features/ai/instanceAi/composables/useAddNo
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 const EXTRACT_WORKFLOW_SHORTCUT = { altKey: true, keys: ['X'] };
-const ADD_TO_CHAT_SHORTCUT = { metaKey: true, keys: ['Enter'] };
 
 // Only declare the props this component uses.
 // Extra VueFlow slot props passed via v-bind are ignored.
@@ -472,7 +471,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 					<KeyboardShortcutTooltip
 						v-if="isNodeContextEnabled"
 						:label="i18n.baseText('canvas.nodeGroup.addToChat')"
-						:shortcut="ADD_TO_CHAT_SHORTCUT"
 					>
 						<N8nIconButton
 							class="nodrag"

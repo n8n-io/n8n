@@ -15,7 +15,6 @@ import type { BoundingBox } from '../../../canvas.types';
 const TOOLBAR_OFFSET_PX = 12;
 const GROUP_NODES_SHORTCUT = { metaKey: true, keys: ['G'] };
 const EXTRACT_WORKFLOW_SHORTCUT = { altKey: true, keys: ['X'] };
-const ADD_TO_CHAT_SHORTCUT = { metaKey: true, keys: ['Enter'] };
 
 const props = withDefaults(
 	defineProps<{
@@ -147,12 +146,7 @@ function onExtractWorkflowClick() {
 					@click.stop="onExtractWorkflowClick"
 				/>
 			</KeyboardShortcutTooltip>
-			<KeyboardShortcutTooltip
-				v-if="showAddToChat"
-				placement="top"
-				:label="addToChatLabel"
-				:shortcut="ADD_TO_CHAT_SHORTCUT"
-			>
+			<KeyboardShortcutTooltip v-if="showAddToChat" placement="top" :label="addToChatLabel">
 				<N8nIconButton
 					size="small"
 					variant="ghost"
