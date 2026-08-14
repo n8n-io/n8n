@@ -219,16 +219,6 @@ function editCredential(credentialId: string) {
 		</template>
 	</N8nPopover>
 	<N8nButton
-		v-else-if="item.status === 'disconnected'"
-		variant="outline"
-		size="small"
-		data-test-id="tool-credential-picker-trigger-disconnected"
-		@click="createCredential('direct')"
-	>
-		<span :class="[$style.statusDot, $style.statusDotDisconnected]" aria-hidden="true" />
-		<span>{{ i18n.baseText('tools.connection.action.reconnect') }}</span>
-	</N8nButton>
-	<N8nButton
 		v-else
 		:variant="connectVariant"
 		size="small"
