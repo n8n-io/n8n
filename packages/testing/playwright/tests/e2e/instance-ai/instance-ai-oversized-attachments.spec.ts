@@ -110,23 +110,18 @@ test.describe(
 			async ({ n8n }) => {
 				// The composer check is a convenience; the backend is authoritative. Post
 				// straight to the endpoint to prove a scripted client cannot get past it.
-				const response = await n8n.api.request.post(
-					`/rest/instance-ai/chat/${crypto.randomUUID()}`,
-					{
-						data: {
-							message: 'look at this',
-							attachments: [
-								{
-									type: 'file',
-									// One byte over the encoded ceiling of 10 MiB.
-									data: 'A'.repeat(10 * 1024 * 1024 + 1),
-									mimeType: 'image/png',
-									fileName: 'huge.png',
-								},
-							],
+				const response = await n8n.api.instanceAi.sendMessageResponse(crypto.randomUUID(), {
+					message: 'look at this',
+					attachments: [
+						{
+							type: 'file',
+							// One byte over the encoded ceiling of 10 MiB.
+							data: 'A'.repeat(10 * 1024 * 1024 + 1),
+							mimeType: 'image/png',
+							fileName: 'huge.png',
 						},
-					},
-				);
+					],
+				});
 
 				expect(response.status()).toBe(400);
 				const body = await response.text();
@@ -230,13 +225,23 @@ test.describe(
 				);
 				await n8n.instanceAi.waitForRunComplete();
 
+				// Assert the mechanism directly, not just its effect: the persisted turn keeps
+				// the user's text but no longer carries an inline `file` part.
+				const persisted = await n8n.api.instanceAi.getRawThreadMessagesResponse(
+					n8n.instanceAi.getCurrentThreadId(),
+				);
+				expect(persisted.status()).toBe(200);
+				const persistedBody = await persisted.text();
+				expect(persistedBody).toContain('What is in this screenshot?');
+				expect(persistedBody).not.toContain('"type":"file"');
+
 				// The regression itself: a plain follow-up in the same thread now completes.
 				// Before the fix the attachment stayed in history, so this request still
 				// carried image bytes, matched the refusal expectation above, and failed
 				// identically — the "repeatedly crashes" half of INS-994.
 				await n8n.instanceAi.sendMessage('Never mind the image — just say hello.');
 				await expect(
-					n8n.instanceAi.getContainer().getByText(/Back on track without the attachment/),
+					n8n.instanceAi.getPanelText(/Back on track without the attachment/),
 				).toBeVisible({ timeout: 90_000 });
 			},
 		);

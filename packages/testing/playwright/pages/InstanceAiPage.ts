@@ -103,6 +103,13 @@ export class InstanceAiPage extends BasePage {
 		await this.page.goto(`/assistant/${threadId}`);
 	}
 
+	/** Thread id of the conversation currently open, read from the URL. */
+	getCurrentThreadId(): string {
+		const threadId = new URL(this.page.url()).pathname.split('/').pop();
+		if (!threadId) throw new Error(`No thread id in URL: ${this.page.url()}`);
+		return threadId;
+	}
+
 	getContainer(): Locator {
 		return this.container;
 	}
@@ -151,6 +158,16 @@ export class InstanceAiPage extends BasePage {
 
 	getAssistantMessageText(text: string | RegExp): Locator {
 		return this.getAssistantMessages().getByText(text);
+	}
+
+	/**
+	 * Text anywhere in the chat panel. Broader than `getAssistantMessageText`: a run's
+	 * output can land outside an assistant-message bubble (an error callout, a status
+	 * line), so use this when the assertion is "the panel says this" rather than "this
+	 * message says this".
+	 */
+	getPanelText(text: string | RegExp): Locator {
+		return this.getContainer().getByText(text);
 	}
 
 	/** Tailored out-of-credits error callout shown when a run fails due to exhausted quota. */
