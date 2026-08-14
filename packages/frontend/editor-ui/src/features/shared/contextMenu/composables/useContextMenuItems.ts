@@ -337,7 +337,6 @@ export function useContextMenuItems(
 				},
 		].filter(Boolean) as Item[];
 
-		// Pinned to the top of the menu as the primary AI action.
 		const addToChatAction: Item | null =
 			!onlyStickies && nodes.length >= 1 && posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)
 				? {
@@ -348,7 +347,7 @@ export function useContextMenuItems(
 							interpolate: { count: nodes.length },
 						}),
 						shortcut: { metaKey: true, keys: ['Enter'] },
-						disabled: isReadOnly.value,
+						disabled: false, // It only adds chat context, so it stays enabled in read-only mode.
 					}
 				: null;
 

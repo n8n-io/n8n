@@ -154,6 +154,19 @@ describe('useContextMenu - add_nodes_to_chat (node context) gating', () => {
 		expect(actions.value.some((action) => action.id === 'add_nodes_to_chat')).toBe(false);
 	});
 
+	it('stays enabled in read-only mode, since it only adds chat context', () => {
+		isFeatureEnabled.mockImplementation((flag: string) => flag === CANVAS_NODE_CONTEXT_FLAG);
+		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
+
+		const { open, actions } = useContextMenu();
+		open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id] });
+
+		const item = actions.value.find((action) => action.id === 'add_nodes_to_chat');
+		expect(item?.disabled).toBeFalsy();
+		// Sanity check that read-only is actually in effect for mutating items.
+		expect(actions.value.find((action) => action.id === 'rename')?.disabled).toBe(true);
+	});
+
 	it('does not affect the legacy "focus_ai_on_selected" item presence', () => {
 		isFeatureEnabled.mockImplementation((flag: string) => flag === CANVAS_NODE_CONTEXT_FLAG);
 
