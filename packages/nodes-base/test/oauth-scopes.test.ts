@@ -91,5 +91,8 @@ test('OAuth scope defaults match the recorded ones', () => {
 		writeFileSync(FIXTURE, `${JSON.stringify(current, null, '\t')}\n`);
 	}
 
-	expect(current).toEqual(jsonParse<Record<string, string[]>>(readFileSync(FIXTURE, 'utf8')));
+	expect(
+		current,
+		'Scope defaults changed. If the change is intended, record it with `UPDATE_OAUTH_SCOPES=1 pnpm test test/oauth-scopes.test.ts` and keep the diff in the PR. Removing a scope also needs a node version bump or a migration note: existing credentials keep their issued token and start failing.',
+	).toEqual(jsonParse<Record<string, string[]>>(readFileSync(FIXTURE, 'utf8')));
 });
