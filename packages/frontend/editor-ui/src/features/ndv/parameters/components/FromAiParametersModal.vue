@@ -13,7 +13,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { ElCol, ElRow } from 'element-plus';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useToolParameters } from '../composables/useToolParameters';
+import { useToolParameters } from '@/app/composables/useToolParameters';
 
 type Value = string | number | boolean | null | undefined;
 

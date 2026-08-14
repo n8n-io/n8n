@@ -3,7 +3,7 @@ import { computed, watch, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
-import Modal from './Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, WORKFLOW_SHARE_MODAL_KEY } from '@/app/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useMessage } from '@/app/composables/useMessage';

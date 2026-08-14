@@ -12,10 +12,10 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY } from '../constants';
+import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY } from '@/app/constants';
 import { createEventBus } from '@n8n/utils/event-bus';
-import Modal from './Modal.vue';
-import SaveButton from './SaveButton.vue';
+import Modal from '@/app/components/Modal.vue';
+import SaveButton from '@/app/components/SaveButton.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { CredentialResolver } from '@n8n/api-types';
 import {
