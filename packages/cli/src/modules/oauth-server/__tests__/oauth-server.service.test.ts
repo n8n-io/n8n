@@ -2,7 +2,7 @@ import {
 	InvalidGrantError,
 	InvalidTargetError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
-import { Logger, type ModuleRegistry } from '@n8n/backend-common';
+import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -1500,6 +1500,7 @@ describe('OAuthServerService', () => {
 				mcpConfig,
 				mock<GlobalConfig>(),
 				mock<ModuleRegistry>(),
+				mock<LicenseState>(),
 			);
 			expect(mcpResource.getResourceUrl()).toBe('https://n8n-mcp.example.com/mcp-server/http');
 
