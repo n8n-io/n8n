@@ -225,6 +225,7 @@ function buildSessionRun(session: LoadedSession, path: string): DraftRun {
 			childSessionCount: session.children.length,
 		},
 		metadata: {
+			n8nVersion: N8N_VERSION,
 			threadId: session.thread.id,
 			agentId: session.thread.agentId,
 			agentName: session.thread.agentName,

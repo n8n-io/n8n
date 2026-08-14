@@ -3,6 +3,7 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '@/constants';
 import type { AiService } from '@/services/ai.service';
 
 import { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
@@ -272,6 +273,7 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(JSON.stringify(firstRuns)).not.toContain('third-value');
 		expect(JSON.stringify(firstRuns)).not.toContain('deep-boundary-secret');
 		expect(JSON.stringify(firstRuns)).toContain('[REDACTED]');
+		expect(firstRuns[0].extra.metadata.n8nVersion).toBe(N8N_VERSION);
 		expect(firstRuns[1].inputs.attachments).toEqual([
 			{ id: 'attachment-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 42 },
 		]);
