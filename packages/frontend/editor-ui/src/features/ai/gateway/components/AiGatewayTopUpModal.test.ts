@@ -9,12 +9,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
-import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { AiGatewayConfigDto } from '@n8n/api-types';
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import AiGatewayTopUpModal from './AiGatewayTopUpModal.vue';
 
@@ -56,69 +51,26 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	},
 }));
 
-vi.mock('@/app/components/NodeIcon.vue', () => ({
-	default: {
-		props: ['nodeType', 'size'],
-		template: '<span :data-test-id="`node-icon-${nodeType.name}`" />',
-	},
-}));
-
 const renderComponent = createComponentRenderer(AiGatewayTopUpModal);
-
-const INSTALLED_CREDENTIAL_TYPES: Record<string, Partial<ICredentialType>> = {
-	openAiApi: { displayName: 'OpenAI', iconUrl: 'icons/openAi.svg' },
-	anthropicApi: { displayName: 'Anthropic', iconUrl: 'icons/anthropic.svg' },
-	googlePalmApi: { displayName: 'Google Gemini(PaLM) Api', iconUrl: 'icons/gemini.svg' },
-	moonshotApi: { displayName: 'Moonshot API', iconUrl: 'icons/moonshot.svg' },
-	miniMaxApi: { displayName: 'MiniMax Account' },
-	openAiAssistantApi: { displayName: 'OpenAI', iconUrl: 'icons/openAi.svg' },
-	qwenApi: { displayName: 'Qwen Cloud', icon: 'file:qwen.svg' },
-};
-
-const INSTALLED_NODE_TYPES = [
-	{ name: 'noCredentials' },
-	{ name: 'miniMax', credentials: [{ name: 'miniMaxApi' }] },
-	{ name: 'openAi', credentials: [{ name: 'openAiApi' }] },
-	{ name: 'openAiChat', credentials: [{ name: 'openAiApi' }] },
-	{ name: 'cohere', displayName: 'Cohere API', credentials: [{ name: 'cohereApi' }] },
-] as unknown as INodeTypeDescription[];
 
 function renderModal({
 	isInstanceOwner,
 	userIsTrialing,
-	credentialTypes,
 	allUsers = [],
-	config,
 }: {
 	isInstanceOwner: boolean;
 	userIsTrialing: boolean;
-	credentialTypes?: string[];
 	allUsers?: IUser[];
-	config?: AiGatewayConfigDto | null;
 }) {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const usersStore = mockedStore(useUsersStore);
 	const cloudPlanStore = mockedStore(useCloudPlanStore);
-	const aiGatewayStore = mockedStore(useAiGatewayStore);
-	const credentialsStore = mockedStore(useCredentialsStore);
-	const nodeTypesStore = mockedStore(useNodeTypesStore);
 	const uiStore = mockedStore(useUIStore);
-	nodeTypesStore.allLatestNodeTypes = INSTALLED_NODE_TYPES;
 	usersStore.isInstanceOwner = isInstanceOwner;
 	usersStore.allUsers = allUsers;
 	usersStore.fetchUsers = vi.fn().mockResolvedValue(undefined);
 	cloudPlanStore.userIsTrialing = userIsTrialing;
-	aiGatewayStore.config =
-		config === undefined
-			? ({
-					credentialTypes: credentialTypes ?? ['openAiApi', 'anthropicApi'],
-				} as AiGatewayConfigDto)
-			: config;
-	credentialsStore.getCredentialTypeByName = (name: string) =>
-		INSTALLED_CREDENTIAL_TYPES[name]
-			? ({ name, ...INSTALLED_CREDENTIAL_TYPES[name] } as ICredentialType)
-			: undefined;
 	renderComponent({ pinia });
 	return { usersStore, uiStore };
 }
@@ -241,65 +193,5 @@ describe('AiGatewayTopUpModal.vue', () => {
 		]) {
 			expect(screen.getByTestId(`service-logo-${credentialType}`)).toBeInTheDocument();
 		}
-	});
-
-	it("falls back to the node's logo for credentials that ship none", () => {
-		renderModal({
-			isInstanceOwner: true,
-			userIsTrialing: true,
-			credentialTypes: ['openAiApi', 'miniMaxApi'],
-		});
-
-		expect(screen.getByTestId('node-icon-miniMax')).toBeInTheDocument();
-	});
-
-	it('lists every service the gateway covers, named as brands', () => {
-		renderModal({
-			isInstanceOwner: true,
-			userIsTrialing: true,
-			credentialTypes: ['openAiApi', 'moonshotApi', 'miniMaxApi'],
-		});
-
-		expect(screen.getByText('Moonshot')).toBeInTheDocument();
-		expect(screen.getByText('MiniMax')).toBeInTheDocument();
-	});
-
-	it('shows one tile per vendor and skips services it cannot name', () => {
-		renderModal({
-			isInstanceOwner: true,
-			userIsTrialing: true,
-			credentialTypes: ['openAiApi', 'openAiAssistantApi', 'mysteryApi'],
-		});
-
-		expect(screen.getAllByText('OpenAI')).toHaveLength(1);
-		expect(screen.queryByText('mysteryApi')).not.toBeInTheDocument();
-	});
-
-	it('still lists featured partners when gateway config has not loaded', () => {
-		renderModal({ isInstanceOwner: true, userIsTrialing: true, config: null });
-
-		expect(screen.getByText('Firecrawl')).toBeInTheDocument();
-		expect(screen.getByText('OpenAI')).toBeInTheDocument();
-	});
-
-	it('uses a credential icon field when iconUrl is absent', () => {
-		renderModal({
-			isInstanceOwner: true,
-			userIsTrialing: true,
-			credentialTypes: ['openAiApi', 'qwenApi'],
-		});
-
-		expect(screen.getByTestId('credential-icon-qwenApi')).toBeInTheDocument();
-	});
-
-	it('names a covered service from its node when the credential type is unknown', () => {
-		renderModal({
-			isInstanceOwner: true,
-			userIsTrialing: true,
-			credentialTypes: ['openAiApi', 'cohereApi'],
-		});
-
-		expect(screen.getByText('Cohere')).toBeInTheDocument();
-		expect(screen.getByTestId('node-icon-cohere')).toBeInTheDocument();
 	});
 });

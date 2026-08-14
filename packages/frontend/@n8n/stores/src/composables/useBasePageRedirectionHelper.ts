@@ -37,10 +37,8 @@ export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirect
 		usersStore.isInstanceOwner && settingsStore.isCloudDeployment;
 
 	/**
-	 * Sends a Cloud instance owner to a Cloud Admin Panel path via auto-login.
-	 * `open` reserves the tab in the click gesture so the later navigation is
-	 * not treated as a popup; if the popup is blocked, it falls back to this tab.
-	 * Returns false when the current user cannot auto-login (member / non-cloud).
+	 * Auto-login a Cloud instance owner to an Admin Panel path.
+	 * `open` reserves the tab in the click so later navigation is not treated as a popup.
 	 */
 	const goToCloudDashboard = async ({
 		redirectionPath,

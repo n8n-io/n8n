@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, type Component } from 'vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { ROLE } from '@n8n/api-types';
 import { N8nAlertDialog, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -8,39 +7,14 @@ import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import NodeIcon from '@/app/components/NodeIcon.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import BraveSearchLogo from '../assets/service-icons/brave-search.svg?component';
 import BrowserbaseLogo from '../assets/service-icons/browserbase.svg?component';
 import FirecrawlLogo from '../assets/service-icons/firecrawl.svg?component';
 import LlamaIndexLogo from '../assets/service-icons/llamaindex.svg?component';
 import PdfcoLogo from '../assets/service-icons/pdfco.svg?component';
 
-const i18n = useI18n();
-const uiStore = useUIStore();
-const usersStore = useUsersStore();
-const cloudPlanStore = useCloudPlanStore();
-const aiGatewayStore = useAiGatewayStore();
-const credentialsStore = useCredentialsStore();
-const nodeTypesStore = useNodeTypesStore();
-const { goToUpgrade } = usePageRedirectionHelper();
-
-const isOpen = ref(true);
-
-type TopUpVariant = 'member' | 'memberTrial' | 'ownerTrial';
-
-const variant = computed<TopUpVariant>(() => {
-	if (usersStore.isInstanceOwner) return 'ownerTrial';
-	return cloudPlanStore.userIsTrialing ? 'memberTrial' : 'member';
-});
-
-const isOwnerTrial = computed(() => variant.value === 'ownerTrial');
-
-// Featured first (always named). Bundled logos: community packages have no credential icon until installed.
 const FEATURED_SERVICES = [
 	{ credentialType: 'openAiApi', labelKey: 'aiGateway.topUp.modal.service.openAi' },
 	{ credentialType: 'anthropicApi', labelKey: 'aiGateway.topUp.modal.service.anthropic' },
@@ -72,74 +46,25 @@ const FEATURED_SERVICES = [
 	logo?: Component;
 }>;
 
-const BUNDLED_LOGOS = new Map<string, Component>(
-	FEATURED_SERVICES.flatMap((service) =>
-		'logo' in service ? [[service.credentialType, service.logo]] : [],
-	),
-);
+const i18n = useI18n();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const cloudPlanStore = useCloudPlanStore();
+const { goToUpgrade } = usePageRedirectionHelper();
 
-const FEATURED_LABEL_KEYS = new Map<string, BaseTextKey>(
-	FEATURED_SERVICES.map((service) => [service.credentialType, service.labelKey]),
-);
+const isOpen = ref(true);
 
-// First node that uses the credential wins — some vendors put the logo on the node, not the credential.
-const nodeTypeByCredentialType = computed(() => {
-	const byCredentialType = new Map<string, INodeTypeDescription>();
-	for (const nodeType of nodeTypesStore.allLatestNodeTypes) {
-		for (const credential of nodeType.credentials ?? []) {
-			if (!byCredentialType.has(credential.name)) {
-				byCredentialType.set(credential.name, nodeType);
-			}
-		}
-	}
-	return byCredentialType;
+type TopUpVariant = 'member' | 'memberTrial' | 'ownerTrial';
+
+const variant = computed<TopUpVariant>(() => {
+	if (usersStore.isInstanceOwner) return 'ownerTrial';
+	return cloudPlanStore.userIsTrialing ? 'memberTrial' : 'member';
 });
 
-// Credential picker names include "API" / "Account"; drop that for the tile.
-function toBrandName(displayName: string): string {
-	return displayName.replace(/\s+(api|account|credentials?)$/i, '').trim();
-}
-
-const services = computed(() => {
-	const covered = aiGatewayStore.config?.credentialTypes ?? [];
-	const credentialTypes = [
-		...FEATURED_LABEL_KEYS.keys(),
-		...covered.filter((credentialType) => !FEATURED_LABEL_KEYS.has(credentialType)),
-	];
-	const seen = new Set<string>();
-
-	return credentialTypes.flatMap((credentialType) => {
-		const credential = credentialsStore.getCredentialTypeByName(credentialType);
-		const nodeType = nodeTypeByCredentialType.value.get(credentialType);
-		const labelKey = FEATURED_LABEL_KEYS.get(credentialType);
-		const label = labelKey
-			? i18n.baseText(labelKey)
-			: toBrandName(credential?.displayName ?? nodeType?.displayName ?? '');
-
-		if (!label || seen.has(label)) return [];
-		seen.add(label);
-
-		return [
-			{
-				credentialType,
-				label,
-				logo: BUNDLED_LOGOS.get(credentialType),
-				hasCredentialIcon: Boolean(credential?.icon ?? credential?.iconUrl),
-				nodeType,
-			},
-		];
-	});
-});
+const isOwnerTrial = computed(() => variant.value === 'ownerTrial');
 
 onMounted(async () => {
-	if (isOwnerTrial.value) {
-		await Promise.allSettled([
-			aiGatewayStore.fetchConfig(),
-			credentialsStore.fetchCredentialTypes(false),
-			nodeTypesStore.loadNodeTypesIfNotLoaded(),
-		]);
-		return;
-	}
+	if (isOwnerTrial.value) return;
 
 	await usersStore.fetchUsers({ filter: { isOwner: true } });
 });
@@ -217,7 +142,7 @@ async function onAction(): Promise<void> {
 			</N8nText>
 			<div :class="$style.serviceGrid" role="list">
 				<div
-					v-for="service in services"
+					v-for="service in FEATURED_SERVICES"
 					:key="service.credentialType"
 					:class="$style.serviceTag"
 					role="listitem"
@@ -229,15 +154,10 @@ async function onAction(): Promise<void> {
 							:class="$style.logoSvg"
 							:data-test-id="`service-logo-${service.credentialType}`"
 						/>
-						<CredentialIcon
-							v-else-if="service.hasCredentialIcon"
-							:credential-type-name="service.credentialType"
-							:size="18"
-						/>
-						<NodeIcon v-else-if="service.nodeType" :node-type="service.nodeType" :size="18" />
+						<CredentialIcon v-else :credential-type-name="service.credentialType" :size="18" />
 					</span>
 					<N8nText size="small" color="text-dark" :class="$style.serviceName">
-						{{ service.label }}
+						{{ i18n.baseText(service.labelKey) }}
 					</N8nText>
 				</div>
 			</div>
