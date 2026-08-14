@@ -72,6 +72,11 @@ export class WorkflowPublicationOutboxConsumer {
 	 * running workers' final claims is still picked up promptly. */
 	private wakeRequested = false;
 
+	/** Callers currently awaiting {@link drainPending}. While one exists, a
+	 * worker error is delivered through the rejection and reported by that
+	 * caller; the consumer only reports errors nobody is around to receive. */
+	private drainAwaiters = 0;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowsConfig: WorkflowsConfig,
@@ -139,7 +144,13 @@ export class WorkflowPublicationOutboxConsumer {
 		if (!this.instanceSettings.isLeader) return;
 
 		this.startPolling();
-		await this.drainPending();
+		try {
+			await this.drainPending();
+		} catch (error) {
+			// Pubsub dispatch drops handler rejections (they would surface as
+			// unhandled promise rejections), so report the failure here instead.
+			this.errorReporter.error(ensureError(error), { shouldBeLogged: true });
+		}
 	}
 
 	// The `workflow-publish-wake-up` event drains the outbox promptly (see
@@ -167,12 +178,18 @@ export class WorkflowPublicationOutboxConsumer {
 	 * record delays it (bounded by the abort/abandon deadline) — but not the
 	 * processing of other records, which the remaining slots keep serving.
 	 * Rejects with the first worker error observed, so awaiting callers (e.g.
-	 * the reconciler's failure telemetry) still see drain failures.
+	 * the reconciler's failure telemetry) still see drain failures. The caller
+	 * owns reporting a rejection; the consumer does not report it too.
 	 */
 	async drainPending(): Promise<void> {
-		this.topUpWorkers();
-		const error = await this.awaitIdle();
-		if (error) throw error;
+		this.drainAwaiters++;
+		try {
+			this.topUpWorkers();
+			const error = await this.awaitIdle();
+			if (error) throw error;
+		} finally {
+			this.drainAwaiters--;
+		}
 	}
 
 	/** Resolves once the pool is idle, with the first worker error observed. */
@@ -208,10 +225,13 @@ export class WorkflowPublicationOutboxConsumer {
 				() => null,
 				(error) => {
 					// A worker failure (e.g. a claim query error) is contained to its own
-					// slot; reported here so fire-and-forget poll passes still surface it,
-					// and settled with so `drainPending` rethrows it to awaiting callers.
+					// slot. With a drain awaiter present, `drainPending` rejects with it and
+					// that caller reports it; only a fire-and-forget pass (poll top-up with
+					// nobody awaiting) is reported here, so failures surface exactly once.
 					const failure = ensureError(error);
-					this.errorReporter.error(failure, { shouldBeLogged: true });
+					if (this.drainAwaiters === 0) {
+						this.errorReporter.error(failure, { shouldBeLogged: true });
+					}
 					return failure;
 				},
 			)

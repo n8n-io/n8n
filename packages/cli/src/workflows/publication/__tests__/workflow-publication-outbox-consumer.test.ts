@@ -332,7 +332,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(applier.apply).toHaveBeenCalledWith(r2, expect.anything());
 		});
 
-		test('drainPending rejects when a worker pass fails', async () => {
+		test('drainPending rejects when a worker pass fails, leaving reporting to the caller', async () => {
 			const error = new Error('claim failed');
 			outboxRepository.claimNextPendingRecord.mockRejectedValueOnce(error);
 			consumer.startPolling();
@@ -340,8 +340,9 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			// Awaiting callers (e.g. the reconciler) must still observe drain
 			// failures, or they would report success for records nobody claimed.
 			await expect(consumer.drainPending()).rejects.toThrow('claim failed');
-			// Reported too, so fire-and-forget poll passes surface the failure.
-			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
+			// Every awaiting caller already reports the rejection itself, so the
+			// consumer must not report it too.
+			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
 		test('an idle pass starts no tracing span', async () => {
@@ -698,6 +699,18 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			expect(outboxRepository.claimNextPendingRecord).not.toHaveBeenCalled();
 			expect(vi.getTimerCount()).toBe(0);
+		});
+
+		test('reports a drain failure instead of rejecting', async () => {
+			const error = new Error('claim failed');
+			outboxRepository.claimNextPendingRecord.mockRejectedValueOnce(error);
+
+			// Pubsub dispatch drops handler rejections, so a rejecting wakeUp would
+			// surface as an unhandled promise rejection.
+			await expect(consumer.wakeUp()).resolves.toBeUndefined();
+
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
 		});
 	});
 
